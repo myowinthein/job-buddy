@@ -1,3 +1,9 @@
+export interface PhoneNumber {
+  countryCode: string;  // ISO 3166-1 alpha-2, e.g. "TH"
+  callingCode: string;  // e.g. "+66"
+  number: string;       // digits only, e.g. "812345678"
+}
+
 export type NoticePeriodUnit = 'day' | 'week' | 'month';
 export type WorkAuthorizationStatus = 'citizen_or_pr' | 'work_visa' | 'requires_sponsorship';
 export type LanguageProficiency = 'basic' | 'conversational' | 'professional' | 'native';
@@ -72,7 +78,7 @@ export interface Profile {
     firstName: string;
     lastName: string;
     email: string;
-    phone: string;
+    phone: PhoneNumber;
     dateOfBirth?: string;
     gender?: string;
     ethnicity?: string;
