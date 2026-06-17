@@ -1,44 +1,69 @@
 import type { Profile } from '../types/profile';
 import type { LearnedMappings, ApplicationEntry } from '../types/storage';
 
-export async function getProfile(): Promise<Profile | null> {
+// Wraps chrome.storage.local.get so that the returned Promise always resolves.
+// A synchronous throw (e.g. permission missing) or a runtime error in the
+// callback both resolve to an empty object rather than rejecting, keeping
+// callers free of unhandled-rejection hangs.
+function storageGet(key: string): Promise<Record<string, unknown>> {
   return new Promise((resolve) => {
-    chrome.storage.local.get('profile', (result: Record<string, unknown>) => {
-      resolve((result.profile as Profile) ?? null);
-    });
+    try {
+      chrome.storage.local.get(key, (result: Record<string, unknown>) => {
+        if (chrome.runtime.lastError) {
+          console.error('[Job Buddy] storage.get error:', chrome.runtime.lastError.message);
+          resolve({});
+          return;
+        }
+        resolve(result);
+      });
+    } catch (err) {
+      console.error('[Job Buddy] storage.get threw:', err);
+      resolve({});
+    }
   });
+}
+
+// Same resilience wrapper for writes. Resolves even on error so callers
+// using await don't hang.
+function storageSet(items: Record<string, unknown>): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.local.set(items, () => {
+        if (chrome.runtime.lastError) {
+          console.error('[Job Buddy] storage.set error:', chrome.runtime.lastError.message);
+        }
+        resolve();
+      });
+    } catch (err) {
+      console.error('[Job Buddy] storage.set threw:', err);
+      resolve();
+    }
+  });
+}
+
+export async function getProfile(): Promise<Profile | null> {
+  const result = await storageGet('profile');
+  return (result.profile as Profile) ?? null;
 }
 
 export async function saveProfile(profile: Profile): Promise<void> {
-  return new Promise((resolve) => {
-    chrome.storage.local.set({ profile }, resolve);
-  });
+  await storageSet({ profile });
 }
 
 export async function getLearnedMappings(): Promise<LearnedMappings> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get('learnedMappings', (result: Record<string, unknown>) => {
-      resolve((result.learnedMappings as LearnedMappings) ?? {});
-    });
-  });
+  const result = await storageGet('learnedMappings');
+  return (result.learnedMappings as LearnedMappings) ?? {};
 }
 
 export async function saveLearmedMappings(mappings: LearnedMappings): Promise<void> {
-  return new Promise((resolve) => {
-    chrome.storage.local.set({ learnedMappings: mappings }, resolve);
-  });
+  await storageSet({ learnedMappings: mappings });
 }
 
 export async function getApplicationHistory(): Promise<ApplicationEntry[]> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get('applicationHistory', (result: Record<string, unknown>) => {
-      resolve((result.applicationHistory as ApplicationEntry[]) ?? []);
-    });
-  });
+  const result = await storageGet('applicationHistory');
+  return (result.applicationHistory as ApplicationEntry[]) ?? [];
 }
 
 export async function saveApplicationHistory(history: ApplicationEntry[]): Promise<void> {
-  return new Promise((resolve) => {
-    chrome.storage.local.set({ applicationHistory: history }, resolve);
-  });
+  await storageSet({ applicationHistory: history });
 }
