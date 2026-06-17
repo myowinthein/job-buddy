@@ -7,10 +7,16 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getProfile().then((p) => {
-      setPercentage(calculateCompletion(p ?? {}).percentage);
-      setLoading(false);
-    });
+    getProfile()
+      .then((p) => {
+        setPercentage(calculateCompletion(p ?? {}).percentage);
+      })
+      .catch((err) => {
+        console.error('[Job Buddy] Failed to load profile:', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   const openOptions = () => chrome.runtime.openOptionsPage();

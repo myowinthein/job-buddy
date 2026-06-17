@@ -34,10 +34,16 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getProfile().then((p) => {
-      setProfile(p ?? {});
-      setLoading(false);
-    });
+    getProfile()
+      .then((p) => {
+        setProfile(p ?? {});
+      })
+      .catch((err) => {
+        console.error('[Job Buddy] Failed to initialize profile:', err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   const handleSave = async (updates: Partial<Profile>) => {
