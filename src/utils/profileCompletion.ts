@@ -1,4 +1,13 @@
-import type { Profile } from '../types/profile';
+import type { Profile, PhoneNumber } from '../types/profile';
+
+// Reads the phone number string from either the new PhoneNumber object shape or
+// a legacy plain string (stored before the type migration).
+function resolvePhoneNumber(raw: unknown): string {
+  if (!raw) return '';
+  if (typeof raw === 'string') return raw;
+  const ph = raw as Partial<PhoneNumber>;
+  return ph.number ?? '';
+}
 
 export interface CompletionResult {
   percentage: number;
@@ -18,7 +27,7 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
   check(!!profile.personal?.firstName?.trim(), 'First Name');
   check(!!profile.personal?.lastName?.trim(), 'Last Name');
   check(!!profile.personal?.email?.trim(), 'Email');
-  check(!!profile.personal?.phone?.trim(), 'Phone');
+  check(!!resolvePhoneNumber(profile.personal?.phone).trim(), 'Phone');
 
   // Address (2)
   check(!!profile.address?.city?.trim(), 'City');
@@ -90,7 +99,7 @@ export function getSectionCompletion(profile: Partial<Profile>): Record<string, 
       !!profile.personal?.firstName?.trim() &&
       !!profile.personal?.lastName?.trim() &&
       !!profile.personal?.email?.trim() &&
-      !!profile.personal?.phone?.trim(),
+      !!resolvePhoneNumber(profile.personal?.phone).trim(),
 
     address: !!profile.address?.city?.trim() && !!profile.address?.country?.trim(),
 
