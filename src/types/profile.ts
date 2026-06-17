@@ -1,0 +1,117 @@
+export type NoticePeriodUnit = 'day' | 'week' | 'month';
+export type WorkAuthorizationStatus = 'citizen_or_pr' | 'work_visa' | 'requires_sponsorship';
+export type LanguageProficiency = 'basic' | 'conversational' | 'professional' | 'native';
+
+export interface NoticePeriod {
+  immediate: boolean;
+  value?: number;
+  unit?: NoticePeriodUnit;
+}
+
+export interface CurrentSalary {
+  amount: number;
+  currency: string;
+}
+
+export interface ExpectedSalaryEntry {
+  country?: string;
+  amount?: number;
+  currency?: string;
+}
+
+export interface WorkAuthorizationEntry {
+  country: string;
+  status: WorkAuthorizationStatus;
+  visaType?: string;
+  expiryDate?: string;
+}
+
+export interface WorkHistoryEntry {
+  company: string;
+  title: string;
+  startDate: string;
+  isCurrent: boolean;
+  endDate?: string;
+  location?: string;
+  description?: string;
+}
+
+export interface EducationEntry {
+  institution: string;
+  degree: string;
+  fieldOfStudy: string;
+  startDate: string;
+  endDate?: string;
+  grade?: string;
+  description?: string;
+}
+
+export interface LanguageEntry {
+  language: string;
+  proficiency: LanguageProficiency;
+}
+
+export interface CustomLink {
+  label: string;
+  url: string;
+}
+
+export interface DocumentFile {
+  name: string;
+  size: number;
+  base64: string;
+}
+
+export interface DocumentEntry {
+  url?: string;
+  file?: DocumentFile;
+}
+
+export interface Profile {
+  personal: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    dateOfBirth?: string;
+    gender?: string;
+    ethnicity?: string;
+    veteranStatus?: string;
+    disabilityStatus?: string;
+  };
+  address: {
+    city: string;
+    country: string;
+    street?: string;
+    state?: string;
+    postalCode?: string;
+  };
+  professional: {
+    currentTitle: string;
+    currentCompany: string;
+    yearsOfExperience: number;
+    summary?: string;
+    noticePeriod?: NoticePeriod;
+  };
+  salary: {
+    current: CurrentSalary;
+    expected: ExpectedSalaryEntry[];
+  };
+  workAuthorization: WorkAuthorizationEntry[];
+  workHistory: WorkHistoryEntry[];
+  education: EducationEntry[];
+  languages: LanguageEntry[];
+  links: {
+    linkedin: string;
+    github?: string;
+    portfolio?: string;
+    twitter?: string;
+    dribbble?: string;
+    behance?: string;
+    custom?: CustomLink[];
+  };
+  documents: {
+    cv: DocumentEntry;
+    coverLetter?: DocumentEntry;
+  };
+}
