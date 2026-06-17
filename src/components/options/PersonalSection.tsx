@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import type { Profile } from '@/src/types/profile';
+import type { Profile, PhoneNumber } from '@/src/types/profile';
+import { COUNTRIES, findCountry, getFlag } from '@/src/data/countries';
+import { ETHNICITIES } from '@/src/data/ethnicities';
 import { FormField } from './shared/FormField';
 
 interface Props {
@@ -7,18 +9,46 @@ interface Props {
   onSave: (updates: Partial<Profile>) => Promise<void>;
 }
 
+const CURRENT_YEAR = new Date().getFullYear();
+const DOB_MIN = `${CURRENT_YEAR - 100}-01-01`;
+const DOB_MAX = `${CURRENT_YEAR}-12-31`;
+
 const cls = (err?: string) =>
   err
     ? 'w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
     : 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
+// ── Backward-compat phone initialiser ──────────────────────────────────────
+// Existing stored profiles may have phone as a plain string. Gracefully
+// migrate: preserve the number digits in the number field, default to US (+1).
+function initPhone(raw: unknown): { country: string; callingCode: string; number: string } {
+  if (raw && typeof raw === 'object' && 'countryCode' in (raw as object)) {
+    const ph = raw as Partial<PhoneNumber>;
+    const country = findCountry(ph.countryCode ?? 'US');
+    return {
+      country: country.code,
+      callingCode: country.callingCode,
+      number: ph.number ?? '',
+    };
+  }
+  return {
+    country: 'US',
+    callingCode: '+1',
+    number: typeof raw === 'string' ? raw : '',
+  };
+}
+
 export function PersonalSection({ profile, onSave }: Props) {
   const p = profile.personal;
+  const initPh = initPhone(p?.phone);
+
   const [form, setForm] = useState({
     firstName: p?.firstName ?? '',
     lastName: p?.lastName ?? '',
     email: p?.email ?? '',
-    phone: p?.phone ?? '',
+    phoneCountry: initPh.country,
+    phoneCallingCode: initPh.callingCode,
+    phoneNumber: initPh.number,
     dateOfBirth: p?.dateOfBirth ?? '',
     gender: p?.gender ?? '',
     ethnicity: p?.ethnicity ?? '',
@@ -34,13 +64,52 @@ export function PersonalSection({ profile, onSave }: Props) {
     if (errors[key]) setErrors((e) => ({ ...e, [key]: '' }));
   };
 
+  const handleCountryChange = (code: string) => {
+    const country = findCountry(code);
+    setForm((f) => ({
+      ...f,
+      phoneCountry: country.code,
+      phoneCallingCode: country.callingCode,
+    }));
+    if (errors.phoneNumber) setErrors((e) => ({ ...e, phoneNumber: '' }));
+  };
+
+  const handlePhoneNumberChange = (value: string) => {
+    // Strip anything that isn't a digit
+    set('phoneNumber', value.replace(/\D/g, ''));
+  };
+
   const validate = () => {
     const e: Record<string, string> = {};
+
     if (!form.firstName.trim()) e.firstName = 'First name is required';
+    else if (form.firstName.length > 100) e.firstName = 'First name must be 100 characters or fewer';
+
     if (!form.lastName.trim()) e.lastName = 'Last name is required';
+    else if (form.lastName.length > 100) e.lastName = 'Last name must be 100 characters or fewer';
+
     if (!form.email.trim()) e.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Enter a valid email address';
-    if (!form.phone.trim()) e.phone = 'Phone number is required';
+    else if (form.email.length > 254) e.email = 'Email must be 254 characters or fewer';
+
+    if (!form.phoneNumber.trim()) {
+      e.phoneNumber = 'Phone number is required';
+    } else if (form.phoneNumber.length < 4) {
+      e.phoneNumber = 'Enter a valid phone number';
+    }
+
+    if (form.dateOfBirth) {
+      const yearStr = form.dateOfBirth.split('-')[0] ?? '';
+      const year = parseInt(yearStr, 10);
+      if (yearStr.length !== 4 || isNaN(year)) {
+        e.dateOfBirth = 'Year must be exactly 4 digits';
+      } else if (year > CURRENT_YEAR) {
+        e.dateOfBirth = `Date of birth cannot be after ${CURRENT_YEAR}`;
+      } else if (year < CURRENT_YEAR - 100) {
+        e.dateOfBirth = `Year must be ${CURRENT_YEAR - 100} or later`;
+      }
+    }
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -53,7 +122,11 @@ export function PersonalSection({ profile, onSave }: Props) {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         email: form.email.trim(),
-        phone: form.phone.trim(),
+        phone: {
+          countryCode: form.phoneCountry,
+          callingCode: form.phoneCallingCode,
+          number: form.phoneNumber.trim(),
+        },
         dateOfBirth: form.dateOfBirth || undefined,
         gender: form.gender || undefined,
         ethnicity: form.ethnicity || undefined,
@@ -73,6 +146,7 @@ export function PersonalSection({ profile, onSave }: Props) {
         <p className="text-sm text-gray-500 mt-1">Basic personal details used in job applications</p>
       </div>
 
+      {/* Name */}
       <div className="grid grid-cols-2 gap-4">
         <FormField label="First Name" required error={errors.firstName}>
           <input
@@ -80,6 +154,7 @@ export function PersonalSection({ profile, onSave }: Props) {
             value={form.firstName}
             onChange={(e) => set('firstName', e.target.value)}
             placeholder="John"
+            maxLength={100}
           />
         </FormField>
         <FormField label="Last Name" required error={errors.lastName}>
@@ -88,10 +163,12 @@ export function PersonalSection({ profile, onSave }: Props) {
             value={form.lastName}
             onChange={(e) => set('lastName', e.target.value)}
             placeholder="Doe"
+            maxLength={100}
           />
         </FormField>
       </div>
 
+      {/* Email */}
       <FormField label="Email" required error={errors.email}>
         <input
           type="email"
@@ -99,48 +176,92 @@ export function PersonalSection({ profile, onSave }: Props) {
           value={form.email}
           onChange={(e) => set('email', e.target.value)}
           placeholder="john@example.com"
+          maxLength={254}
         />
       </FormField>
 
-      <FormField label="Phone" required error={errors.phone}>
-        <input
-          type="tel"
-          className={cls(errors.phone)}
-          value={form.phone}
-          onChange={(e) => set('phone', e.target.value)}
-          placeholder="+1 555 000 0000"
-        />
+      {/* Phone — country selector + number input */}
+      <FormField label="Phone" required error={errors.phoneNumber}>
+        <div
+          className={`flex overflow-hidden rounded-lg border ${
+            errors.phoneNumber ? 'border-red-300' : 'border-gray-300'
+          } focus-within:ring-2 ${
+            errors.phoneNumber ? 'focus-within:ring-red-500' : 'focus-within:ring-blue-500'
+          } focus-within:border-transparent`}
+        >
+          <select
+            className="shrink-0 bg-gray-50 border-r border-gray-300 px-2 py-2 text-sm cursor-pointer focus:outline-none"
+            value={form.phoneCountry}
+            onChange={(e) => handleCountryChange(e.target.value)}
+            aria-label="Country calling code"
+          >
+            {COUNTRIES.map((c) => (
+              <option key={`${c.code}-${c.callingCode}`} value={c.code}>
+                {getFlag(c.code)} {c.callingCode}  {c.name}
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={15}
+            className="flex-1 px-3 py-2 text-sm focus:outline-none bg-white"
+            value={form.phoneNumber}
+            onChange={(e) => handlePhoneNumberChange(e.target.value)}
+            placeholder="812345678"
+          />
+        </div>
       </FormField>
 
-      <FormField label="Date of Birth" hint="Optional — some applications request this">
+      {/* Date of Birth */}
+      <FormField
+        label="Date of Birth"
+        hint="Optional — some applications request this"
+        error={errors.dateOfBirth}
+      >
         <input
           type="date"
-          className={cls()}
+          className={cls(errors.dateOfBirth)}
           value={form.dateOfBirth}
+          min={DOB_MIN}
+          max={DOB_MAX}
           onChange={(e) => set('dateOfBirth', e.target.value)}
         />
       </FormField>
 
+      {/* Gender & Ethnicity */}
       <div className="grid grid-cols-2 gap-4">
         <FormField label="Gender">
-          <select className={cls()} value={form.gender} onChange={(e) => set('gender', e.target.value)}>
+          <select
+            className={cls()}
+            value={form.gender}
+            onChange={(e) => set('gender', e.target.value)}
+          >
             <option value="">Prefer not to say</option>
             <option value="male">Male</option>
             <option value="female">Female</option>
-            <option value="non_binary">Non-binary</option>
             <option value="other">Other</option>
           </select>
         </FormField>
+
         <FormField label="Ethnicity">
-          <input
+          <select
             className={cls()}
             value={form.ethnicity}
             onChange={(e) => set('ethnicity', e.target.value)}
-            placeholder="Optional"
-          />
+          >
+            <option value="">Prefer not to say</option>
+            {ETHNICITIES.map((eth) => (
+              <option key={eth} value={eth}>
+                {eth}
+              </option>
+            ))}
+          </select>
         </FormField>
       </div>
 
+      {/* Veteran & Disability */}
       <div className="grid grid-cols-2 gap-4">
         <FormField label="Veteran Status">
           <select
