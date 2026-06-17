@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Profile, NoticePeriodUnit } from '@/src/types/profile';
+import { calculateExperience } from '@/src/utils/experience';
 import { FormField } from './shared/FormField';
 
 interface Props {
@@ -12,12 +13,18 @@ const cls = (err?: string) =>
     ? 'w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
     : 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
+// Maximum notice period values per unit to prevent nonsensical inputs.
+const NOTICE_MAX: Record<NoticePeriodUnit, number> = {
+  day: 365,
+  week: 52,
+  month: 24,
+};
+
 export function ProfessionalSection({ profile, onSave }: Props) {
   const p = profile.professional;
   const [form, setForm] = useState({
     currentTitle: p?.currentTitle ?? '',
     currentCompany: p?.currentCompany ?? '',
-    yearsOfExperience: p?.yearsOfExperience?.toString() ?? '',
     summary: p?.summary ?? '',
     noticeImmediate: p?.noticePeriod?.immediate ?? true,
     noticeValue: p?.noticePeriod?.value?.toString() ?? '',
@@ -26,6 +33,9 @@ export function ProfessionalSection({ profile, onSave }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Derived — never entered manually
+  const experience = calculateExperience(profile.workHistory);
 
   const set = (key: string, value: string | boolean) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -36,14 +46,19 @@ export function ProfessionalSection({ profile, onSave }: Props) {
     const e: Record<string, string> = {};
     if (!form.currentTitle.trim()) e.currentTitle = 'Current title is required';
     if (!form.currentCompany.trim()) e.currentCompany = 'Current company is required';
-    if (form.yearsOfExperience === '') {
-      e.yearsOfExperience = 'Years of experience is required';
-    } else if (isNaN(Number(form.yearsOfExperience)) || Number(form.yearsOfExperience) < 0) {
-      e.yearsOfExperience = 'Enter a valid number';
+
+    if (!form.noticeImmediate) {
+      const val = Number(form.noticeValue);
+      const max = NOTICE_MAX[form.noticeUnit];
+      if (!form.noticeValue.trim() || isNaN(val)) {
+        e.noticeValue = 'Enter a duration';
+      } else if (val < 1) {
+        e.noticeValue = 'Must be at least 1';
+      } else if (val > max) {
+        e.noticeValue = `Maximum is ${max} ${form.noticeUnit}${max !== 1 ? 's' : ''}`;
+      }
     }
-    if (!form.noticeImmediate && !form.noticeValue.trim()) {
-      e.noticeValue = 'Enter a notice period duration';
-    }
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -55,7 +70,10 @@ export function ProfessionalSection({ profile, onSave }: Props) {
       professional: {
         currentTitle: form.currentTitle.trim(),
         currentCompany: form.currentCompany.trim(),
-        yearsOfExperience: Number(form.yearsOfExperience),
+        // Cache the derived value so profileCompletion.ts can read it without
+        // access to workHistory. It is always recomputed from workHistory on
+        // save; the user never manually sets it.
+        yearsOfExperience: experience.years + Math.round(experience.months / 12),
         summary: form.summary || undefined,
         noticePeriod: {
           immediate: form.noticeImmediate,
@@ -82,6 +100,7 @@ export function ProfessionalSection({ profile, onSave }: Props) {
           value={form.currentTitle}
           onChange={(e) => set('currentTitle', e.target.value)}
           placeholder="Senior Software Engineer"
+          maxLength={150}
         />
       </FormField>
 
@@ -91,20 +110,18 @@ export function ProfessionalSection({ profile, onSave }: Props) {
           value={form.currentCompany}
           onChange={(e) => set('currentCompany', e.target.value)}
           placeholder="Acme Corp"
+          maxLength={150}
         />
       </FormField>
 
-      <FormField label="Years of Experience" required error={errors.yearsOfExperience}>
-        <input
-          type="number"
-          min={0}
-          max={50}
-          className={cls(errors.yearsOfExperience)}
-          value={form.yearsOfExperience}
-          onChange={(e) => set('yearsOfExperience', e.target.value)}
-          placeholder="5"
-        />
-      </FormField>
+      {/* Total Experience — read-only, derived from Work History */}
+      <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">Total Experience</span>
+        <span className="text-sm font-semibold text-blue-700">{experience.label}</span>
+      </div>
+      <p className="text-xs text-gray-400 -mt-2 mb-4">
+        Calculated automatically from your Work History.
+      </p>
 
       <FormField label="Professional Summary">
         <textarea
@@ -112,9 +129,11 @@ export function ProfessionalSection({ profile, onSave }: Props) {
           value={form.summary}
           onChange={(e) => set('summary', e.target.value)}
           placeholder="A brief overview of your professional background and key strengths..."
+          maxLength={2000}
         />
       </FormField>
 
+      {/* Notice Period */}
       <div className="mb-4">
         <p className="text-sm font-medium text-gray-700 mb-2">Notice Period</p>
         <div className="flex gap-4 mb-3">
@@ -141,12 +160,13 @@ export function ProfessionalSection({ profile, onSave }: Props) {
         </div>
 
         {!form.noticeImmediate && (
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-start">
             <div className="w-28">
               <FormField label="" error={errors.noticeValue}>
                 <input
                   type="number"
                   min={1}
+                  max={NOTICE_MAX[form.noticeUnit]}
                   className={cls(errors.noticeValue)}
                   value={form.noticeValue}
                   onChange={(e) => set('noticeValue', e.target.value)}
@@ -159,11 +179,16 @@ export function ProfessionalSection({ profile, onSave }: Props) {
                 <select
                   className={cls()}
                   value={form.noticeUnit}
-                  onChange={(e) => set('noticeUnit', e.target.value as NoticePeriodUnit)}
+                  onChange={(e) => {
+                    const unit = e.target.value as NoticePeriodUnit;
+                    set('noticeUnit', unit);
+                    // Clear error when unit changes so the user sees the new limit
+                    setErrors((err) => ({ ...err, noticeValue: '' }));
+                  }}
                 >
-                  <option value="day">Days</option>
-                  <option value="week">Weeks</option>
-                  <option value="month">Months</option>
+                  <option value="day">Days (max {NOTICE_MAX.day})</option>
+                  <option value="week">Weeks (max {NOTICE_MAX.week})</option>
+                  <option value="month">Months (max {NOTICE_MAX.month})</option>
                 </select>
               </FormField>
             </div>

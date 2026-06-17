@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Profile } from '@/src/types/profile';
+import { COUNTRIES, getFlag, findCountryByNameOrCode } from '@/src/data/countries';
 import { FormField } from './shared/FormField';
 
 interface Props {
@@ -12,11 +13,19 @@ const cls = (err?: string) =>
     ? 'w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
     : 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
+// Back-compat: old profiles stored a country name ("Thailand"); new ones store
+// an ISO code ("TH"). Normalise to the ISO code on load.
+function initCountryCode(raw: string | undefined): string {
+  if (!raw) return '';
+  const found = findCountryByNameOrCode(raw);
+  return found ? found.code : raw;
+}
+
 export function AddressSection({ profile, onSave }: Props) {
   const a = profile.address;
   const [form, setForm] = useState({
     city: a?.city ?? '',
-    country: a?.country ?? '',
+    countryCode: initCountryCode(a?.country),
     street: a?.street ?? '',
     state: a?.state ?? '',
     postalCode: a?.postalCode ?? '',
@@ -33,7 +42,7 @@ export function AddressSection({ profile, onSave }: Props) {
   const validate = () => {
     const e: Record<string, string> = {};
     if (!form.city.trim()) e.city = 'City is required';
-    if (!form.country.trim()) e.country = 'Country is required';
+    if (!form.countryCode) e.countryCode = 'Country is required';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -44,7 +53,7 @@ export function AddressSection({ profile, onSave }: Props) {
     await onSave({
       address: {
         city: form.city.trim(),
-        country: form.country.trim(),
+        country: form.countryCode,           // stores ISO code, e.g. "TH"
         street: form.street || undefined,
         state: form.state || undefined,
         postalCode: form.postalCode || undefined,
@@ -68,6 +77,7 @@ export function AddressSection({ profile, onSave }: Props) {
           value={form.street}
           onChange={(e) => set('street', e.target.value)}
           placeholder="123 Main Street, Apt 4B"
+          maxLength={255}
         />
       </FormField>
 
@@ -77,7 +87,8 @@ export function AddressSection({ profile, onSave }: Props) {
             className={cls(errors.city)}
             value={form.city}
             onChange={(e) => set('city', e.target.value)}
-            placeholder="San Francisco"
+            placeholder="Bangkok"
+            maxLength={100}
           />
         </FormField>
         <FormField label="State / Province">
@@ -85,26 +96,34 @@ export function AddressSection({ profile, onSave }: Props) {
             className={cls()}
             value={form.state}
             onChange={(e) => set('state', e.target.value)}
-            placeholder="California"
+            placeholder="Central Bangkok"
+            maxLength={100}
           />
         </FormField>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="Country" required error={errors.country}>
-          <input
-            className={cls(errors.country)}
-            value={form.country}
-            onChange={(e) => set('country', e.target.value)}
-            placeholder="United States"
-          />
+        <FormField label="Country" required error={errors.countryCode}>
+          <select
+            className={cls(errors.countryCode)}
+            value={form.countryCode}
+            onChange={(e) => set('countryCode', e.target.value)}
+          >
+            <option value="">Select country…</option>
+            {COUNTRIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {getFlag(c.code)}  {c.name}
+              </option>
+            ))}
+          </select>
         </FormField>
         <FormField label="Postal Code">
           <input
             className={cls()}
             value={form.postalCode}
             onChange={(e) => set('postalCode', e.target.value)}
-            placeholder="94102"
+            placeholder="10110"
+            maxLength={20}
           />
         </FormField>
       </div>

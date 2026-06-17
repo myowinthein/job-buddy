@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { Profile } from '@/src/types/profile';
+import { COUNTRIES, getFlag, findCountryByNameOrCode } from '@/src/data/countries';
+import { CURRENCIES, getCurrencyLabel, findCurrency, currencyForCountry } from '@/src/data/currencies';
 import { FormField } from './shared/FormField';
 
 interface Props {
@@ -12,31 +14,65 @@ const cls = (err?: string) =>
     ? 'w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
     : 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
-type ExpectedRow = { country: string; amount: string; currency: string };
+// ── Expected-salary row ───────────────────────────────────────────────────────
+// country: ISO 3166-1 alpha-2 code ("TH")
+// amount:  string for input
+// currency: ISO 4217 code derived from country ("THB") — read-only
+type ExpectedRow = { countryCode: string; amount: string; currencyCode: string };
 
-const emptyExpected = (): ExpectedRow => ({ country: '', amount: '', currency: '' });
+function emptyExpected(): ExpectedRow {
+  return { countryCode: '', amount: '', currencyCode: '' };
+}
+
+// Back-compat: old rows may have free-text country ("Thailand") and currency
+// ("thb"). Normalise both to standard codes on load.
+function initExpectedRow(raw: { country?: string; amount?: number; currency?: string }): ExpectedRow {
+  const found = raw.country ? findCountryByNameOrCode(raw.country) : undefined;
+  const countryCode = found ? found.code : (raw.country ?? '');
+  const derivedCurrency = found ? currencyForCountry(found.code).code : '';
+  const savedCurrency = raw.currency ? raw.currency.toUpperCase() : '';
+  // Prefer saved currency only if it matches what the country derives; otherwise
+  // use the derived value so old free-text entries don't persist.
+  const currencyCode = savedCurrency && findCurrency(savedCurrency)
+    ? savedCurrency
+    : (derivedCurrency || savedCurrency);
+  return { countryCode, amount: raw.amount?.toString() ?? '', currencyCode };
+}
 
 export function SalarySection({ profile, onSave }: Props) {
   const s = profile.salary;
+
+  // ── Current salary ──────────────────────────────────────────────────────────
+  const initCurrentCurrency = s?.current?.currency
+    ? (findCurrency(s.current.currency)?.code ?? s.current.currency)
+    : '';
+
   const [currentAmount, setCurrentAmount] = useState(s?.current?.amount?.toString() ?? '');
-  const [currentCurrency, setCurrentCurrency] = useState(s?.current?.currency ?? '');
+  const [currentCurrency, setCurrentCurrency] = useState(initCurrentCurrency);
+
+  // ── Expected salary rows ────────────────────────────────────────────────────
   const [expected, setExpected] = useState<ExpectedRow[]>(
-    s?.expected?.length
-      ? s.expected.map((e) => ({
-          country: e.country ?? '',
-          amount: e.amount?.toString() ?? '',
-          currency: e.currency ?? '',
-        }))
-      : [emptyExpected()],
+    s?.expected?.length ? s.expected.map(initExpectedRow) : [emptyExpected()],
   );
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   const setExpectedField = (idx: number, key: keyof ExpectedRow, value: string) => {
-    setExpected((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
-    const errKey = `expected.${idx}.${key}`;
-    if (errors[errKey]) setErrors((e) => ({ ...e, [errKey]: '' }));
+    setExpected((rows) =>
+      rows.map((r, i) => {
+        if (i !== idx) return r;
+        const updated = { ...r, [key]: value };
+        // When country changes, auto-derive currency
+        if (key === 'countryCode') {
+          updated.currencyCode = value ? currencyForCountry(value).code : '';
+        }
+        return updated;
+      }),
+    );
+    if (errors[`expected.${idx}.${key}`])
+      setErrors((e) => ({ ...e, [`expected.${idx}.${key}`]: '' }));
   };
 
   const validate = () => {
@@ -44,7 +80,7 @@ export function SalarySection({ profile, onSave }: Props) {
     if (!currentAmount.trim()) e.currentAmount = 'Current salary amount is required';
     else if (isNaN(Number(currentAmount)) || Number(currentAmount) < 0)
       e.currentAmount = 'Enter a valid amount';
-    if (!currentCurrency.trim()) e.currentCurrency = 'Currency is required';
+    if (!currentCurrency) e.currentCurrency = 'Currency is required';
     if (expected.length === 0) e.expectedList = 'At least one expected salary entry is required';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -57,12 +93,12 @@ export function SalarySection({ profile, onSave }: Props) {
       salary: {
         current: {
           amount: Number(currentAmount),
-          currency: currentCurrency.trim().toUpperCase(),
+          currency: currentCurrency,
         },
         expected: expected.map((r) => ({
-          country: r.country || undefined,
+          country: r.countryCode || undefined,
           amount: r.amount ? Number(r.amount) : undefined,
-          currency: r.currency ? r.currency.trim().toUpperCase() : undefined,
+          currency: r.currencyCode || undefined,
         })),
       },
     });
@@ -78,6 +114,7 @@ export function SalarySection({ profile, onSave }: Props) {
         <p className="text-sm text-gray-500 mt-1">Current compensation and expected salary by country</p>
       </div>
 
+      {/* ── Current Salary ─────────────────────────────────────────────────── */}
       <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 mb-6">
         <h3 className="text-sm font-semibold text-gray-800 mb-3">Current Salary</h3>
         <div className="grid grid-cols-2 gap-4">
@@ -95,20 +132,26 @@ export function SalarySection({ profile, onSave }: Props) {
             />
           </FormField>
           <FormField label="Currency" required error={errors.currentCurrency}>
-            <input
+            <select
               className={cls(errors.currentCurrency)}
               value={currentCurrency}
               onChange={(e) => {
                 setCurrentCurrency(e.target.value);
                 if (errors.currentCurrency) setErrors((err) => ({ ...err, currentCurrency: '' }));
               }}
-              placeholder="USD"
-              maxLength={3}
-            />
+            >
+              <option value="">Select currency…</option>
+              {CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {getCurrencyLabel(c)}
+                </option>
+              ))}
+            </select>
           </FormField>
         </div>
       </div>
 
+      {/* ── Expected Salary ────────────────────────────────────────────────── */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-800">Expected Salary</h3>
@@ -120,56 +163,76 @@ export function SalarySection({ profile, onSave }: Props) {
             + Add Country
           </button>
         </div>
-        {errors.expectedList && <p className="text-xs text-red-500 mb-2">{errors.expectedList}</p>}
+        {errors.expectedList && (
+          <p className="text-xs text-red-500 mb-2">{errors.expectedList}</p>
+        )}
 
-        {expected.map((row, idx) => (
-          <div key={idx} className="p-4 border border-gray-200 rounded-lg mb-3">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-gray-600">Entry {idx + 1}</span>
-              {expected.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => setExpected((rows) => rows.filter((_, i) => i !== idx))}
-                  className="text-xs text-red-500 hover:text-red-700"
-                >
-                  Remove
-                </button>
-              )}
+        {expected.map((row, idx) => {
+          const derivedCurrency = row.currencyCode
+            ? findCurrency(row.currencyCode)
+            : undefined;
+
+          return (
+            <div key={idx} className="p-4 border border-gray-200 rounded-lg mb-3">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-medium text-gray-600">Entry {idx + 1}</span>
+                {expected.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setExpected((rows) => rows.filter((_, i) => i !== idx))}
+                    className="text-xs text-red-500 hover:text-red-700"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <FormField label="Country">
+                  <select
+                    className={cls()}
+                    value={row.countryCode}
+                    onChange={(e) => setExpectedField(idx, 'countryCode', e.target.value)}
+                  >
+                    <option value="">Select country…</option>
+                    {COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {getFlag(c.code)}  {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+                <FormField label="Amount">
+                  <input
+                    type="number"
+                    min={0}
+                    className={cls()}
+                    value={row.amount}
+                    onChange={(e) => setExpectedField(idx, 'amount', e.target.value)}
+                    placeholder="100000"
+                  />
+                </FormField>
+              </div>
+
+              {/* Currency — read-only, derived from selected country */}
+              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
+                <span className="text-xs text-gray-500 shrink-0">Currency</span>
+                {derivedCurrency ? (
+                  <span className="text-sm font-medium text-gray-800">
+                    {getCurrencyLabel(derivedCurrency)}
+                  </span>
+                ) : (
+                  <span className="text-sm text-gray-400 italic">
+                    — select a country above
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <FormField label="Country">
-                <input
-                  className={cls()}
-                  value={row.country}
-                  onChange={(e) => setExpectedField(idx, 'country', e.target.value)}
-                  placeholder="US"
-                />
-              </FormField>
-              <FormField label="Amount">
-                <input
-                  type="number"
-                  min={0}
-                  className={cls()}
-                  value={row.amount}
-                  onChange={(e) => setExpectedField(idx, 'amount', e.target.value)}
-                  placeholder="100000"
-                />
-              </FormField>
-              <FormField label="Currency">
-                <input
-                  className={cls()}
-                  value={row.currency}
-                  onChange={(e) => setExpectedField(idx, 'currency', e.target.value)}
-                  placeholder="USD"
-                  maxLength={3}
-                />
-              </FormField>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      <div className="mt-6 pt-4 border-t border-gray-200 flex items-center gap-3">
+      <div className="mt-2 pt-4 border-t border-gray-200 flex items-center gap-3">
         <button
           onClick={handleSave}
           disabled={saving}
