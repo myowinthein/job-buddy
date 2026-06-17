@@ -201,3 +201,14 @@ export const COUNTRIES: Country[] = [
 export function findCountry(code: string): Country {
   return COUNTRIES.find((c) => c.code === code) ?? COUNTRIES[0];
 }
+
+// Handles backward-compat: old stored values may be a full country name
+// ("Thailand") rather than the ISO code ("TH"). Tries code first, then name.
+export function findCountryByNameOrCode(value: string): Country | undefined {
+  if (!value) return undefined;
+  const upper = value.toUpperCase();
+  return (
+    COUNTRIES.find((c) => c.code === upper) ??
+    COUNTRIES.find((c) => c.name.toLowerCase() === value.toLowerCase())
+  );
+}
