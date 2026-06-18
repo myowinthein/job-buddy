@@ -173,3 +173,13 @@ export function currencyForCountry(countryCode: string): Currency {
   const code = COUNTRY_TO_CURRENCY[countryCode.toUpperCase()] ?? 'USD';
   return findCurrency(code) ?? CURRENCIES[0];
 }
+
+// Returns the single country code that maps to the given currency, or undefined
+// when multiple countries share it (EUR, USD, XOF…). Used for migration only.
+export function primaryCountryForCurrency(currencyCode: string): string | undefined {
+  const upper = currencyCode.toUpperCase();
+  const matches = Object.entries(COUNTRY_TO_CURRENCY)
+    .filter(([, v]) => v === upper)
+    .map(([k]) => k);
+  return matches.length === 1 ? matches[0] : undefined;
+}
