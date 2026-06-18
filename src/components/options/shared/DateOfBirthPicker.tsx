@@ -97,12 +97,13 @@ export function DateOfBirthPicker({ value, onChange, error }: Props) {
 
   return (
     <div className="flex gap-2">
-      {/* Day — number input, 1–31 */}
+      {/* Day — text input, digits only, 1–31 */}
       <div className="w-16">
         <input
-          type="number"
-          min={1}
-          max={31}
+          type="text"
+          inputMode="numeric"
+          pattern="\d{1,2}"
+          maxLength={2}
           className={fieldCls}
           value={dayStr}
           onChange={(e) => handleDayInput(e.target.value)}
@@ -111,34 +112,36 @@ export function DateOfBirthPicker({ value, onChange, error }: Props) {
         />
       </div>
 
-      {/* Month — select dropdown */}
-      <div className="flex-1">
-        <select
-          className={fieldCls}
-          value={month || ''}
-          onChange={(e) => handleMonth(Number(e.target.value))}
-          aria-label="Month"
-        >
-          <option value="">Month</option>
-          {MONTHS.map((m) => (
-            <option key={m.value} value={m.value}>{m.label}</option>
-          ))}
-        </select>
-      </div>
+      {/* Month + Year — same proportions as MonthYearPicker */}
+      <div className="flex-1 flex gap-2">
+        <div className="flex-1">
+          <select
+            className={fieldCls}
+            value={month || ''}
+            onChange={(e) => handleMonth(Number(e.target.value))}
+            aria-label="Month"
+          >
+            <option value="">Month</option>
+            {MONTHS.map((m) => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+        </div>
 
-      {/* Year — text input restricted to 4 digits in valid range */}
-      <div className="w-20">
-        <input
-          type="text"
-          inputMode="numeric"
-          pattern="\d{4}"
-          maxLength={4}
-          className={fieldCls}
-          value={yearStr}
-          onChange={(e) => handleYearInput(e.target.value)}
-          placeholder="YYYY"
-          aria-label="Year"
-        />
+        {/* Year — text input restricted to 4 digits in valid range */}
+        <div className="w-20">
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="\d{4}"
+            maxLength={4}
+            className={fieldCls}
+            value={yearStr}
+            onChange={(e) => handleYearInput(e.target.value)}
+            placeholder="YYYY"
+            aria-label="Year"
+          />
+        </div>
       </div>
     </div>
   );
