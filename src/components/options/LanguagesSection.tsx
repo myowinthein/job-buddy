@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Profile, LanguageEntry, LanguageProficiency } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
 import { RemoveButton } from './shared/RemoveButton';
+import { SearchableLanguageSelect } from './shared/SearchableLanguageSelect';
 
 interface Props {
   profile: Partial<Profile>;
@@ -13,52 +14,57 @@ const cls = (err?: string) =>
     ? 'w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
     : 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
-type Row = LanguageEntry & { _isEnglish?: boolean };
+const PROFICIENCY_OPTIONS: { value: LanguageProficiency; label: string }[] = [
+  { value: 'native_bilingual',    label: 'Native or bilingual proficiency' },
+  { value: 'full_professional',   label: 'Full professional proficiency (C1–C2)' },
+  { value: 'professional_working',label: 'Professional working proficiency (B2–C1)' },
+  { value: 'limited_working',     label: 'Limited working proficiency (B1–B2)' },
+  { value: 'elementary',          label: 'Elementary proficiency (A1–A2)' },
+];
 
-const PROFICIENCY_LABELS: Record<LanguageProficiency, string> = {
-  basic: 'Basic',
-  conversational: 'Conversational',
-  professional: 'Professional',
-  native: 'Native / Bilingual',
+// Back-compat: old profiles used basic/conversational/professional/native.
+const PROFICIENCY_MIGRATION: Record<string, LanguageProficiency> = {
+  basic:         'elementary',
+  conversational:'limited_working',
+  professional:  'professional_working',
+  native:        'native_bilingual',
 };
 
-function initEntries(profile: Partial<Profile>): Row[] {
-  const existing = (profile.languages ?? []).map((l) => ({
-    ...l,
-    _isEnglish: l.language.toLowerCase() === 'english',
-  }));
-  const hasEnglish = existing.some((l) => l._isEnglish);
-  if (!hasEnglish) {
-    return [{ language: 'English', proficiency: 'native', _isEnglish: true }, ...existing];
-  }
-  const englishIdx = existing.findIndex((l) => l._isEnglish);
-  if (englishIdx > 0) {
-    const [eng] = existing.splice(englishIdx, 1);
-    existing.unshift(eng);
-  }
-  return existing;
+function migrateProficiency(raw: string): LanguageProficiency {
+  return PROFICIENCY_MIGRATION[raw] ?? (PROFICIENCY_OPTIONS.some((o) => o.value === raw)
+    ? (raw as LanguageProficiency)
+    : 'professional_working');
+}
+
+type Row = { language: string; proficiency: LanguageProficiency };
+
+function initRow(raw: LanguageEntry): Row {
+  return { language: raw.language, proficiency: migrateProficiency(raw.proficiency) };
+}
+
+function emptyRow(): Row {
+  return { language: '', proficiency: '' as LanguageProficiency };
 }
 
 export function LanguagesSection({ profile, onSave }: Props) {
-  const [entries, setEntries] = useState<Row[]>(initEntries(profile));
+  const [entries, setEntries] = useState<Row[]>(
+    profile.languages?.length ? profile.languages.map(initRow) : [],
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const update = (idx: number, key: keyof LanguageEntry, value: string) => {
+  const update = (idx: number, key: keyof Row, value: string) => {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     const ek = `${idx}.${key}`;
     const err = key === 'language' && !value.trim() ? 'Language is required' : '';
     setErrors((e) => ({ ...e, [ek]: err }));
   };
 
-  const addEntry = () => {
-    setEntries((rows) => [...rows, { language: '', proficiency: 'conversational', _isEnglish: false }]);
-  };
+  const addEntry = () => setEntries((rows) => [...rows, emptyRow()]);
 
-  const removeEntry = (idx: number) => {
+  const removeEntry = (idx: number) =>
     setEntries((rows) => rows.filter((_, i) => i !== idx));
-  };
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -73,7 +79,10 @@ export function LanguagesSection({ profile, onSave }: Props) {
     if (!validate()) return;
     setSaving(true);
     await onSave({
-      languages: entries.map(({ _isEnglish: _, ...r }) => r),
+      languages: entries.map((r) => ({
+        language: r.language,
+        proficiency: r.proficiency || 'professional_working',
+      })),
     });
     setSaving(false);
     setSaved(true);
@@ -84,7 +93,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
     <div>
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Languages</h2>
-        <p className="text-sm text-gray-500 mt-1">Languages you speak — English is required</p>
+        <p className="text-sm text-gray-500 mt-1">Add the languages you can use professionally.</p>
       </div>
 
       <div className="mb-4">
@@ -92,41 +101,25 @@ export function LanguagesSection({ profile, onSave }: Props) {
           <div key={idx} className="p-4 border border-gray-200 rounded-lg mb-3">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-gray-600">Entry {idx + 1}</span>
-              {row._isEnglish ? (
-                <span
-                  className="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded"
-                  title="English is required and cannot be removed"
-                >
-                  Required
-                </span>
-              ) : (
-                <RemoveButton onClick={() => removeEntry(idx)} />
-              )}
+              <RemoveButton onClick={() => removeEntry(idx)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <FormField
-                label={row._isEnglish ? 'Language (required)' : 'Language'}
-                error={errors[`${idx}.language`]}
-              >
-                <input
-                  id={row._isEnglish ? 'field-english' : undefined}
-                  className={cls(errors[`${idx}.language`])}
+              <FormField label="Language" required error={errors[`${idx}.language`]}>
+                <SearchableLanguageSelect
                   value={row.language}
-                  onChange={(e) => update(idx, 'language', e.target.value)}
-                  placeholder="English"
-                  maxLength={100}
-                  readOnly={row._isEnglish}
+                  onChange={(code) => update(idx, 'language', code)}
+                  error={errors[`${idx}.language`]}
                 />
               </FormField>
               <FormField label="Proficiency">
                 <select
                   className={cls()}
                   value={row.proficiency}
-                  onChange={(e) => update(idx, 'proficiency', e.target.value as LanguageProficiency)}
+                  onChange={(e) => update(idx, 'proficiency', e.target.value)}
                 >
                   <option value="">Select proficiency…</option>
-                  {Object.entries(PROFICIENCY_LABELS).map(([val, label]) => (
-                    <option key={val} value={val}>{label}</option>
+                  {PROFICIENCY_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
               </FormField>
