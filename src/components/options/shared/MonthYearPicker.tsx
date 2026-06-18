@@ -1,0 +1,101 @@
+import { useState } from 'react';
+
+const MONTHS = [
+  { value: '01', label: 'January' },
+  { value: '02', label: 'February' },
+  { value: '03', label: 'March' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'May' },
+  { value: '06', label: 'June' },
+  { value: '07', label: 'July' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+];
+
+const CURRENT_YEAR = new Date().getFullYear();
+
+interface Props {
+  value: string;      // "YYYY-MM" or ""
+  onChange: (value: string) => void;
+  error?: string;
+  disabled?: boolean;
+  minYear?: number;   // defaults to CURRENT_YEAR - 70
+  maxYear?: number;   // defaults to CURRENT_YEAR
+}
+
+export function MonthYearPicker({
+  value,
+  onChange,
+  error,
+  disabled = false,
+  minYear = CURRENT_YEAR - 70,
+  maxYear = CURRENT_YEAR,
+}: Props) {
+  // Local state lets the user set month before year (or vice versa) without
+  // the parent immediately clearing the partial selection when it receives "".
+  const [month, setMonth] = useState<string>(() => (value ? (value.split('-')[1] ?? '') : ''));
+  const [year, setYear] = useState<string>(() => (value ? (value.split('-')[0] ?? '') : ''));
+
+  const emit = (m: string, y: string) => {
+    onChange(m && y ? `${y}-${m}` : '');
+  };
+
+  const handleMonth = (m: string) => {
+    setMonth(m);
+    emit(m, year);
+  };
+
+  const handleYear = (y: string) => {
+    setYear(y);
+    emit(month, y);
+  };
+
+  const borderCls = error ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500';
+  const selectCls = `w-full px-3 py-2 text-sm border ${borderCls} rounded-lg focus:outline-none focus:ring-2 bg-white ${
+    disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''
+  }`;
+
+  // Year options: most recent first so users land near their current job
+  const years: number[] = [];
+  for (let y = maxYear; y >= minYear; y--) years.push(y);
+
+  return (
+    <div className="flex gap-2">
+      <div className="flex-1">
+        <select
+          className={selectCls}
+          value={month}
+          disabled={disabled}
+          onChange={(e) => handleMonth(e.target.value)}
+          aria-label="Month"
+        >
+          <option value="">Month</option>
+          {MONTHS.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="w-24">
+        <select
+          className={selectCls}
+          value={year}
+          disabled={disabled}
+          onChange={(e) => handleYear(e.target.value)}
+          aria-label="Year"
+        >
+          <option value="">Year</option>
+          {years.map((y) => (
+            <option key={y} value={String(y)}>
+              {y}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
