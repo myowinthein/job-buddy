@@ -54,7 +54,7 @@ export function Sidebar({
       }`}
     >
       {/* Header: hamburger toggle + "Profile Sections" label */}
-      <div className={`flex items-center gap-2 px-3 py-4 border-b border-gray-100 ${collapsed ? 'justify-center' : ''}`}>
+      <div className={`flex items-center gap-2 px-3 h-16 border-b border-gray-100 ${collapsed ? 'justify-center' : ''}`}>
         <button
           type="button"
           onClick={onToggle}
