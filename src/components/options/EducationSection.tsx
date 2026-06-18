@@ -60,7 +60,15 @@ export function EducationSection({ profile, onSave }: Props) {
   const update = (idx: number, key: keyof Row, value: string | boolean) => {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     const ek = `${idx}.${key}`;
-    if (errors[ek]) setErrors((e) => ({ ...e, [ek]: '' }));
+    let err = '';
+    if (key === 'institution' && !String(value).trim()) err = 'Institution is required';
+    else if (key === 'degree' && !String(value).trim()) err = 'Degree is required';
+    else if (key === 'fieldOfStudy' && !String(value).trim()) err = 'Field of study is required';
+    else if (key === 'startDate' && !String(value).trim()) err = 'Start date is required';
+    else if (key === 'isCurrent' && value === true) {
+      setErrors((e) => ({ ...e, [`${idx}.endDate`]: '' }));
+    }
+    setErrors((e) => ({ ...e, [ek]: err }));
   };
 
   const validate = () => {
@@ -122,7 +130,8 @@ export function EducationSection({ profile, onSave }: Props) {
               className={cls(errors[`${idx}.institution`])}
               value={row.institution}
               onChange={(e) => update(idx, 'institution', e.target.value)}
-              placeholder="Massachusetts Institute of Technology"
+              placeholder="University of California, Berkeley"
+              maxLength={150}
             />
           </FormField>
 
@@ -133,6 +142,7 @@ export function EducationSection({ profile, onSave }: Props) {
                 value={row.degree}
                 onChange={(e) => update(idx, 'degree', e.target.value)}
                 placeholder="Bachelor of Science"
+                maxLength={150}
               />
             </FormField>
             <FormField label="Field of Study" required error={errors[`${idx}.fieldOfStudy`]}>
@@ -141,6 +151,7 @@ export function EducationSection({ profile, onSave }: Props) {
                 value={row.fieldOfStudy}
                 onChange={(e) => update(idx, 'fieldOfStudy', e.target.value)}
                 placeholder="Computer Science"
+                maxLength={150}
               />
             </FormField>
           </div>

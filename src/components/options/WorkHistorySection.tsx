@@ -103,7 +103,15 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   const updateEntry = (idx: number, key: keyof LocalRow, value: string | boolean) => {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     const ek = `${idx}.${key}`;
-    if (errors[ek]) setErrors((e) => ({ ...e, [ek]: '' }));
+    let err = '';
+    if (key === 'company' && !String(value).trim()) err = 'Company name is required';
+    else if (key === 'title' && !String(value).trim()) err = 'Job title is required';
+    else if (key === 'startDate' && !String(value).trim()) err = 'Start date is required';
+    else if (key === 'isCurrent' && value === true) {
+      // Marking as ongoing clears any existing end-date error
+      setErrors((e) => ({ ...e, [`${idx}.endDate`]: '' }));
+    }
+    setErrors((e) => ({ ...e, [ek]: err }));
   };
 
   const validate = () => {
@@ -201,7 +209,8 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                 className={cls(errors[`${idx}.company`])}
                 value={row.company}
                 onChange={(e) => updateEntry(idx, 'company', e.target.value)}
-                placeholder="Acme Corp"
+                placeholder="Acme Inc."
+                maxLength={150}
               />
             </FormField>
             <FormField label="Job Title" required error={errors[`${idx}.title`]}>
@@ -209,7 +218,8 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                 className={cls(errors[`${idx}.title`])}
                 value={row.title}
                 onChange={(e) => updateEntry(idx, 'title', e.target.value)}
-                placeholder="Software Engineer"
+                placeholder="Senior Software Engineer"
+                maxLength={150}
               />
             </FormField>
           </div>
@@ -226,7 +236,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                 className={cls()}
                 value={row.locationCity}
                 onChange={(e) => updateEntry(idx, 'locationCity', e.target.value)}
-                placeholder="Bangkok"
+                placeholder="San Francisco"
                 maxLength={100}
               />
             </FormField>
@@ -288,6 +298,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
               value={row.description}
               onChange={(e) => updateEntry(idx, 'description', e.target.value)}
               placeholder="Key responsibilities and achievements..."
+              maxLength={1000}
             />
           </FormField>
         </ExpandableCard>

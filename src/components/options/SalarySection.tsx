@@ -124,7 +124,7 @@ export function SalarySection({ profile, onSave }: Props) {
                 value={currentCurrency}
                 onChange={(code) => {
                   setCurrentCurrency(code);
-                  if (errors.currentCurrency) setErrors((err) => ({ ...err, currentCurrency: '' }));
+                  setErrors((err) => ({ ...err, currentCurrency: code ? '' : 'Currency is required' }));
                 }}
                 error={errors.currentCurrency}
               />
@@ -136,8 +136,12 @@ export function SalarySection({ profile, onSave }: Props) {
                 className={cls(errors.currentAmount)}
                 value={currentAmount}
                 onChange={(e) => {
-                  setCurrentAmount(e.target.value);
-                  if (errors.currentAmount) setErrors((err) => ({ ...err, currentAmount: '' }));
+                  const raw = e.target.value;
+                  setCurrentAmount(raw);
+                  let amtErr = '';
+                  if (raw.trim() === '') amtErr = 'Current salary amount is required';
+                  else if (isNaN(Number(raw)) || Number(raw) < 0) amtErr = 'Enter a valid amount';
+                  setErrors((err) => ({ ...err, currentAmount: amtErr }));
                 }}
                 placeholder="80000"
               />
