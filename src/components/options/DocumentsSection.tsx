@@ -167,9 +167,6 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
 
 export function DocumentsSection({ profile, onSave }: Props) {
   const [cv, setCv] = useState<DocState>(initDocState(profile.documents?.cv));
-  const [coverLetter, setCoverLetter] = useState<DocState>(
-    initDocState(profile.documents?.coverLetter),
-  );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -178,10 +175,8 @@ export function DocumentsSection({ profile, onSave }: Props) {
     await onSave({
       documents: {
         cv: toDocumentEntry(cv),
-        coverLetter: (() => {
-          const entry = toDocumentEntry(coverLetter);
-          return Object.keys(entry).length ? entry : undefined;
-        })(),
+        // Preserve any existing cover letter data without showing it in the form
+        coverLetter: profile.documents?.coverLetter,
       },
     });
     setSaving(false);
@@ -193,17 +188,10 @@ export function DocumentsSection({ profile, onSave }: Props) {
     <div>
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Documents</h2>
-        <p className="text-sm text-gray-500 mt-1">
-          Upload or link your CV and cover letter — max 4 MB per file
-        </p>
+        <p className="text-sm text-gray-500 mt-1">Upload or link your CV / Résumé — max 4 MB</p>
       </div>
 
       <DocUploader label="CV / Résumé" state={cv} onChange={(u) => setCv((s) => ({ ...s, ...u }))} />
-      <DocUploader
-        label="Cover Letter"
-        state={coverLetter}
-        onChange={(u) => setCoverLetter((s) => ({ ...s, ...u }))}
-      />
 
       <div className="mt-2 pt-4 border-t border-gray-200 flex items-center gap-3">
         <button
