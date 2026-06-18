@@ -86,6 +86,19 @@ export interface DocumentEntry {
   file?: DocumentFile;
 }
 
+export interface DerivedFields {
+  fullName: string;
+  currentTitle: string;
+  currentCompany: string;
+  totalExperience: {
+    totalMonths: number;
+    years: number;
+    months: number;
+    label: string;
+  };
+  age?: number;
+}
+
 export interface Profile {
   personal: {
     firstName: string;
@@ -131,4 +144,5 @@ export interface Profile {
     cv: DocumentEntry;
     coverLetter?: DocumentEntry;
   };
+  derived?: DerivedFields;
 }
