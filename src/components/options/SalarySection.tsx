@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { Profile } from '@/src/types/profile';
 import { findCountryByNameOrCode } from '@/src/data/countries';
 import { findCurrency, currencyForCountry } from '@/src/data/currencies';
@@ -67,6 +67,21 @@ export function SalarySection({ profile, onSave }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const [newEntryTick, setNewEntryTick] = useState(0);
+  const entriesContainerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!newEntryTick) return;
+    const raf = requestAnimationFrame(() => {
+      const last = entriesContainerRef.current?.lastElementChild as HTMLElement | null;
+      last?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      last?.querySelector<HTMLElement>(
+        'input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]):not([readonly]),' +
+        ' select, button[aria-haspopup="listbox"]',
+      )?.focus();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [newEntryTick]);
 
   const setExpectedField = (idx: number, key: keyof ExpectedRow, value: string) => {
     setExpected((rows) =>
@@ -158,7 +173,7 @@ export function SalarySection({ profile, onSave }: Props) {
           <h3 className="text-sm font-semibold text-gray-800">Expected Salary</h3>
           <button
             type="button"
-            onClick={() => setExpected((r) => [...r, emptyExpected()])}
+            onClick={() => { setExpected((r) => [...r, emptyExpected()]); setNewEntryTick((t) => t + 1); }}
             className="text-xs px-3 py-1.5 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
           >
             + Add Entry
@@ -168,15 +183,14 @@ export function SalarySection({ profile, onSave }: Props) {
           <p className="text-xs text-red-500 mb-2">{errors.expectedList}</p>
         )}
 
+        <div ref={entriesContainerRef}>
         {expected.map((row, idx) => (
           <div key={idx} className="p-4 border border-gray-200 rounded-lg mb-3">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-medium text-gray-600">Entry {idx + 1}</span>
-              {expected.length > 1 && (
-                <RemoveButton
-                  onClick={() => setExpected((rows) => rows.filter((_, i) => i !== idx))}
-                />
-              )}
+              <RemoveButton
+                onClick={() => setExpected((rows) => rows.filter((_, i) => i !== idx))}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -199,6 +213,7 @@ export function SalarySection({ profile, onSave }: Props) {
             </div>
           </div>
         ))}
+        </div>{/* entriesContainerRef */}
       </div>
 
       <div className="mt-2 pt-4 border-t border-gray-200 flex items-center gap-3">
