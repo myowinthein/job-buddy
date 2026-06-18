@@ -253,6 +253,7 @@ export function PersonalSection({ profile, onSave }: Props) {
             <option value="male">Male</option>
             <option value="female">Female</option>
             <option value="other">Other</option>
+            <option value="prefer_not_to_say">Prefer not to say</option>
           </select>
         </FormField>
 
@@ -268,6 +269,7 @@ export function PersonalSection({ profile, onSave }: Props) {
                 {eth}
               </option>
             ))}
+            <option value="prefer_not_to_say">Prefer not to say</option>
           </select>
         </FormField>
       </div>
@@ -283,6 +285,7 @@ export function PersonalSection({ profile, onSave }: Props) {
             <option value="">Select veteran status…</option>
             <option value="yes">Yes</option>
             <option value="no">No</option>
+            <option value="prefer_not_to_say">Prefer not to say</option>
           </select>
         </FormField>
         <FormField label="Disability Status">
@@ -294,6 +297,7 @@ export function PersonalSection({ profile, onSave }: Props) {
             <option value="">Select disability status…</option>
             <option value="yes">Yes</option>
             <option value="no">No</option>
+            <option value="prefer_not_to_say">Prefer not to say</option>
           </select>
         </FormField>
       </div>
