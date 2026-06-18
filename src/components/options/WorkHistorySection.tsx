@@ -75,7 +75,7 @@ function initRow(raw: WorkHistoryEntry): LocalRow {
 
 const cardSummary = (row: LocalRow, idx: number) =>
   row.company && row.title
-    ? `${row.company} — ${row.title}${row.isCurrent ? ' (Ongoing)' : ''}`
+    ? `${row.company} — ${row.title}${row.isCurrent ? ' (Active)' : ''}`
     : `Entry ${idx + 1}`;
 
 export function WorkHistorySection({ profile, onSave }: Props) {
@@ -190,7 +190,16 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       </FormField>
 
       {/* ── Work Entries ────────────────────────────────────────────────────── */}
-      <p className="text-sm font-medium text-gray-700 mb-3 mt-2">Work Experience</p>
+      <div className="flex items-center justify-between mb-3 mt-2">
+        <p className="text-sm font-medium text-gray-700">Work Experience</p>
+        <button
+          type="button"
+          onClick={() => setEntries((rows) => [...rows, emptyRow()])}
+          className="text-xs px-3 py-1.5 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+        >
+          + Add Entry
+        </button>
+      </div>
 
       {errors.general && (
         <p className="text-sm text-red-500 mb-4 p-3 bg-red-50 rounded-lg">{errors.general}</p>
@@ -243,9 +252,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
           </div>
 
           <div className="mb-4">
-            <p className="text-sm font-medium text-gray-700 mb-2">
-              Work Arrangement <span className="text-gray-400 font-normal">(optional)</span>
-            </p>
+            <p className="text-sm font-medium text-gray-700 mb-2">Work Arrangement</p>
             <div className="flex gap-6">
               {(['onsite', 'remote', 'hybrid'] as const).map((opt) => (
                 <label key={opt} className="flex items-center gap-2 cursor-pointer">
@@ -289,7 +296,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
               onChange={(e) => updateEntry(idx, 'isCurrent', e.target.checked)}
               className="rounded border-gray-300 text-blue-600"
             />
-            <span className="text-sm text-gray-700">This entry is ongoing</span>
+            <span className="text-sm text-gray-700">Currently active</span>
           </label>
 
           <FormField label="Description">
@@ -303,14 +310,6 @@ export function WorkHistorySection({ profile, onSave }: Props) {
           </FormField>
         </ExpandableCard>
       ))}
-
-      <button
-        type="button"
-        onClick={() => setEntries((rows) => [...rows, emptyRow()])}
-        className="w-full py-2.5 border-2 border-dashed border-gray-300 text-sm text-gray-500 rounded-lg hover:border-blue-400 hover:text-blue-500 transition-colors mb-4"
-      >
-        + Add Work Experience
-      </button>
 
       {/* Total experience — updates live as the user edits dates */}
       {experience.totalMonths > 0 && (
