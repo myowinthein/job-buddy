@@ -24,7 +24,7 @@ export const FIELD_FOCUS_IDS: Record<string, string> = {
   'Country':                 'field-country',
   'Current Salary Amount':   'field-currentAmount',
   'Current Salary Currency': 'field-currentCurrency',
-  'English Language Entry':  'field-english',
+  // 'At least one language' has no single target field; navigation goes to the section
   'LinkedIn URL':            'field-linkedin',
 };
 
@@ -96,8 +96,8 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
 
   // Languages (1)
   check(
-    (profile.languages ?? []).some((l) => l.language.toLowerCase() === 'english'),
-    'languages', 'Languages', 'English Language Entry',
+    (profile.languages ?? []).length >= 1,
+    'languages', 'Languages', 'At least one language',
   );
 
   // Links (1)
@@ -147,7 +147,7 @@ export function getSectionCompletion(profile: Partial<Profile>): Record<string, 
           !!e.startDate?.trim(),
       ),
 
-    languages: (profile.languages ?? []).some((l) => l.language.toLowerCase() === 'english'),
+    languages: (profile.languages ?? []).length >= 1,
 
     links: !!profile.links?.linkedin?.trim(),
 
