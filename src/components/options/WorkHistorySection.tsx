@@ -122,7 +122,6 @@ export function WorkHistorySection({ profile, onSave }: Props) {
     let err = '';
     if (key === 'company' && !String(value).trim()) err = 'Company name is required';
     else if (key === 'title' && !String(value).trim()) err = 'Job title is required';
-    else if (key === 'startDate' && !String(value).trim()) err = 'Start date is required';
     else if (key === 'isCurrent' && value === true) {
       // Marking as ongoing clears any existing end-date error
       setErrors((e) => ({ ...e, [`${idx}.endDate`]: '' }));
