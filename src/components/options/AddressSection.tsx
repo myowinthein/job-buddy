@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { Profile } from '@/src/types/profile';
-import { COUNTRIES, getFlag, findCountryByNameOrCode } from '@/src/data/countries';
+import { findCountryByNameOrCode } from '@/src/data/countries';
 import { FormField } from './shared/FormField';
+import { SearchableCountryDropdown } from './shared/SearchableCountryDropdown';
 
 interface Props {
   profile: Partial<Profile>;
@@ -104,18 +105,11 @@ export function AddressSection({ profile, onSave }: Props) {
 
       <div className="grid grid-cols-2 gap-4">
         <FormField label="Country" required error={errors.countryCode}>
-          <select
-            className={cls(errors.countryCode)}
+          <SearchableCountryDropdown
             value={form.countryCode}
-            onChange={(e) => set('countryCode', e.target.value)}
-          >
-            <option value="">Select country…</option>
-            {COUNTRIES.map((c) => (
-              <option key={c.code} value={c.code}>
-                {getFlag(c.code)}  {c.name}
-              </option>
-            ))}
-          </select>
+            onChange={(code) => set('countryCode', code)}
+            error={errors.countryCode}
+          />
         </FormField>
         <FormField label="Postal Code">
           <input
