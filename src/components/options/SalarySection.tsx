@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Profile } from '@/src/types/profile';
 import { findCountryByNameOrCode } from '@/src/data/countries';
-import { findCurrency, currencyForCountry } from '@/src/data/currencies';
+import { COUNTRY_TO_CURRENCY, findCurrency, primaryCountryForCurrency } from '@/src/data/currencies';
 import { FormField } from './shared/FormField';
 import { SearchableCurrencySelect } from './shared/SearchableCurrencySelect';
+import { SearchableCountryWithCurrencyDropdown } from './shared/SearchableCountryWithCurrencyDropdown';
 import { RemoveButton } from './shared/RemoveButton';
 
 interface Props {
@@ -12,31 +13,32 @@ interface Props {
 }
 
 // ── Expected-salary row ───────────────────────────────────────────────────────
-type ExpectedRow = { currencyCode: string; amount: string };
+type ExpectedRow = { countryCode: string; amount: string };
 
 function emptyExpected(): ExpectedRow {
-  return { currencyCode: '', amount: '' };
+  return { countryCode: '', amount: '' };
 }
 
-// Back-compat: old rows may have country-derived currency or free-text values.
-// Normalise to a direct currencyCode on load.
+// Migration: old rows stored only `currency` (e.g. "SGD"). New rows store
+// `country` (ISO code). On load:
+//   1. Use `country` directly if present.
+//   2. Fall back to reverse-looking up `currency` — but only if the currency
+//      maps to exactly one country (unambiguous). EUR/USD/XOF etc. are left
+//      empty so the user explicitly picks.
 function initExpectedRow(raw: { country?: string; amount?: number; currency?: string }): ExpectedRow {
-  let currencyCode = '';
+  let countryCode = '';
 
-  // Direct currency takes precedence
-  if (raw.currency) {
-    const found = findCurrency(raw.currency);
-    currencyCode = found ? found.code : raw.currency.toUpperCase();
+  if (raw.country) {
+    const found = findCountryByNameOrCode(raw.country);
+    countryCode = found ? found.code : '';
   }
 
-  // Backward compat: no direct currency but has a stored country — derive it
-  if (!currencyCode && raw.country) {
-    const found = findCountryByNameOrCode(raw.country);
-    if (found) currencyCode = currencyForCountry(found.code).code;
+  if (!countryCode && raw.currency) {
+    countryCode = primaryCountryForCurrency(raw.currency) ?? '';
   }
 
   return {
-    currencyCode,
+    countryCode,
     amount: raw.amount != null ? String(raw.amount) : '',
   };
 }
@@ -63,6 +65,7 @@ export function SalarySection({ profile, onSave }: Props) {
   const [expected, setExpected] = useState<ExpectedRow[]>(
     s?.expected?.length ? s.expected.map(initExpectedRow) : [emptyExpected()],
   );
+
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -112,8 +115,9 @@ export function SalarySection({ profile, onSave }: Props) {
           currency: currentCurrency,
         },
         expected: expected.map((r) => ({
+          country: r.countryCode || undefined,
+          currency: r.countryCode ? (COUNTRY_TO_CURRENCY[r.countryCode] || undefined) : undefined,
           amount: r.amount !== '' ? Number(r.amount) : undefined,
-          currency: r.currencyCode || undefined,
         })),
       },
     });
@@ -194,10 +198,10 @@ export function SalarySection({ profile, onSave }: Props) {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <FormField label="Currency">
-                <SearchableCurrencySelect
-                  value={row.currencyCode}
-                  onChange={(code) => setExpectedField(idx, 'currencyCode', code)}
+              <FormField label="Country">
+                <SearchableCountryWithCurrencyDropdown
+                  value={row.countryCode}
+                  onChange={(code) => setExpectedField(idx, 'countryCode', code)}
                 />
               </FormField>
               <FormField label="Amount">
