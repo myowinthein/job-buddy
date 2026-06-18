@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Profile, LanguageEntry, LanguageProficiency } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
+import { RemoveButton } from './shared/RemoveButton';
 
 interface Props {
   profile: Partial<Profile>;
@@ -47,7 +48,8 @@ export function LanguagesSection({ profile, onSave }: Props) {
   const update = (idx: number, key: keyof LanguageEntry, value: string) => {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     const ek = `${idx}.${key}`;
-    if (errors[ek]) setErrors((e) => ({ ...e, [ek]: '' }));
+    const err = key === 'language' && !value.trim() ? 'Language is required' : '';
+    setErrors((e) => ({ ...e, [ek]: err }));
   };
 
   const addEntry = () => {
@@ -98,6 +100,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
                   value={row.language}
                   onChange={(e) => update(idx, 'language', e.target.value)}
                   placeholder="English"
+                  maxLength={100}
                   readOnly={row._isEnglish}
                 />
               </FormField>
@@ -109,6 +112,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
                   value={row.proficiency}
                   onChange={(e) => update(idx, 'proficiency', e.target.value as LanguageProficiency)}
                 >
+                  <option value="" disabled>Select proficiency…</option>
                   {Object.entries(PROFICIENCY_LABELS).map(([val, label]) => (
                     <option key={val} value={val}>{label}</option>
                   ))}
@@ -124,13 +128,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
                   Required
                 </span>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => removeEntry(idx)}
-                  className="px-2.5 py-1.5 text-red-600 border border-red-200 rounded-lg text-xs hover:bg-red-50 transition-colors"
-                >
-                  Remove
-                </button>
+                <RemoveButton onClick={() => removeEntry(idx)} />
               )}
             </div>
           </div>
