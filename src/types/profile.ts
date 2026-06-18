@@ -93,9 +93,6 @@ export interface Profile {
     postalCode?: string;
   };
   professional: {
-    currentTitle: string;
-    currentCompany: string;
-    yearsOfExperience: number;
     summary?: string;
     noticePeriod?: NoticePeriod;
   };

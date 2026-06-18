@@ -6,7 +6,6 @@ import { Sidebar } from '@/src/components/options/Sidebar';
 import { CompletionBanner } from '@/src/components/options/CompletionBanner';
 import { PersonalSection } from '@/src/components/options/PersonalSection';
 import { AddressSection } from '@/src/components/options/AddressSection';
-import { ProfessionalSection } from '@/src/components/options/ProfessionalSection';
 import { SalarySection } from '@/src/components/options/SalarySection';
 import { WorkAuthorizationSection } from '@/src/components/options/WorkAuthorizationSection';
 import { WorkHistorySection } from '@/src/components/options/WorkHistorySection';
@@ -18,7 +17,6 @@ import { DocumentsSection } from '@/src/components/options/DocumentsSection';
 type SectionId =
   | 'personal'
   | 'address'
-  | 'professional'
   | 'salary'
   | 'workAuthorization'
   | 'workHistory'
@@ -68,16 +66,15 @@ function App() {
       );
     }
     switch (activeSection) {
-      case 'personal': return <PersonalSection key="personal" {...sectionProps} />;
-      case 'address': return <AddressSection key="address" {...sectionProps} />;
-      case 'professional': return <ProfessionalSection key="professional" {...sectionProps} />;
-      case 'salary': return <SalarySection key="salary" {...sectionProps} />;
+      case 'personal':          return <PersonalSection key="personal" {...sectionProps} />;
+      case 'address':           return <AddressSection key="address" {...sectionProps} />;
+      case 'salary':            return <SalarySection key="salary" {...sectionProps} />;
       case 'workAuthorization': return <WorkAuthorizationSection key="workAuthorization" {...sectionProps} />;
-      case 'workHistory': return <WorkHistorySection key="workHistory" {...sectionProps} />;
-      case 'education': return <EducationSection key="education" {...sectionProps} />;
-      case 'languages': return <LanguagesSection key="languages" {...sectionProps} />;
-      case 'links': return <LinksSection key="links" {...sectionProps} />;
-      case 'documents': return <DocumentsSection key="documents" {...sectionProps} />;
+      case 'workHistory':       return <WorkHistorySection key="workHistory" {...sectionProps} />;
+      case 'education':         return <EducationSection key="education" {...sectionProps} />;
+      case 'languages':         return <LanguagesSection key="languages" {...sectionProps} />;
+      case 'links':             return <LinksSection key="links" {...sectionProps} />;
+      case 'documents':         return <DocumentsSection key="documents" {...sectionProps} />;
     }
   };
 
