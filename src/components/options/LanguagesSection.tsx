@@ -87,39 +87,11 @@ export function LanguagesSection({ profile, onSave }: Props) {
         <p className="text-sm text-gray-500 mt-1">Languages you speak — English is required</p>
       </div>
 
-      <div className="space-y-3 mb-4">
+      <div className="mb-4">
         {entries.map((row, idx) => (
-          <div key={idx} className="flex gap-3 items-start p-3 border border-gray-200 rounded-lg">
-            <div className="flex-1">
-              <FormField
-                label={row._isEnglish ? 'Language (required)' : 'Language'}
-                error={errors[`${idx}.language`]}
-              >
-                <input
-                  className={cls(errors[`${idx}.language`])}
-                  value={row.language}
-                  onChange={(e) => update(idx, 'language', e.target.value)}
-                  placeholder="English"
-                  maxLength={100}
-                  readOnly={row._isEnglish}
-                />
-              </FormField>
-            </div>
-            <div className="flex-1">
-              <FormField label="Proficiency">
-                <select
-                  className={cls()}
-                  value={row.proficiency}
-                  onChange={(e) => update(idx, 'proficiency', e.target.value as LanguageProficiency)}
-                >
-                  <option value="" disabled>Select proficiency…</option>
-                  {Object.entries(PROFICIENCY_LABELS).map(([val, label]) => (
-                    <option key={val} value={val}>{label}</option>
-                  ))}
-                </select>
-              </FormField>
-            </div>
-            <div className="pt-6">
+          <div key={idx} className="p-4 border border-gray-200 rounded-lg mb-3">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-gray-600">Entry {idx + 1}</span>
               {row._isEnglish ? (
                 <span
                   className="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded"
@@ -130,6 +102,34 @@ export function LanguagesSection({ profile, onSave }: Props) {
               ) : (
                 <RemoveButton onClick={() => removeEntry(idx)} />
               )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                label={row._isEnglish ? 'Language (required)' : 'Language'}
+                error={errors[`${idx}.language`]}
+              >
+                <input
+                  id={row._isEnglish ? 'field-english' : undefined}
+                  className={cls(errors[`${idx}.language`])}
+                  value={row.language}
+                  onChange={(e) => update(idx, 'language', e.target.value)}
+                  placeholder="English"
+                  maxLength={100}
+                  readOnly={row._isEnglish}
+                />
+              </FormField>
+              <FormField label="Proficiency">
+                <select
+                  className={cls()}
+                  value={row.proficiency}
+                  onChange={(e) => update(idx, 'proficiency', e.target.value as LanguageProficiency)}
+                >
+                  <option value="">Select proficiency…</option>
+                  {Object.entries(PROFICIENCY_LABELS).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+              </FormField>
             </div>
           </div>
         ))}

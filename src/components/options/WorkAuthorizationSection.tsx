@@ -118,7 +118,7 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
                 value={row.status}
                 onChange={(e) => update(idx, 'status', e.target.value)}
               >
-                <option value="" disabled>Select authorization status…</option>
+                <option value="">Select authorization status…</option>
                 {STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
