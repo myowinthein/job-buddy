@@ -180,17 +180,17 @@ export function PersonalSection({ profile, onSave }: Props) {
         />
       </FormField>
 
-      {/* Phone — country selector + number input */}
+      {/* Phone — country selector + number input, visually connected */}
       <FormField label="Phone" required error={errors.phoneNumber}>
         <div
-          className={`flex overflow-hidden rounded-lg border ${
+          className={`flex items-stretch overflow-hidden rounded-lg border ${
             errors.phoneNumber ? 'border-red-300' : 'border-gray-300'
           } focus-within:ring-2 ${
             errors.phoneNumber ? 'focus-within:ring-red-500' : 'focus-within:ring-blue-500'
           } focus-within:border-transparent`}
         >
           <select
-            className="shrink-0 bg-gray-50 border-r border-gray-300 px-2 py-2 text-sm cursor-pointer focus:outline-none"
+            className="shrink-0 bg-gray-50 border-r border-gray-200 px-2 py-2 text-sm cursor-pointer focus:outline-none"
             value={form.phoneCountry}
             onChange={(e) => handleCountryChange(e.target.value)}
             aria-label="Country calling code"
@@ -238,7 +238,7 @@ export function PersonalSection({ profile, onSave }: Props) {
             value={form.gender}
             onChange={(e) => set('gender', e.target.value)}
           >
-            <option value="">Prefer not to say</option>
+            <option value="">Select gender…</option>
             <option value="male">Male</option>
             <option value="female">Female</option>
             <option value="other">Other</option>
@@ -251,7 +251,7 @@ export function PersonalSection({ profile, onSave }: Props) {
             value={form.ethnicity}
             onChange={(e) => set('ethnicity', e.target.value)}
           >
-            <option value="">Prefer not to say</option>
+            <option value="">Select ethnicity…</option>
             {ETHNICITIES.map((eth) => (
               <option key={eth} value={eth}>
                 {eth}
@@ -269,7 +269,7 @@ export function PersonalSection({ profile, onSave }: Props) {
             value={form.veteranStatus}
             onChange={(e) => set('veteranStatus', e.target.value)}
           >
-            <option value="">Prefer not to say</option>
+            <option value="">Select veteran status…</option>
             <option value="yes">Yes</option>
             <option value="no">No</option>
           </select>
@@ -280,7 +280,7 @@ export function PersonalSection({ profile, onSave }: Props) {
             value={form.disabilityStatus}
             onChange={(e) => set('disabilityStatus', e.target.value)}
           >
-            <option value="">Prefer not to say</option>
+            <option value="">Select disability status…</option>
             <option value="yes">Yes</option>
             <option value="no">No</option>
           </select>

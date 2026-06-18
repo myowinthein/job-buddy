@@ -160,38 +160,37 @@ export function ProfessionalSection({ profile, onSave }: Props) {
         </div>
 
         {!form.noticeImmediate && (
-          <div className="flex gap-3 items-start">
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-sm text-gray-600 shrink-0">Available after</span>
+            <div className="w-20">
+              <input
+                type="number"
+                min={1}
+                max={NOTICE_MAX[form.noticeUnit]}
+                className={cls(errors.noticeValue)}
+                value={form.noticeValue}
+                onChange={(e) => set('noticeValue', e.target.value)}
+                placeholder="3"
+              />
+            </div>
             <div className="w-28">
-              <FormField label="" error={errors.noticeValue}>
-                <input
-                  type="number"
-                  min={1}
-                  max={NOTICE_MAX[form.noticeUnit]}
-                  className={cls(errors.noticeValue)}
-                  value={form.noticeValue}
-                  onChange={(e) => set('noticeValue', e.target.value)}
-                  placeholder="2"
-                />
-              </FormField>
+              <select
+                className={cls()}
+                value={form.noticeUnit}
+                onChange={(e) => {
+                  const unit = e.target.value as NoticePeriodUnit;
+                  set('noticeUnit', unit);
+                  setErrors((err) => ({ ...err, noticeValue: '' }));
+                }}
+              >
+                <option value="day">days</option>
+                <option value="week">weeks</option>
+                <option value="month">months</option>
+              </select>
             </div>
-            <div className="w-36">
-              <FormField label="">
-                <select
-                  className={cls()}
-                  value={form.noticeUnit}
-                  onChange={(e) => {
-                    const unit = e.target.value as NoticePeriodUnit;
-                    set('noticeUnit', unit);
-                    // Clear error when unit changes so the user sees the new limit
-                    setErrors((err) => ({ ...err, noticeValue: '' }));
-                  }}
-                >
-                  <option value="day">Days (max {NOTICE_MAX.day})</option>
-                  <option value="week">Weeks (max {NOTICE_MAX.week})</option>
-                  <option value="month">Months (max {NOTICE_MAX.month})</option>
-                </select>
-              </FormField>
-            </div>
+            {errors.noticeValue && (
+              <span className="text-xs text-red-500">{errors.noticeValue}</span>
+            )}
           </div>
         )}
       </div>
