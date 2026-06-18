@@ -2,11 +2,17 @@ import { useState } from 'react';
 import type { Profile, EducationEntry } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
 import { ExpandableCard } from './shared/ExpandableCard';
+import { MonthYearPicker } from './shared/MonthYearPicker';
 
 interface Props {
   profile: Partial<Profile>;
   onSave: (updates: Partial<Profile>) => Promise<void>;
 }
+
+const CURRENT_YEAR = new Date().getFullYear();
+// Match the same year bounds used for Date of Birth in Personal Information.
+const EDU_MIN_YEAR = CURRENT_YEAR - 100;
+const EDU_MAX_YEAR = CURRENT_YEAR;
 
 const cls = (err?: string) =>
   err
@@ -15,30 +21,43 @@ const cls = (err?: string) =>
 
 type Row = EducationEntry;
 
+// Ensure all fields have sensible defaults when loading old profile data that
+// may predate the isCurrent field.
+function initRow(raw: EducationEntry): Row {
+  return {
+    ...raw,
+    isCurrent: raw.isCurrent ?? false,
+    endDate: raw.endDate ?? '',
+    grade: raw.grade ?? '',
+    description: raw.description ?? '',
+  };
+}
+
 const emptyRow = (): Row => ({
   institution: '',
   degree: '',
   fieldOfStudy: '',
   startDate: '',
+  isCurrent: false,
   endDate: '',
   grade: '',
   description: '',
 });
 
-const summary = (row: Row) =>
+const entrySummary = (row: Row, idx: number) =>
   row.institution && row.degree
     ? `${row.institution} — ${row.degree}`
-    : 'New Entry';
+    : `Entry ${idx + 1}`;
 
 export function EducationSection({ profile, onSave }: Props) {
   const [entries, setEntries] = useState<Row[]>(
-    profile.education?.length ? profile.education : [emptyRow()],
+    profile.education?.length ? profile.education.map(initRow) : [emptyRow()],
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const update = (idx: number, key: keyof Row, value: string) => {
+  const update = (idx: number, key: keyof Row, value: string | boolean) => {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     const ek = `${idx}.${key}`;
     if (errors[ek]) setErrors((e) => ({ ...e, [ek]: '' }));
@@ -66,7 +85,10 @@ export function EducationSection({ profile, onSave }: Props) {
         degree: r.degree.trim(),
         fieldOfStudy: r.fieldOfStudy.trim(),
         startDate: r.startDate,
-        endDate: r.endDate || undefined,
+        isCurrent: r.isCurrent,
+        endDate: r.isCurrent ? undefined : r.endDate || undefined,
+        // Preserve grade and description from storage; they are no longer editable
+        // via the form but should not be silently deleted from existing profiles.
         grade: r.grade || undefined,
         description: r.description || undefined,
       })),
@@ -90,7 +112,7 @@ export function EducationSection({ profile, onSave }: Props) {
       {entries.map((row, idx) => (
         <ExpandableCard
           key={idx}
-          summary={summary(row)}
+          summary={entrySummary(row, idx)}
           subtitle={row.fieldOfStudy || undefined}
           onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
           defaultExpanded={!row.institution}
@@ -123,41 +145,36 @@ export function EducationSection({ profile, onSave }: Props) {
             </FormField>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <FormField label="Start Date" required error={errors[`${idx}.startDate`]}>
-              <input
-                type="month"
-                className={cls(errors[`${idx}.startDate`])}
+              <MonthYearPicker
                 value={row.startDate}
-                onChange={(e) => update(idx, 'startDate', e.target.value)}
+                onChange={(v) => update(idx, 'startDate', v)}
+                error={errors[`${idx}.startDate`]}
+                minYear={EDU_MIN_YEAR}
+                maxYear={EDU_MAX_YEAR}
               />
             </FormField>
             <FormField label="End Date">
-              <input
-                type="month"
-                className={cls()}
+              <MonthYearPicker
                 value={row.endDate ?? ''}
-                onChange={(e) => update(idx, 'endDate', e.target.value)}
-              />
-            </FormField>
-            <FormField label="Grade / GPA">
-              <input
-                className={cls()}
-                value={row.grade ?? ''}
-                onChange={(e) => update(idx, 'grade', e.target.value)}
-                placeholder="3.8 / 4.0"
+                onChange={(v) => update(idx, 'endDate', v)}
+                disabled={row.isCurrent}
+                minYear={EDU_MIN_YEAR}
+                maxYear={EDU_MAX_YEAR}
               />
             </FormField>
           </div>
 
-          <FormField label="Description">
-            <textarea
-              className={`${cls()} min-h-[80px] resize-y`}
-              value={row.description ?? ''}
-              onChange={(e) => update(idx, 'description', e.target.value)}
-              placeholder="Relevant coursework, thesis, honours..."
+          <label className="flex items-center gap-2 mb-4 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={row.isCurrent ?? false}
+              onChange={(e) => update(idx, 'isCurrent', e.target.checked)}
+              className="rounded border-gray-300 text-blue-600"
             />
-          </FormField>
+            <span className="text-sm text-gray-700">This entry is ongoing</span>
+          </label>
         </ExpandableCard>
       ))}
 
