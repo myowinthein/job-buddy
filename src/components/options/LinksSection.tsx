@@ -94,6 +94,7 @@ export function LinksSection({ profile, onSave }: Props) {
       {PLATFORMS.map(({ key, label, required, placeholder }) => (
         <FormField key={key} label={label} required={required} error={errors[key]}>
           <input
+            id={key === 'linkedin' ? 'field-linkedin' : undefined}
             type="url"
             className={cls(errors[key])}
             value={form[key]}
@@ -108,8 +109,12 @@ export function LinksSection({ profile, onSave }: Props) {
         <div className="mb-4">
           <p className="text-sm font-medium text-gray-700 mb-2">Custom Links</p>
           {custom.map((c, idx) => (
-            <div key={idx} className="flex gap-3 items-start mb-3">
-              <div className="w-36">
+            <div key={idx} className="p-4 border border-gray-200 rounded-lg mb-3">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-medium text-gray-600">Entry {idx + 1}</span>
+                <RemoveButton onClick={() => setCustom((rows) => rows.filter((_, i) => i !== idx))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <FormField label="Label">
                   <input
                     className={cls()}
@@ -119,8 +124,6 @@ export function LinksSection({ profile, onSave }: Props) {
                     maxLength={100}
                   />
                 </FormField>
-              </div>
-              <div className="flex-1">
                 <FormField label="URL">
                   <input
                     type="url"
@@ -131,9 +134,6 @@ export function LinksSection({ profile, onSave }: Props) {
                     maxLength={255}
                   />
                 </FormField>
-              </div>
-              <div className="mt-6">
-                <RemoveButton onClick={() => setCustom((rows) => rows.filter((_, i) => i !== idx))} />
               </div>
             </div>
           ))}

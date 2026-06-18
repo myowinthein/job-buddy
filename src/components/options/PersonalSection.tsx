@@ -179,6 +179,7 @@ export function PersonalSection({ profile, onSave }: Props) {
             className={cls(errors.firstName)}
             value={form.firstName}
             onChange={(e) => set('firstName', e.target.value)}
+            id="field-firstName"
             placeholder="John"
             maxLength={100}
           />
@@ -188,6 +189,7 @@ export function PersonalSection({ profile, onSave }: Props) {
             className={cls(errors.lastName)}
             value={form.lastName}
             onChange={(e) => set('lastName', e.target.value)}
+            id="field-lastName"
             placeholder="Smith"
             maxLength={100}
           />
@@ -201,6 +203,7 @@ export function PersonalSection({ profile, onSave }: Props) {
           className={cls(errors.email)}
           value={form.email}
           onChange={(e) => set('email', e.target.value)}
+          id="field-email"
           placeholder="john.smith@example.com"
           maxLength={254}
         />
@@ -227,6 +230,7 @@ export function PersonalSection({ profile, onSave }: Props) {
             className="rounded-r-lg flex-1 px-3 py-2 text-sm focus:outline-none bg-white"
             value={form.phoneNumber}
             onChange={(e) => handlePhoneNumberChange(e.target.value)}
+            id="field-phone"
             placeholder="5551234567"
           />
         </div>

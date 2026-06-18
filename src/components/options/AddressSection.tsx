@@ -94,6 +94,7 @@ export function AddressSection({ profile, onSave }: Props) {
             className={cls(errors.city)}
             value={form.city}
             onChange={(e) => set('city', e.target.value)}
+            id="field-city"
             placeholder="San Francisco"
             maxLength={100}
           />
@@ -112,6 +113,7 @@ export function AddressSection({ profile, onSave }: Props) {
       <div className="grid grid-cols-2 gap-4">
         <FormField label="Country" required error={errors.countryCode}>
           <SearchableCountryDropdown
+            id="field-country"
             value={form.countryCode}
             onChange={(code) => set('countryCode', code)}
             error={errors.countryCode}
