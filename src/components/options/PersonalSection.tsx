@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Profile, PhoneNumber } from '@/src/types/profile';
-import { COUNTRIES, findCountry, getFlag } from '@/src/data/countries';
+import { findCountry } from '@/src/data/countries';
+import { SearchableCountrySelect } from './shared/SearchableCountrySelect';
 import { ETHNICITIES } from '@/src/data/ethnicities';
 import { FormField } from './shared/FormField';
 
@@ -180,33 +181,25 @@ export function PersonalSection({ profile, onSave }: Props) {
         />
       </FormField>
 
-      {/* Phone — country selector + number input, visually connected */}
+      {/* Phone — searchable country selector + number input */}
       <FormField label="Phone" required error={errors.phoneNumber}>
         <div
-          className={`flex items-stretch overflow-hidden rounded-lg border ${
+          className={`flex items-stretch rounded-lg border ${
             errors.phoneNumber ? 'border-red-300' : 'border-gray-300'
           } focus-within:ring-2 ${
             errors.phoneNumber ? 'focus-within:ring-red-500' : 'focus-within:ring-blue-500'
           } focus-within:border-transparent`}
         >
-          <select
-            className="shrink-0 bg-gray-50 border-r border-gray-200 px-2 py-2 text-sm cursor-pointer focus:outline-none"
+          <SearchableCountrySelect
             value={form.phoneCountry}
-            onChange={(e) => handleCountryChange(e.target.value)}
-            aria-label="Country calling code"
-          >
-            {COUNTRIES.map((c) => (
-              <option key={`${c.code}-${c.callingCode}`} value={c.code}>
-                {getFlag(c.code)} {c.callingCode}  {c.name}
-              </option>
-            ))}
-          </select>
+            onChange={handleCountryChange}
+          />
           <input
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
             maxLength={15}
-            className="flex-1 px-3 py-2 text-sm focus:outline-none bg-white"
+            className="rounded-r-lg flex-1 px-3 py-2 text-sm focus:outline-none bg-white"
             value={form.phoneNumber}
             onChange={(e) => handlePhoneNumberChange(e.target.value)}
             placeholder="812345678"
