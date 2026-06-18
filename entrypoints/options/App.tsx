@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Profile } from '@/src/types/profile';
 import { getProfile, saveProfile } from '@/src/utils/storage';
-import { calculateCompletion, getSectionCompletion } from '@/src/utils/profileCompletion';
+import { calculateCompletion, getSectionCompletion, FIELD_FOCUS_IDS } from '@/src/utils/profileCompletion';
 import { Sidebar } from '@/src/components/options/Sidebar';
 import { CompletionBanner } from '@/src/components/options/CompletionBanner';
 import { PersonalSection } from '@/src/components/options/PersonalSection';
@@ -30,24 +30,53 @@ function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('personal');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [focusTarget, setFocusTarget] = useState<string | null>(null);
 
   useEffect(() => {
     getProfile()
-      .then((p) => {
-        setProfile(p ?? {});
-      })
-      .catch((err) => {
-        console.error('[Job Buddy] Failed to initialize profile:', err);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+      .then((p) => { setProfile(p ?? {}); })
+      .catch((err) => { console.error('[Job Buddy] Failed to initialize profile:', err); })
+      .finally(() => { setLoading(false); });
   }, []);
+
+  // After a section switch + focusTarget is set, scroll to, focus, and briefly
+  // highlight the target element. rAF ensures the new section is painted first.
+  useEffect(() => {
+    if (!focusTarget) return;
+    const raf = requestAnimationFrame(() => {
+      const el = document.getElementById(focusTarget);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        (el as HTMLElement).focus?.({ preventScroll: true });
+        el.style.outline = '3px solid #3b82f6';
+        el.style.outlineOffset = '3px';
+        el.style.borderRadius = '6px';
+        el.style.transition = 'outline 0.2s ease';
+        setTimeout(() => {
+          el.style.outline = '';
+          el.style.outlineOffset = '';
+          el.style.transition = '';
+        }, 1600);
+      }
+      setFocusTarget(null);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [focusTarget]);
 
   const handleSave = async (updates: Partial<Profile>) => {
     const merged = { ...profile, ...updates };
     await saveProfile(merged as Profile);
     setProfile(merged);
+  };
+
+  const handleNavigate = (sectionId: string) => {
+    setActiveSection(sectionId as SectionId);
+  };
+
+  const handleFocusField = (sectionId: string, fieldLabel: string) => {
+    setActiveSection(sectionId as SectionId);
+    const fieldId = FIELD_FOCUS_IDS[fieldLabel];
+    if (fieldId) setFocusTarget(fieldId);
   };
 
   const completion = calculateCompletion(profile);
@@ -91,7 +120,8 @@ function App() {
         <CompletionBanner
           percentage={completion.percentage}
           missingGroups={completion.missingGroups}
-          onNavigate={(id) => setActiveSection(id as SectionId)}
+          onNavigate={handleNavigate}
+          onFocusField={handleFocusField}
         />
         <main className="flex-1 overflow-y-auto p-8">
           <div className="max-w-2xl">{renderSection()}</div>

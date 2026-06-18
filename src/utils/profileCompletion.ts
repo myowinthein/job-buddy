@@ -13,6 +13,21 @@ export interface CompletionGroup {
   fields: string[];
 }
 
+// Maps the human-readable field label used in CompletionGroup.fields to the
+// DOM id of the corresponding input, so the banner can scroll+focus it.
+export const FIELD_FOCUS_IDS: Record<string, string> = {
+  'First Name':              'field-firstName',
+  'Last Name':               'field-lastName',
+  'Email':                   'field-email',
+  'Phone':                   'field-phone',
+  'City':                    'field-city',
+  'Country':                 'field-country',
+  'Current Salary Amount':   'field-currentAmount',
+  'Current Salary Currency': 'field-currentCurrency',
+  'English Language Entry':  'field-english',
+  'LinkedIn URL':            'field-linkedin',
+};
+
 export interface CompletionResult {
   percentage: number;
   missingFields: string[];
