@@ -7,7 +7,6 @@ interface Section {
 const SECTIONS: Section[] = [
   { id: 'personal', label: 'Personal', icon: '👤' },
   { id: 'address', label: 'Address', icon: '📍' },
-  { id: 'professional', label: 'Professional', icon: '💼' },
   { id: 'salary', label: 'Salary', icon: '💰' },
   { id: 'workAuthorization', label: 'Work Authorization', icon: '🛂' },
   { id: 'workHistory', label: 'Work History', icon: '📋' },
