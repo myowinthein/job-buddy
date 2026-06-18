@@ -205,73 +205,6 @@ export function WorkHistorySection({ profile, onSave }: Props) {
         />
       </FormField>
 
-      {/* ── Notice Period ────────────────────────────────────────────────────── */}
-      <div className="pt-4 border-t border-gray-200 mb-4">
-        <p className="text-sm font-medium text-gray-700 mb-2">Notice Period</p>
-        <div className="flex gap-4 mb-3">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="notice"
-              checked={noticeImmediate}
-              onChange={() => setNoticeImmediate(true)}
-              className="text-blue-600"
-            />
-            <span className="text-sm text-gray-700">Available Now</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="notice"
-              checked={!noticeImmediate}
-              onChange={() => setNoticeImmediate(false)}
-              className="text-blue-600"
-            />
-            <span className="text-sm text-gray-700">Available Later</span>
-          </label>
-        </div>
-
-        {!noticeImmediate && (
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-sm text-gray-600 shrink-0">Available after</span>
-            <div className="w-20">
-              <input
-                type="number"
-                min={1}
-                max={NOTICE_MAX[noticeUnit]}
-                className={cls(errors.noticeValue)}
-                value={noticeValue}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  if (raw === '' || Number(raw) <= 999) {
-                    setNoticeValue(raw);
-                    if (errors.noticeValue) setErrors((err) => ({ ...err, noticeValue: '' }));
-                  }
-                }}
-                placeholder="3"
-              />
-            </div>
-            <div className="w-28">
-              <select
-                className={cls()}
-                value={noticeUnit}
-                onChange={(e) => {
-                  setNoticeUnit(e.target.value as NoticePeriodUnit);
-                  setErrors((err) => ({ ...err, noticeValue: '' }));
-                }}
-              >
-                <option value="day">days</option>
-                <option value="week">weeks</option>
-                <option value="month">months</option>
-              </select>
-            </div>
-            {errors.noticeValue && (
-              <span className="text-xs text-red-500">{errors.noticeValue}</span>
-            )}
-          </div>
-        )}
-      </div>
-
       {/* ── Work Entries ────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-3 mt-2">
         <p className="text-sm font-medium text-gray-700">Work Experience</p>
@@ -403,6 +336,73 @@ export function WorkHistorySection({ profile, onSave }: Props) {
           <span className="font-semibold text-blue-700">{experience.label}</span>
         </div>
       )}
+
+      {/* ── Notice Period ────────────────────────────────────────────────────── */}
+      <div className="pt-4 border-t border-gray-200 mb-4">
+        <p className="text-sm font-medium text-gray-700 mb-2">Notice Period</p>
+        <div className="flex gap-4 mb-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="notice"
+              checked={noticeImmediate}
+              onChange={() => setNoticeImmediate(true)}
+              className="text-blue-600"
+            />
+            <span className="text-sm text-gray-700">Available Now</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="notice"
+              checked={!noticeImmediate}
+              onChange={() => setNoticeImmediate(false)}
+              className="text-blue-600"
+            />
+            <span className="text-sm text-gray-700">Available Later</span>
+          </label>
+        </div>
+
+        {!noticeImmediate && (
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-sm text-gray-600 shrink-0">Available after</span>
+            <div className="w-20">
+              <input
+                type="number"
+                min={1}
+                max={NOTICE_MAX[noticeUnit]}
+                className={cls(errors.noticeValue)}
+                value={noticeValue}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '' || Number(raw) <= 999) {
+                    setNoticeValue(raw);
+                    if (errors.noticeValue) setErrors((err) => ({ ...err, noticeValue: '' }));
+                  }
+                }}
+                placeholder="3"
+              />
+            </div>
+            <div className="w-28">
+              <select
+                className={cls()}
+                value={noticeUnit}
+                onChange={(e) => {
+                  setNoticeUnit(e.target.value as NoticePeriodUnit);
+                  setErrors((err) => ({ ...err, noticeValue: '' }));
+                }}
+              >
+                <option value="day">days</option>
+                <option value="week">weeks</option>
+                <option value="month">months</option>
+              </select>
+            </div>
+            {errors.noticeValue && (
+              <span className="text-xs text-red-500">{errors.noticeValue}</span>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="pt-4 border-t border-gray-200 flex items-center gap-3">
         <button
