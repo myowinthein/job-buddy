@@ -51,7 +51,10 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
   const update = (idx: number, key: keyof LocalRow, value: string) => {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     const ek = `${idx}.${key}`;
-    if (errors[ek]) setErrors((e) => ({ ...e, [ek]: '' }));
+    let err = '';
+    if (key === 'country' && !value) err = 'Country is required';
+    else if (key === 'status' && !value) err = 'Status is required';
+    setErrors((e) => ({ ...e, [ek]: err }));
   };
 
   const validate = () => {
