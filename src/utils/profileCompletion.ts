@@ -14,7 +14,7 @@ export interface CompletionResult {
   missingFields: string[];
 }
 
-const TOTAL_CHECKS = 17;
+const TOTAL_CHECKS = 14;
 
 export function calculateCompletion(profile: Partial<Profile>): CompletionResult {
   const missing: string[] = [];
@@ -32,11 +32,6 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
   // Address (2)
   check(!!profile.address?.city?.trim(), 'City');
   check(!!profile.address?.country?.trim(), 'Country');
-
-  // Professional (3)
-  check(!!profile.professional?.currentTitle?.trim(), 'Current Title');
-  check(!!profile.professional?.currentCompany?.trim(), 'Current Company');
-  check(typeof profile.professional?.yearsOfExperience === 'number', 'Years of Experience');
 
   // Salary (3)
   check(
@@ -102,11 +97,6 @@ export function getSectionCompletion(profile: Partial<Profile>): Record<string, 
       !!resolvePhoneNumber(profile.personal?.phone).trim(),
 
     address: !!profile.address?.city?.trim() && !!profile.address?.country?.trim(),
-
-    professional:
-      !!profile.professional?.currentTitle?.trim() &&
-      !!profile.professional?.currentCompany?.trim() &&
-      typeof profile.professional?.yearsOfExperience === 'number',
 
     salary:
       typeof profile.salary?.current?.amount === 'number' &&
