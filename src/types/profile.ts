@@ -7,6 +7,12 @@ export interface PhoneNumber {
 export type NoticePeriodUnit = 'day' | 'week' | 'month';
 export type WorkAuthorizationStatus = 'citizen_or_pr' | 'work_visa' | 'requires_sponsorship';
 export type LanguageProficiency = 'basic' | 'conversational' | 'professional' | 'native';
+export type WorkArrangement = 'onsite' | 'remote' | 'hybrid';
+
+export interface WorkLocation {
+  countryCode?: string;
+  city?: string;
+}
 
 export interface NoticePeriod {
   immediate: boolean;
@@ -38,7 +44,8 @@ export interface WorkHistoryEntry {
   startDate: string;
   isCurrent: boolean;
   endDate?: string;
-  location?: string;
+  location?: WorkLocation;
+  arrangement?: WorkArrangement;
   description?: string;
 }
 
@@ -47,6 +54,7 @@ export interface EducationEntry {
   degree: string;
   fieldOfStudy: string;
   startDate: string;
+  isCurrent?: boolean;
   endDate?: string;
   grade?: string;
   description?: string;
