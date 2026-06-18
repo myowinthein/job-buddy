@@ -90,7 +90,8 @@ function App() {
       <div className="flex flex-col flex-1 overflow-hidden">
         <CompletionBanner
           percentage={completion.percentage}
-          missingFields={completion.missingFields}
+          missingGroups={completion.missingGroups}
+          onNavigate={(id) => setActiveSection(id as SectionId)}
         />
         <main className="flex-1 overflow-y-auto p-8">
           <div className="max-w-2xl">{renderSection()}</div>
