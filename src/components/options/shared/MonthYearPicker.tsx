@@ -34,10 +34,9 @@ export function MonthYearPicker({
   minYear = CURRENT_YEAR - 70,
   maxYear = CURRENT_YEAR,
 }: Props) {
-  // Local state lets the user set month before year (or vice versa) without
-  // the parent immediately clearing the partial selection when it receives "".
   const [month, setMonth] = useState<string>(() => (value ? (value.split('-')[1] ?? '') : ''));
-  const [year, setYear] = useState<string>(() => (value ? (value.split('-')[0] ?? '') : ''));
+  // yearStr tracks what the user has typed (may be partial, e.g. "199")
+  const [yearStr, setYearStr] = useState<string>(() => (value ? (value.split('-')[0] ?? '') : ''));
 
   const emit = (m: string, y: string) => {
     onChange(m && y ? `${y}-${m}` : '');
@@ -45,28 +44,32 @@ export function MonthYearPicker({
 
   const handleMonth = (m: string) => {
     setMonth(m);
-    emit(m, year);
+    emit(m, isValidYear(yearStr) ? yearStr : '');
   };
 
-  const handleYear = (y: string) => {
-    setYear(y);
-    emit(month, y);
+  const isValidYear = (s: string): boolean => {
+    if (s.length !== 4) return false;
+    const n = parseInt(s, 10);
+    return !isNaN(n) && n >= minYear && n <= maxYear;
+  };
+
+  const handleYearInput = (raw: string) => {
+    // Strip non-digits, cap at 4 chars
+    const cleaned = raw.replace(/\D/g, '').slice(0, 4);
+    setYearStr(cleaned);
+    emit(month, isValidYear(cleaned) ? cleaned : '');
   };
 
   const borderCls = error ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500';
-  const selectCls = `w-full px-3 py-2 text-sm border ${borderCls} rounded-lg focus:outline-none focus:ring-2 bg-white ${
-    disabled ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''
-  }`;
-
-  // Year options: most recent first so users land near their current job
-  const years: number[] = [];
-  for (let y = maxYear; y >= minYear; y--) years.push(y);
+  const baseCls = `w-full px-3 py-2 text-sm border ${borderCls} rounded-lg focus:outline-none focus:ring-2 bg-white`;
+  const disabledCls = disabled ? ' opacity-50 cursor-not-allowed bg-gray-50' : '';
+  const fieldCls = baseCls + disabledCls;
 
   return (
     <div className="flex gap-2">
       <div className="flex-1">
         <select
-          className={selectCls}
+          className={fieldCls}
           value={month}
           disabled={disabled}
           onChange={(e) => handleMonth(e.target.value)}
@@ -80,21 +83,19 @@ export function MonthYearPicker({
           ))}
         </select>
       </div>
-      <div className="w-24">
-        <select
-          className={selectCls}
-          value={year}
+      <div className="w-20">
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="\d{4}"
+          maxLength={4}
+          className={fieldCls}
+          value={yearStr}
           disabled={disabled}
-          onChange={(e) => handleYear(e.target.value)}
+          onChange={(e) => handleYearInput(e.target.value)}
+          placeholder="Year"
           aria-label="Year"
-        >
-          <option value="">Year</option>
-          {years.map((y) => (
-            <option key={y} value={String(y)}>
-              {y}
-            </option>
-          ))}
-        </select>
+        />
       </div>
     </div>
   );
