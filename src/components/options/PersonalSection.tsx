@@ -232,7 +232,6 @@ export function PersonalSection({ profile, onSave }: Props) {
       {/* Date of Birth */}
       <FormField
         label="Date of Birth"
-        hint="Optional — some applications request this"
         error={errors.dateOfBirth}
       >
         <DateOfBirthPicker
