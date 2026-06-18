@@ -338,7 +338,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       )}
 
       {/* ── Notice Period ────────────────────────────────────────────────────── */}
-      <div className="pt-4 border-t border-gray-200 mb-4">
+      <div className="pt-4 mb-4">
         <p className="text-sm font-medium text-gray-700 mb-2">Notice Period</p>
         <div className="flex gap-4 mb-3">
           <label className="flex items-center gap-2 cursor-pointer">
