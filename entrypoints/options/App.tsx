@@ -62,7 +62,7 @@ function App() {
     return () => cancelAnimationFrame(raf);
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Scroll to, focus, and briefly highlight a specific field after navigating from the banner.
+  // Scroll to and focus a specific field after navigating from the banner.
   useEffect(() => {
     if (!focusTarget) return;
     const raf = requestAnimationFrame(() => {
@@ -70,15 +70,6 @@ function App() {
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         (el as HTMLElement).focus?.({ preventScroll: true });
-        el.style.outline = '3px solid #3b82f6';
-        el.style.outlineOffset = '3px';
-        el.style.borderRadius = '6px';
-        el.style.transition = 'outline 0.2s ease';
-        setTimeout(() => {
-          el.style.outline = '';
-          el.style.outlineOffset = '';
-          el.style.transition = '';
-        }, 1600);
       }
       setFocusTarget(null);
     });
@@ -136,6 +127,7 @@ function App() {
         activeSection={activeSection}
         onSelect={(id) => setActiveSection(id as SectionId)}
         collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((c) => !c)}
         sectionCompletion={sectionCompletion}
       />
       <div className="flex flex-col flex-1 overflow-hidden">
@@ -144,8 +136,6 @@ function App() {
           missingGroups={completion.missingGroups}
           onNavigate={handleNavigate}
           onFocusField={handleFocusField}
-          sidebarCollapsed={sidebarCollapsed}
-          onSidebarToggle={() => setSidebarCollapsed((c) => !c)}
         />
         <main className="flex-1 overflow-y-auto p-8">
           <div className="max-w-2xl">{renderSection()}</div>
