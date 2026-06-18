@@ -5,14 +5,17 @@ interface CompletionBannerProps {
   percentage: number;
   missingGroups: CompletionGroup[];
   onNavigate: (sectionId: string) => void;
+  onFocusField: (sectionId: string, fieldLabel: string) => void;
 }
 
-export function CompletionBanner({ percentage, missingGroups, onNavigate }: CompletionBannerProps) {
+export function CompletionBanner({ percentage, missingGroups, onNavigate, onFocusField }: CompletionBannerProps) {
   const [showMissing, setShowMissing] = useState(false);
 
   const totalMissing = missingGroups.reduce((sum, g) => sum + g.fields.length, 0);
   const barColor = percentage >= 80 ? 'bg-green-500' : percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500';
   const textColor = percentage >= 80 ? 'text-green-700' : percentage >= 50 ? 'text-yellow-700' : 'text-red-700';
+
+  const close = () => setShowMissing(false);
 
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-3">
@@ -50,22 +53,24 @@ export function CompletionBanner({ percentage, missingGroups, onNavigate }: Comp
                 <ul className="max-h-64 overflow-y-auto py-1">
                   {missingGroups.map((group) => (
                     <li key={group.sectionId}>
-                      {/* Clicking the section name navigates there */}
                       <button
                         type="button"
-                        onClick={() => { onNavigate(group.sectionId); setShowMissing(false); }}
+                        onClick={() => { onNavigate(group.sectionId); close(); }}
                         className="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors"
                       >
                         {group.sectionLabel} →
                       </button>
                       <ul>
                         {group.fields.map((field) => (
-                          <li
-                            key={field}
-                            className="flex items-center gap-2 px-5 py-1 text-xs text-gray-600"
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                            {field}
+                          <li key={field}>
+                            <button
+                              type="button"
+                              onClick={() => { onFocusField(group.sectionId, field); close(); }}
+                              className="w-full text-left flex items-center gap-2 px-5 py-1 text-xs text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors rounded"
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                              {field}
+                            </button>
                           </li>
                         ))}
                       </ul>

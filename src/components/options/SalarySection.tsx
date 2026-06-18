@@ -121,6 +121,7 @@ export function SalarySection({ profile, onSave }: Props) {
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Currency" required error={errors.currentCurrency}>
               <SearchableCurrencySelect
+                id="field-currentCurrency"
                 value={currentCurrency}
                 onChange={(code) => {
                   setCurrentCurrency(code);
@@ -131,6 +132,7 @@ export function SalarySection({ profile, onSave }: Props) {
             </FormField>
             <FormField label="Amount" required error={errors.currentAmount}>
               <input
+                id="field-currentAmount"
                 type="number"
                 min={0}
                 className={cls(errors.currentAmount)}

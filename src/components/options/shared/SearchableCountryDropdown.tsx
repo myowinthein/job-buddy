@@ -7,6 +7,7 @@ interface Props {
   onChange: (code: string) => void;
   error?: string;
   placeholder?: string;
+  id?: string;
 }
 
 function filterCountries(search: string): Country[] {
@@ -19,7 +20,7 @@ function filterCountries(search: string): Country[] {
   );
 }
 
-export function SearchableCountryDropdown({ value, onChange, error, placeholder = 'Select country…' }: Props) {
+export function SearchableCountryDropdown({ value, onChange, error, placeholder = 'Select country…', id }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [hlIdx, setHlIdx] = useState(0);
@@ -90,6 +91,7 @@ export function SearchableCountryDropdown({ value, onChange, error, placeholder 
   return (
     <div ref={containerRef} className="relative w-full">
       <button
+        id={id}
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={`w-full px-3 py-2 border ${borderCls} rounded-lg text-sm text-left bg-white focus:outline-none focus:ring-2 flex items-center gap-2 min-h-[38px]`}

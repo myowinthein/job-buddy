@@ -8,6 +8,7 @@ interface Props {
   onChange: (code: string) => void;
   error?: string;
   placeholder?: string;
+  id?: string;
 }
 
 function filterCurrencies(search: string): Currency[] {
@@ -20,7 +21,7 @@ function filterCurrencies(search: string): Currency[] {
   );
 }
 
-export function SearchableCurrencySelect({ value, onChange, error, placeholder = 'Select currency…' }: Props) {
+export function SearchableCurrencySelect({ value, onChange, error, placeholder = 'Select currency…', id }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [hlIdx, setHlIdx] = useState(0);
@@ -91,6 +92,7 @@ export function SearchableCurrencySelect({ value, onChange, error, placeholder =
   return (
     <div ref={containerRef} className="relative w-full">
       <button
+        id={id}
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={`w-full px-3 py-2 border ${borderCls} rounded-lg text-sm text-left bg-white focus:outline-none focus:ring-2 flex items-center gap-2 min-h-[38px]`}
