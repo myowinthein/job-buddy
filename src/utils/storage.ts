@@ -67,3 +67,14 @@ export async function getApplicationHistory(): Promise<ApplicationEntry[]> {
 export async function saveApplicationHistory(history: ApplicationEntry[]): Promise<void> {
   await storageSet({ applicationHistory: history });
 }
+
+export async function saveLearnedMapping(
+  domain: string,
+  normalizedSignal: string,
+  fieldPath: string,
+): Promise<void> {
+  const mappings = await getLearnedMappings();
+  if (!mappings[domain]) mappings[domain] = {};
+  mappings[domain][normalizedSignal] = fieldPath;
+  await saveLearmedMappings(mappings);
+}
