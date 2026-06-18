@@ -377,7 +377,13 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                   const raw = e.target.value;
                   if (raw === '' || Number(raw) <= 999) {
                     setNoticeValue(raw);
-                    if (errors.noticeValue) setErrors((err) => ({ ...err, noticeValue: '' }));
+                    const val = Number(raw);
+                    const max = NOTICE_MAX[noticeUnit];
+                    let err = '';
+                    if (!raw.trim() || isNaN(val)) err = 'Enter a duration';
+                    else if (val < 1) err = 'Must be at least 1';
+                    else if (val > max) err = `Maximum is ${max} ${noticeUnit}${max !== 1 ? 's' : ''}`;
+                    setErrors((prev) => ({ ...prev, noticeValue: err }));
                   }
                 }}
                 placeholder="3"
@@ -388,8 +394,19 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                 className={cls()}
                 value={noticeUnit}
                 onChange={(e) => {
-                  setNoticeUnit(e.target.value as NoticePeriodUnit);
-                  setErrors((err) => ({ ...err, noticeValue: '' }));
+                  const newUnit = e.target.value as NoticePeriodUnit;
+                  setNoticeUnit(newUnit);
+                  if (noticeValue.trim()) {
+                    const val = Number(noticeValue);
+                    const max = NOTICE_MAX[newUnit];
+                    let err = '';
+                    if (isNaN(val)) err = 'Enter a duration';
+                    else if (val < 1) err = 'Must be at least 1';
+                    else if (val > max) err = `Maximum is ${max} ${newUnit}${max !== 1 ? 's' : ''}`;
+                    setErrors((prev) => ({ ...prev, noticeValue: err }));
+                  } else {
+                    setErrors((prev) => ({ ...prev, noticeValue: '' }));
+                  }
                 }}
               >
                 <option value="day">days</option>
