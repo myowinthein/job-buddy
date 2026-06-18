@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { Profile } from '@/src/types/profile';
 import { getProfile, saveProfile } from '@/src/utils/storage';
 import { calculateCompletion, getSectionCompletion, FIELD_FOCUS_IDS } from '@/src/utils/profileCompletion';
+import { calculateDerivedFields } from '@/src/utils/derivedFields';
 import { Sidebar } from '@/src/components/options/Sidebar';
 import { CompletionBanner } from '@/src/components/options/CompletionBanner';
 import { PersonalSection } from '@/src/components/options/PersonalSection';
@@ -162,9 +163,20 @@ function App() {
   }, [focusTarget]);
 
   const handleSave = async (updates: Partial<Profile>) => {
-    const merged = { ...profile, ...updates };
-    await saveProfile(merged as Profile);
+    const merged = { ...profile, ...updates } as Profile;
+    await saveProfile(merged);
     setProfile(merged);
+    // Recalculate derived fields after every successful section save and
+    // write them back as a separate pass so a derivation error can never
+    // block or roll back the primary save.
+    try {
+      const derived = calculateDerivedFields(merged);
+      const withDerived: Profile = { ...merged, derived };
+      await saveProfile(withDerived);
+      setProfile(withDerived);
+    } catch (err) {
+      console.error('[Job Buddy] Failed to write derived fields:', err);
+    }
   };
 
   const handleNavigate = (sectionId: string) => {
