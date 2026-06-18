@@ -34,7 +34,7 @@ export interface CompletionResult {
   missingGroups: CompletionGroup[];
 }
 
-const TOTAL_CHECKS = 15;
+const TOTAL_CHECKS = 16;
 
 export function calculateCompletion(profile: Partial<Profile>): CompletionResult {
   const groups: CompletionGroup[] = [];
@@ -110,6 +110,12 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
 
   // Links (1)
   check(!!profile.links?.linkedin?.trim(), 'links', 'Links & Profiles', 'LinkedIn URL');
+
+  // Documents (1)
+  check(
+    !!(profile.documents?.cv?.url?.trim() || profile.documents?.cv?.file),
+    'documents', 'Documents', 'CV / Résumé',
+  );
 
   const totalMissing = groups.reduce((sum, g) => sum + g.fields.length, 0);
   const percentage = Math.round(((TOTAL_CHECKS - totalMissing) / TOTAL_CHECKS) * 100);
