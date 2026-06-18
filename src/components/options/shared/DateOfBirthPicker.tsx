@@ -16,6 +16,7 @@ const MONTHS = [
 ];
 
 const CURRENT_YEAR = new Date().getFullYear();
+const MIN_YEAR = CURRENT_YEAR - 100;
 
 interface Props {
   value: string;      // "YYYY-MM-DD" or ""
@@ -25,11 +26,7 @@ interface Props {
 
 function daysInMonth(month: number, year: number): number {
   if (!month) return 31;
-  if (!year) {
-    // Feb without known year: allow 29 (leap years exist)
-    return month === 2 ? 29 : [4, 6, 9, 11].includes(month) ? 30 : 31;
-  }
-  // new Date(year, month, 0) gives last day of the given month (1-indexed month)
+  if (!year) return month === 2 ? 29 : [4, 6, 9, 11].includes(month) ? 30 : 31;
   return new Date(year, month, 0).getDate();
 }
 
@@ -54,45 +51,70 @@ export function DateOfBirthPicker({ value, onChange, error }: Props) {
   const [day,   setDay]   = useState(parsed.day);
   const [year,  setYear]  = useState(parsed.year);
 
-  const maxDay = daysInMonth(month, year);
+  // Separate string states so the user can type partial values without the
+  // controlled inputs snapping back on every keystroke.
+  const [dayStr,  setDayStr]  = useState(parsed.day  ? String(parsed.day)  : '');
+  const [yearStr, setYearStr] = useState(parsed.year ? String(parsed.year) : '');
 
   const borderCls = error
     ? 'border-red-300 focus:ring-red-500'
     : 'border-gray-300 focus:ring-blue-500';
-  const selectCls = `w-full px-3 py-2 text-sm border ${borderCls} rounded-lg focus:outline-none focus:ring-2 bg-white`;
+  const fieldCls = `w-full px-3 py-2 text-sm border ${borderCls} rounded-lg focus:outline-none focus:ring-2 bg-white`;
+
+  const handleDayInput = (raw: string) => {
+    // Strip non-digits, cap at 2 chars
+    const cleaned = raw.replace(/\D/g, '').slice(0, 2);
+    setDayStr(cleaned);
+    const n = parseInt(cleaned, 10);
+    const valid = cleaned.length > 0 && !isNaN(n) && n >= 1 && n <= 31;
+    const d = valid ? n : 0;
+    setDay(d);
+    onChange(buildDOB(month, d, year));
+  };
 
   const handleMonth = (m: number) => {
     setMonth(m);
     const max = daysInMonth(m, year);
     const d = day > max ? max : day;
-    setDay(d);
+    if (d !== day) { setDay(d); setDayStr(d ? String(d) : ''); }
     onChange(buildDOB(m, d, year));
   };
 
-  const handleDay = (d: number) => {
-    setDay(d);
-    onChange(buildDOB(month, d, year));
-  };
-
-  const handleYear = (y: number) => {
+  const handleYearInput = (raw: string) => {
+    // Strip non-digits, cap at 4 chars
+    const cleaned = raw.replace(/\D/g, '').slice(0, 4);
+    setYearStr(cleaned);
+    const n = parseInt(cleaned, 10);
+    const valid = cleaned.length === 4 && !isNaN(n) && n >= MIN_YEAR && n <= CURRENT_YEAR;
+    const y = valid ? n : 0;
     setYear(y);
+    // Re-clamp day when year changes (e.g., Feb 29 → Feb 28 for non-leap years)
     const max = daysInMonth(month, y);
     const d = day > max ? max : day;
-    setDay(d);
+    if (d !== day) { setDay(d); setDayStr(d ? String(d) : ''); }
     onChange(buildDOB(month, d, y));
   };
 
-  const years: number[] = [];
-  for (let y = CURRENT_YEAR; y >= CURRENT_YEAR - 100; y--) years.push(y);
-
-  const days: number[] = [];
-  for (let d = 1; d <= maxDay; d++) days.push(d);
-
   return (
     <div className="flex gap-2">
+      {/* Day — number input, 1–31 */}
+      <div className="w-16">
+        <input
+          type="number"
+          min={1}
+          max={31}
+          className={fieldCls}
+          value={dayStr}
+          onChange={(e) => handleDayInput(e.target.value)}
+          placeholder="DD"
+          aria-label="Day"
+        />
+      </div>
+
+      {/* Month — select dropdown */}
       <div className="flex-1">
         <select
-          className={selectCls}
+          className={fieldCls}
           value={month || ''}
           onChange={(e) => handleMonth(Number(e.target.value))}
           aria-label="Month"
@@ -103,31 +125,20 @@ export function DateOfBirthPicker({ value, onChange, error }: Props) {
           ))}
         </select>
       </div>
+
+      {/* Year — text input restricted to 4 digits in valid range */}
       <div className="w-20">
-        <select
-          className={selectCls}
-          value={day || ''}
-          onChange={(e) => handleDay(Number(e.target.value))}
-          aria-label="Day"
-        >
-          <option value="">Day</option>
-          {days.map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
-      </div>
-      <div className="w-24">
-        <select
-          className={selectCls}
-          value={year || ''}
-          onChange={(e) => handleYear(Number(e.target.value))}
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="\d{4}"
+          maxLength={4}
+          className={fieldCls}
+          value={yearStr}
+          onChange={(e) => handleYearInput(e.target.value)}
+          placeholder="YYYY"
           aria-label="Year"
-        >
-          <option value="">Year</option>
-          {years.map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
+        />
       </div>
     </div>
   );
