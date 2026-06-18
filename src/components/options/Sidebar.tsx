@@ -20,7 +20,6 @@ interface SidebarProps {
   activeSection: string;
   onSelect: (id: string) => void;
   collapsed: boolean;
-  onToggle: () => void;
   sectionCompletion: Record<string, boolean>;
 }
 
@@ -28,7 +27,6 @@ export function Sidebar({
   activeSection,
   onSelect,
   collapsed,
-  onToggle,
   sectionCompletion,
 }: SidebarProps) {
   return (
@@ -37,20 +35,6 @@ export function Sidebar({
         collapsed ? 'w-16' : 'w-56'
       }`}
     >
-      <div className="flex items-center justify-between px-3 py-4 border-b border-gray-100">
-        {!collapsed && (
-          <span className="text-sm font-semibold text-gray-800 truncate">Profile Sections</span>
-        )}
-        <button
-          type="button"
-          onClick={onToggle}
-          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 shrink-0"
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? '→' : '←'}
-        </button>
-      </div>
-
       <nav className="flex-1 overflow-y-auto py-2">
         {SECTIONS.map((section) => {
           const isActive = activeSection === section.id;
