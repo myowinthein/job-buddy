@@ -6,7 +6,12 @@ export interface PhoneNumber {
 
 export type NoticePeriodUnit = 'day' | 'week' | 'month';
 export type WorkAuthorizationStatus = 'citizen_or_pr' | 'work_visa' | 'requires_sponsorship';
-export type LanguageProficiency = 'basic' | 'conversational' | 'professional' | 'native';
+export type LanguageProficiency =
+  | 'native_bilingual'
+  | 'full_professional'
+  | 'professional_working'
+  | 'limited_working'
+  | 'elementary';
 export type WorkArrangement = 'onsite' | 'remote' | 'hybrid';
 
 export interface WorkLocation {
@@ -114,12 +119,13 @@ export interface Profile {
   languages: LanguageEntry[];
   links: {
     linkedin: string;
-    github?: string;
     portfolio?: string;
+    custom?: CustomLink[];
+    // Retained for backward compat with old profiles; no longer shown in UI
+    github?: string;
     twitter?: string;
     dribbble?: string;
     behance?: string;
-    custom?: CustomLink[];
   };
   documents: {
     cv: DocumentEntry;
