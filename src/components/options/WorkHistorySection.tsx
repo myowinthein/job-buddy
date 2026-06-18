@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import type { Profile, WorkHistoryEntry, NoticePeriodUnit } from '@/src/types/profile';
+import type { Profile, WorkHistoryEntry, WorkArrangement, WorkLocation, NoticePeriodUnit } from '@/src/types/profile';
 import { calculateExperience } from '@/src/utils/experience';
 import { FormField } from './shared/FormField';
 import { ExpandableCard } from './shared/ExpandableCard';
 import { MonthYearPicker } from './shared/MonthYearPicker';
+import { SearchableCountryDropdown } from './shared/SearchableCountryDropdown';
 
 interface Props {
   profile: Partial<Profile>;
@@ -21,49 +22,72 @@ const NOTICE_MAX: Record<NoticePeriodUnit, number> = {
   month: 24,
 };
 
-type Row = WorkHistoryEntry;
+// Flat UI state for each work entry — location is split into country/city,
+// arrangement is kept as a string to allow the empty placeholder state.
+type LocalRow = {
+  company: string;
+  title: string;
+  startDate: string;
+  isCurrent: boolean;
+  endDate: string;
+  locationCountry: string;
+  locationCity: string;
+  arrangement: string;   // WorkArrangement | ''
+  description: string;
+};
 
-const emptyRow = (): Row => ({
+const emptyRow = (): LocalRow => ({
   company: '',
   title: '',
   startDate: '',
   isCurrent: false,
   endDate: '',
-  location: '',
+  locationCountry: '',
+  locationCity: '',
+  arrangement: '',
   description: '',
 });
 
-const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-function formatMonthYear(dateStr: string): string {
-  if (!dateStr) return '';
-  const [y, m] = dateStr.split('-');
-  if (!y || !m) return dateStr;
-  const abbr = MONTH_ABBR[parseInt(m, 10) - 1] ?? m;
-  return `${abbr} ${y}`;
+// Back-compat: old entries stored location as a plain string ("San Francisco, CA").
+// New entries store { countryCode?, city? }. Normalise both on load.
+function initRow(raw: WorkHistoryEntry): LocalRow {
+  const loc = raw.location as WorkLocation | string | undefined;
+  let locationCountry = '';
+  let locationCity = '';
+  if (typeof loc === 'string') {
+    locationCity = loc;
+  } else if (loc && typeof loc === 'object') {
+    locationCountry = loc.countryCode ?? '';
+    locationCity = loc.city ?? '';
+  }
+  return {
+    company: raw.company,
+    title: raw.title,
+    startDate: raw.startDate,
+    isCurrent: raw.isCurrent,
+    endDate: raw.endDate ?? '',
+    locationCountry,
+    locationCity,
+    arrangement: raw.arrangement ?? '',
+    description: raw.description ?? '',
+  };
 }
 
-const cardSummary = (row: Row) =>
+const cardSummary = (row: LocalRow, idx: number) =>
   row.company && row.title
-    ? `${row.company} — ${row.title}${row.isCurrent ? ' (Current)' : ''}`
-    : 'New Entry';
-
-const cardSubtitle = (row: Row): string | undefined => {
-  if (!row.startDate) return undefined;
-  const end = row.isCurrent ? 'Present' : (row.endDate ? formatMonthYear(row.endDate) : '');
-  return `${formatMonthYear(row.startDate)} – ${end}`;
-};
+    ? `${row.company} — ${row.title}${row.isCurrent ? ' (Ongoing)' : ''}`
+    : `Entry ${idx + 1}`;
 
 export function WorkHistorySection({ profile, onSave }: Props) {
   // ── Work entries ────────────────────────────────────────────────────────────
-  const [entries, setEntries] = useState<Row[]>(
-    profile.workHistory?.length ? profile.workHistory : [emptyRow()],
+  const [entries, setEntries] = useState<LocalRow[]>(
+    profile.workHistory?.length ? profile.workHistory.map(initRow) : [emptyRow()],
   );
 
-  // ── Career summary (from profile.professional.summary) ──────────────────────
+  // ── Career summary ──────────────────────────────────────────────────────────
   const [summary, setSummary] = useState(profile.professional?.summary ?? '');
 
-  // ── Notice period (from profile.professional.noticePeriod) ──────────────────
+  // ── Notice period ────────────────────────────────────────────────────────────
   const np = profile.professional?.noticePeriod;
   const [noticeImmediate, setNoticeImmediate] = useState(np?.immediate ?? true);
   const [noticeValue, setNoticeValue] = useState(np?.value?.toString() ?? '');
@@ -73,10 +97,10 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Live experience calculation from local (potentially unsaved) entries
-  const experience = calculateExperience(entries);
+  // Experience calculation reads only startDate / isCurrent / endDate — safe cast.
+  const experience = calculateExperience(entries as unknown as WorkHistoryEntry[]);
 
-  const updateEntry = (idx: number, key: keyof Row, value: string | boolean) => {
+  const updateEntry = (idx: number, key: keyof LocalRow, value: string | boolean) => {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     const ek = `${idx}.${key}`;
     if (errors[ek]) setErrors((e) => ({ ...e, [ek]: '' }));
@@ -90,7 +114,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       if (!row.company.trim()) e[`${idx}.company`] = 'Company name is required';
       if (!row.title.trim()) e[`${idx}.title`] = 'Job title is required';
       if (!row.startDate.trim()) e[`${idx}.startDate`] = 'Start date is required';
-      if (!row.isCurrent && !row.endDate?.trim()) e[`${idx}.endDate`] = 'End date is required';
+      if (!row.isCurrent && !row.endDate.trim()) e[`${idx}.endDate`] = 'End date is required';
     });
 
     if (!noticeImmediate) {
@@ -119,8 +143,11 @@ export function WorkHistorySection({ profile, onSave }: Props) {
         startDate: r.startDate,
         isCurrent: r.isCurrent,
         endDate: r.isCurrent ? undefined : r.endDate || undefined,
-        location: r.location || undefined,
-        description: r.description || undefined,
+        location: (r.locationCountry || r.locationCity.trim())
+          ? { countryCode: r.locationCountry || undefined, city: r.locationCity.trim() || undefined }
+          : undefined,
+        arrangement: (r.arrangement as WorkArrangement) || undefined,
+        description: r.description.trim() || undefined,
       })),
       professional: {
         summary: summary.trim() || undefined,
@@ -164,8 +191,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       {entries.map((row, idx) => (
         <ExpandableCard
           key={idx}
-          summary={cardSummary(row)}
-          subtitle={cardSubtitle(row)}
+          summary={cardSummary(row, idx)}
           onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
           defaultExpanded={!row.company}
         >
@@ -188,14 +214,45 @@ export function WorkHistorySection({ profile, onSave }: Props) {
             </FormField>
           </div>
 
-          <FormField label="Location">
-            <input
-              className={cls()}
-              value={row.location ?? ''}
-              onChange={(e) => updateEntry(idx, 'location', e.target.value)}
-              placeholder="San Francisco, CA"
-            />
-          </FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Country">
+              <SearchableCountryDropdown
+                value={row.locationCountry}
+                onChange={(code) => updateEntry(idx, 'locationCountry', code)}
+              />
+            </FormField>
+            <FormField label="City">
+              <input
+                className={cls()}
+                value={row.locationCity}
+                onChange={(e) => updateEntry(idx, 'locationCity', e.target.value)}
+                placeholder="Bangkok"
+                maxLength={100}
+              />
+            </FormField>
+          </div>
+
+          <div className="mb-4">
+            <p className="text-sm font-medium text-gray-700 mb-2">
+              Work Arrangement <span className="text-gray-400 font-normal">(optional)</span>
+            </p>
+            <div className="flex gap-6">
+              {(['onsite', 'remote', 'hybrid'] as const).map((opt) => (
+                <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name={`arrangement-${idx}`}
+                    value={opt}
+                    checked={row.arrangement === opt}
+                    onChange={() => {}}
+                    onClick={() => updateEntry(idx, 'arrangement', row.arrangement === opt ? '' : opt)}
+                    className="text-blue-600"
+                  />
+                  <span className="text-sm text-gray-700 capitalize">{opt}</span>
+                </label>
+              ))}
+            </div>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Start Date" required error={errors[`${idx}.startDate`]}>
@@ -207,7 +264,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
             </FormField>
             <FormField label="End Date" error={errors[`${idx}.endDate`]}>
               <MonthYearPicker
-                value={row.endDate ?? ''}
+                value={row.endDate}
                 onChange={(v) => updateEntry(idx, 'endDate', v)}
                 error={errors[`${idx}.endDate`]}
                 disabled={row.isCurrent}
@@ -222,13 +279,13 @@ export function WorkHistorySection({ profile, onSave }: Props) {
               onChange={(e) => updateEntry(idx, 'isCurrent', e.target.checked)}
               className="rounded border-gray-300 text-blue-600"
             />
-            <span className="text-sm text-gray-700">This is my current role</span>
+            <span className="text-sm text-gray-700">This entry is ongoing</span>
           </label>
 
           <FormField label="Description">
             <textarea
               className={`${cls()} min-h-[100px] resize-y`}
-              value={row.description ?? ''}
+              value={row.description}
               onChange={(e) => updateEntry(idx, 'description', e.target.value)}
               placeholder="Key responsibilities and achievements..."
             />
@@ -289,8 +346,13 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                 className={cls(errors.noticeValue)}
                 value={noticeValue}
                 onChange={(e) => {
-                  setNoticeValue(e.target.value);
-                  if (errors.noticeValue) setErrors((err) => ({ ...err, noticeValue: '' }));
+                  const raw = e.target.value;
+                  // Cap input at 999 to prevent nonsense values; unit-specific
+                  // max is enforced in validation.
+                  if (raw === '' || Number(raw) <= 999) {
+                    setNoticeValue(raw);
+                    if (errors.noticeValue) setErrors((err) => ({ ...err, noticeValue: '' }));
+                  }
                 }}
                 placeholder="3"
               />
