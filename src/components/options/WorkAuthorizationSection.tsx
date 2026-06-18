@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import type { Profile, WorkAuthorizationEntry, WorkAuthorizationStatus } from '@/src/types/profile';
+import { findCountryByNameOrCode } from '@/src/data/countries';
 import { FormField } from './shared/FormField';
-import { ExpandableCard } from './shared/ExpandableCard';
+import { SearchableCountryDropdown } from './shared/SearchableCountryDropdown';
+import { RemoveButton } from './shared/RemoveButton';
 
 interface Props {
   profile: Partial<Profile>;
@@ -13,28 +15,40 @@ const cls = (err?: string) =>
     ? 'w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
     : 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
-type Row = WorkAuthorizationEntry;
+// Local row allows empty status while the user hasn't selected yet.
+type LocalRow = { country: string; status: WorkAuthorizationStatus | '' };
 
-const emptyRow = (): Row => ({ country: '', status: 'citizen_or_pr', visaType: '', expiryDate: '' });
+const STATUS_OPTIONS: { value: WorkAuthorizationStatus; label: string }[] = [
+  { value: 'citizen_or_pr',        label: 'Citizen / Permanent Resident' },
+  { value: 'work_visa',            label: 'Authorized to work without sponsorship' },
+  { value: 'requires_sponsorship', label: 'Requires Sponsorship' },
+];
 
-const STATUS_LABELS: Record<WorkAuthorizationStatus, string> = {
-  citizen_or_pr: 'Citizen / Permanent Resident',
-  work_visa: 'Work Visa',
-  requires_sponsorship: 'Requires Sponsorship',
-};
+function emptyRow(): LocalRow {
+  return { country: '', status: '' };
+}
 
-const summary = (row: Row) =>
-  row.country ? `${row.country} — ${STATUS_LABELS[row.status] ?? row.status}` : 'New Entry';
+// Back-compat: old entries stored the country as a free-text name ("Singapore").
+// New entries store the ISO code ("SG"). Normalise to ISO code on load.
+function initRow(raw: WorkAuthorizationEntry): LocalRow {
+  const found = findCountryByNameOrCode(raw.country);
+  return {
+    country: found ? found.code : raw.country,
+    status: raw.status ?? '',
+  };
+}
 
 export function WorkAuthorizationSection({ profile, onSave }: Props) {
-  const [entries, setEntries] = useState<Row[]>(
-    profile.workAuthorization?.length ? profile.workAuthorization : [emptyRow()],
+  const [entries, setEntries] = useState<LocalRow[]>(
+    profile.workAuthorization?.length
+      ? profile.workAuthorization.map(initRow)
+      : [emptyRow()],
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const update = (idx: number, key: keyof Row, value: string) => {
+  const update = (idx: number, key: keyof LocalRow, value: string) => {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     const ek = `${idx}.${key}`;
     if (errors[ek]) setErrors((e) => ({ ...e, [ek]: '' }));
@@ -42,11 +56,9 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (entries.length === 0) {
-      e.general = 'At least one work authorization entry is required';
-    }
+    if (entries.length === 0) e.general = 'At least one work authorization entry is required';
     entries.forEach((row, idx) => {
-      if (!row.country.trim()) e[`${idx}.country`] = 'Country is required';
+      if (!row.country) e[`${idx}.country`] = 'Country is required';
       if (!row.status) e[`${idx}.status`] = 'Status is required';
     });
     setErrors(e);
@@ -58,10 +70,8 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
     setSaving(true);
     await onSave({
       workAuthorization: entries.map((r) => ({
-        country: r.country.trim(),
-        status: r.status,
-        visaType: r.visaType || undefined,
-        expiryDate: r.expiryDate || undefined,
+        country: r.country,
+        status: r.status as WorkAuthorizationStatus,
       })),
     });
     setSaving(false);
@@ -81,54 +91,38 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
       )}
 
       {entries.map((row, idx) => (
-        <ExpandableCard
-          key={idx}
-          summary={summary(row)}
-          onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
-          defaultExpanded={!row.country}
-        >
-          <FormField label="Country" required error={errors[`${idx}.country`]}>
-            <input
-              className={cls(errors[`${idx}.country`])}
-              value={row.country}
-              onChange={(e) => update(idx, 'country', e.target.value)}
-              placeholder="Singapore"
-            />
-          </FormField>
+        <div key={idx} className="p-4 border border-gray-200 rounded-lg mb-3">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-medium text-gray-600">Entry {idx + 1}</span>
+            {entries.length > 1 && (
+              <RemoveButton
+                onClick={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
+              />
+            )}
+          </div>
 
-          <FormField label="Authorization Status" required error={errors[`${idx}.status`]}>
-            <select
-              className={cls(errors[`${idx}.status`])}
-              value={row.status}
-              onChange={(e) => update(idx, 'status', e.target.value as WorkAuthorizationStatus)}
-            >
-              <option value="citizen_or_pr">Citizen / Permanent Resident</option>
-              <option value="work_visa">Work Visa</option>
-              <option value="requires_sponsorship">Requires Sponsorship</option>
-            </select>
-          </FormField>
-
-          {row.status === 'work_visa' && (
-            <>
-              <FormField label="Visa Type">
-                <input
-                  className={cls()}
-                  value={row.visaType ?? ''}
-                  onChange={(e) => update(idx, 'visaType', e.target.value)}
-                  placeholder="H-1B, EP, etc."
-                />
-              </FormField>
-              <FormField label="Visa Expiry Date">
-                <input
-                  type="date"
-                  className={cls()}
-                  value={row.expiryDate ?? ''}
-                  onChange={(e) => update(idx, 'expiryDate', e.target.value)}
-                />
-              </FormField>
-            </>
-          )}
-        </ExpandableCard>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Country" required error={errors[`${idx}.country`]}>
+              <SearchableCountryDropdown
+                value={row.country}
+                onChange={(code) => update(idx, 'country', code)}
+                error={errors[`${idx}.country`]}
+              />
+            </FormField>
+            <FormField label="Authorization Status" required error={errors[`${idx}.status`]}>
+              <select
+                className={cls(errors[`${idx}.status`])}
+                value={row.status}
+                onChange={(e) => update(idx, 'status', e.target.value)}
+              >
+                <option value="" disabled>Select authorization status…</option>
+                {STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </FormField>
+          </div>
+        </div>
       ))}
 
       <button
@@ -136,7 +130,7 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
         onClick={() => setEntries((rows) => [...rows, emptyRow()])}
         className="w-full py-2.5 border-2 border-dashed border-gray-300 text-sm text-gray-500 rounded-lg hover:border-blue-400 hover:text-blue-500 transition-colors mb-4"
       >
-        + Add Country
+        + Add Entry
       </button>
 
       <div className="mt-2 pt-4 border-t border-gray-200 flex items-center gap-3">
