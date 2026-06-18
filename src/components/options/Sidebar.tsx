@@ -16,10 +16,27 @@ const SECTIONS: Section[] = [
   { id: 'documents', label: 'Documents', icon: '📄' },
 ];
 
+function MenuIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="w-5 h-5"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
+
 interface SidebarProps {
   activeSection: string;
   onSelect: (id: string) => void;
   collapsed: boolean;
+  onToggle: () => void;
   sectionCompletion: Record<string, boolean>;
 }
 
@@ -27,6 +44,7 @@ export function Sidebar({
   activeSection,
   onSelect,
   collapsed,
+  onToggle,
   sectionCompletion,
 }: SidebarProps) {
   return (
@@ -35,6 +53,21 @@ export function Sidebar({
         collapsed ? 'w-16' : 'w-56'
       }`}
     >
+      {/* Header: hamburger toggle + "Profile Sections" label */}
+      <div className={`flex items-center gap-2 px-3 py-4 border-b border-gray-100 ${collapsed ? 'justify-center' : ''}`}>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 shrink-0"
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <MenuIcon />
+        </button>
+        {!collapsed && (
+          <span className="text-sm font-semibold text-gray-800 truncate">Profile Sections</span>
+        )}
+      </div>
+
       <nav className="flex-1 overflow-y-auto py-2">
         {SECTIONS.map((section) => {
           const isActive = activeSection === section.id;
