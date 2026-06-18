@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { RemoveButton } from './RemoveButton';
 
 interface ExpandableCardProps {
   summary: string;
@@ -48,13 +49,7 @@ export function ExpandableCard({
               </button>
             </>
           ) : (
-            <button
-              type="button"
-              onClick={() => setConfirmDelete(true)}
-              className="text-xs px-2.5 py-1 text-red-600 border border-red-200 rounded-md hover:bg-red-50 transition-colors"
-            >
-              Remove
-            </button>
+            <RemoveButton onClick={() => setConfirmDelete(true)} title="Remove entry" />
           )}
           <button
             type="button"
