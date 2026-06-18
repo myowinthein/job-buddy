@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Profile, WorkHistoryEntry } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
 import { ExpandableCard } from './shared/ExpandableCard';
+import { MonthYearPicker } from './shared/MonthYearPicker';
 
 interface Props {
   profile: Partial<Profile>;
@@ -25,10 +26,26 @@ const emptyRow = (): Row => ({
   description: '',
 });
 
-const summary = (row: Row) =>
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function formatMonthYear(dateStr: string): string {
+  if (!dateStr) return '';
+  const [y, m] = dateStr.split('-');
+  if (!y || !m) return dateStr;
+  const abbr = MONTH_ABBR[parseInt(m, 10) - 1] ?? m;
+  return `${abbr} ${y}`;
+}
+
+const cardSummary = (row: Row) =>
   row.company && row.title
     ? `${row.company} — ${row.title}${row.isCurrent ? ' (Current)' : ''}`
     : 'New Entry';
+
+const cardSubtitle = (row: Row): string | undefined => {
+  if (!row.startDate) return undefined;
+  const end = row.isCurrent ? 'Present' : (row.endDate ? formatMonthYear(row.endDate) : '');
+  return `${formatMonthYear(row.startDate)} – ${end}`;
+};
 
 export function WorkHistorySection({ profile, onSave }: Props) {
   const [entries, setEntries] = useState<Row[]>(
@@ -90,8 +107,8 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       {entries.map((row, idx) => (
         <ExpandableCard
           key={idx}
-          summary={summary(row)}
-          subtitle={row.startDate ? `${row.startDate} – ${row.isCurrent ? 'Present' : row.endDate ?? ''}` : undefined}
+          summary={cardSummary(row)}
+          subtitle={cardSubtitle(row)}
           onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
           defaultExpanded={!row.company}
         >
@@ -125,19 +142,17 @@ export function WorkHistorySection({ profile, onSave }: Props) {
 
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Start Date" required error={errors[`${idx}.startDate`]}>
-              <input
-                type="month"
-                className={cls(errors[`${idx}.startDate`])}
+              <MonthYearPicker
                 value={row.startDate}
-                onChange={(e) => update(idx, 'startDate', e.target.value)}
+                onChange={(v) => update(idx, 'startDate', v)}
+                error={errors[`${idx}.startDate`]}
               />
             </FormField>
             <FormField label="End Date" error={errors[`${idx}.endDate`]}>
-              <input
-                type="month"
-                className={cls(errors[`${idx}.endDate`])}
+              <MonthYearPicker
                 value={row.endDate ?? ''}
-                onChange={(e) => update(idx, 'endDate', e.target.value)}
+                onChange={(v) => update(idx, 'endDate', v)}
+                error={errors[`${idx}.endDate`]}
                 disabled={row.isCurrent}
               />
             </FormField>
