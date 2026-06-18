@@ -1,17 +1,18 @@
 import { useState } from 'react';
+import type { CompletionGroup } from '@/src/utils/profileCompletion';
 
 interface CompletionBannerProps {
   percentage: number;
-  missingFields: string[];
+  missingGroups: CompletionGroup[];
+  onNavigate: (sectionId: string) => void;
 }
 
-export function CompletionBanner({ percentage, missingFields }: CompletionBannerProps) {
+export function CompletionBanner({ percentage, missingGroups, onNavigate }: CompletionBannerProps) {
   const [showMissing, setShowMissing] = useState(false);
 
-  const barColor =
-    percentage >= 80 ? 'bg-green-500' : percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500';
-  const textColor =
-    percentage >= 80 ? 'text-green-700' : percentage >= 50 ? 'text-yellow-700' : 'text-red-700';
+  const totalMissing = missingGroups.reduce((sum, g) => sum + g.fields.length, 0);
+  const barColor = percentage >= 80 ? 'bg-green-500' : percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500';
+  const textColor = percentage >= 80 ? 'text-green-700' : percentage >= 50 ? 'text-yellow-700' : 'text-red-700';
 
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-3">
@@ -28,29 +29,46 @@ export function CompletionBanner({ percentage, missingFields }: CompletionBanner
           />
         </div>
 
-        {missingFields.length > 0 && (
+        {totalMissing > 0 && (
           <div className="relative shrink-0">
             <button
               type="button"
-              onClick={() => setShowMissing(!showMissing)}
+              onClick={() => setShowMissing((s) => !s)}
               className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 transition-colors"
             >
               <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-700 text-xs flex items-center justify-center font-bold">
-                {missingFields.length}
+                {totalMissing}
               </span>
               missing {showMissing ? '▲' : '▼'}
             </button>
 
             {showMissing && (
-              <div className="absolute right-0 top-full mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-2">
-                <p className="text-xs font-semibold text-gray-500 px-3 pb-1 border-b border-gray-100">
+              <div className="absolute right-0 top-full mt-1 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-2">
+                <p className="text-xs font-semibold text-gray-500 px-3 pb-1.5 border-b border-gray-100">
                   Missing required fields
                 </p>
-                <ul className="max-h-48 overflow-y-auto">
-                  {missingFields.map((field) => (
-                    <li key={field} className="px-3 py-1.5 text-xs text-gray-700 flex items-center gap-2">
-                      <span className="w-1 h-1 rounded-full bg-red-400 shrink-0" />
-                      {field}
+                <ul className="max-h-64 overflow-y-auto py-1">
+                  {missingGroups.map((group) => (
+                    <li key={group.sectionId}>
+                      {/* Clicking the section name navigates there */}
+                      <button
+                        type="button"
+                        onClick={() => { onNavigate(group.sectionId); setShowMissing(false); }}
+                        className="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors"
+                      >
+                        {group.sectionLabel} →
+                      </button>
+                      <ul>
+                        {group.fields.map((field) => (
+                          <li
+                            key={field}
+                            className="flex items-center gap-2 px-5 py-1 text-xs text-gray-600"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                            {field}
+                          </li>
+                        ))}
+                      </ul>
                     </li>
                   ))}
                 </ul>
