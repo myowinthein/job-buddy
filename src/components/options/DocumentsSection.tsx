@@ -114,6 +114,7 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
             value={state.url}
             onChange={(e) => onChange({ url: e.target.value })}
             placeholder="https://drive.google.com/file/..."
+            maxLength={255}
           />
         </FormField>
       ) : (

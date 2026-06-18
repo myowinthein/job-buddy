@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Profile, CustomLink } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
+import { RemoveButton } from './shared/RemoveButton';
 
 interface Props {
   profile: Partial<Profile>;
@@ -27,9 +28,17 @@ export function LinksSection({ profile, onSave }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const fieldError = (key: string, value: string): string => {
+    if (key === 'linkedin') {
+      if (!value.trim()) return 'LinkedIn URL is required';
+      if (!value.includes('linkedin.com')) return 'Enter a valid LinkedIn URL';
+    }
+    return '';
+  };
+
   const set = (key: string, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
-    if (errors[key]) setErrors((e) => ({ ...e, [key]: '' }));
+    setErrors((e) => ({ ...e, [key]: fieldError(key, value) }));
   };
 
   const updateCustom = (idx: number, key: keyof CustomLink, value: string) => {
@@ -67,12 +76,12 @@ export function LinksSection({ profile, onSave }: Props) {
   };
 
   const PLATFORMS = [
-    { key: 'linkedin', label: 'LinkedIn', required: true, placeholder: 'https://linkedin.com/in/yourname' },
-    { key: 'github', label: 'GitHub', required: false, placeholder: 'https://github.com/yourname' },
-    { key: 'portfolio', label: 'Portfolio', required: false, placeholder: 'https://yoursite.com' },
-    { key: 'twitter', label: 'Twitter / X', required: false, placeholder: 'https://x.com/yourhandle' },
-    { key: 'dribbble', label: 'Dribbble', required: false, placeholder: 'https://dribbble.com/yourname' },
-    { key: 'behance', label: 'Behance', required: false, placeholder: 'https://behance.net/yourname' },
+    { key: 'linkedin', label: 'LinkedIn',     required: true,  placeholder: 'https://www.linkedin.com/in/johnsmith' },
+    { key: 'github',   label: 'GitHub',       required: false, placeholder: 'https://github.com/johnsmith' },
+    { key: 'portfolio',label: 'Portfolio',    required: false, placeholder: 'https://johnsmith.dev' },
+    { key: 'twitter',  label: 'Twitter / X',  required: false, placeholder: 'https://x.com/johnsmith' },
+    { key: 'dribbble', label: 'Dribbble',     required: false, placeholder: 'https://dribbble.com/johnsmith' },
+    { key: 'behance',  label: 'Behance',      required: false, placeholder: 'https://www.behance.net/johnsmith' },
   ] as const;
 
   return (
@@ -90,6 +99,7 @@ export function LinksSection({ profile, onSave }: Props) {
             value={form[key]}
             onChange={(e) => set(key, e.target.value)}
             placeholder={placeholder}
+            maxLength={255}
           />
         </FormField>
       ))}
@@ -106,6 +116,7 @@ export function LinksSection({ profile, onSave }: Props) {
                     value={c.label}
                     onChange={(e) => updateCustom(idx, 'label', e.target.value)}
                     placeholder="My Blog"
+                    maxLength={100}
                   />
                 </FormField>
               </div>
@@ -116,17 +127,14 @@ export function LinksSection({ profile, onSave }: Props) {
                     className={cls()}
                     value={c.url}
                     onChange={(e) => updateCustom(idx, 'url', e.target.value)}
-                    placeholder="https://myblog.com"
+                    placeholder="https://blog.johnsmith.dev"
+                    maxLength={255}
                   />
                 </FormField>
               </div>
-              <button
-                type="button"
-                onClick={() => setCustom((rows) => rows.filter((_, i) => i !== idx))}
-                className="mt-6 px-2.5 py-1.5 text-red-600 border border-red-200 rounded-lg text-xs hover:bg-red-50 transition-colors"
-              >
-                Remove
-              </button>
+              <div className="mt-6">
+                <RemoveButton onClick={() => setCustom((rows) => rows.filter((_, i) => i !== idx))} />
+              </div>
             </div>
           ))}
         </div>
