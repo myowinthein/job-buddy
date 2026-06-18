@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { Profile, WorkAuthorizationEntry, WorkAuthorizationStatus } from '@/src/types/profile';
 import { findCountryByNameOrCode } from '@/src/data/countries';
 import { FormField } from './shared/FormField';
@@ -48,6 +48,21 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const [newEntryTick, setNewEntryTick] = useState(0);
+  const entriesContainerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!newEntryTick) return;
+    const raf = requestAnimationFrame(() => {
+      const last = entriesContainerRef.current?.lastElementChild as HTMLElement | null;
+      last?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      last?.querySelector<HTMLElement>(
+        'input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]):not([readonly]),' +
+        ' select, button[aria-haspopup="listbox"]',
+      )?.focus();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [newEntryTick]);
+
   const update = (idx: number, key: keyof LocalRow, value: string) => {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     const ek = `${idx}.${key}`;
@@ -93,15 +108,14 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
         <p className="text-sm text-red-500 mb-4 p-3 bg-red-50 rounded-lg">{errors.general}</p>
       )}
 
+      <div ref={entriesContainerRef}>
       {entries.map((row, idx) => (
         <div key={idx} className="p-4 border border-gray-200 rounded-lg mb-3">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-medium text-gray-600">Entry {idx + 1}</span>
-            {entries.length > 1 && (
-              <RemoveButton
-                onClick={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
-              />
-            )}
+            <RemoveButton
+              onClick={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -127,10 +141,11 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
           </div>
         </div>
       ))}
+      </div>{/* entriesContainerRef */}
 
       <button
         type="button"
-        onClick={() => setEntries((rows) => [...rows, emptyRow()])}
+        onClick={() => { setEntries((rows) => [...rows, emptyRow()]); setNewEntryTick((t) => t + 1); }}
         className="w-full py-2.5 border-2 border-dashed border-gray-300 text-sm text-gray-500 rounded-lg hover:border-blue-400 hover:text-blue-500 transition-colors mb-4"
       >
         + Add Entry
