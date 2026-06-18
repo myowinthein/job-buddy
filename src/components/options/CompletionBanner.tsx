@@ -6,9 +6,34 @@ interface CompletionBannerProps {
   missingGroups: CompletionGroup[];
   onNavigate: (sectionId: string) => void;
   onFocusField: (sectionId: string, fieldLabel: string) => void;
+  sidebarCollapsed: boolean;
+  onSidebarToggle: () => void;
 }
 
-export function CompletionBanner({ percentage, missingGroups, onNavigate, onFocusField }: CompletionBannerProps) {
+function MenuIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="w-5 h-5"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
+
+export function CompletionBanner({
+  percentage,
+  missingGroups,
+  onNavigate,
+  onFocusField,
+  sidebarCollapsed,
+  onSidebarToggle,
+}: CompletionBannerProps) {
   const [showMissing, setShowMissing] = useState(false);
 
   const totalMissing = missingGroups.reduce((sum, g) => sum + g.fields.length, 0);
@@ -18,8 +43,28 @@ export function CompletionBanner({ percentage, missingGroups, onNavigate, onFocu
   const close = () => setShowMissing(false);
 
   return (
-    <div className="bg-white border-b border-gray-200 px-6 py-3">
-      <div className="flex items-center gap-4">
+    <div className="bg-white border-b border-gray-200 flex items-center shrink-0">
+      {/* Left: sidebar toggle + "Profile Sections" label — width tracks the sidebar */}
+      <div
+        className={`flex items-center gap-2 px-3 py-3 border-r border-gray-100 shrink-0 transition-all duration-200 ${
+          sidebarCollapsed ? 'w-16 justify-center' : 'w-56'
+        }`}
+      >
+        <button
+          type="button"
+          onClick={onSidebarToggle}
+          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 shrink-0"
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <MenuIcon />
+        </button>
+        {!sidebarCollapsed && (
+          <span className="text-sm font-semibold text-gray-800 truncate">Profile Sections</span>
+        )}
+      </div>
+
+      {/* Right: completion bar + missing indicator */}
+      <div className="flex items-center gap-4 flex-1 px-6 py-3">
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-sm font-medium text-gray-700">Profile</span>
           <span className={`text-sm font-bold ${textColor}`}>{percentage}%</span>

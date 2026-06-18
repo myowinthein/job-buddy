@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Profile } from '@/src/types/profile';
 import { getProfile, saveProfile } from '@/src/utils/storage';
 import { calculateCompletion, getSectionCompletion, FIELD_FOCUS_IDS } from '@/src/utils/profileCompletion';
@@ -32,6 +32,11 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [focusTarget, setFocusTarget] = useState<string | null>(null);
 
+  // Used to skip section-switch autofocus when the banner focuses a specific field
+  const skipAutoFocusRef = useRef(false);
+  // Skip autofocus on the very first render
+  const mountedRef = useRef(false);
+
   useEffect(() => {
     getProfile()
       .then((p) => { setProfile(p ?? {}); })
@@ -39,8 +44,25 @@ function App() {
       .finally(() => { setLoading(false); });
   }, []);
 
-  // After a section switch + focusTarget is set, scroll to, focus, and briefly
-  // highlight the target element. rAF ensures the new section is painted first.
+  // Autofocus the first empty input when switching sections.
+  useEffect(() => {
+    if (!mountedRef.current) { mountedRef.current = true; return; }
+    if (skipAutoFocusRef.current) { skipAutoFocusRef.current = false; return; }
+    const raf = requestAnimationFrame(() => {
+      const main = document.querySelector('main');
+      if (!main) return;
+      const inputs = Array.from(
+        main.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+          'input[type="text"], input[type="email"], input[type="number"], input[type="url"],' +
+          ' input:not([type]), textarea, select',
+        ),
+      ).filter((el) => !(el as HTMLInputElement).readOnly);
+      inputs.find((el) => !el.value)?.focus();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Scroll to, focus, and briefly highlight a specific field after navigating from the banner.
   useEffect(() => {
     if (!focusTarget) return;
     const raf = requestAnimationFrame(() => {
@@ -74,6 +96,7 @@ function App() {
   };
 
   const handleFocusField = (sectionId: string, fieldLabel: string) => {
+    skipAutoFocusRef.current = true; // specific field takes over, skip generic autofocus
     setActiveSection(sectionId as SectionId);
     const fieldId = FIELD_FOCUS_IDS[fieldLabel];
     if (fieldId) setFocusTarget(fieldId);
@@ -113,7 +136,6 @@ function App() {
         activeSection={activeSection}
         onSelect={(id) => setActiveSection(id as SectionId)}
         collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed((c) => !c)}
         sectionCompletion={sectionCompletion}
       />
       <div className="flex flex-col flex-1 overflow-hidden">
@@ -122,6 +144,8 @@ function App() {
           missingGroups={completion.missingGroups}
           onNavigate={handleNavigate}
           onFocusField={handleFocusField}
+          sidebarCollapsed={sidebarCollapsed}
+          onSidebarToggle={() => setSidebarCollapsed((c) => !c)}
         />
         <main className="flex-1 overflow-y-auto p-8">
           <div className="max-w-2xl">{renderSection()}</div>

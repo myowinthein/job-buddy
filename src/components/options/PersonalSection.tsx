@@ -4,6 +4,7 @@ import { findCountry } from '@/src/data/countries';
 import { SearchableCountrySelect } from './shared/SearchableCountrySelect';
 import { ETHNICITIES } from '@/src/data/ethnicities';
 import { FormField } from './shared/FormField';
+import { DateOfBirthPicker } from './shared/DateOfBirthPicker';
 
 interface Props {
   profile: Partial<Profile>;
@@ -11,8 +12,6 @@ interface Props {
 }
 
 const CURRENT_YEAR = new Date().getFullYear();
-const DOB_MIN = `${CURRENT_YEAR - 100}-01-01`;
-const DOB_MAX = `${CURRENT_YEAR}-12-31`;
 
 const cls = (err?: string) =>
   err
@@ -74,9 +73,7 @@ export function PersonalSection({ profile, onSave }: Props) {
         return '';
       case 'dateOfBirth': {
         if (!value) return '';
-        const yearStr = value.split('-')[0] ?? '';
-        const year = parseInt(yearStr, 10);
-        if (yearStr.length !== 4 || isNaN(year)) return 'Year must be exactly 4 digits';
+        const year = parseInt(value.split('-')[0] ?? '', 10);
         if (year > CURRENT_YEAR) return `Date of birth cannot be after ${CURRENT_YEAR}`;
         if (year < CURRENT_YEAR - 100) return `Year must be ${CURRENT_YEAR - 100} or later`;
         return '';
@@ -125,14 +122,10 @@ export function PersonalSection({ profile, onSave }: Props) {
     }
 
     if (form.dateOfBirth) {
-      const yearStr = form.dateOfBirth.split('-')[0] ?? '';
-      const year = parseInt(yearStr, 10);
-      if (yearStr.length !== 4 || isNaN(year)) {
-        e.dateOfBirth = 'Year must be exactly 4 digits';
-      } else if (year > CURRENT_YEAR) {
-        e.dateOfBirth = `Date of birth cannot be after ${CURRENT_YEAR}`;
-      } else if (year < CURRENT_YEAR - 100) {
-        e.dateOfBirth = `Year must be ${CURRENT_YEAR - 100} or later`;
+      const year = parseInt(form.dateOfBirth.split('-')[0] ?? '', 10);
+      if (!isNaN(year)) {
+        if (year > CURRENT_YEAR) e.dateOfBirth = `Date of birth cannot be after ${CURRENT_YEAR}`;
+        else if (year < CURRENT_YEAR - 100) e.dateOfBirth = `Year must be ${CURRENT_YEAR - 100} or later`;
       }
     }
 
@@ -242,13 +235,10 @@ export function PersonalSection({ profile, onSave }: Props) {
         hint="Optional — some applications request this"
         error={errors.dateOfBirth}
       >
-        <input
-          type="date"
-          className={cls(errors.dateOfBirth)}
+        <DateOfBirthPicker
           value={form.dateOfBirth}
-          min={DOB_MIN}
-          max={DOB_MAX}
-          onChange={(e) => set('dateOfBirth', e.target.value)}
+          onChange={(v) => set('dateOfBirth', v)}
+          error={errors.dateOfBirth}
         />
       </FormField>
 
