@@ -16,12 +16,8 @@ const cls = (err?: string) =>
 export function LinksSection({ profile, onSave }: Props) {
   const l = profile.links;
   const [form, setForm] = useState({
-    linkedin: l?.linkedin ?? '',
-    github: l?.github ?? '',
+    linkedin:  l?.linkedin  ?? '',
     portfolio: l?.portfolio ?? '',
-    twitter: l?.twitter ?? '',
-    dribbble: l?.dribbble ?? '',
-    behance: l?.behance ?? '',
   });
   const [custom, setCustom] = useState<CustomLink[]>(l?.custom ?? []);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -61,13 +57,14 @@ export function LinksSection({ profile, onSave }: Props) {
     setSaving(true);
     await onSave({
       links: {
-        linkedin: form.linkedin.trim(),
-        github: form.github || undefined,
+        linkedin:  form.linkedin.trim(),
         portfolio: form.portfolio || undefined,
-        twitter: form.twitter || undefined,
-        dribbble: form.dribbble || undefined,
-        behance: form.behance || undefined,
-        custom: custom.filter((c) => c.label && c.url),
+        custom:    custom.filter((c) => c.label && c.url),
+        // Preserve any IT-specific fields that may exist in older profiles
+        github:   l?.github,
+        twitter:  l?.twitter,
+        dribbble: l?.dribbble,
+        behance:  l?.behance,
       },
     });
     setSaving(false);
@@ -76,12 +73,8 @@ export function LinksSection({ profile, onSave }: Props) {
   };
 
   const PLATFORMS = [
-    { key: 'linkedin', label: 'LinkedIn',     required: true,  placeholder: 'https://www.linkedin.com/in/johnsmith' },
-    { key: 'github',   label: 'GitHub',       required: false, placeholder: 'https://github.com/johnsmith' },
-    { key: 'portfolio',label: 'Portfolio',    required: false, placeholder: 'https://johnsmith.dev' },
-    { key: 'twitter',  label: 'Twitter / X',  required: false, placeholder: 'https://x.com/johnsmith' },
-    { key: 'dribbble', label: 'Dribbble',     required: false, placeholder: 'https://dribbble.com/johnsmith' },
-    { key: 'behance',  label: 'Behance',      required: false, placeholder: 'https://www.behance.net/johnsmith' },
+    { key: 'linkedin',  label: 'LinkedIn',   required: true,  placeholder: 'https://www.linkedin.com/in/johnsmith' },
+    { key: 'portfolio', label: 'Portfolio',   required: false, placeholder: 'https://johnsmith.dev' },
   ] as const;
 
   return (
