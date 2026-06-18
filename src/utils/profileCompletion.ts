@@ -34,7 +34,7 @@ export interface CompletionResult {
   missingGroups: CompletionGroup[];
 }
 
-const TOTAL_CHECKS = 14;
+const TOTAL_CHECKS = 15;
 
 export function calculateCompletion(profile: Partial<Profile>): CompletionResult {
   const groups: CompletionGroup[] = [];
@@ -72,12 +72,20 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
     'workAuthorization', 'Work Authorization', 'At least one valid entry',
   );
 
-  // Work History (1)
+  // Work History (2)
   const whEntries = profile.workHistory ?? [];
   check(
     whEntries.length >= 1 &&
       whEntries.every((e) => !!e.company?.trim() && !!e.title?.trim() && !!e.startDate?.trim()),
     'workHistory', 'Work History', 'At least one complete entry',
+  );
+  const np = profile.professional?.noticePeriod;
+  check(
+    np !== undefined && (
+      np.immediate === true ||
+      (np.immediate === false && typeof np.value === 'number' && np.value >= 1 && !!np.unit)
+    ),
+    'workHistory', 'Work History', 'Notice Period',
   );
 
   // Education (1)
@@ -133,9 +141,18 @@ export function getSectionCompletion(profile: Partial<Profile>): Record<string, 
     workAuthorization:
       waEntries.length >= 1 && waEntries.every((e) => !!e.country?.trim() && !!e.status),
 
-    workHistory:
-      whEntries.length >= 1 &&
-      whEntries.every((e) => !!e.company?.trim() && !!e.title?.trim() && !!e.startDate?.trim()),
+    workHistory: (() => {
+      const npCheck = profile.professional?.noticePeriod;
+      const noticeValid = npCheck !== undefined && (
+        npCheck.immediate === true ||
+        (npCheck.immediate === false && typeof npCheck.value === 'number' && npCheck.value >= 1 && !!npCheck.unit)
+      );
+      return (
+        whEntries.length >= 1 &&
+        whEntries.every((e) => !!e.company?.trim() && !!e.title?.trim() && !!e.startDate?.trim()) &&
+        noticeValid
+      );
+    })(),
 
     education:
       eduEntries.length >= 1 &&
