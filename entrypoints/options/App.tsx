@@ -3,6 +3,8 @@ import type { Profile } from '@/src/types/profile';
 import { getProfile, saveProfile } from '@/src/utils/storage';
 import { calculateCompletion, getSectionCompletion, FIELD_FOCUS_IDS } from '@/src/utils/profileCompletion';
 import { calculateDerivedFields } from '@/src/utils/derivedFields';
+import { ImportResumeDialog } from '@/src/components/options/ImportResumeDialog';
+import type { ExtractedResume } from '@/src/types/storage';
 import { Sidebar } from '@/src/components/options/Sidebar';
 import { CompletionBanner } from '@/src/components/options/CompletionBanner';
 import { PersonalSection } from '@/src/components/options/PersonalSection';
@@ -67,7 +69,9 @@ function App() {
   const [activeSection, setActiveSection] = useState<SectionId>(readSection);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(readSidebar);
   const [loading, setLoading] = useState(true);
-  const [focusTarget, setFocusTarget] = useState<string | null>(null);
+  const [focusTarget, setFocusTarget]           = useState<string | null>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [pendingResume, setPendingResume]       = useState<ExtractedResume | null>(null);
 
   const skipAutoFocusRef  = useRef(false);
   const mountedRef        = useRef(false); // skip autofocus on the very first render
@@ -226,6 +230,7 @@ function App() {
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((c) => !c)}
         sectionCompletion={sectionCompletion}
+        onImportClick={() => setShowImportDialog(true)}
       />
       <div className="flex flex-col flex-1 overflow-hidden">
         <CompletionBanner
@@ -238,6 +243,16 @@ function App() {
           <div className="max-w-2xl">{renderSection()}</div>
         </main>
       </div>
+
+      {showImportDialog && (
+        <ImportResumeDialog
+          onClose={() => setShowImportDialog(false)}
+          onComplete={(data) => {
+            setPendingResume(data);
+            setShowImportDialog(false);
+          }}
+        />
+      )}
     </div>
   );
 }
