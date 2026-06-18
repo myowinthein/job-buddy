@@ -35,9 +35,15 @@ export function AddressSection({ profile, onSave }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const fieldError = (key: string, value: string): string => {
+    if (key === 'city') return !value.trim() ? 'City is required' : '';
+    if (key === 'countryCode') return !value ? 'Country is required' : '';
+    return '';
+  };
+
   const set = (key: string, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
-    if (errors[key]) setErrors((e) => ({ ...e, [key]: '' }));
+    setErrors((e) => ({ ...e, [key]: fieldError(key, value) }));
   };
 
   const validate = () => {
@@ -88,7 +94,7 @@ export function AddressSection({ profile, onSave }: Props) {
             className={cls(errors.city)}
             value={form.city}
             onChange={(e) => set('city', e.target.value)}
-            placeholder="Bangkok"
+            placeholder="San Francisco"
             maxLength={100}
           />
         </FormField>
@@ -97,7 +103,7 @@ export function AddressSection({ profile, onSave }: Props) {
             className={cls()}
             value={form.state}
             onChange={(e) => set('state', e.target.value)}
-            placeholder="Central Bangkok"
+            placeholder="CA"
             maxLength={100}
           />
         </FormField>
@@ -116,7 +122,7 @@ export function AddressSection({ profile, onSave }: Props) {
             className={cls()}
             value={form.postalCode}
             onChange={(e) => set('postalCode', e.target.value)}
-            placeholder="10110"
+            placeholder="94105"
             maxLength={20}
           />
         </FormField>

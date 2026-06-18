@@ -60,9 +60,34 @@ export function PersonalSection({ profile, onSave }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const fieldError = (key: string, value: string): string => {
+    switch (key) {
+      case 'firstName': return !value.trim() ? 'First name is required' : '';
+      case 'lastName':  return !value.trim() ? 'Last name is required' : '';
+      case 'email':
+        if (!value.trim()) return 'Email is required';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Enter a valid email address';
+        return '';
+      case 'phoneNumber':
+        if (!value.trim()) return 'Phone number is required';
+        if (value.length < 4) return 'Enter a valid phone number';
+        return '';
+      case 'dateOfBirth': {
+        if (!value) return '';
+        const yearStr = value.split('-')[0] ?? '';
+        const year = parseInt(yearStr, 10);
+        if (yearStr.length !== 4 || isNaN(year)) return 'Year must be exactly 4 digits';
+        if (year > CURRENT_YEAR) return `Date of birth cannot be after ${CURRENT_YEAR}`;
+        if (year < CURRENT_YEAR - 100) return `Year must be ${CURRENT_YEAR - 100} or later`;
+        return '';
+      }
+      default: return '';
+    }
+  };
+
   const set = (key: string, value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
-    if (errors[key]) setErrors((e) => ({ ...e, [key]: '' }));
+    setErrors((e) => ({ ...e, [key]: fieldError(key, value) }));
   };
 
   const handleCountryChange = (code: string) => {
@@ -163,7 +188,7 @@ export function PersonalSection({ profile, onSave }: Props) {
             className={cls(errors.lastName)}
             value={form.lastName}
             onChange={(e) => set('lastName', e.target.value)}
-            placeholder="Doe"
+            placeholder="Smith"
             maxLength={100}
           />
         </FormField>
@@ -176,7 +201,7 @@ export function PersonalSection({ profile, onSave }: Props) {
           className={cls(errors.email)}
           value={form.email}
           onChange={(e) => set('email', e.target.value)}
-          placeholder="john@example.com"
+          placeholder="john.smith@example.com"
           maxLength={254}
         />
       </FormField>
@@ -202,7 +227,7 @@ export function PersonalSection({ profile, onSave }: Props) {
             className="rounded-r-lg flex-1 px-3 py-2 text-sm focus:outline-none bg-white"
             value={form.phoneNumber}
             onChange={(e) => handlePhoneNumberChange(e.target.value)}
-            placeholder="812345678"
+            placeholder="5551234567"
           />
         </div>
       </FormField>
