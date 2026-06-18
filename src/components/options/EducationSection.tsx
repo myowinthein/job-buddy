@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { Profile, EducationEntry } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
 import { ExpandableCard } from './shared/ExpandableCard';
@@ -56,6 +56,21 @@ export function EducationSection({ profile, onSave }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const [newEntryTick, setNewEntryTick] = useState(0);
+  const entriesContainerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!newEntryTick) return;
+    const raf = requestAnimationFrame(() => {
+      const last = entriesContainerRef.current?.lastElementChild as HTMLElement | null;
+      last?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      last?.querySelector<HTMLElement>(
+        'input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]):not([readonly]),' +
+        ' select, button[aria-haspopup="listbox"]',
+      )?.focus();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [newEntryTick]);
 
   const update = (idx: number, key: keyof Row, value: string | boolean) => {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
@@ -117,6 +132,7 @@ export function EducationSection({ profile, onSave }: Props) {
         <p className="text-sm text-red-500 mb-4 p-3 bg-red-50 rounded-lg">{errors.general}</p>
       )}
 
+      <div ref={entriesContainerRef}>
       {entries.map((row, idx) => (
         <ExpandableCard
           key={idx}
@@ -188,10 +204,11 @@ export function EducationSection({ profile, onSave }: Props) {
           </label>
         </ExpandableCard>
       ))}
+      </div>{/* entriesContainerRef */}
 
       <button
         type="button"
-        onClick={() => setEntries((rows) => [...rows, emptyRow()])}
+        onClick={() => { setEntries((rows) => [...rows, emptyRow()]); setNewEntryTick((t) => t + 1); }}
         className="w-full py-2.5 border-2 border-dashed border-gray-300 text-sm text-gray-500 rounded-lg hover:border-blue-400 hover:text-blue-500 transition-colors mb-4"
       >
         + Add Education

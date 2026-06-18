@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { Profile, CustomLink } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
 import { RemoveButton } from './shared/RemoveButton';
@@ -19,10 +19,25 @@ export function LinksSection({ profile, onSave }: Props) {
     linkedin:  l?.linkedin  ?? '',
     portfolio: l?.portfolio ?? '',
   });
-  const [custom, setCustom] = useState<CustomLink[]>(l?.custom ?? []);
+  const [custom, setCustom] = useState<CustomLink[]>(l?.custom?.length ? l.custom : [{ label: '', url: '' }]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const [newEntryTick, setNewEntryTick] = useState(0);
+  const customContainerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!newEntryTick) return;
+    const raf = requestAnimationFrame(() => {
+      const last = customContainerRef.current?.lastElementChild as HTMLElement | null;
+      last?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      last?.querySelector<HTMLElement>(
+        'input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]):not([readonly]),' +
+        ' select, button[aria-haspopup="listbox"]',
+      )?.focus();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [newEntryTick]);
 
   const fieldError = (key: string, value: string): string => {
     if (key === 'linkedin') {
@@ -98,10 +113,19 @@ export function LinksSection({ profile, onSave }: Props) {
         </FormField>
       ))}
 
-      {custom.length > 0 && (
-        <div className="mb-4">
-          <p className="text-sm font-medium text-gray-700 mb-2">Custom Links</p>
-          {custom.map((c, idx) => (
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-medium text-gray-700">Custom Links</p>
+          <button
+            type="button"
+            onClick={() => { setCustom((rows) => [...rows, { label: '', url: '' }]); setNewEntryTick((t) => t + 1); }}
+            className="text-xs px-3 py-1.5 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+          >
+            + Add Entry
+          </button>
+        </div>
+        <div ref={customContainerRef}>
+        {custom.map((c, idx) => (
             <div key={idx} className="p-4 border border-gray-200 rounded-lg mb-3">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-medium text-gray-600">Entry {idx + 1}</span>
@@ -130,16 +154,8 @@ export function LinksSection({ profile, onSave }: Props) {
               </div>
             </div>
           ))}
-        </div>
-      )}
-
-      <button
-        type="button"
-        onClick={() => setCustom((rows) => [...rows, { label: '', url: '' }])}
-        className="w-full py-2.5 border-2 border-dashed border-gray-300 text-sm text-gray-500 rounded-lg hover:border-blue-400 hover:text-blue-500 transition-colors mb-4"
-      >
-        + Add Custom Link
-      </button>
+        </div>{/* customContainerRef */}
+      </div>
 
       <div className="mt-2 pt-4 border-t border-gray-200 flex items-center gap-3">
         <button
