@@ -25,18 +25,57 @@ type SectionId =
   | 'links'
   | 'documents';
 
+// ── UI state persistence keys (sessionStorage) ───────────────────────────────
+const UI_SECTION_KEY  = 'jb:ui:section';
+const UI_SIDEBAR_KEY  = 'jb:ui:sidebar';
+const UI_SCROLL_KEY   = (section: SectionId) => `jb:ui:scroll:${section}`;
+
+const VALID_SECTIONS = new Set<SectionId>([
+  'personal', 'address', 'salary', 'workAuthorization',
+  'workHistory', 'education', 'languages', 'links', 'documents',
+]);
+
+function readSection(): SectionId {
+  try {
+    const s = sessionStorage.getItem(UI_SECTION_KEY) as SectionId | null;
+    return s && VALID_SECTIONS.has(s) ? s : 'personal';
+  } catch { return 'personal'; }
+}
+
+function readSidebar(): boolean {
+  try { return sessionStorage.getItem(UI_SIDEBAR_KEY) === 'true'; }
+  catch { return false; }
+}
+
+// ── Autofocus helper (shared between two effects) ────────────────────────────
+function focusFirstEmpty(container: Element | null) {
+  if (!container) return;
+  const inputs = Array.from(
+    container.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+      'input[type="text"], input[type="email"], input[type="number"], input[type="url"],' +
+      ' input:not([type]), textarea, select',
+    ),
+  ).filter((el) => !(el as HTMLInputElement).readOnly);
+  inputs.find((el) => !el.value)?.focus();
+}
+
 function App() {
   const [profile, setProfile] = useState<Partial<Profile>>({});
-  const [activeSection, setActiveSection] = useState<SectionId>('personal');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Read synchronously from sessionStorage so the first render shows the
+  // correct section/sidebar without any visible jump after refresh.
+  const [activeSection, setActiveSection] = useState<SectionId>(readSection);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(readSidebar);
   const [loading, setLoading] = useState(true);
   const [focusTarget, setFocusTarget] = useState<string | null>(null);
 
-  // Used to skip section-switch autofocus when the banner focuses a specific field
-  const skipAutoFocusRef = useRef(false);
-  // Skip autofocus on the very first render
-  const mountedRef = useRef(false);
+  const skipAutoFocusRef  = useRef(false);
+  const mountedRef        = useRef(false); // skip autofocus on the very first render
+  const sectionNavRef     = useRef(false); // skip scroll-reset on the very first render
+  const initialLoadDoneRef = useRef(false); // gates the restore-on-load effect
+  const activeSectionRef  = useRef(activeSection); // stale-closure-free ref for scroll handler
+  const mainRef           = useRef<HTMLElement>(null);
 
+  // ── Load profile ────────────────────────────────────────────────────────────
   useEffect(() => {
     getProfile()
       .then((p) => { setProfile(p ?? {}); })
@@ -44,25 +83,71 @@ function App() {
       .finally(() => { setLoading(false); });
   }, []);
 
-  // Autofocus the first empty input when switching sections.
+  // ── Persist active section ──────────────────────────────────────────────────
+  useEffect(() => {
+    activeSectionRef.current = activeSection;
+    try { sessionStorage.setItem(UI_SECTION_KEY, activeSection); } catch { /* storage blocked */ }
+  }, [activeSection]);
+
+  // ── Persist sidebar state ───────────────────────────────────────────────────
+  useEffect(() => {
+    try { sessionStorage.setItem(UI_SIDEBAR_KEY, String(sidebarCollapsed)); } catch { /* storage blocked */ }
+  }, [sidebarCollapsed]);
+
+  // ── Save scroll position per section (attached once, uses ref to avoid staleness) ──
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const handler = () => {
+      try {
+        sessionStorage.setItem(UI_SCROLL_KEY(activeSectionRef.current), String(el.scrollTop));
+      } catch { /* storage blocked */ }
+    };
+    el.addEventListener('scroll', handler, { passive: true });
+    return () => el.removeEventListener('scroll', handler);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Reset scroll to top on section navigation (skip initial mount) ──────────
+  // The initial-load restore effect below overrides this for the refresh case.
+  useEffect(() => {
+    if (!sectionNavRef.current) { sectionNavRef.current = true; return; }
+    mainRef.current?.scrollTo({ top: 0, behavior: 'instant' });
+  }, [activeSection]);
+
+  // ── Restore scroll + autofocus once after profile loads ─────────────────────
+  // Fires exactly once (initialLoadDoneRef guards re-runs). Handles both
+  // normal first load (scroll stays at 0) and refresh (scroll is restored).
+  useEffect(() => {
+    if (loading) return;
+    if (initialLoadDoneRef.current) return;
+    initialLoadDoneRef.current = true;
+
+    const raf = requestAnimationFrame(() => {
+      // Restore saved scroll for this section (0 if never saved)
+      try {
+        const saved = parseInt(sessionStorage.getItem(UI_SCROLL_KEY(activeSectionRef.current)) ?? '0', 10);
+        if (saved > 0) mainRef.current?.scrollTo({ top: saved, behavior: 'instant' });
+      } catch { /* storage blocked */ }
+
+      // Autofocus first empty input in the restored section
+      if (!skipAutoFocusRef.current) {
+        focusFirstEmpty(mainRef.current);
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Autofocus first empty input when navigating sections (existing) ──────────
   useEffect(() => {
     if (!mountedRef.current) { mountedRef.current = true; return; }
     if (skipAutoFocusRef.current) { skipAutoFocusRef.current = false; return; }
     const raf = requestAnimationFrame(() => {
-      const main = document.querySelector('main');
-      if (!main) return;
-      const inputs = Array.from(
-        main.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
-          'input[type="text"], input[type="email"], input[type="number"], input[type="url"],' +
-          ' input:not([type]), textarea, select',
-        ),
-      ).filter((el) => !(el as HTMLInputElement).readOnly);
-      inputs.find((el) => !el.value)?.focus();
+      focusFirstEmpty(document.querySelector('main'));
     });
     return () => cancelAnimationFrame(raf);
   }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Scroll to and focus a specific field after navigating from the banner.
+  // ── Scroll to and focus a specific field after navigating from the banner ────
   useEffect(() => {
     if (!focusTarget) return;
     const raf = requestAnimationFrame(() => {
@@ -137,7 +222,7 @@ function App() {
           onNavigate={handleNavigate}
           onFocusField={handleFocusField}
         />
-        <main className="flex-1 overflow-y-auto p-8">
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-8">
           <div className="max-w-2xl">{renderSection()}</div>
         </main>
       </div>
