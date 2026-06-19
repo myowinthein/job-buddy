@@ -22,11 +22,8 @@ export interface AutofillResult {
 let filledElements: HTMLElement[] = [];
 
 export function undoAutofill(): void {
-  console.log('[undo] filledElements count:', filledElements.length);
   for (const element of filledElements) {
-    console.log('[undo] clearing element:', (element as HTMLInputElement).name || element.id);
     clearFieldValue(element);
-    console.log('[undo] value clear result:', (element as HTMLInputElement).value);
     clearElementHighlight(element);
   }
   filledElements = [];
