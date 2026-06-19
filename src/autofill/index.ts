@@ -3,8 +3,8 @@ import { scanFields } from './scanner';
 import { extractSignals } from './signals';
 import type { FieldSignals } from './signals';
 import { mapField } from './mapper';
-import { fillField } from './filler';
-import { applyHighlight } from './highlighter';
+import { fillField, clearFieldValue } from './filler';
+import { applyHighlight, clearElementHighlight } from './highlighter';
 import { attachPickerListeners } from './picker';
 import { normalize } from './normalizer';
 
@@ -17,7 +17,21 @@ export interface AutofillResult {
   totalScanned: number;
 }
 
+// All elements touched during the current autofill session (mapper + picker).
+// Reset on each runAutofill() call.
+let filledElements: HTMLElement[] = [];
+
+export function undoAutofill(): void {
+  for (const element of filledElements) {
+    clearFieldValue(element);
+    clearElementHighlight(element);
+  }
+  filledElements = [];
+}
+
 export async function runAutofill(): Promise<AutofillResult> {
+  filledElements = [];
+
   const profile = await getProfile();
   if (!profile) {
     console.warn('[Job Buddy] Profile not found — skipping autofill');
@@ -38,6 +52,7 @@ export async function runAutofill(): Promise<AutofillResult> {
 
     if (match.confidence > 0 && match.value) {
       await fillField(element, match.value);
+      filledElements.push(element);
     }
 
     applyHighlight(element, match.confidence);
@@ -56,7 +71,8 @@ export async function runAutofill(): Promise<AutofillResult> {
     await fillField(element, value);
     applyHighlight(element, 0.97);
 
-    // Persist learned mapping for every normalized signal on this element
+    filledElements.push(element);
+
     const sigs = extractSignals(element);
     const signalTexts = [
       sigs.name, sigs.id, sigs.placeholder,
