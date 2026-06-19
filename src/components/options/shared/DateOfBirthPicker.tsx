@@ -57,19 +57,29 @@ export function DateOfBirthPicker({ value, onChange, error, id }: Props) {
   const [dayStr,  setDayStr]  = useState(parsed.day  ? String(parsed.day)  : '');
   const [yearStr, setYearStr] = useState(parsed.year ? String(parsed.year) : '');
 
-  const borderCls = error
-    ? 'border-red-300 focus:ring-red-500'
-    : 'border-gray-300 focus:ring-blue-500';
-  const fieldCls = `w-full px-3 py-2 text-sm border ${borderCls} rounded-lg focus:outline-none focus:ring-2 bg-white`;
+  const [dayError,  setDayError]  = useState('');
+  const [yearError, setYearError] = useState('');
+
+  const externalErrorBorder = error ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500';
+
+  const inputCls = (hasLocalError: boolean) => {
+    const border = hasLocalError || error
+      ? 'border-red-300 focus:ring-red-500'
+      : 'border-gray-300 focus:ring-blue-500';
+    return `w-full px-3 py-2 text-sm border ${border} rounded-lg focus:outline-none focus:ring-2 bg-white`;
+  };
+
+  // Month select uses only the external error border
+  const selectCls = `w-full px-3 py-2 text-sm border ${externalErrorBorder} rounded-lg focus:outline-none focus:ring-2 bg-white`;
 
   const handleDayInput = (raw: string) => {
-    // Strip non-digits, cap at 2 chars
     const cleaned = raw.replace(/\D/g, '').slice(0, 2);
     setDayStr(cleaned);
     const n = parseInt(cleaned, 10);
-    const valid = cleaned.length > 0 && !isNaN(n) && n >= 1 && n <= 31;
-    const d = valid ? n : 0;
+    const inRange = cleaned.length > 0 && !isNaN(n) && n >= 1 && n <= 31;
+    const d = inRange ? n : 0;
     setDay(d);
+    setDayError(cleaned.length > 0 && !inRange ? 'Day must be between 1 and 31' : '');
     onChange(buildDOB(month, d, year));
   };
 
@@ -82,13 +92,17 @@ export function DateOfBirthPicker({ value, onChange, error, id }: Props) {
   };
 
   const handleYearInput = (raw: string) => {
-    // Strip non-digits, cap at 4 chars
     const cleaned = raw.replace(/\D/g, '').slice(0, 4);
     setYearStr(cleaned);
     const n = parseInt(cleaned, 10);
-    const valid = cleaned.length === 4 && !isNaN(n) && n >= MIN_YEAR && n <= CURRENT_YEAR;
-    const y = valid ? n : 0;
+    const inRange = cleaned.length === 4 && !isNaN(n) && n >= MIN_YEAR && n <= CURRENT_YEAR;
+    const y = inRange ? n : 0;
     setYear(y);
+    setYearError(
+      cleaned.length === 4 && !inRange
+        ? `Year must be between ${MIN_YEAR} and ${CURRENT_YEAR}`
+        : '',
+    );
     // Re-clamp day when year changes (e.g., Feb 29 → Feb 28 for non-leap years)
     const max = daysInMonth(month, y);
     const d = day > max ? max : day;
@@ -97,7 +111,7 @@ export function DateOfBirthPicker({ value, onChange, error, id }: Props) {
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2 items-start">
       {/* Day — text input, digits only, 1–31 */}
       <div className="w-16">
         <input
@@ -105,20 +119,21 @@ export function DateOfBirthPicker({ value, onChange, error, id }: Props) {
           inputMode="numeric"
           pattern="\d{1,2}"
           maxLength={2}
-          className={fieldCls}
+          className={inputCls(!!dayError)}
           value={dayStr}
           onChange={(e) => handleDayInput(e.target.value)}
           placeholder="DD"
           aria-label="Day"
           id={id}
         />
+        {dayError && <p className="text-xs text-red-500 mt-1">{dayError}</p>}
       </div>
 
       {/* Month + Year — same proportions as MonthYearPicker */}
-      <div className="flex-1 flex gap-2">
+      <div className="flex-1 flex gap-2 items-start">
         <div className="flex-1">
           <select
-            className={fieldCls}
+            className={selectCls}
             value={month || ''}
             onChange={(e) => handleMonth(Number(e.target.value))}
             aria-label="Month"
@@ -130,19 +145,20 @@ export function DateOfBirthPicker({ value, onChange, error, id }: Props) {
           </select>
         </div>
 
-        {/* Year — text input restricted to 4 digits in valid range */}
+        {/* Year — text input restricted to 4 digits */}
         <div className="w-20">
           <input
             type="text"
             inputMode="numeric"
             pattern="\d{4}"
             maxLength={4}
-            className={fieldCls}
+            className={inputCls(!!yearError)}
             value={yearStr}
             onChange={(e) => handleYearInput(e.target.value)}
             placeholder="YYYY"
             aria-label="Year"
           />
+          {yearError && <p className="text-xs text-red-500 mt-1">{yearError}</p>}
         </div>
       </div>
     </div>
