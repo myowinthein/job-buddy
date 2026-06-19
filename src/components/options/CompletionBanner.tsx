@@ -2,33 +2,53 @@ import { useState } from 'react';
 import type { CompletionGroup } from '@/src/utils/profileCompletion';
 
 interface CompletionBannerProps {
-  percentage: number;
-  missingGroups: CompletionGroup[];
-  onNavigate: (sectionId: string) => void;
+  percentage:              number;
+  isCoreComplete:          boolean;
+  optionalFieldsRemaining: number;
+  optionalGroups:          CompletionGroup[];
+  missingGroups:           CompletionGroup[];
+  onNavigate:   (sectionId: string) => void;
   onFocusField: (sectionId: string, fieldLabel: string) => void;
 }
 
 export function CompletionBanner({
   percentage,
+  isCoreComplete,
+  optionalFieldsRemaining,
+  optionalGroups,
   missingGroups,
   onNavigate,
   onFocusField,
 }: CompletionBannerProps) {
-  const [showMissing, setShowMissing] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   const totalMissing = missingGroups.reduce((sum, g) => sum + g.fields.length, 0);
-  const barColor = percentage >= 80 ? 'bg-green-500' : percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500';
-  const textColor = percentage >= 80 ? 'text-green-700' : percentage >= 50 ? 'text-yellow-700' : 'text-red-700';
+  const barColor     = percentage >= 80 ? 'bg-green-500' : percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500';
+  const textColor    = percentage >= 80 ? 'text-green-700' : percentage >= 50 ? 'text-yellow-700' : 'text-red-700';
 
-  const close = () => setShowMissing(false);
+  const close = () => setShowDropdown(false);
 
   return (
     <div className="bg-white border-b border-gray-200 px-6 h-16 flex items-center gap-4 shrink-0">
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="text-sm font-medium text-gray-700">Profile</span>
-        <span className={`text-sm font-bold ${textColor}`}>{percentage}%</span>
-      </div>
 
+      {/* Label area */}
+      {isCoreComplete ? (
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-sm font-bold text-green-700">✓ Ready to Apply</span>
+          {optionalFieldsRemaining > 0 && (
+            <span className="text-xs text-gray-400 font-normal">
+              {optionalFieldsRemaining} optional field{optionalFieldsRemaining !== 1 ? 's' : ''} available
+            </span>
+          )}
+        </div>
+      ) : (
+        <div className="flex items-center gap-1 shrink-0">
+          <span className={`text-sm font-bold ${textColor}`}>{percentage}%</span>
+          <span className="text-sm font-medium text-gray-500">Complete</span>
+        </div>
+      )}
+
+      {/* Progress bar */}
       <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${barColor}`}
@@ -36,20 +56,21 @@ export function CompletionBanner({
         />
       </div>
 
-      {totalMissing > 0 && (
+      {/* Dropdown trigger */}
+      {!isCoreComplete && totalMissing > 0 && (
         <div className="relative shrink-0">
           <button
             type="button"
-            onClick={() => setShowMissing((s) => !s)}
+            onClick={() => setShowDropdown((s) => !s)}
             className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 transition-colors"
           >
             <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-700 text-xs flex items-center justify-center font-bold">
               {totalMissing}
             </span>
-            missing {showMissing ? '▲' : '▼'}
+            missing {showDropdown ? '▲' : '▼'}
           </button>
 
-          {showMissing && (
+          {showDropdown && (
             <div className="absolute right-0 top-full mt-1 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-2">
               <p className="text-xs font-semibold text-gray-500 px-3 pb-1.5 border-b border-gray-100">
                 Missing required fields
@@ -86,8 +107,51 @@ export function CompletionBanner({
         </div>
       )}
 
-      {percentage === 100 && (
-        <span className="text-xs text-green-600 font-medium shrink-0">✓ Complete</span>
+      {isCoreComplete && optionalFieldsRemaining > 0 && (
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowDropdown((s) => !s)}
+            className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 transition-colors"
+          >
+            optional {showDropdown ? '▲' : '▼'}
+          </button>
+
+          {showDropdown && (
+            <div className="absolute right-0 top-full mt-1 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-2">
+              <p className="text-xs font-semibold text-gray-500 px-3 pb-1.5 border-b border-gray-100">
+                Optional fields for richer autofill
+              </p>
+              <ul className="max-h-64 overflow-y-auto py-1">
+                {optionalGroups.map((group) => (
+                  <li key={group.sectionId}>
+                    <button
+                      type="button"
+                      onClick={() => { onNavigate(group.sectionId); close(); }}
+                      className="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors"
+                    >
+                      {group.sectionLabel} →
+                    </button>
+                    <ul>
+                      {group.fields.map((field) => (
+                        <li key={field}>
+                          <button
+                            type="button"
+                            onClick={() => { onFocusField(group.sectionId, field); close(); }}
+                            className="w-full text-left flex items-center gap-2 px-5 py-1 text-xs text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors rounded"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-300 shrink-0" />
+                            {field}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

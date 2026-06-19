@@ -11,23 +11,25 @@ import { normalize } from './normalizer';
 export { clearHighlights } from './highlighter';
 
 export interface AutofillResult {
-  filled:    number;
-  review:    number;
-  unmatched: number;
+  filled:       number;
+  review:       number;
+  unmatched:    number;
+  totalScanned: number;
 }
 
 export async function runAutofill(): Promise<AutofillResult> {
   const profile = await getProfile();
   if (!profile) {
     console.warn('[Job Buddy] Profile not found — skipping autofill');
-    return { filled: 0, review: 0, unmatched: 0 };
+    return { filled: 0, review: 0, unmatched: 0, totalScanned: 0 };
   }
 
   const learnedMappings = await getLearnedMappings();
   const domain = window.location.hostname;
   const fields = scanFields();
+  const totalScanned = fields.length;
 
-  const result: AutofillResult = { filled: 0, review: 0, unmatched: 0 };
+  const result: AutofillResult = { filled: 0, review: 0, unmatched: 0, totalScanned };
   const redFields: Array<{ element: HTMLElement; signals: FieldSignals }> = [];
 
   for (const element of fields) {

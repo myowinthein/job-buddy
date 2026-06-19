@@ -49,7 +49,7 @@ function emptyRow(): Row {
 
 export function LanguagesSection({ profile, onSave }: Props) {
   const [entries, setEntries] = useState<Row[]>(
-    profile.languages?.length ? profile.languages.map(initRow) : [],
+    profile.languages?.length ? profile.languages.map(initRow) : [emptyRow()],
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { showToast } = useToast();

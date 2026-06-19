@@ -191,7 +191,7 @@ export function DocumentsSection({ profile, onSave }: Props) {
         <p className="text-sm text-gray-500 mt-1">Upload or link your CV / Résumé — max 4 MB</p>
       </div>
 
-      <DocUploader label="CV / Résumé" state={cv} onChange={(u) => setCv((s) => ({ ...s, ...u }))} />
+      <DocUploader label="CV / Résumé" required state={cv} onChange={(u) => setCv((s) => ({ ...s, ...u }))} />
 
       <div className="mt-2 pt-4 border-t border-gray-200 flex items-center gap-3">
         <button

@@ -369,6 +369,7 @@ function App() {
 
   const completion = calculateCompletion(profile);
   const sectionCompletion = getSectionCompletion(profile);
+  const optionalSections = new Set(completion.optionalGroups.map((g) => g.sectionId));
   const sectionProps = { profile, onSave: handleSave };
 
   const renderSection = () => {
@@ -404,10 +405,15 @@ function App() {
         onToggle={() => setSidebarCollapsed((c) => !c)}
         sectionCompletion={sectionCompletion}
         onImportClick={() => setShowImportDialog(true)}
+        isCoreComplete={completion.isCoreComplete}
+        optionalSections={optionalSections}
       />
       <div className="flex flex-col flex-1 overflow-hidden">
         <CompletionBanner
           percentage={completion.percentage}
+          isCoreComplete={completion.isCoreComplete}
+          optionalFieldsRemaining={completion.optionalFieldsRemaining}
+          optionalGroups={completion.optionalGroups}
           missingGroups={completion.missingGroups}
           onNavigate={handleNavigate}
           onFocusField={handleFocusField}

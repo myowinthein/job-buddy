@@ -81,6 +81,7 @@ export function AddressSection({ profile, onSave }: Props) {
       <FormField label="Street Address">
         <input
           className={cls()}
+          id="field-street"
           value={form.street}
           onChange={(e) => set('street', e.target.value)}
           placeholder="123 Main Street, Apt 4B"
@@ -102,6 +103,7 @@ export function AddressSection({ profile, onSave }: Props) {
         <FormField label="State / Province">
           <input
             className={cls()}
+            id="field-state"
             value={form.state}
             onChange={(e) => set('state', e.target.value)}
             placeholder="CA"
@@ -122,6 +124,7 @@ export function AddressSection({ profile, onSave }: Props) {
         <FormField label="Postal Code">
           <input
             className={cls()}
+            id="field-postalCode"
             value={form.postalCode}
             onChange={(e) => set('postalCode', e.target.value)}
             placeholder="94105"
