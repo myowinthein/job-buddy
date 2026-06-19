@@ -36,12 +36,14 @@ Four entrypoints in `entrypoints/`:
 | `popup/` | Browser action popup — profile completion %, Auto Fill button, Clear Highlights, result summary |
 | `options/` | Full-page profile editor + resume import dialog + drag-source floating panel (planned) |
 
-Storage is `chrome.storage.local` (not `sync`). The wrapper in `src/utils/storage.ts` swallows errors and always resolves, so callers don't need rejection handling.
+Storage is `chrome.storage.local` (not `sync`). The wrapper in `src/utils/storage.ts` swallows errors and always resolves, so callers don't need rejection handling. `clearAllStorage()` removes all three keys (used by Settings → Reset).
 
 Three storage keys:
-- `profile` — the user's `Profile` object (includes `derived`, see below)
+- `profile` — the user's `Profile` object (includes `id` and `derived`, see below)
 - `learnedMappings` — `{ [domain]: { [normalizedSignal]: profileFieldPath } }` — written when the user picks a value from the autofill red-field overlay
 - `applicationHistory` — array of `ApplicationEntry` — reserved for dedup/history tracking; no UI yet
+
+`Profile.id` is a top-level UUID auto-backfilled by `getProfile()` on first read if missing — every load of an old profile silently writes back an id. Used as the prefix in export filenames and the `profileId` field of the export schema.
 
 ---
 
@@ -92,9 +94,25 @@ Each section component receives `{ profile, onSave }` and has its own save butto
 
 **UX patterns**:
 - Field-level validation fires on change; full validation fires on save
-- Save button shows "Saving..." then "✓ Saved" for 2.5 s
+- Save button shows "Saving..." while writing; success/error feedback is via the global toast (see Toast system below) — no inline "Saved" label
 - New entries in multi-entry sections scroll into view and focus the first input
 - `ExpandableCard` (confirm-before-delete) used in WorkHistory and Education
+
+### Toast system (`src/components/ui/Toast.tsx`)
+
+`ToastProvider` wraps `<App />` in `entrypoints/options/main.tsx`. Use `useToast()` to get `showToast(type, message, duration?)`. Three types: `success` (green, 2 s default), `warning` (yellow, 2 s), `error` (red, 3.5 s). Stack is fixed top-right (offset 96 px to clear the completion banner). All section save buttons and Settings actions call this — do not reintroduce inline "✓ Saved" labels.
+
+### Settings section (`src/components/options/SettingsSection.tsx`)
+
+A 10th sidebar entry (below the 9 profile sections, above the Import Resume button). Three subsections:
+
+| Action | Behavior |
+|---|---|
+| Export Profile | Bundles `{ _comment, version: "1.0", profileId, exportedAt, profile, learnedMappings, applicationHistory }`, downloads as `job-buddy-profile-<idPrefix>-<date>.json` |
+| Import Profile | Validates JSON via `src/utils/profileValidator.ts`; conflict dialog offers Merge (fill empty fields only) or Overwrite (replace all) |
+| Reset All Data | Type-`DELETE` confirmation, then `clearAllStorage()` clears all three storage keys; `onResetComplete` re-fetches and navigates to `personal` |
+
+The section is wired through `App.tsx`'s `handleImportComplete` (re-fetches profile so sidebar checkmarks refresh without a page reload).
 
 ### UI State Persistence (`sessionStorage`)
 
@@ -128,8 +146,10 @@ mapper.ts      — 4-layer match: learned → autocomplete → dictionary → fu
 filler.ts      — native input setter + dispatches input/change/blur
 highlighter.ts — injected underline div per field (no host styles touched)
 picker.ts     — inline focus-triggered overlay for red (unmatched) fields
-index.ts       — orchestrator; export runAutofill() and clearHighlights()
+index.ts       — orchestrator; exports runAutofill(), undoAutofill(), clearHighlights()
 ```
+
+`undoAutofill()` (wired to the popup's "Undo Auto-fill" button via the `CLEAR` message) iterates a module-level `filledElements: HTMLElement[]` registry (populated during both mapper and picker fills) and calls `clearFieldValue()` + `clearElementHighlight()` per element — clears both the value and the highlight. The registry is reset on each `runAutofill()`.
 
 ### 4-Layer Mapping Pipeline (in `mapper.ts`)
 
@@ -155,14 +175,24 @@ The current implementation injects a separate `<div>` underneath each field (pos
 
 ## Resume Import
 
-`src/resume/extractor.ts` does the parsing; `src/components/options/ImportResumeDialog.tsx` is the upload UI.
+`src/resume/extractor.ts` does the parsing; `src/components/options/ImportResumeDialog.tsx` is the upload UI; `src/components/options/ResumeFloatingPanel.tsx` is the drag source.
 
 - PDF: pdfjs `getTextContent()` with y-coordinate-based line grouping
 - DOCX: `mammoth.extractRawText({ arrayBuffer })`
-- Regex detection: email, phone (with optional calling code split), LinkedIn, portfolio, GitHub, name (first non-header line in first 5 non-empty lines)
-- Text chunking: split on `\n\s*\n+`, drop chunks < 20 chars or fully consumed by a detected field
+- **Section-aware chunking** — `splitIntoSections()` carves the raw text into named sections (EXPERIENCE, EDUCATION, SKILLS, SUMMARY, etc.); field detection runs only against the HEADER section (name/contact block) to avoid false positives. Each section is chunked differently: experience/education by date-boundary, skills as one block, certifications line-by-line, summary auto-mapped to `professional.summary` as a DetectedField.
+- Each `TextChunk` carries a `sectionLabel` used by the floating panel to group chunks visually.
 
-Result is `ExtractedResume { rawText, detectedFields, textChunks }` stored in `App.tsx` `pendingResume` state. The drag-source floating panel that consumes it is in progress (Step 10b).
+### Floating panel + drag-and-drop
+
+When `pendingResume` is set on `App.tsx`, `ResumeFloatingPanel` renders as a 280 px fixed panel (default bottom-right, draggable via header, collapsible to a 48 px icon with unused-count badge). It exposes detected fields and chunks as `draggable="true"` items.
+
+`App.tsx` attaches document-level `dragover`/`drop` listeners (only while `pendingResume` is set) that:
+- Highlight the hovered input/textarea/select with `outline: 2px dashed #6366f1`
+- On drop of a `detectedField`: fill the dropped element via `src/resume/dropFiller.ts` (reuses `fillField` from autofill)
+- On drop of a `textChunk` onto an input outside WorkHistory/Education: fill it directly
+- On drop of a `textChunk` while the active section is `workHistory` or `education`: parse the chunk (date-range regex, company/title split, degree keywords) and dispatch a `CustomEvent('job-buddy-add-entry', { detail: { section, parsedData, rawText } })` on `window`. The two sections each have a `useEffect` listener that appends a pre-filled entry and force-expands its `ExpandableCard`.
+
+Used chips/chunks are tracked via a callbacks ref so the panel can fade them and update the unused count without prop drilling.
 
 ---
 
@@ -231,5 +261,4 @@ Load in Chrome: `chrome://extensions` → "Load unpacked" → select `.output/ch
 ## What Isn't Implemented Yet
 
 - **Background messaging** — `background.ts` is a stub; popup talks to the content script directly via `chrome.tabs.sendMessage`
-- **Application history** — `applicationHistory` storage key and `ApplicationEntry` type exist; no UI, no dedup logic
-- **Resume floating panel (Step 10b)** — `pendingResume` is stored in `App.tsx` but no panel renders from it yet
+- **Application history** — `applicationHistory` storage key and `ApplicationEntry` type exist; the key is included in profile export/import bundles, but no dedup or UI consumes it
