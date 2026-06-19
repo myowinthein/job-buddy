@@ -1,3 +1,4 @@
+import { useToast } from '@/src/components/ui/Toast';
 import { useState, useRef, useEffect } from 'react';
 import type { Profile, LanguageEntry, LanguageProficiency } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
@@ -51,8 +52,8 @@ export function LanguagesSection({ profile, onSave }: Props) {
     profile.languages?.length ? profile.languages.map(initRow) : [],
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   const [newEntryTick, setNewEntryTick] = useState(0);
   const entriesContainerRef = useRef<HTMLDivElement>(null);
@@ -98,10 +99,9 @@ export function LanguagesSection({ profile, onSave }: Props) {
         language: r.language,
         proficiency: r.proficiency || 'professional_working',
       })),
-    });
+    }).then(() => showToast('success', 'Languages saved'))
+      .catch(() => showToast('error', 'Failed to save. Please try again.'));
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
   };
 
   return (
@@ -159,7 +159,6 @@ export function LanguagesSection({ profile, onSave }: Props) {
         >
           {saving ? 'Saving...' : 'Save Languages'}
         </button>
-        {saved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
       </div>
     </div>
   );

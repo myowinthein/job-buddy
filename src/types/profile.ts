@@ -100,6 +100,7 @@ export interface DerivedFields {
 }
 
 export interface Profile {
+  id: string;
   personal: {
     firstName: string;
     lastName: string;

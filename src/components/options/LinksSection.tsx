@@ -1,3 +1,4 @@
+import { useToast } from '@/src/components/ui/Toast';
 import { useState, useRef, useEffect } from 'react';
 import type { Profile, CustomLink } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
@@ -21,8 +22,8 @@ export function LinksSection({ profile, onSave }: Props) {
   });
   const [custom, setCustom] = useState<CustomLink[]>(l?.custom?.length ? l.custom : [{ label: '', url: '' }]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   const [newEntryTick, setNewEntryTick] = useState(0);
   const customContainerRef = useRef<HTMLDivElement>(null);
@@ -81,10 +82,9 @@ export function LinksSection({ profile, onSave }: Props) {
         dribbble: l?.dribbble,
         behance:  l?.behance,
       },
-    });
+    }).then(() => showToast('success', 'Links saved'))
+      .catch(() => showToast('error', 'Failed to save. Please try again.'));
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
   };
 
   const PLATFORMS = [
@@ -165,7 +165,6 @@ export function LinksSection({ profile, onSave }: Props) {
         >
           {saving ? 'Saving...' : 'Save Links'}
         </button>
-        {saved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
       </div>
     </div>
   );
