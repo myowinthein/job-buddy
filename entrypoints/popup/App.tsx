@@ -9,10 +9,20 @@ interface AutofillResult {
   totalScanned: number;
 }
 
+interface CompletionState {
+  percentage:              number;
+  isCoreComplete:          boolean;
+  optionalFieldsRemaining: number;
+}
+
 type AutofillState = 'idle' | 'loading' | 'success' | 'error';
 
 function App() {
-  const [percentage, setPercentage]       = useState(0);
+  const [completion, setCompletion] = useState<CompletionState>({
+    percentage: 0,
+    isCoreComplete: false,
+    optionalFieldsRemaining: 0,
+  });
   const [loading, setLoading]             = useState(true);
   const [autofillState, setAutofillState] = useState<AutofillState>('idle');
   const [autofillResult, setAutofillResult] = useState<AutofillResult | null>(null);
@@ -20,7 +30,12 @@ function App() {
   useEffect(() => {
     getProfile()
       .then((p) => {
-        setPercentage(calculateCompletion(p ?? {}).percentage);
+        const r = calculateCompletion(p ?? {});
+        setCompletion({
+          percentage:              r.percentage,
+          isCoreComplete:          r.isCoreComplete,
+          optionalFieldsRemaining: r.optionalFieldsRemaining,
+        });
       })
       .catch((err) => {
         console.error('[Job Buddy] Failed to load profile:', err);
@@ -54,7 +69,7 @@ function App() {
     }
   };
 
-  const handleClear = async () => {
+  const handleUndo = async () => {
     try {
       await sendToActiveTab({ action: 'CLEAR' });
     } catch { /* ignore — page may have already been refreshed */ }
@@ -62,25 +77,13 @@ function App() {
     setAutofillResult(null);
   };
 
-  const color =
-    percentage >= 80 ? 'green' : percentage >= 50 ? 'yellow' : 'red';
+  const { percentage, isCoreComplete, optionalFieldsRemaining } = completion;
 
+  const color = percentage >= 80 ? 'green' : percentage >= 50 ? 'yellow' : 'red';
   const colorMap = {
-    red: {
-      bar:   'bg-red-500',
-      text:  'text-red-600',
-      badge: 'bg-red-50 border-red-200',
-    },
-    yellow: {
-      bar:   'bg-yellow-500',
-      text:  'text-yellow-600',
-      badge: 'bg-yellow-50 border-yellow-200',
-    },
-    green: {
-      bar:   'bg-green-500',
-      text:  'text-green-600',
-      badge: 'bg-green-50 border-green-200',
-    },
+    red:    { bar: 'bg-red-500',    text: 'text-red-600',    badge: 'bg-red-50 border-red-200'       },
+    yellow: { bar: 'bg-yellow-500', text: 'text-yellow-600', badge: 'bg-yellow-50 border-yellow-200' },
+    green:  { bar: 'bg-green-500',  text: 'text-green-600',  badge: 'bg-green-50 border-green-200'   },
   }[color];
 
   return (
@@ -96,6 +99,17 @@ function App() {
       {/* Completion indicator */}
       {loading ? (
         <div className="h-20 bg-gray-100 rounded-xl animate-pulse mb-4" />
+      ) : isCoreComplete ? (
+        <div className="p-4 rounded-xl border mb-4 bg-green-50 border-green-200">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg font-bold text-green-700">✓ Ready to Apply</span>
+          </div>
+          {optionalFieldsRemaining > 0 && (
+            <p className="text-xs text-gray-500">
+              {optionalFieldsRemaining} optional field{optionalFieldsRemaining !== 1 ? 's' : ''} available for richer autofill coverage
+            </p>
+          )}
+        </div>
       ) : (
         <div className={`p-4 rounded-xl border mb-4 ${colorMap.badge}`}>
           <div className="flex items-center justify-between mb-2">
@@ -108,13 +122,11 @@ function App() {
               style={{ width: `${percentage}%` }}
             />
           </div>
-          {percentage < 100 && (
-            <p className="text-xs text-gray-500 mt-2">
-              {percentage < 50
-                ? 'Complete your profile to start auto-filling job forms'
-                : 'Almost there — finish the remaining sections'}
-            </p>
-          )}
+          <p className="text-xs text-gray-500 mt-2">
+            {percentage < 50
+              ? 'Complete your profile to start auto-filling job forms'
+              : 'Almost there — finish the remaining sections'}
+          </p>
         </div>
       )}
 
@@ -123,7 +135,7 @@ function App() {
         onClick={openOptions}
         className="w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors mb-4"
       >
-        Complete Your Profile
+        {isCoreComplete ? 'Edit Profile' : 'Complete Your Profile'}
       </button>
 
       {/* Autofill panel */}
@@ -139,15 +151,15 @@ function App() {
           {autofillState === 'loading' ? 'Filling…' : 'Auto Fill'}
         </button>
 
-        {/* Clear Highlights button */}
+        {/* Undo Auto-fill button */}
         <button
-          onClick={handleClear}
+          onClick={handleUndo}
           className="w-full py-2 px-4 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
         >
-          Clear Highlights
+          Undo Auto-fill
         </button>
 
-        {/* Result summary */}
+        {/* Result summary — no fields found */}
         {autofillState === 'success' && autofillResult && autofillResult.totalScanned === 0 && (
           <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-700 leading-relaxed">
             <p className="font-medium mb-1">No fillable fields found on this page.</p>
@@ -165,6 +177,8 @@ function App() {
             </a>
           </div>
         )}
+
+        {/* Result summary — normal */}
         {autofillState === 'success' && autofillResult && autofillResult.totalScanned > 0 && (
           <div className="mt-3 flex items-center justify-around text-xs font-semibold rounded-lg border border-gray-200 bg-white py-2 px-3">
             <span className="text-green-600">✓ Filled {autofillResult.filled}</span>

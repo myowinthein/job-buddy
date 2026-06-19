@@ -369,7 +369,6 @@ function App() {
 
   const completion = calculateCompletion(profile);
   const sectionCompletion = getSectionCompletion(profile);
-  const optionalSections = new Set(completion.optionalGroups.map((g) => g.sectionId));
   const sectionProps = { profile, onSave: handleSave };
 
   const renderSection = () => {
@@ -392,7 +391,7 @@ function App() {
       case 'languages':         return <LanguagesSection key="languages" {...sectionProps} />;
       case 'links':             return <LinksSection key="links" {...sectionProps} />;
       case 'documents':         return <DocumentsSection key="documents" {...sectionProps} />;
-      case 'settings':          return <SettingsSection key="settings" onImportComplete={handleImportComplete} />;
+      case 'settings':          return <SettingsSection key="settings" onImportComplete={handleImportComplete} onResetComplete={() => { handleImportComplete(); setActiveSection('personal'); }} />;
     }
   };
 
@@ -405,8 +404,6 @@ function App() {
         onToggle={() => setSidebarCollapsed((c) => !c)}
         sectionCompletion={sectionCompletion}
         onImportClick={() => setShowImportDialog(true)}
-        isCoreComplete={completion.isCoreComplete}
-        optionalSections={optionalSections}
       />
       <div className="flex flex-col flex-1 overflow-hidden">
         <CompletionBanner
