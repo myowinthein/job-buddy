@@ -8,9 +8,10 @@ export interface DetectedField {
 }
 
 export interface TextChunk {
-  id:   string;
-  text: string;
-  used: boolean;
+  id:           string;
+  text:         string;
+  used:         boolean;
+  sectionLabel?: string;
 }
 
 export interface ExtractedResume {
