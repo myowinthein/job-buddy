@@ -124,7 +124,7 @@ export function Sidebar({
                   : 'text-gray-700 hover:bg-gray-50'
               }`}
             >
-              <span className="text-base shrink-0">{section.icon}</span>
+              <span className="w-5 text-center shrink-0 leading-none">{section.icon}</span>
               {!collapsed && (
                 <>
                   <span className="text-sm font-medium flex-1 truncate">{section.label}</span>
@@ -161,7 +161,7 @@ export function Sidebar({
       </div>
 
       {/* Import Resume — separated by a divider */}
-      <div className={`border-t border-gray-200 p-2 ${collapsed ? 'flex justify-center' : ''}`}>
+      <div className={`border-t border-gray-200 pt-1 pb-1 ${collapsed ? 'flex justify-center px-2' : 'px-0'}`}>
         <button
           type="button"
           onClick={onImportClick}
