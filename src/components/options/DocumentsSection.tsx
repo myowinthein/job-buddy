@@ -1,3 +1,4 @@
+import { useToast } from '@/src/components/ui/Toast';
 import { useState, useRef, DragEvent } from 'react';
 import type { Profile, DocumentEntry, DocumentFile } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
@@ -167,8 +168,8 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
 
 export function DocumentsSection({ profile, onSave }: Props) {
   const [cv, setCv] = useState<DocState>(initDocState(profile.documents?.cv));
+  const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
@@ -178,10 +179,9 @@ export function DocumentsSection({ profile, onSave }: Props) {
         // Preserve any existing cover letter data without showing it in the form
         coverLetter: profile.documents?.coverLetter,
       },
-    });
+    }).then(() => showToast('success', 'Documents saved'))
+      .catch(() => showToast('error', 'Failed to save. Please try again.'));
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
   };
 
   return (
@@ -201,7 +201,6 @@ export function DocumentsSection({ profile, onSave }: Props) {
         >
           {saving ? 'Saving...' : 'Save Documents'}
         </button>
-        {saved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
       </div>
     </div>
   );
