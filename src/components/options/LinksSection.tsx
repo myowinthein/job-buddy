@@ -102,7 +102,7 @@ export function LinksSection({ profile, onSave }: Props) {
       {PLATFORMS.map(({ key, label, required, placeholder }) => (
         <FormField key={key} label={label} required={required} error={errors[key]}>
           <input
-            id={key === 'linkedin' ? 'field-linkedin' : undefined}
+            id={key === 'linkedin' ? 'field-linkedin' : key === 'portfolio' ? 'field-portfolio' : undefined}
             type="url"
             className={cls(errors[key])}
             value={form[key]}

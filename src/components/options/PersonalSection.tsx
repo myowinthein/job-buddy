@@ -235,6 +235,7 @@ export function PersonalSection({ profile, onSave }: Props) {
         error={errors.dateOfBirth}
       >
         <DateOfBirthPicker
+          id="field-dateOfBirth"
           value={form.dateOfBirth}
           onChange={(v) => set('dateOfBirth', v)}
           error={errors.dateOfBirth}
@@ -245,6 +246,7 @@ export function PersonalSection({ profile, onSave }: Props) {
       <div className="grid grid-cols-2 gap-4">
         <FormField label="Gender">
           <select
+            id="field-gender"
             className={cls()}
             value={form.gender}
             onChange={(e) => set('gender', e.target.value)}
@@ -259,6 +261,7 @@ export function PersonalSection({ profile, onSave }: Props) {
 
         <FormField label="Ethnicity">
           <select
+            id="field-ethnicity"
             className={cls()}
             value={form.ethnicity}
             onChange={(e) => set('ethnicity', e.target.value)}
@@ -278,6 +281,7 @@ export function PersonalSection({ profile, onSave }: Props) {
       <div className="grid grid-cols-2 gap-4">
         <FormField label="Veteran Status">
           <select
+            id="field-veteranStatus"
             className={cls()}
             value={form.veteranStatus}
             onChange={(e) => set('veteranStatus', e.target.value)}
@@ -290,6 +294,7 @@ export function PersonalSection({ profile, onSave }: Props) {
         </FormField>
         <FormField label="Disability Status">
           <select
+            id="field-disabilityStatus"
             className={cls()}
             value={form.disabilityStatus}
             onChange={(e) => set('disabilityStatus', e.target.value)}

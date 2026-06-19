@@ -22,6 +22,7 @@ interface Props {
   value: string;      // "YYYY-MM-DD" or ""
   onChange: (value: string) => void;
   error?: string;
+  id?: string;
 }
 
 function daysInMonth(month: number, year: number): number {
@@ -45,7 +46,7 @@ function buildDOB(month: number, day: number, year: number): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-export function DateOfBirthPicker({ value, onChange, error }: Props) {
+export function DateOfBirthPicker({ value, onChange, error, id }: Props) {
   const parsed = parseDOB(value);
   const [month, setMonth] = useState(parsed.month);
   const [day,   setDay]   = useState(parsed.day);
@@ -109,6 +110,7 @@ export function DateOfBirthPicker({ value, onChange, error }: Props) {
           onChange={(e) => handleDayInput(e.target.value)}
           placeholder="DD"
           aria-label="Day"
+          id={id}
         />
       </div>
 

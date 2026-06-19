@@ -3,9 +3,10 @@ import { getProfile } from '@/src/utils/storage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 
 interface AutofillResult {
-  filled:    number;
-  review:    number;
-  unmatched: number;
+  filled:       number;
+  review:       number;
+  unmatched:    number;
+  totalScanned: number;
 }
 
 type AutofillState = 'idle' | 'loading' | 'success' | 'error';
@@ -147,7 +148,24 @@ function App() {
         </button>
 
         {/* Result summary */}
-        {autofillState === 'success' && autofillResult && (
+        {autofillState === 'success' && autofillResult && autofillResult.totalScanned === 0 && (
+          <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-700 leading-relaxed">
+            <p className="font-medium mb-1">No fillable fields found on this page.</p>
+            <p className="text-gray-500 mb-2.5">
+              This page might use a custom form (iframe or non-standard inputs) we don't support yet.
+            </p>
+            <p className="text-gray-500 mb-1">Found a bug? Let us know:</p>
+            <a
+              href="https://github.com/myowinthein/job-buddy/issues/new"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 underline font-medium"
+            >
+              Report on GitHub
+            </a>
+          </div>
+        )}
+        {autofillState === 'success' && autofillResult && autofillResult.totalScanned > 0 && (
           <div className="mt-3 flex items-center justify-around text-xs font-semibold rounded-lg border border-gray-200 bg-white py-2 px-3">
             <span className="text-green-600">✓ Filled {autofillResult.filled}</span>
             <span className="text-yellow-600">⚠ Review {autofillResult.review}</span>
