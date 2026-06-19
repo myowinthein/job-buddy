@@ -8,6 +8,7 @@ import {
   getApplicationHistory,
   saveLearmedMappings,
   saveApplicationHistory,
+  clearAllStorage,
 } from '@/src/utils/storage';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
 import type { InvalidField } from '@/src/utils/profileValidator';
@@ -15,6 +16,7 @@ import { useToast } from '@/src/components/ui/Toast';
 
 interface Props {
   onImportComplete: () => void;
+  onResetComplete:  () => void;
 }
 
 interface ExportData {
@@ -69,10 +71,13 @@ function mergeProfiles(current: Partial<Profile>, imported: Partial<Profile>): P
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function SettingsSection({ onImportComplete }: Props) {
+export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const { showToast } = useToast();
   const [importing,     setImporting]     = useState(false);
   const [importError,   setImportError]   = useState<string | null>(null);
+  const [showResetDialog,    setShowResetDialog]    = useState(false);
+  const [resetConfirmText,   setResetConfirmText]   = useState('');
+  const [resetting,          setResetting]          = useState(false);
 
   const [parsedImport,       setParsedImport]       = useState<ParsedImport | null>(null);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
@@ -203,6 +208,30 @@ export function SettingsSection({ onImportComplete }: Props) {
     setParsedImport(null);
   };
 
+  // ── Reset All Data ───────────────────────────────────────────────────────────
+
+  const handleReset = async () => {
+    if (resetConfirmText !== 'DELETE') return;
+    setResetting(true);
+    try {
+      await clearAllStorage();
+      setShowResetDialog(false);
+      setResetConfirmText('');
+      showToast('success', 'All data has been reset');
+      onResetComplete();
+    } catch (err) {
+      console.error('[Job Buddy] Reset failed:', err);
+      showToast('error', 'Reset failed. Please try again.');
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const handleResetDialogClose = () => {
+    setShowResetDialog(false);
+    setResetConfirmText('');
+  };
+
   return (
     <div>
       <div className="mb-6">
@@ -227,7 +256,7 @@ export function SettingsSection({ onImportComplete }: Props) {
       </section>
 
       {/* ── Import ────────────────────────────────────────────────────────────── */}
-      <section>
+      <section className="mb-8 pb-8 border-b border-gray-200">
         <h3 className="text-base font-semibold text-gray-800 mb-1">Import Profile</h3>
         <p className="text-sm text-gray-500 mb-4">
           Restore a previously exported Job Buddy profile from a JSON file.
@@ -249,6 +278,27 @@ export function SettingsSection({ onImportComplete }: Props) {
         {importError && (
           <p className="mt-2 text-sm text-red-500">{importError}</p>
         )}
+      </section>
+
+      {/* ── Reset All Data ───────────────────────────────────────────────────── */}
+      <section className="pt-2">
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="text-base font-semibold text-red-700">Reset All Data</h3>
+        </div>
+        <p className="text-sm text-gray-500 mb-1">
+          Permanently delete your profile, learned mappings, and application history from this browser.
+          This cannot be undone.
+        </p>
+        <p className="text-sm text-gray-400 mb-4">
+          Consider <button type="button" className="underline hover:text-gray-600 transition-colors" onClick={handleExport}>exporting your profile first</button> as a backup.
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowResetDialog(true)}
+          className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+        >
+          Reset All Data
+        </button>
       </section>
 
       {/* ── Conflict dialog ───────────────────────────────────────────────────── */}
@@ -348,6 +398,73 @@ export function SettingsSection({ onImportComplete }: Props) {
                 className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {importing ? 'Importing…' : 'Import'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Reset confirmation dialog ─────────────────────────────────────────── */}
+      {showResetDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={handleResetDialogClose}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-base font-semibold text-gray-900">Reset All Data</h3>
+              <button
+                type="button"
+                onClick={handleResetDialogClose}
+                className="text-gray-400 hover:text-gray-600 text-xl leading-none transition-colors"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="px-6 py-5">
+              <p className="text-sm text-gray-700 mb-3">This will permanently delete:</p>
+              <ul className="text-sm text-gray-600 space-y-1 mb-4 pl-1">
+                {['Your profile data', 'Learned field mappings', 'Application history'].map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <span className="text-gray-400 mt-0.5">•</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-sm font-medium text-gray-800 mb-5">This cannot be undone.</p>
+
+              <label className="block text-sm text-gray-700 mb-2">
+                Type <code className="font-mono font-bold text-red-600">DELETE</code> to confirm:
+              </label>
+              <input
+                type="text"
+                value={resetConfirmText}
+                onChange={(e) => setResetConfirmText(e.target.value)}
+                placeholder="DELETE"
+                autoComplete="off"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={handleResetDialogClose}
+                className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleReset}
+                disabled={resetConfirmText !== 'DELETE' || resetting}
+                className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {resetting ? 'Resetting…' : 'Reset All Data'}
               </button>
             </div>
           </div>
