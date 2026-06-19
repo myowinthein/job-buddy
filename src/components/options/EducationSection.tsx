@@ -129,13 +129,13 @@ export function EducationSection({ profile, onSave }: Props) {
         e[`${idx}.startDate`] = 'Start date is required';
       } else {
         const sy = parseInt(row.startDate.split('-')[0] ?? '', 10);
-        if (sy > EDU_MAX_YEAR) e[`${idx}.startDate`] = 'Start date cannot be in the future';
-        else if (sy < EDU_MIN_YEAR) e[`${idx}.startDate`] = 'Start date is too far in the past';
+        if (sy > EDU_MAX_YEAR || sy < EDU_MIN_YEAR)
+          e[`${idx}.startDate`] = `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}`;
       }
       if (!row.isCurrent && row.endDate?.trim()) {
         const ey = parseInt(row.endDate.split('-')[0] ?? '', 10);
-        if (ey > EDU_MAX_YEAR) e[`${idx}.endDate`] = 'End date cannot be in the future';
-        else if (ey < EDU_MIN_YEAR) e[`${idx}.endDate`] = 'End date is too far in the past';
+        if (ey > EDU_MAX_YEAR || ey < EDU_MIN_YEAR)
+          e[`${idx}.endDate`] = `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}`;
         else if (row.startDate.trim() && row.endDate < row.startDate) {
           e[`${idx}.endDate`] = 'End date cannot be before start date';
         }
