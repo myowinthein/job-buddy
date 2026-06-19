@@ -73,6 +73,26 @@ export async function saveApplicationHistory(history: ApplicationEntry[]): Promi
   await storageSet({ applicationHistory: history });
 }
 
+function storageRemove(keys: string[]): Promise<void> {
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.local.remove(keys, () => {
+        if (chrome.runtime.lastError) {
+          console.error('[Job Buddy] storage.remove error:', chrome.runtime.lastError.message);
+        }
+        resolve();
+      });
+    } catch (err) {
+      console.error('[Job Buddy] storage.remove threw:', err);
+      resolve();
+    }
+  });
+}
+
+export async function clearAllStorage(): Promise<void> {
+  await storageRemove(['profile', 'learnedMappings', 'applicationHistory']);
+}
+
 export async function saveLearnedMapping(
   domain: string,
   normalizedSignal: string,
