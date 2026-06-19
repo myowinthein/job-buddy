@@ -1,3 +1,4 @@
+import { useToast } from '@/src/components/ui/Toast';
 import { useState, useRef, useEffect } from 'react';
 import type { Profile, EducationEntry } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
@@ -54,11 +55,42 @@ export function EducationSection({ profile, onSave }: Props) {
     profile.education?.length ? profile.education.map(initRow) : [emptyRow()],
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   const [newEntryTick, setNewEntryTick] = useState(0);
   const entriesContainerRef = useRef<HTMLDivElement>(null);
+  const dropCreatedRef = useRef(new Set<number>());
+
+  // Listen for structured-drop events when the education section is active.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{
+        section: string;
+        parsedData: Record<string, string>;
+        rawText: string;
+      }>;
+      if (ce.detail.section !== 'education') return;
+      const { parsedData } = ce.detail;
+      const newEntry: Row = {
+        ...emptyRow(),
+        institution: parsedData.institution ?? '',
+        degree: parsedData.degree ?? '',
+        fieldOfStudy: parsedData.fieldOfStudy ?? '',
+        startDate: parsedData.startDate ?? '',
+        endDate: parsedData.endDate ?? '',
+        isCurrent: false,
+      };
+      setEntries((prev) => {
+        dropCreatedRef.current.add(prev.length);
+        return [...prev, newEntry];
+      });
+      setNewEntryTick((t) => t + 1);
+    };
+    window.addEventListener('job-buddy-add-entry', handler);
+    return () => window.removeEventListener('job-buddy-add-entry', handler);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!newEntryTick) return;
     const raf = requestAnimationFrame(() => {
@@ -115,10 +147,9 @@ export function EducationSection({ profile, onSave }: Props) {
         grade: r.grade || undefined,
         description: r.description || undefined,
       })),
-    });
+    }).then(() => showToast('success', 'Education saved'))
+      .catch(() => showToast('error', 'Failed to save. Please try again.'));
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
   };
 
   return (
@@ -139,7 +170,7 @@ export function EducationSection({ profile, onSave }: Props) {
           summary={entrySummary(row, idx)}
           subtitle={row.fieldOfStudy || undefined}
           onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
-          defaultExpanded={!row.institution}
+          defaultExpanded={!row.institution || dropCreatedRef.current.has(idx)}
         >
           <FormField label="Institution" required error={errors[`${idx}.institution`]}>
             <input
@@ -222,7 +253,6 @@ export function EducationSection({ profile, onSave }: Props) {
         >
           {saving ? 'Saving...' : 'Save Education'}
         </button>
-        {saved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
       </div>
     </div>
   );
