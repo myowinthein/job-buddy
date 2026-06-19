@@ -16,6 +16,7 @@ export interface CompletionGroup {
 // Maps the human-readable field label used in CompletionGroup.fields to the
 // DOM id of the corresponding input, so the banner can scroll+focus it.
 export const FIELD_FOCUS_IDS: Record<string, string> = {
+  // Mandatory
   'First Name':              'field-firstName',
   'Last Name':               'field-lastName',
   'Email':                   'field-email',
@@ -26,12 +27,27 @@ export const FIELD_FOCUS_IDS: Record<string, string> = {
   'Current Salary Currency': 'field-currentCurrency',
   // 'At least one language' has no single target field; navigation goes to the section
   'LinkedIn URL':            'field-linkedin',
+  // Optional
+  'Date of Birth':           'field-dateOfBirth',
+  'Gender':                  'field-gender',
+  'Ethnicity':               'field-ethnicity',
+  'Veteran Status':          'field-veteranStatus',
+  'Disability Status':       'field-disabilityStatus',
+  'Street Address':          'field-street',
+  'State / Province':        'field-state',
+  'Postal Code':             'field-postalCode',
+  'Career Summary':          'field-summary',
+  'Portfolio URL':           'field-portfolio',
+  // 'Custom Links' has no stable single input ID — section navigation only
 };
 
 export interface CompletionResult {
-  percentage: number;
-  missingFields: string[];
-  missingGroups: CompletionGroup[];
+  percentage:              number;
+  missingFields:           string[];
+  missingGroups:           CompletionGroup[];
+  isCoreComplete:          boolean;
+  optionalFieldsRemaining: number;
+  optionalGroups:          CompletionGroup[];
 }
 
 const TOTAL_CHECKS = 16;
@@ -120,8 +136,46 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
   const totalMissing = groups.reduce((sum, g) => sum + g.fields.length, 0);
   const percentage = Math.round(((TOTAL_CHECKS - totalMissing) / TOTAL_CHECKS) * 100);
   const missingFields = groups.flatMap((g) => g.fields);
+  const isCoreComplete = percentage === 100;
 
-  return { percentage, missingFields, missingGroups: groups };
+  // Optional fields — count unfilled; also build groups for the dropdown
+  const optGroups: CompletionGroup[] = [];
+
+  function optCheck(
+    condition: boolean,
+    sectionId: string,
+    sectionLabel: string,
+    field: string,
+  ) {
+    if (!condition) {
+      let g = optGroups.find((x) => x.sectionId === sectionId);
+      if (!g) { g = { sectionId, sectionLabel, fields: [] }; optGroups.push(g); }
+      g.fields.push(field);
+    }
+  }
+
+  optCheck(!!profile.personal?.dateOfBirth?.trim(),    'personal',    'Personal Information', 'Date of Birth');
+  optCheck(!!profile.personal?.gender?.trim(),         'personal',    'Personal Information', 'Gender');
+  optCheck(!!profile.personal?.ethnicity?.trim(),      'personal',    'Personal Information', 'Ethnicity');
+  optCheck(!!profile.personal?.veteranStatus?.trim(),  'personal',    'Personal Information', 'Veteran Status');
+  optCheck(!!profile.personal?.disabilityStatus?.trim(),'personal',   'Personal Information', 'Disability Status');
+  optCheck(!!profile.address?.street?.trim(),          'address',     'Address',              'Street Address');
+  optCheck(!!profile.address?.state?.trim(),           'address',     'Address',              'State / Province');
+  optCheck(!!profile.address?.postalCode?.trim(),      'address',     'Address',              'Postal Code');
+  optCheck(!!profile.professional?.summary?.trim(),    'workHistory', 'Work History',         'Career Summary');
+  optCheck(!!profile.links?.portfolio?.trim(),         'links',       'Links & Profiles',     'Portfolio URL');
+  optCheck((profile.links?.custom?.length ?? 0) >= 1, 'links',       'Links & Profiles',     'Custom Links');
+
+  const optionalFieldsRemaining = optGroups.reduce((sum, g) => sum + g.fields.length, 0);
+
+  return {
+    percentage,
+    missingFields,
+    missingGroups: groups,
+    isCoreComplete,
+    optionalFieldsRemaining,
+    optionalGroups: optGroups,
+  };
 }
 
 export function getSectionCompletion(profile: Partial<Profile>): Record<string, boolean> {
