@@ -125,7 +125,21 @@ export function EducationSection({ profile, onSave }: Props) {
       if (!row.institution.trim()) e[`${idx}.institution`] = 'Institution is required';
       if (!row.degree.trim()) e[`${idx}.degree`] = 'Degree is required';
       if (!row.fieldOfStudy.trim()) e[`${idx}.fieldOfStudy`] = 'Field of study is required';
-      if (!row.startDate.trim()) e[`${idx}.startDate`] = 'Start date is required';
+      if (!row.startDate.trim()) {
+        e[`${idx}.startDate`] = 'Start date is required';
+      } else {
+        const sy = parseInt(row.startDate.split('-')[0] ?? '', 10);
+        if (sy > EDU_MAX_YEAR) e[`${idx}.startDate`] = 'Start date cannot be in the future';
+        else if (sy < EDU_MIN_YEAR) e[`${idx}.startDate`] = 'Start date is too far in the past';
+      }
+      if (!row.isCurrent && row.endDate?.trim()) {
+        const ey = parseInt(row.endDate.split('-')[0] ?? '', 10);
+        if (ey > EDU_MAX_YEAR) e[`${idx}.endDate`] = 'End date cannot be in the future';
+        else if (ey < EDU_MIN_YEAR) e[`${idx}.endDate`] = 'End date is too far in the past';
+        else if (row.startDate.trim() && row.endDate < row.startDate) {
+          e[`${idx}.endDate`] = 'End date cannot be before start date';
+        }
+      }
     });
     setErrors(e);
     return Object.keys(e).length === 0;

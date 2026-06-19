@@ -26,9 +26,9 @@ export function useToast(): ToastContextValue {
 // ── Per-type defaults ─────────────────────────────────────────────────────────
 
 const DEFAULT_DURATION: Record<ToastMessage['type'], number> = {
-  success: 3000,
-  warning: 3000,
-  error:   5000,
+  success: 2000,
+  warning: 2000,
+  error:   3500,
 };
 
 const TYPE_STYLE = {
@@ -123,9 +123,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
       {children}
 
-      {/* Toast stack — top-right, newest on top */}
+      {/* Toast stack — top-right aligned with section content area (below banner + padding) */}
       <div
-        style={{ position: 'fixed', top: 16, right: 16, zIndex: 9999 }}
+        style={{ position: 'fixed', top: 96, right: 16, zIndex: 9999 }}
         className="flex flex-col gap-2 pointer-events-none"
       >
         {toasts.map((toast) => (
