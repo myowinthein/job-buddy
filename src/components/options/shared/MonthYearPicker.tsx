@@ -15,15 +15,11 @@ const MONTHS = [
   { value: '12', label: 'December' },
 ];
 
-const CURRENT_YEAR = new Date().getFullYear();
-
 interface Props {
   value: string;      // "YYYY-MM" or ""
   onChange: (value: string) => void;
   error?: string;
   disabled?: boolean;
-  minYear?: number;   // defaults to CURRENT_YEAR - 70
-  maxYear?: number;   // defaults to CURRENT_YEAR
 }
 
 export function MonthYearPicker({
@@ -31,8 +27,6 @@ export function MonthYearPicker({
   onChange,
   error,
   disabled = false,
-  minYear = CURRENT_YEAR - 70,
-  maxYear = CURRENT_YEAR,
 }: Props) {
   const [month, setMonth] = useState<string>(() => (value ? (value.split('-')[1] ?? '') : ''));
   // yearStr tracks what the user has typed (may be partial, e.g. "199")
@@ -50,7 +44,7 @@ export function MonthYearPicker({
   const isValidYear = (s: string): boolean => {
     if (s.length !== 4) return false;
     const n = parseInt(s, 10);
-    return !isNaN(n) && n >= minYear && n <= maxYear;
+    return !isNaN(n);
   };
 
   const handleYearInput = (raw: string) => {

@@ -223,8 +223,6 @@ export function EducationSection({ profile, onSave }: Props) {
                 value={row.startDate}
                 onChange={(v) => update(idx, 'startDate', v)}
                 error={errors[`${idx}.startDate`]}
-                minYear={EDU_MIN_YEAR}
-                maxYear={EDU_MAX_YEAR}
               />
             </FormField>
             <FormField label="End Date">
@@ -232,8 +230,6 @@ export function EducationSection({ profile, onSave }: Props) {
                 value={row.endDate ?? ''}
                 onChange={(v) => update(idx, 'endDate', v)}
                 disabled={row.isCurrent}
-                minYear={EDU_MIN_YEAR}
-                maxYear={EDU_MAX_YEAR}
               />
             </FormField>
           </div>
