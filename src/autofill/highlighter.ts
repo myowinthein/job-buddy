@@ -1,104 +1,36 @@
-let underlineIndex = 0;
-let scrollResizeListener: (() => void) | null = null;
-
-function updatePositions(): void {
-  const elements = document.querySelectorAll<HTMLElement>('[data-jb-underline-id]');
-  for (const el of Array.from(elements)) {
-    const id = el.dataset.jbUnderlineId;
-    if (!id) continue;
-    const underline = document.getElementById(id);
-    if (!underline) continue;
-    const rect = el.getBoundingClientRect();
-    underline.style.left  = `${rect.left + 1}px`;
-    underline.style.top   = `${rect.bottom - 2}px`;
-    underline.style.width = `${rect.width - 2}px`;
-  }
-}
-
-function attachScrollResizeListener(): void {
-  if (scrollResizeListener) return; // already attached for this run
-  scrollResizeListener = updatePositions;
-  window.addEventListener('scroll', scrollResizeListener, { passive: true });
-  window.addEventListener('resize', scrollResizeListener, { passive: true });
-}
+// Confidence-based background tint applied directly to form elements.
+// Original background-color and transition are saved in data attributes
+// so they can be restored exactly on clear.
 
 export function applyHighlight(element: HTMLElement, confidence: number): void {
   element.dataset.jbHighlighted = '1';
 
-  // Fix 1: save and neutralize element's own border-bottom and outline to
-  // prevent them from conflicting with the injected underline div
-  if (!('jbOrigBorderBottom' in element.dataset)) {
-    element.dataset.jbOrigBorderBottom = element.style.borderBottom;
-    element.dataset.jbOrigOutline      = element.style.outline;
-  }
-  element.style.borderBottom = 'none';
-  element.style.outline      = 'none';
-
-  let bg: string;
-  if (confidence >= 0.85) {
-    bg = '#22c55e';
-  } else if (confidence >= 0.60) {
-    bg = '#eab308';
-  } else {
-    bg = '#ef4444';
+  if (!('jbOrigBackground' in element.dataset)) {
+    element.dataset.jbOrigBackground = element.style.backgroundColor;
+    element.dataset.jbOrigTransition = element.style.transition;
   }
 
-  const rect      = element.getBoundingClientRect();
-  const id        = `jb-underline-${underlineIndex++}`;
-  const underline = document.createElement('div');
-  underline.id    = id;
-
-  // Fix 2: inset by 1px on each side so the underline stays within the
-  // element's visual boundary
-  Object.assign(underline.style, {
-    position:      'fixed',
-    left:          `${rect.left + 1}px`,
-    top:           `${rect.bottom - 2}px`,
-    width:         `${rect.width - 2}px`,
-    height:        '2px',
-    background:    bg,
-    zIndex:        '2147483647',
-    pointerEvents: 'none',
-    opacity:       '0',
-    transition:    'opacity 0.3s ease',
-  });
-
-  element.dataset.jbUnderlineId = id;
-  document.body.appendChild(underline);
-
-  // Trigger transition: opacity must flip in a separate frame after append
-  requestAnimationFrame(() => { underline.style.opacity = '1'; });
-
-  attachScrollResizeListener();
+  element.style.transition = 'background-color 0.2s ease';
+  element.style.backgroundColor =
+    confidence >= 0.85 ? 'rgba(34, 197, 94, 0.12)' :
+    confidence >= 0.60 ? 'rgba(234, 179, 8, 0.12)' :
+                         'rgba(239, 68, 68, 0.12)';
 }
 
 export function clearElementHighlight(element: HTMLElement): void {
-  const underlineId = element.dataset.jbUnderlineId;
-  if (underlineId) document.getElementById(underlineId)?.remove();
-  element.style.borderBottom = element.dataset.jbOrigBorderBottom ?? '';
-  element.style.outline      = element.dataset.jbOrigOutline      ?? '';
+  element.style.backgroundColor = element.dataset.jbOrigBackground ?? '';
+  element.style.transition      = element.dataset.jbOrigTransition  ?? '';
   delete element.dataset.jbHighlighted;
-  delete element.dataset.jbUnderlineId;
-  delete element.dataset.jbOrigBorderBottom;
-  delete element.dataset.jbOrigOutline;
+  delete element.dataset.jbOrigBackground;
+  delete element.dataset.jbOrigTransition;
 }
 
 export function clearHighlights(): void {
-  if (scrollResizeListener) {
-    window.removeEventListener('scroll', scrollResizeListener);
-    window.removeEventListener('resize', scrollResizeListener);
-    scrollResizeListener = null;
-  }
-
-  document.querySelectorAll('[id^="jb-underline-"]').forEach((el) => el.remove());
-  underlineIndex = 0;
-
   document.querySelectorAll<HTMLElement>('[data-jb-highlighted]').forEach((el) => {
-    el.style.borderBottom = el.dataset.jbOrigBorderBottom ?? '';
-    el.style.outline      = el.dataset.jbOrigOutline      ?? '';
+    el.style.backgroundColor = el.dataset.jbOrigBackground ?? '';
+    el.style.transition      = el.dataset.jbOrigTransition  ?? '';
     delete el.dataset.jbHighlighted;
-    delete el.dataset.jbUnderlineId;
-    delete el.dataset.jbOrigBorderBottom;
-    delete el.dataset.jbOrigOutline;
+    delete el.dataset.jbOrigBackground;
+    delete el.dataset.jbOrigTransition;
   });
 }
