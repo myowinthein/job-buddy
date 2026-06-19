@@ -4,7 +4,7 @@ import { extractSignals } from './signals';
 import type { FieldSignals } from './signals';
 import { mapField } from './mapper';
 import { fillField, clearFieldValue } from './filler';
-import { applyHighlight, clearElementHighlight } from './highlighter';
+import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
 import { attachPickerListeners } from './picker';
 import { normalize } from './normalizer';
 
@@ -27,6 +27,7 @@ export function undoAutofill(): void {
     clearElementHighlight(element);
   }
   filledElements = [];
+  clearHighlights();
 }
 
 export async function runAutofill(): Promise<AutofillResult> {
