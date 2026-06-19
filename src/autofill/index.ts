@@ -3,6 +3,7 @@ import { scanFields } from './scanner';
 import { extractSignals } from './signals';
 import type { FieldSignals } from './signals';
 import { mapField } from './mapper';
+import type { FieldMatch } from './mapper';
 import { fillField, clearFieldValue } from './filler';
 import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
 import { attachPickerListeners } from './picker';
@@ -17,9 +18,33 @@ export interface AutofillResult {
   totalScanned: number;
 }
 
+export interface AutofillScanResult {
+  preFilledCount: number;
+  totalMatched:   number;
+}
+
 // All elements touched during the current autofill session (mapper + picker).
-// Reset on each runAutofill() call.
+// Reset on each runAutofill() / executeAutofill() call.
 let filledElements: HTMLElement[] = [];
+
+// Scan results held between AUTOFILL_SCAN and AUTOFILL_FILL messages.
+interface PendingMatch {
+  element:          HTMLElement;
+  signals:          FieldSignals;
+  match:            FieldMatch;
+  hasExistingValue: boolean;
+}
+let pendingMatches: PendingMatch[] = [];
+
+function getFieldValue(element: HTMLElement): string {
+  if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+    return element.value;
+  }
+  if (element instanceof HTMLSelectElement) {
+    return element.value;
+  }
+  return '';
+}
 
 export function undoAutofill(): void {
   for (const element of filledElements) {
@@ -30,26 +55,62 @@ export function undoAutofill(): void {
   clearHighlights();
 }
 
-export async function runAutofill(): Promise<AutofillResult> {
+// Phase 1: scan and map all fields; detect which matched fields already have values.
+// Results are held in pendingMatches for executeAutofill().
+export async function scanAutofill(): Promise<AutofillScanResult> {
+  pendingMatches = [];
   filledElements = [];
 
   const profile = await getProfile();
   if (!profile) {
     console.warn('[Job Buddy] Profile not found — skipping autofill');
-    return { filled: 0, review: 0, unmatched: 0, totalScanned: 0 };
+    return { preFilledCount: 0, totalMatched: 0 };
   }
 
   const learnedMappings = await getLearnedMappings();
   const domain = window.location.hostname;
   const fields = scanFields();
-  const totalScanned = fields.length;
 
-  const result: AutofillResult = { filled: 0, review: 0, unmatched: 0, totalScanned };
-  const redFields: Array<{ element: HTMLElement; signals: FieldSignals }> = [];
+  let preFilledCount = 0;
+  let totalMatched   = 0;
 
   for (const element of fields) {
     const signals = extractSignals(element);
     const match   = mapField(signals, profile, learnedMappings, domain);
+    const hasExistingValue = getFieldValue(element) !== '';
+
+    if (match.confidence > 0 && match.value) {
+      totalMatched++;
+      if (hasExistingValue) preFilledCount++;
+    }
+
+    pendingMatches.push({ element, signals, match, hasExistingValue });
+  }
+
+  return { preFilledCount, totalMatched };
+}
+
+// Phase 2: fill fields according to the chosen mode.
+// 'merge'     — skip fields that already had a value (leave them untouched).
+// 'overwrite' — fill all matched fields regardless of existing content.
+export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<AutofillResult> {
+  const profile = await getProfile();
+  if (!profile) return { filled: 0, review: 0, unmatched: 0, totalScanned: 0 };
+
+  const learnedMappings = await getLearnedMappings();
+  const domain = window.location.hostname;
+
+  const result: AutofillResult = {
+    filled: 0, review: 0, unmatched: 0,
+    totalScanned: pendingMatches.length,
+  };
+  const redFields: Array<{ element: HTMLElement; signals: FieldSignals }> = [];
+
+  for (const { element, signals, match, hasExistingValue } of pendingMatches) {
+    // Merge mode: leave fields that already have content completely untouched
+    if (mode === 'merge' && hasExistingValue && match.confidence > 0 && match.value) {
+      continue;
+    }
 
     if (match.confidence > 0 && match.value) {
       await fillField(element, match.value);
@@ -58,15 +119,15 @@ export async function runAutofill(): Promise<AutofillResult> {
 
     applyHighlight(element, match.confidence);
 
-    if (match.confidence >= 0.85) {
-      result.filled++;
-    } else if (match.confidence >= 0.60) {
-      result.review++;
-    } else {
+    if (match.confidence >= 0.85)      result.filled++;
+    else if (match.confidence >= 0.60) result.review++;
+    else {
       result.unmatched++;
       redFields.push({ element, signals });
     }
   }
+
+  pendingMatches = [];
 
   attachPickerListeners(redFields, profile, async (element, fieldPath, value) => {
     await fillField(element, value);
@@ -90,4 +151,10 @@ export async function runAutofill(): Promise<AutofillResult> {
   });
 
   return result;
+}
+
+// Legacy single-phase entry point (kept for internal use / backward compat).
+export async function runAutofill(): Promise<AutofillResult> {
+  await scanAutofill();
+  return executeAutofill('overwrite');
 }
