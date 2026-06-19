@@ -1,3 +1,4 @@
+import { useToast } from '@/src/components/ui/Toast';
 import { useState, useRef, useEffect } from 'react';
 import type { Profile, WorkAuthorizationEntry, WorkAuthorizationStatus } from '@/src/types/profile';
 import { findCountryByNameOrCode } from '@/src/data/countries';
@@ -45,8 +46,8 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
       : [emptyRow()],
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   const [newEntryTick, setNewEntryTick] = useState(0);
   const entriesContainerRef = useRef<HTMLDivElement>(null);
@@ -91,10 +92,9 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
         country: r.country,
         status: r.status as WorkAuthorizationStatus,
       })),
-    });
+    }).then(() => showToast('success', 'Work authorization saved'))
+      .catch(() => showToast('error', 'Failed to save. Please try again.'));
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
   };
 
   return (
@@ -159,7 +159,6 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
         >
           {saving ? 'Saving...' : 'Save Work Authorization'}
         </button>
-        {saved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
       </div>
     </div>
   );

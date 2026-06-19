@@ -43,7 +43,12 @@ function storageSet(items: Record<string, unknown>): Promise<void> {
 
 export async function getProfile(): Promise<Profile | null> {
   const result = await storageGet('profile');
-  return (result.profile as Profile) ?? null;
+  const profile = (result.profile as Profile) ?? null;
+  if (profile && !profile.id) {
+    profile.id = crypto.randomUUID();
+    await storageSet({ profile });
+  }
+  return profile;
 }
 
 export async function saveProfile(profile: Profile): Promise<void> {
