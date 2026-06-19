@@ -1,4 +1,4 @@
-import { runAutofill, clearHighlights } from '@/src/autofill/index';
+import { runAutofill, undoAutofill } from '@/src/autofill/index';
 
 export default defineContentScript({
   matches: ['*://*/*'],
@@ -12,7 +12,7 @@ export default defineContentScript({
       }
 
       if (message.action === 'CLEAR') {
-        clearHighlights();
+        undoAutofill();
         sendResponse({ success: true });
         return true;
       }
