@@ -44,23 +44,29 @@ function fillSelect(select: HTMLSelectElement, value: string): void {
   }
 }
 
-export function clearFieldValue(element: HTMLElement): void {
+// Sets an element's value to empty and notifies the page's framework.
+function setEmpty(element: HTMLElement): void {
   if (element instanceof HTMLSelectElement) {
     element.selectedIndex = 0;
     element.dispatchEvent(new Event('change', { bubbles: true }));
-    return;
-  }
-  if (element instanceof HTMLTextAreaElement) {
+  } else if (element instanceof HTMLTextAreaElement) {
     if (nativeTextareaSetter) nativeTextareaSetter.call(element, '');
     else element.value = '';
     dispatchEvents(element);
-    return;
-  }
-  if (element instanceof HTMLInputElement) {
+  } else if (element instanceof HTMLInputElement) {
     if (nativeInputSetter) nativeInputSetter.call(element, '');
     else element.value = '';
     dispatchEvents(element);
   }
+}
+
+export function clearFieldValue(element: HTMLElement): void {
+  setEmpty(element);
+  // React (and some other frameworks) reconcile synchronously inside the
+  // dispatched input event and can restore the filled value before control
+  // returns here.  A microtask runs after that synchronous re-render and
+  // applies the clear a second time, ensuring the field stays empty.
+  queueMicrotask(() => setEmpty(element));
 }
 
 export async function fillField(element: HTMLElement, value: string): Promise<void> {
