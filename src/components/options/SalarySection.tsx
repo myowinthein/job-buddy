@@ -1,3 +1,4 @@
+import { useToast } from '@/src/components/ui/Toast';
 import { useState, useRef, useEffect } from 'react';
 import type { Profile } from '@/src/types/profile';
 import { findCountryByNameOrCode } from '@/src/data/countries';
@@ -68,8 +69,8 @@ export function SalarySection({ profile, onSave }: Props) {
 
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   const [newEntryTick, setNewEntryTick] = useState(0);
   const entriesContainerRef = useRef<HTMLDivElement>(null);
@@ -120,10 +121,9 @@ export function SalarySection({ profile, onSave }: Props) {
           amount: r.amount !== '' ? Number(r.amount) : undefined,
         })),
       },
-    });
+    }).then(() => showToast('success', 'Salary saved'))
+      .catch(() => showToast('error', 'Failed to save. Please try again.'));
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
   };
 
   return (
@@ -228,7 +228,6 @@ export function SalarySection({ profile, onSave }: Props) {
         >
           {saving ? 'Saving...' : 'Save Salary'}
         </button>
-        {saved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
       </div>
     </div>
   );

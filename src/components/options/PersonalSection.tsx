@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useToast } from '@/src/components/ui/Toast';
 import type { Profile, PhoneNumber } from '@/src/types/profile';
 import { findCountry } from '@/src/data/countries';
 import { SearchableCountrySelect } from './shared/SearchableCountrySelect';
@@ -56,8 +57,8 @@ export function PersonalSection({ profile, onSave }: Props) {
     disabilityStatus: p?.disabilityStatus ?? '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   const fieldError = (key: string, value: string): string => {
     switch (key) {
@@ -152,10 +153,9 @@ export function PersonalSection({ profile, onSave }: Props) {
         veteranStatus: form.veteranStatus || undefined,
         disabilityStatus: form.disabilityStatus || undefined,
       },
-    });
+    }).then(() => showToast('success', 'Personal information saved'))
+      .catch(() => showToast('error', 'Failed to save. Please try again.'));
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
   };
 
   return (
@@ -310,7 +310,6 @@ export function PersonalSection({ profile, onSave }: Props) {
         >
           {saving ? 'Saving...' : 'Save Personal Information'}
         </button>
-        {saved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
       </div>
     </div>
   );

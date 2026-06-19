@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useToast } from '@/src/components/ui/Toast';
 import type { Profile } from '@/src/types/profile';
 import { findCountryByNameOrCode } from '@/src/data/countries';
 import { FormField } from './shared/FormField';
@@ -32,8 +33,8 @@ export function AddressSection({ profile, onSave }: Props) {
     postalCode: a?.postalCode ?? '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   const fieldError = (key: string, value: string): string => {
     if (key === 'city') return !value.trim() ? 'City is required' : '';
@@ -65,10 +66,9 @@ export function AddressSection({ profile, onSave }: Props) {
         state: form.state || undefined,
         postalCode: form.postalCode || undefined,
       },
-    });
+    }).then(() => showToast('success', 'Address saved'))
+      .catch(() => showToast('error', 'Failed to save. Please try again.'));
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
   };
 
   return (
@@ -138,7 +138,6 @@ export function AddressSection({ profile, onSave }: Props) {
         >
           {saving ? 'Saving...' : 'Save Address'}
         </button>
-        {saved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
       </div>
     </div>
   );
