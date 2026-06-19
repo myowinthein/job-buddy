@@ -76,8 +76,6 @@ interface SidebarProps {
   onToggle: () => void;
   sectionCompletion: Record<string, boolean>;
   onImportClick: () => void;
-  isCoreComplete: boolean;
-  optionalSections: Set<string>;
 }
 
 export function Sidebar({
@@ -87,8 +85,6 @@ export function Sidebar({
   onToggle,
   sectionCompletion,
   onImportClick,
-  isCoreComplete,
-  optionalSections,
 }: SidebarProps) {
   return (
     <aside
@@ -133,12 +129,7 @@ export function Sidebar({
                 <>
                   <span className="text-sm font-medium flex-1 truncate">{section.label}</span>
                   {isComplete && (
-                    <span className="flex items-center gap-0.5 shrink-0">
-                      <span className="text-green-500 text-xs" title="Complete">✓</span>
-                      {isCoreComplete && optionalSections.has(section.id) && (
-                        <span className="text-gray-400 text-[8px] leading-none" title="Optional fields available">●</span>
-                      )}
-                    </span>
+                    <span className="text-green-500 text-xs shrink-0" title="Complete">✓</span>
                   )}
                 </>
               )}

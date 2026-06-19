@@ -67,13 +67,13 @@ export function CompletionBanner({
             <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-700 text-xs flex items-center justify-center font-bold">
               {totalMissing}
             </span>
-            missing {showDropdown ? '▲' : '▼'}
+            Missing {showDropdown ? '▲' : '▼'}
           </button>
 
           {showDropdown && (
             <div className="absolute right-0 top-full mt-1 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-2">
               <p className="text-xs font-semibold text-gray-500 px-3 pb-1.5 border-b border-gray-100">
-                Missing required fields
+                Required Fields
               </p>
               <ul className="max-h-64 overflow-y-auto py-1">
                 {missingGroups.map((group) => (
@@ -114,13 +114,13 @@ export function CompletionBanner({
             onClick={() => setShowDropdown((s) => !s)}
             className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 transition-colors"
           >
-            optional {showDropdown ? '▲' : '▼'}
+            Missing {showDropdown ? '▲' : '▼'}
           </button>
 
           {showDropdown && (
             <div className="absolute right-0 top-full mt-1 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-2">
               <p className="text-xs font-semibold text-gray-500 px-3 pb-1.5 border-b border-gray-100">
-                Optional fields for richer autofill
+                Optional Fields
               </p>
               <ul className="max-h-64 overflow-y-auto py-1">
                 {optionalGroups.map((group) => (
