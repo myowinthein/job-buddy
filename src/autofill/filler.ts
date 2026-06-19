@@ -44,6 +44,25 @@ function fillSelect(select: HTMLSelectElement, value: string): void {
   }
 }
 
+export function clearFieldValue(element: HTMLElement): void {
+  if (element instanceof HTMLSelectElement) {
+    element.selectedIndex = 0;
+    element.dispatchEvent(new Event('change', { bubbles: true }));
+    return;
+  }
+  if (element instanceof HTMLTextAreaElement) {
+    if (nativeTextareaSetter) nativeTextareaSetter.call(element, '');
+    else element.value = '';
+    dispatchEvents(element);
+    return;
+  }
+  if (element instanceof HTMLInputElement) {
+    if (nativeInputSetter) nativeInputSetter.call(element, '');
+    else element.value = '';
+    dispatchEvents(element);
+  }
+}
+
 export async function fillField(element: HTMLElement, value: string): Promise<void> {
   if (!value) return;
 

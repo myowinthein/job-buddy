@@ -72,6 +72,17 @@ export function applyHighlight(element: HTMLElement, confidence: number): void {
   attachScrollResizeListener();
 }
 
+export function clearElementHighlight(element: HTMLElement): void {
+  const underlineId = element.dataset.jbUnderlineId;
+  if (underlineId) document.getElementById(underlineId)?.remove();
+  element.style.borderBottom = element.dataset.jbOrigBorderBottom ?? '';
+  element.style.outline      = element.dataset.jbOrigOutline      ?? '';
+  delete element.dataset.jbHighlighted;
+  delete element.dataset.jbUnderlineId;
+  delete element.dataset.jbOrigBorderBottom;
+  delete element.dataset.jbOrigOutline;
+}
+
 export function clearHighlights(): void {
   if (scrollResizeListener) {
     window.removeEventListener('scroll', scrollResizeListener);
