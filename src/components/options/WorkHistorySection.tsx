@@ -18,6 +18,7 @@ const cls = (err?: string) =>
     : 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 const CURRENT_YEAR = new Date().getFullYear();
+const MIN_YEAR = CURRENT_YEAR - 100;
 
 const NOTICE_MAX: Record<NoticePeriodUnit, number> = {
   day: 365,
@@ -176,16 +177,16 @@ export function WorkHistorySection({ profile, onSave }: Props) {
         e[`${idx}.startDate`] = 'Start date is required';
       } else {
         const sy = parseInt(row.startDate.split('-')[0] ?? '', 10);
-        if (sy > CURRENT_YEAR) e[`${idx}.startDate`] = 'Start date cannot be in the future';
-        else if (sy < CURRENT_YEAR - 100) e[`${idx}.startDate`] = 'Start date is too far in the past';
+        if (sy > CURRENT_YEAR || sy < MIN_YEAR)
+          e[`${idx}.startDate`] = `Year must be between ${MIN_YEAR} and ${CURRENT_YEAR}`;
       }
       if (!row.isCurrent) {
         if (!row.endDate.trim()) {
           e[`${idx}.endDate`] = 'End date is required';
         } else {
           const ey = parseInt(row.endDate.split('-')[0] ?? '', 10);
-          if (ey > CURRENT_YEAR) e[`${idx}.endDate`] = 'End date cannot be in the future';
-          else if (ey < CURRENT_YEAR - 100) e[`${idx}.endDate`] = 'End date is too far in the past';
+          if (ey > CURRENT_YEAR || ey < MIN_YEAR)
+            e[`${idx}.endDate`] = `Year must be between ${MIN_YEAR} and ${CURRENT_YEAR}`;
           else if (row.startDate.trim() && row.endDate < row.startDate) {
             e[`${idx}.endDate`] = 'End date cannot be before start date';
           }
