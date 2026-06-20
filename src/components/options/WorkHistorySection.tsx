@@ -162,6 +162,10 @@ export function WorkHistorySection({ profile, onSave }: Props) {
     else if (key === 'isCurrent' && value === true) {
       // Marking as ongoing clears any existing end-date error
       setErrors((e) => ({ ...e, [`${idx}.endDate`]: '' }));
+    } else if ((key === 'startDate' || key === 'endDate') && typeof value === 'string' && value) {
+      const y = parseInt(value.split('-')[0] ?? '', 10);
+      if (!isNaN(y) && (y > CURRENT_YEAR || y < MIN_YEAR))
+        err = `Year must be between ${MIN_YEAR} and ${CURRENT_YEAR}`;
     }
     setErrors((e) => ({ ...e, [ek]: err }));
   };
