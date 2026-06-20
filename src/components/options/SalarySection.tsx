@@ -101,7 +101,6 @@ export function SalarySection({ profile, onSave }: Props) {
     else if (isNaN(Number(currentAmount)) || Number(currentAmount) < 0)
       e.currentAmount = 'Enter a valid amount';
     if (!currentCurrency) e.currentCurrency = 'Currency is required';
-    if (expected.length === 0) e.expectedList = 'At least one expected salary entry is required';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -183,10 +182,6 @@ export function SalarySection({ profile, onSave }: Props) {
             + Add Entry
           </button>
         </div>
-        {errors.expectedList && (
-          <p className="text-xs text-red-500 mb-2">{errors.expectedList}</p>
-        )}
-
         <div ref={entriesContainerRef}>
         {expected.map((row, idx) => (
           <div key={idx} className="p-4 border border-gray-200 rounded-lg mb-3">
