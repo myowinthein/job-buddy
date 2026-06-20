@@ -49,7 +49,7 @@ export interface CompletionResult {
   optionalGroups:          CompletionGroup[];
 }
 
-const TOTAL_CHECKS = 16;
+const TOTAL_CHECKS = 15;
 
 export function calculateCompletion(profile: Partial<Profile>): CompletionResult {
   const groups: CompletionGroup[] = [];
@@ -72,13 +72,12 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
   check(!!profile.address?.city?.trim(), 'address', 'Address', 'City');
   check(!!profile.address?.country?.trim(), 'address', 'Address', 'Country');
 
-  // Salary (3)
+  // Salary (2 mandatory; Expected Salary is optional and tracked below)
   check(
     typeof profile.salary?.current?.amount === 'number' && profile.salary.current.amount >= 0,
     'salary', 'Salary', 'Current Salary Amount',
   );
   check(!!profile.salary?.current?.currency?.trim(), 'salary', 'Salary', 'Current Salary Currency');
-  check((profile.salary?.expected?.length ?? 0) >= 1, 'salary', 'Salary', 'Expected Salary (at least one entry)');
 
   // Work Authorization (1)
   const waEntries = profile.workAuthorization ?? [];
@@ -161,7 +160,25 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
   optCheck(!!profile.address?.street?.trim(),          'address',     'Address',              'Street Address');
   optCheck(!!profile.address?.state?.trim(),           'address',     'Address',              'State / Province');
   optCheck(!!profile.address?.postalCode?.trim(),      'address',     'Address',              'Postal Code');
+  optCheck((profile.salary?.expected?.length ?? 0) >= 1, 'salary',    'Salary',               'Expected Salary');
   optCheck(!!profile.professional?.summary?.trim(),    'workHistory', 'Work History',         'Career Summary');
+
+  // Work History entry-level optional fields: report once per missing field
+  // across any entry that has the core fields filled. Skips empty/placeholder
+  // entries (no company AND no title) so blank skeleton rows don't trigger
+  // false positives.
+  const whFilled = (profile.workHistory ?? []).filter(
+    (e) => !!e.company?.trim() || !!e.title?.trim(),
+  );
+  if (whFilled.length > 0) {
+    optCheck(whFilled.every((e) => !!e.location?.city?.trim() || !!e.location?.countryCode?.trim()),
+      'workHistory', 'Work History', 'Location');
+    optCheck(whFilled.every((e) => !!e.arrangement),
+      'workHistory', 'Work History', 'Work Arrangement');
+    optCheck(whFilled.every((e) => !!e.description?.trim()),
+      'workHistory', 'Work History', 'Description');
+  }
+
   optCheck(!!profile.links?.portfolio?.trim(),         'links',       'Links & Profiles',     'Portfolio URL');
 
   const optionalFieldsRemaining = optGroups.reduce((sum, g) => sum + g.fields.length, 0);
@@ -193,8 +210,7 @@ export function getSectionCompletion(profile: Partial<Profile>): Record<string, 
     salary:
       typeof profile.salary?.current?.amount === 'number' &&
       profile.salary.current.amount >= 0 &&
-      !!profile.salary?.current?.currency?.trim() &&
-      (profile.salary?.expected?.length ?? 0) >= 1,
+      !!profile.salary?.current?.currency?.trim(),
 
     workAuthorization:
       waEntries.length >= 1 && waEntries.every((e) => !!e.country?.trim() && !!e.status),
