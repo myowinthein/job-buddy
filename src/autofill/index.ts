@@ -23,9 +23,13 @@ export interface AutofillScanResult {
   totalMatched:   number;
 }
 
-// All elements touched during the current autofill session (mapper + picker).
-// Reset on each runAutofill() / executeAutofill() call.
-let filledElements: HTMLElement[] = [];
+// Every element that received applyHighlight during the current session.
+// Superset of "elements that were filled" — includes highlighted-but-unfilled
+// fields (unmatched, matched-but-no-profile-value, low-confidence).
+// Cleared and re-populated on each scan/fill cycle.
+// undoAutofill uses this so that fields the user typed into after autofill
+// (on any highlighted field) are also cleared on undo.
+let sessionElements: HTMLElement[] = [];
 
 // Scan results held between AUTOFILL_SCAN and AUTOFILL_FILL messages.
 interface PendingMatch {
@@ -47,19 +51,19 @@ function getFieldValue(element: HTMLElement): string {
 }
 
 export function undoAutofill(): void {
-  for (const element of filledElements) {
+  for (const element of sessionElements) {
     clearFieldValue(element);
     clearElementHighlight(element);
   }
-  filledElements = [];
+  sessionElements = [];
   clearHighlights();
 }
 
 // Phase 1: scan and map all fields; detect which matched fields already have values.
 // Results are held in pendingMatches for executeAutofill().
 export async function scanAutofill(): Promise<AutofillScanResult> {
-  pendingMatches = [];
-  filledElements = [];
+  pendingMatches  = [];
+  sessionElements = [];
 
   const profile = await getProfile();
   if (!profile) {
@@ -91,8 +95,16 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
 }
 
 // Phase 2: fill fields according to the chosen mode.
-// 'merge'     — skip fields that already had a value (leave them untouched).
+// 'merge'     — skip fields that already had a value (leave them untouched, no highlight).
 // 'overwrite' — fill all matched fields regardless of existing content.
+//
+// Counting rules:
+//   filled   = confidence >= 0.85 AND a non-empty profile value was actually written
+//   review   = 0.60 <= confidence < 0.85 AND value was written
+//   unmatched = no match OR matched but profile value is empty OR confidence < 0.60
+//
+// Only elements where applyHighlight is called are added to sessionElements,
+// so undoAutofill can restore them all (not just the ones autofill wrote to).
 export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<AutofillResult> {
   const profile = await getProfile();
   if (!profile) return { filled: 0, review: 0, unmatched: 0, totalScanned: 0 };
@@ -107,21 +119,32 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   const redFields: Array<{ element: HTMLElement; signals: FieldSignals }> = [];
 
   for (const { element, signals, match, hasExistingValue } of pendingMatches) {
-    // Merge mode: leave fields that already have content completely untouched
+    // Merge mode: pre-filled fields are left completely untouched — no highlight, no count.
     if (mode === 'merge' && hasExistingValue && match.confidence > 0 && match.value) {
       continue;
     }
 
     if (match.confidence > 0 && match.value) {
+      // A match was found AND the profile has a non-empty value — actually fill the field.
       await fillField(element, match.value);
-      filledElements.push(element);
-    }
+      applyHighlight(element, match.confidence);
+      sessionElements.push(element);
 
-    applyHighlight(element, match.confidence);
-
-    if (match.confidence >= 0.85)      result.filled++;
-    else if (match.confidence >= 0.60) result.review++;
-    else {
+      if (match.confidence >= 0.85) {
+        result.filled++;
+      } else if (match.confidence >= 0.60) {
+        result.review++;
+      } else {
+        // Low-confidence fill: red highlight, offer picker so user can correct.
+        result.unmatched++;
+        redFields.push({ element, signals });
+      }
+    } else {
+      // Nothing written: either no match (confidence === 0) or matched but the
+      // profile field is empty.  In both cases highlight red so the user knows
+      // these fields were not filled, and offer the picker.
+      applyHighlight(element, 0);
+      sessionElements.push(element);
       result.unmatched++;
       redFields.push({ element, signals });
     }
@@ -132,8 +155,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   attachPickerListeners(redFields, profile, async (element, fieldPath, value) => {
     await fillField(element, value);
     applyHighlight(element, 0.97);
-
-    filledElements.push(element);
+    sessionElements.push(element);
 
     const sigs = extractSignals(element);
     const signalTexts = [
