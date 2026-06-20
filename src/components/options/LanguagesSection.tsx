@@ -73,8 +73,15 @@ export function LanguagesSection({ profile, onSave }: Props) {
   const update = (idx: number, key: keyof Row, value: string) => {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     const ek = `${idx}.${key}`;
-    const err = key === 'language' && !value.trim() ? 'Language is required' : '';
+    let err = '';
+    if (key === 'language' && !value.trim()) err = 'Language is required';
+    else if (key === 'proficiency' && !value) err = 'Proficiency is required';
     setErrors((e) => ({ ...e, [ek]: err }));
+  };
+
+  const handleProficiencyBlur = (idx: number) => {
+    const err = !entries[idx].proficiency ? 'Proficiency is required' : '';
+    setErrors((e) => ({ ...e, [`${idx}.proficiency`]: err }));
   };
 
   const addEntry = () => { setEntries((rows) => [...rows, emptyRow()]); setNewEntryTick((t) => t + 1); };
@@ -86,6 +93,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
     const e: Record<string, string> = {};
     entries.forEach((row, idx) => {
       if (!row.language.trim()) e[`${idx}.language`] = 'Language is required';
+      if (!row.proficiency) e[`${idx}.proficiency`] = 'Proficiency is required';
     });
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -126,11 +134,12 @@ export function LanguagesSection({ profile, onSave }: Props) {
                   error={errors[`${idx}.language`]}
                 />
               </FormField>
-              <FormField label="Proficiency">
+              <FormField label="Proficiency" required error={errors[`${idx}.proficiency`]}>
                 <select
-                  className={cls()}
+                  className={cls(errors[`${idx}.proficiency`])}
                   value={row.proficiency}
                   onChange={(e) => update(idx, 'proficiency', e.target.value)}
+                  onBlur={() => handleProficiencyBlur(idx)}
                 >
                   <option value="">Select proficiency…</option>
                   {PROFICIENCY_OPTIONS.map((opt) => (

@@ -104,6 +104,33 @@ export function EducationSection({ profile, onSave }: Props) {
     return () => cancelAnimationFrame(raf);
   }, [newEntryTick]);
 
+  const handleEntryBlur = (idx: number, key: 'institution' | 'degree' | 'fieldOfStudy') => {
+    const value = String(entries[idx][key]);
+    const ek = `${idx}.${key}`;
+    let err = '';
+    if (key === 'institution' && !value.trim()) err = 'Institution is required';
+    else if (key === 'degree' && !value.trim()) err = 'Degree is required';
+    else if (key === 'fieldOfStudy' && !value.trim()) err = 'Field of study is required';
+    setErrors((e) => ({ ...e, [ek]: err }));
+  };
+
+  const handleEndDateYearChange = (idx: number, year: string) => {
+    const ek = `${idx}.endDate`;
+    if (year.length < 4) {
+      setErrors((e) => {
+        const cur = e[ek] ?? '';
+        return cur.startsWith('Year must be') ? { ...e, [ek]: '' } : e;
+      });
+      return;
+    }
+    const y = parseInt(year, 10);
+    if (isNaN(y)) return;
+    const err = y > EDU_MAX_YEAR || y < EDU_MIN_YEAR
+      ? `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}`
+      : '';
+    setErrors((e) => ({ ...e, [ek]: err }));
+  };
+
   const update = (idx: number, key: keyof Row, value: string | boolean) => {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     const ek = `${idx}.${key}`;
@@ -142,12 +169,15 @@ export function EducationSection({ profile, onSave }: Props) {
         if (sy > EDU_MAX_YEAR || sy < EDU_MIN_YEAR)
           e[`${idx}.startDate`] = `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}`;
       }
-      if (!row.isCurrent && row.endDate?.trim()) {
-        const ey = parseInt(row.endDate.split('-')[0] ?? '', 10);
-        if (ey > EDU_MAX_YEAR || ey < EDU_MIN_YEAR)
-          e[`${idx}.endDate`] = `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}`;
-        else if (row.startDate.trim() && row.endDate < row.startDate) {
-          e[`${idx}.endDate`] = 'End date cannot be before start date';
+      if (!row.isCurrent) {
+        if (!row.endDate?.trim()) {
+          e[`${idx}.endDate`] = 'End date is required';
+        } else {
+          const ey = parseInt(row.endDate.split('-')[0] ?? '', 10);
+          if (ey > EDU_MAX_YEAR || ey < EDU_MIN_YEAR)
+            e[`${idx}.endDate`] = `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}`;
+          else if (row.startDate.trim() && row.endDate < row.startDate)
+            e[`${idx}.endDate`] = 'End date cannot be before start date';
         }
       }
     });
@@ -201,6 +231,7 @@ export function EducationSection({ profile, onSave }: Props) {
               className={cls(errors[`${idx}.institution`])}
               value={row.institution}
               onChange={(e) => update(idx, 'institution', e.target.value)}
+              onBlur={() => handleEntryBlur(idx, 'institution')}
               placeholder="University of California, Berkeley"
               maxLength={150}
             />
@@ -212,6 +243,7 @@ export function EducationSection({ profile, onSave }: Props) {
                 className={cls(errors[`${idx}.degree`])}
                 value={row.degree}
                 onChange={(e) => update(idx, 'degree', e.target.value)}
+                onBlur={() => handleEntryBlur(idx, 'degree')}
                 placeholder="Bachelor of Science"
                 maxLength={150}
               />
@@ -221,6 +253,7 @@ export function EducationSection({ profile, onSave }: Props) {
                 className={cls(errors[`${idx}.fieldOfStudy`])}
                 value={row.fieldOfStudy}
                 onChange={(e) => update(idx, 'fieldOfStudy', e.target.value)}
+                onBlur={() => handleEntryBlur(idx, 'fieldOfStudy')}
                 placeholder="Computer Science"
                 maxLength={150}
               />
@@ -235,10 +268,12 @@ export function EducationSection({ profile, onSave }: Props) {
                 error={errors[`${idx}.startDate`]}
               />
             </FormField>
-            <FormField label="End Date">
+            <FormField label="End Date" required={!row.isCurrent} error={errors[`${idx}.endDate`]}>
               <MonthYearPicker
                 value={row.endDate ?? ''}
                 onChange={(v) => update(idx, 'endDate', v)}
+                onYearChange={(y) => handleEndDateYearChange(idx, y)}
+                error={errors[`${idx}.endDate`]}
                 disabled={row.isCurrent}
               />
             </FormField>

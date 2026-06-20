@@ -18,6 +18,7 @@ interface DocState {
   file: DocumentFile | null;
   dragOver: boolean;
   sizeError: string;
+  urlError: string;
 }
 
 function initDocState(entry?: DocumentEntry): DocState {
@@ -27,7 +28,14 @@ function initDocState(entry?: DocumentEntry): DocState {
     file: entry?.file ?? null,
     dragOver: false,
     sizeError: '',
+    urlError: '',
   };
+}
+
+function validateDocUrl(url: string, required: boolean, hasFile: boolean): string {
+  if (!url.trim()) return (required && !hasFile) ? 'CV URL is required' : '';
+  try { new URL(url.trim()); return ''; }
+  catch { return 'Enter a valid URL'; }
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -80,7 +88,9 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
     if (file) handleFile(file);
   };
 
-  const cls = 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+  const urlCls = state.urlError
+    ? 'w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
+    : 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
   return (
     <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 mb-4">
@@ -108,12 +118,13 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
       </div>
 
       {state.mode === 'url' ? (
-        <FormField label="Document URL">
+        <FormField label="Document URL" error={state.urlError}>
           <input
             type="url"
-            className={cls}
+            className={urlCls}
             value={state.url}
-            onChange={(e) => onChange({ url: e.target.value })}
+            onChange={(e) => onChange({ url: e.target.value, urlError: '' })}
+            onBlur={(e) => onChange({ urlError: validateDocUrl(e.target.value, !!required, !!state.file) })}
             placeholder="https://drive.google.com/file/..."
             maxLength={255}
           />
@@ -172,6 +183,13 @@ export function DocumentsSection({ profile, onSave }: Props) {
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
+    if (cv.mode === 'url') {
+      const urlError = validateDocUrl(cv.url, true, !!cv.file);
+      if (urlError) {
+        setCv((s) => ({ ...s, urlError }));
+        return;
+      }
+    }
     setSaving(true);
     await onSave({
       documents: {

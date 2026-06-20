@@ -40,11 +40,17 @@ export function LinksSection({ profile, onSave }: Props) {
     return () => cancelAnimationFrame(raf);
   }, [newEntryTick]);
 
+  const isValidUrl = (url: string): boolean => {
+    try { new URL(url); return true; } catch { return false; }
+  };
+
   const fieldError = (key: string, value: string): string => {
     if (key === 'linkedin') {
       if (!value.trim()) return 'LinkedIn URL is required';
       if (!value.includes('linkedin.com')) return 'Enter a valid LinkedIn URL';
     }
+    if (key === 'portfolio' && value.trim() && !isValidUrl(value.trim()))
+      return 'Enter a valid URL';
     return '';
   };
 
@@ -53,8 +59,21 @@ export function LinksSection({ profile, onSave }: Props) {
     setErrors((e) => ({ ...e, [key]: fieldError(key, value) }));
   };
 
+  const handleBlur = (key: string) => {
+    setErrors((e) => ({ ...e, [key]: fieldError(key, (form as Record<string, string>)[key] ?? '') }));
+  };
+
   const updateCustom = (idx: number, key: keyof CustomLink, value: string) => {
     setCustom((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
+    if (key === 'url') {
+      const err = value.trim() && !isValidUrl(value.trim()) ? 'Enter a valid URL' : '';
+      setErrors((e) => ({ ...e, [`custom.${idx}.url`]: err }));
+    }
+  };
+
+  const handleCustomUrlBlur = (idx: number, url: string) => {
+    const err = url.trim() && !isValidUrl(url.trim()) ? 'Enter a valid URL' : '';
+    setErrors((e) => ({ ...e, [`custom.${idx}.url`]: err }));
   };
 
   const validate = () => {
@@ -64,6 +83,12 @@ export function LinksSection({ profile, onSave }: Props) {
     } else if (!form.linkedin.includes('linkedin.com')) {
       e.linkedin = 'Enter a valid LinkedIn URL';
     }
+    if (form.portfolio.trim() && !isValidUrl(form.portfolio.trim()))
+      e.portfolio = 'Enter a valid URL';
+    custom.forEach((c, idx) => {
+      if (c.url.trim() && !isValidUrl(c.url.trim()))
+        e[`custom.${idx}.url`] = 'Enter a valid URL';
+    });
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -107,6 +132,7 @@ export function LinksSection({ profile, onSave }: Props) {
             className={cls(errors[key])}
             value={form[key]}
             onChange={(e) => set(key, e.target.value)}
+            onBlur={() => handleBlur(key)}
             placeholder={placeholder}
             maxLength={255}
           />
@@ -141,12 +167,13 @@ export function LinksSection({ profile, onSave }: Props) {
                     maxLength={100}
                   />
                 </FormField>
-                <FormField label="URL">
+                <FormField label="URL" error={errors[`custom.${idx}.url`]}>
                   <input
                     type="url"
-                    className={cls()}
+                    className={cls(errors[`custom.${idx}.url`])}
                     value={c.url}
                     onChange={(e) => updateCustom(idx, 'url', e.target.value)}
+                    onBlur={(e) => handleCustomUrlBlur(idx, e.target.value)}
                     placeholder="https://blog.johnsmith.dev"
                     maxLength={255}
                   />
