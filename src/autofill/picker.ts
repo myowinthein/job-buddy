@@ -196,6 +196,14 @@ function showPicker(
   setTimeout(() => document.addEventListener('mousedown', outsideHandler, true), 0);
 }
 
+export function removePickerListener(element: HTMLElement): void {
+  const prev = pickerListeners.get(element);
+  if (prev) {
+    element.removeEventListener('focus', prev);
+    pickerListeners.delete(element);
+  }
+}
+
 export function attachPickerListeners(
   fields: PickerField[],
   profile: Profile,
