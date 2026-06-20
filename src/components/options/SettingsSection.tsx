@@ -157,6 +157,29 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     const exportData = parsed as ExportData;
     const validation = validateImportedProfile(exportData.profile);
 
+    // If the current profile is empty, skip the merge/overwrite dialog and
+    // import immediately — there is nothing to conflict with.
+    const currentProfile = await getProfile();
+    const { percentage } = calculateCompletion(currentProfile ?? {});
+
+    if (percentage === 0) {
+      setImporting(true);
+      try {
+        await saveProfile(validation.sanitized as Profile);
+        if (exportData.learnedMappings) await saveLearmedMappings(exportData.learnedMappings);
+        if (exportData.applicationHistory) await saveApplicationHistory(exportData.applicationHistory);
+        showToast('success', 'Profile imported successfully');
+        onImportComplete();
+      } catch (err) {
+        console.error('[Job Buddy] Import failed:', err);
+        showToast('error', 'Import failed. Please try again.');
+      } finally {
+        setImporting(false);
+      }
+      return;
+    }
+
+    // Non-empty profile: let the user choose merge or overwrite.
     setParsedImport({
       sanitized:     validation.sanitized,
       invalidFields: validation.invalidFields,
