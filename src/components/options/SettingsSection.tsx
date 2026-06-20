@@ -10,6 +10,7 @@ import {
   saveApplicationHistory,
   clearAllStorage,
 } from '@/src/utils/storage';
+import { calculateCompletion } from '@/src/utils/profileCompletion';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
 import type { InvalidField } from '@/src/utils/profileValidator';
 import { useToast } from '@/src/components/ui/Toast';
@@ -282,19 +283,21 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
       {/* ── Reset All Data ───────────────────────────────────────────────────── */}
       <section className="pt-2">
-        <div className="flex items-center gap-2 mb-1">
-          <h3 className="text-base font-semibold text-red-700">Reset All Data</h3>
-        </div>
-        <p className="text-sm text-gray-500 mb-1">
-          Permanently delete your profile, learned mappings, and application history from this browser.
-          This cannot be undone.
-        </p>
-        <p className="text-sm text-gray-400 mb-4">
-          Consider <button type="button" className="underline hover:text-gray-600 transition-colors" onClick={handleExport}>exporting your profile first</button> as a backup.
+        <h3 className="text-base font-semibold text-red-700 mb-1">Reset All Data</h3>
+        <p className="text-sm text-gray-500 mb-4">
+          Permanently delete your profile and autofill data from this browser. This cannot be undone.
         </p>
         <button
           type="button"
-          onClick={() => setShowResetDialog(true)}
+          onClick={async () => {
+            const p = await getProfile();
+            const { percentage } = calculateCompletion(p ?? {});
+            if (percentage === 0) {
+              showToast('warning', 'No profile data to reset.');
+              return;
+            }
+            setShowResetDialog(true);
+          }}
           className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
         >
           Reset All Data
@@ -428,13 +431,20 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             <div className="px-6 py-5">
               <p className="text-sm text-gray-700 mb-3">This will permanently delete:</p>
               <ul className="text-sm text-gray-600 space-y-1 mb-4 pl-1">
-                {['Your profile data', 'Learned field mappings', 'Application history'].map((item) => (
+                {['Your profile data', 'Autofill learned mappings'].map((item) => (
                   <li key={item} className="flex items-start gap-2">
                     <span className="text-gray-400 mt-0.5">•</span>
                     {item}
                   </li>
                 ))}
               </ul>
+              <p className="text-sm text-gray-500 mb-4">
+                Consider{' '}
+                <button type="button" className="underline hover:text-gray-700 transition-colors" onClick={handleExport}>
+                  exporting your profile first
+                </button>{' '}
+                as a backup.
+              </p>
               <p className="text-sm font-medium text-gray-800 mb-5">This cannot be undone.</p>
 
               <label className="block text-sm text-gray-700 mb-2">
