@@ -369,6 +369,17 @@ function App() {
 
   const completion = calculateCompletion(profile);
   const sectionCompletion = getSectionCompletion(profile);
+
+  // A section is "fully complete" when its mandatory fields are done AND it has
+  // no remaining optional fields. Derived from already-computed values — no
+  // extra profile traversal needed.
+  const sectionsWithOptionalGaps = new Set(completion.optionalGroups.map((g) => g.sectionId));
+  const sectionFullCompletion: Record<string, boolean> = Object.fromEntries(
+    Object.entries(sectionCompletion).map(([id, mandatoryDone]) => [
+      id,
+      mandatoryDone && !sectionsWithOptionalGaps.has(id),
+    ]),
+  );
   const sectionProps = { profile, onSave: handleSave };
 
   const renderSection = () => {
@@ -403,6 +414,7 @@ function App() {
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((c) => !c)}
         sectionCompletion={sectionCompletion}
+        sectionFullCompletion={sectionFullCompletion}
         onImportClick={() => setShowImportDialog(true)}
       />
       <div className="flex flex-col flex-1 overflow-hidden">
