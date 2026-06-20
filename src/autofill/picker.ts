@@ -1,10 +1,13 @@
 import type { Profile } from '../types/profile';
-import type { FieldSignals } from './signals';
 import { resolveProfileValue } from './resolver';
 
 // All styles are inline — no Tailwind, no external CSS — to avoid host page conflicts.
 
 let activePicker: HTMLElement | null = null;
+
+// Tracks the focus handler currently registered on each element so we can
+// remove it before adding a new one when executeAutofill runs again.
+const pickerListeners = new WeakMap<HTMLElement, () => void>();
 
 function removePicker(): void {
   activePicker?.remove();
@@ -17,24 +20,32 @@ interface PickerOption {
   value:     string;
 }
 
+export type PickerFieldState = 'lowConfidence' | 'needReview' | 'noData';
+
+export interface PickerField {
+  element:   HTMLElement;
+  state:     PickerFieldState;
+  fieldPath: string | null;  // matched profile path; used for noData CTA section hint
+}
+
 const PICKER_FIELDS: Array<{ path: string; label: string }> = [
-  { path: 'personal.firstName',            label: 'First Name'          },
-  { path: 'personal.lastName',             label: 'Last Name'           },
-  { path: 'personal.email',                label: 'Email'               },
-  { path: 'personal.phone.number',         label: 'Phone'               },
-  { path: 'address.city',                  label: 'City'                },
-  { path: 'address.country',              label: 'Country'             },
-  { path: 'address.street',               label: 'Street'              },
-  { path: 'address.postalCode',           label: 'Postal Code'         },
-  { path: 'derived.fullName',             label: 'Full Name'           },
-  { path: 'derived.currentTitle',         label: 'Current Title'       },
-  { path: 'derived.currentCompany',       label: 'Current Company'     },
-  { path: 'derived.totalExperience.years',label: 'Years of Experience' },
-  { path: 'derived.age',                  label: 'Age'                 },
-  { path: 'links.linkedin',               label: 'LinkedIn'            },
-  { path: 'links.portfolio',              label: 'Portfolio'           },
-  { path: 'professional.summary',         label: 'Summary'             },
-  { path: 'salary.current.amount',        label: 'Current Salary'      },
+  { path: 'personal.firstName',             label: 'First Name'          },
+  { path: 'personal.lastName',              label: 'Last Name'           },
+  { path: 'personal.email',                 label: 'Email'               },
+  { path: 'personal.phone.number',          label: 'Phone'               },
+  { path: 'address.city',                   label: 'City'                },
+  { path: 'address.country',                label: 'Country'             },
+  { path: 'address.street',                 label: 'Street'              },
+  { path: 'address.postalCode',             label: 'Postal Code'         },
+  { path: 'derived.fullName',               label: 'Full Name'           },
+  { path: 'derived.currentTitle',           label: 'Current Title'       },
+  { path: 'derived.currentCompany',         label: 'Current Company'     },
+  { path: 'derived.totalExperience.years',  label: 'Years of Experience' },
+  { path: 'derived.age',                    label: 'Age'                 },
+  { path: 'links.linkedin',                 label: 'LinkedIn'            },
+  { path: 'links.portfolio',                label: 'Portfolio'           },
+  { path: 'professional.summary',           label: 'Summary'             },
+  { path: 'salary.current.amount',          label: 'Current Salary'      },
 ];
 
 function buildOptions(profile: Profile): PickerOption[] {
@@ -46,19 +57,54 @@ function buildOptions(profile: Profile): PickerOption[] {
   return opts;
 }
 
+// Maps a profile field path to the options page section that owns it.
+function fieldPathToSection(fieldPath: string | null): string | null {
+  if (!fieldPath) return null;
+  const [root, sub = ''] = fieldPath.split('.');
+  switch (root) {
+    case 'personal':          return 'personal';
+    case 'address':           return 'address';
+    case 'salary':            return 'salary';
+    case 'links':             return 'links';
+    case 'professional':      return 'workHistory';
+    case 'workAuthorization': return 'workAuthorization';
+    case 'derived':
+      return (sub === 'currentTitle' || sub === 'currentCompany' || sub === 'totalExperience')
+        ? 'workHistory'
+        : 'personal';
+    default: return null;
+  }
+}
+
+const SECTION_LABELS: Record<string, string> = {
+  personal:          'Personal',
+  address:           'Address',
+  salary:            'Salary',
+  links:             'Links',
+  workHistory:       'Work History',
+  workAuthorization: 'Work Authorization',
+};
+
 function showPicker(
   element: HTMLElement,
+  state: PickerFieldState,
+  fieldPath: string | null,
   options: PickerOption[],
-  onSelect: (element: HTMLElement, fieldPath: string, value: string) => void,
+  onSelect: (element: HTMLElement, fieldPath: string, value: string, originalState: PickerFieldState) => void,
 ): void {
   removePicker();
 
   const rect = element.getBoundingClientRect();
+  // Read current field value at open time — used to mark the current value for needReview.
+  const currentValue = element instanceof HTMLInputElement    ? element.value
+                     : element instanceof HTMLTextAreaElement ? element.value
+                     : element instanceof HTMLSelectElement   ? element.value
+                     : '';
 
   const picker = document.createElement('div');
   picker.id = 'job-buddy-picker';
 
-  // Render hidden first to measure height, then position
+  // Render hidden first to measure height, then position.
   Object.assign(picker.style, {
     position:        'fixed',
     zIndex:          '2147483647',
@@ -80,13 +126,13 @@ function showPicker(
   // Header
   const header = document.createElement('div');
   Object.assign(header.style, {
-    padding:         '8px 12px',
-    borderBottom:    '1px solid #f3f4f6',
-    color:           '#6b7280',
-    fontSize:        '11px',
-    fontWeight:      '600',
-    textTransform:   'uppercase',
-    letterSpacing:   '0.05em',
+    padding:       '8px 12px',
+    borderBottom:  '1px solid #f3f4f6',
+    color:         '#6b7280',
+    fontSize:      '11px',
+    fontWeight:    '600',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
   });
   header.textContent = 'Select a value for this field';
   picker.appendChild(header);
@@ -94,26 +140,51 @@ function showPicker(
   // Scrollable list
   const list = document.createElement('ul');
   Object.assign(list.style, {
-    margin:     '0',
-    padding:    '4px 0',
-    listStyle:  'none',
-    maxHeight:  '200px',
-    overflowY:  'auto',
+    margin:    '0',
+    padding:   '4px 0',
+    listStyle: 'none',
+    maxHeight: '200px',
+    overflowY: 'auto',
   });
 
   for (const opt of options) {
+    const isCurrent = state === 'needReview' && opt.value === currentValue;
     const li = document.createElement('li');
     Object.assign(li.style, {
-      padding: '7px 12px',
-      cursor:  'pointer',
-      color:   '#111827',
+      padding:         '7px 12px',
+      cursor:          'pointer',
+      color:           '#111827',
+      backgroundColor: isCurrent ? '#f0fdf4' : '',
+      display:         'flex',
+      alignItems:      'center',
+      gap:             '6px',
     });
-    li.textContent = `${opt.label}: ${opt.value}`;
-    li.addEventListener('mouseenter', () => { li.style.backgroundColor = '#f3f4f6'; });
-    li.addEventListener('mouseleave', () => { li.style.backgroundColor = ''; });
+
+    const text = document.createElement('span');
+    text.textContent = `${opt.label}: ${opt.value}`;
+    text.style.flex = '1';
+    li.appendChild(text);
+
+    if (isCurrent) {
+      const badge = document.createElement('span');
+      badge.textContent = 'current';
+      Object.assign(badge.style, {
+        fontSize:        '10px',
+        fontWeight:      '600',
+        color:           '#16a34a',
+        backgroundColor: '#dcfce7',
+        padding:         '1px 5px',
+        borderRadius:    '4px',
+        whiteSpace:      'nowrap',
+      });
+      li.appendChild(badge);
+    }
+
+    li.addEventListener('mouseenter', () => { li.style.backgroundColor = isCurrent ? '#dcfce7' : '#f3f4f6'; });
+    li.addEventListener('mouseleave', () => { li.style.backgroundColor = isCurrent ? '#f0fdf4' : ''; });
     li.addEventListener('mousedown', (e) => {
       e.preventDefault();
-      onSelect(element, opt.fieldPath, opt.value);
+      onSelect(element, opt.fieldPath, opt.value, state);
       removePicker();
     });
     list.appendChild(li);
@@ -122,11 +193,11 @@ function showPicker(
   // Skip option
   const skip = document.createElement('li');
   Object.assign(skip.style, {
-    padding:     '7px 12px',
-    cursor:      'pointer',
-    color:       '#9ca3af',
-    borderTop:   '1px solid #f3f4f6',
-    marginTop:   '2px',
+    padding:    '7px 12px',
+    cursor:     'pointer',
+    color:      '#9ca3af',
+    borderTop:  '1px solid #f3f4f6',
+    marginTop:  '2px',
   });
   skip.textContent = 'Skip this field';
   skip.addEventListener('mouseenter', () => { skip.style.backgroundColor = '#f9fafb'; });
@@ -135,9 +206,37 @@ function showPicker(
   list.appendChild(skip);
 
   picker.appendChild(list);
+
+  // For noData fields: CTA to open the profile editor at the relevant section.
+  if (state === 'noData') {
+    const section      = fieldPathToSection(fieldPath);
+    const sectionLabel = section ? SECTION_LABELS[section] : null;
+
+    const cta = document.createElement('div');
+    Object.assign(cta.style, {
+      padding:      '8px 12px',
+      borderTop:    '1px solid #f3f4f6',
+      color:        '#3b82f6',
+      fontSize:     '12px',
+      cursor:       'pointer',
+      lineHeight:   '1.4',
+    });
+    cta.textContent = sectionLabel
+      ? `This field isn't in your profile yet — Add it now (${sectionLabel})`
+      : `This field isn't in your profile yet — Add it now`;
+    cta.addEventListener('mouseenter', () => { cta.style.backgroundColor = '#eff6ff'; });
+    cta.addEventListener('mouseleave', () => { cta.style.backgroundColor = ''; });
+    cta.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      removePicker();
+      chrome.runtime.openOptionsPage();
+    });
+    picker.appendChild(cta);
+  }
+
   document.body.appendChild(picker);
 
-  // Measure and position above (or below if no room)
+  // Measure and position above (or below if no room).
   const ph = picker.offsetHeight;
   const topAbove = rect.top - ph - 4;
   picker.style.top = (topAbove >= 0 ? topAbove : rect.bottom + 4) + 'px';
@@ -145,7 +244,7 @@ function showPicker(
 
   activePicker = picker;
 
-  // Dismiss on outside click
+  // Dismiss on outside click.
   const outsideHandler = (e: MouseEvent) => {
     if (!picker.contains(e.target as Node)) {
       removePicker();
@@ -156,13 +255,21 @@ function showPicker(
 }
 
 export function attachPickerListeners(
-  redFields: Array<{ element: HTMLElement; signals: FieldSignals }>,
+  fields: PickerField[],
   profile: Profile,
-  onSelect: (element: HTMLElement, fieldPath: string, value: string) => void,
+  onSelect: (element: HTMLElement, fieldPath: string, value: string, originalState: PickerFieldState) => void,
 ): void {
   const options = buildOptions(profile);
 
-  for (const { element } of redFields) {
-    element.addEventListener('focus', () => showPicker(element, options, onSelect));
+  for (const { element, state, fieldPath } of fields) {
+    // Remove any existing focus listener before adding the new one — prevents
+    // duplicate overlays when executeAutofill is called multiple times on the
+    // same page without a full reload.
+    const prev = pickerListeners.get(element);
+    if (prev) element.removeEventListener('focus', prev);
+
+    const handler = () => showPicker(element, state, fieldPath, options, onSelect);
+    element.addEventListener('focus', handler);
+    pickerListeners.set(element, handler);
   }
 }
