@@ -6,7 +6,7 @@ import { mapField } from './mapper';
 import type { FieldMatch } from './mapper';
 import { fillField, clearFieldValue } from './filler';
 import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
-import { attachPickerListeners } from './picker';
+import { attachPickerListeners, removePickerListener } from './picker';
 import type { PickerField, PickerFieldState } from './picker';
 import { normalize } from './normalizer';
 
@@ -30,6 +30,56 @@ export interface AutofillScanResult {
 // highlight). noData fields are added here only if the user fills them via the
 // picker during the same session.
 let sessionElements: HTMLElement[] = [];
+
+// Tracks the blur handler currently registered on each picker-eligible element so
+// we can remove stale handlers on re-run and during undo.
+const editWatchers = new WeakMap<HTMLElement, () => void>();
+
+// Attaches a blur listener to each non-green field. On blur, if the value
+// changed since autofill ran, the field transitions to No Review (green) and
+// the popup counts are updated. No learned mapping is saved — manual edits are
+// intentionally kept separate from the learning mechanism.
+function attachEditWatchers(fields: PickerField[], result: AutofillResult): void {
+  for (const { element, state } of fields) {
+    const prev = editWatchers.get(element);
+    if (prev) element.removeEventListener('blur', prev);
+
+    const valueAtAttach  = getFieldValue(element);
+    const capturedResult = result;
+
+    const handler = () => {
+      // Guard against stale sessions (undo or re-scan resets lastResult).
+      if (lastResult !== capturedResult) {
+        element.removeEventListener('blur', handler);
+        editWatchers.delete(element);
+        return;
+      }
+
+      const currentValue = getFieldValue(element);
+      if (currentValue === valueAtAttach) return; // nothing actually changed
+
+      // User has handled this field — promote to No Review (green).
+      applyHighlight(element, 0.97);
+
+      // noData fields were not yet in sessionElements; register now so Undo covers them.
+      if (state === 'noData') sessionElements.push(element);
+
+      result.noReview++;
+      if (state === 'lowConfidence') result.lowConfidence = Math.max(0, result.lowConfidence - 1);
+      if (state === 'needReview')    result.needReview    = Math.max(0, result.needReview    - 1);
+      if (state === 'noData')        result.noData        = Math.max(0, result.noData        - 1);
+
+      // Field is resolved — tear down both the edit watcher and the picker listener
+      // so focusing the now-green field no longer opens the picker.
+      element.removeEventListener('blur', handler);
+      editWatchers.delete(element);
+      removePickerListener(element);
+    };
+
+    element.addEventListener('blur', handler);
+    editWatchers.set(element, handler);
+  }
+}
 
 // The result of the most recent executeAutofill() call on this page.
 // Persists for the content script's lifetime so the popup can restore its
@@ -64,9 +114,14 @@ export function undoAutofill(): void {
   for (const element of sessionElements) {
     clearFieldValue(element);
     clearElementHighlight(element);
+    const watcher = editWatchers.get(element);
+    if (watcher) {
+      element.removeEventListener('blur', watcher);
+      editWatchers.delete(element);
+    }
   }
   sessionElements = [];
-  lastResult = null;
+  lastResult = null;  // also self-invalidates any noData watchers not in sessionElements
   clearHighlights();
 }
 
@@ -174,6 +229,8 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   // place by picker callbacks, so the reference remains accurate after those run.
   lastResult = result;
 
+  attachEditWatchers(pickerFields, result);
+
   attachPickerListeners(pickerFields, profile, async (element, fieldPath, value, originalState: PickerFieldState) => {
     await fillField(element, value);
     applyHighlight(element, 0.97); // green — user-confirmed, high confidence
@@ -182,6 +239,14 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     // needReview and lowConfidence fields are already tracked — don't double-push.
     if (originalState === 'noData') {
       sessionElements.push(element);
+    }
+
+    // Remove the edit watcher so the blur that follows picker selection (when the
+    // user clicks elsewhere) doesn't trigger a second state transition.
+    const watcher = editWatchers.get(element);
+    if (watcher) {
+      element.removeEventListener('blur', watcher);
+      editWatchers.delete(element);
     }
 
     const sigs = extractSignals(element);
