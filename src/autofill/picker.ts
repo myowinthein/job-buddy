@@ -1,12 +1,16 @@
 import type { Profile } from '../types/profile';
+import { COUNTRIES } from '../data/countries';
 import { getProfile } from '../utils/storage';
 import { resolveProfileValue } from './resolver';
 
 // All styles are inline — no Tailwind, no external CSS — to avoid host page conflicts.
 
 let activePicker: HTMLElement | null = null;
+let activePickerElement: HTMLElement | null = null;
 let activeScrollHandler: (() => void) | null = null;
 let scrollRafId: number | null = null;
+// Preserved across picker close/reopen so tab-switching doesn't reset scroll.
+let savedScrollState: { element: HTMLElement; scrollTop: number } | null = null;
 
 // Tracks the focus handler currently registered on each element so we can
 // remove it before adding a new one when executeAutofill runs again.
@@ -22,6 +26,15 @@ function repositionPicker(anchor: HTMLElement): void {
 }
 
 function removePicker(): void {
+  // Save list scroll position keyed to the active element so it can be
+  // restored when the same picker reopens (e.g. returning from another tab).
+  if (activePicker && activePickerElement) {
+    const list = activePicker.querySelector('ul');
+    if (list) {
+      savedScrollState = { element: activePickerElement, scrollTop: list.scrollTop };
+    }
+  }
+
   if (activeScrollHandler) {
     window.removeEventListener('scroll', activeScrollHandler, true);
     window.removeEventListener('resize', activeScrollHandler);
@@ -33,6 +46,7 @@ function removePicker(): void {
   }
   activePicker?.remove();
   activePicker = null;
+  activePickerElement = null;
 }
 
 interface PickerOption {
@@ -53,34 +67,81 @@ export interface PickerField {
   state:   PickerFieldState;
 }
 
+type PickerFieldDef =
+  | { path: string; label: string }
+  | { compute: (profile: Profile) => PickerOption[] };
+
+const WORK_AUTH_LABELS: Record<string, string> = {
+  citizen_or_pr:        'Citizen / PR',
+  work_visa:            'Work Visa',
+  requires_sponsorship: 'Requires Sponsorship',
+};
+
+function getCountryName(code: string): string {
+  return COUNTRIES.find(c => c.code === code)?.name ?? code;
+}
+
+function formatAmount(amount: number): string {
+  return Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function formatSalary(amount: number | undefined | null, currency: string | undefined | null): string {
+  if (amount == null) return '';
+  const amtStr = formatAmount(amount);
+  return currency ? `${amtStr} ${currency}` : amtStr;
+}
+
 // Grouped in the same order as the Options page sidebar sections.
-// Each path is resolved via resolveProfileValue(); sections with no filled
-// fields are omitted from the rendered picker.
-const PICKER_SECTIONS: Array<{ sectionLabel: string; fields: Array<{ path: string; label: string }> }> = [
+// Path entries are resolved via resolveProfileValue(); compute entries return
+// zero or more options for dynamic / multi-value / formatted fields.
+const PICKER_SECTIONS: Array<{ sectionLabel: string; fields: PickerFieldDef[] }> = [
   {
     sectionLabel: 'Personal',
     fields: [
-      { path: 'personal.firstName',            label: 'First Name'          },
-      { path: 'personal.lastName',             label: 'Last Name'           },
-      { path: 'derived.fullName',              label: 'Full Name'           },
-      { path: 'personal.email',                label: 'Email'               },
-      { path: 'personal.phone.number',         label: 'Phone'               },
-      { path: 'personal.dateOfBirth',          label: 'Date of Birth'       },
-      { path: 'derived.age',                   label: 'Age'                 },
-      { path: 'personal.gender',               label: 'Gender'              },
-      { path: 'personal.ethnicity',            label: 'Ethnicity'           },
-      { path: 'personal.veteranStatus',        label: 'Veteran Status'      },
-      { path: 'personal.disabilityStatus',     label: 'Disability Status'   },
+      { path: 'personal.firstName',        label: 'First Name'        },
+      { path: 'personal.lastName',         label: 'Last Name'         },
+      { path: 'derived.fullName',          label: 'Full Name'         },
+      { path: 'personal.email',            label: 'Email'             },
+      { compute: (profile) => {
+        const phone = profile.personal?.phone;
+        const opts: PickerOption[] = [];
+        if (phone?.callingCode) opts.push({ label: 'Phone Extension', fieldPath: 'personal.phone.callingCode', value: phone.callingCode });
+        if (phone?.number)      opts.push({ label: 'Phone Number',    fieldPath: 'personal.phone.number',      value: phone.number      });
+        if (phone?.callingCode && phone?.number) {
+          opts.push({ label: 'Full Phone', fieldPath: 'personal.phone.full', value: `${phone.callingCode} ${phone.number}` });
+        }
+        return opts;
+      }},
+      { compute: (profile) => {
+        const dob = profile.personal?.dateOfBirth;
+        if (!dob) return [];
+        const [year, month, day] = dob.split('-');
+        const opts: PickerOption[] = [];
+        if (day)   opts.push({ label: 'Day',              fieldPath: 'personal.dateOfBirth.day',   value: day   });
+        if (month) opts.push({ label: 'Month',            fieldPath: 'personal.dateOfBirth.month', value: month });
+        if (year)  opts.push({ label: 'Year',             fieldPath: 'personal.dateOfBirth.year',  value: year  });
+                   opts.push({ label: 'Full Date of Birth', fieldPath: 'personal.dateOfBirth',      value: dob   });
+        return opts;
+      }},
+      { path: 'derived.age',               label: 'Age'               },
+      { path: 'personal.gender',           label: 'Gender'            },
+      { path: 'personal.ethnicity',        label: 'Ethnicity'         },
+      { path: 'personal.veteranStatus',    label: 'Veteran Status'    },
+      { path: 'personal.disabilityStatus', label: 'Disability Status' },
     ],
   },
   {
     sectionLabel: 'Address',
     fields: [
-      { path: 'address.street',                label: 'Street'              },
-      { path: 'address.city',                  label: 'City'                },
-      { path: 'address.country',               label: 'Country'             },
-      { path: 'address.state',                 label: 'State / Province'    },
-      { path: 'address.postalCode',            label: 'Postal Code'         },
+      { path: 'address.street',     label: 'Street'           },
+      { path: 'address.city',       label: 'City'             },
+      { compute: (profile) => {
+        const code = profile.address?.country;
+        if (!code) return [];
+        return [{ label: 'Country', fieldPath: 'address.countryName', value: getCountryName(code) }];
+      }},
+      { path: 'address.state',      label: 'State / Province' },
+      { path: 'address.postalCode', label: 'Postal Code'      },
     ],
   },
   {
@@ -95,22 +156,59 @@ const PICKER_SECTIONS: Array<{ sectionLabel: string; fields: Array<{ path: strin
   {
     sectionLabel: 'Salary',
     fields: [
-      { path: 'salary.current.amount',         label: 'Current Salary'      },
-      { path: 'salary.current.currency',       label: 'Current Currency'    },
-      { path: 'salary.expected',               label: 'Expected Salary'     },
+      { compute: (profile) => {
+        const cur = profile.salary?.current;
+        const opts: PickerOption[] = [];
+        if (cur?.currency)    opts.push({ label: 'Currency',          fieldPath: 'salary.current.currency',   value: cur.currency           });
+        if (cur?.amount != null) opts.push({ label: 'Amount',         fieldPath: 'salary.current.amount',     value: String(cur.amount)     });
+        if (cur?.amount != null && cur?.currency) {
+          opts.push({ label: 'Full Current Salary', fieldPath: 'salary.current.formatted', value: formatSalary(cur.amount, cur.currency) });
+        }
+        return opts;
+      }},
+      { compute: (profile) => {
+        const expected = profile.salary?.expected;
+        if (!expected?.length) return [];
+        return expected.flatMap((entry, idx) => {
+          const value = formatSalary(entry.amount, entry.currency);
+          if (!value) return [];
+          const name   = entry.country ? getCountryName(entry.country) : '';
+          const suffix = name ? ` — ${name}` : '';
+          return [{ label: `Expected Salary${suffix}`, fieldPath: `salary.expected.${idx}.formatted`, value }];
+        });
+      }},
     ],
   },
   {
     sectionLabel: 'Work Authorization',
     fields: [
-      { path: 'workAuthorization',             label: 'Authorization Status' },
+      { compute: (profile) => {
+        const entries = profile.workAuthorization;
+        if (!entries?.length) return [];
+        return entries.map((entry, idx) => ({
+          label:     `Work Authorization — ${getCountryName(entry.country)}`,
+          fieldPath: `workAuthorization.${idx}`,
+          value:     WORK_AUTH_LABELS[entry.status] ?? entry.status,
+        }));
+      }},
     ],
   },
   {
     sectionLabel: 'Links',
     fields: [
-      { path: 'links.linkedin',                label: 'LinkedIn'            },
-      { path: 'links.portfolio',               label: 'Portfolio'           },
+      { path: 'links.linkedin',  label: 'LinkedIn'  },
+      { path: 'links.portfolio', label: 'Portfolio' },
+      { compute: (profile) => {
+        const custom = profile.links?.custom;
+        if (!custom?.length) return [];
+        return custom
+          .filter(link => link.label && link.url)
+          .map((link, idx) => ({
+            label:     link.label,
+            fieldPath: `links.custom.${idx}.url`,
+            value:     link.url,
+          }));
+      }},
     ],
   },
 ];
@@ -119,9 +217,12 @@ function buildGroupedOptions(profile: Profile): PickerSection[] {
   return PICKER_SECTIONS
     .map(({ sectionLabel, fields }) => ({
       sectionLabel,
-      options: fields.flatMap(({ path, label }) => {
-        const value = resolveProfileValue(profile, path);
-        return value ? [{ label, fieldPath: path, value }] : [];
+      options: fields.flatMap((fieldDef) => {
+        if ('compute' in fieldDef) {
+          return fieldDef.compute(profile);
+        }
+        const value = resolveProfileValue(profile, fieldDef.path);
+        return value ? [{ label: fieldDef.label, fieldPath: fieldDef.path, value }] : [];
       }),
     }))
     .filter(({ options }) => options.length > 0);
@@ -276,6 +377,13 @@ function showPicker(
 
   picker.appendChild(list);
   document.body.appendChild(picker);
+
+  // Restore scroll position when reopening the picker for the same element (tab switching).
+  if (savedScrollState?.element === element) {
+    list.scrollTop = savedScrollState.scrollTop;
+  }
+
+  activePickerElement = element;
 
   // Initial position (above the field if room, otherwise below).
   const ph = picker.offsetHeight;
