@@ -87,12 +87,34 @@ export function SalarySection({ profile, onSave }: Props) {
     return () => cancelAnimationFrame(raf);
   }, [newEntryTick]);
 
+  // Per-row partial-entry validation: if either field is set, both are required.
+  // Returns errors keyed as `expected.<idx>.countryCode` / `expected.<idx>.amount`.
+  const expectedRowErrors = (row: ExpectedRow, idx: number): Record<string, string> => {
+    const e: Record<string, string> = {};
+    const hasCountry = !!row.countryCode;
+    const hasAmount  = row.amount.trim() !== '';
+    if (hasCountry && !hasAmount) e[`expected.${idx}.amount`] = 'Amount is required';
+    if (!hasCountry && hasAmount) e[`expected.${idx}.countryCode`] = 'Country is required';
+    if (hasAmount && (isNaN(Number(row.amount)) || Number(row.amount) < 0))
+      e[`expected.${idx}.amount`] = 'Enter a valid amount';
+    return e;
+  };
+
+  const recheckExpectedRow = (idx: number, nextRow: ExpectedRow) => {
+    const rowErrs = expectedRowErrors(nextRow, idx);
+    setErrors((e) => ({
+      ...e,
+      [`expected.${idx}.countryCode`]: rowErrs[`expected.${idx}.countryCode`] ?? '',
+      [`expected.${idx}.amount`]:      rowErrs[`expected.${idx}.amount`]      ?? '',
+    }));
+  };
+
   const setExpectedField = (idx: number, key: keyof ExpectedRow, value: string) => {
-    setExpected((rows) =>
-      rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)),
-    );
-    if (errors[`expected.${idx}.${key}`])
-      setErrors((e) => ({ ...e, [`expected.${idx}.${key}`]: '' }));
+    setExpected((rows) => {
+      const next = rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r));
+      recheckExpectedRow(idx, next[idx]);
+      return next;
+    });
   };
 
   const validate = () => {
@@ -101,6 +123,7 @@ export function SalarySection({ profile, onSave }: Props) {
     else if (isNaN(Number(currentAmount)) || Number(currentAmount) < 0)
       e.currentAmount = 'Enter a valid amount';
     if (!currentCurrency) e.currentCurrency = 'Currency is required';
+    expected.forEach((row, idx) => Object.assign(e, expectedRowErrors(row, idx)));
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -114,11 +137,15 @@ export function SalarySection({ profile, onSave }: Props) {
           amount: Number(currentAmount),
           currency: currentCurrency,
         },
-        expected: expected.map((r) => ({
-          country: r.countryCode || undefined,
-          currency: r.countryCode ? (COUNTRY_TO_CURRENCY[r.countryCode] || undefined) : undefined,
-          amount: r.amount !== '' ? Number(r.amount) : undefined,
-        })),
+        expected: expected
+          // Drop fully-empty rows so the user can leave the form with no
+          // expected salary entries without saving placeholder objects.
+          .filter((r) => r.countryCode || r.amount.trim() !== '')
+          .map((r) => ({
+            country: r.countryCode || undefined,
+            currency: r.countryCode ? (COUNTRY_TO_CURRENCY[r.countryCode] || undefined) : undefined,
+            amount: r.amount !== '' ? Number(r.amount) : undefined,
+          })),
       },
     }).then(() => showToast('success', 'Salary saved'))
       .catch(() => showToast('error', 'Failed to save. Please try again.'));
@@ -193,19 +220,20 @@ export function SalarySection({ profile, onSave }: Props) {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <FormField label="Country">
+              <FormField label="Country" error={errors[`expected.${idx}.countryCode`]}>
                 <SearchableCountryWithCurrencyDropdown
                   value={row.countryCode}
                   onChange={(code) => setExpectedField(idx, 'countryCode', code)}
                 />
               </FormField>
-              <FormField label="Amount">
+              <FormField label="Amount" error={errors[`expected.${idx}.amount`]}>
                 <input
                   type="number"
                   min={0}
-                  className={cls()}
+                  className={cls(errors[`expected.${idx}.amount`])}
                   value={row.amount}
                   onChange={(e) => setExpectedField(idx, 'amount', e.target.value)}
+                  onBlur={() => recheckExpectedRow(idx, row)}
                   placeholder="100000"
                 />
               </FormField>
