@@ -7,6 +7,7 @@ import type { FieldMatch } from './mapper';
 import { fillField, clearFieldValue } from './filler';
 import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
 import { attachPickerListeners } from './picker';
+import type { PickerField, PickerFieldState } from './picker';
 import { normalize } from './normalizer';
 
 export { clearHighlights } from './highlighter';
@@ -24,10 +25,10 @@ export interface AutofillScanResult {
   totalMatched:   number;
 }
 
-// Every element that received applyHighlight during the current session
-// (noReview + needReview + lowConfidence). noData fields are NOT included
-// because they are left completely untouched — no fill, no highlight, nothing
-// to undo. Cleared and re-populated on each scan/fill cycle.
+// Every element that should be cleared by undoAutofill(). Populated on each
+// scan/fill cycle: initially noReview + needReview + lowConfidence (all get a
+// highlight). noData fields are added here only if the user fills them via the
+// picker during the same session.
 let sessionElements: HTMLElement[] = [];
 
 // The result of the most recent executeAutofill() call on this page.
@@ -111,13 +112,13 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
 //
 // Four-way outcome per field:
 //   noReview      confidence >= 0.85, value present → fill, green highlight
-//   needReview    0.60 <= confidence < 0.85, value present → fill, yellow highlight
-//   lowConfidence confidence < 0.60 (any value) → no fill, red highlight, picker
-//   noData        confidence >= 0.60, value empty → no fill, no highlight, untouched
+//   needReview    0.60 <= confidence < 0.85, value present → fill, yellow highlight, picker offered
+//   lowConfidence confidence < 0.60 (any value) → no fill, red highlight, picker offered
+//   noData        confidence >= 0.60, value empty → no fill, no highlight, picker offered
 //
-// sessionElements tracks every highlighted element (noReview + needReview +
-// lowConfidence) so undoAutofill can clear them all. noData fields are never
-// added because nothing was written to them.
+// sessionElements tracks every highlighted element (noReview + needReview + lowConfidence)
+// so undoAutofill can clear them all. noData fields are added to sessionElements only
+// when filled through the picker.
 export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<AutofillResult> {
   const profile = await getProfile();
   if (!profile) return { noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0 };
@@ -129,9 +130,9 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     noReview: 0, needReview: 0, lowConfidence: 0, noData: 0,
     totalScanned: pendingMatches.length,
   };
-  const redFields: Array<{ element: HTMLElement; signals: FieldSignals }> = [];
+  const pickerFields: PickerField[] = [];
 
-  for (const { element, signals, match, hasExistingValue } of pendingMatches) {
+  for (const { element, match, hasExistingValue } of pendingMatches) {
     // Merge mode: skip pre-filled fields that would otherwise be overwritten.
     // Only relevant when confidence >= 0.60 AND the profile has a value to fill.
     if (mode === 'merge' && hasExistingValue && match.confidence >= 0.60 && match.value) {
@@ -144,22 +145,26 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       applyHighlight(element, match.confidence); // green >=0.85, yellow 0.60–0.84
       sessionElements.push(element);
 
-      if (match.confidence >= 0.85) result.noReview++;
-      else                          result.needReview++;
+      if (match.confidence >= 0.85) {
+        result.noReview++;
+        // No picker for green (No Review) fields.
+      } else {
+        result.needReview++;
+        pickerFields.push({ element, state: 'needReview', fieldPath: match.fieldPath });
+      }
 
     } else if (match.confidence < 0.60) {
-      // Low or no confidence (includes confidence === 0).
-      // Red highlight signals the field needs manual attention; picker lets the
-      // user map it themselves.
+      // Low or no confidence — red highlight, picker for manual resolution.
       applyHighlight(element, 0);
       sessionElements.push(element);
       result.lowConfidence++;
-      redFields.push({ element, signals });
+      pickerFields.push({ element, state: 'lowConfidence', fieldPath: match.fieldPath });
 
     } else {
       // confidence >= 0.60 but profile value is empty — nothing to write.
-      // Leave the field completely untouched (no highlight, not in sessionElements).
+      // No highlight; picker is offered so the user can choose an alternative value.
       result.noData++;
+      pickerFields.push({ element, state: 'noData', fieldPath: match.fieldPath });
     }
   }
 
@@ -169,10 +174,15 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   // place by picker callbacks, so the reference remains accurate after those run.
   lastResult = result;
 
-  attachPickerListeners(redFields, profile, async (element, fieldPath, value) => {
+  attachPickerListeners(pickerFields, profile, async (element, fieldPath, value, originalState: PickerFieldState) => {
     await fillField(element, value);
-    applyHighlight(element, 0.97); // green — learned mapping, high confidence
-    sessionElements.push(element);
+    applyHighlight(element, 0.97); // green — user-confirmed, high confidence
+
+    // noData fields are not in sessionElements yet; add them now so undo covers them.
+    // needReview and lowConfidence fields are already tracked — don't double-push.
+    if (originalState === 'noData') {
+      sessionElements.push(element);
+    }
 
     const sigs = extractSignals(element);
     const signalTexts = [
@@ -186,7 +196,9 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     }
 
     result.noReview++;
-    result.lowConfidence = Math.max(0, result.lowConfidence - 1);
+    if (originalState === 'lowConfidence') result.lowConfidence = Math.max(0, result.lowConfidence - 1);
+    if (originalState === 'needReview')    result.needReview    = Math.max(0, result.needReview    - 1);
+    if (originalState === 'noData')        result.noData        = Math.max(0, result.noData        - 1);
   });
 
   return result;
