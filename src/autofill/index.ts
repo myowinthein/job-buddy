@@ -30,6 +30,16 @@ export interface AutofillScanResult {
 // to undo. Cleared and re-populated on each scan/fill cycle.
 let sessionElements: HTMLElement[] = [];
 
+// The result of the most recent executeAutofill() call on this page.
+// Persists for the content script's lifetime so the popup can restore its
+// state after being closed and reopened. Reset at the start of each new
+// scan cycle and when the user undoes.
+let lastResult: AutofillResult | null = null;
+
+export function getLastResult(): AutofillResult | null {
+  return lastResult;
+}
+
 // Scan results held between AUTOFILL_SCAN and AUTOFILL_FILL messages.
 interface PendingMatch {
   element:          HTMLElement;
@@ -55,6 +65,7 @@ export function undoAutofill(): void {
     clearElementHighlight(element);
   }
   sessionElements = [];
+  lastResult = null;
   clearHighlights();
 }
 
@@ -63,6 +74,7 @@ export function undoAutofill(): void {
 export async function scanAutofill(): Promise<AutofillScanResult> {
   pendingMatches  = [];
   sessionElements = [];
+  lastResult      = null;
 
   const profile = await getProfile();
   if (!profile) {
@@ -152,6 +164,10 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   }
 
   pendingMatches = [];
+
+  // Store before attaching picker listeners — the result object is mutated in
+  // place by picker callbacks, so the reference remains accurate after those run.
+  lastResult = result;
 
   attachPickerListeners(redFields, profile, async (element, fieldPath, value) => {
     await fillField(element, value);
