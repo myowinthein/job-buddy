@@ -12,10 +12,11 @@ import { normalize } from './normalizer';
 export { clearHighlights } from './highlighter';
 
 export interface AutofillResult {
-  filled:       number;
-  review:       number;
-  unmatched:    number;
-  totalScanned: number;
+  noReview:      number;  // filled, confidence >= 0.85 (green)
+  needReview:    number;  // filled, 0.60 <= confidence < 0.85 (yellow)
+  lowConfidence: number;  // not filled, confidence < 0.60 — red highlight, picker offered
+  noData:        number;  // not filled, confidence >= 0.60 but profile value is empty
+  totalScanned:  number;  // every field found by the scanner, regardless of outcome
 }
 
 export interface AutofillScanResult {
@@ -23,12 +24,10 @@ export interface AutofillScanResult {
   totalMatched:   number;
 }
 
-// Every element that received applyHighlight during the current session.
-// Superset of "elements that were filled" — includes highlighted-but-unfilled
-// fields (unmatched, matched-but-no-profile-value, low-confidence).
-// Cleared and re-populated on each scan/fill cycle.
-// undoAutofill uses this so that fields the user typed into after autofill
-// (on any highlighted field) are also cleared on undo.
+// Every element that received applyHighlight during the current session
+// (noReview + needReview + lowConfidence). noData fields are NOT included
+// because they are left completely untouched — no fill, no highlight, nothing
+// to undo. Cleared and re-populated on each scan/fill cycle.
 let sessionElements: HTMLElement[] = [];
 
 // Scan results held between AUTOFILL_SCAN and AUTOFILL_FILL messages.
@@ -98,61 +97,57 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
 // 'merge'     — skip fields that already had a value (leave them untouched, no highlight).
 // 'overwrite' — fill all matched fields regardless of existing content.
 //
-// Counting rules:
-//   filled   = confidence >= 0.85 AND a non-empty profile value was actually written
-//   review   = 0.60 <= confidence < 0.85 AND value was written
-//   unmatched = no match OR matched but profile value is empty OR confidence < 0.60
+// Four-way outcome per field:
+//   noReview      confidence >= 0.85, value present → fill, green highlight
+//   needReview    0.60 <= confidence < 0.85, value present → fill, yellow highlight
+//   lowConfidence confidence < 0.60 (any value) → no fill, red highlight, picker
+//   noData        confidence >= 0.60, value empty → no fill, no highlight, untouched
 //
-// Only elements where applyHighlight is called are added to sessionElements,
-// so undoAutofill can restore them all (not just the ones autofill wrote to).
+// sessionElements tracks every highlighted element (noReview + needReview +
+// lowConfidence) so undoAutofill can clear them all. noData fields are never
+// added because nothing was written to them.
 export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<AutofillResult> {
   const profile = await getProfile();
-  if (!profile) return { filled: 0, review: 0, unmatched: 0, totalScanned: 0 };
+  if (!profile) return { noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0 };
 
   const learnedMappings = await getLearnedMappings();
   const domain = window.location.hostname;
 
   const result: AutofillResult = {
-    filled: 0, review: 0, unmatched: 0,
+    noReview: 0, needReview: 0, lowConfidence: 0, noData: 0,
     totalScanned: pendingMatches.length,
   };
   const redFields: Array<{ element: HTMLElement; signals: FieldSignals }> = [];
 
   for (const { element, signals, match, hasExistingValue } of pendingMatches) {
-    // Merge mode: skip fields the autofill would have filled and that already
-    // have content.  Only applies when there is both a confident match (>=0.60)
-    // AND a non-empty profile value — the only scenario where we would otherwise
-    // write to the field.
+    // Merge mode: skip pre-filled fields that would otherwise be overwritten.
+    // Only relevant when confidence >= 0.60 AND the profile has a value to fill.
     if (mode === 'merge' && hasExistingValue && match.confidence >= 0.60 && match.value) {
       continue;
     }
 
     if (match.confidence >= 0.60 && match.value) {
-      // Confident match (≥0.60) AND profile has data → fill the field and highlight.
+      // Confident match with profile data → fill and highlight.
       await fillField(element, match.value);
-      applyHighlight(element, match.confidence); // green ≥0.85, yellow 0.60–0.85
+      applyHighlight(element, match.confidence); // green >=0.85, yellow 0.60–0.84
       sessionElements.push(element);
 
-      if (match.confidence >= 0.85) result.filled++;
-      else                          result.review++;
+      if (match.confidence >= 0.85) result.noReview++;
+      else                          result.needReview++;
 
-    } else if (match.confidence === 0) {
-      // No field recognized at all → red underline so the user can spot it,
-      // and attach a picker so they can map it manually.
+    } else if (match.confidence < 0.60) {
+      // Low or no confidence (includes confidence === 0).
+      // Red highlight signals the field needs manual attention; picker lets the
+      // user map it themselves.
       applyHighlight(element, 0);
       sessionElements.push(element);
-      result.unmatched++;
+      result.lowConfidence++;
       redFields.push({ element, signals });
 
     } else {
-      // Two silent-skip cases — leave the field completely untouched:
-      //  (a) Recognized field path (confidence > 0) but the profile value is
-      //      empty/null — there is nothing to write.
-      //  (b) Very weak fuzzy match (0 < confidence < 0.60) — confidence is too
-      //      low to act on, even if the profile has a value.
-      // Neither case applies a highlight or adds to sessionElements, because
-      // nothing was written and there is nothing to undo.
-      result.unmatched++;
+      // confidence >= 0.60 but profile value is empty — nothing to write.
+      // Leave the field completely untouched (no highlight, not in sessionElements).
+      result.noData++;
     }
   }
 
@@ -160,7 +155,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
 
   attachPickerListeners(redFields, profile, async (element, fieldPath, value) => {
     await fillField(element, value);
-    applyHighlight(element, 0.97);
+    applyHighlight(element, 0.97); // green — learned mapping, high confidence
     sessionElements.push(element);
 
     const sigs = extractSignals(element);
@@ -174,8 +169,8 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       if (norm) await saveLearnedMapping(domain, norm, fieldPath);
     }
 
-    result.filled++;
-    result.unmatched = Math.max(0, result.unmatched - 1);
+    result.noReview++;
+    result.lowConfidence = Math.max(0, result.lowConfidence - 1);
   });
 
   return result;

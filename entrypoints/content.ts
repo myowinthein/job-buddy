@@ -15,7 +15,7 @@ export default defineContentScript({
         const mode: 'merge' | 'overwrite' = message.mode === 'merge' ? 'merge' : 'overwrite';
         executeAutofill(mode)
           .then(sendResponse)
-          .catch(() => sendResponse({ filled: 0, review: 0, unmatched: 0, totalScanned: 0 }));
+          .catch(() => sendResponse({ noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0 }));
         return true;
       }
 
