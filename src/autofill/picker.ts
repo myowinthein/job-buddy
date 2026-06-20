@@ -4,12 +4,32 @@ import { resolveProfileValue } from './resolver';
 // All styles are inline — no Tailwind, no external CSS — to avoid host page conflicts.
 
 let activePicker: HTMLElement | null = null;
+let activeScrollHandler: (() => void) | null = null;
+let scrollRafId: number | null = null;
 
 // Tracks the focus handler currently registered on each element so we can
 // remove it before adding a new one when executeAutofill runs again.
 const pickerListeners = new WeakMap<HTMLElement, () => void>();
 
+function repositionPicker(anchor: HTMLElement): void {
+  if (!activePicker) return;
+  const rect = anchor.getBoundingClientRect();
+  const ph   = activePicker.offsetHeight;
+  const topAbove = rect.top - ph - 4;
+  activePicker.style.top  = (topAbove >= 0 ? topAbove : rect.bottom + 4) + 'px';
+  activePicker.style.left = `${Math.max(0, rect.left)}px`;
+}
+
 function removePicker(): void {
+  if (activeScrollHandler) {
+    window.removeEventListener('scroll', activeScrollHandler, true);
+    window.removeEventListener('resize', activeScrollHandler);
+    activeScrollHandler = null;
+  }
+  if (scrollRafId !== null) {
+    cancelAnimationFrame(scrollRafId);
+    scrollRafId = null;
+  }
   activePicker?.remove();
   activePicker = null;
 }
@@ -168,46 +188,47 @@ function showPicker(
     sectionLi.textContent = sectionLabel;
     list.appendChild(sectionLi);
 
-    // Option rows within this section
+    // Option rows within this section — compact single-line layout
     for (const opt of options) {
       const isCurrent = state === 'needReview' && opt.value === currentValue;
       const li = document.createElement('li');
       Object.assign(li.style, {
-        padding:         '5px 12px 6px',
+        padding:         '6px 12px',
         cursor:          'pointer',
         backgroundColor: isCurrent ? '#f0fdf4' : '',
+        display:         'flex',
+        alignItems:      'center',
+        gap:             '8px',
       });
 
-      // Label line (muted, smaller)
-      const labelEl = document.createElement('div');
+      // Label (muted, fixed share of row width)
+      const labelEl = document.createElement('span');
       Object.assign(labelEl.style, {
-        fontSize:   '10px',
-        color:      '#9ca3af',
-        marginBottom: '1px',
+        fontSize:     '11px',
+        color:        '#9ca3af',
+        flex:         '0 0 auto',
+        maxWidth:     '45%',
+        whiteSpace:   'nowrap',
+        overflow:     'hidden',
+        textOverflow: 'ellipsis',
       });
       labelEl.textContent = opt.label;
       li.appendChild(labelEl);
 
-      // Value row (strong) + optional "current" badge
-      const valueRow = document.createElement('div');
-      Object.assign(valueRow.style, {
-        display:    'flex',
-        alignItems: 'center',
-        gap:        '6px',
-      });
-
+      // Value (strong, fills remaining width)
       const valueEl = document.createElement('span');
       Object.assign(valueEl.style, {
-        fontSize:    '13px',
-        fontWeight:  '500',
-        color:       '#111827',
-        flex:        '1',
-        overflow:    'hidden',
-        textOverflow:'ellipsis',
-        whiteSpace:  'nowrap',
+        fontSize:     '13px',
+        fontWeight:   '500',
+        color:        '#111827',
+        flex:         '1',
+        minWidth:     '0',
+        whiteSpace:   'nowrap',
+        overflow:     'hidden',
+        textOverflow: 'ellipsis',
       });
       valueEl.textContent = opt.value;
-      valueRow.appendChild(valueEl);
+      li.appendChild(valueEl);
 
       if (isCurrent) {
         const badge = document.createElement('span');
@@ -222,10 +243,8 @@ function showPicker(
           whiteSpace:      'nowrap',
           flexShrink:      '0',
         });
-        valueRow.appendChild(badge);
+        li.appendChild(badge);
       }
-
-      li.appendChild(valueRow);
 
       li.addEventListener('mouseenter', () => { li.style.backgroundColor = isCurrent ? '#dcfce7' : '#f3f4f6'; });
       li.addEventListener('mouseleave', () => { li.style.backgroundColor = isCurrent ? '#f0fdf4' : ''; });
@@ -241,13 +260,25 @@ function showPicker(
   picker.appendChild(list);
   document.body.appendChild(picker);
 
-  // Position above the field; fall back to below if not enough room.
+  // Initial position (above the field if room, otherwise below).
   const ph = picker.offsetHeight;
   const topAbove = rect.top - ph - 4;
   picker.style.top = (topAbove >= 0 ? topAbove : rect.bottom + 4) + 'px';
   picker.style.visibility = '';
 
   activePicker = picker;
+
+  // Reposition on scroll or resize so the picker tracks the target field.
+  // RAF-throttled to avoid layout thrashing on fast scroll.
+  activeScrollHandler = () => {
+    if (scrollRafId !== null) return;
+    scrollRafId = requestAnimationFrame(() => {
+      scrollRafId = null;
+      repositionPicker(element);
+    });
+  };
+  window.addEventListener('scroll', activeScrollHandler, { capture: true, passive: true });
+  window.addEventListener('resize', activeScrollHandler, { passive: true });
 
   // Dismiss on outside click.
   const outsideHandler = (e: MouseEvent) => {
