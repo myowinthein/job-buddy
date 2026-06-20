@@ -111,8 +111,18 @@ export function EducationSection({ profile, onSave }: Props) {
     if (key === 'institution' && !String(value).trim()) err = 'Institution is required';
     else if (key === 'degree' && !String(value).trim()) err = 'Degree is required';
     else if (key === 'fieldOfStudy' && !String(value).trim()) err = 'Field of study is required';
-    else if (key === 'startDate' && !String(value).trim()) err = 'Start date is required';
-    else if (key === 'isCurrent' && value === true) {
+    else if (key === 'startDate') {
+      if (!String(value).trim()) err = 'Start date is required';
+      else {
+        const y = parseInt((value as string).split('-')[0] ?? '', 10);
+        if (!isNaN(y) && (y > EDU_MAX_YEAR || y < EDU_MIN_YEAR))
+          err = `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}`;
+      }
+    } else if (key === 'endDate' && typeof value === 'string' && value) {
+      const y = parseInt(value.split('-')[0] ?? '', 10);
+      if (!isNaN(y) && (y > EDU_MAX_YEAR || y < EDU_MIN_YEAR))
+        err = `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}`;
+    } else if (key === 'isCurrent' && value === true) {
       setErrors((e) => ({ ...e, [`${idx}.endDate`]: '' }));
     }
     setErrors((e) => ({ ...e, [ek]: err }));
