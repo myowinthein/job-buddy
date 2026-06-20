@@ -329,10 +329,10 @@ function App() {
 
             {/* Result summary — normal */}
             {autofillState === 'success' && autofillResult && autofillResult.totalScanned > 0 && (
-              <div className="mt-3 rounded-lg border border-gray-200 bg-white overflow-hidden text-xs">
+              <div className="mt-3 rounded-lg border border-gray-200 bg-white text-xs">
 
                 {/* ── Filled header ── */}
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-t-lg">
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Filled</span>
                   <span className="text-[11px] font-bold text-gray-600">({autofillResult.noReview + autofillResult.needReview})</span>
                 </div>
