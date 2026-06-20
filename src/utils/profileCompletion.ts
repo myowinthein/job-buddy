@@ -38,7 +38,6 @@ export const FIELD_FOCUS_IDS: Record<string, string> = {
   'Postal Code':             'field-postalCode',
   'Career Summary':          'field-summary',
   'Portfolio URL':           'field-portfolio',
-  // 'Custom Links' has no stable single input ID — section navigation only
 };
 
 export interface CompletionResult {
@@ -164,7 +163,6 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
   optCheck(!!profile.address?.postalCode?.trim(),      'address',     'Address',              'Postal Code');
   optCheck(!!profile.professional?.summary?.trim(),    'workHistory', 'Work History',         'Career Summary');
   optCheck(!!profile.links?.portfolio?.trim(),         'links',       'Links & Profiles',     'Portfolio URL');
-  optCheck((profile.links?.custom?.length ?? 0) >= 1, 'links',       'Links & Profiles',     'Custom Links');
 
   const optionalFieldsRemaining = optGroups.reduce((sum, g) => sum + g.fields.length, 0);
 
