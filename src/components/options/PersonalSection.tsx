@@ -59,6 +59,8 @@ export function PersonalSection({ profile, onSave }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
+  // True when DateOfBirthPicker has some-but-not-all of day/month/year filled.
+  const [dobIsPartial, setDobIsPartial] = useState(false);
 
   const fieldError = (key: string, value: string): string => {
     switch (key) {
@@ -134,6 +136,10 @@ export function PersonalSection({ profile, onSave }: Props) {
         if (year > CURRENT_YEAR) e.dateOfBirth = `Date of birth cannot be after ${CURRENT_YEAR}`;
         else if (year < CURRENT_YEAR - 100) e.dateOfBirth = `Year must be ${CURRENT_YEAR - 100} or later`;
       }
+    } else if (dobIsPartial) {
+      // Partial DOB: range errors take precedence (set above); only fill in
+      // the partial-completion message if nothing more specific applies.
+      e.dateOfBirth = 'Complete day, month, and year, or leave blank';
     }
 
     setErrors(e);
@@ -248,6 +254,22 @@ export function PersonalSection({ profile, onSave }: Props) {
           id="field-dateOfBirth"
           value={form.dateOfBirth}
           onChange={(v) => set('dateOfBirth', v)}
+          onPartialChange={(partial) => {
+            setDobIsPartial(partial);
+            // Live feedback: surface or clear the partial-completion error as
+            // the user types, but don't stomp on more specific range errors.
+            setErrors((e) => {
+              const existing = e.dateOfBirth;
+              if (partial) {
+                if (!existing) return { ...e, dateOfBirth: 'Complete day, month, and year, or leave blank' };
+                return e;
+              }
+              if (existing === 'Complete day, month, and year, or leave blank') {
+                return { ...e, dateOfBirth: '' };
+              }
+              return e;
+            });
+          }}
           error={errors.dateOfBirth}
         />
       </FormField>
