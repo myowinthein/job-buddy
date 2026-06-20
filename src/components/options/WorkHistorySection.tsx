@@ -153,6 +153,36 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   // Experience calculation reads only startDate / isCurrent / endDate — safe cast.
   const experience = calculateExperience(entries as unknown as WorkHistoryEntry[]);
 
+  // Blur handler for text inputs — validates the current stored value so
+  // focusing then leaving a blank required field shows an error.
+  const handleEntryBlur = (idx: number, key: 'company' | 'title') => {
+    const value = String(entries[idx][key]);
+    const ek = `${idx}.${key}`;
+    let err = '';
+    if (key === 'company' && !value.trim()) err = 'Company name is required';
+    else if (key === 'title' && !value.trim()) err = 'Job title is required';
+    setErrors((e) => ({ ...e, [ek]: err }));
+  };
+
+  // Year-only validation for MonthYearPicker's onYearChange: validates the
+  // year range even before a month is selected.
+  const handleYearChange = (idx: number, key: 'startDate' | 'endDate', year: string) => {
+    const ek = `${idx}.${key}`;
+    if (year.length < 4) {
+      setErrors((e) => {
+        const cur = e[ek] ?? '';
+        return cur.startsWith('Year must be') ? { ...e, [ek]: '' } : e;
+      });
+      return;
+    }
+    const y = parseInt(year, 10);
+    if (isNaN(y)) return;
+    const err = y > CURRENT_YEAR || y < MIN_YEAR
+      ? `Year must be between ${MIN_YEAR} and ${CURRENT_YEAR}`
+      : '';
+    setErrors((e) => ({ ...e, [ek]: err }));
+  };
+
   const updateEntry = (idx: number, key: keyof LocalRow, value: string | boolean) => {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     const ek = `${idx}.${key}`;
@@ -292,6 +322,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                 className={cls(errors[`${idx}.company`])}
                 value={row.company}
                 onChange={(e) => updateEntry(idx, 'company', e.target.value)}
+                onBlur={() => handleEntryBlur(idx, 'company')}
                 placeholder="Acme Inc."
                 maxLength={150}
               />
@@ -301,6 +332,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                 className={cls(errors[`${idx}.title`])}
                 value={row.title}
                 onChange={(e) => updateEntry(idx, 'title', e.target.value)}
+                onBlur={() => handleEntryBlur(idx, 'title')}
                 placeholder="Senior Software Engineer"
                 maxLength={150}
               />
@@ -350,13 +382,15 @@ export function WorkHistorySection({ profile, onSave }: Props) {
               <MonthYearPicker
                 value={row.startDate}
                 onChange={(v) => updateEntry(idx, 'startDate', v)}
+                onYearChange={(y) => handleYearChange(idx, 'startDate', y)}
                 error={errors[`${idx}.startDate`]}
               />
             </FormField>
-            <FormField label="End Date" error={errors[`${idx}.endDate`]}>
+            <FormField label="End Date" required={!row.isCurrent} error={errors[`${idx}.endDate`]}>
               <MonthYearPicker
                 value={row.endDate}
                 onChange={(v) => updateEntry(idx, 'endDate', v)}
+                onYearChange={(y) => handleYearChange(idx, 'endDate', y)}
                 error={errors[`${idx}.endDate`]}
                 disabled={row.isCurrent}
               />
