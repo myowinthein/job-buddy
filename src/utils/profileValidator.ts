@@ -144,18 +144,19 @@ export function validateImportedProfile(raw: unknown): ValidationResult {
 
     if ('expected' in sal && Array.isArray(sal.expected)) {
       const expected: Profile['salary']['expected'] = [];
-      (sal.expected as unknown[]).forEach((entry, i) => {
+      (sal.expected as unknown[]).forEach((entry) => {
         if (typeof entry === 'object' && entry !== null) {
           const e = entry as Record<string, unknown>;
           if (typeof e.currency === 'string') {
+            // Current shape: { country?, currency, amount? }
             expected.push({
               country:  typeof e.country === 'string' ? e.country : undefined,
               currency: e.currency,
               amount:   typeof e.amount === 'number' ? e.amount : undefined,
             });
-          } else {
-            err(`salary.expected[${i}]`, 'missing currency string');
           }
+          // Entries missing currency (e.g. partially-filled rows from older
+          // exports) are dropped silently — they carry no usable data.
         }
       });
       if (expected.length > 0) ss.expected = expected;
