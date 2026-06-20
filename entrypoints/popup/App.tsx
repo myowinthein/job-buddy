@@ -3,10 +3,11 @@ import { getProfile } from '@/src/utils/storage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 
 interface AutofillResult {
-  filled:       number;
-  review:       number;
-  unmatched:    number;
-  totalScanned: number;
+  noReview:      number;
+  needReview:    number;
+  lowConfidence: number;
+  noData:        number;
+  totalScanned:  number;
 }
 
 interface AutofillScanResult {
@@ -23,6 +24,19 @@ interface CompletionState {
 // 'confirming' is shown when the scan found pre-filled fields and we need
 // the user to choose merge vs overwrite before proceeding.
 type AutofillState = 'idle' | 'loading' | 'confirming' | 'success' | 'error';
+
+// Hover tooltip using Tailwind peer pattern: the ⓘ span is the peer;
+// the following sibling reveals itself on peer-hover.
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span className="relative inline-flex shrink-0">
+      <span className="peer text-[10px] leading-none text-gray-400 cursor-default select-none">ⓘ</span>
+      <span className="pointer-events-none absolute bottom-full left-0 z-50 mb-1.5 w-44 rounded-md bg-gray-800 px-2 py-1.5 text-[11px] leading-snug text-white shadow-md opacity-0 peer-hover:opacity-100 transition-opacity">
+        {text}
+      </span>
+    </span>
+  );
+}
 
 function App() {
   const [completion, setCompletion] = useState<CompletionState>({
@@ -76,7 +90,7 @@ function App() {
       } else {
         // Nothing pre-filled: fill immediately
         const result = await sendToActiveTab({ action: 'AUTOFILL_FILL', mode: 'overwrite' }) as AutofillResult;
-        if (result && typeof result.filled === 'number') {
+        if (result && typeof result.totalScanned === 'number') {
           setAutofillResult(result);
           setAutofillState('success');
         } else {
@@ -92,7 +106,7 @@ function App() {
     setAutofillState('loading');
     try {
       const result = await sendToActiveTab({ action: 'AUTOFILL_FILL', mode: fillMode }) as AutofillResult;
-      if (result && typeof result.filled === 'number') {
+      if (result && typeof result.totalScanned === 'number') {
         setAutofillResult(result);
         setAutofillState('success');
       } else {
@@ -191,7 +205,7 @@ function App() {
         ) : !hasProfileData ? (
           /* ── State 1: no profile data ── */
           <p className="text-sm text-gray-600 leading-snug">
-            Add your profile info first to start auto-filling forms.
+            Set up your profile to start autofilling.
           </p>
 
         ) : autofillState === 'confirming' ? (
@@ -295,10 +309,64 @@ function App() {
 
             {/* Result summary — normal */}
             {autofillState === 'success' && autofillResult && autofillResult.totalScanned > 0 && (
-              <div className="mt-3 flex items-center justify-around text-xs font-semibold rounded-lg border border-gray-200 bg-white py-2 px-3">
-                <span className="text-green-600">✓ Filled {autofillResult.filled}</span>
-                <span className="text-yellow-600">⚠ Review {autofillResult.review}</span>
-                <span className="text-red-500">✗ Unmatched {autofillResult.unmatched}</span>
+              <div className="mt-3 rounded-lg border border-gray-200 bg-white overflow-hidden text-xs">
+
+                {/* ── Parent: Filled ──────────────────────────────────── */}
+                <div className="flex items-center justify-between px-3 py-2 bg-gray-50">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-600">Filled</span>
+                  <span className="font-semibold text-gray-700">
+                    {autofillResult.noReview + autofillResult.needReview}
+                  </span>
+                </div>
+
+                {/* Child: No Review */}
+                <div className="flex items-center justify-between px-3 py-1.5 pl-5 border-t border-gray-100">
+                  <span className="flex items-center gap-1 text-gray-600">
+                    <span className="text-green-600 font-semibold">✓</span>
+                    No Review
+                    <InfoTooltip text="Filled automatically — we're confident this is correct." />
+                  </span>
+                  <span className="font-medium text-green-600">{autofillResult.noReview}</span>
+                </div>
+
+                {/* Child: Need Review */}
+                <div className="flex items-center justify-between px-3 py-1.5 pl-5 border-t border-gray-100">
+                  <span className="flex items-center gap-1 text-gray-600">
+                    <span className="text-yellow-600 font-semibold">⚠</span>
+                    Need Review
+                    <InfoTooltip text="Filled automatically — please double-check this value." />
+                  </span>
+                  <span className="font-medium text-yellow-600">{autofillResult.needReview}</span>
+                </div>
+
+                {/* ── Parent: Not Filled ──────────────────────────────── */}
+                <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-t border-gray-200">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-600">Not Filled</span>
+                  <span className="font-semibold text-gray-700">
+                    {autofillResult.lowConfidence + autofillResult.noData}
+                  </span>
+                </div>
+
+                {/* Child: Low Confidence */}
+                <div className="flex items-center justify-between px-3 py-1.5 pl-5 border-t border-gray-100">
+                  <span className="flex items-center gap-1 text-gray-600">
+                    <span className="text-red-500 font-semibold">✗</span>
+                    Low Confidence
+                    <InfoTooltip text="We couldn't confidently identify this field. Click it on the page to choose a value." />
+                  </span>
+                  <span className="font-medium text-red-500">{autofillResult.lowConfidence}</span>
+                </div>
+
+                {/* Child: No Data */}
+                <div className="flex items-center justify-between px-3 py-1.5 pl-5 border-t border-gray-100">
+                  <span className="flex items-center gap-1 text-gray-600">
+                    <span className="text-gray-400">○</span>
+                    No Data
+                    <InfoTooltip text="We recognized this field, but you haven't added this info to your profile yet." />
+                  </span>
+                  <span className="font-medium text-gray-400">{autofillResult.noData}</span>
+                </div>
+
               </div>
             )}
 
