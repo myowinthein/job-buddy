@@ -74,7 +74,8 @@ interface SidebarProps {
   onSelect: (id: string) => void;
   collapsed: boolean;
   onToggle: () => void;
-  sectionCompletion: Record<string, boolean>;
+  sectionCompletion:     Record<string, boolean>;
+  sectionFullCompletion: Record<string, boolean>;
   onImportClick: () => void;
 }
 
@@ -84,6 +85,7 @@ export function Sidebar({
   collapsed,
   onToggle,
   sectionCompletion,
+  sectionFullCompletion,
   onImportClick,
 }: SidebarProps) {
   return (
@@ -109,8 +111,9 @@ export function Sidebar({
 
       <nav className="flex-1 overflow-y-auto py-2">
         {SECTIONS.map((section) => {
-          const isActive = activeSection === section.id;
-          const isComplete = sectionCompletion[section.id];
+          const isActive          = activeSection === section.id;
+          const isMandatoryComplete = sectionCompletion[section.id];
+          const isFullyComplete   = sectionFullCompletion[section.id];
 
           return (
             <button
@@ -128,12 +131,19 @@ export function Sidebar({
               {!collapsed && (
                 <>
                   <span className="text-sm font-medium flex-1 truncate">{section.label}</span>
-                  {isComplete && (
+                  {isFullyComplete ? (
+                    <span
+                      className="w-[17px] h-[17px] rounded-full bg-green-500 flex items-center justify-center shrink-0"
+                      title="Fully complete"
+                    >
+                      <span className="text-white text-[10px] leading-none font-bold">✓</span>
+                    </span>
+                  ) : isMandatoryComplete ? (
                     <span className="text-green-500 text-xs shrink-0" title="Complete">✓</span>
-                  )}
+                  ) : null}
                 </>
               )}
-              {collapsed && isComplete && (
+              {collapsed && isMandatoryComplete && (
                 <span className="absolute ml-6 text-green-500 text-xs leading-none">·</span>
               )}
             </button>
