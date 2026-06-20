@@ -190,17 +190,9 @@ function App() {
 
         ) : !hasProfileData ? (
           /* ── State 1: no profile data ── */
-          <>
-            <p className="text-sm text-gray-600 leading-snug mb-3">
-              Add your profile info first to start auto-filling forms.
-            </p>
-            <button
-              onClick={openOptions}
-              className="w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Complete Your Profile
-            </button>
-          </>
+          <p className="text-sm text-gray-600 leading-snug">
+            Add your profile info first to start auto-filling forms.
+          </p>
 
         ) : autofillState === 'confirming' ? (
           /* ── State 2a: merge / overwrite confirmation dialog ── */
