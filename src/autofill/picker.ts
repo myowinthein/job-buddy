@@ -1,4 +1,5 @@
 import type { Profile } from '../types/profile';
+import { getProfile } from '../utils/storage';
 import { resolveProfileValue } from './resolver';
 
 // All styles are inline — no Tailwind, no external CSS — to avoid host page conflicts.
@@ -300,11 +301,8 @@ export function removePickerListener(element: HTMLElement): void {
 
 export function attachPickerListeners(
   fields: PickerField[],
-  profile: Profile,
   onSelect: (element: HTMLElement, fieldPath: string, value: string, originalState: PickerFieldState) => void,
 ): void {
-  const sections = buildGroupedOptions(profile);
-
   for (const { element, state } of fields) {
     // Remove any existing focus listener before adding the new one — prevents
     // duplicate overlays when executeAutofill is called multiple times on the
@@ -312,7 +310,13 @@ export function attachPickerListeners(
     const prev = pickerListeners.get(element);
     if (prev) element.removeEventListener('focus', prev);
 
-    const handler = () => showPicker(element, state, sections, onSelect);
+    // Fetch a fresh profile copy on every open so the picker reflects any
+    // edits made in other tabs since the last Auto Fill run.
+    const handler = async () => {
+      const profile = await getProfile();
+      if (!profile) return;
+      showPicker(element, state, buildGroupedOptions(profile), onSelect);
+    };
     element.addEventListener('focus', handler);
     pickerListeners.set(element, handler);
   }
