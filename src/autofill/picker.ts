@@ -23,9 +23,8 @@ interface PickerOption {
 export type PickerFieldState = 'lowConfidence' | 'needReview' | 'noData';
 
 export interface PickerField {
-  element:   HTMLElement;
-  state:     PickerFieldState;
-  fieldPath: string | null;  // matched profile path; used for noData CTA section hint
+  element: HTMLElement;
+  state:   PickerFieldState;
 }
 
 const PICKER_FIELDS: Array<{ path: string; label: string }> = [
@@ -57,38 +56,9 @@ function buildOptions(profile: Profile): PickerOption[] {
   return opts;
 }
 
-// Maps a profile field path to the options page section that owns it.
-function fieldPathToSection(fieldPath: string | null): string | null {
-  if (!fieldPath) return null;
-  const [root, sub = ''] = fieldPath.split('.');
-  switch (root) {
-    case 'personal':          return 'personal';
-    case 'address':           return 'address';
-    case 'salary':            return 'salary';
-    case 'links':             return 'links';
-    case 'professional':      return 'workHistory';
-    case 'workAuthorization': return 'workAuthorization';
-    case 'derived':
-      return (sub === 'currentTitle' || sub === 'currentCompany' || sub === 'totalExperience')
-        ? 'workHistory'
-        : 'personal';
-    default: return null;
-  }
-}
-
-const SECTION_LABELS: Record<string, string> = {
-  personal:          'Personal',
-  address:           'Address',
-  salary:            'Salary',
-  links:             'Links',
-  workHistory:       'Work History',
-  workAuthorization: 'Work Authorization',
-};
-
 function showPicker(
   element: HTMLElement,
   state: PickerFieldState,
-  fieldPath: string | null,
   options: PickerOption[],
   onSelect: (element: HTMLElement, fieldPath: string, value: string, originalState: PickerFieldState) => void,
 ): void {
@@ -206,34 +176,6 @@ function showPicker(
   list.appendChild(skip);
 
   picker.appendChild(list);
-
-  // For noData fields: CTA to open the profile editor at the relevant section.
-  if (state === 'noData') {
-    const section      = fieldPathToSection(fieldPath);
-    const sectionLabel = section ? SECTION_LABELS[section] : null;
-
-    const cta = document.createElement('div');
-    Object.assign(cta.style, {
-      padding:      '8px 12px',
-      borderTop:    '1px solid #f3f4f6',
-      color:        '#3b82f6',
-      fontSize:     '12px',
-      cursor:       'pointer',
-      lineHeight:   '1.4',
-    });
-    cta.textContent = sectionLabel
-      ? `This field isn't in your profile yet — Add it now (${sectionLabel})`
-      : `This field isn't in your profile yet — Add it now`;
-    cta.addEventListener('mouseenter', () => { cta.style.backgroundColor = '#eff6ff'; });
-    cta.addEventListener('mouseleave', () => { cta.style.backgroundColor = ''; });
-    cta.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      removePicker();
-      chrome.runtime.openOptionsPage();
-    });
-    picker.appendChild(cta);
-  }
-
   document.body.appendChild(picker);
 
   // Measure and position above (or below if no room).
@@ -261,14 +203,14 @@ export function attachPickerListeners(
 ): void {
   const options = buildOptions(profile);
 
-  for (const { element, state, fieldPath } of fields) {
+  for (const { element, state } of fields) {
     // Remove any existing focus listener before adding the new one — prevents
     // duplicate overlays when executeAutofill is called multiple times on the
     // same page without a full reload.
     const prev = pickerListeners.get(element);
     if (prev) element.removeEventListener('focus', prev);
 
-    const handler = () => showPicker(element, state, fieldPath, options, onSelect);
+    const handler = () => showPicker(element, state, options, onSelect);
     element.addEventListener('focus', handler);
     pickerListeners.set(element, handler);
   }
