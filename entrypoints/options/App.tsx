@@ -338,7 +338,7 @@ function App() {
 
   const handleImportComplete = () => {
     getProfile()
-      .then((p) => { if (p) setProfile(p); })
+      .then((p) => { setProfile(p ?? {}); })
       .catch((err) => console.error('[Job Buddy] Failed to reload profile after import:', err));
   };
 
@@ -416,7 +416,10 @@ function App() {
           onFocusField={handleFocusField}
         />
         <main ref={mainRef} className="flex-1 overflow-y-auto p-8">
-          <div className="max-w-2xl">{renderSection()}</div>
+          {/* Settings uses max-w-none so long subtitles can flow to one line */}
+          <div className={activeSection === 'settings' ? 'max-w-none' : 'max-w-2xl'}>
+            {renderSection()}
+          </div>
         </main>
       </div>
 
