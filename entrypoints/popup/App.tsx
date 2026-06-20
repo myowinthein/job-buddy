@@ -27,11 +27,14 @@ type AutofillState = 'idle' | 'loading' | 'confirming' | 'success' | 'error';
 
 // Hover tooltip using Tailwind peer pattern: the ⓘ span is the peer;
 // the following sibling reveals itself on peer-hover.
-function InfoTooltip({ text }: { text: string }) {
+// align="right" anchors the panel to the right of the icon (for right-side items
+// that would otherwise overflow the popup edge).
+function InfoTooltip({ text, align = 'left' }: { text: string; align?: 'left' | 'right' }) {
+  const anchor = align === 'right' ? 'right-0' : 'left-0';
   return (
     <span className="relative inline-flex shrink-0">
       <span className="peer text-[10px] leading-none text-gray-400 cursor-default select-none">ⓘ</span>
-      <span className="pointer-events-none absolute bottom-full left-0 z-50 mb-1.5 w-44 rounded-md bg-gray-800 px-2 py-1.5 text-[11px] leading-snug text-white shadow-md opacity-0 peer-hover:opacity-100 transition-opacity">
+      <span className={`pointer-events-none absolute bottom-full ${anchor} z-50 mb-1.5 w-44 rounded-md bg-gray-800 px-2 py-1.5 text-[11px] leading-snug text-white shadow-md opacity-0 peer-hover:opacity-100 transition-opacity`}>
         {text}
       </span>
     </span>
@@ -328,60 +331,48 @@ function App() {
             {autofillState === 'success' && autofillResult && autofillResult.totalScanned > 0 && (
               <div className="mt-3 rounded-lg border border-gray-200 bg-white overflow-hidden text-xs">
 
-                {/* ── Parent: Filled ──────────────────────────────────── */}
-                <div className="flex items-center justify-between px-3 py-2 bg-gray-50">
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-600">Filled</span>
-                  <span className="font-semibold text-gray-700">
-                    {autofillResult.noReview + autofillResult.needReview}
-                  </span>
+                {/* ── Filled header ── */}
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Filled</span>
+                  <span className="font-semibold text-gray-600">({autofillResult.noReview + autofillResult.needReview})</span>
                 </div>
 
-                {/* Child: No Review */}
-                <div className="flex items-center justify-between px-3 py-1.5 pl-5 border-t border-gray-100">
+                {/* No Review + Review — side by side */}
+                <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100">
                   <span className="flex items-center gap-1 text-gray-600">
                     <span className="text-green-600 font-semibold">✓</span>
                     No Review
-                    <InfoTooltip text="Filled automatically — we're confident this is correct." />
+                    <InfoTooltip text="Filled automatically. We're confident this is correct." />
+                    <span className="font-medium text-green-600">{autofillResult.noReview}</span>
                   </span>
-                  <span className="font-medium text-green-600">{autofillResult.noReview}</span>
-                </div>
-
-                {/* Child: Need Review */}
-                <div className="flex items-center justify-between px-3 py-1.5 pl-5 border-t border-gray-100">
                   <span className="flex items-center gap-1 text-gray-600">
                     <span className="text-yellow-600 font-semibold">⚠</span>
-                    Need Review
-                    <InfoTooltip text="Filled automatically — please double-check this value." />
-                  </span>
-                  <span className="font-medium text-yellow-600">{autofillResult.needReview}</span>
-                </div>
-
-                {/* ── Parent: Not Filled ──────────────────────────────── */}
-                <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-t border-gray-200">
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-600">Not Filled</span>
-                  <span className="font-semibold text-gray-700">
-                    {autofillResult.lowConfidence + autofillResult.noData}
+                    Review
+                    <InfoTooltip text="Filled automatically. Please double-check this value." align="right" />
+                    <span className="font-medium text-yellow-600">{autofillResult.needReview}</span>
                   </span>
                 </div>
 
-                {/* Child: Low Confidence */}
-                <div className="flex items-center justify-between px-3 py-1.5 pl-5 border-t border-gray-100">
+                {/* ── Not Filled header ── */}
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border-t border-gray-200">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Not Filled</span>
+                  <span className="font-semibold text-gray-600">({autofillResult.lowConfidence + autofillResult.noData})</span>
+                </div>
+
+                {/* No Match + No Data — side by side */}
+                <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100">
                   <span className="flex items-center gap-1 text-gray-600">
                     <span className="text-red-500 font-semibold">✗</span>
-                    Low Confidence
+                    No Match
                     <InfoTooltip text="We couldn't confidently identify this field. Click it on the page to choose a value." />
+                    <span className="font-medium text-red-500">{autofillResult.lowConfidence}</span>
                   </span>
-                  <span className="font-medium text-red-500">{autofillResult.lowConfidence}</span>
-                </div>
-
-                {/* Child: No Data */}
-                <div className="flex items-center justify-between px-3 py-1.5 pl-5 border-t border-gray-100">
                   <span className="flex items-center gap-1 text-gray-600">
                     <span className="text-gray-400">○</span>
                     No Data
-                    <InfoTooltip text="We recognized this field, but you haven't added this info to your profile yet." />
+                    <InfoTooltip text="We recognized this field, but you haven't added this info to your profile yet." align="right" />
+                    <span className="font-medium text-gray-400">{autofillResult.noData}</span>
                   </span>
-                  <span className="font-medium text-gray-400">{autofillResult.noData}</span>
                 </div>
 
               </div>
