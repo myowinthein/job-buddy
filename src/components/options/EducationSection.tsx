@@ -114,8 +114,9 @@ export function EducationSection({ profile, onSave }: Props) {
     setErrors((e) => ({ ...e, [ek]: err }));
   };
 
-  const handleEndDateYearChange = (idx: number, year: string) => {
-    const ek = `${idx}.endDate`;
+  // Year-only validation (fires on every year keystroke via onYearChange).
+  const handleYearChange = (idx: number, key: 'startDate' | 'endDate', year: string) => {
+    const ek = `${idx}.${key}`;
     if (year.length < 4) {
       setErrors((e) => {
         const cur = e[ek] ?? '';
@@ -129,6 +130,46 @@ export function EducationSection({ profile, onSave }: Props) {
       ? `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}`
       : '';
     setErrors((e) => ({ ...e, [ek]: err }));
+  };
+
+  // Blur handler for the full month+year group.
+  // Validation order: required (both empty) → year range (year present).
+  const handleDateBlur = (idx: number, key: 'startDate' | 'endDate', month: string, year: string) => {
+    const ek = `${idx}.${key}`;
+    const isRequired = key === 'startDate' || !entries[idx].isCurrent;
+
+    if (!month && !year.trim()) {
+      setErrors((e) => ({
+        ...e,
+        [ek]: isRequired
+          ? (key === 'startDate' ? 'Start date is required' : 'End date is required')
+          : '',
+      }));
+      return;
+    }
+
+    if (year.length === 4) {
+      const y = parseInt(year, 10);
+      if (!isNaN(y) && (y > EDU_MAX_YEAR || y < EDU_MIN_YEAR)) {
+        setErrors((e) => ({ ...e, [ek]: `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}` }));
+        return;
+      }
+      setErrors((e) => {
+        const cur = e[ek] ?? '';
+        return (cur === 'Start date is required' || cur === 'End date is required')
+          ? { ...e, [ek]: '' }
+          : e;
+      });
+      return;
+    }
+
+    // Partial / in-progress — clear stale required errors only
+    setErrors((e) => {
+      const cur = e[ek] ?? '';
+      return (cur === 'Start date is required' || cur === 'End date is required')
+        ? { ...e, [ek]: '' }
+        : e;
+    });
   };
 
   const update = (idx: number, key: keyof Row, value: string | boolean) => {
@@ -265,6 +306,8 @@ export function EducationSection({ profile, onSave }: Props) {
               <MonthYearPicker
                 value={row.startDate}
                 onChange={(v) => update(idx, 'startDate', v)}
+                onYearChange={(y) => handleYearChange(idx, 'startDate', y)}
+                onBlur={(m, y) => handleDateBlur(idx, 'startDate', m, y)}
                 error={errors[`${idx}.startDate`]}
               />
             </FormField>
@@ -272,7 +315,8 @@ export function EducationSection({ profile, onSave }: Props) {
               <MonthYearPicker
                 value={row.endDate ?? ''}
                 onChange={(v) => update(idx, 'endDate', v)}
-                onYearChange={(y) => handleEndDateYearChange(idx, y)}
+                onYearChange={(y) => handleYearChange(idx, 'endDate', y)}
+                onBlur={(m, y) => handleDateBlur(idx, 'endDate', m, y)}
                 error={errors[`${idx}.endDate`]}
                 disabled={row.isCurrent}
               />
