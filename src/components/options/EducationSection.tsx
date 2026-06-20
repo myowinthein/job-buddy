@@ -154,6 +154,14 @@ export function EducationSection({ profile, onSave }: Props) {
         setErrors((e) => ({ ...e, [ek]: `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}` }));
         return;
       }
+      // End date before start date (only when endDate has a complete month+year)
+      if (key === 'endDate' && month) {
+        const startDate = entries[idx].startDate;
+        if (startDate && `${year}-${month}` < startDate) {
+          setErrors((e) => ({ ...e, [ek]: 'End date cannot be before start date' }));
+          return;
+        }
+      }
       setErrors((e) => {
         const cur = e[ek] ?? '';
         return (cur === 'Start date is required' || cur === 'End date is required')
