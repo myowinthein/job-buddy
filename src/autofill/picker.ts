@@ -54,6 +54,8 @@ export interface PickerField {
 }
 
 // Grouped in the same order as the Options page sidebar sections.
+// Each path is resolved via resolveProfileValue(); sections with no filled
+// fields are omitted from the rendered picker.
 const PICKER_SECTIONS: Array<{ sectionLabel: string; fields: Array<{ path: string; label: string }> }> = [
   {
     sectionLabel: 'Personal',
@@ -63,7 +65,12 @@ const PICKER_SECTIONS: Array<{ sectionLabel: string; fields: Array<{ path: strin
       { path: 'derived.fullName',              label: 'Full Name'           },
       { path: 'personal.email',                label: 'Email'               },
       { path: 'personal.phone.number',         label: 'Phone'               },
+      { path: 'personal.dateOfBirth',          label: 'Date of Birth'       },
       { path: 'derived.age',                   label: 'Age'                 },
+      { path: 'personal.gender',               label: 'Gender'              },
+      { path: 'personal.ethnicity',            label: 'Ethnicity'           },
+      { path: 'personal.veteranStatus',        label: 'Veteran Status'      },
+      { path: 'personal.disabilityStatus',     label: 'Disability Status'   },
     ],
   },
   {
@@ -72,6 +79,7 @@ const PICKER_SECTIONS: Array<{ sectionLabel: string; fields: Array<{ path: strin
       { path: 'address.street',                label: 'Street'              },
       { path: 'address.city',                  label: 'City'                },
       { path: 'address.country',               label: 'Country'             },
+      { path: 'address.state',                 label: 'State / Province'    },
       { path: 'address.postalCode',            label: 'Postal Code'         },
     ],
   },
@@ -88,6 +96,14 @@ const PICKER_SECTIONS: Array<{ sectionLabel: string; fields: Array<{ path: strin
     sectionLabel: 'Salary',
     fields: [
       { path: 'salary.current.amount',         label: 'Current Salary'      },
+      { path: 'salary.current.currency',       label: 'Current Currency'    },
+      { path: 'salary.expected',               label: 'Expected Salary'     },
+    ],
+  },
+  {
+    sectionLabel: 'Work Authorization',
+    fields: [
+      { path: 'workAuthorization',             label: 'Authorization Status' },
     ],
   },
   {
