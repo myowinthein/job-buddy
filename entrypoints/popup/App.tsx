@@ -68,6 +68,23 @@ function App() {
       });
   }, []);
 
+  // On mount, ask the content script for its last fill result so the popup
+  // restores the success state even after being closed and reopened.
+  useEffect(() => {
+    (async () => {
+      try {
+        const result = await sendToActiveTab({ action: 'GET_STATUS' }) as AutofillResult | null;
+        if (result && typeof result.totalScanned === 'number') {
+          setAutofillResult(result);
+          setAutofillState('success');
+        }
+      } catch {
+        // Content script not loaded on this page — stay in idle state.
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const openOptions = () => chrome.runtime.openOptionsPage();
 
   const sendToActiveTab = async (message: object) => {
