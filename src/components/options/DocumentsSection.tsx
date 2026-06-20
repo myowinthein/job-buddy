@@ -34,7 +34,8 @@ function initDocState(entry?: DocumentEntry): DocState {
 
 function validateDocUrl(url: string, required: boolean, hasFile: boolean): string {
   if (!url.trim()) return (required && !hasFile) ? 'CV URL is required' : '';
-  try { new URL(url.trim()); return ''; }
+  const normalized = /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
+  try { return new URL(normalized).hostname.includes('.') ? '' : 'Enter a valid URL'; }
   catch { return 'Enter a valid URL'; }
 }
 

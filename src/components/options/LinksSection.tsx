@@ -41,7 +41,8 @@ export function LinksSection({ profile, onSave }: Props) {
   }, [newEntryTick]);
 
   const isValidUrl = (url: string): boolean => {
-    try { new URL(url); return true; } catch { return false; }
+    const normalized = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+    try { return new URL(normalized).hostname.includes('.'); } catch { return false; }
   };
 
   const fieldError = (key: string, value: string): string => {
