@@ -22,6 +22,10 @@ interface Props {
   // even when month is not yet selected. Use this to validate year range
   // independently of the full YYYY-MM value.
   onYearChange?: (year: string) => void;
+  // Fires when focus leaves the entire month+year group (not when tabbing
+  // between month and year within the picker). Receives the current internal
+  // month and raw year strings so the parent can run blur-time validation.
+  onBlur?: (month: string, year: string) => void;
   error?: string;
   disabled?: boolean;
 }
@@ -30,6 +34,7 @@ export function MonthYearPicker({
   value,
   onChange,
   onYearChange,
+  onBlur,
   error,
   disabled = false,
 }: Props) {
@@ -65,8 +70,16 @@ export function MonthYearPicker({
   const disabledCls = disabled ? ' opacity-50 cursor-not-allowed bg-gray-50' : '';
   const fieldCls = baseCls + disabledCls;
 
+  const handleGroupBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    // Only fire when focus moves outside the entire month+year group,
+    // not when tabbing between month and year within the picker.
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      onBlur?.(month, yearStr);
+    }
+  };
+
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2" onBlur={handleGroupBlur}>
       <div className="flex-1">
         <select
           className={fieldCls}

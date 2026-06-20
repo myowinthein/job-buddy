@@ -165,7 +165,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   };
 
   // Year-only validation for MonthYearPicker's onYearChange: validates the
-  // year range even before a month is selected.
+  // year range even before a month is selected (fires on every keystroke).
   const handleYearChange = (idx: number, key: 'startDate' | 'endDate', year: string) => {
     const ek = `${idx}.${key}`;
     if (year.length < 4) {
@@ -181,6 +181,48 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       ? `Year must be between ${MIN_YEAR} and ${CURRENT_YEAR}`
       : '';
     setErrors((e) => ({ ...e, [ek]: err }));
+  };
+
+  // Blur handler for the full month+year group (fires when focus leaves the picker).
+  // Validation order: required (both empty) → year range (year present).
+  const handleDateBlur = (idx: number, key: 'startDate' | 'endDate', month: string, year: string) => {
+    const ek = `${idx}.${key}`;
+    const isRequired = key === 'startDate' || !entries[idx].isCurrent;
+
+    if (!month && !year.trim()) {
+      // Both fields empty
+      setErrors((e) => ({
+        ...e,
+        [ek]: isRequired
+          ? (key === 'startDate' ? 'Start date is required' : 'End date is required')
+          : '',
+      }));
+      return;
+    }
+
+    if (year.length === 4) {
+      const y = parseInt(year, 10);
+      if (!isNaN(y) && (y > CURRENT_YEAR || y < MIN_YEAR)) {
+        setErrors((e) => ({ ...e, [ek]: `Year must be between ${MIN_YEAR} and ${CURRENT_YEAR}` }));
+        return;
+      }
+      // Year is valid — clear any stale required error (user has entered something)
+      setErrors((e) => {
+        const cur = e[ek] ?? '';
+        return (cur === 'Start date is required' || cur === 'End date is required')
+          ? { ...e, [ek]: '' }
+          : e;
+      });
+      return;
+    }
+
+    // Partial year or month-only: in-progress — clear stale required errors only
+    setErrors((e) => {
+      const cur = e[ek] ?? '';
+      return (cur === 'Start date is required' || cur === 'End date is required')
+        ? { ...e, [ek]: '' }
+        : e;
+    });
   };
 
   const updateEntry = (idx: number, key: keyof LocalRow, value: string | boolean) => {
@@ -383,6 +425,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                 value={row.startDate}
                 onChange={(v) => updateEntry(idx, 'startDate', v)}
                 onYearChange={(y) => handleYearChange(idx, 'startDate', y)}
+                onBlur={(m, y) => handleDateBlur(idx, 'startDate', m, y)}
                 error={errors[`${idx}.startDate`]}
               />
             </FormField>
@@ -391,6 +434,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                 value={row.endDate}
                 onChange={(v) => updateEntry(idx, 'endDate', v)}
                 onYearChange={(y) => handleYearChange(idx, 'endDate', y)}
+                onBlur={(m, y) => handleDateBlur(idx, 'endDate', m, y)}
                 error={errors[`${idx}.endDate`]}
                 disabled={row.isCurrent}
               />
