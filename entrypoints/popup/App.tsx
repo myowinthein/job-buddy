@@ -118,6 +118,9 @@ function App() {
 
   const { percentage, isCoreComplete, optionalFieldsRemaining } = completion;
 
+  // True once loading is done and at least one profile field has been filled.
+  const hasProfileData = !loading && percentage > 0;
+
   const color = percentage >= 80 ? 'green' : percentage >= 50 ? 'yellow' : 'red';
   const colorMap = {
     red:    { bar: 'bg-red-500',    text: 'text-red-600',    badge: 'bg-red-50 border-red-200'       },
@@ -181,8 +184,26 @@ function App() {
       <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
         <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-3">Autofill</p>
 
-        {/* Merge / Overwrite confirmation dialog */}
-        {autofillState === 'confirming' ? (
+        {/* Loading skeleton */}
+        {loading ? (
+          <div className="h-9 bg-gray-200 rounded-lg animate-pulse" />
+
+        ) : !hasProfileData ? (
+          /* ── State 1: no profile data ── */
+          <>
+            <p className="text-sm text-gray-600 leading-snug mb-3">
+              Add your profile info first to start auto-filling forms.
+            </p>
+            <button
+              onClick={openOptions}
+              className="w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Complete Your Profile
+            </button>
+          </>
+
+        ) : autofillState === 'confirming' ? (
+          /* ── State 2a: merge / overwrite confirmation dialog ── */
           <div>
             <p className="text-sm font-medium text-gray-800 mb-1">
               This form already has data filled in.
@@ -238,7 +259,9 @@ function App() {
               </button>
             </div>
           </div>
+
         ) : (
+          /* ── State 2b: normal autofill controls ── */
           <>
             {/* Auto Fill button */}
             <button
@@ -249,13 +272,15 @@ function App() {
               {autofillState === 'loading' ? 'Filling…' : 'Auto Fill'}
             </button>
 
-            {/* Undo Auto-fill button */}
-            <button
-              onClick={handleUndo}
-              className="w-full py-2 px-4 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              Undo Auto-fill
-            </button>
+            {/* Undo — only visible after a fill has run in this session */}
+            {autofillState === 'success' && (
+              <button
+                onClick={handleUndo}
+                className="w-full py-2 px-4 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Undo Auto-fill
+              </button>
+            )}
 
             {/* Result summary — no fields found */}
             {autofillState === 'success' && autofillResult && autofillResult.totalScanned === 0 && (
