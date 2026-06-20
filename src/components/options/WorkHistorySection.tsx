@@ -390,13 +390,13 @@ export function WorkHistorySection({ profile, onSave }: Props) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Country">
+            <FormField label="Country" optional>
               <SearchableCountryDropdown
                 value={row.locationCountry}
                 onChange={(code) => updateEntry(idx, 'locationCountry', code)}
               />
             </FormField>
-            <FormField label="City">
+            <FormField label="City" optional>
               <input
                 className={cls()}
                 value={row.locationCity}
@@ -408,7 +408,10 @@ export function WorkHistorySection({ profile, onSave }: Props) {
           </div>
 
           <div className="mb-4">
-            <p className="text-sm font-medium text-gray-700 mb-2">Work Arrangement</p>
+            <p className="text-sm font-medium text-gray-700 mb-2">
+              Work Arrangement
+              <span className="text-xs text-gray-400 font-normal ml-1">Optional</span>
+            </p>
             <div className="flex gap-6">
               {(['onsite', 'remote', 'hybrid'] as const).map((opt) => (
                 <label key={opt} className="flex items-center gap-2 cursor-pointer">
@@ -459,7 +462,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
             <span className="text-sm text-gray-700">Currently active</span>
           </label>
 
-          <FormField label="Description">
+          <FormField label="Description" optional>
             <textarea
               className={`${cls()} min-h-[100px] resize-y`}
               value={row.description}
