@@ -35,11 +35,6 @@ export function CompletionBanner({
       {isCoreComplete ? (
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-sm font-bold text-green-700">✓ Ready to Apply</span>
-          {optionalFieldsRemaining > 0 && (
-            <span className="text-xs text-gray-400 font-normal">
-              {optionalFieldsRemaining} optional field{optionalFieldsRemaining !== 1 ? 's' : ''} available
-            </span>
-          )}
         </div>
       ) : (
         <div className="flex items-center gap-1 shrink-0">
@@ -112,8 +107,11 @@ export function CompletionBanner({
           <button
             type="button"
             onClick={() => setShowDropdown((s) => !s)}
-            className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 transition-colors"
+            className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 transition-colors"
           >
+            <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-700 text-xs flex items-center justify-center font-bold">
+              {optionalFieldsRemaining}
+            </span>
             Missing {showDropdown ? '▲' : '▼'}
           </button>
 
