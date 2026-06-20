@@ -231,7 +231,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
 
   attachEditWatchers(pickerFields, result);
 
-  attachPickerListeners(pickerFields, profile, async (element, fieldPath, value, originalState: PickerFieldState) => {
+  attachPickerListeners(pickerFields, async (element, fieldPath, value, originalState: PickerFieldState) => {
     await fillField(element, value);
     applyHighlight(element, 0.97); // green — user-confirmed, high confidence
 
