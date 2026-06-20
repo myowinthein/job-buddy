@@ -334,7 +334,7 @@ function App() {
                 {/* ── Filled header ── */}
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50">
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Filled</span>
-                  <span className="font-semibold text-gray-600">({autofillResult.noReview + autofillResult.needReview})</span>
+                  <span className="text-[11px] font-bold text-gray-600">({autofillResult.noReview + autofillResult.needReview})</span>
                 </div>
 
                 {/* No Review + Review — side by side */}
@@ -342,21 +342,21 @@ function App() {
                   <span className="flex items-center gap-1 text-gray-600">
                     <span className="text-green-600 font-semibold">✓</span>
                     No Review
+                    <span className="font-medium text-gray-600">{autofillResult.noReview}</span>
                     <InfoTooltip text="Filled automatically. We're confident this is correct." />
-                    <span className="font-medium text-green-600">{autofillResult.noReview}</span>
                   </span>
                   <span className="flex items-center gap-1 text-gray-600">
                     <span className="text-yellow-600 font-semibold">⚠</span>
                     Review
+                    <span className="font-medium text-gray-600">{autofillResult.needReview}</span>
                     <InfoTooltip text="Filled automatically. Please double-check this value." align="right" />
-                    <span className="font-medium text-yellow-600">{autofillResult.needReview}</span>
                   </span>
                 </div>
 
                 {/* ── Not Filled header ── */}
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border-t border-gray-200">
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Not Filled</span>
-                  <span className="font-semibold text-gray-600">({autofillResult.lowConfidence + autofillResult.noData})</span>
+                  <span className="text-[11px] font-bold text-gray-600">({autofillResult.lowConfidence + autofillResult.noData})</span>
                 </div>
 
                 {/* No Match + No Data — side by side */}
@@ -364,14 +364,14 @@ function App() {
                   <span className="flex items-center gap-1 text-gray-600">
                     <span className="text-red-500 font-semibold">✗</span>
                     No Match
+                    <span className="font-medium text-gray-600">{autofillResult.lowConfidence}</span>
                     <InfoTooltip text="We couldn't confidently identify this field. Click it on the page to choose a value." />
-                    <span className="font-medium text-red-500">{autofillResult.lowConfidence}</span>
                   </span>
                   <span className="flex items-center gap-1 text-gray-600">
                     <span className="text-gray-400">○</span>
                     No Data
+                    <span className="font-medium text-gray-600">{autofillResult.noData}</span>
                     <InfoTooltip text="We recognized this field, but you haven't added this info to your profile yet." align="right" />
-                    <span className="font-medium text-gray-400">{autofillResult.noData}</span>
                   </span>
                 </div>
 
