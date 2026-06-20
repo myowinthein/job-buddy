@@ -150,7 +150,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // No picker for green (No Review) fields.
       } else {
         result.needReview++;
-        pickerFields.push({ element, state: 'needReview', fieldPath: match.fieldPath });
+        pickerFields.push({ element, state: 'needReview' });
       }
 
     } else if (match.confidence < 0.60) {
@@ -158,13 +158,13 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       applyHighlight(element, 0);
       sessionElements.push(element);
       result.lowConfidence++;
-      pickerFields.push({ element, state: 'lowConfidence', fieldPath: match.fieldPath });
+      pickerFields.push({ element, state: 'lowConfidence' });
 
     } else {
       // confidence >= 0.60 but profile value is empty — nothing to write.
       // No highlight; picker is offered so the user can choose an alternative value.
       result.noData++;
-      pickerFields.push({ element, state: 'noData', fieldPath: match.fieldPath });
+      pickerFields.push({ element, state: 'noData' });
     }
   }
 
