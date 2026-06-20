@@ -21,6 +21,10 @@ const MIN_YEAR = CURRENT_YEAR - 100;
 interface Props {
   value: string;      // "YYYY-MM-DD" or ""
   onChange: (value: string) => void;
+  // Fires when partial-state changes. true = some but not all of day/month/year
+  // have content; false = either all three filled or all three empty. Lets the
+  // parent show a "must complete if started" error without making DOB required.
+  onPartialChange?: (isPartial: boolean) => void;
   error?: string;
   id?: string;
 }
@@ -46,7 +50,15 @@ function buildDOB(month: number, day: number, year: number): string {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-export function DateOfBirthPicker({ value, onChange, error, id }: Props) {
+function computePartial(dayStr: string, month: number, yearStr: string): boolean {
+  const dayFilled   = dayStr.length > 0;
+  const monthFilled = month > 0;
+  const yearFilled  = yearStr.length > 0;
+  const filledCount = (dayFilled ? 1 : 0) + (monthFilled ? 1 : 0) + (yearFilled ? 1 : 0);
+  return filledCount > 0 && filledCount < 3;
+}
+
+export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id }: Props) {
   const parsed = parseDOB(value);
   const [month, setMonth] = useState(parsed.month);
   const [day,   setDay]   = useState(parsed.day);
@@ -74,14 +86,17 @@ export function DateOfBirthPicker({ value, onChange, error, id }: Props) {
     setDay(d);
     setDayError(cleaned.length > 0 && !inRange ? 'Day must be between 1 and 31' : '');
     onChange(buildDOB(month, d, year));
+    onPartialChange?.(computePartial(cleaned, month, yearStr));
   };
 
   const handleMonth = (m: number) => {
     setMonth(m);
     const max = daysInMonth(m, year);
     const d = day > max ? max : day;
-    if (d !== day) { setDay(d); setDayStr(d ? String(d) : ''); }
+    const nextDayStr = d !== day ? (d ? String(d) : '') : dayStr;
+    if (d !== day) { setDay(d); setDayStr(nextDayStr); }
     onChange(buildDOB(m, d, year));
+    onPartialChange?.(computePartial(nextDayStr, m, yearStr));
   };
 
   const handleYearInput = (raw: string) => {
@@ -98,8 +113,10 @@ export function DateOfBirthPicker({ value, onChange, error, id }: Props) {
     );
     const max = daysInMonth(month, y);
     const d = day > max ? max : day;
-    if (d !== day) { setDay(d); setDayStr(d ? String(d) : ''); }
+    const nextDayStr = d !== day ? (d ? String(d) : '') : dayStr;
+    if (d !== day) { setDay(d); setDayStr(nextDayStr); }
     onChange(buildDOB(month, d, y));
+    onPartialChange?.(computePartial(nextDayStr, month, cleaned));
   };
 
   // Show the first active error; the outer FormField may also supply one
