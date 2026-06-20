@@ -18,6 +18,10 @@ const MONTHS = [
 interface Props {
   value: string;      // "YYYY-MM" or ""
   onChange: (value: string) => void;
+  // Fires with the raw 4-digit year string whenever the year input changes,
+  // even when month is not yet selected. Use this to validate year range
+  // independently of the full YYYY-MM value.
+  onYearChange?: (year: string) => void;
   error?: string;
   disabled?: boolean;
 }
@@ -25,6 +29,7 @@ interface Props {
 export function MonthYearPicker({
   value,
   onChange,
+  onYearChange,
   error,
   disabled = false,
 }: Props) {
@@ -52,6 +57,7 @@ export function MonthYearPicker({
     const cleaned = raw.replace(/\D/g, '').slice(0, 4);
     setYearStr(cleaned);
     emit(month, isValidYear(cleaned) ? cleaned : '');
+    onYearChange?.(cleaned);
   };
 
   const borderCls = error ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500';
