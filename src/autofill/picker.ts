@@ -20,6 +20,11 @@ interface PickerOption {
   value:     string;
 }
 
+interface PickerSection {
+  sectionLabel: string;
+  options:      PickerOption[];
+}
+
 export type PickerFieldState = 'lowConfidence' | 'needReview' | 'noData';
 
 export interface PickerField {
@@ -27,39 +32,68 @@ export interface PickerField {
   state:   PickerFieldState;
 }
 
-const PICKER_FIELDS: Array<{ path: string; label: string }> = [
-  { path: 'personal.firstName',             label: 'First Name'          },
-  { path: 'personal.lastName',              label: 'Last Name'           },
-  { path: 'personal.email',                 label: 'Email'               },
-  { path: 'personal.phone.number',          label: 'Phone'               },
-  { path: 'address.city',                   label: 'City'                },
-  { path: 'address.country',                label: 'Country'             },
-  { path: 'address.street',                 label: 'Street'              },
-  { path: 'address.postalCode',             label: 'Postal Code'         },
-  { path: 'derived.fullName',               label: 'Full Name'           },
-  { path: 'derived.currentTitle',           label: 'Current Title'       },
-  { path: 'derived.currentCompany',         label: 'Current Company'     },
-  { path: 'derived.totalExperience.years',  label: 'Years of Experience' },
-  { path: 'derived.age',                    label: 'Age'                 },
-  { path: 'links.linkedin',                 label: 'LinkedIn'            },
-  { path: 'links.portfolio',                label: 'Portfolio'           },
-  { path: 'professional.summary',           label: 'Summary'             },
-  { path: 'salary.current.amount',          label: 'Current Salary'      },
+// Grouped in the same order as the Options page sidebar sections.
+const PICKER_SECTIONS: Array<{ sectionLabel: string; fields: Array<{ path: string; label: string }> }> = [
+  {
+    sectionLabel: 'Personal',
+    fields: [
+      { path: 'personal.firstName',            label: 'First Name'          },
+      { path: 'personal.lastName',             label: 'Last Name'           },
+      { path: 'derived.fullName',              label: 'Full Name'           },
+      { path: 'personal.email',                label: 'Email'               },
+      { path: 'personal.phone.number',         label: 'Phone'               },
+      { path: 'derived.age',                   label: 'Age'                 },
+    ],
+  },
+  {
+    sectionLabel: 'Address',
+    fields: [
+      { path: 'address.street',                label: 'Street'              },
+      { path: 'address.city',                  label: 'City'                },
+      { path: 'address.country',               label: 'Country'             },
+      { path: 'address.postalCode',            label: 'Postal Code'         },
+    ],
+  },
+  {
+    sectionLabel: 'Work History',
+    fields: [
+      { path: 'derived.currentTitle',          label: 'Current Title'       },
+      { path: 'derived.currentCompany',        label: 'Current Company'     },
+      { path: 'derived.totalExperience.years', label: 'Years of Experience' },
+      { path: 'professional.summary',          label: 'Summary'             },
+    ],
+  },
+  {
+    sectionLabel: 'Salary',
+    fields: [
+      { path: 'salary.current.amount',         label: 'Current Salary'      },
+    ],
+  },
+  {
+    sectionLabel: 'Links',
+    fields: [
+      { path: 'links.linkedin',                label: 'LinkedIn'            },
+      { path: 'links.portfolio',               label: 'Portfolio'           },
+    ],
+  },
 ];
 
-function buildOptions(profile: Profile): PickerOption[] {
-  const opts: PickerOption[] = [];
-  for (const { path, label } of PICKER_FIELDS) {
-    const value = resolveProfileValue(profile, path);
-    if (value) opts.push({ label, fieldPath: path, value });
-  }
-  return opts;
+function buildGroupedOptions(profile: Profile): PickerSection[] {
+  return PICKER_SECTIONS
+    .map(({ sectionLabel, fields }) => ({
+      sectionLabel,
+      options: fields.flatMap(({ path, label }) => {
+        const value = resolveProfileValue(profile, path);
+        return value ? [{ label, fieldPath: path, value }] : [];
+      }),
+    }))
+    .filter(({ options }) => options.length > 0);
 }
 
 function showPicker(
   element: HTMLElement,
   state: PickerFieldState,
-  options: PickerOption[],
+  sections: PickerSection[],
   onSelect: (element: HTMLElement, fieldPath: string, value: string, originalState: PickerFieldState) => void,
 ): void {
   removePicker();
@@ -111,74 +145,103 @@ function showPicker(
   const list = document.createElement('ul');
   Object.assign(list.style, {
     margin:    '0',
-    padding:   '4px 0',
+    padding:   '0',
     listStyle: 'none',
-    maxHeight: '200px',
+    maxHeight: '240px',
     overflowY: 'auto',
   });
 
-  for (const opt of options) {
-    const isCurrent = state === 'needReview' && opt.value === currentValue;
-    const li = document.createElement('li');
-    Object.assign(li.style, {
-      padding:         '7px 12px',
-      cursor:          'pointer',
-      color:           '#111827',
-      backgroundColor: isCurrent ? '#f0fdf4' : '',
-      display:         'flex',
-      alignItems:      'center',
-      gap:             '6px',
+  sections.forEach(({ sectionLabel, options }, sectionIndex) => {
+    // Section header row
+    const sectionLi = document.createElement('li');
+    Object.assign(sectionLi.style, {
+      padding:         '5px 12px 3px',
+      fontSize:        '10px',
+      fontWeight:      '600',
+      textTransform:   'uppercase',
+      letterSpacing:   '0.06em',
+      color:           '#9ca3af',
+      backgroundColor: '#f9fafb',
+      borderTop:       sectionIndex > 0 ? '1px solid #f3f4f6' : 'none',
+      pointerEvents:   'none',
     });
+    sectionLi.textContent = sectionLabel;
+    list.appendChild(sectionLi);
 
-    const text = document.createElement('span');
-    text.textContent = `${opt.label}: ${opt.value}`;
-    text.style.flex = '1';
-    li.appendChild(text);
-
-    if (isCurrent) {
-      const badge = document.createElement('span');
-      badge.textContent = 'current';
-      Object.assign(badge.style, {
-        fontSize:        '10px',
-        fontWeight:      '600',
-        color:           '#16a34a',
-        backgroundColor: '#dcfce7',
-        padding:         '1px 5px',
-        borderRadius:    '4px',
-        whiteSpace:      'nowrap',
+    // Option rows within this section
+    for (const opt of options) {
+      const isCurrent = state === 'needReview' && opt.value === currentValue;
+      const li = document.createElement('li');
+      Object.assign(li.style, {
+        padding:         '5px 12px 6px',
+        cursor:          'pointer',
+        backgroundColor: isCurrent ? '#f0fdf4' : '',
       });
-      li.appendChild(badge);
+
+      // Label line (muted, smaller)
+      const labelEl = document.createElement('div');
+      Object.assign(labelEl.style, {
+        fontSize:   '10px',
+        color:      '#9ca3af',
+        marginBottom: '1px',
+      });
+      labelEl.textContent = opt.label;
+      li.appendChild(labelEl);
+
+      // Value row (strong) + optional "current" badge
+      const valueRow = document.createElement('div');
+      Object.assign(valueRow.style, {
+        display:    'flex',
+        alignItems: 'center',
+        gap:        '6px',
+      });
+
+      const valueEl = document.createElement('span');
+      Object.assign(valueEl.style, {
+        fontSize:    '13px',
+        fontWeight:  '500',
+        color:       '#111827',
+        flex:        '1',
+        overflow:    'hidden',
+        textOverflow:'ellipsis',
+        whiteSpace:  'nowrap',
+      });
+      valueEl.textContent = opt.value;
+      valueRow.appendChild(valueEl);
+
+      if (isCurrent) {
+        const badge = document.createElement('span');
+        badge.textContent = 'current';
+        Object.assign(badge.style, {
+          fontSize:        '10px',
+          fontWeight:      '600',
+          color:           '#16a34a',
+          backgroundColor: '#dcfce7',
+          padding:         '1px 5px',
+          borderRadius:    '4px',
+          whiteSpace:      'nowrap',
+          flexShrink:      '0',
+        });
+        valueRow.appendChild(badge);
+      }
+
+      li.appendChild(valueRow);
+
+      li.addEventListener('mouseenter', () => { li.style.backgroundColor = isCurrent ? '#dcfce7' : '#f3f4f6'; });
+      li.addEventListener('mouseleave', () => { li.style.backgroundColor = isCurrent ? '#f0fdf4' : ''; });
+      li.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        onSelect(element, opt.fieldPath, opt.value, state);
+        removePicker();
+      });
+      list.appendChild(li);
     }
-
-    li.addEventListener('mouseenter', () => { li.style.backgroundColor = isCurrent ? '#dcfce7' : '#f3f4f6'; });
-    li.addEventListener('mouseleave', () => { li.style.backgroundColor = isCurrent ? '#f0fdf4' : ''; });
-    li.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      onSelect(element, opt.fieldPath, opt.value, state);
-      removePicker();
-    });
-    list.appendChild(li);
-  }
-
-  // Skip option
-  const skip = document.createElement('li');
-  Object.assign(skip.style, {
-    padding:    '7px 12px',
-    cursor:     'pointer',
-    color:      '#9ca3af',
-    borderTop:  '1px solid #f3f4f6',
-    marginTop:  '2px',
   });
-  skip.textContent = 'Skip this field';
-  skip.addEventListener('mouseenter', () => { skip.style.backgroundColor = '#f9fafb'; });
-  skip.addEventListener('mouseleave', () => { skip.style.backgroundColor = ''; });
-  skip.addEventListener('mousedown', (e) => { e.preventDefault(); removePicker(); });
-  list.appendChild(skip);
 
   picker.appendChild(list);
   document.body.appendChild(picker);
 
-  // Measure and position above (or below if no room).
+  // Position above the field; fall back to below if not enough room.
   const ph = picker.offsetHeight;
   const topAbove = rect.top - ph - 4;
   picker.style.top = (topAbove >= 0 ? topAbove : rect.bottom + 4) + 'px';
@@ -209,7 +272,7 @@ export function attachPickerListeners(
   profile: Profile,
   onSelect: (element: HTMLElement, fieldPath: string, value: string, originalState: PickerFieldState) => void,
 ): void {
-  const options = buildOptions(profile);
+  const sections = buildGroupedOptions(profile);
 
   for (const { element, state } of fields) {
     // Remove any existing focus listener before adding the new one — prevents
@@ -218,7 +281,7 @@ export function attachPickerListeners(
     const prev = pickerListeners.get(element);
     if (prev) element.removeEventListener('focus', prev);
 
-    const handler = () => showPicker(element, state, options, onSelect);
+    const handler = () => showPicker(element, state, sections, onSelect);
     element.addEventListener('focus', handler);
     pickerListeners.set(element, handler);
   }
