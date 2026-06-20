@@ -97,7 +97,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       ]);
 
       if (!profile) {
-        showToast('error', 'No profile data found to export.');
+        showToast('warning', 'No profile data to export.');
         return;
       }
 
