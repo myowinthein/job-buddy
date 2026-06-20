@@ -83,7 +83,7 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
     const match   = mapField(signals, profile, learnedMappings, domain);
     const hasExistingValue = getFieldValue(element) !== '';
 
-    if (match.confidence > 0 && match.value) {
+    if (match.confidence >= 0.60 && match.value) {
       totalMatched++;
       if (hasExistingValue) preFilledCount++;
     }
@@ -119,34 +119,40 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   const redFields: Array<{ element: HTMLElement; signals: FieldSignals }> = [];
 
   for (const { element, signals, match, hasExistingValue } of pendingMatches) {
-    // Merge mode: pre-filled fields are left completely untouched — no highlight, no count.
-    if (mode === 'merge' && hasExistingValue && match.confidence > 0 && match.value) {
+    // Merge mode: skip fields the autofill would have filled and that already
+    // have content.  Only applies when there is both a confident match (>=0.60)
+    // AND a non-empty profile value — the only scenario where we would otherwise
+    // write to the field.
+    if (mode === 'merge' && hasExistingValue && match.confidence >= 0.60 && match.value) {
       continue;
     }
 
-    if (match.confidence > 0 && match.value) {
-      // A match was found AND the profile has a non-empty value — actually fill the field.
+    if (match.confidence >= 0.60 && match.value) {
+      // Confident match (≥0.60) AND profile has data → fill the field and highlight.
       await fillField(element, match.value);
-      applyHighlight(element, match.confidence);
+      applyHighlight(element, match.confidence); // green ≥0.85, yellow 0.60–0.85
       sessionElements.push(element);
 
-      if (match.confidence >= 0.85) {
-        result.filled++;
-      } else if (match.confidence >= 0.60) {
-        result.review++;
-      } else {
-        // Low-confidence fill: red highlight, offer picker so user can correct.
-        result.unmatched++;
-        redFields.push({ element, signals });
-      }
-    } else {
-      // Nothing written: either no match (confidence === 0) or matched but the
-      // profile field is empty.  In both cases highlight red so the user knows
-      // these fields were not filled, and offer the picker.
+      if (match.confidence >= 0.85) result.filled++;
+      else                          result.review++;
+
+    } else if (match.confidence === 0) {
+      // No field recognized at all → red underline so the user can spot it,
+      // and attach a picker so they can map it manually.
       applyHighlight(element, 0);
       sessionElements.push(element);
       result.unmatched++;
       redFields.push({ element, signals });
+
+    } else {
+      // Two silent-skip cases — leave the field completely untouched:
+      //  (a) Recognized field path (confidence > 0) but the profile value is
+      //      empty/null — there is nothing to write.
+      //  (b) Very weak fuzzy match (0 < confidence < 0.60) — confidence is too
+      //      low to act on, even if the profile has a value.
+      // Neither case applies a highlight or adds to sessionElements, because
+      // nothing was written and there is nothing to undo.
+      result.unmatched++;
     }
   }
 
