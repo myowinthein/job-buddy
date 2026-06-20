@@ -206,6 +206,14 @@ export function WorkHistorySection({ profile, onSave }: Props) {
         setErrors((e) => ({ ...e, [ek]: `Year must be between ${MIN_YEAR} and ${CURRENT_YEAR}` }));
         return;
       }
+      // End date before start date (only when endDate has a complete month+year)
+      if (key === 'endDate' && month) {
+        const startDate = entries[idx].startDate;
+        if (startDate && `${year}-${month}` < startDate) {
+          setErrors((e) => ({ ...e, [ek]: 'End date cannot be before start date' }));
+          return;
+        }
+      }
       // Year is valid — clear any stale required error (user has entered something)
       setErrors((e) => {
         const cur = e[ek] ?? '';
