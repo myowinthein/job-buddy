@@ -12,8 +12,8 @@ interface Props {
 
 const cls = (err?: string) =>
   err
-    ? 'w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
-    : 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+    ? 'w-full px-3 py-2 border border-red-300 dark:border-red-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
+    : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 // Back-compat: old profiles stored a country name ("Thailand"); new ones store
 // an ISO code ("TH"). Normalise to the ISO code on load.
@@ -74,8 +74,8 @@ export function AddressSection({ profile, onSave }: Props) {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Address</h2>
-        <p className="text-sm text-gray-500 mt-1">Your current residential address</p>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Address</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Your current residential address</p>
       </div>
 
       <FormField label="Street Address">
@@ -133,7 +133,7 @@ export function AddressSection({ profile, onSave }: Props) {
         </FormField>
       </div>
 
-      <div className="mt-6 pt-4 border-t border-gray-200 flex items-center gap-3">
+      <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
         <button
           onClick={handleSave}
           disabled={saving}
