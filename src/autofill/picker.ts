@@ -111,9 +111,9 @@ function mostRecentIdx(entries: Array<{ startDate?: string; isCurrent?: boolean 
 }
 
 function workHistoryHeading(entry: WorkHistoryEntry, idx: number): string {
-  if (entry.title && entry.company) return `${entry.title} — ${entry.company}`;
-  if (entry.title)   return entry.title;
+  if (entry.company && entry.title) return `${entry.company} — ${entry.title}`;
   if (entry.company) return entry.company;
+  if (entry.title)   return entry.title;
   const sy = entry.startDate?.split('-')[0];
   const ey = entry.isCurrent ? 'Present' : entry.endDate?.split('-')[0];
   if (sy) return ey ? `${sy} — ${ey}` : sy;
@@ -121,9 +121,9 @@ function workHistoryHeading(entry: WorkHistoryEntry, idx: number): string {
 }
 
 function educationHeading(entry: EducationEntry, idx: number): string {
-  if (entry.degree && entry.institution) return `${entry.degree} — ${entry.institution}`;
-  if (entry.degree)      return entry.degree;
+  if (entry.institution && entry.degree) return `${entry.institution} — ${entry.degree}`;
   if (entry.institution) return entry.institution;
+  if (entry.degree)      return entry.degree;
   const sy = entry.startDate?.split('-')[0];
   const ey = entry.isCurrent ? 'Present' : entry.endDate?.split('-')[0];
   if (sy) return ey ? `${sy} — ${ey}` : sy;
@@ -945,12 +945,15 @@ function showPicker(
 
   // Dismiss on outside mousedown only. Delay registration so the focus event
   // that triggered showPicker doesn't immediately dismiss the picker.
-  // Using activePicker (not the closed-over picker) so a stale handler that
-  // somehow fires will act on the current picker, not a detached element.
+  // Clicking the owning input while the picker is open should keep the picker
+  // open (not close and re-open it). Exclude the owning element from the
+  // "outside" definition so the outsideHandler only fires for genuine outside clicks.
   activeOutsideHandler = (e: MouseEvent) => {
-    if (activePicker && !activePicker.contains(e.target as Node)) {
-      removePicker();
-    }
+    if (!activePicker) return;
+    const target = e.target as Node;
+    if (activePicker.contains(target))         return; // click inside picker
+    if (activePickerElement?.contains(target)) return; // click on the owning input
+    removePicker();
   };
   setTimeout(() => {
     if (activeOutsideHandler) {
@@ -978,7 +981,10 @@ export function attachPickerListeners(
     if (prev) element.removeEventListener('focus', prev);
 
     // Fetch fresh profile on every open so cross-tab edits are reflected immediately.
+    // Guard: if this element already owns the open picker, do nothing — the user
+    // clicked back onto the same input and the picker should stay as-is.
     const handler = async () => {
+      if (activePicker && activePickerElement === element) return;
       const profile = await getProfile();
       if (!profile) return;
       showPicker(element, state, buildPickerTree(profile), onSelect);
