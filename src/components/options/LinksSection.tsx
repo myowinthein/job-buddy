@@ -11,8 +11,8 @@ interface Props {
 
 const cls = (err?: string) =>
   err
-    ? 'w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
-    : 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+    ? 'w-full px-3 py-2 border border-red-300 dark:border-red-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
+    : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 export function LinksSection({ profile, onSave }: Props) {
   const l = profile.links;
@@ -121,8 +121,8 @@ export function LinksSection({ profile, onSave }: Props) {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Links & Profiles</h2>
-        <p className="text-sm text-gray-500 mt-1">Online presence used in job applications</p>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Links & Profiles</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Online presence used in job applications</p>
       </div>
 
       {PLATFORMS.map(({ key, label, required, placeholder }) => (
@@ -146,16 +146,16 @@ export function LinksSection({ profile, onSave }: Props) {
           <button
             type="button"
             onClick={() => { setCustom((rows) => [...rows, { label: '', url: '' }]); setNewEntryTick((t) => t + 1); }}
-            className="text-xs px-3 py-1.5 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+            className="text-xs px-3 py-1.5 border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
           >
             + Add Entry
           </button>
         </div>
         <div ref={customContainerRef}>
         {custom.map((c, idx) => (
-            <div key={idx} className="p-4 border border-gray-200 rounded-lg mb-3">
+            <div key={idx} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-gray-600">Entry {idx + 1}</span>
+                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Entry {idx + 1}</span>
                 <RemoveButton onClick={() => setCustom((rows) => rows.filter((_, i) => i !== idx))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -185,7 +185,7 @@ export function LinksSection({ profile, onSave }: Props) {
         </div>{/* customContainerRef */}
       </div>
 
-      <div className="mt-2 pt-4 border-t border-gray-200 flex items-center gap-3">
+      <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
         <button
           onClick={handleSave}
           disabled={saving}

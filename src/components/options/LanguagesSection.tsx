@@ -12,8 +12,8 @@ interface Props {
 
 const cls = (err?: string) =>
   err
-    ? 'w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
-    : 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+    ? 'w-full px-3 py-2 border border-red-300 dark:border-red-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
+    : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 const PROFICIENCY_OPTIONS: { value: LanguageProficiency; label: string }[] = [
   { value: 'native_bilingual',    label: 'Native or bilingual proficiency' },
@@ -115,15 +115,15 @@ export function LanguagesSection({ profile, onSave }: Props) {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Languages</h2>
-        <p className="text-sm text-gray-500 mt-1">Add the languages you can use professionally.</p>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Languages</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Add the languages you can use professionally.</p>
       </div>
 
       <div className="mb-4" ref={entriesContainerRef}>
         {entries.map((row, idx) => (
-          <div key={idx} className="p-4 border border-gray-200 rounded-lg mb-3">
+          <div key={idx} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-gray-600">Entry {idx + 1}</span>
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Entry {idx + 1}</span>
               <RemoveButton onClick={() => removeEntry(idx)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -155,12 +155,12 @@ export function LanguagesSection({ profile, onSave }: Props) {
       <button
         type="button"
         onClick={addEntry}
-        className="w-full py-2.5 border-2 border-dashed border-gray-300 text-sm text-gray-500 rounded-lg hover:border-blue-400 hover:text-blue-500 transition-colors mb-4"
+        className="w-full py-2.5 border-2 border-dashed border-gray-300 dark:border-gray-600 text-sm text-gray-500 dark:text-gray-400 rounded-lg hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors mb-4"
       >
         + Add Language
       </button>
 
-      <div className="mt-2 pt-4 border-t border-gray-200 flex items-center gap-3">
+      <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
         <button
           onClick={handleSave}
           disabled={saving}
