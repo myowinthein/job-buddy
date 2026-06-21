@@ -6,6 +6,12 @@
   box-sizing: border-box;
 }
 
+html {
+  /* Lets the browser pick light or dark UA defaults (scrollbars, form controls,
+     date pickers) to match prefers-color-scheme. */
+  color-scheme: light dark;
+}
+
 body {
   margin: 0;
   font-family:
@@ -14,4 +20,13 @@ body {
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #0f172a; /* slate-900 */
+    color: #f1f5f9;            /* slate-100 */
+  }
 }
