@@ -32,8 +32,8 @@ Four entrypoints in `entrypoints/`:
 | Entrypoint | Description |
 |---|---|
 | `background.ts` | Service worker — stub; no message passing wired |
-| `content.ts` | Content script matched to `*://*/*`; listens for `AUTOFILL` / `CLEAR` runtime messages and delegates to `src/autofill/` |
-| `popup/` | Browser action popup — profile completion %, Auto Fill button, Clear Highlights, result summary |
+| `content.ts` | Content script matched to `*://*/*`; listens for `AUTOFILL_SCAN` / `AUTOFILL_FILL` / `CLEAR` runtime messages and delegates to `src/autofill/` |
+| `popup/` | Browser action popup — profile completion %, Auto Fill button, Clear Highlights, result summary. Chrome MV3 destroys the popup on close, so React state is lost; on mount the popup sends `GET_STATUS` to the content script and restores the success view from the content script's `lastResult` |
 | `options/` | Full-page profile editor + resume import dialog + drag-source floating panel (planned) |
 
 Storage is `chrome.storage.local` (not `sync`). The wrapper in `src/utils/storage.ts` swallows errors and always resolves, so callers don't need rejection handling. `clearAllStorage()` removes all three keys (used by Settings → Reset).
@@ -55,7 +55,7 @@ The canonical type is `Profile` in `src/types/profile.ts`. Ten top-level keys, n
 |---|---|---|
 | `personal` | firstName, lastName, email, phone | phone is `PhoneNumber { countryCode, callingCode, number }` |
 | `address` | city, country | |
-| `salary` | current.amount, current.currency, ≥1 expected entry | expected entries store both `country` (ISO) and derived `currency` |
+| `salary` | current.amount, current.currency | expected entries are optional; each stores both `country` (ISO) and derived `currency`. Partial rows (country XOR amount) are rejected at save |
 | `workAuthorization` | ≥1 entry with country + status | country stored as ISO 3166-1 alpha-2 code |
 | `workHistory` | ≥1 complete entry + valid `professional.noticePeriod` | notice period is `{ immediate } \| { immediate: false, value, unit }` |
 | `education` | ≥1 entry with institution, degree, fieldOfStudy, startDate | |
@@ -63,7 +63,7 @@ The canonical type is `Profile` in `src/types/profile.ts`. Ten top-level keys, n
 | `links` | linkedin | must contain `linkedin.com` |
 | `documents` | CV (URL or file ≤ 4 MB) | included in completion score |
 
-**Completion scoring** (`src/utils/profileCompletion.ts`): `TOTAL_CHECKS = 16` covering all nine sections. `calculateCompletion()` returns `{ percentage, missingFields, missingGroups }`. `getSectionCompletion()` returns a boolean per section for sidebar ✓ indicators.
+**Completion scoring** (`src/utils/profileCompletion.ts`): `TOTAL_CHECKS = 15` covering all nine sections. `calculateCompletion()` returns `{ percentage, missingFields, missingGroups, isCoreComplete, optionalFieldsRemaining, optionalGroups }`. `getSectionCompletion()` returns a boolean per section for sidebar ✓ indicators; the sidebar also renders a filled green badge when a section's optional fields are all filled (derived in `App.tsx` by intersecting `sectionCompletion` with `optionalGroups`).
 
 **Date formats**:
 - Work history & education dates: `YYYY-MM` (MonthYearPicker)
@@ -141,15 +141,46 @@ scanner.ts     — finds visible input/textarea/select; excludes hidden types
 signals.ts     — extracts name/id/placeholder/autocomplete/aria-label/label/nearbyText
 normalizer.ts  — lowercase + strip non-alphanumeric
 dictionary.ts  — profile-field-path → known signal variations
-resolver.ts    — dot-notation profile value resolver with special cases
+resolver.ts    — dot-notation profile value resolver; handles plain paths via generic
+               traversal plus regex-matched virtual paths (phone.full, dateOfBirth.day/month/year,
+               address.countryName, salary.current.formatted, salary.expected.N.formatted,
+               workAuthorization.N, workHistory.N.{isCurrent,location,startDate.formatted,
+               endDate.formatted,arrangement}, education.N.{isCurrent,startDate.formatted,
+               endDate.formatted})
 mapper.ts      — 4-layer match: learned → autocomplete → dictionary → fuzzy → context
 filler.ts      — native input setter + dispatches input/change/blur
-highlighter.ts — injected underline div per field (no host styles touched)
-picker.ts     — inline focus-triggered overlay for red (unmatched) fields
-index.ts       — orchestrator; exports runAutofill(), undoAutofill(), clearHighlights()
+highlighter.ts — confidence-based background-color tint applied to the element
+picker.ts      — two-level collapsible overlay for non-green fields. See § Picker overlay below.
+index.ts       — orchestrator; exports scanAutofill(), executeAutofill(), runAutofill(), undoAutofill(), clearHighlights()
 ```
 
-`undoAutofill()` (wired to the popup's "Undo Auto-fill" button via the `CLEAR` message) iterates a module-level `filledElements: HTMLElement[]` registry (populated during both mapper and picker fills) and calls `clearFieldValue()` + `clearElementHighlight()` per element — clears both the value and the highlight. The registry is reset on each `runAutofill()`.
+### Two-phase fill (scan → fill)
+
+Autofill runs in two messages so the popup can show a merge/overwrite dialog when the form already has data:
+
+1. `AUTOFILL_SCAN` → `scanAutofill()` maps every visible field, stores results in a module-level `pendingMatches` array, and returns `{ preFilledCount, totalMatched }`. No fill happens.
+2. `AUTOFILL_FILL { mode: 'merge' | 'overwrite' }` → `executeAutofill(mode)` fills using `pendingMatches`. Merge skips fields that already had a value AND would have been filled (confidence ≥ 0.60 with a profile value).
+
+`runAutofill()` (legacy single-phase) chains the two for internal use.
+
+### Four-way `AutofillResult` categorisation
+
+Each field falls into exactly one of four buckets:
+
+| Bucket | Condition | Behaviour |
+|---|---|---|
+| `noReview`      | confidence ≥ 0.85 AND profile value present | fill, green tint |
+| `needReview`    | 0.60 ≤ confidence < 0.85 AND profile value present | fill, yellow tint, picker + edit-watcher attached |
+| `lowConfidence` | confidence < 0.60 | no fill, red tint, picker + edit-watcher attached |
+| `noData`        | confidence ≥ 0.60 AND profile value empty | no fill, no highlight, picker + edit-watcher attached |
+
+`totalScanned` = every field the scanner found, regardless of bucket. `noData` fields are not highlighted until the user fills them (via picker selection or manual typing), at which point they're added to `sessionElements` so Undo covers them.
+
+**Promotion to noReview** — non-green fields are watched for both picker selection (saves a learned mapping for the domain) AND manual user edits (blur with a changed value, no mapping saved). Both paths flip the field to green, decrement its origin-state counter, and increment `noReview`. Manual typing is deliberately separated from the learning mechanism — only picker selections create learned mappings.
+
+### Undo registry
+
+`undoAutofill()` (wired to the popup's "Undo Auto-fill" button via the `CLEAR` message) iterates a module-level `sessionElements: HTMLElement[]` registry (populated whenever `applyHighlight` runs — `noReview`, `needReview`, `lowConfidence`, plus picker-completed fills) and calls `clearFieldValue()` + `clearElementHighlight()` per element. The registry is reset on each `scanAutofill()` / `executeAutofill()` call. `noData` fields are intentionally absent.
 
 ### 4-Layer Mapping Pipeline (in `mapper.ts`)
 
@@ -161,15 +192,44 @@ index.ts       — orchestrator; exports runAutofill(), undoAutofill(), clearHig
 | 3 Fuzzy | `fastest-levenshtein` similarity on signals vs dictionary | score × 0.85 (>0.75) or × 0.75 (0.60–0.75) |
 | 4 Context | `nearbyText` against dictionary | 0.70 |
 
-Highlight thresholds: ≥0.85 green, ≥0.60 yellow, <0.60 red. Picker overlay is attached to red fields' `focus` event; selecting a value persists `learnedMapping[domain][signal] = fieldPath` for every normalized signal on that element.
+Highlight thresholds: ≥0.85 green, ≥0.60 yellow, <0.60 red. Picker overlay is attached to every non-green field's `focus` event (de-duplicated via a `WeakMap<HTMLElement, () => void>`); selecting a value persists `learnedMapping[domain][signal] = fieldPath` for every normalized signal on that element. Profile data shown in the picker is fetched fresh via `getProfile()` on every open — there is no in-memory snapshot, so cross-tab edits are reflected immediately.
+
+### Picker overlay (`src/autofill/picker.ts`)
+
+The picker is a fixed-position DOM overlay (no React, no Tailwind — inline styles only to avoid host page conflicts). It renders a two-level collapsible tree:
+
+**Level 1 — Sections** (collapsed by default; one auto-expanded by signal heuristic):
+Personal, Address, Salary, Work Authorization, Work History, Education, Languages, Links, Documents.
+
+**Level 2 — Sub-groups / Clusters inside a section:**
+- *Cluster* — inline heading, no collapse control (Phone, Date of Birth variants)
+- *SubGroup* — collapsible heading (Salary entries, Work History entries, Education entries). `defaultCollapsed?: boolean` on the SubGroup marks non-recent entries so they start collapsed on first open.
+
+**Search** — text input pinned above the scroll area; filters by `data-search-label` attribute (label text, not value); auto-expands matching sections/sub-groups; clears restore to the open-time expand state.
+
+**Per-element UI state** — `savedPickerStates: Map<HTMLElement, PickerUIState>` preserves expand/collapse, scroll position, and search query across close/reopen cycles for the lifetime of the page. Only resets on page navigation.
+
+**Outside-click handling** — `activeOutsideHandler` is tracked at module level so `removePicker()` can tear it down before creating a new picker. The handler excludes both the picker element and the owning input (`activePickerElement`) from "outside" so clicking the same input again never closes the picker.
+
+**Date display** — `src/utils/dateFormat.ts` exports `fmtYearMonth("YYYY-MM")` → `"Month YYYY"` (full month names). Used by picker tree builder and resolver virtual paths. Do not inline month formatting elsewhere.
 
 ### Why the filler uses a native setter
 
 `filler.ts` captures `Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set` at module load and calls it via `.call(element, value)`. React/Vue/Angular install instance-level property descriptors that swallow plain `element.value = x` assignments. The native setter bypasses these, then dispatching `input → change → blur` triggers framework change detection.
 
-### Highlighter never touches host element styles
+`clearFieldValue()` runs the same setter + event sequence twice — once immediately, once via `queueMicrotask`. React reconciles synchronously inside the dispatched `input` event and can restore the filled value before control returns; the microtask pass runs after that synchronous re-render and ensures the field stays empty.
 
-The current implementation injects a separate `<div>` underneath each field (positioned via `getBoundingClientRect`) rather than styling the input. This works across input/textarea/select and custom div-based components. A `scroll` + `resize` listener on `window` re-runs `updatePositions()` so underlines track their fields. `clearHighlights()` removes the listeners by stored reference.
+### Highlighter applies background-color directly to the element
+
+`applyHighlight()` writes `element.style.backgroundColor` (and a `transition` for the fade) directly on the input. Original values are saved to `data-jb-orig-background` / `data-jb-orig-transition` and restored on clear. This replaced an earlier underline-`<div>` approach — no scroll/resize listener, no position tracking, no separately-injected DOM. Confidence colour map:
+
+| Confidence | Background |
+|---|---|
+| ≥ 0.85 | `rgba(34, 197, 94, 0.12)` (green) |
+| ≥ 0.60 | `rgba(234, 179, 8, 0.12)` (yellow) |
+| 0 | `rgba(239, 68, 68, 0.12)` (red) |
+
+`noData` fields (profile value empty) receive **no** call to `applyHighlight` at all.
 
 ---
 
@@ -231,6 +291,14 @@ Several profile fields have been refactored. Loaders handle old data — don't b
 4. **Expected salary** — old rows had `currency` only; new rows have `country` + derived `currency`. `initExpectedRow()` in `SalarySection.tsx` reverse-maps unambiguous currencies (SGD→SG); ambiguous ones (EUR, USD) are left blank.
 5. **Links** — `github/twitter/dribbble/behance` removed from UI but preserved on save. `LinksSection.tsx`.
 6. **Cover letter** — `documents.coverLetter` preserved even though UI shows CV only.
+
+### Work authorization status labels — single source of truth
+
+`src/data/workAuthorization.ts` exports `WORK_AUTH_STATUS_OPTIONS` and `WORK_AUTH_STATUS_LABELS`. This is the **only** place these labels should be defined. `WorkAuthorizationSection.tsx`, `picker.ts`, and `resolver.ts` all import from it. Do not inline status label strings anywhere else — they will silently diverge.
+
+### `DocumentEntry` — URL and file can coexist
+
+`documents.cv` (and `coverLetter`) are `{ url?: string; file?: DocumentFile }` — both fields are optional and **both can be set at the same time**. `DocumentsSection.toDocumentEntry()` intentionally preserves the URL even when in file mode, so uploading a file does not wipe out a previously entered URL. The picker shows only `url`; the file is irrelevant to the picker. Do not change `toDocumentEntry()` back to mutually exclusive storage without understanding this invariant.
 
 ### Generated dirs
 
