@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 196 44">
+  <!-- Icon mark -->
+  <rect width="44" height="44" rx="10" fill="#2563EB"/>
+  <path d="M 13.5 25.6 L 19.8 32 L 32.7 15"
+    fill="none" stroke="white" stroke-width="5.2"
+    stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Wordmark -->
+  <text x="56" y="30"
+    font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
+    font-size="18" font-weight="600" fill="#0F172A"
+    dominant-baseline="auto">Job Buddy</text>
+</svg>
