@@ -1,6 +1,7 @@
 import type { Profile } from '../types/profile';
 import { COUNTRIES } from '../data/countries';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
+import { fmtYearMonth } from '../utils/dateFormat';
 
 function formatAmount(amount: number): string {
   return Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -83,6 +84,40 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
     const entry = profile.salary?.expected?.[parseInt(expMatch[1], 10)];
     if (!entry?.amount) return '';
     return entry.currency ? `${formatAmount(entry.amount)} ${entry.currency}` : formatAmount(entry.amount);
+  }
+
+  // Handle workHistory.N.* — virtual / computed sub-fields.
+  // Simple string fields (title, company, description, startDate, endDate) fall
+  // through to the generic traversal below; only non-string fields need cases.
+  const whMatch = fieldPath.match(/^workHistory\.(\d+)\.(.+)$/);
+  if (whMatch) {
+    const entry = profile.workHistory?.[parseInt(whMatch[1], 10)];
+    if (!entry) return '';
+    switch (whMatch[2]) {
+      case 'isCurrent':           return entry.isCurrent ? 'Yes' : '';
+      case 'startDate.formatted': return fmtYearMonth(entry.startDate ?? '');
+      case 'endDate.formatted':   return entry.isCurrent ? 'Present' : fmtYearMonth(entry.endDate ?? '');
+      case 'location': {
+        const parts: string[] = [];
+        if (entry.location?.city) parts.push(entry.location.city);
+        if (entry.location?.countryCode) parts.push(COUNTRIES.find(c => c.code === entry.location!.countryCode)?.name ?? entry.location.countryCode);
+        return parts.join(', ');
+      }
+    }
+    // Other sub-fields fall through to generic traversal.
+  }
+
+  // Handle education.N.* — virtual / computed sub-fields.
+  const eduMatch = fieldPath.match(/^education\.(\d+)\.(.+)$/);
+  if (eduMatch) {
+    const entry = profile.education?.[parseInt(eduMatch[1], 10)];
+    if (!entry) return '';
+    switch (eduMatch[2]) {
+      case 'isCurrent':           return entry.isCurrent ? 'Yes' : '';
+      case 'startDate.formatted': return fmtYearMonth(entry.startDate ?? '');
+      case 'endDate.formatted':   return entry.isCurrent ? 'Present' : fmtYearMonth(entry.endDate ?? '');
+    }
+    // Other sub-fields fall through to generic traversal.
   }
 
   // Generic dot-notation traversal for all other paths
