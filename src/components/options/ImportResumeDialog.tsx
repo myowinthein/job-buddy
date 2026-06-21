@@ -118,8 +118,8 @@ export function ImportResumeDialog({ onClose, onComplete }: Props) {
   const StepIcon = ({ status }: { status: StepStatus }) => {
     if (status === 'done') {
       return (
-        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
-          <svg className="w-3 h-3 text-green-600" viewBox="0 0 12 12" fill="none">
+        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+          <svg className="w-3 h-3 text-green-600 dark:text-green-400" viewBox="0 0 12 12" fill="none">
             <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
@@ -131,7 +131,7 @@ export function ImportResumeDialog({ onClose, onComplete }: Props) {
       );
     }
     return (
-      <span className="flex-shrink-0 w-5 h-5 rounded-full border-2 border-gray-300" />
+      <span className="flex-shrink-0 w-5 h-5 rounded-full border-2 border-gray-300 dark:border-gray-600" />
     );
   };
 
@@ -141,14 +141,14 @@ export function ImportResumeDialog({ onClose, onComplete }: Props) {
       className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
       onClick={handleOverlayClick}
     >
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 relative">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl dark:shadow-black/60 w-full max-w-md p-6 relative">
 
         {/* Close button — idle only */}
         {importState === 'idle' && (
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors text-xl leading-none"
+            className="absolute top-4 right-4 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors text-xl leading-none"
             aria-label="Close"
           >
             ×
@@ -158,8 +158,8 @@ export function ImportResumeDialog({ onClose, onComplete }: Props) {
         {/* ── IDLE ───────────────────────────────────────────────────────── */}
         {importState === 'idle' && (
           <>
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Import from Resume</h2>
-            <p className="text-sm text-gray-500 mb-5">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Import from Resume</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
               Upload your resume and we'll extract your data automatically.
             </p>
 
@@ -171,21 +171,21 @@ export function ImportResumeDialog({ onClose, onComplete }: Props) {
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
                 dragOver
-                  ? 'border-blue-400 bg-blue-50'
-                  : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
+                  ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/30'
+                  : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 hover:bg-gray-50 dark:hover:bg-gray-700'
               }`}
             >
               <div className="flex justify-center mb-3">
-                <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <svg className="w-10 h-10 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                 </svg>
               </div>
-              <p className="text-sm font-medium text-gray-700 mb-1">Drop your resume here</p>
-              <p className="text-xs text-gray-400 mb-4">PDF or DOCX · Max 4MB</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Drop your resume here</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">PDF or DOCX · Max 4MB</p>
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                className="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
               >
                 Choose File
               </button>
@@ -200,7 +200,7 @@ export function ImportResumeDialog({ onClose, onComplete }: Props) {
             />
 
             {validationError && (
-              <p className="mt-3 text-sm text-red-500">{validationError}</p>
+              <p className="mt-3 text-sm text-red-500 dark:text-red-400">{validationError}</p>
             )}
           </>
         )}
@@ -208,7 +208,7 @@ export function ImportResumeDialog({ onClose, onComplete }: Props) {
         {/* ── PROCESSING ─────────────────────────────────────────────────── */}
         {importState === 'processing' && (
           <>
-            <h2 className="text-lg font-semibold text-gray-900 mb-6">Reading your resume...</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">Reading your resume...</h2>
             <ul className="space-y-4">
               {STEPS.map((label, idx) => {
                 const status = steps[idx] ?? 'pending';
@@ -216,9 +216,9 @@ export function ImportResumeDialog({ onClose, onComplete }: Props) {
                   <li key={idx} className="flex items-center gap-3">
                     <StepIcon status={status} />
                     <span className={`text-sm ${
-                      status === 'active' ? 'text-blue-600 font-medium'
-                      : status === 'done' ? 'text-gray-800'
-                      : 'text-gray-400'
+                      status === 'active' ? 'text-blue-600 dark:text-blue-400 font-medium'
+                      : status === 'done' ? 'text-gray-800 dark:text-gray-200'
+                      : 'text-gray-400 dark:text-gray-500'
                     }`}>
                       {label}
                     </span>
@@ -233,14 +233,14 @@ export function ImportResumeDialog({ onClose, onComplete }: Props) {
         {importState === 'done' && result && (
           <div className="text-center py-4">
             <div className="flex justify-center mb-4">
-              <span className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
-                <svg className="w-7 h-7 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <span className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+                <svg className="w-7 h-7 text-green-600 dark:text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </span>
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Done! Your resume data is ready.</h2>
-            <p className="text-sm text-gray-500">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Done! Your resume data is ready.</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Found {result.detectedFields.length} fields · {result.textChunks.length} text chunks
             </p>
           </div>

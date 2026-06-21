@@ -261,14 +261,14 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Settings</h2>
-        <p className="text-sm text-gray-500 mt-1">Manage your profile data</p>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Settings</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your profile data</p>
       </div>
 
       {/* ── Export ────────────────────────────────────────────────────────────── */}
-      <section className="mb-8 pb-8 border-b border-gray-200">
-        <h3 className="text-base font-semibold text-gray-800 mb-1">Export Profile</h3>
-        <p className="text-sm text-gray-500 mb-4">
+      <section className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
+        <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">Export Profile</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           Save your profile data as a JSON file. Use this to back up your data or transfer it to
           another browser or device.
         </p>
@@ -282,9 +282,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       </section>
 
       {/* ── Import ────────────────────────────────────────────────────────────── */}
-      <section className="mb-8 pb-8 border-b border-gray-200">
-        <h3 className="text-base font-semibold text-gray-800 mb-1">Import Profile</h3>
-        <p className="text-sm text-gray-500 mb-4">
+      <section className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
+        <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">Import Profile</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           Restore a previously exported Job Buddy profile from a JSON file.
         </p>
         <input
@@ -297,19 +297,19 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         >
           Choose File
         </button>
         {importError && (
-          <p className="mt-2 text-sm text-red-500">{importError}</p>
+          <p className="mt-2 text-sm text-red-500 dark:text-red-400">{importError}</p>
         )}
       </section>
 
       {/* ── Reset All Data ───────────────────────────────────────────────────── */}
       <section className="pt-2">
-        <h3 className="text-base font-semibold text-red-700 mb-1">Reset All Data</h3>
-        <p className="text-sm text-gray-500 mb-4">
+        <h3 className="text-base font-semibold text-red-700 dark:text-red-400 mb-1">Reset All Data</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           Permanently delete your profile and autofill data from this browser. This cannot be undone.
         </p>
         <button
@@ -336,16 +336,16 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           onClick={handleDialogClose}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 flex flex-col max-h-[90vh]"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-md mx-4 flex flex-col max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Dialog header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="text-base font-semibold text-gray-900">Import Profile</h3>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Import Profile</h3>
               <button
                 type="button"
                 onClick={handleDialogClose}
-                className="text-gray-400 hover:text-gray-600 text-xl leading-none transition-colors"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none transition-colors"
               >
                 ×
               </button>
@@ -353,7 +353,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
             {/* Dialog body */}
             <div className="flex-1 overflow-y-auto px-6 py-5">
-              <p className="text-sm font-medium text-gray-800 mb-4">How would you like to import?</p>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-4">How would you like to import?</p>
 
               <div className="space-y-3">
                 <label className="flex items-start gap-3 cursor-pointer">
@@ -366,8 +366,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                     className="mt-0.5 text-blue-600"
                   />
                   <div>
-                    <span className="text-sm font-medium text-gray-900">Merge</span>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Merge</span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-0.5">
                       Fill only empty fields. Your existing data is kept.
                     </p>
                   </div>
@@ -383,8 +383,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                     className="mt-0.5 text-blue-600"
                   />
                   <div>
-                    <span className="text-sm font-medium text-gray-900">Overwrite</span>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Overwrite</span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-0.5">
                       Replace all data with the imported profile.
                     </p>
                   </div>
@@ -393,16 +393,16 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
               {/* Validation warnings */}
               {parsedImport.invalidFields.length > 0 && (
-                <div className="mt-5 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                  <p className="text-xs font-medium text-amber-800 mb-2">
+                <div className="mt-5 p-3 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <p className="text-xs font-medium text-amber-800 dark:text-amber-200 mb-2">
                     ⚠ {parsedImport.invalidFields.length} field{parsedImport.invalidFields.length !== 1 ? 's' : ''} will be skipped:
                   </p>
                   <ul className="space-y-1.5">
                     {parsedImport.invalidFields.map((f) => (
-                      <li key={f.path} className="text-xs text-amber-700">
+                      <li key={f.path} className="text-xs text-amber-700 dark:text-amber-300">
                         <span className="font-mono">{f.path}</span>
                         <br />
-                        <span className="ml-2 text-amber-600">({f.reason})</span>
+                        <span className="ml-2 text-amber-600 dark:text-amber-400">({f.reason})</span>
                       </li>
                     ))}
                   </ul>
@@ -411,11 +411,11 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             </div>
 
             {/* Dialog footer */}
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200">
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <button
                 type="button"
                 onClick={handleDialogClose}
-                className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 Cancel
               </button>
@@ -439,41 +439,41 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           onClick={handleResetDialogClose}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-md mx-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="text-base font-semibold text-gray-900">Reset All Data</h3>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Reset All Data</h3>
               <button
                 type="button"
                 onClick={handleResetDialogClose}
-                className="text-gray-400 hover:text-gray-600 text-xl leading-none transition-colors"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none transition-colors"
               >
                 ×
               </button>
             </div>
 
             <div className="px-6 py-5">
-              <p className="text-sm text-gray-700 mb-3">This will permanently delete:</p>
-              <ul className="text-sm text-gray-600 space-y-1 mb-4 pl-1">
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">This will permanently delete:</p>
+              <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1 mb-4 pl-1">
                 {['Your profile data', 'Autofill learned mappings'].map((item) => (
                   <li key={item} className="flex items-start gap-2">
-                    <span className="text-gray-400 mt-0.5">•</span>
+                    <span className="text-gray-400 dark:text-gray-500 mt-0.5">•</span>
                     {item}
                   </li>
                 ))}
               </ul>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 Consider{' '}
-                <button type="button" className="underline hover:text-gray-700 transition-colors" onClick={handleExport}>
+                <button type="button" className="underline hover:text-gray-700 dark:hover:text-gray-200 transition-colors" onClick={handleExport}>
                   exporting your profile first
                 </button>{' '}
                 as a backup.
               </p>
-              <p className="text-sm font-medium text-gray-800 mb-5">This cannot be undone.</p>
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-5">This cannot be undone.</p>
 
-              <label className="block text-sm text-gray-700 mb-2">
-                Type <code className="font-mono font-bold text-red-600">DELETE</code> to confirm:
+              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
+                Type <code className="font-mono font-bold text-red-600 dark:text-red-400">DELETE</code> to confirm:
               </label>
               <input
                 type="text"
@@ -481,15 +481,15 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                 onChange={(e) => setResetConfirmText(e.target.value)}
                 placeholder="DELETE"
                 autoComplete="off"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
               />
             </div>
 
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200">
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <button
                 type="button"
                 onClick={handleResetDialogClose}
-                className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 Cancel
               </button>
