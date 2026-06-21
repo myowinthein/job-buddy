@@ -46,8 +46,8 @@ function initExpectedRow(raw: { country?: string; amount?: number; currency?: st
 
 const cls = (err?: string) =>
   err
-    ? 'w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
-    : 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+    ? 'w-full px-3 py-2 border border-red-300 dark:border-red-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
+    : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 export function SalarySection({ profile, onSave }: Props) {
   const s = profile.salary;
@@ -155,14 +155,14 @@ export function SalarySection({ profile, onSave }: Props) {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Salary</h2>
-        <p className="text-sm text-gray-500 mt-1">Current compensation and expected salary</p>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Salary</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Current compensation and expected salary</p>
       </div>
 
       {/* ── Current Salary ─────────────────────────────────────────────────── */}
       <div className="mb-6">
-        <h3 className="text-sm font-semibold text-gray-800 mb-3">Current Salary</h3>
-        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">Current Salary</h3>
+        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Currency" required error={errors.currentCurrency}>
               <SearchableCurrencySelect
@@ -200,20 +200,20 @@ export function SalarySection({ profile, onSave }: Props) {
       {/* ── Expected Salary ────────────────────────────────────────────────── */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-800">Expected Salary</h3>
+          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Expected Salary</h3>
           <button
             type="button"
             onClick={() => { setExpected((r) => [...r, emptyExpected()]); setNewEntryTick((t) => t + 1); }}
-            className="text-xs px-3 py-1.5 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+            className="text-xs px-3 py-1.5 border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
           >
             + Add Entry
           </button>
         </div>
         <div ref={entriesContainerRef}>
         {expected.map((row, idx) => (
-          <div key={idx} className="p-4 border border-gray-200 rounded-lg mb-3">
+          <div key={idx} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-gray-600">Entry {idx + 1}</span>
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Entry {idx + 1}</span>
               <RemoveButton
                 onClick={() => setExpected((rows) => rows.filter((_, i) => i !== idx))}
               />
@@ -243,7 +243,7 @@ export function SalarySection({ profile, onSave }: Props) {
         </div>{/* entriesContainerRef */}
       </div>
 
-      <div className="mt-2 pt-4 border-t border-gray-200 flex items-center gap-3">
+      <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
         <button
           onClick={handleSave}
           disabled={saving}
