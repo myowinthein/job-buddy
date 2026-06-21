@@ -33,8 +33,8 @@ function InfoTooltip({ text, align = 'left' }: { text: string; align?: 'left' | 
   const anchor = align === 'right' ? 'right-0' : 'left-0';
   return (
     <span className="relative inline-flex shrink-0">
-      <span className="peer text-[10px] leading-none text-gray-400 cursor-default select-none">ⓘ</span>
-      <span className={`pointer-events-none absolute bottom-full ${anchor} z-50 mb-1.5 w-44 rounded-md bg-gray-800 px-2 py-1.5 text-[11px] leading-snug text-white shadow-md opacity-0 peer-hover:opacity-100 transition-opacity`}>
+      <span className="peer text-[10px] leading-none text-gray-400 dark:text-gray-500 cursor-default select-none">ⓘ</span>
+      <span className={`pointer-events-none absolute bottom-full ${anchor} z-50 mb-1.5 w-44 rounded-md bg-gray-800 dark:bg-gray-700 px-2 py-1.5 text-[11px] leading-snug text-white shadow-md opacity-0 peer-hover:opacity-100 transition-opacity`}>
         {text}
       </span>
     </span>
@@ -157,29 +157,29 @@ function App() {
 
   const color = percentage >= 80 ? 'green' : percentage >= 50 ? 'yellow' : 'red';
   const colorMap = {
-    red:    { bar: 'bg-red-500',    text: 'text-red-600',    badge: 'bg-red-50 border-red-200'       },
-    yellow: { bar: 'bg-yellow-500', text: 'text-yellow-600', badge: 'bg-yellow-50 border-yellow-200' },
-    green:  { bar: 'bg-green-500',  text: 'text-green-600',  badge: 'bg-green-50 border-green-200'   },
+    red:    { bar: 'bg-red-500',    text: 'text-red-600 dark:text-red-400',       badge: 'bg-red-50 border-red-200 dark:bg-red-900/30 dark:border-red-800'             },
+    yellow: { bar: 'bg-yellow-500', text: 'text-yellow-600 dark:text-yellow-400', badge: 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-800' },
+    green:  { bar: 'bg-green-500',  text: 'text-green-600 dark:text-green-400',   badge: 'bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-800'     },
   }[color];
 
   return (
-    <div className="w-[380px] p-5 font-sans bg-white">
+    <div className="w-[380px] p-5 font-sans bg-white dark:bg-gray-900">
       {/* Header */}
       <div className="flex items-center gap-2.5 mb-5">
         <img src="/icon.svg" alt="Job Buddy" className="w-8 h-8 shrink-0" />
-        <h1 className="text-base font-bold text-gray-900">Job Buddy</h1>
+        <h1 className="text-base font-bold text-gray-900 dark:text-gray-100">Job Buddy</h1>
       </div>
 
       {/* Completion indicator */}
       {loading ? (
-        <div className="h-20 bg-gray-100 rounded-xl animate-pulse mb-4" />
+        <div className="h-20 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse mb-4" />
       ) : isCoreComplete ? (
-        <div className="p-4 rounded-xl border mb-4 bg-green-50 border-green-200">
+        <div className="p-4 rounded-xl border mb-4 bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-800">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-lg font-bold text-green-700">✓ Ready to Apply</span>
+            <span className="text-lg font-bold text-green-700 dark:text-green-400">✓ Ready to Apply</span>
           </div>
           {optionalFieldsRemaining > 0 && (
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               {optionalFieldsRemaining} optional field{optionalFieldsRemaining !== 1 ? 's' : ''} available for richer autofill coverage
             </p>
           )}
@@ -187,16 +187,16 @@ function App() {
       ) : (
         <div className={`p-4 rounded-xl border mb-4 ${colorMap.badge}`}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">Profile Completion</span>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Profile Completion</span>
             <span className={`text-xl font-bold ${colorMap.text}`}>{percentage}%</span>
           </div>
-          <div className="w-full bg-white bg-opacity-60 rounded-full h-2 overflow-hidden">
+          <div className="w-full bg-white dark:bg-gray-800 bg-opacity-60 rounded-full h-2 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${colorMap.bar}`}
               style={{ width: `${percentage}%` }}
             />
           </div>
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
             {percentage < 50
               ? 'Complete your profile to start auto-filling job forms'
               : 'Almost there — finish the remaining sections'}
@@ -213,26 +213,26 @@ function App() {
       </button>
 
       {/* Autofill panel */}
-      <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-        <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-3">Autofill</p>
+      <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+        <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide mb-3">Autofill</p>
 
         {/* Loading skeleton */}
         {loading ? (
-          <div className="h-9 bg-gray-200 rounded-lg animate-pulse" />
+          <div className="h-9 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
 
         ) : !hasProfileData ? (
           /* ── State 1: no profile data ── */
-          <p className="text-sm text-gray-600 leading-snug">
+          <p className="text-sm text-gray-600 dark:text-gray-300 leading-snug">
             Set up your profile to start autofilling.
           </p>
 
         ) : autofillState === 'confirming' ? (
           /* ── State 2a: merge / overwrite confirmation dialog ── */
           <div>
-            <p className="text-sm font-medium text-gray-800 mb-1">
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
               This form already has data filled in.
             </p>
-            <p className="text-xs text-gray-500 mb-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
               {preFilledCount} field{preFilledCount !== 1 ? 's' : ''} already {preFilledCount !== 1 ? 'have' : 'has'} a value. How would you like to proceed?
             </p>
 
@@ -247,8 +247,8 @@ function App() {
                   className="mt-0.5 shrink-0"
                 />
                 <div>
-                  <span className="text-sm font-medium text-gray-800">Merge</span>
-                  <p className="text-xs text-gray-500 leading-snug">Only fill empty fields — keep existing values</p>
+                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Merge</span>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug">Only fill empty fields — keep existing values</p>
                 </div>
               </label>
 
@@ -262,8 +262,8 @@ function App() {
                   className="mt-0.5 shrink-0"
                 />
                 <div>
-                  <span className="text-sm font-medium text-gray-800">Overwrite</span>
-                  <p className="text-xs text-gray-500 leading-snug">Replace all matched fields with profile data</p>
+                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Overwrite</span>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug">Replace all matched fields with profile data</p>
                 </div>
               </label>
             </div>
@@ -271,7 +271,7 @@ function App() {
             <div className="flex gap-2">
               <button
                 onClick={handleCancelFill}
-                className="flex-1 py-2 px-3 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex-1 py-2 px-3 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 Cancel
               </button>
@@ -300,7 +300,7 @@ function App() {
             {autofillState === 'success' && (
               <button
                 onClick={handleUndo}
-                className="w-full py-2 px-4 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
+                className="w-full py-2 px-4 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 Undo Auto-fill
               </button>
@@ -308,17 +308,17 @@ function App() {
 
             {/* Result summary — no fields found */}
             {autofillState === 'success' && autofillResult && autofillResult.totalScanned === 0 && (
-              <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-700 leading-relaxed">
+              <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
                 <p className="font-medium mb-1">No fillable fields found on this page.</p>
-                <p className="text-gray-500 mb-2.5">
+                <p className="text-gray-500 dark:text-gray-400 mb-2.5">
                   This page might use a custom form (iframe or non-standard inputs) we don't support yet.
                 </p>
-                <p className="text-gray-500 mb-1">Found a bug? Let us know:</p>
+                <p className="text-gray-500 dark:text-gray-400 mb-1">Found a bug? Let us know:</p>
                 <a
                   href="https://github.com/myowinthein/job-buddy/issues/new"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 underline font-medium"
+                  className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline font-medium"
                 >
                   Report on GitHub
                 </a>
@@ -327,48 +327,48 @@ function App() {
 
             {/* Result summary — normal */}
             {autofillState === 'success' && autofillResult && autofillResult.totalScanned > 0 && (
-              <div className="mt-3 rounded-lg border border-gray-200 bg-white text-xs">
+              <div className="mt-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs">
 
                 {/* ── Filled header ── */}
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-t-lg">
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Filled</span>
-                  <span className="text-[11px] font-bold text-gray-600">({autofillResult.noReview + autofillResult.needReview})</span>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Filled</span>
+                  <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">({autofillResult.noReview + autofillResult.needReview})</span>
                 </div>
 
                 {/* No Review + Review — side by side */}
-                <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100">
-                  <span className="flex items-center gap-1 text-gray-600">
-                    <span className="text-green-600 font-semibold">✓</span>
+                <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100 dark:border-gray-700">
+                  <span className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+                    <span className="text-green-600 dark:text-green-400 font-semibold">✓</span>
                     No Review
-                    <span className="font-medium text-gray-600">{autofillResult.noReview}</span>
+                    <span className="font-medium text-gray-600 dark:text-gray-300">{autofillResult.noReview}</span>
                     <InfoTooltip text="This field is filled and looks correct." />
                   </span>
-                  <span className="flex items-center gap-1 text-gray-600">
-                    <span className="text-yellow-600 font-semibold">⚠</span>
+                  <span className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+                    <span className="text-yellow-600 dark:text-yellow-400 font-semibold">⚠</span>
                     Review
-                    <span className="font-medium text-gray-600">{autofillResult.needReview}</span>
+                    <span className="font-medium text-gray-600 dark:text-gray-300">{autofillResult.needReview}</span>
                     <InfoTooltip text="Filled automatically, but not fully confident. Click to review or change it." align="right" />
                   </span>
                 </div>
 
                 {/* ── Not Filled header ── */}
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border-t border-gray-200">
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Not Filled</span>
-                  <span className="text-[11px] font-bold text-gray-600">({autofillResult.lowConfidence + autofillResult.noData})</span>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Not Filled</span>
+                  <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">({autofillResult.lowConfidence + autofillResult.noData})</span>
                 </div>
 
                 {/* No Match + No Data — side by side */}
-                <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100">
-                  <span className="flex items-center gap-1 text-gray-600">
-                    <span className="text-red-500 font-semibold">✗</span>
+                <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100 dark:border-gray-700">
+                  <span className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+                    <span className="text-red-500 dark:text-red-400 font-semibold">✗</span>
                     No Match
-                    <span className="font-medium text-gray-600">{autofillResult.lowConfidence}</span>
+                    <span className="font-medium text-gray-600 dark:text-gray-300">{autofillResult.lowConfidence}</span>
                     <InfoTooltip text="We couldn't confidently identify this field. Click it to choose a value." />
                   </span>
-                  <span className="flex items-center gap-1 text-gray-600">
-                    <span className="text-gray-400">○</span>
+                  <span className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+                    <span className="text-gray-400 dark:text-gray-500">○</span>
                     No Data
-                    <span className="font-medium text-gray-600">{autofillResult.noData}</span>
+                    <span className="font-medium text-gray-600 dark:text-gray-300">{autofillResult.noData}</span>
                     <InfoTooltip text="This field isn't in your profile yet. Click to choose a value." align="right" />
                   </span>
                 </div>
@@ -378,7 +378,7 @@ function App() {
 
             {/* Error state */}
             {autofillState === 'error' && (
-              <p className="mt-3 text-xs text-red-500 text-center leading-snug">
+              <p className="mt-3 text-xs text-red-500 dark:text-red-400 text-center leading-snug">
                 Could not connect to page.
                 <br />
                 Try refreshing and clicking Auto Fill again.
