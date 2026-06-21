@@ -144,7 +144,7 @@ export function ResumeFloatingPanel({ resume, onDismiss, draggedItemRef, callbac
         <button
           title="Resume data ready to drag"
           onClick={() => setCollapsed(false)}
-          className="relative w-12 h-12 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center hover:shadow-xl transition-shadow"
+          className="relative w-12 h-12 rounded-full bg-white dark:bg-gray-800 shadow-lg dark:shadow-black/40 border border-gray-200 dark:border-gray-700 flex items-center justify-center hover:shadow-xl transition-shadow"
         >
           <span className="text-xl">📄</span>
           {unusedCount > 0 && (
@@ -170,21 +170,21 @@ export function ResumeFloatingPanel({ resume, onDismiss, draggedItemRef, callbac
           maxHeight: '70vh',
           zIndex: 1000,
         }}
-        className="bg-white rounded-xl shadow-xl border border-gray-200 flex flex-col overflow-hidden"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl dark:shadow-black/60 border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
       >
         {/* Header / drag handle */}
         <div
           onMouseDown={handleHeaderMouseDown}
           style={{ cursor: 'grab' }}
-          className="flex items-center justify-between px-3 py-2.5 bg-gray-50 border-b border-gray-200 select-none shrink-0"
+          className="flex items-center justify-between px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 select-none shrink-0"
         >
-          <span className="text-sm font-semibold text-gray-800">Resume Data</span>
+          <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Resume Data</span>
           <div className="flex items-center gap-1">
             <button
               type="button"
               title="Minimize"
               onClick={(e) => { e.stopPropagation(); setCollapsed(true); setConfirmClose(false); }}
-              className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-colors text-sm font-bold leading-none"
+              className="w-6 h-6 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors text-sm font-bold leading-none"
             >
               —
             </button>
@@ -192,7 +192,7 @@ export function ResumeFloatingPanel({ resume, onDismiss, draggedItemRef, callbac
               type="button"
               title="Done / Close"
               onClick={(e) => { e.stopPropagation(); handleDismissClick(); }}
-              className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-colors text-lg leading-none"
+              className="w-6 h-6 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors text-lg leading-none"
             >
               ×
             </button>
@@ -201,8 +201,8 @@ export function ResumeFloatingPanel({ resume, onDismiss, draggedItemRef, callbac
 
         {/* Confirm-close bar */}
         {confirmClose && (
-          <div className="px-3 py-2 bg-amber-50 border-b border-amber-200 shrink-0">
-            <p className="text-xs text-amber-800 mb-2">
+          <div className="px-3 py-2 bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-800 shrink-0">
+            <p className="text-xs text-amber-800 dark:text-amber-200 mb-2">
               You still have {unusedCount} unused item{unusedCount !== 1 ? 's' : ''}. Close anyway?
             </p>
             <div className="flex gap-2">
@@ -216,7 +216,7 @@ export function ResumeFloatingPanel({ resume, onDismiss, draggedItemRef, callbac
               <button
                 type="button"
                 onClick={() => setConfirmClose(false)}
-                className="px-2.5 py-1 border border-gray-300 rounded text-xs hover:bg-gray-100 transition-colors"
+                className="px-2.5 py-1 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded text-xs hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 Keep open
               </button>
@@ -243,7 +243,7 @@ export function ResumeFloatingPanel({ resume, onDismiss, draggedItemRef, callbac
               {/* Detected fields */}
               {resume.detectedFields.length > 0 && (
                 <div className="px-3 pt-3">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                  <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">
                     Detected Fields
                   </p>
                   {resume.detectedFields.map((field) => {
@@ -268,12 +268,12 @@ export function ResumeFloatingPanel({ resume, onDismiss, draggedItemRef, callbac
                         className={[
                           'border rounded-lg px-2.5 py-2 mb-2 transition-colors',
                           used
-                            ? 'opacity-40 cursor-default border-gray-200'
-                            : 'cursor-grab border-gray-200 hover:border-indigo-300 hover:bg-indigo-50',
+                            ? 'opacity-40 cursor-default border-gray-200 dark:border-gray-700'
+                            : 'cursor-grab border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30',
                         ].join(' ')}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-300 flex items-center gap-1">
                             <span>{getFieldIcon(field.fieldPath)}</span>
                             {field.label}
                           </span>
@@ -288,7 +288,7 @@ export function ResumeFloatingPanel({ resume, onDismiss, draggedItemRef, callbac
                             />
                           )}
                         </div>
-                        <p className="text-xs text-gray-700 mt-0.5 truncate">{field.value}</p>
+                        <p className="text-xs text-gray-700 dark:text-gray-300 mt-0.5 truncate">{field.value}</p>
                       </div>
                     );
                   })}
@@ -298,11 +298,11 @@ export function ResumeFloatingPanel({ resume, onDismiss, draggedItemRef, callbac
               {/* Text chunks — grouped by section */}
               {groupedChunks.length > 0 && (
                 <div className="px-3 pt-2">
-                  <p className="text-xs text-gray-400 mb-2">Drag a chunk onto any profile field</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">Drag a chunk onto any profile field</p>
                   {groupedChunks.map(({ label, chunks }, groupIdx) => (
                     <div key={label}>
-                      {groupIdx > 0 && <div className="border-t border-gray-100 my-2" />}
-                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1.5">
+                      {groupIdx > 0 && <div className="border-t border-gray-100 dark:border-gray-700 my-2" />}
+                      <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1.5">
                         {formatSectionLabel(label)}
                       </p>
                       {chunks.map((chunk) => {
@@ -331,8 +331,8 @@ export function ResumeFloatingPanel({ resume, onDismiss, draggedItemRef, callbac
                             className={[
                               'border rounded-lg px-2.5 py-2 mb-2 transition-colors',
                               used
-                                ? 'opacity-40 cursor-default border-gray-200'
-                                : 'cursor-grab border-gray-200 hover:border-indigo-300 hover:bg-indigo-50',
+                                ? 'opacity-40 cursor-default border-gray-200 dark:border-gray-700'
+                                : 'cursor-grab border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30',
                             ].join(' ')}
                           >
                             <div className="flex items-center justify-between mb-1">
@@ -342,7 +342,7 @@ export function ResumeFloatingPanel({ resume, onDismiss, draggedItemRef, callbac
                                 <span className="text-xs text-gray-300">⠿</span>
                               )}
                             </div>
-                            <p className="text-xs text-gray-700 whitespace-pre-wrap break-words leading-relaxed">
+                            <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words leading-relaxed">
                               {displayText}
                             </p>
                             {isLong && (
@@ -370,12 +370,12 @@ export function ResumeFloatingPanel({ resume, onDismiss, draggedItemRef, callbac
               )}
 
               {/* Manual selection fallback */}
-              <div className="px-3 pb-3 pt-2 border-t border-gray-100 mt-1">
-                <p className="text-xs text-gray-400 mb-1.5">Chunk not right?</p>
+              <div className="px-3 pb-3 pt-2 border-t border-gray-100 dark:border-gray-700 mt-1">
+                <p className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">Chunk not right?</p>
                 <button
                   type="button"
                   onClick={() => { setPendingSelection(''); setShowRawModal(true); }}
-                  className="text-xs px-3 py-1.5 border border-gray-200 text-gray-500 rounded-lg hover:border-gray-300 hover:text-gray-700 transition-colors w-full"
+                  className="text-xs px-3 py-1.5 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 rounded-lg hover:border-gray-300 dark:hover:border-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-colors w-full"
                 >
                   Select from raw text
                 </button>
@@ -392,29 +392,29 @@ export function ResumeFloatingPanel({ resume, onDismiss, draggedItemRef, callbac
           onClick={() => { setShowRawModal(false); setPendingSelection(''); }}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl flex flex-col"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 flex flex-col"
             style={{ width: 600, maxHeight: '70vh' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 shrink-0">
-              <span className="text-sm font-semibold text-gray-800">Raw Resume Text</span>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
+              <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Raw Resume Text</span>
               <button
                 type="button"
                 onClick={() => { setShowRawModal(false); setPendingSelection(''); }}
-                className="text-gray-400 hover:text-gray-600 text-xl leading-none transition-colors"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none transition-colors"
               >
                 ×
               </button>
             </div>
             <div
-              className="flex-1 overflow-y-auto px-4 py-3 text-xs text-gray-700 whitespace-pre-wrap font-mono select-text leading-relaxed min-h-0"
+              className="flex-1 overflow-y-auto px-4 py-3 text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono select-text leading-relaxed min-h-0"
               onMouseUp={handleRawMouseUp}
             >
               {resume.rawText}
             </div>
             {pendingSelection && (
-              <div className="px-4 py-3 border-t border-gray-200 bg-indigo-50 shrink-0">
-                <p className="text-xs text-gray-600 mb-2 truncate">
+              <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-indigo-50 dark:bg-indigo-900/30 shrink-0">
+                <p className="text-xs text-gray-600 dark:text-gray-300 mb-2 truncate">
                   Selected: <em>&ldquo;{pendingSelection.slice(0, 80)}{pendingSelection.length > 80 ? '…' : ''}&rdquo;</em>
                 </p>
                 <button

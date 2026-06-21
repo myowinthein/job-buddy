@@ -32,9 +32,27 @@ const DEFAULT_DURATION: Record<ToastMessage['type'], number> = {
 };
 
 const TYPE_STYLE = {
-  success: { bg: 'bg-green-50',  border: 'border-l-green-500',  icon: '✓', iconCls: 'text-green-600', textCls: 'text-green-800' },
-  error:   { bg: 'bg-red-50',    border: 'border-l-red-500',    icon: '✕', iconCls: 'text-red-600',   textCls: 'text-red-800'   },
-  warning: { bg: 'bg-yellow-50', border: 'border-l-yellow-500', icon: '⚠', iconCls: 'text-yellow-600', textCls: 'text-yellow-800' },
+  success: {
+    bg:      'bg-green-50 dark:bg-green-950/60',
+    border:  'border-l-green-500',
+    icon:    '✓',
+    iconCls: 'text-green-600 dark:text-green-400',
+    textCls: 'text-green-800 dark:text-green-200',
+  },
+  error: {
+    bg:      'bg-red-50 dark:bg-red-950/60',
+    border:  'border-l-red-500',
+    icon:    '✕',
+    iconCls: 'text-red-600 dark:text-red-400',
+    textCls: 'text-red-800 dark:text-red-200',
+  },
+  warning: {
+    bg:      'bg-yellow-50 dark:bg-yellow-950/60',
+    border:  'border-l-yellow-500',
+    icon:    '⚠',
+    iconCls: 'text-yellow-600 dark:text-yellow-400',
+    textCls: 'text-yellow-800 dark:text-yellow-200',
+  },
 } as const;
 
 // ── ToastItem ─────────────────────────────────────────────────────────────────
@@ -79,7 +97,7 @@ function ToastItem({ toast, onRemove }: { toast: ToastMessage; onRemove: () => v
         minWidth:  '280px',
         maxWidth:  '400px',
       }}
-      className={`${bg} rounded-lg shadow-lg px-4 py-3 flex items-center gap-2 border-l-4 ${border}`}
+      className={`${bg} rounded-lg shadow-lg dark:shadow-black/40 px-4 py-3 flex items-center gap-2 border-l-4 ${border}`}
       role="alert"
       aria-live="polite"
     >
