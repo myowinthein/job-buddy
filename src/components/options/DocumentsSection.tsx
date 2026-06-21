@@ -93,28 +93,28 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
   };
 
   const urlCls = state.urlError
-    ? 'w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
-    : 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+    ? 'w-full px-3 py-2 border border-red-300 dark:border-red-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
+    : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
   return (
-    <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 mb-4">
+    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-semibold text-gray-800">
+        <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
           {label}
-          {required && <span className="text-red-500 ml-0.5">*</span>}
+          {required && <span className="text-red-500 dark:text-red-400 ml-0.5">*</span>}
         </p>
-        <div className="flex rounded-lg border border-gray-300 overflow-hidden text-xs">
+        <div className="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden text-xs">
           <button
             type="button"
             onClick={() => onChange({ mode: 'url' })}
-            className={`px-3 py-1.5 ${state.mode === 'url' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'} transition-colors`}
+            className={`px-3 py-1.5 ${state.mode === 'url' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors`}
           >
             URL
           </button>
           <button
             type="button"
             onClick={() => onChange({ mode: 'file' })}
-            className={`px-3 py-1.5 ${state.mode === 'file' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'} transition-colors`}
+            className={`px-3 py-1.5 ${state.mode === 'file' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors`}
           >
             Upload
           </button>
@@ -142,26 +142,26 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
               state.dragOver
-                ? 'border-blue-400 bg-blue-50'
-                : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
+                ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/30'
+                : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 hover:bg-gray-50 dark:hover:bg-gray-700'
             }`}
           >
             {state.file ? (
               <div>
-                <p className="text-sm font-medium text-gray-900">{state.file.name}</p>
-                <p className="text-xs text-gray-500 mt-1">{formatBytes(state.file.size)}</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{state.file.name}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatBytes(state.file.size)}</p>
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onChange({ file: null }); }}
-                  className="text-xs text-red-500 mt-2 hover:underline"
+                  className="text-xs text-red-500 dark:text-red-400 mt-2 hover:underline"
                 >
                   Remove file
                 </button>
               </div>
             ) : (
               <>
-                <p className="text-sm text-gray-500">Drag & drop a file here, or click to browse</p>
-                <p className="text-xs text-gray-400 mt-1">PDF, DOCX — max 4 MB</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Drag & drop a file here, or click to browse</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">PDF, DOCX — max 4 MB</p>
               </>
             )}
           </div>
@@ -173,7 +173,7 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
             onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
           />
           {state.sizeError && (
-            <p className="text-xs text-red-500 mt-1">{state.sizeError}</p>
+            <p className="text-xs text-red-500 dark:text-red-400 mt-1">{state.sizeError}</p>
           )}
         </>
       )}
@@ -209,13 +209,13 @@ export function DocumentsSection({ profile, onSave }: Props) {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Documents</h2>
-        <p className="text-sm text-gray-500 mt-1">Upload or link your CV / Résumé — max 4 MB</p>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Documents</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Upload or link your CV / Résumé — max 4 MB</p>
       </div>
 
       <DocUploader label="CV / Résumé" required state={cv} onChange={(u) => setCv((s) => ({ ...s, ...u }))} />
 
-      <div className="mt-2 pt-4 border-t border-gray-200 flex items-center gap-3">
+      <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
         <button
           onClick={handleSave}
           disabled={saving}

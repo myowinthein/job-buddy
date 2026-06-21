@@ -14,8 +14,8 @@ interface Props {
 
 const cls = (err?: string) =>
   err
-    ? 'w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
-    : 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+    ? 'w-full px-3 py-2 border border-red-300 dark:border-red-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
+    : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MIN_YEAR = CURRENT_YEAR - 100;
@@ -326,8 +326,8 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Work History</h2>
-        <p className="text-sm text-gray-500 mt-1">Your experience, career summary, and availability</p>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Work History</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Your experience, career summary, and availability</p>
       </div>
 
       {/* ── Career Summary ──────────────────────────────────────────────────── */}
@@ -348,14 +348,14 @@ export function WorkHistorySection({ profile, onSave }: Props) {
         <button
           type="button"
           onClick={() => { setEntries((rows) => [...rows, emptyRow()]); setNewEntryTick((t) => t + 1); }}
-          className="text-xs px-3 py-1.5 border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+          className="text-xs px-3 py-1.5 border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
         >
           + Add Entry
         </button>
       </div>
 
       {errors.general && (
-        <p className="text-sm text-red-500 mb-4 p-3 bg-red-50 rounded-lg">{errors.general}</p>
+        <p className="text-sm text-red-500 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">{errors.general}</p>
       )}
 
       <div ref={entriesContainerRef}>
@@ -408,7 +408,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
           </div>
 
           <div className="mb-4">
-            <p className="text-sm font-medium text-gray-700 mb-2">
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Work Arrangement
             </p>
             <div className="flex gap-6">
@@ -423,7 +423,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                     onClick={() => updateEntry(idx, 'arrangement', row.arrangement === opt ? '' : opt)}
                     className="text-blue-600"
                   />
-                  <span className="text-sm text-gray-700 capitalize">{opt}</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">{opt}</span>
                 </label>
               ))}
             </div>
@@ -456,7 +456,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
               type="checkbox"
               checked={row.isCurrent}
               onChange={(e) => updateEntry(idx, 'isCurrent', e.target.checked)}
-              className="rounded border-gray-300 text-blue-600"
+              className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400"
             />
             <span className="text-sm text-gray-700">Currently active</span>
           </label>
@@ -476,15 +476,15 @@ export function WorkHistorySection({ profile, onSave }: Props) {
 
       {/* Total experience — updates live as the user edits dates */}
       {experience.totalMonths > 0 && (
-        <div className="flex items-center justify-between px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg mb-6 text-sm">
-          <span className="text-gray-600">Total Experience</span>
-          <span className="font-semibold text-blue-700">{experience.label}</span>
+        <div className="flex items-center justify-between px-3 py-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 rounded-lg mb-6 text-sm">
+          <span className="text-gray-600 dark:text-gray-300">Total Experience</span>
+          <span className="font-semibold text-blue-700 dark:text-blue-300">{experience.label}</span>
         </div>
       )}
 
       {/* ── Notice Period ────────────────────────────────────────────────────── */}
       <div className="pt-4 mb-4">
-        <p className="text-sm font-medium text-gray-700 mb-2">Notice Period<span className="text-red-500 ml-0.5">*</span></p>
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notice Period<span className="text-red-500 ml-0.5">*</span></p>
         <div className="flex gap-4 mb-3">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -494,7 +494,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
               onChange={() => setNoticeImmediate(true)}
               className="text-blue-600"
             />
-            <span className="text-sm text-gray-700">Available Now</span>
+            <span className="text-sm text-gray-700 dark:text-gray-300">Available Now</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -504,7 +504,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
               onChange={() => setNoticeImmediate(false)}
               className="text-blue-600"
             />
-            <span className="text-sm text-gray-700">Available Later</span>
+            <span className="text-sm text-gray-700 dark:text-gray-300">Available Later</span>
           </label>
         </div>
 
@@ -560,13 +560,13 @@ export function WorkHistorySection({ profile, onSave }: Props) {
               </select>
             </div>
             {errors.noticeValue && (
-              <span className="text-xs text-red-500">{errors.noticeValue}</span>
+              <span className="text-xs text-red-500 dark:text-red-400">{errors.noticeValue}</span>
             )}
           </div>
         )}
       </div>
 
-      <div className="pt-4 border-t border-gray-200 flex items-center gap-3">
+      <div className="pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
         <button
           onClick={handleSave}
           disabled={saving}

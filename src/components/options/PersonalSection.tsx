@@ -16,8 +16,8 @@ const CURRENT_YEAR = new Date().getFullYear();
 
 const cls = (err?: string) =>
   err
-    ? 'w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
-    : 'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+    ? 'w-full px-3 py-2 border border-red-300 dark:border-red-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
+    : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 // ── Backward-compat phone initialiser ──────────────────────────────────────
 // Existing stored profiles may have phone as a plain string. Gracefully
@@ -173,8 +173,8 @@ export function PersonalSection({ profile, onSave }: Props) {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Personal Information</h2>
-        <p className="text-sm text-gray-500 mt-1">Basic personal details used in job applications</p>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Personal Information</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Basic personal details used in job applications</p>
       </div>
 
       {/* Name */}
@@ -221,7 +221,7 @@ export function PersonalSection({ profile, onSave }: Props) {
       <FormField label="Phone" required error={errors.phoneNumber}>
         <div
           className={`flex items-stretch rounded-lg border ${
-            errors.phoneNumber ? 'border-red-300' : 'border-gray-300'
+            errors.phoneNumber ? 'border-red-300 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
           } focus-within:ring-2 ${
             errors.phoneNumber ? 'focus-within:ring-red-500' : 'focus-within:ring-blue-500'
           } focus-within:border-transparent`}
@@ -235,7 +235,7 @@ export function PersonalSection({ profile, onSave }: Props) {
             inputMode="numeric"
             pattern="[0-9]*"
             maxLength={15}
-            className="rounded-r-lg flex-1 px-3 py-2 text-sm focus:outline-none bg-white"
+            className="rounded-r-lg flex-1 px-3 py-2 text-sm focus:outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             value={form.phoneNumber}
             onChange={(e) => handlePhoneNumberChange(e.target.value)}
             onBlur={() => handleBlur('phoneNumber')}
@@ -339,7 +339,7 @@ export function PersonalSection({ profile, onSave }: Props) {
         </FormField>
       </div>
 
-      <div className="mt-6 pt-4 border-t border-gray-200 flex items-center gap-3">
+      <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
         <button
           onClick={handleSave}
           disabled={saving}
