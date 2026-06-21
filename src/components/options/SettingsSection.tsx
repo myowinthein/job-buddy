@@ -317,6 +317,15 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         >
           Privacy Policy
         </a>
+        {' · '}
+        <a
+          href="https://github.com/myowinthein/job-buddy/blob/main/TERMS.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline font-medium"
+        >
+          Terms of Service
+        </a>
       </p>
 
       {/* ── Reset All Data ───────────────────────────────────────────────────── */}
