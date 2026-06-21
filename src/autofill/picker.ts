@@ -1,7 +1,8 @@
-import type { Profile } from '../types/profile';
+import type { Profile, WorkHistoryEntry, EducationEntry } from '../types/profile';
 import { COUNTRIES } from '../data/countries';
 import { LANGUAGES } from '../data/languages';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
+import { fmtYearMonth } from '../utils/dateFormat';
 import { getProfile } from '../utils/storage';
 import { resolveProfileValue } from './resolver';
 
@@ -59,11 +60,14 @@ interface Cluster {
   rows:    OptionRow[];
 }
 
-// Collapsible sub-group for multi-entry arrays (Salary entries).
+// Collapsible sub-group for multi-entry arrays (Salary, Work History, Education).
+// defaultCollapsed = true means collapsed on first open (most entries in Work
+// History/Education); the most-recent entry is left at the default (expanded).
 interface SubGroup {
-  kind:    'subgroup';
-  heading: string;
-  rows:    OptionRow[];
+  kind:             'subgroup';
+  heading:          string;
+  rows:             OptionRow[];
+  defaultCollapsed?: boolean;
 }
 
 type SectionItem = OptionRow | Cluster | SubGroup;
@@ -92,6 +96,38 @@ function countryName(code: string): string {
 
 function languageName(codeOrName: string): string {
   return LANGUAGES.find(l => l.code === codeOrName || l.name === codeOrName)?.name ?? codeOrName;
+}
+
+// Returns the index of the most recent entry (isCurrent first, then latest startDate).
+function mostRecentIdx(entries: Array<{ startDate?: string; isCurrent?: boolean }>): number {
+  if (!entries.length) return 0;
+  const currIdx = entries.findIndex(e => e.isCurrent);
+  if (currIdx >= 0) return currIdx;
+  let best = 0;
+  for (let i = 1; i < entries.length; i++) {
+    if ((entries[i].startDate ?? '') > (entries[best].startDate ?? '')) best = i;
+  }
+  return best;
+}
+
+function workHistoryHeading(entry: WorkHistoryEntry, idx: number): string {
+  if (entry.title && entry.company) return `${entry.title} — ${entry.company}`;
+  if (entry.title)   return entry.title;
+  if (entry.company) return entry.company;
+  const sy = entry.startDate?.split('-')[0];
+  const ey = entry.isCurrent ? 'Present' : entry.endDate?.split('-')[0];
+  if (sy) return ey ? `${sy} — ${ey}` : sy;
+  return `Entry ${idx + 1}`;
+}
+
+function educationHeading(entry: EducationEntry, idx: number): string {
+  if (entry.degree && entry.institution) return `${entry.degree} — ${entry.institution}`;
+  if (entry.degree)      return entry.degree;
+  if (entry.institution) return entry.institution;
+  const sy = entry.startDate?.split('-')[0];
+  const ey = entry.isCurrent ? 'Present' : entry.endDate?.split('-')[0];
+  if (sy) return ey ? `${sy} — ${ey}` : sy;
+  return `Entry ${idx + 1}`;
 }
 
 function fmtAmount(n: number): string {
@@ -132,14 +168,16 @@ function detectAutoExpand(element: HTMLElement): string | null {
 
   const sig = parts.join(' ').toLowerCase();
 
-  if (/salary|compensation|pay|wage|income|ctc|package/.test(sig))         return 'salary';
-  if (/visa|authoris|authoriz|permit|sponsorship|right.to.work/.test(sig)) return 'work-authorization';
-  if (/phone|mobile|tel\b|cell|calling|extension/.test(sig))               return 'personal';
-  if (/date.of.birth|birth|dob|birthday|\bborn\b/.test(sig))               return 'personal';
-  if (/country|city|state|street|postal|zip|address/.test(sig))            return 'address';
-  if (/language/.test(sig))                                                 return 'languages';
-  if (/linkedin|portfolio|github|website|\blink\b/.test(sig))              return 'links';
-  if (/\bname\b|email|gender|veteran|disability|ethnicity/.test(sig))      return 'personal';
+  if (/salary|compensation|pay|wage|income|ctc|package/.test(sig))                  return 'salary';
+  if (/visa|authoris|authoriz|permit|sponsorship|right.to.work/.test(sig))         return 'work-authorization';
+  if (/\bwork\b|job|company|employer|position|\brole\b|experience|employment/.test(sig)) return 'work-history';
+  if (/education|school|university|college|\bdegree\b|study|academic|qualification/.test(sig)) return 'education';
+  if (/phone|mobile|tel\b|cell|calling|extension/.test(sig))                        return 'personal';
+  if (/date.of.birth|birth|dob|birthday|\bborn\b/.test(sig))                        return 'personal';
+  if (/country|city|state|street|postal|zip|address/.test(sig))                     return 'address';
+  if (/language/.test(sig))                                                          return 'languages';
+  if (/linkedin|portfolio|github|website|\blink\b/.test(sig))                        return 'links';
+  if (/\bname\b|email|gender|veteran|disability|ethnicity/.test(sig))               return 'personal';
 
   return null;
 }
@@ -242,6 +280,86 @@ function buildPickerTree(profile: Profile): Section[] {
       items.push(row(name, `workAuthorization.${idx}`, status));
     });
     if (items.length) sections.push({ id: 'work-authorization', label: 'Work Authorization', items });
+  }
+
+  // Work History
+  {
+    const entries = profile.workHistory ?? [];
+    const items: SectionItem[] = [];
+    const recentIdx = mostRecentIdx(entries);
+
+    entries.forEach((entry, idx) => {
+      if (!entry.title && !entry.company) return;
+      const rows: OptionRow[] = [];
+
+      if (entry.title)   rows.push(row('Job Title', `workHistory.${idx}.title`,   entry.title));
+      if (entry.company) rows.push(row('Company',   `workHistory.${idx}.company`, entry.company));
+
+      const startFmt = entry.startDate ? fmtYearMonth(entry.startDate) : '';
+      if (startFmt) rows.push(row('Start Date', `workHistory.${idx}.startDate.formatted`, startFmt));
+
+      const endFmt = entry.isCurrent ? 'Present' : (entry.endDate ? fmtYearMonth(entry.endDate) : '');
+      if (endFmt) rows.push(row('End Date', `workHistory.${idx}.endDate.formatted`, endFmt));
+
+      if (entry.isCurrent) rows.push(row('Currently Working', `workHistory.${idx}.isCurrent`, 'Yes'));
+
+      const locParts: string[] = [];
+      if (entry.location?.city)        locParts.push(entry.location.city);
+      if (entry.location?.countryCode) locParts.push(countryName(entry.location.countryCode));
+      const locStr = locParts.join(', ');
+      if (locStr) rows.push(row('Location', `workHistory.${idx}.location`, locStr));
+
+      if (entry.description) rows.push(row('Description', `workHistory.${idx}.description`, entry.description));
+
+      if (rows.length) {
+        items.push({
+          kind:            'subgroup',
+          heading:         workHistoryHeading(entry, idx),
+          rows,
+          defaultCollapsed: idx !== recentIdx,
+        });
+      }
+    });
+
+    if (items.length) sections.push({ id: 'work-history', label: 'Work History', items });
+  }
+
+  // Education
+  {
+    const entries = profile.education ?? [];
+    const items: SectionItem[] = [];
+    const recentIdx = mostRecentIdx(entries);
+
+    entries.forEach((entry, idx) => {
+      if (!entry.degree && !entry.institution) return;
+      const rows: OptionRow[] = [];
+
+      if (entry.degree)       rows.push(row('Degree',        `education.${idx}.degree`,       entry.degree));
+      if (entry.institution)  rows.push(row('Institution',   `education.${idx}.institution`,  entry.institution));
+      if (entry.fieldOfStudy) rows.push(row('Field of Study',`education.${idx}.fieldOfStudy`, entry.fieldOfStudy));
+
+      const startFmt = entry.startDate ? fmtYearMonth(entry.startDate) : '';
+      if (startFmt) rows.push(row('Start Date', `education.${idx}.startDate.formatted`, startFmt));
+
+      const endFmt = entry.isCurrent ? 'Present' : (entry.endDate ? fmtYearMonth(entry.endDate) : '');
+      if (endFmt) rows.push(row('End Date', `education.${idx}.endDate.formatted`, endFmt));
+
+      if (entry.isCurrent) rows.push(row('Currently Studying', `education.${idx}.isCurrent`, 'Yes'));
+
+      if (entry.grade)       rows.push(row('Grade / GPA', `education.${idx}.grade`,       entry.grade));
+      if (entry.description) rows.push(row('Description', `education.${idx}.description`, entry.description));
+
+      if (rows.length) {
+        items.push({
+          kind:            'subgroup',
+          heading:         educationHeading(entry, idx),
+          rows,
+          defaultCollapsed: idx !== recentIdx,
+        });
+      }
+    });
+
+    if (items.length) sections.push({ id: 'education', label: 'Education', items });
   }
 
   // Languages — label = language name, value = proficiency
@@ -685,11 +803,25 @@ function showPicker(
   // Determine the expand state to open with. Saved state takes priority over
   // the auto-expand default so the picker feels like reopening the same panel.
   const saved = savedPickerStates.get(element);
+
+  // For the default (first-open) state, seed collapsedSubGroups from any
+  // subgroup flagged defaultCollapsed (e.g. non-recent Work History entries).
+  const defaultCollapsedSubGroups = new Set<string>();
+  if (!saved) {
+    for (const section of tree) {
+      for (const item of section.items) {
+        if (item.kind === 'subgroup' && item.defaultCollapsed) {
+          defaultCollapsedSubGroups.add(item.heading);
+        }
+      }
+    }
+  }
+
   const openState: PickerUIState = saved ?? {
     scrollTop:          0,
     searchQuery:        '',
     expandedSections:   new Set(autoExpandId ? [autoExpandId] : []),
-    collapsedSubGroups: new Set(),
+    collapsedSubGroups: defaultCollapsedSubGroups,
   };
 
   const picker = mk('div');
