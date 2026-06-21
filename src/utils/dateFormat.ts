@@ -1,6 +1,9 @@
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHS = [
+  'January','February','March','April','May','June',
+  'July','August','September','October','November','December',
+];
 
-// Converts a "YYYY-MM" profile date string to "Mon YYYY". Returns the raw
+// Converts a "YYYY-MM" profile date string to "Month YYYY". Returns the raw
 // value unchanged if it doesn't match the expected format.
 export function fmtYearMonth(ym: string): string {
   if (!ym) return '';

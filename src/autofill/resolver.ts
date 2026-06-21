@@ -95,6 +95,7 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
     if (!entry) return '';
     switch (whMatch[2]) {
       case 'isCurrent':           return entry.isCurrent ? 'Yes' : '';
+      case 'arrangement':         return entry.arrangement ? entry.arrangement.charAt(0).toUpperCase() + entry.arrangement.slice(1) : '';
       case 'startDate.formatted': return fmtYearMonth(entry.startDate ?? '');
       case 'endDate.formatted':   return entry.isCurrent ? 'Present' : fmtYearMonth(entry.endDate ?? '');
       case 'location': {
