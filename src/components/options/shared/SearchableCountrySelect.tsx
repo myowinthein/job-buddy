@@ -93,25 +93,25 @@ export function SearchableCountrySelect({ value, onChange }: Props) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="h-full rounded-l-lg bg-gray-50 border-r border-gray-200 px-2 py-2 text-sm cursor-pointer flex items-center gap-1 hover:bg-gray-100 transition-colors whitespace-nowrap focus:outline-none"
+        className="h-full rounded-l-lg bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 px-2 py-2 text-sm cursor-pointer flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors whitespace-nowrap focus:outline-none"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="Select country calling code"
       >
         <span>{getFlag(selected.code)}</span>
-        <span className="font-medium text-gray-700">{selected.callingCode}</span>
-        <span className="text-gray-400 text-xs ml-0.5">▾</span>
+        <span className="font-medium text-gray-700 dark:text-gray-300">{selected.callingCode}</span>
+        <span className="text-gray-400 dark:text-gray-500 text-xs ml-0.5">▾</span>
       </button>
 
       {/* ── Dropdown ────────────────────────────────────────────────────────── */}
       {open && (
-        <div className="absolute top-full left-0 mt-1.5 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+        <div className="absolute top-full left-0 mt-1.5 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg dark:shadow-black/40 z-50">
           {/* Search input */}
-          <div className="p-2 border-b border-gray-100">
+          <div className="p-2 border-b border-gray-100 dark:border-gray-700">
             <input
               ref={searchRef}
               type="text"
-              className="w-full px-2.5 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Search country or code…"
               value={search}
               onChange={(e) => {
@@ -125,7 +125,7 @@ export function SearchableCountrySelect({ value, onChange }: Props) {
           {/* Country list */}
           <ul ref={listRef} role="listbox" className="max-h-56 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <li className="px-3 py-3 text-sm text-gray-400 text-center select-none">
+              <li className="px-3 py-3 text-sm text-gray-400 dark:text-gray-500 text-center select-none">
                 No countries found.
               </li>
             ) : (
@@ -136,8 +136,8 @@ export function SearchableCountrySelect({ value, onChange }: Props) {
                   aria-selected={c.code === value}
                   className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer select-none ${
                     idx === hlIdx
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                   }`}
                   onMouseEnter={() => setHlIdx(idx)}
                   onMouseDown={(e) => e.preventDefault()} // keep search input focused
