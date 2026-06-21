@@ -168,7 +168,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         await saveProfile(validation.sanitized as Profile);
         if (exportData.learnedMappings) await saveLearmedMappings(exportData.learnedMappings);
         if (exportData.applicationHistory) await saveApplicationHistory(exportData.applicationHistory);
-        showToast('success', 'Profile imported successfully');
+        const skipped0 = validation.invalidFields.length;
+        const suffix0  = skipped0 > 0 ? ` (${skipped0} field${skipped0 !== 1 ? 's' : ''} skipped)` : '';
+        showToast('success', `Profile imported successfully${suffix0}`);
         onImportComplete();
       } catch (err) {
         console.error('[Job Buddy] Import failed:', err);
