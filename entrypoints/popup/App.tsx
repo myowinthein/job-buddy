@@ -166,9 +166,7 @@ function App() {
     <div className="w-[380px] p-5 font-sans bg-white">
       {/* Header */}
       <div className="flex items-center gap-2.5 mb-5">
-        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
-          <span className="text-white text-xs font-bold">JB</span>
-        </div>
+        <img src="/icon/32.png" alt="Job Buddy" className="w-8 h-8 shrink-0" />
         <h1 className="text-base font-bold text-gray-900">Job Buddy</h1>
       </div>
 
