@@ -73,9 +73,9 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
 
   const hasAnyError = !!error || !!dayError || !!yearError;
   const borderCls = hasAnyError
-    ? 'border-red-300 focus:ring-red-500'
-    : 'border-gray-300 focus:ring-blue-500';
-  const fieldCls = `w-full px-3 py-2 text-sm border ${borderCls} rounded-lg focus:outline-none focus:ring-2 bg-white`;
+    ? 'border-red-300 dark:border-red-500 focus:ring-red-500'
+    : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500';
+  const fieldCls = `w-full px-3 py-2 text-sm border ${borderCls} rounded-lg focus:outline-none focus:ring-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100`;
 
   const handleDayInput = (raw: string) => {
     const cleaned = raw.replace(/\D/g, '').slice(0, 2);
@@ -175,7 +175,7 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
       </div>
 
       {/* Single error line spanning the full width of the date row */}
-      {inlineError && <p className="text-xs text-red-500 mt-1">{inlineError}</p>}
+      {inlineError && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{inlineError}</p>}
     </div>
   );
 }
