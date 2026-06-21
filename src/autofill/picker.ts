@@ -5,13 +5,32 @@ import { resolveProfileValue } from './resolver';
 
 // All styles are inline — no Tailwind, no external CSS — to avoid host page conflicts.
 
-let activePicker: HTMLElement | null = null;
+let activePicker:        HTMLElement | null = null;
 let activePickerElement: HTMLElement | null = null;
 let activeScrollHandler: (() => void) | null = null;
-let scrollRafId: number | null = null;
-let savedScrollState: { element: HTMLElement; scrollTop: number } | null = null;
+let scrollRafId:         number | null = null;
+
+// Registered on document for "click outside to close". Tracked here so
+// removePicker() can tear it down, preventing stale handlers from closing
+// a newly-opened picker after a tab switch.
+let activeOutsideHandler: ((e: MouseEvent) => void) | null = null;
 
 const pickerListeners = new WeakMap<HTMLElement, () => void>();
+
+// ─── Persistent UI state (per element, for the lifetime of the page) ─────────
+
+interface ExpandState {
+  expandedSections:    Set<string>;  // section IDs that are open
+  collapsedSubGroups:  Set<string>;  // sub-group headings that are closed (default = open)
+}
+
+interface PickerUIState extends ExpandState {
+  scrollTop:   number;
+  searchQuery: string;
+}
+
+// Keyed by the form element. Preserved until the page unloads.
+const savedPickerStates = new Map<HTMLElement, PickerUIState>();
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -31,14 +50,14 @@ interface OptionRow {
   value:     string;
 }
 
-// Visual cluster: inline heading + rows, no collapse control (Phone, Date of Birth).
+// Inline heading + rows, no collapse control (Phone, Date of Birth).
 interface Cluster {
   kind:    'cluster';
   heading: string;
   rows:    OptionRow[];
 }
 
-// Collapsible sub-group for multi-entry arrays (Expected Salary, Work Auth).
+// Collapsible sub-group for multi-entry arrays (Salary entries).
 interface SubGroup {
   kind:    'subgroup';
   heading: string;
@@ -94,7 +113,8 @@ function mk(tag: string, css?: Record<string, string>): HTMLElement {
   return e;
 }
 
-// Reads element signals to pick which section to auto-expand.
+// ─── Signal-based auto-expand ─────────────────────────────────────────────────
+
 function detectAutoExpand(element: HTMLElement): string | null {
   const inp = element as HTMLInputElement;
   const parts: string[] = [
@@ -184,16 +204,6 @@ function buildPickerTree(profile: Profile): Section[] {
     if (items.length) sections.push({ id: 'address', label: 'Address', items });
   }
 
-  // Professional
-  {
-    const items: SectionItem[] = [];
-    addPath(items, 'Current Title',       'derived.currentTitle');
-    addPath(items, 'Current Company',     'derived.currentCompany');
-    addPath(items, 'Years of Experience', 'derived.totalExperience.years');
-    addPath(items, 'Summary',             'professional.summary');
-    if (items.length) sections.push({ id: 'professional', label: 'Professional', items });
-  }
-
   // Salary
   {
     const items: SectionItem[] = [];
@@ -202,9 +212,9 @@ function buildPickerTree(profile: Profile): Section[] {
     if (cur?.amount != null || cur?.currency) {
       const rows: OptionRow[] = [];
       const full = fmtSalary(cur?.amount, cur?.currency);
-      if (full)              rows.push(row('Current Salary', 'salary.current.formatted', full));
-      if (cur?.amount != null) rows.push(row('Amount',   'salary.current.amount',   String(cur.amount)));
-      if (cur?.currency)       rows.push(row('Currency', 'salary.current.currency', cur.currency));
+      if (full)                rows.push(row('Current Salary', 'salary.current.formatted', full));
+      if (cur?.amount != null) rows.push(row('Amount',         'salary.current.amount',    String(cur.amount)));
+      if (cur?.currency)       rows.push(row('Currency',       'salary.current.currency',  cur.currency));
       if (rows.length) items.push({ kind: 'subgroup', heading: 'Current Salary', rows });
     }
 
@@ -213,39 +223,34 @@ function buildPickerTree(profile: Profile): Section[] {
       const name = entry.country ? countryName(entry.country) : `Entry ${idx + 1}`;
       const rows: OptionRow[] = [];
       const full = fmtSalary(entry.amount, entry.currency);
-      if (full)               rows.push(row('Expected Salary', `salary.expected.${idx}.formatted`, full));
-      if (entry.amount != null) rows.push(row('Amount',   `salary.expected.${idx}.amount`,   String(entry.amount)));
-      if (entry.currency)       rows.push(row('Currency', `salary.expected.${idx}.currency`, entry.currency));
+      if (full)                rows.push(row('Expected Salary', `salary.expected.${idx}.formatted`, full));
+      if (entry.amount != null) rows.push(row('Amount',         `salary.expected.${idx}.amount`,    String(entry.amount)));
+      if (entry.currency)       rows.push(row('Currency',       `salary.expected.${idx}.currency`,  entry.currency));
       if (rows.length) items.push({ kind: 'subgroup', heading: `Expected Salary — ${name}`, rows });
     });
 
     if (items.length) sections.push({ id: 'salary', label: 'Salary', items });
   }
 
-  // Work Authorization
+  // Work Authorization — flat rows (label = country name, value = status)
   {
     const items: SectionItem[] = [];
     (profile.workAuthorization ?? []).forEach((entry, idx) => {
       if (!entry.status) return;
       const name   = countryName(entry.country);
       const status = WORK_AUTH_LABELS[entry.status] ?? entry.status;
-      items.push({
-        kind:    'subgroup',
-        heading: `Work Authorization — ${name}`,
-        rows:    [row('Status', `workAuthorization.${idx}`, status)],
-      });
+      items.push(row(name, `workAuthorization.${idx}`, status));
     });
     if (items.length) sections.push({ id: 'work-authorization', label: 'Work Authorization', items });
   }
 
-  // Languages
+  // Languages — label = language name, value = proficiency
   {
     const items: SectionItem[] = [];
     (profile.languages ?? []).forEach((entry, idx) => {
       if (!entry.language) return;
       const prof = LANG_PROF_LABELS[entry.proficiency] ?? entry.proficiency ?? '';
-      // label = proficiency for context; value = language name (what gets filled).
-      items.push(row(prof || entry.language, `languages.${idx}.language`, entry.language));
+      items.push(row(entry.language, `languages.${idx}.language`, prof || entry.language));
     });
     if (items.length) sections.push({ id: 'languages', label: 'Languages', items });
   }
@@ -265,7 +270,7 @@ function buildPickerTree(profile: Profile): Section[] {
   {
     const items: SectionItem[] = [];
     const cvUrl = profile.documents?.cv?.url;
-    if (cvUrl) items.push(row('CV URL', 'documents.cv.url', cvUrl));
+    if (cvUrl) items.push(row('Document URL', 'documents.cv.url', cvUrl));
     if (items.length) sections.push({ id: 'documents', label: 'Documents', items });
   }
 
@@ -273,6 +278,15 @@ function buildPickerTree(profile: Profile): Section[] {
 }
 
 // ─── DOM element builders ─────────────────────────────────────────────────────
+
+// Shared style for inline sub-headings (clusters and sub-group headers).
+const SUB_HEADING_STYLE: Record<string, string> = {
+  fontSize:      '10px',
+  fontWeight:    '700',
+  color:         '#6b7280',
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+};
 
 function buildRowEl(
   r: OptionRow,
@@ -358,13 +372,9 @@ function buildClusterEl(
   wrapper.setAttribute('data-jb-cluster', '1');
 
   const heading = mk('div', {
-    padding:       '5px 12px 2px',
-    fontSize:      '10px',
-    fontWeight:    '700',
-    color:         '#6366f1',
-    textTransform: 'uppercase',
-    letterSpacing: '0.06em',
-    borderTop:     '1px solid #f3f4f6',
+    ...SUB_HEADING_STYLE,
+    padding:   '5px 12px 2px',
+    borderTop: '1px solid #f3f4f6',
   });
   heading.textContent = cluster.heading;
   wrapper.appendChild(heading);
@@ -381,21 +391,20 @@ function buildSubGroupEl(
   targetEl: HTMLElement,
   state: PickerFieldState,
   currentValue: string,
+  initialExpanded: boolean,
   onSelect: (el: HTMLElement, path: string, val: string, st: PickerFieldState) => void,
 ): HTMLElement {
   const wrapper = mk('div');
   wrapper.setAttribute('data-jb-subgroup', '1');
 
   const header = mk('div', {
+    ...SUB_HEADING_STYLE,
     padding:        '5px 12px 5px 16px',
     cursor:         'pointer',
     display:        'flex',
     alignItems:     'center',
     justifyContent: 'space-between',
     borderTop:      '1px solid #f3f4f6',
-    fontSize:       '11px',
-    fontWeight:     '600',
-    color:          '#4b5563',
     userSelect:     'none',
   });
   header.setAttribute('data-jb-subgroup-header', '1');
@@ -404,7 +413,7 @@ function buildSubGroupEl(
   headingText.textContent = sg.heading;
 
   const chevron = mk('span', { fontSize: '9px', color: '#9ca3af', marginLeft: '6px', flexShrink: '0' });
-  chevron.textContent = '▾'; // expanded by default
+  chevron.textContent = initialExpanded ? '▾' : '▸';
 
   header.appendChild(headingText);
   header.appendChild(chevron);
@@ -412,7 +421,8 @@ function buildSubGroupEl(
 
   const body = mk('div');
   body.setAttribute('data-jb-subgroup-body', '1');
-  // expanded by default
+  body.style.display = initialExpanded ? '' : 'none';
+
   for (const r of sg.rows) {
     body.appendChild(buildRowEl(r, targetEl, state, currentValue, true, onSelect));
   }
@@ -436,28 +446,30 @@ function buildSectionEl(
   targetEl: HTMLElement,
   state: PickerFieldState,
   currentValue: string,
-  isExpanded: boolean,
+  openState: ExpandState,
   isFirst: boolean,
   onSelect: (el: HTMLElement, path: string, val: string, st: PickerFieldState) => void,
 ): HTMLElement {
+  const isExpanded = openState.expandedSections.has(section.id);
+
   const wrapper = mk('div');
   wrapper.setAttribute('data-jb-section', '1');
   wrapper.setAttribute('data-section-id', section.id);
 
   const header = mk('div', {
-    padding:        '6px 12px',
-    cursor:         'pointer',
-    display:        'flex',
-    alignItems:     'center',
-    justifyContent: 'space-between',
-    backgroundColor:'#f3f4f6',
-    borderTop:      isFirst ? 'none' : '1px solid #e5e7eb',
-    fontSize:       '11px',
-    fontWeight:     '700',
-    color:          '#374151',
-    textTransform:  'uppercase',
-    letterSpacing:  '0.06em',
-    userSelect:     'none',
+    padding:         '6px 12px',
+    cursor:          'pointer',
+    display:         'flex',
+    alignItems:      'center',
+    justifyContent:  'space-between',
+    backgroundColor: '#f3f4f6',
+    borderTop:       isFirst ? 'none' : '1px solid #e5e7eb',
+    fontSize:        '11px',
+    fontWeight:      '700',
+    color:           '#374151',
+    textTransform:   'uppercase',
+    letterSpacing:   '0.06em',
+    userSelect:      'none',
   });
   header.setAttribute('data-jb-section-header', '1');
 
@@ -481,7 +493,8 @@ function buildSectionEl(
     } else if (item.kind === 'cluster') {
       body.appendChild(buildClusterEl(item, targetEl, state, currentValue, onSelect));
     } else {
-      body.appendChild(buildSubGroupEl(item, targetEl, state, currentValue, onSelect));
+      const sgExpanded = !openState.collapsedSubGroups.has(item.heading);
+      body.appendChild(buildSubGroupEl(item, targetEl, state, currentValue, sgExpanded, onSelect));
     }
   }
 
@@ -506,7 +519,7 @@ function applySearch(
   pickerBody: HTMLElement,
   noMatchEl: HTMLElement,
   query: string,
-  autoExpandId: string | null,
+  restoreOnClear: ExpandState,   // state to restore when clearing search
 ): void {
   const q = query.trim().toLowerCase();
   const sectionEls = pickerBody.querySelectorAll<HTMLElement>('[data-jb-section]');
@@ -519,18 +532,21 @@ function applySearch(
     const allRows     = section.querySelectorAll<HTMLElement>('[data-jb-row]');
 
     if (!q) {
-      // Restore default state
-      section.style.display  = '';
+      // Restore to the open-time state
+      section.style.display = '';
       allRows.forEach(r => { r.style.display = ''; });
       section.querySelectorAll<HTMLElement>('[data-jb-cluster]').forEach(c => { c.style.display = ''; });
       section.querySelectorAll<HTMLElement>('[data-jb-subgroup]').forEach(sg => {
         sg.style.display = '';
+        const headingEl = sg.querySelector<HTMLElement>('[data-jb-subgroup-header] span:first-child');
+        const heading   = headingEl?.textContent ?? '';
         const sgBody    = sg.querySelector<HTMLElement>('[data-jb-subgroup-body]');
         const sgChevron = sg.querySelector<HTMLElement>('[data-jb-subgroup-header] span:last-child');
-        if (sgBody)    sgBody.style.display    = '';
-        if (sgChevron) sgChevron.textContent   = '▾';
+        const collapsed = restoreOnClear.collapsedSubGroups.has(heading);
+        if (sgBody)    sgBody.style.display  = collapsed ? 'none' : '';
+        if (sgChevron) sgChevron.textContent = collapsed ? '▸' : '▾';
       });
-      const exp = sectionId === autoExpandId;
+      const exp = restoreOnClear.expandedSections.has(sectionId);
       if (sectionBody) sectionBody.style.display = exp ? '' : 'none';
       if (chevron)     chevron.textContent        = exp ? '▾' : '▸';
       visibleSections++;
@@ -552,7 +568,7 @@ function applySearch(
       cluster.style.display = hasVisible ? '' : 'none';
     });
 
-    // SubGroups: show and auto-expand if any child row matches
+    // Sub-groups: show and expand if any child row matches
     section.querySelectorAll<HTMLElement>('[data-jb-subgroup]').forEach(sg => {
       const hasVisible = [...sg.querySelectorAll<HTMLElement>('[data-jb-row]')].some(r => r.style.display !== 'none');
       sg.style.display = hasVisible ? '' : 'none';
@@ -577,6 +593,30 @@ function applySearch(
   noMatchEl.style.display = visibleSections === 0 && !!q ? '' : 'none';
 }
 
+// ─── State capture ────────────────────────────────────────────────────────────
+
+function captureExpandState(pickerEl: HTMLElement): ExpandState {
+  const expandedSections = new Set<string>();
+  pickerEl.querySelectorAll<HTMLElement>('[data-jb-section]').forEach(section => {
+    const sectionId   = section.getAttribute('data-section-id') ?? '';
+    const sectionBody = section.querySelector<HTMLElement>('[data-jb-section-body]');
+    if (sectionBody && sectionBody.style.display !== 'none') {
+      expandedSections.add(sectionId);
+    }
+  });
+
+  const collapsedSubGroups = new Set<string>();
+  pickerEl.querySelectorAll<HTMLElement>('[data-jb-subgroup]').forEach(sg => {
+    const sgBody    = sg.querySelector<HTMLElement>('[data-jb-subgroup-body]');
+    const headingEl = sg.querySelector<HTMLElement>('[data-jb-subgroup-header] span:first-child');
+    if (sgBody && sgBody.style.display === 'none' && headingEl?.textContent) {
+      collapsedSubGroups.add(headingEl.textContent);
+    }
+  });
+
+  return { expandedSections, collapsedSubGroups };
+}
+
 // ─── Positioning ──────────────────────────────────────────────────────────────
 
 function repositionPicker(anchor: HTMLElement): void {
@@ -589,10 +629,26 @@ function repositionPicker(anchor: HTMLElement): void {
 }
 
 function removePicker(): void {
-  if (activePicker && activePickerElement) {
-    const body = activePicker.querySelector<HTMLElement>('[data-jb-picker-body]');
-    if (body) savedScrollState = { element: activePickerElement, scrollTop: body.scrollTop };
+  // Remove the outside-click handler immediately so stale references can't
+  // accidentally close a newly-created picker.
+  if (activeOutsideHandler) {
+    document.removeEventListener('mousedown', activeOutsideHandler, true);
+    activeOutsideHandler = null;
   }
+
+  // Save current UI state before tearing down DOM.
+  if (activePicker && activePickerElement) {
+    const pickerBody  = activePicker.querySelector<HTMLElement>('[data-jb-picker-body]');
+    const searchInput = activePicker.querySelector<HTMLInputElement>('input[type="text"]');
+    const expandState = captureExpandState(activePicker);
+    savedPickerStates.set(activePickerElement, {
+      scrollTop:          pickerBody?.scrollTop ?? 0,
+      searchQuery:        searchInput?.value ?? '',
+      expandedSections:   expandState.expandedSections,
+      collapsedSubGroups: expandState.collapsedSubGroups,
+    });
+  }
+
   if (activeScrollHandler) {
     window.removeEventListener('scroll', activeScrollHandler, true);
     window.removeEventListener('resize', activeScrollHandler);
@@ -625,6 +681,16 @@ function showPicker(
 
   const autoExpandId = detectAutoExpand(element);
 
+  // Determine the expand state to open with. Saved state takes priority over
+  // the auto-expand default so the picker feels like reopening the same panel.
+  const saved = savedPickerStates.get(element);
+  const openState: PickerUIState = saved ?? {
+    scrollTop:          0,
+    searchQuery:        '',
+    expandedSections:   new Set(autoExpandId ? [autoExpandId] : []),
+    collapsedSubGroups: new Set(),
+  };
+
   const picker = mk('div');
   picker.id = 'job-buddy-picker';
   Object.assign(picker.style, {
@@ -644,7 +710,7 @@ function showPicker(
     visibility:      'hidden',
   });
 
-  // ── Header ─────────────────────────────────────────────────────────────────
+  // Header
   const header = mk('div', {
     padding:       '8px 12px 6px',
     borderBottom:  '1px solid #f3f4f6',
@@ -657,7 +723,7 @@ function showPicker(
   header.textContent = 'Select a value for this field';
   picker.appendChild(header);
 
-  // ── Search ─────────────────────────────────────────────────────────────────
+  // Search input
   const searchWrap = mk('div', { padding: '6px 10px', borderBottom: '1px solid #f3f4f6' });
   const searchInput = document.createElement('input');
   Object.assign(searchInput.style, {
@@ -677,13 +743,13 @@ function showPicker(
   searchWrap.appendChild(searchInput);
   picker.appendChild(searchWrap);
 
-  // ── Scrollable body ────────────────────────────────────────────────────────
+  // Scrollable body
   const pickerBody = mk('div', { overflowY: 'auto', maxHeight: '288px' });
   pickerBody.setAttribute('data-jb-picker-body', '1');
 
   tree.forEach((section, idx) => {
     pickerBody.appendChild(
-      buildSectionEl(section, element, state, currentValue, section.id === autoExpandId, idx === 0, onSelect)
+      buildSectionEl(section, element, state, currentValue, openState, idx === 0, onSelect)
     );
   });
 
@@ -700,24 +766,27 @@ function showPicker(
   picker.appendChild(pickerBody);
   document.body.appendChild(picker);
 
-  // Restore scroll for same element (e.g. returning from another tab)
-  if (savedScrollState?.element === element) {
-    pickerBody.scrollTop = savedScrollState.scrollTop;
+  // Restore saved search (runs applySearch to filter/expand)
+  if (openState.searchQuery) {
+    searchInput.value = openState.searchQuery;
+    applySearch(pickerBody, noMatch, openState.searchQuery, openState);
   }
 
-  // Wire search
+  // Restore scroll after DOM is fully built
+  pickerBody.scrollTop = openState.scrollTop;
+
+  // Search live filtering
   searchInput.addEventListener('input', () => {
-    applySearch(pickerBody, noMatch, searchInput.value, autoExpandId);
+    applySearch(pickerBody, noMatch, searchInput.value, openState);
     repositionPicker(element);
   });
 
-  // Focus state on search input
   searchInput.addEventListener('focus', () => { searchInput.style.borderColor = '#6366f1'; searchInput.style.backgroundColor = '#fff'; });
   searchInput.addEventListener('blur',  () => { searchInput.style.borderColor = '#e5e7eb'; searchInput.style.backgroundColor = '#f9fafb'; });
 
   activePickerElement = element;
 
-  // Initial position
+  // Position (above the field if room, otherwise below)
   const ph = picker.offsetHeight;
   const topAbove = rect.top - ph - 4;
   picker.style.top        = (topAbove >= 0 ? topAbove : rect.bottom + 4) + 'px';
@@ -736,14 +805,20 @@ function showPicker(
   window.addEventListener('scroll', activeScrollHandler, { capture: true, passive: true });
   window.addEventListener('resize', activeScrollHandler, { passive: true });
 
-  // Dismiss on outside mousedown
-  const outsideHandler = (e: MouseEvent) => {
-    if (!picker.contains(e.target as Node)) {
+  // Dismiss on outside mousedown only. Delay registration so the focus event
+  // that triggered showPicker doesn't immediately dismiss the picker.
+  // Using activePicker (not the closed-over picker) so a stale handler that
+  // somehow fires will act on the current picker, not a detached element.
+  activeOutsideHandler = (e: MouseEvent) => {
+    if (activePicker && !activePicker.contains(e.target as Node)) {
       removePicker();
-      document.removeEventListener('mousedown', outsideHandler, true);
     }
   };
-  setTimeout(() => document.addEventListener('mousedown', outsideHandler, true), 0);
+  setTimeout(() => {
+    if (activeOutsideHandler) {
+      document.addEventListener('mousedown', activeOutsideHandler, true);
+    }
+  }, 0);
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
