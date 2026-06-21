@@ -387,7 +387,7 @@ function App() {
       return (
         <div className="space-y-4">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-12 bg-gray-200 rounded-lg animate-pulse" />
+            <div key={i} className="h-12 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
           ))}
         </div>
       );
@@ -407,7 +407,7 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar
         activeSection={activeSection}
         onSelect={(id) => setActiveSection(id as SectionId)}

@@ -90,22 +90,22 @@ export function Sidebar({
 }: SidebarProps) {
   return (
     <aside
-      className={`flex flex-col bg-white border-r border-gray-200 transition-all duration-200 shrink-0 ${
+      className={`flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-200 shrink-0 ${
         collapsed ? 'w-16' : 'w-56'
       }`}
     >
       {/* Header: brand logo + sidebar toggle */}
-      <div className={`flex items-center h-16 px-3 border-b border-gray-200 ${collapsed ? 'justify-center' : 'justify-between'}`}>
+      <div className={`flex items-center h-16 px-3 border-b border-gray-200 dark:border-gray-800 ${collapsed ? 'justify-center' : 'justify-between'}`}>
         {!collapsed && (
           <div className="flex items-center gap-2 min-w-0 flex-1 mr-1">
             <img src="/icon.svg" alt="" className="w-7 h-7 shrink-0" />
-            <span className="text-sm font-semibold text-gray-900 truncate">Job Buddy</span>
+            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">Job Buddy</span>
           </div>
         )}
         <button
           type="button"
           onClick={onToggle}
-          className={`p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 shrink-0 ${collapsed ? '' : ''}`}
+          className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400 shrink-0"
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {collapsed ? (
@@ -130,8 +130,8 @@ export function Sidebar({
               title={collapsed ? section.label : undefined}
               className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
                 isActive
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-50'
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
               <span className="w-5 text-center shrink-0 leading-none">{section.icon}</span>
@@ -140,18 +140,18 @@ export function Sidebar({
                   <span className="text-sm font-medium flex-1 truncate">{section.label}</span>
                   {isFullyComplete ? (
                     <span
-                      className="w-[17px] h-[17px] rounded-full bg-green-500 flex items-center justify-center shrink-0"
+                      className="w-[17px] h-[17px] rounded-full bg-green-500 dark:bg-green-600 flex items-center justify-center shrink-0"
                       title="Fully complete"
                     >
                       <span className="text-white text-[10px] leading-none font-bold">✓</span>
                     </span>
                   ) : isMandatoryComplete ? (
-                    <span className="text-green-500 text-xs shrink-0" title="Complete">✓</span>
+                    <span className="text-green-500 dark:text-green-400 text-xs shrink-0" title="Complete">✓</span>
                   ) : null}
                 </>
               )}
               {collapsed && isMandatoryComplete && (
-                <span className="absolute ml-6 text-green-500 text-xs leading-none">·</span>
+                <span className="absolute ml-6 text-green-500 dark:text-green-400 text-xs leading-none">·</span>
               )}
             </button>
           );
@@ -159,15 +159,15 @@ export function Sidebar({
       </nav>
 
       {/* Settings — separated by a divider */}
-      <div className={`border-t border-gray-200 pt-1 pb-0 ${collapsed ? 'flex justify-center px-2' : 'px-0'}`}>
+      <div className={`border-t border-gray-200 dark:border-gray-800 pt-1 pb-0 ${collapsed ? 'flex justify-center px-2' : 'px-0'}`}>
         <button
           type="button"
           onClick={() => onSelect('settings')}
           title={collapsed ? 'Settings' : undefined}
           className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
             activeSection === 'settings'
-              ? 'bg-blue-50 text-blue-700'
-              : 'text-gray-700 hover:bg-gray-50'
+              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
           }`}
         >
           <span className="shrink-0"><GearIcon /></span>
@@ -178,12 +178,12 @@ export function Sidebar({
       </div>
 
       {/* Import Resume — separated by a divider */}
-      <div className={`border-t border-gray-200 pt-1 pb-1 ${collapsed ? 'flex justify-center px-2' : 'px-0'}`}>
+      <div className={`border-t border-gray-200 dark:border-gray-800 pt-1 pb-1 ${collapsed ? 'flex justify-center px-2' : 'px-0'}`}>
         <button
           type="button"
           onClick={onImportClick}
           title={collapsed ? 'Import Resume' : undefined}
-          className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
         >
           <span className="shrink-0"><UploadIcon /></span>
           {!collapsed && (
