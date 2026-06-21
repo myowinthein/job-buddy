@@ -410,7 +410,6 @@ export function WorkHistorySection({ profile, onSave }: Props) {
           <div className="mb-4">
             <p className="text-sm font-medium text-gray-700 mb-2">
               Work Arrangement
-              <span className="text-xs text-gray-400 font-normal ml-1">Optional</span>
             </p>
             <div className="flex gap-6">
               {(['onsite', 'remote', 'hybrid'] as const).map((opt) => (
