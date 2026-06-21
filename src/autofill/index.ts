@@ -255,9 +255,15 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       sigs.ariaLabel, sigs.label, sigs.nearbyText,
     ].filter(Boolean);
 
-    for (const text of signalTexts) {
-      const norm = normalize(text);
-      if (norm) await saveLearnedMapping(domain, norm, fieldPath);
+    // Learned-mapping saves are best-effort: a storage quota error must not
+    // prevent the result counts from updating or produce an unhandled rejection.
+    try {
+      for (const text of signalTexts) {
+        const norm = normalize(text);
+        if (norm) await saveLearnedMapping(domain, norm, fieldPath);
+      }
+    } catch {
+      // Non-critical — mapping will be re-learned on the next picker selection.
     }
 
     result.noReview++;
