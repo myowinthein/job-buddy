@@ -94,19 +94,26 @@ export function Sidebar({
         collapsed ? 'w-16' : 'w-56'
       }`}
     >
-      {/* Header: hamburger toggle + "Profile Sections" label */}
-      <div className={`flex items-center gap-2 px-3 h-16 border-b border-gray-200 ${collapsed ? 'justify-center' : ''}`}>
+      {/* Header: brand logo + sidebar toggle */}
+      <div className={`flex items-center h-16 px-3 border-b border-gray-200 ${collapsed ? 'justify-center' : 'justify-between'}`}>
+        {!collapsed && (
+          <div className="flex items-center gap-2 min-w-0 flex-1 mr-1">
+            <img src="/icon/32.png" alt="" className="w-7 h-7 shrink-0" />
+            <span className="text-sm font-semibold text-gray-900 truncate">Job Buddy</span>
+          </div>
+        )}
         <button
           type="button"
           onClick={onToggle}
-          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 shrink-0"
+          className={`p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 shrink-0 ${collapsed ? '' : ''}`}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          <MenuIcon />
+          {collapsed ? (
+            <img src="/icon/32.png" alt="Job Buddy" className="w-5 h-5" />
+          ) : (
+            <MenuIcon />
+          )}
         </button>
-        {!collapsed && (
-          <span className="text-sm font-semibold text-gray-800 truncate">Profile Sections</span>
-        )}
       </div>
 
       <nav className="flex-1 overflow-y-auto py-2">
