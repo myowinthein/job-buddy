@@ -1,5 +1,7 @@
 import type { Profile } from '../types/profile';
 import { COUNTRIES } from '../data/countries';
+import { LANGUAGES } from '../data/languages';
+import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
 import { getProfile } from '../utils/storage';
 import { resolveProfileValue } from './resolver';
 
@@ -74,12 +76,6 @@ interface Section {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const WORK_AUTH_LABELS: Record<string, string> = {
-  citizen_or_pr:        'Citizen / PR',
-  work_visa:            'Work Visa',
-  requires_sponsorship: 'Requires Sponsorship',
-};
-
 const LANG_PROF_LABELS: Record<string, string> = {
   native_bilingual:     'Native / Bilingual',
   full_professional:    'Full Professional',
@@ -92,6 +88,10 @@ const LANG_PROF_LABELS: Record<string, string> = {
 
 function countryName(code: string): string {
   return COUNTRIES.find(c => c.code === code)?.name ?? code;
+}
+
+function languageName(codeOrName: string): string {
+  return LANGUAGES.find(l => l.code === codeOrName || l.name === codeOrName)?.name ?? codeOrName;
 }
 
 function fmtAmount(n: number): string {
@@ -238,7 +238,7 @@ function buildPickerTree(profile: Profile): Section[] {
     (profile.workAuthorization ?? []).forEach((entry, idx) => {
       if (!entry.status) return;
       const name   = countryName(entry.country);
-      const status = WORK_AUTH_LABELS[entry.status] ?? entry.status;
+      const status = WORK_AUTH_STATUS_LABELS[entry.status] ?? entry.status;
       items.push(row(name, `workAuthorization.${idx}`, status));
     });
     if (items.length) sections.push({ id: 'work-authorization', label: 'Work Authorization', items });
@@ -249,8 +249,9 @@ function buildPickerTree(profile: Profile): Section[] {
     const items: SectionItem[] = [];
     (profile.languages ?? []).forEach((entry, idx) => {
       if (!entry.language) return;
+      const name = languageName(entry.language);
       const prof = LANG_PROF_LABELS[entry.proficiency] ?? entry.proficiency ?? '';
-      items.push(row(entry.language, `languages.${idx}.language`, prof || entry.language));
+      items.push(row(name, `languages.${idx}.language`, prof || name));
     });
     if (items.length) sections.push({ id: 'languages', label: 'Languages', items });
   }
