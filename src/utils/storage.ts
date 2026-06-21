@@ -23,20 +23,23 @@ function storageGet(key: string): Promise<Record<string, unknown>> {
   });
 }
 
-// Same resilience wrapper for writes. Resolves even on error so callers
-// using await don't hang.
+// Wrapper for writes. Rejects when the write fails (e.g. quota exceeded) so
+// callers can surface an error instead of silently losing data.
 function storageSet(items: Record<string, unknown>): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     try {
       chrome.storage.local.set(items, () => {
         if (chrome.runtime.lastError) {
-          console.error('[Job Buddy] storage.set error:', chrome.runtime.lastError.message);
+          const msg = chrome.runtime.lastError.message ?? 'storage.set failed';
+          console.error('[Job Buddy] storage.set error:', msg);
+          reject(new Error(msg));
+          return;
         }
         resolve();
       });
     } catch (err) {
       console.error('[Job Buddy] storage.set threw:', err);
-      resolve();
+      reject(err);
     }
   });
 }
