@@ -306,6 +306,19 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         )}
       </section>
 
+      {/* ── Privacy notice ────────────────────────────────────────────────────── */}
+      <p className="mb-8 text-xs text-gray-500 dark:text-gray-400">
+        Your profile data stays on this device and is never sent anywhere.{' '}
+        <a
+          href="https://github.com/myowinthein/job-buddy/blob/main/PRIVACY.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline font-medium"
+        >
+          Privacy Policy
+        </a>
+      </p>
+
       {/* ── Reset All Data ───────────────────────────────────────────────────── */}
       <section className="pt-2">
         <h3 className="text-base font-semibold text-red-700 dark:text-red-400 mb-1">Reset All Data</h3>
