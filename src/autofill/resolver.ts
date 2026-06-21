@@ -1,11 +1,6 @@
 import type { Profile } from '../types/profile';
 import { COUNTRIES } from '../data/countries';
-
-const WORK_AUTH_LABELS: Record<string, string> = {
-  citizen_or_pr:        'Citizen / PR',
-  work_visa:            'Work Visa',
-  requires_sponsorship: 'Requires Sponsorship',
-};
+import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
 
 function formatAmount(amount: number): string {
   return Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -79,7 +74,7 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
   if (waMatch) {
     const entry = profile.workAuthorization?.[parseInt(waMatch[1], 10)];
     if (!entry) return '';
-    return WORK_AUTH_LABELS[entry.status] ?? entry.status;
+    return WORK_AUTH_STATUS_LABELS[entry.status] ?? entry.status;
   }
 
   // Handle salary.expected.N.formatted — formatted amount + currency for the Nth expected entry.

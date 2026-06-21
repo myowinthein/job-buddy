@@ -2,6 +2,7 @@ import { useToast } from '@/src/components/ui/Toast';
 import { useState, useRef, useEffect } from 'react';
 import type { Profile, WorkAuthorizationEntry, WorkAuthorizationStatus } from '@/src/types/profile';
 import { findCountryByNameOrCode } from '@/src/data/countries';
+import { WORK_AUTH_STATUS_OPTIONS } from '@/src/data/workAuthorization';
 import { FormField } from './shared/FormField';
 import { SearchableCountryDropdown } from './shared/SearchableCountryDropdown';
 import { RemoveButton } from './shared/RemoveButton';
@@ -19,11 +20,6 @@ const cls = (err?: string) =>
 // Local row allows empty status while the user hasn't selected yet.
 type LocalRow = { country: string; status: WorkAuthorizationStatus | '' };
 
-const STATUS_OPTIONS: { value: WorkAuthorizationStatus; label: string }[] = [
-  { value: 'citizen_or_pr',        label: 'Citizen / Permanent Resident' },
-  { value: 'work_visa',            label: 'Authorized to work without sponsorship' },
-  { value: 'requires_sponsorship', label: 'Requires Sponsorship' },
-];
 
 function emptyRow(): LocalRow {
   return { country: '', status: '' };
@@ -133,7 +129,7 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
                 onChange={(e) => update(idx, 'status', e.target.value)}
               >
                 <option value="">Select authorization status…</option>
-                {STATUS_OPTIONS.map((opt) => (
+                {WORK_AUTH_STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>

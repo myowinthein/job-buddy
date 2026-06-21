@@ -55,9 +55,12 @@ function formatBytes(bytes: number) {
 }
 
 function toDocumentEntry(state: DocState): DocumentEntry {
-  if (state.mode === 'file' && state.file) return { file: state.file };
-  if (state.mode === 'url' && state.url) return { url: state.url };
-  return {};
+  const entry: DocumentEntry = {};
+  // Always persist the URL if one is set so it survives an upload/remove-file workflow.
+  if (state.url.trim()) entry.url = state.url.trim();
+  // Persist the file only when in file mode and a file is present.
+  if (state.mode === 'file' && state.file) entry.file = state.file;
+  return entry;
 }
 
 interface DocUploaderProps {
