@@ -326,6 +326,15 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         >
           Terms of Service
         </a>
+        {' · '}
+        <a
+          href="https://ko-fi.com/myowinthein"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline font-medium"
+        >
+          Support this project ☕
+        </a>
       </p>
 
       {/* ── Reset All Data ───────────────────────────────────────────────────── */}
