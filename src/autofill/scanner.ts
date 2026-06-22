@@ -22,6 +22,13 @@ export function scanFields(options: ScanOptions = {}): HTMLElement[] {
       // 'file' is conditionally allowed; everything else in EXCLUDED stays excluded.
       if (type === 'file') {
         if (!options.allowFileInputs) return false;
+        // Custom upload widgets (Fluent UI / Fabric, MUI, Mantine, etc.) render
+        // a styled button as the user-facing surface and hide the real file
+        // input behind it. They almost always set tabindex="-1" on the input
+        // because keyboard focus is meant to live on the button wrapper, not
+        // the input. A genuinely user-facing file input would not have this.
+        // Skip in MVP — custom widgets are Phase 2.
+        if (el.getAttribute('tabindex') === '-1') return false;
       } else if (EXCLUDED_INPUT_TYPES.has(type)) {
         return false;
       }
