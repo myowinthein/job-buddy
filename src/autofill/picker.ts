@@ -42,6 +42,10 @@ export type PickerFieldState = 'lowConfidence' | 'needReview' | 'noData';
 export interface PickerField {
   element: HTMLElement;
   state:   PickerFieldState;
+  // Human-readable label derived from the field's signals (label / aria-label /
+  // placeholder / name / id). Used by the noData CTA to address the missing
+  // value by name (e.g. "No Phone Number saved in your profile yet").
+  label:   string;
 }
 
 // ─── Internal tree types ──────────────────────────────────────────────────────
@@ -789,13 +793,129 @@ function removePicker(): void {
 
 // ─── showPicker ───────────────────────────────────────────────────────────────
 
+// Compact CTA used when state === 'noData'. Replaces the normal profile-tree
+// list with a message and a button that asks the background to open the
+// Options page. Uses the same inline-style approach as the rest of the picker
+// so it works on any host page without bleed from host CSS.
+function showNoDataCta(element: HTMLElement, label: string): void {
+  const rect = element.getBoundingClientRect();
+
+  const picker = mk('div');
+  picker.id = 'job-buddy-picker';
+  Object.assign(picker.style, {
+    position:        'fixed',
+    zIndex:          '2147483647',
+    top:             '-9999px',
+    left:            `${Math.max(0, rect.left)}px`,
+    width:           '280px',
+    backgroundColor: '#ffffff',
+    border:          '1px solid #e5e7eb',
+    borderRadius:    '8px',
+    boxShadow:       '0 4px 16px -2px rgba(0,0,0,0.12),0 2px 6px -2px rgba(0,0,0,0.06)',
+    fontFamily:      'system-ui,-apple-system,sans-serif',
+    fontSize:        '13px',
+    padding:         '14px',
+    visibility:      'hidden',
+  });
+
+  const title = mk('div', {
+    fontSize:   '13px',
+    fontWeight: '600',
+    color:      '#111827',
+    marginBottom: '4px',
+  });
+  title.textContent = `No ${label} saved in your profile yet`;
+  picker.appendChild(title);
+
+  const help = mk('div', {
+    fontSize:   '12px',
+    color:      '#6b7280',
+    marginBottom: '12px',
+    lineHeight: '1.4',
+  });
+  help.textContent = 'Job Buddy will fill this field automatically when you return.';
+  picker.appendChild(help);
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  Object.assign(button.style, {
+    width:           '100%',
+    padding:         '7px 10px',
+    backgroundColor: '#2563EB',
+    color:           '#ffffff',
+    border:          'none',
+    borderRadius:    '6px',
+    fontSize:        '12px',
+    fontWeight:      '600',
+    cursor:          'pointer',
+    fontFamily:      'inherit',
+  });
+  button.textContent = 'Go to Profile →';
+  button.addEventListener('mouseenter', () => { button.style.backgroundColor = '#1d4ed8'; });
+  button.addEventListener('mouseleave', () => { button.style.backgroundColor = '#2563EB'; });
+  button.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    try {
+      chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' });
+    } catch (err) {
+      console.warn('[Job Buddy] OPEN_OPTIONS dispatch failed:', err);
+    }
+  });
+  picker.appendChild(button);
+
+  document.body.appendChild(picker);
+  activePickerElement = element;
+
+  // Position
+  const ph = picker.offsetHeight;
+  const topAbove = rect.top - ph - 4;
+  picker.style.top        = (topAbove >= 0 ? topAbove : rect.bottom + 4) + 'px';
+  picker.style.visibility = '';
+  activePicker = picker;
+
+  // Reposition on scroll / resize
+  activeScrollHandler = () => {
+    if (scrollRafId !== null) return;
+    scrollRafId = requestAnimationFrame(() => {
+      scrollRafId = null;
+      repositionPicker(element);
+    });
+  };
+  window.addEventListener('scroll', activeScrollHandler, { capture: true, passive: true });
+  window.addEventListener('resize', activeScrollHandler, { passive: true });
+
+  // Dismiss on outside mousedown
+  activeOutsideHandler = (e: MouseEvent) => {
+    if (!activePicker) return;
+    const target = e.target as Node;
+    if (activePicker.contains(target))         return;
+    if (activePickerElement?.contains(target)) return;
+    removePicker();
+  };
+  setTimeout(() => {
+    if (activeOutsideHandler) {
+      document.addEventListener('mousedown', activeOutsideHandler, true);
+    }
+  }, 0);
+}
+
 function showPicker(
   element: HTMLElement,
   state: PickerFieldState,
+  label: string,
   tree: Section[],
   onSelect: (element: HTMLElement, fieldPath: string, value: string, originalState: PickerFieldState) => void,
 ): void {
   removePicker();
+
+  // For noData fields the user cannot pick anything — the profile is missing
+  // the data entirely. Show a CTA pointing them to the Options page instead
+  // of a generic profile-value list. Silent re-fill on tab refocus (see
+  // index.ts) handles the field automatically once the value is saved.
+  if (state === 'noData') {
+    showNoDataCta(element, label);
+    return;
+  }
 
   const rect = element.getBoundingClientRect();
   const currentValue =
@@ -972,11 +1092,19 @@ export function removePickerListener(element: HTMLElement): void {
   }
 }
 
+// Forcibly closes the picker if it is currently open for the given element.
+// Used by silent re-fill (index.ts) — when a noData field is resolved while
+// its picker CTA happens to be open, that CTA is no longer accurate and
+// should disappear together with the (now successful) silent fill.
+export function closePickerIfOpenFor(element: HTMLElement): void {
+  if (activePicker && activePickerElement === element) removePicker();
+}
+
 export function attachPickerListeners(
   fields: PickerField[],
   onSelect: (element: HTMLElement, fieldPath: string, value: string, originalState: PickerFieldState) => void,
 ): void {
-  for (const { element, state } of fields) {
+  for (const { element, state, label } of fields) {
     const prev = pickerListeners.get(element);
     if (prev) element.removeEventListener('focus', prev);
 
@@ -987,7 +1115,7 @@ export function attachPickerListeners(
       if (activePicker && activePickerElement === element) return;
       const profile = await getProfile();
       if (!profile) return;
-      showPicker(element, state, buildPickerTree(profile), onSelect);
+      showPicker(element, state, label, buildPickerTree(profile), onSelect);
     };
     element.addEventListener('focus', handler);
     pickerListeners.set(element, handler);

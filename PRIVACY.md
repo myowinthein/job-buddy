@@ -94,6 +94,13 @@ a page when you actively click Auto Fill (or interact with the in-page
 field picker) in that tab. It does not read, monitor, or transmit page
 content in the background, and it does not act without you initiating it.
 
+One exception, scoped to fields you have already chosen to autofill: if
+your profile is updated while a job application tab is open, Job Buddy
+may automatically fill fields it previously identified but had no value
+for — without re-filling or changing any fields it already handled. No
+new fields are detected, no new scans are run, and the behavior is
+confined to fields from the Auto Fill run you started yourself.
+
 ## Permissions Job Buddy requests, and why
 
 | Permission | Why it's needed |
