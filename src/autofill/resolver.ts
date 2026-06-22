@@ -68,6 +68,14 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
         ? 'Requires sponsorship'
         : 'Yes, authorized to work';
     }
+
+    case 'documents.cv.file': {
+      // Returns the filename for pipeline / mapper purposes only — used to
+      // ensure match.value is non-empty so a file input doesn't fall into the
+      // noData bucket. The actual upload reads the file payload from the
+      // profile directly via filler.fillFileField().
+      return profile.documents?.cv?.file?.name ?? '';
+    }
   }
 
   // Handle workAuthorization.N — indexed entry, returns specific status label.

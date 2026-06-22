@@ -1,4 +1,5 @@
 import { distance } from 'fastest-levenshtein';
+import type { DocumentFile } from '../types/profile';
 import { normalize } from './normalizer';
 
 // Capture native setters before any framework can shadow them on instances
@@ -54,6 +55,14 @@ function setEmpty(element: HTMLElement): void {
     else element.value = '';
     dispatchEvents(element);
   } else if (element instanceof HTMLInputElement) {
+    if (element.type === 'file') {
+      // Browsers reject `.value = anything-non-empty` for security; assigning
+      // an empty DataTransfer's FileList is the standards-track way to clear.
+      try { element.files = new DataTransfer().files; } catch { /* ignore */ }
+      element.dispatchEvent(new Event('input',  { bubbles: true }));
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+      return;
+    }
     if (nativeInputSetter) nativeInputSetter.call(element, '');
     else element.value = '';
     dispatchEvents(element);
@@ -88,5 +97,53 @@ export async function fillField(element: HTMLElement, value: string): Promise<vo
     if (nativeInputSetter) nativeInputSetter.call(element, value);
     else element.value = value;
     dispatchEvents(element);
+  }
+}
+
+// Reconstructs a real File from the stored {name, size, base64-data-URL}
+// payload and assigns it to a file input via DataTransfer. Returns true on
+// success, false on any reconstruction or assignment failure (so the caller
+// can avoid counting the field as filled). Never throws.
+export async function fillFileField(
+  element: HTMLInputElement,
+  fileData: DocumentFile,
+): Promise<boolean> {
+  try {
+    // 1. Parse the data URL — expected shape: "data:<mime>;base64,<payload>"
+    const dataUrl = fileData.base64;
+    const commaIdx = dataUrl.indexOf(',');
+    if (commaIdx < 0) {
+      console.warn('[Job Buddy] CV base64 is not a data URL — cannot reconstruct File');
+      return false;
+    }
+    const prefix  = dataUrl.slice(0, commaIdx);
+    const payload = dataUrl.slice(commaIdx + 1);
+
+    const mimeMatch = prefix.match(/^data:([^;]+);base64$/);
+    if (!mimeMatch || !payload) {
+      console.warn('[Job Buddy] CV data URL prefix unrecognised — cannot reconstruct File');
+      return false;
+    }
+    const mimeType = mimeMatch[1];
+
+    // 2. Decode base64 → Uint8Array
+    const binary = atob(payload);
+    const bytes  = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+    // 3. Reconstruct File and attach via DataTransfer
+    const blob = new Blob([bytes], { type: mimeType });
+    const file = new File([blob], fileData.name, { type: mimeType });
+    const dt   = new DataTransfer();
+    dt.items.add(file);
+    element.files = dt.files;
+
+    // 4. Notify the page's framework
+    element.dispatchEvent(new Event('input',  { bubbles: true }));
+    element.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  } catch (err) {
+    console.warn('[Job Buddy] File upload reconstruction failed:', err);
+    return false;
   }
 }
