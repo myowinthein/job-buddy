@@ -60,36 +60,6 @@ export function EducationSection({ profile, onSave }: Props) {
 
   const [newEntryTick, setNewEntryTick] = useState(0);
   const entriesContainerRef = useRef<HTMLDivElement>(null);
-  const dropCreatedRef = useRef(new Set<number>());
-
-  // Listen for structured-drop events when the education section is active.
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const ce = e as CustomEvent<{
-        section: string;
-        parsedData: Record<string, string>;
-        rawText: string;
-      }>;
-      if (ce.detail.section !== 'education') return;
-      const { parsedData } = ce.detail;
-      const newEntry: Row = {
-        ...emptyRow(),
-        institution: parsedData.institution ?? '',
-        degree: parsedData.degree ?? '',
-        fieldOfStudy: parsedData.fieldOfStudy ?? '',
-        startDate: parsedData.startDate ?? '',
-        endDate: parsedData.endDate ?? '',
-        isCurrent: false,
-      };
-      setEntries((prev) => {
-        dropCreatedRef.current.add(prev.length);
-        return [...prev, newEntry];
-      });
-      setNewEntryTick((t) => t + 1);
-    };
-    window.addEventListener('job-buddy-add-entry', handler);
-    return () => window.removeEventListener('job-buddy-add-entry', handler);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!newEntryTick) return;
@@ -273,7 +243,7 @@ export function EducationSection({ profile, onSave }: Props) {
           summary={entrySummary(row, idx)}
           subtitle={row.fieldOfStudy || undefined}
           onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
-          defaultExpanded={!row.institution || dropCreatedRef.current.has(idx)}
+          defaultExpanded={!row.institution}
         >
           <FormField label="Institution" required error={errors[`${idx}.institution`]}>
             <input

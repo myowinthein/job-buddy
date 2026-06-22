@@ -3,8 +3,6 @@ import type { Profile } from '@/src/types/profile';
 import { getProfile, saveProfile } from '@/src/utils/storage';
 import { calculateCompletion, getSectionCompletion, FIELD_FOCUS_IDS } from '@/src/utils/profileCompletion';
 import { calculateDerivedFields } from '@/src/utils/derivedFields';
-import { ImportResumeDialog } from '@/src/components/options/ImportResumeDialog';
-import type { ExtractedResume } from '@/src/types/storage';
 import { Sidebar } from '@/src/components/options/Sidebar';
 import { CompletionBanner } from '@/src/components/options/CompletionBanner';
 import { PersonalSection } from '@/src/components/options/PersonalSection';
@@ -17,9 +15,6 @@ import { LanguagesSection } from '@/src/components/options/LanguagesSection';
 import { LinksSection } from '@/src/components/options/LinksSection';
 import { DocumentsSection } from '@/src/components/options/DocumentsSection';
 import { SettingsSection } from '@/src/components/options/SettingsSection';
-import { ResumeFloatingPanel } from '@/src/components/options/ResumeFloatingPanel';
-import type { DraggedItem, PanelCallbacks } from '@/src/components/options/ResumeFloatingPanel';
-import { fillDroppedValue } from '@/src/resume/dropFiller';
 
 type SectionId =
   | 'personal'
@@ -67,95 +62,12 @@ function focusFirstEmpty(container: Element | null) {
   inputs.find((el) => !el.value)?.focus();
 }
 
-// ── Chunk parsing helpers ────────────────────────────────────────────────────
-const MONTH_ABBR: Record<string, string> = {
-  jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
-  jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
-};
-
-function toYYYYMM(token: string): string {
-  const clean = token.trim();
-  const mMatch = clean.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i);
-  if (mMatch) {
-    const m = MONTH_ABBR[mMatch[1].toLowerCase()];
-    const y = clean.match(/(\d{4})/)?.[1] ?? String(new Date().getFullYear());
-    return `${y}-${m}`;
-  }
-  const y = clean.match(/^(\d{4})$/)?.[1];
-  return y ? `${y}-01` : '';
-}
-
-const DATE_RANGE_RE =
-  /\b((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{0,4}|\d{4})\s*[–\-—]\s*((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s*\d{0,4}|\d{4}|Present)\b/i;
-
-function parseWorkHistoryChunk(text: string): Record<string, string> {
-  const result: Record<string, string> = {};
-
-  const dateMatch = text.match(DATE_RANGE_RE);
-  if (dateMatch) {
-    const sd = toYYYYMM(dateMatch[1]);
-    if (sd) result.startDate = sd;
-    if (!/present/i.test(dateMatch[2])) {
-      const ed = toYYYYMM(dateMatch[2]);
-      if (ed) result.endDate = ed;
-    }
-  }
-
-  const firstLine = (text.split('\n')[0] ?? '').replace(DATE_RANGE_RE, '').trim();
-  const sepMatch = firstLine.match(/^(.+?)\s+[—–]\s+(.+)$/) ?? firstLine.match(/^(.+?)\s+-\s+(.+)$/);
-  if (sepMatch) {
-    result.company = sepMatch[1].split(',')[0]?.trim() ?? sepMatch[1].trim();
-    result.title = sepMatch[2].split('\n')[0]?.trim() ?? sepMatch[2].trim();
-  } else if (firstLine) {
-    result.company = firstLine.split(',')[0]?.trim() ?? firstLine;
-  }
-
-  const bullets = text
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => /^[●\-•]/.test(l))
-    .map((l) => l.replace(/^[●\-•]\s*/, '').trim());
-  if (bullets.length > 0) result.description = bullets.join('\n');
-
-  return result;
-}
-
-function parseEducationChunk(text: string): Record<string, string> {
-  const result: Record<string, string> = {};
-
-  const dateMatch = text.match(DATE_RANGE_RE);
-  if (dateMatch) {
-    const sd = toYYYYMM(dateMatch[1]);
-    if (sd) result.startDate = sd;
-    if (!/present/i.test(dateMatch[2])) {
-      const ed = toYYYYMM(dateMatch[2]);
-      if (ed) result.endDate = ed;
-    }
-  }
-
-  const degreeRE =
-    /\b(Bachelor(?:\s+of\s+[A-Za-z\s]+)?|Master(?:\s+of\s+[A-Za-z\s]+)?|PhD|Doctorate?|BSc|MSc|MBA|B\.Eng|M\.Eng|BEng|MEng|B\.S\.|M\.S\.|B\.A\.|M\.A\.)[^\n,]*/i;
-  const degreeMatch = text.match(degreeRE);
-  if (degreeMatch) result.degree = degreeMatch[0].trim().replace(/\s+/g, ' ');
-
-  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-  for (const line of lines) {
-    if (DATE_RANGE_RE.test(line)) continue;
-    if (degreeMatch && line.startsWith(degreeMatch[0].slice(0, 8))) continue;
-    if (line.length > 3) { result.institution = line; break; }
-  }
-
-  return result;
-}
-
 function App() {
   const [profile, setProfile] = useState<Partial<Profile>>({});
   const [activeSection, setActiveSection] = useState<SectionId>(readSection);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(readSidebar);
   const [loading, setLoading] = useState(true);
   const [focusTarget, setFocusTarget]           = useState<string | null>(null);
-  const [showImportDialog, setShowImportDialog] = useState(false);
-  const [pendingResume, setPendingResume]       = useState<ExtractedResume | null>(null);
 
   const skipAutoFocusRef  = useRef(false);
   const mountedRef        = useRef(false);
@@ -163,11 +75,6 @@ function App() {
   const initialLoadDoneRef = useRef(false);
   const activeSectionRef  = useRef(activeSection);
   const mainRef           = useRef<HTMLElement>(null);
-
-  // Drag-and-drop refs
-  const draggedItemRef    = useRef<DraggedItem | null>(null);
-  const panelCallbacksRef = useRef<PanelCallbacks | null>(null);
-  const highlightedField  = useRef<HTMLElement | null>(null);
 
   // ── Load profile ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -243,98 +150,6 @@ function App() {
     });
     return () => cancelAnimationFrame(raf);
   }, [focusTarget]);
-
-  // ── Document-level drag handlers (active only while a resume is loaded) ──────
-  useEffect(() => {
-    if (!pendingResume) return;
-
-    const clearHighlight = () => {
-      if (highlightedField.current) {
-        highlightedField.current.style.outline = '';
-        highlightedField.current.style.outlineOffset = '';
-        highlightedField.current = null;
-      }
-    };
-
-    const handleDragOver = (e: DragEvent) => {
-      e.preventDefault();
-      const field = (e.target as HTMLElement).closest('input, textarea, select') as HTMLElement | null;
-      if (field !== highlightedField.current) {
-        clearHighlight();
-        if (field) {
-          field.style.outline = '2px dashed #6366f1';
-          field.style.outlineOffset = '2px';
-        }
-        highlightedField.current = field;
-      }
-    };
-
-    const handleDragLeave = (e: DragEvent) => {
-      const field = (e.target as HTMLElement).closest('input, textarea, select') as HTMLElement | null;
-      if (field && field === highlightedField.current && !field.contains(e.relatedTarget as Node)) {
-        clearHighlight();
-      }
-    };
-
-    const handleDrop = (e: DragEvent) => {
-      e.preventDefault();
-      clearHighlight();
-
-      const item = draggedItemRef.current;
-      if (!item) return;
-      draggedItemRef.current = null;
-
-      const field = (e.target as HTMLElement).closest('input, textarea, select') as HTMLElement | null;
-
-      if (item.type === 'detectedField') {
-        if (field) {
-          fillDroppedValue(field, item.value);
-          if (item.fieldPath) panelCallbacksRef.current?.markChipUsed(item.fieldPath);
-        }
-        return;
-      }
-
-      // textChunk
-      const section = activeSectionRef.current;
-      if (section === 'workHistory' || section === 'education') {
-        const parsedData =
-          section === 'workHistory'
-            ? parseWorkHistoryChunk(item.value)
-            : parseEducationChunk(item.value);
-
-        const dispatch = () => {
-          window.dispatchEvent(
-            new CustomEvent('job-buddy-add-entry', {
-              detail: { section, parsedData, rawText: item.value },
-            }),
-          );
-          if (item.chunkId) panelCallbacksRef.current?.markChunkUsed(item.chunkId);
-        };
-
-        if (activeSectionRef.current === section) {
-          dispatch();
-        } else {
-          setActiveSection(section);
-          requestAnimationFrame(() => requestAnimationFrame(dispatch));
-        }
-      } else {
-        if (field) {
-          fillDroppedValue(field, item.value);
-          if (item.chunkId) panelCallbacksRef.current?.markChunkUsed(item.chunkId);
-        }
-      }
-    };
-
-    document.addEventListener('dragover', handleDragOver);
-    document.addEventListener('dragleave', handleDragLeave);
-    document.addEventListener('drop', handleDrop);
-    return () => {
-      document.removeEventListener('dragover', handleDragOver);
-      document.removeEventListener('dragleave', handleDragLeave);
-      document.removeEventListener('drop', handleDrop);
-      clearHighlight();
-    };
-  }, [pendingResume]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleImportComplete = () => {
     getProfile()
@@ -415,7 +230,6 @@ function App() {
         onToggle={() => setSidebarCollapsed((c) => !c)}
         sectionCompletion={sectionCompletion}
         sectionFullCompletion={sectionFullCompletion}
-        onImportClick={() => setShowImportDialog(true)}
       />
       <div className="flex flex-col flex-1 overflow-hidden">
         <CompletionBanner
@@ -434,25 +248,6 @@ function App() {
           </div>
         </main>
       </div>
-
-      {showImportDialog && (
-        <ImportResumeDialog
-          onClose={() => setShowImportDialog(false)}
-          onComplete={(data) => {
-            setPendingResume(data);
-            setShowImportDialog(false);
-          }}
-        />
-      )}
-
-      {pendingResume && (
-        <ResumeFloatingPanel
-          resume={pendingResume}
-          onDismiss={() => setPendingResume(null)}
-          draggedItemRef={draggedItemRef}
-          callbacksRef={panelCallbacksRef}
-        />
-      )}
     </div>
   );
 }
