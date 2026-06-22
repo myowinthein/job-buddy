@@ -3,17 +3,29 @@ const EXCLUDED_INPUT_TYPES = new Set([
   'radio', 'file', 'image', 'reset',
 ]);
 
-export function scanFields(): HTMLElement[] {
+interface ScanOptions {
+  // When true, visible `<input type="file">` elements are *not* filtered out.
+  // The caller (executeAutofill) sets this only when the profile actually has a
+  // CV file available, so file inputs never appear in pendingMatches otherwise.
+  allowFileInputs?: boolean;
+}
+
+export function scanFields(options: ScanOptions = {}): HTMLElement[] {
   const elements = Array.from(
     document.querySelectorAll<HTMLElement>('input, textarea, select'),
   );
 
   return elements.filter((el) => {
     // Excluded input types (hidden, submit, button, etc.)
-    if (
-      el instanceof HTMLInputElement &&
-      EXCLUDED_INPUT_TYPES.has(el.type.toLowerCase())
-    ) return false;
+    if (el instanceof HTMLInputElement) {
+      const type = el.type.toLowerCase();
+      // 'file' is conditionally allowed; everything else in EXCLUDED stays excluded.
+      if (type === 'file') {
+        if (!options.allowFileInputs) return false;
+      } else if (EXCLUDED_INPUT_TYPES.has(type)) {
+        return false;
+      }
+    }
 
     // Disabled or read-only — not user-editable
     if ((el as HTMLInputElement).disabled) return false;

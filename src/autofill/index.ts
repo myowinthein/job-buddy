@@ -4,7 +4,7 @@ import { extractSignals } from './signals';
 import type { FieldSignals } from './signals';
 import { mapField } from './mapper';
 import type { FieldMatch } from './mapper';
-import { fillField, clearFieldValue } from './filler';
+import { fillField, fillFileField, clearFieldValue } from './filler';
 import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
 import { attachPickerListeners, removePickerListener } from './picker';
 import type { PickerField, PickerFieldState } from './picker';
@@ -140,7 +140,12 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
 
   const learnedMappings = await getLearnedMappings();
   const domain = window.location.hostname;
-  const fields = scanFields();
+
+  // File inputs are only relevant when the user actually has a CV file to
+  // upload. Gating in the scanner keeps file inputs out of pendingMatches
+  // entirely when no CV is saved, so they never contribute to result counters.
+  const allowFileInputs = !!profile.documents?.cv?.file;
+  const fields = scanFields({ allowFileInputs });
 
   let preFilledCount = 0;
   let totalMatched   = 0;
@@ -194,9 +199,27 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       continue;
     }
 
+    const isFileInput = element instanceof HTMLInputElement && element.type === 'file';
+
     if (match.confidence >= 0.60 && match.value) {
       // Confident match with profile data → fill and highlight.
-      await fillField(element, match.value);
+      let filled = true;
+      if (isFileInput) {
+        const fileData = profile.documents?.cv?.file;
+        // Scanner gating means fileData should always be present here, but
+        // guard defensively — if reconstruction fails, skip without counting.
+        filled = fileData ? await fillFileField(element as HTMLInputElement, fileData) : false;
+      } else {
+        await fillField(element, match.value);
+      }
+
+      if (!filled) {
+        // Reconstruction failed (corrupt base64, etc.). Log already emitted by
+        // fillFileField; silently skip this element so the rest of the run
+        // continues uninterrupted.
+        continue;
+      }
+
       applyHighlight(element, match.confidence); // green >=0.85, yellow 0.60–0.84
       sessionElements.push(element);
 
@@ -205,7 +228,9 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // No picker for green (No Review) fields.
       } else {
         result.needReview++;
-        pickerFields.push({ element, state: 'needReview' });
+        // File inputs are deliberately excluded from the picker overlay —
+        // file selection is handled silently by Auto Fill, not the picker.
+        if (!isFileInput) pickerFields.push({ element, state: 'needReview' });
       }
 
     } else if (match.confidence < 0.60) {
@@ -213,13 +238,13 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       applyHighlight(element, 0);
       sessionElements.push(element);
       result.lowConfidence++;
-      pickerFields.push({ element, state: 'lowConfidence' });
+      if (!isFileInput) pickerFields.push({ element, state: 'lowConfidence' });
 
     } else {
       // confidence >= 0.60 but profile value is empty — nothing to write.
       // No highlight; picker is offered so the user can choose an alternative value.
       result.noData++;
-      pickerFields.push({ element, state: 'noData' });
+      if (!isFileInput) pickerFields.push({ element, state: 'noData' });
     }
   }
 
