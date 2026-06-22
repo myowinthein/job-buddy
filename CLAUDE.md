@@ -4,10 +4,11 @@
 
 Job Buddy is a Chrome browser extension (Manifest V3) that lets job seekers store a rich profile and use it to auto-fill job application forms. Aimed at multi-country job seekers (hence per-country work authorization, per-currency salary, multi-language support).
 
-The extension has three pillars:
+The extension has two pillars:
 1. **Profile editor** — full-page options UI with nine sections
 2. **Autofill** — content script scans any page's form fields, maps them to profile values, fills them, and highlights confidence
-3. **Resume import** — PDF/DOCX upload that extracts fields and produces draggable text chunks
+
+A resume import feature (PDF/DOCX → fields + draggable text chunks) existed previously but was removed; it is deferred to Phase 2 LLM-based profile extraction.
 
 ---
 
@@ -21,7 +22,6 @@ The extension has three pillars:
 | Package manager | pnpm 11.7.0 |
 | Target browser | Chrome MV3 (Firefox build also supported via `pnpm build:firefox`) |
 | Fuzzy matching | `fastest-levenshtein` (autofill mapper) |
-| Resume parsing | `pdfjs-dist`, `mammoth` |
 
 ---
 
@@ -34,7 +34,7 @@ Four entrypoints in `entrypoints/`:
 | `background.ts` | Service worker — stub; no message passing wired |
 | `content.ts` | Content script matched to `*://*/*`; listens for `AUTOFILL_SCAN` / `AUTOFILL_FILL` / `CLEAR` runtime messages and delegates to `src/autofill/` |
 | `popup/` | Browser action popup — profile completion %, Auto Fill button, Clear Highlights, result summary. Chrome MV3 destroys the popup on close, so React state is lost; on mount the popup sends `GET_STATUS` to the content script and restores the success view from the content script's `lastResult` |
-| `options/` | Full-page profile editor + resume import dialog + drag-source floating panel (planned) |
+| `options/` | Full-page profile editor (9 sections + Settings) |
 
 Storage is `chrome.storage.local` (not `sync`). The wrapper in `src/utils/storage.ts` swallows errors and always resolves, so callers don't need rejection handling. `clearAllStorage()` removes all three keys (used by Settings → Reset).
 
@@ -87,9 +87,6 @@ The second pass is wrapped in `try/catch` so a derivation bug can never block or
 - The loaded `Profile` object (starts as `Partial<Profile>`)
 - Active section routing (9 sections, no router library)
 - `handleSave(updates)` — merges, writes, recalculates derived, writes again
-- `pendingResume` — `ExtractedResume | null`; set when the resume dialog completes; consumed by the floating panel (planned)
-- Document-level dragover/drop listeners (for future drag-from-floating-panel)
-
 Each section component receives `{ profile, onSave }` and has its own save button. Sections do not share unsaved state — switching sections without saving loses changes.
 
 **UX patterns**:
@@ -104,7 +101,7 @@ Each section component receives `{ profile, onSave }` and has its own save butto
 
 ### Settings section (`src/components/options/SettingsSection.tsx`)
 
-A 10th sidebar entry (below the 9 profile sections, above the Import Resume button). Three subsections:
+A 10th sidebar entry below the 9 profile sections. Three subsections:
 
 | Action | Behavior |
 |---|---|
@@ -233,45 +230,7 @@ Personal, Address, Salary, Work Authorization, Work History, Education, Language
 
 ---
 
-## Resume Import
-
-`src/resume/extractor.ts` does the parsing; `src/components/options/ImportResumeDialog.tsx` is the upload UI; `src/components/options/ResumeFloatingPanel.tsx` is the drag source.
-
-- PDF: pdfjs `getTextContent()` with y-coordinate-based line grouping
-- DOCX: `mammoth.extractRawText({ arrayBuffer })`
-- **Section-aware chunking** — `splitIntoSections()` carves the raw text into named sections (EXPERIENCE, EDUCATION, SKILLS, SUMMARY, etc.); field detection runs only against the HEADER section (name/contact block) to avoid false positives. Each section is chunked differently: experience/education by date-boundary, skills as one block, certifications line-by-line, summary auto-mapped to `professional.summary` as a DetectedField.
-- Each `TextChunk` carries a `sectionLabel` used by the floating panel to group chunks visually.
-
-### Floating panel + drag-and-drop
-
-When `pendingResume` is set on `App.tsx`, `ResumeFloatingPanel` renders as a 280 px fixed panel (default bottom-right, draggable via header, collapsible to a 48 px icon with unused-count badge). It exposes detected fields and chunks as `draggable="true"` items.
-
-`App.tsx` attaches document-level `dragover`/`drop` listeners (only while `pendingResume` is set) that:
-- Highlight the hovered input/textarea/select with `outline: 2px dashed #6366f1`
-- On drop of a `detectedField`: fill the dropped element via `src/resume/dropFiller.ts` (reuses `fillField` from autofill)
-- On drop of a `textChunk` onto an input outside WorkHistory/Education: fill it directly
-- On drop of a `textChunk` while the active section is `workHistory` or `education`: parse the chunk (date-range regex, company/title split, degree keywords) and dispatch a `CustomEvent('job-buddy-add-entry', { detail: { section, parsedData, rawText } })` on `window`. The two sections each have a `useEffect` listener that appends a pre-filled entry and force-expands its `ExpandableCard`.
-
-Used chips/chunks are tracked via a callbacks ref so the panel can fade them and update the unused count without prop drilling.
-
----
-
 ## Known Traps & Warnings
-
-### pdfjs worker (Chrome MV3 CSP)
-
-The pdfjs worker **must** be bundled locally — Chrome extension CSP blocks both CDN scripts and `new URL(..., import.meta.url)` patterns. Two pieces required:
-
-1. `wxt.config.ts` — `vite.optimizeDeps.exclude: ['pdfjs-dist']`
-2. `entrypoints/options/main.tsx` — Vite `?url` import:
-   ```ts
-   import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-   pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
-   ```
-
-### Mammoth has no `@types/mammoth`
-
-A local ambient declaration lives at `src/types/mammoth.d.ts`. Only `extractRawText` is declared because that's all the project uses.
 
 ### `MonthYearPicker` emits `onChange('')` during partial fills
 
