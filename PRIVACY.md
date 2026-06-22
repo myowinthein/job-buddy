@@ -1,6 +1,6 @@
 # Privacy Policy — Job Buddy
 
-**Effective date:** [INSERT DATE OF FIRST PUBLICATION]
+**Effective date:** June 22, 2026
 
 Job Buddy is a browser extension that helps you fill out job application
 forms using information you provide once, in your own profile. This policy
