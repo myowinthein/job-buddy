@@ -104,38 +104,6 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   // Scroll to and focus the first input of a newly added work entry.
   const [newEntryTick, setNewEntryTick] = useState(0);
   const entriesContainerRef = useRef<HTMLDivElement>(null);
-  // Tracks indices of entries added via resume drop so they default to expanded.
-  const dropCreatedRef = useRef(new Set<number>());
-
-  // Listen for structured-drop events dispatched by App.tsx when a text chunk
-  // is dropped while the workHistory section is active.
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const ce = e as CustomEvent<{
-        section: string;
-        parsedData: Record<string, string>;
-        rawText: string;
-      }>;
-      if (ce.detail.section !== 'workHistory') return;
-      const { parsedData } = ce.detail;
-      const newEntry: LocalRow = {
-        ...emptyRow(),
-        company: parsedData.company ?? '',
-        title: parsedData.title ?? '',
-        startDate: parsedData.startDate ?? '',
-        endDate: parsedData.endDate ?? '',
-        isCurrent: false,
-        description: parsedData.description ?? '',
-      };
-      setEntries((prev) => {
-        dropCreatedRef.current.add(prev.length);
-        return [...prev, newEntry];
-      });
-      setNewEntryTick((t) => t + 1);
-    };
-    window.addEventListener('job-buddy-add-entry', handler);
-    return () => window.removeEventListener('job-buddy-add-entry', handler);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!newEntryTick) return;
@@ -364,7 +332,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
           key={idx}
           summary={cardSummary(row, idx)}
           onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
-          defaultExpanded={!row.company || dropCreatedRef.current.has(idx)}
+          defaultExpanded={!row.company}
         >
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Company" required error={errors[`${idx}.company`]}>
