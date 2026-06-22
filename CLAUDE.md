@@ -179,6 +179,23 @@ Each field falls into exactly one of four buckets:
 
 `undoAutofill()` (wired to the popup's "Undo Auto-fill" button via the `CLEAR` message) iterates a module-level `sessionElements: HTMLElement[]` registry (populated whenever `applyHighlight` runs — `noReview`, `needReview`, `lowConfidence`, plus picker-completed fills) and calls `clearFieldValue()` + `clearElementHighlight()` per element. The registry is reset on each `scanAutofill()` / `executeAutofill()` call. `noData` fields are intentionally absent.
 
+### Silent re-fill on tab refocus
+
+After `executeAutofill()` completes, any `noData` fields are tracked in a module-level `noDataFields: NoDataEntry[]` registry (`{ element, fieldPath, label }`). A single document-level `visibilitychange` listener is registered when the registry is non-empty; on the next `document.visibilityState === 'visible'` event, `runSilentRefill()` runs:
+
+1. Reads a **fresh** profile via `getProfile()` (cross-tab edits visible immediately).
+2. For each entry, calls `resolveProfileValue(profile, fieldPath)`.
+3. If the value is now non-empty: fills via `fillField`, paints green via `applyHighlight(element, 0.97)`, decrements `lastResult.noData` and increments `lastResult.noReview`, tears down the picker focus listener and any blur watcher for that element, and calls `closePickerIfOpenFor(element)` so the "Go to Profile" CTA disappears.
+4. Still-empty entries stay in the registry for the next refocus.
+
+Strict invariants — **none** of the following are re-evaluated on refocus: scanner, signals, mapper, confidence. The scanner/dictionary/resolver pipeline only runs once, at Auto Fill click. Silent re-fill only re-resolves the already-matched profile *path* against the latest profile.
+
+Never touched on refocus: `noReview` (green), `needReview` (yellow), `lowConfidence` (red), manually-edited fields (already promoted to green by the blur watcher), fields filled through the picker, and any field outside the current Auto Fill session.
+
+The listener is torn down on `undoAutofill()` and also when the `noDataFields` registry empties on its own. Manual edits via the blur watcher and silent re-fill both call `noDataFields.filter(...)` to drop the resolved entry — these are the two paths that mutate the registry post-fill.
+
+Picker behavior for `noData`: instead of the normal profile-value tree, the picker renders a focused CTA — *"No {label} saved in your profile yet"* + *"Go to Profile →"* button. The button sends `{ action: 'OPEN_OPTIONS' }` to the background service worker (see `entrypoints/background.ts`), which calls `chrome.runtime.openOptionsPage()`. Because `manifest.options_ui.open_in_tab` is `true`, Chrome focuses an existing Options tab if one is already open instead of duplicating it.
+
 ### 4-Layer Mapping Pipeline (in `mapper.ts`)
 
 | Layer | Source | Confidence |

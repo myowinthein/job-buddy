@@ -6,9 +6,10 @@ import { mapField } from './mapper';
 import type { FieldMatch } from './mapper';
 import { fillField, fillFileField, clearFieldValue } from './filler';
 import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
-import { attachPickerListeners, removePickerListener } from './picker';
+import { attachPickerListeners, removePickerListener, closePickerIfOpenFor } from './picker';
 import type { PickerField, PickerFieldState } from './picker';
 import { normalize } from './normalizer';
+import { resolveProfileValue } from './resolver';
 
 export { clearHighlights } from './highlighter';
 
@@ -30,6 +31,50 @@ export interface AutofillScanResult {
 // highlight). noData fields are added here only if the user fills them via the
 // picker during the same session.
 let sessionElements: HTMLElement[] = [];
+
+// Tracks the noData fields from the most recent executeAutofill run.
+// Used by the visibilitychange listener to silently re-fill fields whose
+// profile value became available (e.g. user added the missing data in the
+// Options page) while the form tab was hidden. Cleared on undo and on each
+// new scan/fill cycle. Stores enough state to re-resolve the path without
+// re-running scanner / signals / mapper / confidence scoring.
+interface NoDataEntry {
+  element:   HTMLElement;
+  fieldPath: string;
+  label:     string;
+}
+let noDataFields: NoDataEntry[] = [];
+
+// Single document-level visibilitychange listener. Registered once when the
+// first executeAutofill run produces tracked noData fields; torn down on undo.
+// Reuse of the same handler reference keeps add/remove idempotent.
+let visibilityHandler: (() => void) | null = null;
+
+function ensureVisibilityListener(): void {
+  if (visibilityHandler) return;
+  visibilityHandler = () => {
+    if (document.visibilityState !== 'visible') return;
+    void runSilentRefill();
+  };
+  document.addEventListener('visibilitychange', visibilityHandler);
+}
+
+function teardownVisibilityListener(): void {
+  if (!visibilityHandler) return;
+  document.removeEventListener('visibilitychange', visibilityHandler);
+  visibilityHandler = null;
+}
+
+// Picks the most human-readable label from a field's signals for use in the
+// picker noData CTA ("No <label> saved in your profile yet").
+function extractDisplayLabel(signals: FieldSignals): string {
+  return signals.label
+      || signals.ariaLabel
+      || signals.placeholder
+      || signals.name
+      || signals.id
+      || 'this field';
+}
 
 // Tracks the blur handler currently registered on each picker-eligible element so
 // we can remove stale handlers on re-run and during undo.
@@ -67,7 +112,13 @@ function attachEditWatchers(fields: PickerField[], result: AutofillResult): void
       result.noReview++;
       if (state === 'lowConfidence') result.lowConfidence = Math.max(0, result.lowConfidence - 1);
       if (state === 'needReview')    result.needReview    = Math.max(0, result.needReview    - 1);
-      if (state === 'noData')        result.noData        = Math.max(0, result.noData        - 1);
+      if (state === 'noData') {
+        result.noData = Math.max(0, result.noData - 1);
+        // Manually-resolved noData fields should also leave the silent-refill
+        // registry so a later profile update doesn't overwrite the user's typing.
+        noDataFields = noDataFields.filter((e) => e.element !== element);
+        if (noDataFields.length === 0) teardownVisibilityListener();
+      }
 
       // Field is resolved — tear down both the edit watcher and the picker listener
       // so focusing the now-green field no longer opens the picker.
@@ -110,6 +161,67 @@ function getFieldValue(element: HTMLElement): string {
   return '';
 }
 
+// Re-resolves every tracked noData field's profile path against a freshly-read
+// profile. Fields whose value is now non-empty get filled silently (green
+// highlight, no popup notification) and removed from the noData registry.
+// Fields still empty remain in the registry for the next refocus.
+//
+// Important: this does NOT re-run scanner / signals / mapper / confidence
+// scoring. It only re-resolves already-matched profile paths. Fields outside
+// the noData registry (noReview / needReview / lowConfidence / manually-edited)
+// are never touched, even if their underlying profile value changed.
+async function runSilentRefill(): Promise<void> {
+  if (!lastResult) return;
+  if (noDataFields.length === 0) return;
+
+  const profile = await getProfile();
+  if (!profile) return;
+
+  const result = lastResult; // capture for closure-safety inside the loop
+  const remaining: NoDataEntry[] = [];
+
+  for (const entry of noDataFields) {
+    const { element, fieldPath } = entry;
+
+    // The element may have been removed from the DOM (e.g. SPA navigation
+    // within the same tab). Drop the entry silently — no fill, no count change.
+    if (!document.contains(element)) continue;
+
+    const value = resolveProfileValue(profile, fieldPath);
+    if (!value) {
+      // Profile still missing this value — keep watching for next refocus.
+      remaining.push(entry);
+      continue;
+    }
+
+    // Value is now available — fill silently and promote to noReview.
+    await fillField(element, value);
+    applyHighlight(element, 0.97); // green
+    sessionElements.push(element);
+
+    result.noData    = Math.max(0, result.noData - 1);
+    result.noReview += 1;
+
+    // Tear down the picker focus listener and any blur watcher — the field is
+    // now resolved, so the picker should not open on focus, and an existing
+    // blur watcher would erroneously re-promote it on blur.
+    removePickerListener(element);
+    const watcher = editWatchers.get(element);
+    if (watcher) {
+      element.removeEventListener('blur', watcher);
+      editWatchers.delete(element);
+    }
+
+    // If the noData CTA happens to be open for this element right now (user
+    // had focus on it before switching tabs), close it — the CTA is no longer
+    // accurate.
+    closePickerIfOpenFor(element);
+  }
+
+  noDataFields = remaining;
+  if (noDataFields.length === 0) teardownVisibilityListener();
+}
+
 export function undoAutofill(): void {
   for (const element of sessionElements) {
     clearFieldValue(element);
@@ -121,6 +233,8 @@ export function undoAutofill(): void {
     }
   }
   sessionElements = [];
+  noDataFields    = [];
+  teardownVisibilityListener();
   lastResult = null;  // also self-invalidates any noData watchers not in sessionElements
   clearHighlights();
 }
@@ -192,7 +306,11 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   };
   const pickerFields: PickerField[] = [];
 
-  for (const { element, match, hasExistingValue } of pendingMatches) {
+  // Reset the noData registry — silent re-fill will only consider noData
+  // fields from this fresh run, not stale ones from a previous session.
+  noDataFields = [];
+
+  for (const { element, signals, match, hasExistingValue } of pendingMatches) {
     // Merge mode: skip pre-filled fields that would otherwise be overwritten.
     // Only relevant when confidence >= 0.60 AND the profile has a value to fill.
     if (mode === 'merge' && hasExistingValue && match.confidence >= 0.60 && match.value) {
@@ -200,6 +318,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     }
 
     const isFileInput = element instanceof HTMLInputElement && element.type === 'file';
+    const displayLabel = extractDisplayLabel(signals);
 
     if (match.confidence >= 0.60 && match.value) {
       // Confident match with profile data → fill and highlight.
@@ -230,7 +349,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         result.needReview++;
         // File inputs are deliberately excluded from the picker overlay —
         // file selection is handled silently by Auto Fill, not the picker.
-        if (!isFileInput) pickerFields.push({ element, state: 'needReview' });
+        if (!isFileInput) pickerFields.push({ element, state: 'needReview', label: displayLabel });
       }
 
     } else if (match.confidence < 0.60) {
@@ -238,17 +357,32 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       applyHighlight(element, 0);
       sessionElements.push(element);
       result.lowConfidence++;
-      if (!isFileInput) pickerFields.push({ element, state: 'lowConfidence' });
+      if (!isFileInput) pickerFields.push({ element, state: 'lowConfidence', label: displayLabel });
 
     } else {
       // confidence >= 0.60 but profile value is empty — nothing to write.
       // No highlight; picker is offered so the user can choose an alternative value.
       result.noData++;
-      if (!isFileInput) pickerFields.push({ element, state: 'noData' });
+      if (!isFileInput) {
+        pickerFields.push({ element, state: 'noData', label: displayLabel });
+        // Track in the noData registry so silent re-fill on tab refocus can
+        // re-resolve this field's profile path once the user updates it.
+        // match.fieldPath is non-null when confidence >= 0.60 (only the
+        // "no signal matched" branch leaves it null, and that takes the
+        // lowConfidence path above), but check explicitly for type safety.
+        if (match.fieldPath) {
+          noDataFields.push({ element, fieldPath: match.fieldPath, label: displayLabel });
+        }
+      }
     }
   }
 
   pendingMatches = [];
+
+  // Register the visibilitychange listener only when we actually have noData
+  // fields to watch. Listener is idempotent and is torn down on undo or when
+  // all entries are resolved.
+  if (noDataFields.length > 0) ensureVisibilityListener();
 
   // Store before attaching picker listeners — the result object is mutated in
   // place by picker callbacks, so the reference remains accurate after those run.
