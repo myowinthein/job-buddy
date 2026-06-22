@@ -19,4 +19,5 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   'salary.current.amount':         ['currentsalary', 'currentctc', 'currentcompensation', 'currentsalaryexpectation'],
   'salary.expected':               ['expectedsalary', 'desiredcompensation', 'expectedctc', 'desiredsalary', 'salaryexpectation'],
   'workAuthorization':             ['workauthorization', 'workpermit', 'authorizedtowork', 'eligibletowork', 'workeligibility'],
+  'documents.cv.file':             ['resume', 'cv', 'curriculumvitae', 'resumeupload', 'uploadresume', 'attachresume', 'document', 'attachment', 'uploadcv', 'myresume'],
 };
