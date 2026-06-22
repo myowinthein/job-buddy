@@ -1,6 +1,6 @@
 # Terms of Service — Job Buddy
 
-**Effective date:** [INSERT DATE OF FIRST PUBLICATION]
+**Effective date:** June 22, 2026
 
 These terms apply to your use of Job Buddy, a free, open-source browser
 extension that helps autofill job application forms using information you
