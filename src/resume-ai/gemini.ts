@@ -30,10 +30,24 @@ export async function validateApiKey(apiKey: string): Promise<KeyValidationResul
     }
 
     if (resp.ok) return { valid: true, model: model as GeminiModel };
-    // 400/401/403 = key rejected; stop immediately
-    if (resp.status === 400 || resp.status === 401 || resp.status === 403) {
+
+    // 401/403 = authentication failure; key is definitively rejected
+    if (resp.status === 401 || resp.status === 403) {
       return { valid: false, error: 'API key invalid', keyInvalid: true };
     }
+
+    // 400 is ambiguous: could be "API key not valid" OR "model not found / bad request".
+    // Read the body to decide; if we can't parse it, assume model-specific and try next.
+    if (resp.status === 400) {
+      let body: { error?: { message?: string } } | null = null;
+      try { body = await resp.json(); } catch { /* non-JSON body, treat as model error */ }
+      const msg = (body?.error?.message ?? '').toLowerCase();
+      if (msg.includes('api key') || msg.includes('api_key')) {
+        return { valid: false, error: 'API key invalid', keyInvalid: true };
+      }
+      continue; // model-specific 400 (e.g. "Model not found"); try next
+    }
+
     // 404 = model unavailable for this account; try next
     if (resp.status === 404) continue;
     // any other non-200 = temporary or model-specific failure; try next
