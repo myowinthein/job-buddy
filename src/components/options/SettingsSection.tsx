@@ -94,7 +94,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
   // ── AI Features state ────────────────────────────────────────────────────────
   const [geminiKey,        setGeminiKey]        = useState('');
-  const [geminiKeyStatus,  setGeminiKeyStatus]  = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+  const [geminiKeyStatus,  setGeminiKeyStatus]  = useState<'idle' | 'validating' | 'valid' | 'invalid' | 'no_model'>('idle');
   const [geminiModel,      setGeminiModel]      = useState<string | null>(null);
   const geminiDebounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -126,6 +126,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         await saveGeminiModel(result.model);
         setGeminiModel(result.model);
         setGeminiKeyStatus('valid');
+      } else if (result.keyValidNoModel) {
+        setGeminiKeyStatus('no_model');
       } else {
         setGeminiKeyStatus('invalid');
       }
@@ -339,6 +341,11 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         )}
         {geminiKeyStatus === 'valid' && (
           <p className="mt-1.5 text-xs text-green-600 dark:text-green-400">API key saved.</p>
+        )}
+        {geminiKeyStatus === 'no_model' && (
+          <p className="mt-1.5 text-xs text-yellow-600 dark:text-yellow-400">
+            API key is valid but no supported model is available for your account. Try again later.
+          </p>
         )}
         {geminiKeyStatus === 'invalid' && (
           <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">

@@ -35,7 +35,7 @@ export async function validateApiKey(apiKey: string): Promise<KeyValidationResul
     }
     // 404 = model not available for this key; try next
   }
-  return { valid: false, error: 'No supported model available for this key' };
+  return { valid: false, error: 'No supported model available for this key', keyValidNoModel: true };
 }
 
 export async function extractFromResume(
