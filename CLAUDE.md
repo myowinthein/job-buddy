@@ -4,11 +4,12 @@
 
 Job Buddy is a Chrome browser extension (Manifest V3) that lets job seekers store a rich profile and use it to auto-fill job application forms. Aimed at multi-country job seekers (hence per-country work authorization, per-currency salary, multi-language support).
 
-The extension has two pillars:
-1. **Profile editor** — full-page options UI with nine sections
-2. **Autofill** — content script scans any page's form fields, maps them to profile values, fills them, and highlights confidence
+The extension has three pillars:
+1. **Profile editor** — full-page options UI with nine profile sections + Import Resume + Settings
+2. **Autofill** — content script scans any page's form fields, maps them to profile values, fills them, and highlights confidence. A second-pass AI layer (Gemini) handles fields the rule pipeline couldn't resolve, plus radio/checkbox groups.
+3. **AI Resume Import** — uploads a PDF/DOCX to Gemini and presents a review screen where the user accepts/rejects each suggested change.
 
-A resume import feature (PDF/DOCX → fields + draggable text chunks) existed previously but was removed; it is deferred to Phase 2 LLM-based profile extraction.
+All AI features (resume import + autofill assist) require a user-supplied Gemini API key. The extension works fully without one — AI is purely additive.
 
 ---
 
@@ -31,17 +32,21 @@ Four entrypoints in `entrypoints/`:
 
 | Entrypoint | Description |
 |---|---|
-| `background.ts` | Service worker — stub; no message passing wired |
-| `content.ts` | Content script matched to `*://*/*`; listens for `AUTOFILL_SCAN` / `AUTOFILL_FILL` / `CLEAR` runtime messages and delegates to `src/autofill/` |
-| `popup/` | Browser action popup — profile completion %, Auto Fill button, Clear Highlights, result summary. Chrome MV3 destroys the popup on close, so React state is lost; on mount the popup sends `GET_STATUS` to the content script and restores the success view from the content script's `lastResult` |
-| `options/` | Full-page profile editor (9 sections + Settings) |
+| `background.ts` | Service worker — handles `OPEN_OPTIONS` from content script (picker "Go to Profile →") |
+| `content.ts` | Content script matched to `*://*/*`; listens for `AUTOFILL_SCAN` / `AUTOFILL_FILL` / `CLEAR` / `GET_STATUS` / `GET_DEBUG_SESSION` runtime messages and delegates to `src/autofill/` |
+| `popup/` | Browser action popup — profile completion %, `Auto Fill ✨` button, debug panel `?` icon (only after a run), Clear Highlights, result summary, AI key nudge. Chrome MV3 destroys the popup on close, so React state is lost; on mount the popup sends `GET_STATUS` to the content script and restores the success view from the content script's `lastResult` |
+| `options/` | Full-page profile editor (9 profile sections + Import Resume + Settings) |
 
-Storage is `chrome.storage.local` (not `sync`). The wrapper in `src/utils/storage.ts` swallows errors and always resolves, so callers don't need rejection handling. `clearAllStorage()` removes all three keys (used by Settings → Reset).
+Storage is `chrome.storage.local` (not `sync`). The wrapper in `src/utils/storage.ts` swallows errors and always resolves, so callers don't need rejection handling. `clearAllStorage()` removes profile, learnedMappings, and applicationHistory (used by Settings → Reset). Gemini keys are wiped separately via `clearGeminiSettings()`.
 
-Three storage keys:
+Storage keys:
 - `profile` — the user's `Profile` object (includes `id` and `derived`, see below)
 - `learnedMappings` — `{ [domain]: { [normalizedSignal]: profileFieldPath } }` — written when the user picks a value from the autofill red-field overlay
 - `applicationHistory` — array of `ApplicationEntry` — reserved for dedup/history tracking; no UI yet
+- `geminiApiKey` — user-supplied Gemini API key. **Never** included in profile export/import bundles (privacy boundary — see § AI Features).
+- `geminiModel` — selected Gemini model ID. Also excluded from export.
+
+`chrome.storage.session` is used for cross-context UI state that should survive popup→options-page handoff but not browser restart: `jb:ai:nudge:dismissed`, `jb:focusOnLoad`.
 
 `Profile.id` is a top-level UUID auto-backfilled by `getProfile()` on first read if missing — every load of an old profile silently writes back an id. Used as the prefix in export filenames and the `profileId` field of the export schema.
 
@@ -85,7 +90,7 @@ The second pass is wrapped in `try/catch` so a derivation bug can never block or
 
 `entrypoints/options/App.tsx` is the shell. It owns:
 - The loaded `Profile` object (starts as `Partial<Profile>`)
-- Active section routing (9 sections, no router library)
+- Active section routing (9 profile sections + `resume` + `settings`, no router library). The `resume` route renders `ResumeImportSection` which initialises directly to the upload dialog — no landing page.
 - `handleSave(updates)` — merges, writes, recalculates derived, writes again
 Each section component receives `{ profile, onSave }` and has its own save button. Sections do not share unsaved state — switching sections without saving loses changes.
 
@@ -101,10 +106,11 @@ Each section component receives `{ profile, onSave }` and has its own save butto
 
 ### Settings section (`src/components/options/SettingsSection.tsx`)
 
-A 10th sidebar entry below the 9 profile sections. Three subsections:
+The bottom of the sidebar, below the 9 profile sections and the Import Resume entry. Subsections:
 
 | Action | Behavior |
 |---|---|
+| AI Features | Gemini API key input (`AQ...` placeholder). Sets key + `gemini-3.1-flash-lite` default into storage immediately on format-pass via `checkApiKey()`; background `validateApiKey()` then probes the priority list and quietly upgrades the stored model if a better one is available. Empty input clears both keys via `clearGeminiSettings()`. |
 | Export Profile | Bundles `{ _comment, version: "1.0", profileId, exportedAt, profile, learnedMappings, applicationHistory }`, downloads as `job-buddy-profile-<idPrefix>-<date>.json` |
 | Import Profile | Validates JSON via `src/utils/profileValidator.ts`; conflict dialog offers Merge (fill empty fields only) or Overwrite (replace all) |
 | Reset All Data | Type-`DELETE` confirmation, then `clearAllStorage()` clears all three storage keys; `onResetComplete` re-fetches and navigates to `personal` |
@@ -134,18 +140,28 @@ Section and sidebar are read **synchronously in `useState` initializers** so the
 Module layout (each file is a pure DOM utility — no React):
 
 ```
-scanner.ts     — finds visible input/textarea/select; excludes hidden types
+scanner.ts     — finds visible input/textarea/select; excludes hidden types.
+               File inputs are excluded by default; pass scanFields({ allowFileInputs: true })
+               when a CV file is saved. Always skips file inputs with tabindex="-1" (custom
+               upload widget pattern — Fluent UI / Fabric / MUI / etc.).
+               Also exports scanRadioGroups() and scanCheckboxGroups() used only by the AI
+               layer (the rule pipeline never touches radios or checkboxes). Checkbox groups
+               are flagged isConsent: true when their label or any option text matches
+               CONSENT_TERMS (agree/terms/privacy/gdpr/consent/marketing) — these are
+               filtered out before AI ever sees them.
 signals.ts     — extracts name/id/placeholder/autocomplete/aria-label/label/nearbyText
 normalizer.ts  — lowercase + strip non-alphanumeric
-dictionary.ts  — profile-field-path → known signal variations
+dictionary.ts  — profile-field-path → known signal variations.
+               Includes documents.cv.file for resume-upload field detection.
 resolver.ts    — dot-notation profile value resolver; handles plain paths via generic
                traversal plus regex-matched virtual paths (phone.full, dateOfBirth.day/month/year,
                address.countryName, salary.current.formatted, salary.expected.N.formatted,
                workAuthorization.N, workHistory.N.{isCurrent,location,startDate.formatted,
                endDate.formatted,arrangement}, education.N.{isCurrent,startDate.formatted,
-               endDate.formatted})
+               endDate.formatted}, documents.cv.file → filename).
 mapper.ts      — 4-layer match: learned → autocomplete → dictionary → fuzzy → context
-filler.ts      — native input setter + dispatches input/change/blur
+filler.ts      — native input setter + dispatches input/change/blur. Also exports
+               fillFileField(element, fileData) for visible file inputs — see § CV file upload.
 highlighter.ts — confidence-based background-color tint applied to the element
 picker.ts      — two-level collapsible overlay for non-green fields. See § Picker overlay below.
 index.ts       — orchestrator; exports scanAutofill(), executeAutofill(), runAutofill(), undoAutofill(), clearHighlights()
@@ -227,6 +243,32 @@ Personal, Address, Salary, Work Authorization, Work History, Education, Language
 
 **Date display** — `src/utils/dateFormat.ts` exports `fmtYearMonth("YYYY-MM")` → `"Month YYYY"` (full month names). Used by picker tree builder and resolver virtual paths. Do not inline month formatting elsewhere.
 
+### CV file upload (MVP scope)
+
+`filler.fillFileField(element, DocumentFile)` reconstructs a real `File` from `documents.cv.file` (which is stored as a `data:<mime>;base64,...` URL) by decoding base64 → `Blob` → `File`, then attaches via `DataTransfer`:
+
+```
+input.files = (new DataTransfer with file added).files;
+dispatch input + change events.
+```
+
+Returns `boolean` — `false` on any reconstruction failure (corrupt base64, malformed prefix, missing payload). Caller (`executeAutofill`) silently skips elements that return `false` instead of incrementing counters or applying highlight.
+
+**Scope (intentional MVP boundary)** — do not expand without explicit user decision:
+- Visible standard `<input type="file">` only.
+- Single CV file only (no cover letter, no other doc types).
+- Custom upload widgets (Fluent UI / Fabric, MUI, Mantine, drag-drop zones, styled buttons backed by hidden inputs) are **explicitly skipped** via the scanner's `tabindex="-1"` filter. These are Phase 2 and require per-vendor adapters.
+- File inputs are excluded from the picker overlay entirely (file selection is silent, not picker-driven).
+
+The `clearFieldValue` path in `filler.ts` is extended for file inputs — it assigns an empty `DataTransfer`'s `files` and dispatches `change`, so Undo Auto-Fill works for file inputs through the existing `sessionElements` registry without special-casing.
+
+### Background service worker (`entrypoints/background.ts`)
+
+Currently handles a single message:
+- `{ action: 'OPEN_OPTIONS' }` — calls `chrome.runtime.openOptionsPage()` on behalf of the content script. Used by the picker's "Go to Profile →" CTA on noData fields. Content scripts cannot reliably call `openOptionsPage` directly across browsers; routing through the service worker is the documented-stable path. With `manifest.options_ui.open_in_tab: true` (set in `wxt.config.ts`), Chrome focuses an existing Options tab if one is already open instead of duplicating it.
+
+The popup still talks to the content script directly via `chrome.tabs.sendMessage` (AUTOFILL_SCAN, AUTOFILL_FILL, CLEAR, GET_STATUS) — background is not on that path.
+
 ### Why the filler uses a native setter
 
 `filler.ts` captures `Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set` at module load and calls it via `.call(element, value)`. React/Vue/Angular install instance-level property descriptors that swallow plain `element.value = x` assignments. The native setter bypasses these, then dispatching `input → change → blur` triggers framework change detection.
@@ -244,6 +286,69 @@ Personal, Address, Salary, Work Authorization, Work History, Education, Language
 | 0 | `rgba(239, 68, 68, 0.12)` (red) |
 
 `noData` fields (profile value empty) receive **no** call to `applyHighlight` at all.
+
+### AI layer (`src/autofill/ai.ts`)
+
+Runs **after** the rule pipeline completes — single perceived operation. Users see the combined highlights once both passes finish.
+
+Candidates sent to AI:
+- Text/select fields the rule pipeline classified as `lowConfidence` (red) or `noData` with a non-null `match.fieldPath` (gray)
+- Radio groups (`scanRadioGroups()`) — never seen by the rule pipeline
+- Checkbox groups (`scanCheckboxGroups()`) — never seen by the rule pipeline; consent groups excluded
+
+Never sent: green / yellow fields, file inputs, consent checkboxes, or noData fields with a null fieldPath.
+
+Per-field outcome from AI:
+- `high` confidence + actionable value → green highlight (0.97), learned mapping saved per domain for text fields
+- `low` confidence + actionable value → yellow highlight (0.70), picker attached
+- `null` or empty → field stays in its original state (red/gray)
+
+Failures (no API key, 429, network, parse) are **always silent** — return false (key missing) or true (failed but ran). The user-visible autofill result is the rule-only result on failure. The popup shows a nudge "Add an AI key in Settings to improve autofill accuracy." only when `aiAvailable === false` (no key); other failures show nothing.
+
+Result counters in `AutofillResult` are mutated in place by AI: `lowConfidence`/`noData` decrement, `noReview`/`needReview` increment. `aiAvailable: boolean` is added to the result so the popup can decide whether to render the nudge.
+
+### Debug session (`src/autofill/debug.ts`)
+
+Ephemeral, in-memory only. One session per scan/fill cycle. Lost on tab close. Fetched on demand by the popup via `GET_DEBUG_SESSION`. Renders in the popup `?` icon (only visible after a successful run).
+
+Stages recorded: scanner (one entry per `pendingMatch` with a stable `field_NNN` id), mapping (matchLayer + confidence + final state), AI (per response with confidence + final state), summary (green/yellow/red/gray counts).
+
+The `fieldId` is generated in `scanAutofill()` and threaded through `PendingMatch.debugFieldId` and `AITextCandidate.debugFieldId` so all three stages can be joined. Radio/checkbox AI candidates get fresh debug IDs since they bypass the rule pipeline.
+
+---
+
+## AI Features (`src/resume-ai/`)
+
+User-supplied Gemini key powers both the AI autofill layer and the Resume Import feature. Module layout:
+
+```
+types.ts   — GeminiModel union, GEMINI_MODEL_PRIORITY (probe order),
+             MODEL_DISPLAY_NAMES, KeyValidationResult.
+prompt.ts  — system prompt for resume → Profile JSON extraction.
+gemini.ts  — checkApiKey (key validation), validateApiKey (model selection
+             probe loop), extractFromResume (resume → JSON), resolveFieldsWithAI
+             (autofill assist).
+parser.ts  — FIELD_DEFS for the Resume Import review screen; generateDiff
+             classifies fields as new/conflict/unchanged; applyChanges
+             rebuilds the profile from accepted changes.
+```
+
+**Key validation is decoupled from model selection.** `checkApiKey()` calls `GET /v1beta/models?key=...&pageSize=1`: 200 = valid, 401/403 = invalid, anything else = network error. **Do not bundle 400 with 401/403** — the Gemini API returns 400 for unknown model names too, not just bad keys. The model-probe path in `validateApiKey()` inspects the 400 response body for `"api key"` substring before deciding it's a key issue.
+
+**`gemini-2.5-flash-lite` is in `GeminiModel` for stored-model recognition but is intentionally absent from `GEMINI_MODEL_PRIORITY`.** Do not add it without an explicit decision.
+
+**Settings → AI Features save flow:**
+1. User types or pastes a key. 800 ms debounce.
+2. `checkApiKey()` runs — on `invalid` show red error; on `network_error` reset to idle; on `valid` continue.
+3. Save key + `gemini-3.1-flash-lite` (hardcoded default) to storage **immediately** — Import Resume becomes usable before the probe finishes.
+4. Background `validateApiKey()` probes the priority list. If it finds a better model, quietly update the stored model. If `keyValidNoModel`, show the yellow "no supported model" warning. If `keyInvalid` (401/403 confirmed), roll back via `clearGeminiSettings()`. Network errors during the probe leave the saved key untouched.
+5. `probeIdRef` discards stale probe results if the user edits the key again mid-probe.
+
+**Resume Import (`src/components/options/ResumeImportSection.tsx`)** — opens directly as a dialog (no landing page), file uploads as PDF/DOCX up to 10 MB, sent to Gemini as inline base64 (no client-side text extraction). Review screen groups suggestions by sidebar section and shows only sections with at least one new or conflict field — unchanged fields are not rendered at all. The uploaded file itself appears as a selectable new field in Documents → Resume File; if accepted, it's saved to `profile.documents.cv.file` (preserving any existing `cv.url`).
+
+Retry on network failure jumps directly to `'sending'` step reusing the already-read `fileDataUri` — do not force the user to re-upload.
+
+**All AI failures must be silent.** Never block, never throw to the caller, never show a generic network error. Catch and degrade gracefully.
 
 ---
 
@@ -304,5 +409,5 @@ Load in Chrome: `chrome://extensions` → "Load unpacked" → select `.output/ch
 
 ## What Isn't Implemented Yet
 
-- **Background messaging** — `background.ts` is a stub; popup talks to the content script directly via `chrome.tabs.sendMessage`
-- **Application history** — `applicationHistory` storage key and `ApplicationEntry` type exist; the key is included in profile export/import bundles, but no dedup or UI consumes it
+- **Application history** — `applicationHistory` storage key and `ApplicationEntry` type exist; the key is included in profile export/import bundles, but no dedup or UI consumes it.
+- **Custom file-upload widgets** — only visible standard `<input type="file">` works today. ATS widgets that hide the input behind a styled button (Greenhouse, Lever's dropzone, Workday wizard, Fabric/MUI components) are deliberately out of scope — see § CV file upload.
