@@ -1,9 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Info, CheckCircle } from 'lucide-react';
-import { getProfile, getGeminiApiKey } from '@/src/utils/storage';
+import { getProfile, getGeminiApiKey, getDriveToken, getDriveBackupState } from '@/src/utils/storage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import type { DebugSession } from '@/src/autofill/debug';
 import { DebugPanel } from './DebugPanel';
+
+interface DriveDebugInfo {
+  connected:   boolean;
+  hasToken:    boolean;
+  lastSynced:  string | null;
+  pendingSync: boolean;
+  error:       string | null;
+}
 
 interface AutofillResult {
   noReview:      number;
@@ -60,6 +68,7 @@ function App() {
   const [hasGeminiKey,   setHasGeminiKey]   = useState<boolean | null>(null);
   const [debugSession,   setDebugSession]   = useState<DebugSession | null>(null);
   const [debugOpen,      setDebugOpen]      = useState(false);
+  const [driveDebugInfo, setDriveDebugInfo] = useState<DriveDebugInfo | null>(null);
 
   useEffect(() => {
     getProfile()
@@ -86,6 +95,16 @@ function App() {
       const sess = await sendToActiveTab({ action: 'GET_DEBUG_SESSION' }) as DebugSession | null;
       if (sess) setDebugSession(sess);
     } catch { /* content script absent */ }
+    try {
+      const [token, state] = await Promise.all([getDriveToken(), getDriveBackupState()]);
+      setDriveDebugInfo({
+        connected:   !!token,
+        hasToken:    !!token,
+        lastSynced:  state.lastSynced,
+        pendingSync: state.pendingSync,
+        error:       state.error,
+      });
+    } catch { /* silent */ }
     setDebugOpen(true);
   };
 
@@ -476,7 +495,11 @@ function App() {
       </div>
 
       {debugOpen && debugSession && (
-        <DebugPanel session={debugSession} onClose={() => setDebugOpen(false)} />
+        <DebugPanel
+          session={debugSession}
+          driveStatus={driveDebugInfo}
+          onClose={() => setDebugOpen(false)}
+        />
       )}
     </div>
   );
