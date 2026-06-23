@@ -26,6 +26,7 @@ import {
   disconnectDrive,
   syncProfileToDrive,
   overwriteDriveWithLocal,
+  isDriveConfigured,
 } from '@/src/utils/driveSync';
 
 const DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite';
@@ -623,8 +624,15 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           Sync your profile to your own Google Drive. Only you can access it.
         </p>
 
-        {/* State 1: Not connected */}
-        {!driveState.connected && !driveConnecting && (
+        {/* State 1a: Not configured in this build */}
+        {!driveState.connected && !driveConnecting && !isDriveConfigured() && (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Google Drive sync is not configured in this build.
+          </p>
+        )}
+
+        {/* State 1b: Not connected */}
+        {!driveState.connected && !driveConnecting && isDriveConfigured() && (
           <button
             type="button"
             onClick={handleDriveConnect}

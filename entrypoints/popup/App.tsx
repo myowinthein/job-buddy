@@ -281,7 +281,7 @@ function App() {
 
       {/* Autofill panel */}
       <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-1.5 mb-3">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide">Autofill</p>
           {hasGeminiKey === false && (
             <div className="relative group shrink-0">
@@ -292,7 +292,7 @@ function App() {
               >
                 <Info className="w-4 h-4" />
               </button>
-              <div className="pointer-events-none absolute bottom-full right-0 z-50 mb-1.5 w-52 rounded-md bg-gray-800 dark:bg-gray-700 px-2 py-1.5 text-[11px] leading-snug text-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="pointer-events-none absolute bottom-full left-0 z-50 mb-1.5 w-52 rounded-md bg-gray-800 dark:bg-gray-700 px-2 py-1.5 text-[11px] leading-snug text-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
                 Currently filling manually. Add an AI key in Settings for better accuracy.
               </div>
             </div>
