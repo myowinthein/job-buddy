@@ -12,6 +12,7 @@ import { attachPickerListeners } from './picker';
 import type { PickerField, PickerFieldState } from './picker';
 import { getGeminiApiKey, getGeminiModel, saveLearnedMapping } from '../utils/storage';
 import { normalize } from './normalizer';
+import type { DebugAIField } from './debug';
 
 // Mutable result shape — matches the fields of AutofillResult that AI updates
 interface MutableResult {
@@ -27,6 +28,8 @@ export interface AITextCandidate {
   signals:          FieldSignals;
   originalState:    'lowConfidence' | 'noData';
   originalFieldPath: string | null;
+  /** Debug-only: ID assigned during scanAutofill so the debug panel can join scanner → mapping → AI. */
+  debugFieldId?:    string;
 }
 
 // Returns true if the AI layer ran (key was available), false if skipped (no key).
@@ -37,6 +40,7 @@ export async function runAIAutofill(
   result: MutableResult,
   sessionElements: HTMLElement[],
   domain: string,
+  debug?: DebugAIField[],
 ): Promise<boolean> {
   const [apiKey, model] = await Promise.all([getGeminiApiKey(), getGeminiModel()]);
   if (!apiKey || !model) return false;
@@ -58,9 +62,14 @@ export async function runAIAutofill(
   if (candidates.length === 0) return true;
 
   const candidateMap = new Map<string, Candidate>();
+  // Debug-only: remember the synthetic AI fieldId per candidate so we can
+  // surface the same identifier in both the AI debug record and the mapping
+  // debug record (for text candidates that originated from the rule pipeline).
+  const fieldIdByCandidate = new Map<Candidate, string>();
   const payload: AIFieldPayload[] = candidates.map((c, i) => {
     const fieldId = `field_${String(i + 1).padStart(3, '0')}`;
     candidateMap.set(fieldId, c);
+    fieldIdByCandidate.set(c, fieldId);
 
     if (c.type === 'text') {
       const s = c.signals;
@@ -90,16 +99,41 @@ export async function runAIAutofill(
 
   const pickerFields: PickerField[] = [];
 
+  // Debug-only helper: append a debug record for an AI response.
+  const recordDebug = (
+    candidate: Candidate,
+    fieldId: string,
+    aiResult: string | null,
+    aiConfidence: 'high' | 'low' | null,
+    finalState: 'green' | 'yellow' | 'unchanged',
+  ) => {
+    if (!debug) return;
+    const label = candidate.type === 'text'
+      ? (candidate.signals.label || candidate.signals.ariaLabel
+         || candidate.signals.placeholder || candidate.signals.name || '')
+      : candidate.group.groupLabel;
+    debug.push({ fieldId, label, type: candidate.type, aiResult, aiConfidence, finalState });
+  };
+
   for (const resp of responses) {
     const candidate = candidateMap.get(resp.fieldId);
-    if (!candidate || resp.confidence === null) continue;
+    if (!candidate) continue;
+    const fieldId = fieldIdByCandidate.get(candidate)!;
+
+    if (resp.confidence === null) {
+      recordDebug(candidate, fieldId, null, null, 'unchanged');
+      continue;
+    }
 
     const isHigh    = resp.confidence === 'high';
     const confScore = isHigh ? 0.97 : 0.70;
 
     if (candidate.type === 'text' && resp.profilePath) {
       const value = resolveProfileValue(profile, resp.profilePath);
-      if (!value) continue;
+      if (!value) {
+        recordDebug(candidate, fieldId, resp.profilePath, resp.confidence, 'unchanged');
+        continue;
+      }
 
       await fillField(candidate.element, value);
       applyHighlight(candidate.element, confScore);
@@ -132,17 +166,22 @@ export async function runAIAutofill(
                 || candidate.signals.placeholder || 'this field',
         });
       }
+      recordDebug(candidate, fieldId, resp.profilePath, resp.confidence, isHigh ? 'green' : 'yellow');
 
     } else if (candidate.type === 'radio' && resp.selectedOption) {
       const group  = candidate.group as RadioGroup;
       const option = findBestOption(group.options, resp.selectedOption);
-      if (!option) continue;
+      if (!option) {
+        recordDebug(candidate, fieldId, resp.selectedOption, resp.confidence, 'unchanged');
+        continue;
+      }
 
       fillRadioInput(option.element);
       applyHighlight(option.element, confScore);
       sessionElements.push(option.element);
       if (isHigh) result.noReview++;
       else        result.needReview++;
+      recordDebug(candidate, fieldId, resp.selectedOption, resp.confidence, isHigh ? 'green' : 'yellow');
 
     } else if (candidate.type === 'checkbox' && Array.isArray(resp.selectedOptions)) {
       const group    = candidate.group as CheckboxGroup;
@@ -159,6 +198,11 @@ export async function runAIAutofill(
         if (isHigh) result.noReview++;
         else        result.needReview++;
       }
+      recordDebug(candidate, fieldId, resp.selectedOptions.join(', '), resp.confidence, anyFilled ? (isHigh ? 'green' : 'yellow') : 'unchanged');
+
+    } else {
+      // No actionable response shape (e.g. text without profilePath)
+      recordDebug(candidate, fieldId, null, resp.confidence, 'unchanged');
     }
   }
 

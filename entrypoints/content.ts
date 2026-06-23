@@ -1,4 +1,4 @@
-import { scanAutofill, executeAutofill, undoAutofill, getLastResult } from '@/src/autofill/index';
+import { scanAutofill, executeAutofill, undoAutofill, getLastResult, getDebugSession } from '@/src/autofill/index';
 
 export default defineContentScript({
   matches: ['*://*/*'],
@@ -27,6 +27,11 @@ export default defineContentScript({
 
       if (message.action === 'GET_STATUS') {
         sendResponse(getLastResult());
+        return true;
+      }
+
+      if (message.action === 'GET_DEBUG_SESSION') {
+        sendResponse(getDebugSession());
         return true;
       }
     });

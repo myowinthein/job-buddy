@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { getProfile } from '@/src/utils/storage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
+import type { DebugSession } from '@/src/autofill/debug';
+import { DebugPanel } from './DebugPanel';
 
 interface AutofillResult {
   noReview:      number;
@@ -54,6 +56,8 @@ function App() {
   const [preFilledCount, setPreFilledCount] = useState(0);
   const [fillMode, setFillMode]             = useState<'merge' | 'overwrite'>('merge');
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const [debugSession,   setDebugSession]   = useState<DebugSession | null>(null);
+  const [debugOpen,      setDebugOpen]      = useState(false);
 
   useEffect(() => {
     getProfile()
@@ -72,6 +76,16 @@ function App() {
         setLoading(false);
       });
   }, []);
+
+  // Lazily fetch the debug session from the content script when the user opens
+  // the panel — keeps the popup's initial render cheap.
+  const openDebugPanel = async () => {
+    try {
+      const sess = await sendToActiveTab({ action: 'GET_DEBUG_SESSION' }) as DebugSession | null;
+      if (sess) setDebugSession(sess);
+    } catch { /* content script absent */ }
+    setDebugOpen(true);
+  };
 
   // On mount, ask the content script for its last fill result so the popup
   // restores the success state even after being closed and reopened.
@@ -191,7 +205,17 @@ function App() {
       {/* Header */}
       <div className="flex items-center gap-2.5 mb-5">
         <img src="/icon.svg" alt="Job Buddy" className="w-8 h-8 shrink-0" />
-        <h1 className="text-base font-bold text-gray-900 dark:text-gray-100">Job Buddy</h1>
+        <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex-1">Job Buddy</h1>
+        {autofillState === 'success' && (
+          <button
+            type="button"
+            onClick={openDebugPanel}
+            title="Show autofill debug panel"
+            className="w-6 h-6 rounded-full border border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500 text-xs leading-none flex items-center justify-center"
+          >
+            ?
+          </button>
+        )}
       </div>
 
       {/* Completion indicator */}
@@ -434,6 +458,10 @@ function App() {
           </>
         )}
       </div>
+
+      {debugOpen && debugSession && (
+        <DebugPanel session={debugSession} onClose={() => setDebugOpen(false)} />
+      )}
     </div>
   );
 }
