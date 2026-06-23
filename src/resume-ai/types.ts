@@ -46,4 +46,6 @@ export interface KeyValidationResult {
   valid: boolean;
   model?: GeminiModel;
   error?: string;
+  /** true when the key authenticated successfully but no model in the priority list was accessible */
+  keyValidNoModel?: boolean;
 }
