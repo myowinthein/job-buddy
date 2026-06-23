@@ -63,6 +63,27 @@ job board, applicant tracking system, or employer website you interact
 with. Job Buddy is not affiliated with, endorsed by, or sponsored by any
 job platform it may be used on.
 
+## Cloud Backup (optional)
+
+Job Buddy includes an optional Cloud Backup feature that lets you sync
+your profile to your own Google Drive using Google's OAuth flow and a
+narrow application-data scope. This feature is off by default and only
+activates if you explicitly connect a Google account from Settings.
+
+When you enable Cloud Backup, your interaction with Google Drive is
+governed by your separate agreement with Google, including [Google's
+Terms of Service](https://policies.google.com/terms) and [Privacy
+Policy](https://policies.google.com/privacy). Job Buddy is not a party
+to that relationship; it only acts as the client that uploads and
+downloads your backup file on your behalf. Storage quotas, account
+suspensions, and any other Drive-related issues are handled by Google,
+not by Job Buddy.
+
+The same "no warranty" and "limitation of liability" terms above apply
+to the Cloud Backup feature. You are responsible for the security of
+your Google account and for any consequences of connecting or
+disconnecting it from Job Buddy.
+
 ## Open-source license
 
 Job Buddy's source code is available publicly under the MIT License at:

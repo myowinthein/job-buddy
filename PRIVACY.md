@@ -61,17 +61,23 @@ generated automatically as you use the extension:
 
 ## What information Job Buddy does **not** do
 
-- **Job Buddy makes no network requests of any kind.** It does not contact
-  any server operated by us or by anyone else. There is no backend, no
-  analytics, and no tracking SDKs of any kind built into the extension.
+- **Job Buddy makes no network requests by default.** If you enable Cloud
+  Backup, your profile is synced directly between your browser and your
+  own Google Drive account using Google's secure OAuth and the narrow
+  `drive.appdata` scope. Job Buddy does not operate its own servers and
+  never stores your data. There is no backend, no analytics, and no
+  tracking SDKs of any kind built into the extension.
 - **Your data is never transmitted, sold, or shared.** Nothing you enter
-  into your profile leaves your device through Job Buddy.
-- **Your data is not synced through your Google account.** Job Buddy uses
-  your browser's local, on-device storage only — not Chrome's account-sync
-  storage. Your profile will not automatically appear on other devices or
-  browsers. If you want to move your profile to another device, you can do
-  so manually using the Export Profile / Import Profile feature in
-  Settings, which produces a JSON file under your control.
+  into your profile leaves your device through Job Buddy except, if you
+  explicitly enable it, the direct browser-to-Drive sync described under
+  Cloud Backup below.
+- **Your data is not synced through your Google account by default.** Job
+  Buddy uses your browser's local, on-device storage only — not Chrome's
+  account-sync storage. Your profile will not automatically appear on
+  other devices or browsers unless you opt in to Cloud Backup. If you
+  prefer to move your profile manually, you can do so using the Export
+  Profile / Import Profile feature in Settings, which produces a JSON
+  file under your control.
 - **The Resume Import feature does not retain your file.** When you use
   Import Resume to extract details from an existing PDF or DOCX resume,
   only the extracted text is used, temporarily, to help you populate your
@@ -101,12 +107,43 @@ for — without re-filling or changing any fields it already handled. No
 new fields are detected, no new scans are run, and the behavior is
 confined to fields from the Auto Fill run you started yourself.
 
+## Cloud Backup (optional)
+
+Cloud Backup is an opt-in feature in Settings that lets you sync your
+Job Buddy profile to your own Google Drive account so you can restore it
+on another browser or after reinstalling the extension. It is off until
+you explicitly connect a Google account.
+
+When enabled:
+
+- Authentication uses Google's standard OAuth flow. Job Buddy requests
+  only the `https://www.googleapis.com/auth/drive.appdata` scope, which
+  grants access to a dedicated, hidden application-data folder inside
+  your Google Drive — not your general Drive contents.
+- The backup is stored as a single JSON file (`job-buddy-profile.json`)
+  in that hidden `appDataFolder`. This folder is **not visible in the
+  regular Google Drive UI**; only the Job Buddy extension, signed in
+  with the same Google account, can read or write files inside it.
+- Sync is one-directional: your local profile is the source of truth.
+  After a successful save in the Options page, Job Buddy uploads the
+  latest profile to your Drive. Drive never overwrites your local data
+  silently — restoring from Drive is always explicit, via the restore
+  dialog shown when you connect.
+- Your OAuth token is stored only in your browser's local extension
+  storage and is never included in any export bundle. Disconnecting from
+  Settings revokes the token and, at your choice, deletes the backup
+  file from your Drive.
+- Job Buddy never sends any of your data to a server operated by us or
+  by any third party. The connection is strictly between your browser
+  and Google's Drive API.
+
 ## Permissions Job Buddy requests, and why
 
 | Permission | Why it's needed |
 |---|---|
 | `storage` | To save your profile, learned field mappings, and related settings in your browser's local storage. |
 | `tabs` | To identify the tab you're currently viewing and send it the Auto Fill / Clear / Status commands when you click the corresponding buttons in the popup. Not used to read your browsing history or activity across tabs. |
+| `identity` | To perform the Google OAuth flow if you opt in to Cloud Backup. Used only when you click Connect Google Drive in Settings; never used otherwise. |
 | Content script on all pages | To allow the Auto Fill and field-picker features to work on whatever job application page you're using, only when you trigger them. |
 
 Job Buddy does not request access to your browsing history, bookmarks,
