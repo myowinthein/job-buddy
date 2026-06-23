@@ -1,5 +1,5 @@
 import type { Profile } from '../types/profile';
-import type { LearnedMappings, ApplicationEntry } from '../types/storage';
+import type { LearnedMappings, ApplicationEntry, DriveBackupState } from '../types/storage';
 
 // Wraps chrome.storage.local.get so that the returned Promise always resolves.
 // A synchronous throw (e.g. permission missing) or a runtime error in the
@@ -130,4 +130,41 @@ export async function saveLearnedMapping(
   if (!mappings[domain]) mappings[domain] = {};
   mappings[domain][normalizedSignal] = fieldPath;
   await saveLearmedMappings(mappings);
+}
+
+// ── Google Drive Cloud Backup ────────────────────────────────────────────────
+// Token and backup state live in chrome.storage.local only; never included
+// in profile export bundles (privacy boundary).
+
+export async function getDriveToken(): Promise<string | null> {
+  const result = await storageGet('driveToken');
+  return (result.driveToken as string) ?? null;
+}
+
+export async function saveDriveToken(token: string): Promise<void> {
+  await storageSet({ driveToken: token });
+}
+
+export async function clearDriveToken(): Promise<void> {
+  await storageRemove(['driveToken']);
+}
+
+const DEFAULT_DRIVE_STATE: DriveBackupState = {
+  fileId:      null,
+  lastSynced:  null,
+  pendingSync: false,
+  error:       null,
+};
+
+export async function getDriveBackupState(): Promise<DriveBackupState> {
+  const result = await storageGet('driveBackupState');
+  return (result.driveBackupState as DriveBackupState) ?? { ...DEFAULT_DRIVE_STATE };
+}
+
+export async function saveDriveBackupState(state: DriveBackupState): Promise<void> {
+  await storageSet({ driveBackupState: state });
+}
+
+export async function clearDriveBackupState(): Promise<void> {
+  await storageRemove(['driveBackupState']);
 }
