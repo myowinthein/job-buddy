@@ -34,7 +34,7 @@ Four entrypoints in `entrypoints/`:
 |---|---|
 | `background.ts` | Service worker — handles `OPEN_OPTIONS` from content script (picker "Go to Profile →") |
 | `content.ts` | Content script matched to `*://*/*`; listens for `AUTOFILL_SCAN` / `AUTOFILL_FILL` / `CLEAR` / `GET_STATUS` / `GET_DEBUG_SESSION` runtime messages and delegates to `src/autofill/` |
-| `popup/` | Browser action popup — profile completion %, `Auto Fill ✨` button, debug panel `?` icon (only after a run), Clear Highlights, result summary, AI key nudge. Chrome MV3 destroys the popup on close, so React state is lost; on mount the popup sends `GET_STATUS` to the content script and restores the success view from the content script's `lastResult` |
+| `popup/` | Browser action popup — profile completion %, `Fill Form ✨` button, result summary, AI key nudge. Chrome MV3 destroys the popup on close, so React state is lost; on mount the popup sends `GET_STATUS` to the content script and restores the success view from the content script's `lastResult`. Debug panel is hidden — revealed by **Shift+click the Job Buddy logo** (only available after a fill run). |
 | `options/` | Full-page profile editor (9 profile sections + Import Resume + Settings) |
 
 Storage is `chrome.storage.local` (not `sync`). The wrapper in `src/utils/storage.ts` swallows errors and always resolves, so callers don't need rejection handling. `clearAllStorage()` removes profile, learnedMappings, and applicationHistory (used by Settings → Reset). Gemini keys are wiped separately via `clearGeminiSettings()`.
@@ -348,6 +348,8 @@ parser.ts  — FIELD_DEFS for the Resume Import review screen; generateDiff
 
 Retry on network failure jumps directly to `'sending'` step reusing the already-read `fileDataUri` — do not force the user to re-upload.
 
+**429 model fallback** — `extractFromResume` does not throw immediately on a 429. It silently retries every model in `GEMINI_MODEL_PRIORITY` (starting from the user's configured model, then falling through the rest) before surfacing a `rate_limit` error. Only when all models return 429 does the error reach the UI. Other non-2xx responses (401/403, network failures) still throw immediately without fallback.
+
 **All AI failures must be silent.** Never block, never throw to the caller, never show a generic network error. Catch and degrade gracefully.
 
 ---
@@ -392,6 +394,19 @@ Validation and completion logic (`src/utils/`) is the highest-value target when 
 
 ---
 
+## Environment Variables
+
+`VITE_GOOGLE_CLIENT_ID` is required for Google Drive sync (Phase 2). WXT/Vite loads it automatically from the correct file per environment:
+
+| Command | File loaded |
+|---|---|
+| `pnpm dev` | `.env.development` |
+| `pnpm build` / `pnpm zip` | `.env.production` |
+
+Both files are gitignored — contributors must create their own from `.env.example`. **Never hardcode client IDs in source files.** Access the value in code via `import.meta.env.VITE_GOOGLE_CLIENT_ID`.
+
+---
+
 ## Development Workflow
 
 ```bash
@@ -411,3 +426,14 @@ Load in Chrome: `chrome://extensions` → "Load unpacked" → select `.output/ch
 
 - **Application history** — `applicationHistory` storage key and `ApplicationEntry` type exist; the key is included in profile export/import bundles, but no dedup or UI consumes it.
 - **Custom file-upload widgets** — only visible standard `<input type="file">` works today. ATS widgets that hide the input behind a styled button (Greenhouse, Lever's dropzone, Workday wizard, Fabric/MUI components) are deliberately out of scope — see § CV file upload.
+- **Cloud Backup (Phase 2)** — Google Drive backup via `drive.appdata` scope. Spec is fully defined; implementation not started. Key design decisions:
+  - OAuth via `chrome.identity.launchWebAuthFlow()` with client ID `161140685330-7t2bq6nb49754kpdl5g9lh6e6p9prkjr.apps.googleusercontent.com`
+  - Single file `job-buddy-profile.json` in `appDataFolder` (invisible in Drive UI), wrapped as `{ lastModified, profile }`
+  - Local-first: `chrome.storage.local` remains source of truth; Drive is backup only
+  - Sync triggered on every profile save (not background polling)
+  - Conflict resolution: last-write-wins after user confirmation (local vs Drive timestamps)
+  - Token stored in `chrome.storage.local`; never exposed in UI
+  - Reset dialog gets three options: "This device only" / "Everywhere" / "Cancel"
+  - Disconnect offers "Keep Drive Backup" or "Delete Drive Backup"; both revoke OAuth via `https://oauth2.googleapis.com/revoke` + `chrome.identity.removeCachedAuthToken()`
+  - New file: `src/utils/driveSync.ts`; new Settings subsection "Cloud Backup" above the legal footer
+  - Bidirectional sync / background polling explicitly deferred to Phase 3
