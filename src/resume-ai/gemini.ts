@@ -134,3 +134,92 @@ function parseResponse(text: string): Partial<Profile> {
     throw importError('parse', "Couldn't read the response. Try again.");
   }
 }
+
+// ── AI autofill field resolution ─────────────────────────────────────────────
+
+export interface AIFieldPayload {
+  fieldId:      string;
+  type:         'text' | 'radio' | 'checkbox';
+  label:        string;
+  placeholder?: string;
+  name?:        string;
+  nearbyText?:  string;
+  options?:     string[];
+}
+
+export interface AIFieldResponse {
+  fieldId:          string;
+  profilePath?:     string | null;
+  selectedOption?:  string | null;
+  selectedOptions?: string[] | null;
+  confidence:       'high' | 'low' | null;
+}
+
+const AUTOFILL_SYSTEM_PROMPT = `You are an autofill assistant for a job application tool.
+
+Given a list of form fields and the user's profile JSON, return ONLY a valid JSON array. No markdown, no explanation — raw JSON only.
+
+Response format per field type:
+- text:     { "fieldId": "...", "profilePath": "dot.path.into.profile | null", "confidence": "high|low|null" }
+- radio:    { "fieldId": "...", "selectedOption": "exact option label | null", "confidence": "high|low|null" }
+- checkbox: { "fieldId": "...", "selectedOptions": ["label1", ...] or [], "confidence": "high|low|null" }
+
+Rules:
+- Never invent information not explicitly present in the profile
+- For text: return a dot-notation path into the profile object, or null
+- For radio: return the exact option label that best matches the profile, or null
+- For checkbox: return an array of matching option labels (may be empty)
+- confidence "high" = certain; "low" = plausible; null = no match
+- When uncertain, return null / empty rather than guessing`;
+
+export async function resolveFieldsWithAI(
+  apiKey: string,
+  model: string,
+  fields: AIFieldPayload[],
+  profile: object,
+): Promise<AIFieldResponse[]> {
+  const body = JSON.stringify({ fields, profile }, null, 2);
+
+  let resp: Response;
+  try {
+    resp = await fetch(endpoint(model, apiKey), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: `${AUTOFILL_SYSTEM_PROMPT}\n\n${body}` }] }],
+        generationConfig: { temperature: 0 },
+      }),
+    });
+  } catch {
+    throw new Error('Network error during AI autofill');
+  }
+
+  if (!resp.ok) throw new Error(`AI autofill request failed: ${resp.status}`);
+
+  let data: unknown;
+  try { data = await resp.json(); } catch { return []; }
+
+  const text = (data as { candidates?: { content?: { parts?: { text?: string }[] } }[] })
+    ?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+
+  return parseAutofillResponse(text);
+}
+
+function parseAutofillResponse(text: string): AIFieldResponse[] {
+  const cleaned = text
+    .replace(/^```(?:json)?\s*/m, '')
+    .replace(/\s*```\s*$/m, '')
+    .trim();
+
+  let parsed: unknown;
+  try { parsed = JSON.parse(cleaned); } catch { return []; }
+  if (!Array.isArray(parsed)) return [];
+
+  return (parsed as unknown[]).filter((item): item is AIFieldResponse => {
+    if (typeof item !== 'object' || item === null) return false;
+    const r = item as Record<string, unknown>;
+    if (typeof r.fieldId !== 'string' || !r.fieldId) return false;
+    if (r.confidence !== 'high' && r.confidence !== 'low' && r.confidence !== null) return false;
+    return true;
+  });
+}

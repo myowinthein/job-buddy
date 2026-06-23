@@ -147,3 +147,19 @@ export async function fillFileField(
     return false;
   }
 }
+
+const nativeCheckedSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked')?.set;
+
+export function fillRadioInput(element: HTMLInputElement): void {
+  if (nativeCheckedSetter) nativeCheckedSetter.call(element, true);
+  else element.checked = true;
+  element.dispatchEvent(new Event('change', { bubbles: true }));
+  element.dispatchEvent(new Event('input',  { bubbles: true }));
+}
+
+export function fillCheckboxInput(element: HTMLInputElement): void {
+  if (nativeCheckedSetter) nativeCheckedSetter.call(element, true);
+  else element.checked = true;
+  element.dispatchEvent(new Event('change', { bubbles: true }));
+  element.dispatchEvent(new Event('input',  { bubbles: true }));
+}
