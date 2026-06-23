@@ -16,6 +16,8 @@ import { LinksSection } from '@/src/components/options/LinksSection';
 import { DocumentsSection } from '@/src/components/options/DocumentsSection';
 import { SettingsSection } from '@/src/components/options/SettingsSection';
 import { ResumeImportSection } from '@/src/components/options/ResumeImportSection';
+import { syncProfileToDrive } from '@/src/utils/driveSync';
+import { useToast } from '@/src/components/ui/Toast';
 
 type SectionId =
   | 'personal'
@@ -65,6 +67,7 @@ function focusFirstEmpty(container: Element | null) {
 }
 
 function App() {
+  const { showToast } = useToast();
   const [profile, setProfile] = useState<Partial<Profile>>({});
   const [activeSection, setActiveSection] = useState<SectionId>(readSection);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(readSidebar);
@@ -183,14 +186,22 @@ function App() {
     const merged = { ...profile, ...updates } as Profile;
     await saveProfile(merged);
     setProfile(merged);
+    let synced: Profile = merged;
     try {
       const derived = calculateDerivedFields(merged);
       const withDerived: Profile = { ...merged, derived };
       await saveProfile(withDerived);
       setProfile(withDerived);
+      synced = withDerived;
     } catch (err) {
       console.error('[Job Buddy] Failed to write derived fields:', err);
     }
+    // Fire-and-forget Drive sync. Never blocks the local save flow.
+    void syncProfileToDrive(synced).then((res) => {
+      if (!res.success && res.errorCode) {
+        showToast('warning', 'Profile saved. Drive sync failed — will retry.');
+      }
+    }).catch(() => { /* syncProfileToDrive never throws, but be defensive */ });
   };
 
   const handleNavigate = (sectionId: string) => {
