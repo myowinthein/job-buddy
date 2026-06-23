@@ -117,6 +117,10 @@ export async function saveGeminiModel(model: string): Promise<void> {
   await storageSet({ geminiModel: model });
 }
 
+export async function clearGeminiSettings(): Promise<void> {
+  await storageRemove(['geminiApiKey', 'geminiModel']);
+}
+
 export async function saveLearnedMapping(
   domain: string,
   normalizedSignal: string,

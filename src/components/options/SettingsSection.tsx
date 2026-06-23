@@ -13,13 +13,13 @@ import {
   saveGeminiApiKey,
   getGeminiModel,
   saveGeminiModel,
+  clearGeminiSettings,
 } from '@/src/utils/storage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
 import type { InvalidField } from '@/src/utils/profileValidator';
 import { useToast } from '@/src/components/ui/Toast';
 import { validateApiKey } from '@/src/resume-ai/gemini';
-import { MODEL_DISPLAY_NAMES } from '@/src/resume-ai/types';
 
 interface Props {
   onImportComplete: () => void;
@@ -115,6 +115,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     if (!key.trim()) {
       setGeminiKeyStatus('idle');
       setGeminiModel(null);
+      void clearGeminiSettings();
       return;
     }
     setGeminiKeyStatus('validating');
@@ -314,7 +315,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       <section className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
         <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">AI Features</h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Enable AI-powered resume import using the Gemini API.
+          Enable AI-powered features using your own API key.
         </p>
 
         <label htmlFor="gemini-api-key" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -336,19 +337,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         {geminiKeyStatus === 'validating' && (
           <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Validating…</p>
         )}
-        {geminiKeyStatus === 'valid' && geminiModel && (
-          <p className="mt-1.5 text-xs text-green-600 dark:text-green-400">
-            Using {MODEL_DISPLAY_NAMES[geminiModel as keyof typeof MODEL_DISPLAY_NAMES] ?? geminiModel}
-            {' · '}
-            <button
-              type="button"
-              className="text-blue-600 dark:text-blue-400 underline"
-              title="Manual model selection coming soon"
-              onClick={() => {}}
-            >
-              Change
-            </button>
-          </p>
+        {geminiKeyStatus === 'valid' && (
+          <p className="mt-1.5 text-xs text-green-600 dark:text-green-400">API key saved.</p>
         )}
         {geminiKeyStatus === 'invalid' && (
           <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">
@@ -364,16 +354,16 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             <li>
               Visit{' '}
               <a
-                href="https://aistudio.google.com"
+                href="https://aistudio.google.com/api-keys"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 dark:text-blue-400 underline"
               >
-                aistudio.google.com
+                aistudio.google.com/api-keys
               </a>
             </li>
-            <li>Create an API key.</li>
-            <li>Paste it here.</li>
+            <li>Click "Create API key"</li>
+            <li>Copy the key listed under "API Key" and paste it here</li>
           </ol>
         </details>
       </section>
