@@ -140,8 +140,23 @@ export function Sidebar({
         })}
       </nav>
 
-      {/* Settings — separated by a divider */}
-      <div className={`border-t border-gray-200 dark:border-gray-800 pt-1 pb-0 ${collapsed ? 'flex justify-center px-2' : 'px-0'}`}>
+      {/* Resume AI + Settings — separated by a divider */}
+      <div className={`border-t border-gray-200 dark:border-gray-800 pt-1 pb-0 ${collapsed ? 'flex flex-col items-center px-2 gap-0' : 'px-0'}`}>
+        <button
+          type="button"
+          onClick={() => onSelect('resume')}
+          title={collapsed ? 'Auto-fill from Resume' : undefined}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+            activeSection === 'resume'
+              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+          }`}
+        >
+          <span className="w-5 text-center shrink-0 leading-none">✨</span>
+          {!collapsed && (
+            <span className="text-sm font-medium truncate">Auto-fill from Resume</span>
+          )}
+        </button>
         <button
           type="button"
           onClick={() => onSelect('settings')}
