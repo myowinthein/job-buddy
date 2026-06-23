@@ -1,3 +1,6 @@
+import { getProfile, getDriveBackupState, getDriveToken } from '@/src/utils/storage';
+import { syncProfileToDrive } from '@/src/utils/driveSync';
+
 export default defineBackground(() => {
   // Content scripts cannot reliably call chrome.runtime.openOptionsPage() in
   // every browser context; routing through the service worker is the
@@ -12,4 +15,22 @@ export default defineBackground(() => {
       return true; // async response
     }
   });
+
+  // On browser startup, retry any deferred Drive upload. Silent — failures
+  // are captured in driveBackupState by syncProfileToDrive itself.
+  chrome.runtime.onStartup.addListener(() => {
+    void retryPendingDriveSync();
+  });
 });
+
+async function retryPendingDriveSync(): Promise<void> {
+  try {
+    const [state, token] = await Promise.all([getDriveBackupState(), getDriveToken()]);
+    if (!state.pendingSync || !token) return;
+    const profile = await getProfile();
+    if (!profile) return;
+    await syncProfileToDrive(profile);
+  } catch {
+    /* never throw from startup handler */
+  }
+}
