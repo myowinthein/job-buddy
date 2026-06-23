@@ -44,6 +44,7 @@ export async function extractFromResume(
   fileBase64: string,
   mimeType: string,
   currentProfile: Partial<Profile>,
+  signal?: AbortSignal,
 ): Promise<Partial<Profile>> {
   const prompt = buildPrompt(JSON.stringify(currentProfile, null, 2));
 
@@ -61,8 +62,10 @@ export async function extractFromResume(
         }],
         generationConfig: { temperature: 0 },
       }),
+      signal,
     });
-  } catch {
+  } catch (err) {
+    if ((err as { name?: string })?.name === 'AbortError') throw err;
     throw importError('network', 'Connection failed. Check your internet.');
   }
 
