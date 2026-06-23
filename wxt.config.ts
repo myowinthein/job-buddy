@@ -6,7 +6,11 @@ export default defineConfig({
   manifest: {
     name: 'Job Buddy',
     description: 'Automatically fill job application forms using your saved profile data.',
-    permissions: ['storage', 'tabs'],
-    host_permissions: ['https://generativelanguage.googleapis.com/*'],
+    permissions: ['storage', 'tabs', 'identity'],
+    host_permissions: [
+      'https://generativelanguage.googleapis.com/*',
+      'https://www.googleapis.com/*',
+      'https://oauth2.googleapis.com/*',
+    ],
   },
 });
