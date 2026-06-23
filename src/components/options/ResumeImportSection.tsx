@@ -498,13 +498,17 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
                 <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
                   Review Suggestions
                 </h3>
-                <p className="text-xs mt-0.5">
-                  <span className="text-green-600 dark:text-green-400">New {newFields.length}</span>
-                  {' · '}
-                  <span className="text-yellow-600 dark:text-yellow-500">Conflicts {conflicts.length}</span>
-                  {' · '}
-                  <span className="text-gray-400 dark:text-gray-500">Unchanged {unchanged.length}</span>
-                </p>
+                {(newFields.length > 0 || conflicts.length > 0) && (
+                  <p className="text-xs mt-0.5">
+                    {newFields.length > 0 && (
+                      <span className="text-green-600 dark:text-green-400">New {newFields.length}</span>
+                    )}
+                    {newFields.length > 0 && conflicts.length > 0 && ' · '}
+                    {conflicts.length > 0 && (
+                      <span className="text-yellow-600 dark:text-yellow-500">Conflicts {conflicts.length}</span>
+                    )}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 {newFields.length > 0 && (
@@ -540,7 +544,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
                         {section}
                       </h4>
                       <div className="space-y-1.5">
-                        {fields.map((change) => (
+                        {fields.filter((c) => c.status !== 'unchanged').map((change) => (
                           <FieldRow
                             key={change.id}
                             change={change}
@@ -556,7 +560,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
 
               {newFields.length === 0 && conflicts.length === 0 && (
                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">
-                  No new data was found in the resume. Your profile is already up to date.
+                  No new information found in your resume.
                 </p>
               )}
             </div>
