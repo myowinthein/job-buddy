@@ -12,6 +12,19 @@ const MAX_FILE_BYTES  = 10 * 1024 * 1024; // 10 MB
 const LONG_WAIT_MS    = 8_000;
 const FILE_CHANGE_ID  = '__cv_file__';
 
+// Matches sidebar section order; used to group review fields
+const SECTION_ORDER = [
+  'Personal',
+  'Address',
+  'Salary',
+  'Work Authorization',
+  'Work History',
+  'Education',
+  'Languages',
+  'Links',
+  'Documents',
+];
+
 const PROGRESS_STEPS: { id: ImportProgressStep; label: string }[] = [
   { id: 'reading',    label: 'Reading file…' },
   { id: 'sending',    label: 'Sending to AI…' },
@@ -485,126 +498,61 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
                 <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
                   Review Suggestions
                 </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  {newFields.length} new · {conflicts.length} conflict{conflicts.length !== 1 ? 's' : ''} · {unchanged.length} unchanged
+                <p className="text-xs mt-0.5">
+                  <span className="text-green-600 dark:text-green-400">New {newFields.length}</span>
+                  {' · '}
+                  <span className="text-yellow-600 dark:text-yellow-500">Conflicts {conflicts.length}</span>
+                  {' · '}
+                  <span className="text-gray-400 dark:text-gray-500">Unchanged {unchanged.length}</span>
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setScreen('dialog')}
-                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none transition-colors"
-              >
-                ×
-              </button>
+              <div className="flex items-center gap-3">
+                {newFields.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={acceptAllNew}
+                    className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Accept All New Fields
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setScreen('dialog')}
+                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none transition-colors"
+                >
+                  ×
+                </button>
+              </div>
             </div>
 
-            {/* Scrollable body */}
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-8">
-
-              {/* ── New fields ─────────────────────────────────────────────── */}
-              {newFields.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-semibold text-green-700 dark:text-green-400">
-                      New Fields ({newFields.length})
-                    </h4>
-                    <button
-                      type="button"
-                      onClick={acceptAllNew}
-                      className="text-xs text-blue-600 dark:text-blue-400 underline hover:no-underline"
-                    >
-                      Accept all new fields
-                    </button>
-                  </div>
-                  <div className="space-y-2">
-                    {newFields.map((change) => (
-                      <label
-                        key={change.id}
-                        className="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-900/15 rounded-lg border border-green-200 dark:border-green-800 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={change.accepted}
-                          onChange={() => toggleAccepted(change.id)}
-                          className="mt-0.5 shrink-0 accent-green-600"
-                        />
-                        <div className="min-w-0">
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
-                            {change.section} · {change.label}
-                          </span>
-                          <MultilineValue value={change.displaySuggested} className="mt-0.5 text-sm text-gray-900 dark:text-gray-100" />
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* ── Conflicts ──────────────────────────────────────────────── */}
-              {conflicts.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold text-yellow-700 dark:text-yellow-400 mb-3">
-                    ⚠ Conflicts ({conflicts.length})
-                  </h4>
-                  <div className="space-y-3">
-                    {conflicts.map((change) => (
-                      <div
-                        key={change.id}
-                        className="p-3 bg-yellow-50 dark:bg-yellow-900/15 rounded-lg border border-yellow-200 dark:border-yellow-800"
-                      >
-                        <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2">
-                          {change.section} · {change.label}
-                        </p>
-                        <label className="flex items-start gap-2 mb-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name={change.id}
-                            checked={!change.accepted}
-                            onChange={() => setConflictChoice(change.id, false)}
-                            className="mt-0.5 shrink-0"
+            {/* Scrollable body — fields grouped by sidebar section */}
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              <div className="space-y-6">
+                {SECTION_ORDER.map((section) => {
+                  const fields = changes.filter((c) => c.section === section);
+                  if (fields.length === 0) return null;
+                  // Only render the section if it has at least one actionable field
+                  if (!fields.some((f) => f.status !== 'unchanged')) return null;
+                  return (
+                    <div key={section}>
+                      <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                        {section}
+                      </h4>
+                      <div className="space-y-1.5">
+                        {fields.map((change) => (
+                          <FieldRow
+                            key={change.id}
+                            change={change}
+                            onToggle={toggleAccepted}
+                            onConflictChoice={setConflictChoice}
                           />
-                          <div className="min-w-0">
-                            <span className="text-xs text-gray-500 dark:text-gray-400">Keep current</span>
-                            <MultilineValue value={change.displayCurrent} className="text-sm text-gray-700 dark:text-gray-300" />
-                          </div>
-                        </label>
-                        <label className="flex items-start gap-2 cursor-pointer">
-                          <input
-                            type="radio"
-                            name={change.id}
-                            checked={change.accepted}
-                            onChange={() => setConflictChoice(change.id, true)}
-                            className="mt-0.5 shrink-0"
-                          />
-                          <div className="min-w-0">
-                            <span className="text-xs text-gray-500 dark:text-gray-400">Use suggested</span>
-                            <MultilineValue value={change.displaySuggested} className="text-sm font-medium text-gray-900 dark:text-gray-100" />
-                          </div>
-                        </label>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* ── Unchanged / not found ───────────────────────────────────── */}
-              {unchanged.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-400 dark:text-gray-500 mb-2">
-                    — Unchanged / Not Found ({unchanged.length}) —
-                  </h4>
-                  <div className="space-y-1">
-                    {unchanged.map((change) => (
-                      <div key={change.id} className="flex gap-2 text-xs text-gray-400 dark:text-gray-600 py-0.5">
-                        <span className="shrink-0">{change.section} · {change.label}:</span>
-                        <span className="italic">
-                          {change.displaySuggested ? 'same as current' : 'not found in resume'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                    </div>
+                  );
+                })}
+              </div>
 
               {newFields.length === 0 && conflicts.length === 0 && (
                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">
@@ -664,7 +612,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
   );
 }
 
-// ── Helper sub-component ──────────────────────────────────────────────────────
+// ── Helper sub-components ─────────────────────────────────────────────────────
 
 function MultilineValue({ value, className }: { value: string; className?: string }) {
   const lines = value.split('\n').filter(Boolean);
@@ -678,5 +626,73 @@ function MultilineValue({ value, className }: { value: string; className?: strin
         </li>
       ))}
     </ul>
+  );
+}
+
+function FieldRow({
+  change,
+  onToggle,
+  onConflictChoice,
+}: {
+  change: FieldChange;
+  onToggle: (id: string) => void;
+  onConflictChoice: (id: string, useSuggested: boolean) => void;
+}) {
+  if (change.status === 'new') {
+    return (
+      <label className="flex items-start gap-3 p-2.5 bg-green-50 dark:bg-green-900/15 border border-green-200 dark:border-green-800 rounded-lg cursor-pointer">
+        <input
+          type="checkbox"
+          checked={change.accepted}
+          onChange={() => onToggle(change.id)}
+          className="mt-0.5 shrink-0 accent-green-600"
+        />
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">{change.label}</p>
+          <MultilineValue value={change.displaySuggested} className="text-sm text-gray-900 dark:text-gray-100" />
+        </div>
+      </label>
+    );
+  }
+
+  if (change.status === 'conflict') {
+    return (
+      <div className="p-2.5 bg-yellow-50 dark:bg-yellow-900/15 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{change.label}</p>
+        <label className="flex items-start gap-2 mb-2 cursor-pointer">
+          <input
+            type="radio"
+            name={change.id}
+            checked={!change.accepted}
+            onChange={() => onConflictChoice(change.id, false)}
+            className="mt-0.5 shrink-0"
+          />
+          <div className="min-w-0">
+            <span className="text-xs text-gray-400 dark:text-gray-500">Keep current</span>
+            <MultilineValue value={change.displayCurrent} className="text-sm text-gray-700 dark:text-gray-300" />
+          </div>
+        </label>
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input
+            type="radio"
+            name={change.id}
+            checked={change.accepted}
+            onChange={() => onConflictChoice(change.id, true)}
+            className="mt-0.5 shrink-0"
+          />
+          <div className="min-w-0">
+            <span className="text-xs text-gray-400 dark:text-gray-500">Use suggested</span>
+            <MultilineValue value={change.displaySuggested} className="text-sm font-medium text-gray-900 dark:text-gray-100" />
+          </div>
+        </label>
+      </div>
+    );
+  }
+
+  // unchanged — muted label, no interaction
+  return (
+    <div className="flex items-center px-2.5 py-1">
+      <span className="text-xs text-gray-400 dark:text-gray-500">{change.label}</span>
+    </div>
   );
 }

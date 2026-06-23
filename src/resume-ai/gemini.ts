@@ -30,10 +30,13 @@ export async function validateApiKey(apiKey: string): Promise<KeyValidationResul
     }
 
     if (resp.ok) return { valid: true, model: model as GeminiModel };
+    // 400/401/403 = key rejected; stop immediately
     if (resp.status === 400 || resp.status === 401 || resp.status === 403) {
       return { valid: false, error: 'API key invalid', keyInvalid: true };
     }
-    // 404 = model not available for this key; try next
+    // 404 = model unavailable for this account; try next
+    if (resp.status === 404) continue;
+    // any other non-200 = temporary or model-specific failure; try next
   }
   return { valid: false, error: 'No supported model available for this key', keyValidNoModel: true };
 }
