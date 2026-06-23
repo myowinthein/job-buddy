@@ -1,3 +1,5 @@
+import { FileUp } from 'lucide-react';
+
 interface Section {
   id: string;
   label: string;
@@ -145,16 +147,18 @@ export function Sidebar({
         <button
           type="button"
           onClick={() => onSelect('resume')}
-          title={collapsed ? 'Auto-fill from Resume' : undefined}
+          title={collapsed ? 'Import Resume' : undefined}
           className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
             activeSection === 'resume'
               ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
           }`}
         >
-          <span className="w-5 text-center shrink-0 leading-none">✨</span>
+          <span className="shrink-0"><FileUp className="w-5 h-5" /></span>
           {!collapsed && (
-            <span className="text-sm font-medium truncate">Auto-fill from Resume</span>
+            <span className="text-sm font-medium flex-1 truncate">
+              Import Resume <span className="text-xs align-super">✨</span>
+            </span>
           )}
         </button>
         <button
