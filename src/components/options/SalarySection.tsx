@@ -204,7 +204,7 @@ export function SalarySection({ profile, onSave }: Props) {
           <button
             type="button"
             onClick={() => { setExpected((r) => [...r, emptyExpected()]); setNewEntryTick((t) => t + 1); }}
-            className="text-xs px-3 py-1.5 border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+            className="text-xs px-3 py-1.5 border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-colors"
           >
             + Add Entry
           </button>
@@ -247,7 +247,7 @@ export function SalarySection({ profile, onSave }: Props) {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          className="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
         >
           {saving ? 'Saving...' : 'Save Salary'}
         </button>

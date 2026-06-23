@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getProfile } from '@/src/utils/storage';
+import { Info, CheckCircle } from 'lucide-react';
+import { getProfile, getGeminiApiKey } from '@/src/utils/storage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import type { DebugSession } from '@/src/autofill/debug';
 import { DebugPanel } from './DebugPanel';
@@ -56,6 +57,7 @@ function App() {
   const [preFilledCount, setPreFilledCount] = useState(0);
   const [fillMode, setFillMode]             = useState<'merge' | 'overwrite'>('merge');
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const [hasGeminiKey,   setHasGeminiKey]   = useState<boolean | null>(null);
   const [debugSession,   setDebugSession]   = useState<DebugSession | null>(null);
   const [debugOpen,      setDebugOpen]      = useState(false);
 
@@ -110,6 +112,10 @@ function App() {
         if (r?.['jb:ai:nudge:dismissed']) setNudgeDismissed(true);
       });
     } catch { /* session storage unavailable — show nudge */ }
+  }, []);
+
+  useEffect(() => {
+    getGeminiApiKey().then((key) => setHasGeminiKey(!!key)).catch(() => setHasGeminiKey(false));
   }, []);
 
   const dismissNudge = () => {
@@ -204,30 +210,24 @@ function App() {
     <div className="w-[380px] p-5 font-sans bg-white dark:bg-gray-900">
       {/* Header */}
       <div className="flex items-center gap-2.5 mb-5">
-        <img src="/icon.svg" alt="Job Buddy" className="w-8 h-8 shrink-0" />
+        <img
+          src="/icon.svg"
+          alt="Job Buddy"
+          className="w-8 h-8 shrink-0"
+          onClick={(e) => { if (e.shiftKey && autofillState === 'success') openDebugPanel(); }}
+        />
         <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex-1">Job Buddy</h1>
-        {autofillState === 'success' && (
-          <button
-            type="button"
-            onClick={openDebugPanel}
-            title="Show autofill debug panel"
-            className="w-6 h-6 rounded-full border border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500 text-xs leading-none flex items-center justify-center"
-          >
-            ?
-          </button>
-        )}
       </div>
 
       {/* Completion indicator */}
       {loading ? (
         <div className="h-20 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse mb-4" />
       ) : isCoreComplete ? (
-        <div className="p-4 rounded-xl border mb-4 bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-800">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-lg font-bold text-green-700 dark:text-green-400">✓ Ready to Apply</span>
-          </div>
+        <div className="p-4 rounded-xl border mb-4 bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-800 flex flex-col items-center text-center">
+          <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400 mb-2" />
+          <span className="text-base font-bold text-green-700 dark:text-green-400">You're ready to apply!</span>
           {optionalFieldsRemaining > 0 && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {optionalFieldsRemaining} optional field{optionalFieldsRemaining !== 1 ? 's' : ''} available for richer autofill coverage
             </p>
           )}
@@ -262,7 +262,23 @@ function App() {
 
       {/* Autofill panel */}
       <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-        <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide mb-3">Autofill</p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide">Autofill</p>
+          {hasGeminiKey === false && (
+            <div className="relative group shrink-0">
+              <button
+                type="button"
+                onClick={goToSettingsKey}
+                className="flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400 active:scale-95 transition-colors"
+              >
+                <Info className="w-4 h-4" />
+              </button>
+              <div className="pointer-events-none absolute bottom-full right-0 z-50 mb-1.5 w-52 rounded-md bg-gray-800 dark:bg-gray-700 px-2 py-1.5 text-[11px] leading-snug text-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+                Currently filling manually. Add an AI key in Settings for better accuracy.
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Loading skeleton */}
         {loading ? (
@@ -319,13 +335,13 @@ function App() {
             <div className="flex gap-2">
               <button
                 onClick={handleCancelFill}
-                className="flex-1 py-2 px-3 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="flex-1 py-2 px-3 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-95 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmFill}
-                className="flex-1 py-2 px-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex-1 py-2 px-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 active:scale-95 transition-colors"
               >
                 Continue
               </button>
@@ -339,18 +355,18 @@ function App() {
             <button
               onClick={handleAutofill}
               disabled={autofillState === 'loading'}
-              className="w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors mb-2"
+              className="w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors mb-2"
             >
-              {autofillState === 'loading' ? 'Filling…' : 'Auto Fill ✨'}
+              {autofillState === 'loading' ? 'Filling…' : 'Fill Form ✨'}
             </button>
 
             {/* Undo — only visible after a fill has run in this session */}
             {autofillState === 'success' && (
               <button
                 onClick={handleUndo}
-                className="w-full py-2 px-4 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="w-full py-2 px-4 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-95 transition-colors"
               >
-                Undo Auto-fill
+                Undo
               </button>
             )}
 
@@ -361,7 +377,7 @@ function App() {
                   <button
                     type="button"
                     onClick={goToSettingsKey}
-                    className="underline font-medium hover:text-blue-900 dark:hover:text-blue-200"
+                    className="underline font-medium hover:text-blue-900 dark:hover:text-blue-200 active:scale-95"
                   >
                     Settings
                   </button>
@@ -370,7 +386,7 @@ function App() {
                 <button
                   type="button"
                   onClick={dismissNudge}
-                  className="shrink-0 text-blue-400 hover:text-blue-600 dark:text-blue-500 dark:hover:text-blue-300 text-base leading-none"
+                  className="shrink-0 text-blue-400 hover:text-blue-600 dark:text-blue-500 dark:hover:text-blue-300 text-base leading-none active:scale-95"
                 >
                   ×
                 </button>
@@ -452,7 +468,7 @@ function App() {
               <p className="mt-3 text-xs text-red-500 dark:text-red-400 text-center leading-snug">
                 Could not connect to page.
                 <br />
-                Try refreshing and clicking Auto Fill again.
+                Try refreshing and clicking Fill Form again.
               </p>
             )}
           </>
