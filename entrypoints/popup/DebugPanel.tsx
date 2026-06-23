@@ -1,5 +1,13 @@
 import type { DebugSession } from '@/src/autofill/debug';
 
+interface DriveStatus {
+  connected:   boolean;
+  hasToken:    boolean;
+  lastSynced:  string | null;
+  pendingSync: boolean;
+  error:       string | null;
+}
+
 const LAYER_LABEL: Record<string, string> = {
   learned:          'Learned',
   autocomplete:     'Autocomplete',
@@ -34,7 +42,15 @@ function StateDot({ state }: { state: string }) {
   );
 }
 
-export function DebugPanel({ session, onClose }: { session: DebugSession; onClose: () => void }) {
+export function DebugPanel({
+  session,
+  driveStatus,
+  onClose,
+}: {
+  session:      DebugSession;
+  driveStatus?: DriveStatus | null;
+  onClose:      () => void;
+}) {
   const aiByFieldId = new Map(session.ai.map((a) => [a.fieldId, a]));
 
   return (
@@ -60,6 +76,22 @@ export function DebugPanel({ session, onClose }: { session: DebugSession; onClos
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-5 text-xs">
+
+          {/* ── Drive Backup ────────────────────────────────────────────── */}
+          {driveStatus && (
+            <section>
+              <h4 className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
+                Drive Backup
+              </h4>
+              <div className="px-2 py-1.5 bg-gray-50 dark:bg-gray-800 rounded space-y-0.5 font-mono text-[10px] text-gray-600 dark:text-gray-400">
+                <div>connected={String(driveStatus.connected)}</div>
+                <div>token={driveStatus.hasToken ? 'present' : 'missing'}</div>
+                <div>lastSynced={driveStatus.lastSynced ?? '—'}</div>
+                <div>pendingSync={String(driveStatus.pendingSync)}</div>
+                <div>error={driveStatus.error ?? 'none'}</div>
+              </div>
+            </section>
+          )}
 
           {/* ── Stage 1 — Scanner ───────────────────────────────────────── */}
           <section>
