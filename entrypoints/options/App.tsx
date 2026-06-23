@@ -15,6 +15,7 @@ import { LanguagesSection } from '@/src/components/options/LanguagesSection';
 import { LinksSection } from '@/src/components/options/LinksSection';
 import { DocumentsSection } from '@/src/components/options/DocumentsSection';
 import { SettingsSection } from '@/src/components/options/SettingsSection';
+import { ResumeImportSection } from '@/src/components/options/ResumeImportSection';
 
 type SectionId =
   | 'personal'
@@ -26,6 +27,7 @@ type SectionId =
   | 'languages'
   | 'links'
   | 'documents'
+  | 'resume'
   | 'settings';
 
 // ── UI state persistence keys (sessionStorage) ───────────────────────────────
@@ -35,7 +37,7 @@ const UI_SCROLL_KEY   = (section: SectionId) => `jb:ui:scroll:${section}`;
 
 const VALID_SECTIONS = new Set<SectionId>([
   'personal', 'address', 'salary', 'workAuthorization',
-  'workHistory', 'education', 'languages', 'links', 'documents', 'settings',
+  'workHistory', 'education', 'languages', 'links', 'documents', 'resume', 'settings',
 ]);
 
 function readSection(): SectionId {
@@ -182,6 +184,12 @@ function App() {
     if (fieldId) setFocusTarget(fieldId);
   };
 
+  const handleGoToApiKey = () => {
+    skipAutoFocusRef.current = true;
+    setActiveSection('settings');
+    setFocusTarget('gemini-api-key');
+  };
+
   const completion = calculateCompletion(profile);
   const sectionCompletion = getSectionCompletion(profile);
 
@@ -217,6 +225,7 @@ function App() {
       case 'languages':         return <LanguagesSection key="languages" {...sectionProps} />;
       case 'links':             return <LinksSection key="links" {...sectionProps} />;
       case 'documents':         return <DocumentsSection key="documents" {...sectionProps} />;
+      case 'resume':            return <ResumeImportSection key="resume" profile={profile} onSave={handleSave} onGoToApiKey={handleGoToApiKey} />;
       case 'settings':          return <SettingsSection key="settings" onImportComplete={handleImportComplete} onResetComplete={() => { handleImportComplete(); setActiveSection('personal'); }} />;
     }
   };
@@ -243,7 +252,7 @@ function App() {
         />
         <main ref={mainRef} className="flex-1 overflow-y-auto p-8">
           {/* Settings uses max-w-none so long subtitles can flow to one line */}
-          <div className={activeSection === 'settings' ? 'max-w-none' : 'max-w-2xl'}>
+          <div className={activeSection === 'settings' || activeSection === 'resume' ? 'max-w-none' : 'max-w-2xl'}>
             {renderSection()}
           </div>
         </main>
