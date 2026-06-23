@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Profile } from '@/src/types/profile';
-import type { LearnedMappings, ApplicationEntry } from '@/src/types/storage';
+import type { LearnedMappings, ApplicationEntry, DriveBackupFile, DriveError } from '@/src/types/storage';
 import {
   getProfile,
   saveProfile,
@@ -20,6 +20,13 @@ import { validateImportedProfile } from '@/src/utils/profileValidator';
 import type { InvalidField } from '@/src/utils/profileValidator';
 import { useToast } from '@/src/components/ui/Toast';
 import { validateApiKey, checkApiKey } from '@/src/resume-ai/gemini';
+import {
+  getFullDriveState,
+  connectDrive,
+  disconnectDrive,
+  syncProfileToDrive,
+  overwriteDriveWithLocal,
+} from '@/src/utils/driveSync';
 
 const DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite';
 
@@ -78,6 +85,25 @@ function mergeProfiles(current: Partial<Profile>, imported: Partial<Profile>): P
   return mergeValues(current, imported) as Partial<Profile>;
 }
 
+// ── Drive timestamp formatter ────────────────────────────────────────────────
+// Renders an ISO timestamp as "Jun 24, 2026 · 3:42 PM" in the user's locale.
+function fmtDriveTimestamp(iso: string | null): string {
+  if (!iso) return 'Not synced yet';
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return 'Not synced yet';
+    return d.toLocaleString(undefined, {
+      year:   'numeric',
+      month:  'short',
+      day:    'numeric',
+      hour:   'numeric',
+      minute: '2-digit',
+    });
+  } catch {
+    return 'Not synced yet';
+  }
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
@@ -101,6 +127,22 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const geminiDebounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const probeIdRef         = useRef(0);
 
+  // ── Cloud Backup state ───────────────────────────────────────────────────────
+  const [driveState, setDriveState] = useState<{
+    connected:   boolean;
+    lastSynced:  string | null;
+    pendingSync: boolean;
+    error:       DriveError;
+  }>({ connected: false, lastSynced: null, pendingSync: false, error: null });
+  const [driveConnecting,        setDriveConnecting]        = useState(false);
+  const [driveSyncing,           setDriveSyncing]           = useState(false);
+  const [driveDisconnectDialog,  setDriveDisconnectDialog]  = useState(false);
+  const [driveRestoreCase,       setDriveRestoreCase]       = useState<'empty' | 'conflict' | null>(null);
+  const [driveRestoreData,       setDriveRestoreData]       = useState<DriveBackupFile | null>(null);
+  const [driveLocalProfile,      setDriveLocalProfile]      = useState<Partial<Profile> | null>(null);
+  const [driveRestoreBusy,       setDriveRestoreBusy]       = useState(false);
+  const [resetScope,             setResetScope]             = useState<'device' | 'everywhere'>('device');
+
   useEffect(() => {
     Promise.all([getGeminiApiKey(), getGeminiModel()]).then(([key, model]) => {
       if (key) {
@@ -109,6 +151,17 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         setGeminiKeyStatus('valid');
       }
     });
+  }, []);
+
+  // ── Cloud Backup — load state and listen for cross-component updates ────────
+  useEffect(() => {
+    const load = () => {
+      void getFullDriveState().then(setDriveState).catch(() => { /* silent */ });
+    };
+    load();
+    const handler = () => load();
+    window.addEventListener('jb:drive:state-changed', handler);
+    return () => window.removeEventListener('jb:drive:state-changed', handler);
   }, []);
 
   const handleGeminiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -312,15 +365,130 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     setParsedImport(null);
   };
 
+  // ── Cloud Backup — handlers ──────────────────────────────────────────────────
+
+  const handleDriveConnect = async () => {
+    setDriveConnecting(true);
+    try {
+      const { backup } = await connectDrive();
+      const localProfile = await getProfile();
+      setDriveLocalProfile(localProfile);
+      if (backup) {
+        const localCompletion = calculateCompletion(localProfile ?? {});
+        if (localCompletion.percentage === 0) {
+          setDriveRestoreCase('empty');
+          setDriveRestoreData(backup);
+        } else {
+          setDriveRestoreCase('conflict');
+          setDriveRestoreData(backup);
+        }
+      } else if (localProfile) {
+        // No Drive backup yet — push the local profile up as the initial snapshot.
+        void syncProfileToDrive(localProfile);
+      }
+    } catch (err) {
+      console.error('[Job Buddy] Drive connect failed:', err);
+      showToast('error', 'Could not connect to Google Drive. Please try again.');
+    } finally {
+      setDriveConnecting(false);
+    }
+  };
+
+  const handleDriveSyncNow = async () => {
+    const profile = await getProfile();
+    if (!profile) {
+      showToast('warning', 'No profile data to sync.');
+      return;
+    }
+    setDriveSyncing(true);
+    try {
+      const res = await syncProfileToDrive(profile);
+      if (res.success) {
+        showToast('success', 'Synced to Google Drive');
+      } else if (res.errorCode === 'storage_full') {
+        showToast('error', 'Google Drive storage full — sync paused.');
+      } else if (res.errorCode === 'token_expired') {
+        showToast('warning', 'Drive disconnected — reconnect to resume syncing.');
+      } else if (res.errorCode) {
+        showToast('warning', 'Sync failed — will retry automatically.');
+      }
+    } finally {
+      setDriveSyncing(false);
+    }
+  };
+
+  const handleDriveReconnect = () => { void handleDriveConnect(); };
+
+  const handleDriveDisconnect = async (deleteFile: boolean) => {
+    setDriveDisconnectDialog(false);
+    try {
+      await disconnectDrive(deleteFile);
+      showToast('success', deleteFile ? 'Disconnected and Drive backup deleted' : 'Disconnected from Google Drive');
+    } catch (err) {
+      console.error('[Job Buddy] Drive disconnect failed:', err);
+      showToast('error', 'Disconnect failed. Please try again.');
+    }
+  };
+
+  const closeRestoreDialog = () => {
+    setDriveRestoreCase(null);
+    setDriveRestoreData(null);
+    setDriveLocalProfile(null);
+  };
+
+  const handleRestoreFromDrive = async () => {
+    if (!driveRestoreData) return;
+    setDriveRestoreBusy(true);
+    try {
+      await saveProfile(driveRestoreData.profile);
+      // Update the lastSynced timestamp on the Drive state to reflect that
+      // local now matches Drive (no further write needed — backup file is
+      // already current).
+      const fresh = await getFullDriveState();
+      setDriveState(fresh);
+      showToast('success', 'Profile restored from Google Drive');
+      onImportComplete();
+      closeRestoreDialog();
+    } catch (err) {
+      console.error('[Job Buddy] Restore from Drive failed:', err);
+      showToast('error', 'Restore failed. Please try again.');
+    } finally {
+      setDriveRestoreBusy(false);
+    }
+  };
+
+  const handleKeepLocal = async () => {
+    if (!driveLocalProfile) {
+      closeRestoreDialog();
+      return;
+    }
+    setDriveRestoreBusy(true);
+    try {
+      const res = await overwriteDriveWithLocal(driveLocalProfile as Profile);
+      if (res.success) {
+        showToast('success', 'Local profile uploaded to Google Drive');
+      } else if (res.errorCode) {
+        showToast('warning', 'Sync failed — will retry automatically.');
+      }
+      closeRestoreDialog();
+    } finally {
+      setDriveRestoreBusy(false);
+    }
+  };
+
   // ── Reset All Data ───────────────────────────────────────────────────────────
 
   const handleReset = async () => {
     if (resetConfirmText !== 'DELETE') return;
     setResetting(true);
     try {
+      if (resetScope === 'everywhere' && driveState.connected) {
+        await disconnectDrive(true);
+      }
       await clearAllStorage();
       setShowResetDialog(false);
       setResetConfirmText('');
+      setResetScope('device');
       showToast('success', 'All data has been reset');
       onResetComplete();
     } catch (err) {
@@ -334,6 +502,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const handleResetDialogClose = () => {
     setShowResetDialog(false);
     setResetConfirmText('');
+    setResetScope('device');
   };
 
   return (
@@ -444,6 +613,133 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         </button>
         {importError && (
           <p className="mt-2 text-sm text-red-500 dark:text-red-400">{importError}</p>
+        )}
+      </section>
+
+      {/* ── Cloud Backup ──────────────────────────────────────────────────────── */}
+      <section className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
+        <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">Cloud Backup</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Sync your profile to your own Google Drive. Only you can access it.
+        </p>
+
+        {/* State 1: Not connected */}
+        {!driveState.connected && !driveConnecting && (
+          <button
+            type="button"
+            onClick={handleDriveConnect}
+            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:scale-95 transition-colors"
+          >
+            Connect Google Drive
+          </button>
+        )}
+
+        {/* State 2: Connecting */}
+        {driveConnecting && (
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            <span className="inline-block w-3 h-3 mr-2 rounded-full border-2 border-gray-400 dark:border-gray-500 border-t-transparent animate-spin align-[-2px]" />
+            Connecting…
+          </p>
+        )}
+
+        {/* State 6: Token expired (takes priority over the healthy view) */}
+        {driveState.connected && driveState.error === 'token_expired' && (
+          <div>
+            <p className="text-sm text-yellow-700 dark:text-yellow-400 mb-3">
+              Drive disconnected — reconnect to resume syncing.
+            </p>
+            <button
+              type="button"
+              onClick={handleDriveReconnect}
+              disabled={driveConnecting}
+              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
+            >
+              Reconnect
+            </button>
+          </div>
+        )}
+
+        {/* State 7: Storage full */}
+        {driveState.connected && driveState.error === 'storage_full' && (
+          <div>
+            <p className="text-sm text-red-600 dark:text-red-400 mb-3">
+              Google Drive storage full — sync paused.
+            </p>
+            <a
+              href="https://one.google.com/storage"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-600 dark:text-blue-400 underline font-medium"
+            >
+              Manage storage →
+            </a>
+          </div>
+        )}
+
+        {/* State 5: Temp failure */}
+        {driveState.connected && driveState.error === 'sync_error' && (
+          <div>
+            <p className="text-sm text-yellow-700 dark:text-yellow-400 mb-3">
+              Sync failed — will retry automatically.
+            </p>
+            <button
+              type="button"
+              onClick={handleDriveSyncNow}
+              disabled={driveSyncing}
+              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
+            >
+              {driveSyncing ? 'Retrying…' : 'Retry'}
+            </button>
+          </div>
+        )}
+
+        {/* State 4: Pending sync (no other error) */}
+        {driveState.connected && !driveState.error && driveState.pendingSync && (
+          <div>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+              Saved locally. Sync pending.
+            </p>
+            <button
+              type="button"
+              onClick={handleDriveSyncNow}
+              disabled={driveSyncing}
+              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
+            >
+              {driveSyncing ? 'Retrying…' : 'Retry'}
+            </button>
+          </div>
+        )}
+
+        {/* State 3: Connected (healthy) */}
+        {driveState.connected && !driveState.error && !driveState.pendingSync && (
+          <div>
+            <p className="text-sm font-medium text-green-700 dark:text-green-400 mb-1">
+              ✓ Connected to Google Drive
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+              Last synced: {fmtDriveTimestamp(driveState.lastSynced)}
+            </p>
+            <div className="flex flex-wrap gap-2 mb-3">
+              <button
+                type="button"
+                onClick={handleDriveSyncNow}
+                disabled={driveSyncing}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
+              >
+                {driveSyncing ? 'Syncing…' : 'Sync Now'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDriveDisconnectDialog(true)}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
+              >
+                Disconnect
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Drive acts as backup only. Changes sync from here to Drive, not the other way.
+            </p>
+          </div>
         )}
       </section>
 
@@ -644,6 +940,46 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-5">This cannot be undone.</p>
 
+              {driveState.connected && (
+                <div className="mb-5">
+                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Reset scope:</p>
+                  <div className="space-y-2">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="resetScope"
+                        value="device"
+                        checked={resetScope === 'device'}
+                        onChange={() => setResetScope('device')}
+                        className="mt-0.5 text-red-600"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">This device only</span>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          Google Drive backup is kept.
+                        </p>
+                      </div>
+                    </label>
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="resetScope"
+                        value="everywhere"
+                        checked={resetScope === 'everywhere'}
+                        onChange={() => setResetScope('everywhere')}
+                        className="mt-0.5 text-red-600"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Everywhere (delete Drive backup too)</span>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          Removes the Drive backup file and disconnects.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
+
               <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
                 Type <code className="font-mono font-bold text-red-600 dark:text-red-400">DELETE</code> to confirm:
               </label>
@@ -672,6 +1008,168 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                 className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 active:scale-95 transition-colors"
               >
                 {resetting ? 'Resetting…' : 'Reset All Data'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Drive disconnect dialog ───────────────────────────────────────────── */}
+      {driveDisconnectDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setDriveDisconnectDialog(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Disconnect Google Drive</h3>
+              <button
+                type="button"
+                onClick={() => setDriveDisconnectDialog(false)}
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
+              >
+                ×
+              </button>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+                What would you like to do with the backup file in your Google Drive?
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Either way, your local profile on this device is untouched.
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setDriveDisconnectDialog(false)}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDriveDisconnect(false)}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
+              >
+                Keep Drive Backup
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDriveDisconnect(true)}
+                className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 active:scale-95 transition-colors"
+              >
+                Delete Drive Backup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Drive restore dialog — empty local profile ───────────────────────── */}
+      {driveRestoreCase === 'empty' && driveRestoreData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={closeRestoreDialog}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Restore from Google Drive</h3>
+              <button
+                type="button"
+                onClick={closeRestoreDialog}
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
+              >
+                ×
+              </button>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                Profile found in Google Drive. Restore it?
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Backup timestamp: {fmtDriveTimestamp(driveRestoreData.lastModified)}
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={closeRestoreDialog}
+                disabled={driveRestoreBusy}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 active:scale-95 transition-colors"
+              >
+                Skip
+              </button>
+              <button
+                type="button"
+                onClick={handleRestoreFromDrive}
+                disabled={driveRestoreBusy}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
+              >
+                {driveRestoreBusy ? 'Restoring…' : 'Restore'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Drive restore dialog — conflict ──────────────────────────────────── */}
+      {driveRestoreCase === 'conflict' && driveRestoreData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={closeRestoreDialog}
+        >
+          <div
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Profile conflict</h3>
+              <button
+                type="button"
+                onClick={closeRestoreDialog}
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
+              >
+                ×
+              </button>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+                Your local profile and Google Drive backup are different.
+              </p>
+              <div className="space-y-3 mb-4">
+                <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">This device</p>
+                  <p className="text-sm text-gray-900 dark:text-gray-100">Your current profile</p>
+                </div>
+                <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Google Drive backup</p>
+                  <p className="text-sm text-gray-900 dark:text-gray-100">{fmtDriveTimestamp(driveRestoreData.lastModified)}</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex-wrap">
+              <button
+                type="button"
+                onClick={handleKeepLocal}
+                disabled={driveRestoreBusy}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 active:scale-95 transition-colors"
+              >
+                {driveRestoreBusy ? 'Working…' : 'Keep Local'}
+              </button>
+              <button
+                type="button"
+                onClick={handleRestoreFromDrive}
+                disabled={driveRestoreBusy}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
+              >
+                {driveRestoreBusy ? 'Working…' : 'Use Drive Backup'}
               </button>
             </div>
           </div>
