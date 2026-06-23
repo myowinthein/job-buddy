@@ -86,6 +86,26 @@ function App() {
       .finally(() => { setLoading(false); });
   }, []);
 
+  // ── Cross-context focus request (e.g. popup → Settings → API key input) ─────
+  // The popup writes 'jb:focusOnLoad' to chrome.storage.session before opening
+  // the options page; we read it here, clear it, and route to the appropriate
+  // section + focus target. Only runs once after the initial profile load.
+  useEffect(() => {
+    if (loading) return;
+    try {
+      chrome.storage.session.get('jb:focusOnLoad', (r) => {
+        const target = r?.['jb:focusOnLoad'];
+        if (typeof target !== 'string') return;
+        chrome.storage.session.remove('jb:focusOnLoad');
+        if (target === 'gemini-api-key') {
+          skipAutoFocusRef.current = true;
+          setActiveSection('settings');
+          setFocusTarget('gemini-api-key');
+        }
+      });
+    } catch { /* session storage unavailable — no-op */ }
+  }, [loading]);
+
   // ── Persist active section ──────────────────────────────────────────────────
   useEffect(() => {
     activeSectionRef.current = activeSection;
