@@ -48,4 +48,6 @@ export interface KeyValidationResult {
   error?: string;
   /** true when the key authenticated successfully but no model in the priority list was accessible */
   keyValidNoModel?: boolean;
+  /** true when the API responded with 400/401/403 — key is definitively rejected */
+  keyInvalid?: boolean;
 }

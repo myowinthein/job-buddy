@@ -21,6 +21,12 @@ import type { InvalidField } from '@/src/utils/profileValidator';
 import { useToast } from '@/src/components/ui/Toast';
 import { validateApiKey } from '@/src/resume-ai/gemini';
 
+const DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite';
+
+function looksLikeApiKey(key: string): boolean {
+  return key.startsWith('AIza') && key.length >= 30;
+}
+
 interface Props {
   onImportComplete: () => void;
   onResetComplete:  () => void;
@@ -97,13 +103,14 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const [geminiKeyStatus,  setGeminiKeyStatus]  = useState<'idle' | 'validating' | 'valid' | 'invalid' | 'no_model'>('idle');
   const [geminiModel,      setGeminiModel]      = useState<string | null>(null);
   const geminiDebounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const probeIdRef         = useRef(0);
 
   useEffect(() => {
     Promise.all([getGeminiApiKey(), getGeminiModel()]).then(([key, model]) => {
       if (key) {
         setGeminiKey(key);
         setGeminiModel(model);
-        setGeminiKeyStatus(model ? 'valid' : 'idle');
+        setGeminiKeyStatus('valid');
       }
     });
   }, []);
@@ -112,25 +119,47 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     const key = e.target.value;
     setGeminiKey(key);
     if (geminiDebounceRef.current) clearTimeout(geminiDebounceRef.current);
+
     if (!key.trim()) {
       setGeminiKeyStatus('idle');
       setGeminiModel(null);
       void clearGeminiSettings();
       return;
     }
-    setGeminiKeyStatus('validating');
+
     geminiDebounceRef.current = setTimeout(async () => {
-      const result = await validateApiKey(key.trim());
-      if (result.valid && result.model) {
-        await saveGeminiApiKey(key.trim());
+      const trimmed = key.trim();
+
+      if (!looksLikeApiKey(trimmed)) {
+        setGeminiKeyStatus('invalid');
+        return;
+      }
+
+      // Save key + hardcoded default model immediately so the user can import
+      // without waiting for the probe round-trips to complete.
+      await saveGeminiApiKey(trimmed);
+      await saveGeminiModel(DEFAULT_GEMINI_MODEL);
+      setGeminiModel(DEFAULT_GEMINI_MODEL);
+      setGeminiKeyStatus('valid');
+
+      // Background probe: find the first available model in priority order.
+      // Increment probe ID so a superseded probe's result is discarded.
+      const probeId = ++probeIdRef.current;
+      const result = await validateApiKey(trimmed);
+      if (probeId !== probeIdRef.current) return;
+
+      if (result.valid && result.model && result.model !== DEFAULT_GEMINI_MODEL) {
         await saveGeminiModel(result.model);
         setGeminiModel(result.model);
-        setGeminiKeyStatus('valid');
       } else if (result.keyValidNoModel) {
         setGeminiKeyStatus('no_model');
-      } else {
+      } else if (result.keyInvalid) {
+        // 401/403 confirmed — key is definitively bad; roll back the save
+        await clearGeminiSettings();
+        setGeminiModel(null);
         setGeminiKeyStatus('invalid');
       }
+      // Network error during probe: leave key + default model in storage
     }, 800);
   };
 
@@ -366,8 +395,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                 rel="noopener noreferrer"
                 className="text-blue-600 dark:text-blue-400 underline"
               >
-                aistudio.google.com/api-keys
+                Google AI Studio
               </a>
+              {' '}and sign in
             </li>
             <li>Click "Create API key"</li>
             <li>Copy the key listed under "API Key" and paste it here</li>
