@@ -12,6 +12,7 @@ import { normalize } from './normalizer';
 import { resolveProfileValue } from './resolver';
 import { runAIAutofill } from './ai';
 import type { AITextCandidate } from './ai';
+import type { DebugSession, DebugScanField, DebugMappingField, DebugAIField, FieldFinalState } from './debug';
 
 export { clearHighlights } from './highlighter';
 
@@ -145,12 +146,21 @@ export function getLastResult(): AutofillResult | null {
   return lastResult;
 }
 
+// In-memory debug session from the most recent scan/fill cycle. Cleared on
+// each scanAutofill() call. Lost on tab close or page reload — not persisted.
+let debugSession: DebugSession | null = null;
+
+export function getDebugSession(): DebugSession | null {
+  return debugSession;
+}
+
 // Scan results held between AUTOFILL_SCAN and AUTOFILL_FILL messages.
 interface PendingMatch {
   element:          HTMLElement;
   signals:          FieldSignals;
   match:            FieldMatch;
   hasExistingValue: boolean;
+  debugFieldId:     string;
 }
 let pendingMatches: PendingMatch[] = [];
 
@@ -248,6 +258,7 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
   pendingMatches  = [];
   sessionElements = [];
   lastResult      = null;
+  debugSession    = null;
 
   const profile = await getProfile();
   if (!profile) {
@@ -266,19 +277,39 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
 
   let preFilledCount = 0;
   let totalMatched   = 0;
+  const debugScanner: DebugScanField[] = [];
 
-  for (const element of fields) {
+  fields.forEach((element, i) => {
     const signals = extractSignals(element);
     const match   = mapField(signals, profile, learnedMappings, domain);
     const hasExistingValue = getFieldValue(element) !== '';
+    const debugFieldId = `field_${String(i + 1).padStart(3, '0')}`;
 
     if (match.confidence >= 0.60 && match.value) {
       totalMatched++;
       if (hasExistingValue) preFilledCount++;
     }
 
-    pendingMatches.push({ element, signals, match, hasExistingValue });
-  }
+    debugScanner.push({
+      fieldId: debugFieldId,
+      label:   signals.label || signals.ariaLabel || signals.placeholder || signals.name || '',
+      type:    signals.type,
+      name:    signals.name,
+      id:      signals.id,
+    });
+
+    pendingMatches.push({ element, signals, match, hasExistingValue, debugFieldId });
+  });
+
+  // Seed an initial debug session — mapping/ai/summary are populated by executeAutofill.
+  debugSession = {
+    timestamp: Date.now(),
+    scanner:   debugScanner,
+    mapping:   [],
+    ai:        [],
+    summary:   { green: 0, yellow: 0, red: 0, gray: 0 },
+    aiSkipped: false,
+  };
 
   return { preFilledCount, totalMatched };
 }
@@ -309,20 +340,28 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   };
   const pickerFields: PickerField[] = [];
   const aiTextCandidates: AITextCandidate[] = [];
+  const debugMapping: DebugMappingField[] = [];
 
   // Reset the noData registry — silent re-fill will only consider noData
   // fields from this fresh run, not stale ones from a previous session.
   noDataFields = [];
 
-  for (const { element, signals, match, hasExistingValue } of pendingMatches) {
+  for (const { element, signals, match, hasExistingValue, debugFieldId } of pendingMatches) {
     // Merge mode: skip pre-filled fields that would otherwise be overwritten.
     // Only relevant when confidence >= 0.60 AND the profile has a value to fill.
     if (mode === 'merge' && hasExistingValue && match.confidence >= 0.60 && match.value) {
+      // For debug: pre-filled merge skip is reported as the would-have-been state.
+      debugMapping.push({
+        fieldId: debugFieldId, matchLayer: match.matchLayer, confidence: match.confidence,
+        profilePath: match.fieldPath,
+        finalState: match.confidence >= 0.85 ? 'green' : 'yellow',
+      });
       continue;
     }
 
     const isFileInput = element instanceof HTMLInputElement && element.type === 'file';
     const displayLabel = extractDisplayLabel(signals);
+    let finalState: FieldFinalState;
 
     if (match.confidence >= 0.60 && match.value) {
       // Confident match with profile data → fill and highlight.
@@ -340,6 +379,10 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // Reconstruction failed (corrupt base64, etc.). Log already emitted by
         // fillFileField; silently skip this element so the rest of the run
         // continues uninterrupted.
+        debugMapping.push({
+          fieldId: debugFieldId, matchLayer: match.matchLayer, confidence: match.confidence,
+          profilePath: match.fieldPath, finalState: 'gray',
+        });
         continue;
       }
 
@@ -349,11 +392,13 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       if (match.confidence >= 0.85) {
         result.noReview++;
         // No picker for green (No Review) fields.
+        finalState = 'green';
       } else {
         result.needReview++;
         // File inputs are deliberately excluded from the picker overlay —
         // file selection is handled silently by Auto Fill, not the picker.
         if (!isFileInput) pickerFields.push({ element, state: 'needReview', label: displayLabel });
+        finalState = 'yellow';
       }
 
     } else if (match.confidence < 0.60) {
@@ -363,8 +408,9 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       result.lowConfidence++;
       if (!isFileInput) pickerFields.push({ element, state: 'lowConfidence', label: displayLabel });
       if (!isFileInput) {
-        aiTextCandidates.push({ type: 'text', element, signals, originalState: 'lowConfidence', originalFieldPath: match.fieldPath });
+        aiTextCandidates.push({ type: 'text', element, signals, originalState: 'lowConfidence', originalFieldPath: match.fieldPath, debugFieldId });
       }
+      finalState = 'red';
 
     } else {
       // confidence >= 0.60 but profile value is empty — nothing to write.
@@ -381,10 +427,16 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
           noDataFields.push({ element, fieldPath: match.fieldPath, label: displayLabel });
         }
         if (match.fieldPath) {
-          aiTextCandidates.push({ type: 'text', element, signals, originalState: 'noData', originalFieldPath: match.fieldPath });
+          aiTextCandidates.push({ type: 'text', element, signals, originalState: 'noData', originalFieldPath: match.fieldPath, debugFieldId });
         }
       }
+      finalState = 'gray';
     }
+
+    debugMapping.push({
+      fieldId: debugFieldId, matchLayer: match.matchLayer, confidence: match.confidence,
+      profilePath: match.fieldPath, finalState,
+    });
   }
 
   pendingMatches = [];
@@ -394,8 +446,22 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   // all entries are resolved.
   if (noDataFields.length > 0) ensureVisibilityListener();
 
-  const aiRan = await runAIAutofill(aiTextCandidates, profile, result, sessionElements, domain);
+  const debugAI: DebugAIField[] = [];
+  const aiRan = await runAIAutofill(aiTextCandidates, profile, result, sessionElements, domain, debugAI);
   result.aiAvailable = aiRan;
+
+  // Finalise debug session — scanner was seeded in scanAutofill; fill in the rest.
+  if (debugSession) {
+    debugSession.mapping   = debugMapping;
+    debugSession.ai        = debugAI;
+    debugSession.aiSkipped = !aiRan;
+    debugSession.summary   = {
+      green:  result.noReview,
+      yellow: result.needReview,
+      red:    result.lowConfidence,
+      gray:   result.noData,
+    };
+  }
 
   // Store before attaching picker listeners — the result object is mutated in
   // place by picker callbacks, so the reference remains accurate after those run.
