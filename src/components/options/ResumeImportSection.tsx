@@ -485,9 +485,10 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
 
             {/* Long wait message */}
             {showLongWait && !errorMsg && (
-              <p className="mt-5 text-xs text-gray-500 dark:text-gray-400 text-center">
-                This is taking longer than usual. AI processing may be busy. Hang tight.
-              </p>
+              <div className="mt-5 text-xs text-amber-500 dark:text-amber-400 text-center">
+                <p>This is taking longer than usual.</p>
+                <p>AI processing may be busy. Hang tight.</p>
+              </div>
             )}
 
             {/* Error state */}
