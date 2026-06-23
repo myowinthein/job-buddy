@@ -80,47 +80,57 @@ export async function extractFromResume(
   signal?: AbortSignal,
 ): Promise<Partial<Profile>> {
   const prompt = buildPrompt(JSON.stringify(currentProfile, null, 2));
+  const body = JSON.stringify({
+    contents: [{
+      parts: [
+        { inlineData: { mimeType, data: fileBase64 } },
+        { text: prompt },
+      ],
+    }],
+    generationConfig: { temperature: 0 },
+  });
 
-  let resp: Response;
-  try {
-    resp = await fetch(endpoint(model, apiKey), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { inlineData: { mimeType, data: fileBase64 } },
-            { text: prompt },
-          ],
-        }],
-        generationConfig: { temperature: 0 },
-      }),
-      signal,
-    });
-  } catch (err) {
-    if ((err as { name?: string })?.name === 'AbortError') throw err;
-    throw importError('network', 'Connection failed. Check your internet.');
+  // Start with the configured model, then fall through the priority list on 429
+  const modelsToTry = [model, ...GEMINI_MODEL_PRIORITY.filter(m => m !== model)];
+
+  for (const tryModel of modelsToTry) {
+    let resp: Response;
+    try {
+      resp = await fetch(endpoint(tryModel, apiKey), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        signal,
+      });
+    } catch (err) {
+      if ((err as { name?: string })?.name === 'AbortError') throw err;
+      throw importError('network', 'Connection failed. Check your internet.');
+    }
+
+    if (resp.status === 429) continue;
+
+    if (!resp.ok) {
+      if (resp.status === 401 || resp.status === 403) throw importError('auth', 'API key invalid. Check your key in Settings.');
+      throw importError('network', 'Connection failed. Check your internet.');
+    }
+
+    let data: unknown;
+    try {
+      data = await resp.json();
+    } catch {
+      throw importError('parse', "Couldn't read the response. Try again.");
+    }
+
+    const text = (data as { candidates?: { content?: { parts?: { text?: string }[] } }[] })
+      ?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) throw importError('parse', "Couldn't read the response. Try again.");
+
+    return parseResponse(text);
   }
 
-  if (!resp.ok) {
-    if (resp.status === 429) throw importError('rate_limit', 'Daily limit reached. Try again tomorrow.');
-    if (resp.status === 401 || resp.status === 403) throw importError('auth', 'API key invalid. Check your key in Settings.');
-    throw importError('network', 'Connection failed. Check your internet.');
-  }
-
-  let data: unknown;
-  try {
-    data = await resp.json();
-  } catch {
-    throw importError('parse', "Couldn't read the response. Try again.");
-  }
-
-  const text = (data as { candidates?: { content?: { parts?: { text?: string }[] } }[] })
-    ?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-  if (!text) throw importError('parse', "Couldn't read the response. Try again.");
-
-  return parseResponse(text);
+  // All models in the probe list returned 429
+  throw importError('rate_limit', 'All AI models are currently busy. Try again later or check your usage at Google AI Studio.');
 }
 
 function parseResponse(text: string): Partial<Profile> {

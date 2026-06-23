@@ -416,9 +416,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         <button
           type="button"
           onClick={handleExport}
-          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:scale-95 transition-colors"
         >
-          Export Profile
+          Download File
         </button>
       </section>
 
@@ -438,7 +438,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
         >
           Choose File
         </button>
@@ -495,9 +495,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             }
             setShowResetDialog(true);
           }}
-          className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+          className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 active:scale-95 transition-colors"
         >
-          Reset All Data
+          Reset Now
         </button>
       </section>
 
@@ -517,7 +517,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               <button
                 type="button"
                 onClick={handleDialogClose}
-                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none transition-colors"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
               >
                 ×
               </button>
@@ -587,7 +587,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               <button
                 type="button"
                 onClick={handleDialogClose}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
               >
                 Cancel
               </button>
@@ -595,7 +595,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                 type="button"
                 onClick={handleImportConfirm}
                 disabled={importing}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
               >
                 {importing ? 'Importing…' : 'Import'}
               </button>
@@ -619,7 +619,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               <button
                 type="button"
                 onClick={handleResetDialogClose}
-                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none transition-colors"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
               >
                 ×
               </button>
@@ -661,7 +661,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               <button
                 type="button"
                 onClick={handleResetDialogClose}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
               >
                 Cancel
               </button>
@@ -669,7 +669,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                 type="button"
                 onClick={handleReset}
                 disabled={resetConfirmText !== 'DELETE' || resetting}
-                className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
+                className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 active:scale-95 transition-colors"
               >
                 {resetting ? 'Resetting…' : 'Reset All Data'}
               </button>
