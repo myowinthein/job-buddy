@@ -61,7 +61,7 @@ export function CompletionBanner({
           <button
             type="button"
             onClick={() => setShowDropdown((s) => !s)}
-            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center gap-1 transition-colors"
+            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center gap-1 active:scale-95 transition-colors"
           >
             <span className="w-4 h-4 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs flex items-center justify-center font-bold">
               {totalMissing}
@@ -80,7 +80,7 @@ export function CompletionBanner({
                     <button
                       type="button"
                       onClick={() => { onNavigate(group.sectionId); close(); }}
-                      className="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                      className="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-colors"
                     >
                       {group.sectionLabel} →
                     </button>
@@ -90,7 +90,7 @@ export function CompletionBanner({
                           <button
                             type="button"
                             onClick={() => { onFocusField(group.sectionId, field); close(); }}
-                            className="w-full text-left flex items-center gap-2 px-5 py-1 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors rounded"
+                            className="w-full text-left flex items-center gap-2 px-5 py-1 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-colors rounded"
                           >
                             <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
                             {field}
@@ -111,7 +111,7 @@ export function CompletionBanner({
           <button
             type="button"
             onClick={() => setShowDropdown((s) => !s)}
-            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center gap-1 transition-colors"
+            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center gap-1 active:scale-95 transition-colors"
           >
             <span className="w-4 h-4 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs flex items-center justify-center font-bold">
               {optionalFieldsRemaining}
@@ -130,7 +130,7 @@ export function CompletionBanner({
                     <button
                       type="button"
                       onClick={() => { onNavigate(group.sectionId); close(); }}
-                      className="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                      className="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-colors"
                     >
                       {group.sectionLabel} →
                     </button>
@@ -140,7 +140,7 @@ export function CompletionBanner({
                           <button
                             type="button"
                             onClick={() => { onFocusField(group.sectionId, field); close(); }}
-                            className="w-full text-left flex items-center gap-2 px-5 py-1 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors rounded"
+                            className="w-full text-left flex items-center gap-2 px-5 py-1 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-colors rounded"
                           >
                             <span className="w-1.5 h-1.5 rounded-full bg-gray-300 shrink-0" />
                             {field}
