@@ -107,14 +107,14 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
           <button
             type="button"
             onClick={() => onChange({ mode: 'url' })}
-            className={`px-3 py-1.5 ${state.mode === 'url' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors`}
+            className={`px-3 py-1.5 active:scale-95 ${state.mode === 'url' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors`}
           >
             URL
           </button>
           <button
             type="button"
             onClick={() => onChange({ mode: 'file' })}
-            className={`px-3 py-1.5 ${state.mode === 'file' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors`}
+            className={`px-3 py-1.5 active:scale-95 ${state.mode === 'file' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors`}
           >
             Upload
           </button>
@@ -153,7 +153,7 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onChange({ file: null }); }}
-                  className="text-xs text-red-500 dark:text-red-400 mt-2 hover:underline"
+                  className="text-xs text-red-500 dark:text-red-400 mt-2 hover:underline active:scale-95"
                 >
                   Remove file
                 </button>
@@ -219,7 +219,7 @@ export function DocumentsSection({ profile, onSave }: Props) {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          className="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
         >
           {saving ? 'Saving...' : 'Save Documents'}
         </button>

@@ -3,7 +3,7 @@ import type { Profile, DocumentFile } from '@/src/types/profile';
 import { getGeminiApiKey, getGeminiModel } from '@/src/utils/storage';
 import { extractFromResume } from '@/src/resume-ai/gemini';
 import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
-import type { FieldChange, ImportProgressStep } from '@/src/resume-ai/types';
+import type { FieldChange, ImportProgressStep, ImportErrorCode } from '@/src/resume-ai/types';
 import { useToast } from '@/src/components/ui/Toast';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -77,6 +77,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
   const [progressStep, setProgressStep] = useState<ImportProgressStep | null>(null);
   const [showLongWait, setShowLongWait] = useState(false);
   const [errorMsg,     setErrorMsg]     = useState<string | null>(null);
+  const [errorCode,    setErrorCode]    = useState<ImportErrorCode | null>(null);
   const [changes,      setChanges]      = useState<FieldChange[]>([]);
   const [summary,      setSummary]      = useState<{ updated: number; conflicts: number; skipped: number } | null>(null);
 
@@ -103,6 +104,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
     setShowLongWait(false);
     setProgressStep(null);
     setErrorMsg(null);
+    setErrorCode(null);
     setScreen('dialog');
   }, []);
 
@@ -157,6 +159,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
 
     setScreen('progress');
     setErrorMsg(null);
+    setErrorCode(null);
     setShowLongWait(false);
     longWaitTimerRef.current = setTimeout(() => setShowLongWait(true), LONG_WAIT_MS);
 
@@ -189,8 +192,9 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
       setScreen('review');
     } catch (err) {
       if ((err as { name?: string })?.name === 'AbortError') return;
-      const msg = (err as { message?: string })?.message ?? 'Something went wrong. Try again.';
-      setErrorMsg(msg);
+      const e = err as { name?: string; message?: string; code?: ImportErrorCode };
+      setErrorCode(e.code ?? null);
+      setErrorMsg(e.message ?? 'Something went wrong. Try again.');
     } finally {
       if (longWaitTimerRef.current) clearTimeout(longWaitTimerRef.current);
       setShowLongWait(false);
@@ -207,6 +211,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
     abortControllerRef.current = controller;
 
     setErrorMsg(null);
+    setErrorCode(null);
     setShowLongWait(false);
     longWaitTimerRef.current = setTimeout(() => setShowLongWait(true), LONG_WAIT_MS);
 
@@ -238,8 +243,9 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
       setScreen('review');
     } catch (err) {
       if ((err as { name?: string })?.name === 'AbortError') return;
-      const msg = (err as { message?: string })?.message ?? 'Something went wrong. Try again.';
-      setErrorMsg(msg);
+      const e = err as { name?: string; message?: string; code?: ImportErrorCode };
+      setErrorCode(e.code ?? null);
+      setErrorMsg(e.message ?? 'Something went wrong. Try again.');
     } finally {
       if (longWaitTimerRef.current) clearTimeout(longWaitTimerRef.current);
       setShowLongWait(false);
@@ -332,7 +338,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
               <button
                 type="button"
                 onClick={closeSection}
-                className="ml-4 shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none transition-colors"
+                className="ml-4 shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
               >
                 ×
               </button>
@@ -349,7 +355,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
                   <button
                     type="button"
                     onClick={goToSettings}
-                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline active:scale-95 font-medium"
                   >
                     Go to Settings →
                   </button>
@@ -418,7 +424,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
                   <button
                     type="button"
                     onClick={closeSection}
-                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
                   >
                     Cancel
                   </button>
@@ -426,7 +432,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
                     type="button"
                     disabled={!selectedFile}
                     onClick={handleExtract}
-                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
                   >
                     Analyze CV
                   </button>
@@ -435,7 +441,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
                 <button
                   type="button"
                   onClick={closeSection}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
                 >
                   Close
                 </button>
@@ -494,19 +500,34 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
             {/* Error state */}
             {errorMsg && (
               <div className="mt-6">
-                <p className="text-sm text-red-500 dark:text-red-400 mb-4">{errorMsg}</p>
+                {errorCode === 'rate_limit' ? (
+                  <p className="text-sm text-red-500 dark:text-red-400 mb-4">
+                    All AI models are currently busy. Try again later or check your usage at{' '}
+                    <a
+                      href="https://aistudio.google.com/rate-limit"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-red-700 dark:hover:text-red-300"
+                    >
+                      Google AI Studio
+                    </a>
+                    .
+                  </p>
+                ) : (
+                  <p className="text-sm text-red-500 dark:text-red-400 mb-4">{errorMsg}</p>
+                )}
                 <div className="flex justify-end gap-3">
                   <button
                     type="button"
                     onClick={closeSection}
-                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
                   >
                     Close
                   </button>
                   <button
                     type="button"
                     onClick={handleRetry}
-                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:scale-95 transition-colors"
                   >
                     Try again
                   </button>
@@ -520,7 +541,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
                 >
                   Cancel
                 </button>
@@ -565,7 +586,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
                   <button
                     type="button"
                     onClick={acceptAllNew}
-                    className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
                   >
                     Accept All New Fields
                   </button>
@@ -573,7 +594,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
                 <button
                   type="button"
                   onClick={() => setScreen('dialog')}
-                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none transition-colors"
+                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
                 >
                   ×
                 </button>
@@ -620,14 +641,14 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
               <button
                 type="button"
                 onClick={() => setScreen('dialog')}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
               >
                 Back
               </button>
               <button
                 type="button"
                 onClick={handleSave}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:scale-95 transition-colors"
               >
                 Save selected
               </button>
@@ -654,7 +675,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
               <button
                 type="button"
                 onClick={closeSection}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:scale-95 transition-colors"
               >
                 Done
               </button>

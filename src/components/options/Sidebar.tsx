@@ -157,7 +157,7 @@ export function Sidebar({
           <span className="shrink-0"><FileUp className="w-5 h-5" /></span>
           {!collapsed && (
             <span className="text-sm font-medium flex-1 truncate">
-              Import Resume <span className="text-xs align-super">✨</span>
+              Import Resume ✨
             </span>
           )}
         </button>
