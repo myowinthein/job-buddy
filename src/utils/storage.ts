@@ -96,6 +96,27 @@ export async function clearAllStorage(): Promise<void> {
   await storageRemove(['profile', 'learnedMappings', 'applicationHistory']);
 }
 
+// ── Gemini AI settings ──────────────────────────────────────────────────────
+// Stored in chrome.storage.local only; never exported in profile bundles.
+
+export async function getGeminiApiKey(): Promise<string | null> {
+  const result = await storageGet('geminiApiKey');
+  return (result.geminiApiKey as string) ?? null;
+}
+
+export async function saveGeminiApiKey(key: string): Promise<void> {
+  await storageSet({ geminiApiKey: key });
+}
+
+export async function getGeminiModel(): Promise<string | null> {
+  const result = await storageGet('geminiModel');
+  return (result.geminiModel as string) ?? null;
+}
+
+export async function saveGeminiModel(model: string): Promise<void> {
+  await storageSet({ geminiModel: model });
+}
+
 export async function saveLearnedMapping(
   domain: string,
   normalizedSignal: string,

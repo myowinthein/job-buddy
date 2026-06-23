@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings, ApplicationEntry } from '@/src/types/storage';
 import {
@@ -9,11 +9,17 @@ import {
   saveLearmedMappings,
   saveApplicationHistory,
   clearAllStorage,
+  getGeminiApiKey,
+  saveGeminiApiKey,
+  getGeminiModel,
+  saveGeminiModel,
 } from '@/src/utils/storage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
 import type { InvalidField } from '@/src/utils/profileValidator';
 import { useToast } from '@/src/components/ui/Toast';
+import { validateApiKey } from '@/src/resume-ai/gemini';
+import { MODEL_DISPLAY_NAMES } from '@/src/resume-ai/types';
 
 interface Props {
   onImportComplete: () => void;
@@ -85,6 +91,45 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const [importMode,         setImportMode]         = useState<'merge' | 'overwrite'>('merge');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── AI Features state ────────────────────────────────────────────────────────
+  const [geminiKey,        setGeminiKey]        = useState('');
+  const [geminiKeyStatus,  setGeminiKeyStatus]  = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+  const [geminiModel,      setGeminiModel]      = useState<string | null>(null);
+  const geminiDebounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    Promise.all([getGeminiApiKey(), getGeminiModel()]).then(([key, model]) => {
+      if (key) {
+        setGeminiKey(key);
+        setGeminiModel(model);
+        setGeminiKeyStatus(model ? 'valid' : 'idle');
+      }
+    });
+  }, []);
+
+  const handleGeminiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const key = e.target.value;
+    setGeminiKey(key);
+    if (geminiDebounceRef.current) clearTimeout(geminiDebounceRef.current);
+    if (!key.trim()) {
+      setGeminiKeyStatus('idle');
+      setGeminiModel(null);
+      return;
+    }
+    setGeminiKeyStatus('validating');
+    geminiDebounceRef.current = setTimeout(async () => {
+      const result = await validateApiKey(key.trim());
+      if (result.valid && result.model) {
+        await saveGeminiApiKey(key.trim());
+        await saveGeminiModel(result.model);
+        setGeminiModel(result.model);
+        setGeminiKeyStatus('valid');
+      } else {
+        setGeminiKeyStatus('invalid');
+      }
+    }, 800);
+  };
 
   // ── Export ──────────────────────────────────────────────────────────────────
 
@@ -264,6 +309,74 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Settings</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your profile data</p>
       </div>
+
+      {/* ── AI Features ───────────────────────────────────────────────────────── */}
+      <section className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
+        <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">AI Features</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Enable AI-powered resume import using the Gemini API.
+        </p>
+
+        <label htmlFor="gemini-api-key" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          Gemini API Key
+        </label>
+        <input
+          id="gemini-api-key"
+          type="password"
+          value={geminiKey}
+          onChange={handleGeminiKeyChange}
+          placeholder="AIza..."
+          autoComplete="off"
+          className="w-full max-w-md px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Get a free key from Google AI Studio. No credit card required.
+        </p>
+
+        {geminiKeyStatus === 'validating' && (
+          <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Validating…</p>
+        )}
+        {geminiKeyStatus === 'valid' && geminiModel && (
+          <p className="mt-1.5 text-xs text-green-600 dark:text-green-400">
+            Using {MODEL_DISPLAY_NAMES[geminiModel as keyof typeof MODEL_DISPLAY_NAMES] ?? geminiModel}
+            {' · '}
+            <button
+              type="button"
+              className="text-blue-600 dark:text-blue-400 underline"
+              title="Manual model selection coming soon"
+              onClick={() => {}}
+            >
+              Change
+            </button>
+          </p>
+        )}
+        {geminiKeyStatus === 'invalid' && (
+          <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">
+            Invalid API key. Check your key and try again.
+          </p>
+        )}
+
+        <details className="mt-3 max-w-md">
+          <summary className="text-xs text-blue-600 dark:text-blue-400 cursor-pointer select-none hover:underline">
+            How to get a key
+          </summary>
+          <ol className="mt-2 ml-4 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-decimal">
+            <li>
+              Visit{' '}
+              <a
+                href="https://aistudio.google.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 dark:text-blue-400 underline"
+              >
+                aistudio.google.com
+              </a>
+            </li>
+            <li>Create an API key.</li>
+            <li>Paste it here.</li>
+          </ol>
+        </details>
+      </section>
 
       {/* ── Export ────────────────────────────────────────────────────────────── */}
       <section className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
