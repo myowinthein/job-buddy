@@ -19,13 +19,9 @@ import { calculateCompletion } from '@/src/utils/profileCompletion';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
 import type { InvalidField } from '@/src/utils/profileValidator';
 import { useToast } from '@/src/components/ui/Toast';
-import { validateApiKey } from '@/src/resume-ai/gemini';
+import { validateApiKey, checkApiKey } from '@/src/resume-ai/gemini';
 
 const DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite';
-
-function looksLikeApiKey(key: string): boolean {
-  return key.startsWith('AIza') && key.length >= 30;
-}
 
 interface Props {
   onImportComplete: () => void;
@@ -130,20 +126,26 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     geminiDebounceRef.current = setTimeout(async () => {
       const trimmed = key.trim();
 
-      if (!looksLikeApiKey(trimmed)) {
+      // Step 1: validate the key independently via the models list endpoint
+      setGeminiKeyStatus('validating');
+      const keyCheck = await checkApiKey(trimmed);
+
+      if (keyCheck === 'invalid') {
         setGeminiKeyStatus('invalid');
         return;
       }
+      if (keyCheck === 'network_error') {
+        setGeminiKeyStatus('idle');
+        return;
+      }
 
-      // Save key + hardcoded default model immediately so the user can import
-      // without waiting for the probe round-trips to complete.
+      // Step 2: key confirmed valid — save immediately with default model
       await saveGeminiApiKey(trimmed);
       await saveGeminiModel(DEFAULT_GEMINI_MODEL);
       setGeminiModel(DEFAULT_GEMINI_MODEL);
       setGeminiKeyStatus('valid');
 
-      // Background probe: find the first available model in priority order.
-      // Increment probe ID so a superseded probe's result is discarded.
+      // Step 3: background model probe — fully decoupled from key validation
       const probeId = ++probeIdRef.current;
       const result = await validateApiKey(trimmed);
       if (probeId !== probeIdRef.current) return;
@@ -154,7 +156,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       } else if (result.keyValidNoModel) {
         setGeminiKeyStatus('no_model');
       } else if (result.keyInvalid) {
-        // 401/403 confirmed — key is definitively bad; roll back the save
         await clearGeminiSettings();
         setGeminiModel(null);
         setGeminiKeyStatus('invalid');

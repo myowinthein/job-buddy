@@ -9,6 +9,22 @@ function endpoint(model: string, apiKey: string): string {
   return `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
 }
 
+// ── Key validation (decoupled from model selection) ───────────────────────────
+
+export async function checkApiKey(apiKey: string): Promise<'valid' | 'invalid' | 'network_error'> {
+  try {
+    const resp = await fetch(
+      `${GEMINI_BASE}?key=${encodeURIComponent(apiKey)}&pageSize=1`,
+      { method: 'GET' },
+    );
+    if (resp.ok) return 'valid';
+    if (resp.status === 401 || resp.status === 403) return 'invalid';
+    return 'network_error';
+  } catch {
+    return 'network_error';
+  }
+}
+
 function importError(code: ImportError['code'], message: string): ImportError {
   return { code, message };
 }
