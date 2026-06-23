@@ -11,8 +11,14 @@ import {
 
 // ── OAuth ────────────────────────────────────────────────────────────────────
 
-const CLIENT_ID = '161140685330-7t2bq6nb49754kpdl5g9lh6e6p9prkjr.apps.googleusercontent.com';
-const SCOPE     = 'https://www.googleapis.com/auth/drive.appdata';
+const CLIENT_ID   = (import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_ID as string | undefined) ?? '';
+const PLACEHOLDER = 'your_google_drive_oauth_client_id_here';
+const SCOPE       = 'https://www.googleapis.com/auth/drive.appdata';
+
+/** Returns true when the build has a real OAuth client ID configured. */
+export function isDriveConfigured(): boolean {
+  return !!CLIENT_ID && CLIENT_ID !== PLACEHOLDER;
+}
 const AUTH_URL  = 'https://accounts.google.com/o/oauth2/v2/auth';
 const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
 
@@ -22,6 +28,10 @@ const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
 const BACKUP_FILENAME = 'job-buddy-profile.json';
 
 export async function launchDriveOAuth(): Promise<string> {
+  if (!isDriveConfigured()) {
+    console.warn('[Job Buddy] VITE_GOOGLE_DRIVE_CLIENT_ID is missing or still set to the placeholder. Set it in .env.development or .env.production.');
+    throw new Error('not_configured');
+  }
   const redirectUri = chrome.identity.getRedirectURL();
   const params = new URLSearchParams({
     client_id:     CLIENT_ID,

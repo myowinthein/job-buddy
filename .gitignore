@@ -15,6 +15,7 @@ stats-*.json
 web-ext.config.ts
 
 # Environment variables — never commit real client IDs
+.env
 .env.development
 .env.production
 .env.local

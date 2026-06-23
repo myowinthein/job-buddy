@@ -396,14 +396,16 @@ Validation and completion logic (`src/utils/`) is the highest-value target when 
 
 ## Environment Variables
 
-`VITE_GOOGLE_CLIENT_ID` is required for Google Drive sync (Phase 2). WXT/Vite loads it automatically from the correct file per environment:
+`VITE_GOOGLE_DRIVE_CLIENT_ID` is required for Google Drive Cloud Backup (Phase 2). WXT/Vite loads it automatically from the correct file per environment:
 
 | Command | File loaded |
 |---|---|
 | `pnpm dev` | `.env.development` |
 | `pnpm build` / `pnpm zip` | `.env.production` |
 
-Both files are gitignored — contributors must create their own from `.env.example`. **Never hardcode client IDs in source files.** Access the value in code via `import.meta.env.VITE_GOOGLE_CLIENT_ID`.
+Both files are gitignored — contributors must create their own from `.env.example`. **Never hardcode OAuth client IDs in source files.** Access the value in code via `import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_ID`.
+
+In Google Cloud Console, set the app type to **Chrome Extension** and use the extension's Item ID as the Application ID. Create separate client IDs for the dev (unpacked) and production (Web Store) builds — their extension IDs differ.
 
 ---
 
@@ -427,7 +429,7 @@ Load in Chrome: `chrome://extensions` → "Load unpacked" → select `.output/ch
 - **Application history** — `applicationHistory` storage key and `ApplicationEntry` type exist; the key is included in profile export/import bundles, but no dedup or UI consumes it.
 - **Custom file-upload widgets** — only visible standard `<input type="file">` works today. ATS widgets that hide the input behind a styled button (Greenhouse, Lever's dropzone, Workday wizard, Fabric/MUI components) are deliberately out of scope — see § CV file upload.
 - **Cloud Backup (Phase 2)** — Google Drive backup via `drive.appdata` scope. Spec is fully defined; implementation not started. Key design decisions:
-  - OAuth via `chrome.identity.launchWebAuthFlow()` with client ID `161140685330-7t2bq6nb49754kpdl5g9lh6e6p9prkjr.apps.googleusercontent.com`
+  - OAuth via `chrome.identity.launchWebAuthFlow()` — client ID loaded from `VITE_GOOGLE_DRIVE_CLIENT_ID` env var
   - Single file `job-buddy-profile.json` in `appDataFolder` (invisible in Drive UI), wrapped as `{ lastModified, profile }`
   - Local-first: `chrome.storage.local` remains source of truth; Drive is backup only
   - Sync triggered on every profile save (not background polling)
