@@ -10,6 +10,8 @@ import { attachPickerListeners, removePickerListener, closePickerIfOpenFor } fro
 import type { PickerField, PickerFieldState } from './picker';
 import { normalize } from './normalizer';
 import { resolveProfileValue } from './resolver';
+import { runAIAutofill } from './ai';
+import type { AITextCandidate } from './ai';
 
 export { clearHighlights } from './highlighter';
 
@@ -19,6 +21,7 @@ export interface AutofillResult {
   lowConfidence: number;  // not filled, confidence < 0.60 — red highlight, picker offered
   noData:        number;  // not filled, confidence >= 0.60 but profile value is empty
   totalScanned:  number;  // every field found by the scanner, regardless of outcome
+  aiAvailable?:  boolean; // true if the AI layer ran (key configured), false/undefined if skipped
 }
 
 export interface AutofillScanResult {
@@ -305,6 +308,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     totalScanned: pendingMatches.length,
   };
   const pickerFields: PickerField[] = [];
+  const aiTextCandidates: AITextCandidate[] = [];
 
   // Reset the noData registry — silent re-fill will only consider noData
   // fields from this fresh run, not stale ones from a previous session.
@@ -358,6 +362,9 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       sessionElements.push(element);
       result.lowConfidence++;
       if (!isFileInput) pickerFields.push({ element, state: 'lowConfidence', label: displayLabel });
+      if (!isFileInput) {
+        aiTextCandidates.push({ type: 'text', element, signals, originalState: 'lowConfidence', originalFieldPath: match.fieldPath });
+      }
 
     } else {
       // confidence >= 0.60 but profile value is empty — nothing to write.
@@ -373,6 +380,9 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         if (match.fieldPath) {
           noDataFields.push({ element, fieldPath: match.fieldPath, label: displayLabel });
         }
+        if (match.fieldPath) {
+          aiTextCandidates.push({ type: 'text', element, signals, originalState: 'noData', originalFieldPath: match.fieldPath });
+        }
       }
     }
   }
@@ -383,6 +393,9 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   // fields to watch. Listener is idempotent and is torn down on undo or when
   // all entries are resolved.
   if (noDataFields.length > 0) ensureVisibilityListener();
+
+  const aiRan = await runAIAutofill(aiTextCandidates, profile, result, sessionElements, domain);
+  result.aiAvailable = aiRan;
 
   // Store before attaching picker listeners — the result object is mutated in
   // place by picker callbacks, so the reference remains accurate after those run.

@@ -8,6 +8,7 @@ interface AutofillResult {
   lowConfidence: number;
   noData:        number;
   totalScanned:  number;
+  aiAvailable?:  boolean;
 }
 
 interface AutofillScanResult {
@@ -52,6 +53,7 @@ function App() {
   const [autofillResult, setAutofillResult] = useState<AutofillResult | null>(null);
   const [preFilledCount, setPreFilledCount] = useState(0);
   const [fillMode, setFillMode]             = useState<'merge' | 'overwrite'>('merge');
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
 
   useEffect(() => {
     getProfile()
@@ -87,6 +89,19 @@ function App() {
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    try {
+      chrome.storage.session.get('jb:ai:nudge:dismissed', (r) => {
+        if (r?.['jb:ai:nudge:dismissed']) setNudgeDismissed(true);
+      });
+    } catch { /* session storage unavailable — show nudge */ }
+  }, []);
+
+  const dismissNudge = () => {
+    setNudgeDismissed(true);
+    try { chrome.storage.session.set({ 'jb:ai:nudge:dismissed': true }); } catch { /* ignore */ }
+  };
 
   const openOptions = () => chrome.runtime.openOptionsPage();
 
@@ -293,7 +308,7 @@ function App() {
               disabled={autofillState === 'loading'}
               className="w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors mb-2"
             >
-              {autofillState === 'loading' ? 'Filling…' : 'Auto Fill'}
+              {autofillState === 'loading' ? 'Filling…' : 'Auto Fill ✨'}
             </button>
 
             {/* Undo — only visible after a fill has run in this session */}
@@ -304,6 +319,21 @@ function App() {
               >
                 Undo Auto-fill
               </button>
+            )}
+
+            {autofillState === 'success' && autofillResult?.aiAvailable === false && !nudgeDismissed && (
+              <div className="mt-2 flex items-start gap-2 px-3 py-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <span className="flex-1 text-xs text-blue-700 dark:text-blue-300 leading-snug">
+                  Add an AI key in Settings to improve autofill accuracy. ✨
+                </span>
+                <button
+                  type="button"
+                  onClick={dismissNudge}
+                  className="shrink-0 text-blue-400 hover:text-blue-600 dark:text-blue-500 dark:hover:text-blue-300 text-base leading-none"
+                >
+                  ×
+                </button>
+              </div>
             )}
 
             {/* Result summary — no fields found */}
