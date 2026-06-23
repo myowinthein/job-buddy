@@ -1,0 +1,301 @@
+import type {
+  Profile,
+  PhoneNumber,
+  WorkHistoryEntry,
+  EducationEntry,
+  LanguageEntry,
+  WorkAuthorizationEntry,
+} from '@/src/types/profile';
+import type { FieldChange, FieldStatus } from './types';
+
+// ── Field descriptors ────────────────────────────────────────────────────────
+
+export interface FieldDef {
+  id: string;
+  label: string;
+  section: string;
+  getValue(p: Partial<Profile>): unknown;
+  setValue(p: Partial<Profile>, v: unknown): Partial<Profile>;
+  isEmpty(v: unknown): boolean;
+  display(v: unknown): string;
+}
+
+function emptyStr(v: unknown): boolean {
+  return !v || (typeof v === 'string' && !v.trim());
+}
+
+function emptyArr(v: unknown): boolean {
+  return !Array.isArray(v) || (v as unknown[]).length === 0;
+}
+
+export const FIELD_DEFS: FieldDef[] = [
+  // ── Personal ────────────────────────────────────────────────────────────────
+  {
+    id: 'personal.firstName',
+    label: 'First Name',
+    section: 'Personal',
+    getValue: (p) => p.personal?.firstName ?? null,
+    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), firstName: v as string } }),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? ''),
+  },
+  {
+    id: 'personal.lastName',
+    label: 'Last Name',
+    section: 'Personal',
+    getValue: (p) => p.personal?.lastName ?? null,
+    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), lastName: v as string } }),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? ''),
+  },
+  {
+    id: 'personal.email',
+    label: 'Email',
+    section: 'Personal',
+    getValue: (p) => p.personal?.email ?? null,
+    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), email: v as string } }),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? ''),
+  },
+  {
+    id: 'personal.phone',
+    label: 'Phone Number',
+    section: 'Personal',
+    getValue: (p) => p.personal?.phone ?? null,
+    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), phone: v as PhoneNumber } }),
+    isEmpty: (v) => {
+      if (!v) return true;
+      const ph = v as Partial<PhoneNumber>;
+      return !ph.number?.trim();
+    },
+    display: (v) => {
+      if (!v) return '';
+      const ph = v as Partial<PhoneNumber>;
+      return [ph.callingCode, ph.number].filter(Boolean).join(' ');
+    },
+  },
+  {
+    id: 'personal.dateOfBirth',
+    label: 'Date of Birth',
+    section: 'Personal',
+    getValue: (p) => p.personal?.dateOfBirth ?? null,
+    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), dateOfBirth: v as string } }),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? ''),
+  },
+  // ── Address ─────────────────────────────────────────────────────────────────
+  {
+    id: 'address.city',
+    label: 'City',
+    section: 'Address',
+    getValue: (p) => p.address?.city ?? null,
+    setValue: (p, v) => ({ ...p, address: { ...(p.address ?? {} as Profile['address']), city: v as string } }),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? ''),
+  },
+  {
+    id: 'address.country',
+    label: 'Country',
+    section: 'Address',
+    getValue: (p) => p.address?.country ?? null,
+    setValue: (p, v) => ({ ...p, address: { ...(p.address ?? {} as Profile['address']), country: v as string } }),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? ''),
+  },
+  {
+    id: 'address.street',
+    label: 'Street',
+    section: 'Address',
+    getValue: (p) => p.address?.street ?? null,
+    setValue: (p, v) => ({ ...p, address: { ...(p.address ?? {} as Profile['address']), street: v as string } }),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? ''),
+  },
+  {
+    id: 'address.state',
+    label: 'State / Province',
+    section: 'Address',
+    getValue: (p) => p.address?.state ?? null,
+    setValue: (p, v) => ({ ...p, address: { ...(p.address ?? {} as Profile['address']), state: v as string } }),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? ''),
+  },
+  {
+    id: 'address.postalCode',
+    label: 'Postal Code',
+    section: 'Address',
+    getValue: (p) => p.address?.postalCode ?? null,
+    setValue: (p, v) => ({ ...p, address: { ...(p.address ?? {} as Profile['address']), postalCode: v as string } }),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? ''),
+  },
+  // ── Professional ─────────────────────────────────────────────────────────────
+  {
+    id: 'professional.summary',
+    label: 'Career Summary',
+    section: 'Work History',
+    getValue: (p) => p.professional?.summary ?? null,
+    setValue: (p, v) => ({ ...p, professional: { ...(p.professional ?? {}), summary: v as string } }),
+    isEmpty: emptyStr,
+    display: (v) => {
+      const s = String(v ?? '');
+      return s.length > 120 ? s.slice(0, 117) + '…' : s;
+    },
+  },
+  // ── Salary ───────────────────────────────────────────────────────────────────
+  {
+    id: 'salary.current',
+    label: 'Current Salary',
+    section: 'Salary',
+    getValue: (p) => p.salary?.current ?? null,
+    setValue: (p, v) => ({
+      ...p,
+      salary: { current: v as Profile['salary']['current'], expected: p.salary?.expected ?? [] },
+    }),
+    isEmpty: (v) => {
+      if (!v) return true;
+      const s = v as Partial<Profile['salary']['current']>;
+      return !s.amount && !s.currency;
+    },
+    display: (v) => {
+      if (!v) return '';
+      const s = v as Partial<Profile['salary']['current']>;
+      return [s.amount, s.currency].filter((x) => x !== undefined && x !== null).join(' ');
+    },
+  },
+  // ── Work Authorization ───────────────────────────────────────────────────────
+  {
+    id: 'workAuthorization',
+    label: 'Work Authorization',
+    section: 'Work Authorization',
+    getValue: (p) => p.workAuthorization ?? [],
+    setValue: (p, v) => ({ ...p, workAuthorization: v as WorkAuthorizationEntry[] }),
+    isEmpty: emptyArr,
+    display: (v) => {
+      const arr = (v ?? []) as WorkAuthorizationEntry[];
+      return arr.map((e) => `${e.country} — ${e.status.replace(/_/g, ' ')}`).join('\n');
+    },
+  },
+  // ── Work History ─────────────────────────────────────────────────────────────
+  {
+    id: 'workHistory',
+    label: 'Work History',
+    section: 'Work History',
+    getValue: (p) => p.workHistory ?? [],
+    setValue: (p, v) => ({ ...p, workHistory: v as WorkHistoryEntry[] }),
+    isEmpty: emptyArr,
+    display: (v) => {
+      const arr = (v ?? []) as WorkHistoryEntry[];
+      return arr
+        .map((e) => {
+          const end = e.isCurrent ? 'present' : (e.endDate ?? '');
+          return `${e.title} at ${e.company} (${e.startDate}${end ? ' – ' + end : ''})`;
+        })
+        .join('\n');
+    },
+  },
+  // ── Education ────────────────────────────────────────────────────────────────
+  {
+    id: 'education',
+    label: 'Education',
+    section: 'Education',
+    getValue: (p) => p.education ?? [],
+    setValue: (p, v) => ({ ...p, education: v as EducationEntry[] }),
+    isEmpty: emptyArr,
+    display: (v) => {
+      const arr = (v ?? []) as EducationEntry[];
+      return arr
+        .map((e) => {
+          const end = e.isCurrent ? 'present' : (e.endDate ?? '');
+          return `${e.degree} in ${e.fieldOfStudy}, ${e.institution} (${e.startDate}${end ? ' – ' + end : ''})`;
+        })
+        .join('\n');
+    },
+  },
+  // ── Languages ────────────────────────────────────────────────────────────────
+  {
+    id: 'languages',
+    label: 'Languages',
+    section: 'Languages',
+    getValue: (p) => p.languages ?? [],
+    setValue: (p, v) => ({ ...p, languages: v as LanguageEntry[] }),
+    isEmpty: emptyArr,
+    display: (v) => {
+      const arr = (v ?? []) as LanguageEntry[];
+      return arr.map((e) => `${e.language} (${e.proficiency.replace(/_/g, ' ')})`).join('\n');
+    },
+  },
+  // ── Links ────────────────────────────────────────────────────────────────────
+  {
+    id: 'links.linkedin',
+    label: 'LinkedIn URL',
+    section: 'Links',
+    getValue: (p) => p.links?.linkedin ?? null,
+    setValue: (p, v) => ({ ...p, links: { ...(p.links ?? {} as Profile['links']), linkedin: v as string } }),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? ''),
+  },
+  {
+    id: 'links.portfolio',
+    label: 'Portfolio URL',
+    section: 'Links',
+    getValue: (p) => p.links?.portfolio ?? null,
+    setValue: (p, v) => ({ ...p, links: { ...(p.links ?? {} as Profile['links']), portfolio: v as string } }),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? ''),
+  },
+];
+
+// ── Diff generation ──────────────────────────────────────────────────────────
+
+export function generateDiff(
+  current: Partial<Profile>,
+  extracted: Partial<Profile>,
+): FieldChange[] {
+  return FIELD_DEFS.map((def) => {
+    const currentVal   = def.getValue(current);
+    const suggestedVal = def.getValue(extracted);
+
+    const currentEmpty   = def.isEmpty(currentVal);
+    const suggestedEmpty = def.isEmpty(suggestedVal);
+
+    let status: FieldStatus;
+    if (suggestedEmpty) {
+      status = 'unchanged';
+    } else if (currentEmpty) {
+      status = 'new';
+    } else {
+      status = JSON.stringify(currentVal) !== JSON.stringify(suggestedVal) ? 'conflict' : 'unchanged';
+    }
+
+    return {
+      id:               def.id,
+      label:            def.label,
+      section:          def.section,
+      currentValue:     currentVal,
+      suggestedValue:   suggestedVal,
+      displayCurrent:   def.display(currentVal),
+      displaySuggested: def.display(suggestedVal),
+      status,
+      accepted:         status !== 'unchanged',
+    };
+  });
+}
+
+// ── Apply accepted changes ───────────────────────────────────────────────────
+
+export function applyChanges(
+  baseProfile: Partial<Profile>,
+  changes: FieldChange[],
+): Partial<Profile> {
+  let result: Partial<Profile> = { ...baseProfile };
+
+  for (const change of changes) {
+    if (change.status === 'unchanged') continue;
+    if (!change.accepted) continue;
+    const def = FIELD_DEFS.find((d) => d.id === change.id);
+    if (def) result = def.setValue(result, change.suggestedValue);
+  }
+
+  return result;
+}
