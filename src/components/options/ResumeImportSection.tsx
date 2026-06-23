@@ -74,7 +74,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
   // Load API key on mount; dialog is already open (screen initialises to 'dialog')
   useEffect(() => {
     Promise.all([getGeminiApiKey(), getGeminiModel()]).then(([key, mdl]) => {
-      setApiKey(key);
+      setApiKey(key ?? '');  // '' = confirmed no key; null stays as loading sentinel
       setModel(mdl);
     });
     return () => {
@@ -278,11 +278,11 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
 
             {/* Body */}
             <div className="px-6 py-5">
-              {/* No API key state */}
+              {/* No API key state ('' = confirmed no key after storage load) */}
               {apiKey !== null && !apiKey && (
-                <div className="py-4 text-center">
+                <div className="py-6 text-center">
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    A Gemini API key is required to use this feature.
+                    You need a Gemini API key to use this feature.
                   </p>
                   <button
                     type="button"
