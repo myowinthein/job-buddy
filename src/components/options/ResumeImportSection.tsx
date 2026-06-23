@@ -198,6 +198,55 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
     }
   };
 
+  // ── Retry (network failure — file already read, skip reading step) ───────────
+
+  const handleRetry = async () => {
+    if (!selectedFile || !apiKey || !model) return;
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setErrorMsg(null);
+    setShowLongWait(false);
+    longWaitTimerRef.current = setTimeout(() => setShowLongWait(true), LONG_WAIT_MS);
+
+    // If the file was never read (very unlikely), fall back to full extract
+    const dataUri = fileDataUri ?? await fileToDataUri(selectedFile);
+    if (!fileDataUri) setFileDataUri(dataUri);
+    const base64  = dataUri.split(',')[1] ?? '';
+    const mimeType = getMimeType(selectedFile);
+
+    try {
+      setProgressStep('sending');
+      const extracted = await extractFromResume(apiKey, model, base64, mimeType, profile, controller.signal);
+
+      setProgressStep('processing');
+      const aiChanges = generateDiff(profile, extracted);
+
+      const fileChange: FieldChange = {
+        id:               FILE_CHANGE_ID,
+        label:            'Resume File',
+        section:          'Documents',
+        currentValue:     null,
+        suggestedValue:   selectedFile.name,
+        displayCurrent:   '',
+        displaySuggested: selectedFile.name,
+        status:           'new',
+        accepted:         true,
+      };
+      setChanges([fileChange, ...aiChanges]);
+      setScreen('review');
+    } catch (err) {
+      if ((err as { name?: string })?.name === 'AbortError') return;
+      const msg = (err as { message?: string })?.message ?? 'Something went wrong. Try again.';
+      setErrorMsg(msg);
+    } finally {
+      if (longWaitTimerRef.current) clearTimeout(longWaitTimerRef.current);
+      setShowLongWait(false);
+      setProgressStep(null);
+    }
+  };
+
   // ── Review helpers ────────────────────────────────────────────────────────────
 
   const toggleAccepted = (id: string) =>
@@ -455,7 +504,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setErrorMsg(null); setScreen('dialog'); }}
+                    onClick={handleRetry}
                     className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     Try again
