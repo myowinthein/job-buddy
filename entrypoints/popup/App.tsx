@@ -105,6 +105,15 @@ function App() {
 
   const openOptions = () => chrome.runtime.openOptionsPage();
 
+  // Open Settings → AI Features and focus the Gemini API key input.
+  // Same end-state as ResumeImportSection's "Go to Settings →" link, but
+  // crosses the popup→options-page context boundary via chrome.storage.session.
+  const goToSettingsKey = () => {
+    dismissNudge();
+    try { chrome.storage.session.set({ 'jb:focusOnLoad': 'gemini-api-key' }); } catch { /* ignore */ }
+    chrome.runtime.openOptionsPage();
+  };
+
   const sendToActiveTab = async (message: object) => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error('No active tab found');
@@ -324,7 +333,15 @@ function App() {
             {autofillState === 'success' && autofillResult?.aiAvailable === false && !nudgeDismissed && (
               <div className="mt-2 flex items-start gap-2 px-3 py-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <span className="flex-1 text-xs text-blue-700 dark:text-blue-300 leading-snug">
-                  Add an AI key in Settings to improve autofill accuracy. ✨
+                  Add an AI key in{' '}
+                  <button
+                    type="button"
+                    onClick={goToSettingsKey}
+                    className="underline font-medium hover:text-blue-900 dark:hover:text-blue-200"
+                  >
+                    Settings
+                  </button>
+                  {' '}to improve autofill accuracy.
                 </span>
                 <button
                   type="button"
