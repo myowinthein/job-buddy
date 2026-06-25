@@ -392,6 +392,12 @@ Several profile fields have been refactored. Loaders handle old data — don't b
 
 Validation and completion logic (`src/utils/`) is the highest-value target when tests are added.
 
+### ESLint must stay on v9.x
+
+`eslint-plugin-react@7.x` (the only stable line for ESLint flat config + React 19) still calls `context.getFilename()`, which ESLint v10 removed. Upgrading the `eslint` / `@eslint/js` packages to v10 will crash the linter at runtime. Stay on v9 until the plugin ships a v8 stable release.
+
+Several `eslint-plugin-react-hooks@7` rules are intentionally downgraded to warnings in `eslint.config.js`: `set-state-in-effect`, `refs`, `immutability`. These flag real patterns in the codebase (e.g. `Toast.tsx` updating a ref during render to keep a callback fresh; searchable-dropdown components calling `setState` in an effect). Fix the underlying pattern before re-promoting any of these to `error`.
+
 ---
 
 ## Environment Variables
@@ -421,6 +427,22 @@ pnpm format       # Prettier
 ```
 
 Load in Chrome: `chrome://extensions` → "Load unpacked" → select `.output/chrome-mv3-dev/`.
+
+Node version is pinned to 22 via `.nvmrc` (required by `pnpm@11.7.0`, which uses `node:sqlite`).
+
+---
+
+## Release Pipeline
+
+CI (`.github/workflows/ci.yml`): runs on branch pushes and PRs, skipped on tag pushes. Steps: `pnpm install --frozen-lockfile` → `pnpm compile` → `pnpm lint` → `pnpm build`.
+
+Release (`.github/workflows/release.yml`): triggers on `v*.*.*` tag push. Builds, runs `pnpm zip`, uploads to Chrome Web Store with `--auto-publish`, creates a GitHub Release with the zip attached.
+
+Cut a release with `pnpm release` (wraps `scripts/release.sh`): shows commits since the last tag, suggests `patch`/`minor`/`major` via conventional-commit heuristics, bumps `package.json`, commits, tags, and pushes. **Do not bump the version manually** — let the script do it so the commit and tag stay in lockstep.
+
+Chrome Web Store credentials live in the GitHub **`production` environment** (not repo-level secrets). The release job declares `environment: production`. Secrets passed as explicit CLI flags to `chrome-webstore-upload-cli@3` (GitHub Actions masks them in logs). One-time secret setup is documented in `.github/SETUP.md`.
+
+The extension version in the generated `manifest.json` is inherited from `package.json` by WXT — there is no separate manifest version field to maintain.
 
 ---
 
