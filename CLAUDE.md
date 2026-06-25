@@ -446,6 +446,48 @@ The extension version in the generated `manifest.json` is inherited from `packag
 
 ---
 
+## Safety & Operations
+
+The only production surface is the Chrome Web Store. There is no database, queue, server, or shared infrastructure. The risks below reflect that — git, the release workflow, and local secret files are where damage is possible.
+
+### Production release trigger
+
+**Risk:** Pushing a tag matching `v*.*.*` to `origin` runs `.github/workflows/release.yml`, which publishes the build to the Chrome Web Store with `--auto-publish`. Submissions go straight to Google's review queue and cannot be revoked from CLI — only manually unpublished from the developer dashboard.
+
+**Instruction:** Never push a `v*.*.*` tag without explicit user instruction. Never run `pnpm release` autonomously — `scripts/release.sh` ends with two `git push origin` calls after a single Y/N prompt, immediately triggering the release workflow.
+
+### Git remote and branch state
+
+**Risk:** Single remote (`origin` → `myowinthein/job-buddy`), single branch (`main`), no PR review gate. `git push origin main` reaches the canonical branch with no staging step.
+
+**Instruction:** Never force-push, never delete tags from origin, never change the remote URL. Routine pushes to `main` during a session are expected, but only when the current task explicitly calls for them. Match the scope of the user's instruction — pushing extra commits "while you're at it" is not authorised.
+
+### Local secret files
+
+**Risk:** `.env.development` and `.env.production` exist on disk (gitignored). Each holds a real `VITE_GOOGLE_DRIVE_CLIENT_ID`. Printing them into chat, commit messages, or report summaries leaks credentials into permanent records.
+
+**Instruction:** Never `cat`, `head`, `tail`, `Read`, paste, or otherwise reveal the contents of `.env.development` / `.env.production`. Use `.env.example` for documentation. Never echo `${{ secrets.* }}` values from workflows.
+
+### Chrome Web Store credentials
+
+**Risk:** Four secrets (`CHROME_EXTENSION_ID`, `CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET`, `CHROME_REFRESH_TOKEN`) live in the GitHub `production` environment, passed as CLI flags to `chrome-webstore-upload-cli`. A leaked refresh token allows arbitrary upload + auto-publish to the user's listing.
+
+**Instruction:** Never copy these secret values into commits, logs, chat output, or documentation. Never disable or bypass the `production` environment protection in `release.yml` — it is the last gate before a CWS publish.
+
+### Destructive runtime operations in app code
+
+**Risk:** `disconnectDrive(true)` (`src/utils/driveSync.ts`) revokes the OAuth token and deletes the user's Drive backup file. `clearAllStorage()` wipes the local profile. Both are reachable from the Reset flow and from disconnect tests.
+
+**Instruction:** Never invoke these functions against the user's connected Drive account or live profile when running ad-hoc code or test scripts. Manual end-to-end testing of Reset / Disconnect should use a throwaway profile.
+
+### Version bumping
+
+**Risk:** Editing `package.json` version manually leaves the working tree, commit, tag, and zip filename out of sync. Chrome Web Store rejects uploads at or below the currently-published version.
+
+**Instruction:** Always use `pnpm release` to bump the version. Do not edit the `version` field directly except when fixing a specific sync issue under user instruction.
+
+---
+
 ## What Isn't Implemented Yet
 
 - **Application history** — `applicationHistory` storage key and `ApplicationEntry` type exist; the key is included in profile export/import bundles, but no dedup or UI consumes it.
