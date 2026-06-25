@@ -1,167 +1,174 @@
 # Job Buddy
 
-**Autofill job application forms in seconds.**
+[![CI](https://github.com/myowinthein/job-buddy/actions/workflows/ci.yml/badge.svg)](https://github.com/myowinthein/job-buddy/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-1.8.4-informational.svg)](package.json)
 
-Job Buddy is a free, open-source Chrome extension that fills job application forms automatically using a profile you set up once. Stop retyping the same name, email, address, and work history into every application.
+> Chrome extension that autofills job application forms from a profile you set up once.
 
-[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/EXTENSION_ID?label=Chrome%20Web%20Store)](https://chrome.google.com/webstore/detail/EXTENSION_ID)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/myowinthein)
+Job Buddy reads the fields on a job application page, matches them against a structured profile you maintain in the extension, and fills in everything it can with confidence indicators on each field. It is local-first — your profile stays in `chrome.storage.local` — with three optional features that talk to Google's APIs (Cloud Backup, AI Resume Import, AI Autofill assist) only if you turn them on.
 
----
+## Table of Contents
 
-![Job Buddy autofill in action](docs/screenshots/autofill-preview.png)
-*Replace with your actual screenshot path after uploading to the repo*
+- [Background](#background)
+- [Install](#install)
+- [Usage](#usage)
+- [AI Features](#ai-features)
+- [Google Drive Backup](#google-drive-backup)
+- [Development](#development)
+- [Architecture](#architecture)
+- [Maintainer](#maintainer)
+- [Contributing](#contributing)
+- [License](#license)
 
----
+## Background
 
-## Features
+Job seekers — especially those applying across multiple countries — type the same name, email, phone, work history, and salary expectations into dozens of slightly-different forms. Each Applicant Tracking System (Workday, Greenhouse, Lever, Fabric, in-house custom forms) has its own field naming, layout, and quirks.
 
-- **One-click autofill** — click Auto Fill and Job Buddy fills every field it can, instantly
-- **Confidence-based highlighting** — green/yellow/red/gray indicators show exactly which fields need your attention before submitting
-- **Gets smarter over time** — manually correct a field once and Job Buddy remembers it for that site
-- **Handles missing data gracefully** — if a field has no profile value, Job Buddy tells you what's missing and opens the right section of your profile to fill it in; return to the tab and it fills automatically
-- **Resume upload** — attach your CV to file upload fields automatically, no drag and drop needed
-- **Undo in one click** — clear everything Job Buddy filled and start fresh
-- **Local-first privacy** — everything stays on your device; zero network requests, no backend, no account required
-- **Dark mode** — automatically follows your OS light/dark preference
-- **Free and open source** — MIT licensed
+Job Buddy is built around three ideas:
 
----
+1. **One canonical profile.** A nine-section editor (Personal, Address, Salary, Work Authorization, Work History, Education, Languages, Links, Documents) captures everything a typical application asks for, including per-country salary expectations, per-country work authorization, structured phone numbers, and multi-language proficiency.
+2. **Rule-based autofill with a confidence model.** A four-layer mapping pipeline (learned mappings → HTML autocomplete → dictionary → fuzzy match) classifies every field as high-confidence fill (green), needs review (yellow), low-confidence (red), or no profile data available (gray).
+3. **Local-first by default.** Nothing leaves your device unless you explicitly enable Cloud Backup or paste in a Gemini API key for the AI features.
 
-## Installation
+## Install
 
 ### From the Chrome Web Store
 
-[Install Job Buddy](https://chrome.google.com/webstore/detail/EXTENSION_ID) — available for Chrome and Chromium-based browsers.
+The released build is published on the Chrome Web Store as **Job Buddy - Job Application Autofill**.
 
-### From source
+> Replace this link with your real CWS URL once the listing is live.
+
+### From source (development build)
 
 ```bash
-# Clone the repo
 git clone https://github.com/myowinthein/job-buddy.git
 cd job-buddy
-
-# Install dependencies
-pnpm install
-
-# Build the extension
-pnpm build
-
-# Load in Chrome:
-# 1. Go to chrome://extensions
-# 2. Enable Developer mode
-# 3. Click "Load unpacked"
-# 4. Select the .output/chrome-mv3 directory
+pnpm install      # uses Node 22, pinned in .nvmrc
+pnpm dev          # development build with hot reload → .output/chrome-mv3-dev/
 ```
 
----
+Then in Chrome:
 
-## How to use
+1. Open `chrome://extensions`.
+2. Enable **Developer mode**.
+3. Click **Load unpacked** and select `.output/chrome-mv3-dev/`.
 
-1. Click the Job Buddy icon in your toolbar to open the popup
-2. Click **Open Profile** to fill in your details (only needed once)
-3. Navigate to any job application page
-4. Click **Auto Fill**
-5. Review the color-coded highlights and make any corrections
-6. Submit your application
+For a production build, use `pnpm build` (output: `.output/chrome-mv3/`) or `pnpm zip` to produce the Chrome Web Store zip.
 
-**Color codes:**
+## Usage
 
-| Color | Meaning |
-|---|---|
-| 🟢 Green | Filled with high confidence — looks correct |
-| 🟡 Yellow | Filled, but worth a quick review |
-| 🔴 Red | Not filled — Job Buddy wasn't confident enough; click to choose a value |
-| ⚪ Gray | Not in your profile yet — click to add the missing information |
+1. **Set up your profile.** Open the extension's options page (right-click the toolbar icon → Options, or click the icon and pick the link) and fill in the nine sections. Mandatory fields are flagged with red asterisks; optional fields are clearly marked.
+2. **Visit a job application page.**
+3. **Click the Job Buddy icon and press *Fill Form ✨*.** Job Buddy scans the page, matches each form field against your profile, and fills what it can. Filled fields get a colored tint:
+   - **Green** — high confidence, profile value was available.
+   - **Yellow** — medium confidence; click the field to pick a different profile value from a searchable overlay.
+   - **Red** — low confidence; same overlay lets you assign the right value.
+   - **Gray** — no profile data for this field; the overlay surfaces a quick link to the relevant profile section.
+4. **Review every field before submitting.** The autofill is a convenience tool, not a substitute for checking the form. Job Buddy never submits a form on your behalf.
+5. **Undo if needed.** The popup has an Undo Auto-fill button that clears every value Job Buddy wrote in that session.
 
----
+Manually correcting a field once via the overlay teaches Job Buddy that mapping for that domain — future fills on the same site use it directly (`Learned` layer, confidence 0.97).
 
-## What you can store in your profile
+If your profile is updated in another tab while a job application tab is open, Job Buddy silently fills any previously-empty fields the next time you focus that tab — no other fields are touched.
 
-- Personal info — name, email, phone, date of birth
-- Address — street, city, state, postal code, country
-- Professional — career summary, notice period
-- Work history — multiple roles with company, title, dates, location, description
-- Education — multiple entries with institution, degree, field of study, dates
-- Salary — current salary and expected salary per country
-- Work authorization — status and visa details per country
-- Languages — language and proficiency level
-- Links — LinkedIn, portfolio, custom links
-- Documents — CV/resume file upload or URL
+## AI Features
 
----
+Two optional features use Google's Gemini API. Both are off until you paste a Gemini API key into **Settings → AI Features**. You obtain the key yourself from [Google AI Studio](https://aistudio.google.com/api-keys); Job Buddy stores it only in `chrome.storage.local` and sends requests directly from your browser to Google's API using your key.
 
-## Privacy
+- **AI Resume Import.** Upload a PDF or DOCX résumé. The file is sent to Gemini as base64 inline data, and the extracted fields are shown in a Summary → Review flow where you accept or reject each suggestion. The file itself is saved to your profile (under Documents) only if you accept the "Resume File" entry in the review screen.
+- **AI Autofill assist.** Runs after the rule-based autofill. Any text fields the rule pipeline couldn't resolve, plus radio and checkbox groups (which the rule pipeline doesn't touch), are sent to Gemini along with your profile JSON for matching. Consent checkboxes are filtered out before any request is sent.
 
-Job Buddy stores everything locally in your browser using `chrome.storage.local`.
+Both features are silent on failure — autofill never blocks on the network. Clearing the API key in Settings stops all future AI requests immediately.
 
-- No backend server
-- No user accounts
-- No cloud sync
-- No analytics or tracking
-- Zero network requests — your data never leaves your device
+See [PRIVACY.md](PRIVACY.md) for a detailed breakdown of what's sent to Gemini and when.
 
-For full details, see the [Privacy Policy](PRIVACY.md).
+## Google Drive Backup
 
----
+An opt-in feature in **Settings → Cloud Backup** that syncs your profile to your own Google Drive so you can restore it on another browser or after reinstalling.
 
-## Tech stack
+- Uses Google's standard OAuth flow with the narrow `https://www.googleapis.com/auth/drive.appdata` scope — Job Buddy can read and write only its own hidden application-data folder, never the rest of your Drive.
+- Stored as a single JSON file (`job-buddy-profile.json`) wrapped as `{ lastModified, profile }`. If you've uploaded a CV in Documents, the encoded file is included.
+- Local-first: `chrome.storage.local` remains the source of truth. Sync fires fire-and-forget on every profile save and after every profile import; it never blocks the local write.
+- Connect-time conflict resolution: if Drive already has a backup and your local profile is non-empty, you get a Summary → Review screen to merge or replace.
+- Disconnect lets you keep or delete the Drive backup file.
 
-- [WXT](https://wxt.dev) — browser extension framework (Vite-based)
-- [React](https://react.dev) + [TypeScript](https://www.typescriptlang.org)
-- [Tailwind CSS](https://tailwindcss.com)
-- [pnpm](https://pnpm.io)
-- `chrome.storage.local` for all data persistence
+See [PRIVACY.md](PRIVACY.md) for the data flow and OAuth scope details.
 
----
+## Development
 
-## Roadmap
+Prerequisites: Node 22 (pinned in `.nvmrc`) and pnpm 11.
 
-### Phase 1 (current)
-- ✅ Profile editor with 9 sections
-- ✅ One-click autofill with confidence scoring
-- ✅ Color-coded field highlighting
-- ✅ Manual field picker with learned mappings
-- ✅ Resume/CV file auto-upload
-- ✅ Missing data detection with automatic re-fill on profile update
-- ✅ Undo autofill
-- ✅ Dark mode
+```bash
+pnpm install            # install dependencies (runs wxt prepare via postinstall)
+pnpm dev                # Chrome dev build with hot reload
+pnpm dev:firefox        # Firefox dev build with hot reload
+pnpm build              # production Chrome build → .output/chrome-mv3/
+pnpm build:firefox      # production Firefox build
+pnpm zip                # Chrome production zip → .output/job-buddy-<version>-chrome.zip
+pnpm compile            # tsc --noEmit (type-check only)
+pnpm lint               # ESLint
+pnpm format             # Prettier
+pnpm release            # interactive version bump + tag + push (triggers release workflow)
+```
 
-### Phase 2 (planned)
-- LLM-assisted resume import and field extraction
-- Radio button and checkbox autofill
-- Custom file upload widget support (Greenhouse, Lever, Workday)
-- Analytics opt-in (privacy-friendly)
-- Support for more ATS platforms
+CI runs `pnpm compile`, `pnpm lint`, and `pnpm build` on every push and pull request (see `.github/workflows/ci.yml`). Pushing a `v*.*.*` tag triggers the release workflow, which builds the zip, uploads it to the Chrome Web Store with `--auto-publish`, and creates a GitHub Release. See [`.github/SETUP.md`](.github/SETUP.md) for the one-time Chrome Web Store secret setup.
 
----
+## Architecture
+
+```
+entrypoints/
+  background.ts          MV3 service worker — OPEN_OPTIONS handler,
+                         retries deferred Drive sync on browser startup
+  content.ts             Content script (matches *://*/*) — receives runtime
+                         messages (AUTOFILL_SCAN, AUTOFILL_FILL, CLEAR,
+                         GET_STATUS, GET_DEBUG_SESSION), delegates to src/autofill
+  popup/                 Browser-action popup — Fill Form button, result
+                         summary, undo, AI key nudge, debug panel
+  options/               Full-page UI — 9 profile sections + Import Resume
+                         + Settings (AI key, Cloud Backup, Export/Import, Reset)
+
+src/
+  autofill/              Field scanner, signal extractor, mapper (4 layers),
+                         filler with native setter, highlighter, picker overlay,
+                         debug session, AI assist layer
+  components/options/    React components per profile section + Sidebar +
+                         CompletionBanner + Settings + ResumeImport
+  components/shared/     ImportSummaryDialog + ImportReviewScreen (used by
+                         Resume Import, Import Profile, and Drive conflict)
+  components/ui/         Toast
+  data/                  ISO country list, currency list, language list,
+                         work-authorization status labels
+  resume-ai/             Gemini client (gemini.ts), prompt builder, FIELD_DEFS
+                         + generateDiff + applyChanges (shared diff engine)
+  types/                 Profile, storage, derived-fields type definitions
+  utils/                 chrome.storage wrappers, profile completion scoring,
+                         derived fields, profile import validator,
+                         theme storage/apply, Google Drive sync
+```
+
+The extension is built with **WXT 0.20** (Manifest V3, React module), **React 19**, **TypeScript 5.9**, **Tailwind CSS v4**, and **pnpm 11**. ESLint v9 with `eslint-plugin-react@7` flat config (see `eslint.config.js`).
+
+`profile` is the canonical user data, stored in `chrome.storage.local`. `profile.derived` (full name, current title/company, total experience, age) is recomputed on every section save and is never edited directly by the UI.
+
+The four-layer autofill mapping pipeline is documented in detail in `CLAUDE.md` — the same file also documents the picker overlay, AI layer, Drive sync, theme system, and the operational safety boundaries that apply when working on the codebase.
+
+## Maintainer
+
+[@myowinthein](https://github.com/myowinthein)
 
 ## Contributing
 
-Contributions are welcome. Job Buddy is MIT licensed and built in the open.
+Issues and pull requests welcome at [github.com/myowinthein/job-buddy/issues](https://github.com/myowinthein/job-buddy/issues).
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/your-feature-name`)
-3. Make your changes
-4. Open a pull request with a clear description of what you've changed and why
+Before submitting a PR, please:
 
-For bug reports and feature requests, please [open an issue](https://github.com/myowinthein/job-buddy/issues).
+- Run `pnpm compile` and `pnpm lint` (CI runs both).
+- Keep commits focused; the project convention is to commit infrastructure and UI changes in separate logical commits where possible.
+- Don't include real OAuth client IDs or API keys in commits — `.env.development` / `.env.production` are gitignored; use `.env.example` as the template.
 
----
-
-## Support
-
-Found a bug or have a suggestion? [Open an issue on GitHub](https://github.com/myowinthein/job-buddy/issues).
-
-The issue link is also available from the extension popup and Settings page.
-
----
+If you support the work, [Ko-fi](https://ko-fi.com/myowinthein) tips are appreciated.
 
 ## License
 
-[MIT](LICENSE) — free to use, modify, and distribute.
-
----
-
-*Built by [Myo Win Thein](https://github.com/myowinthein)*
+[MIT](LICENSE) © 2026 Myo Win Thein
