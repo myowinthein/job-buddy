@@ -248,6 +248,12 @@ export const FIELD_DEFS: FieldDef[] = [
 
 // ── Diff generation ──────────────────────────────────────────────────────────
 
+/**
+ * Shared diff engine for Resume Import, Import Profile, and Drive Connect flows.
+ * current   = baseline profile already saved on-device.
+ * extracted = incoming candidate (Gemini output, JSON import, or Drive backup).
+ * Returns one FieldChange per FIELD_DEF classified as new | conflict | unchanged.
+ */
 export function generateDiff(
   current: Partial<Profile>,
   extracted: Partial<Profile>,

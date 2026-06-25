@@ -71,17 +71,6 @@ export async function revokeDriveToken(token: string): Promise<void> {
   } catch {
     // Best-effort revoke — silent failure is fine, the token will lapse on its own.
   }
-  try {
-    await new Promise<void>((resolve) => {
-      try {
-        chrome.identity.removeCachedAuthToken({ token }, () => resolve());
-      } catch {
-        resolve();
-      }
-    });
-  } catch {
-    /* ignore */
-  }
 }
 
 // ── Drive API helpers ────────────────────────────────────────────────────────

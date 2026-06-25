@@ -5,25 +5,14 @@ import { extractFromResume } from '@/src/resume-ai/gemini';
 import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
 import type { FieldChange, ImportProgressStep, ImportErrorCode } from '@/src/resume-ai/types';
 import { useToast } from '@/src/components/ui/Toast';
+import ImportSummaryDialog from '@/src/components/shared/ImportSummaryDialog';
+import ImportReviewScreen from '@/src/components/shared/ImportReviewScreen';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const MAX_FILE_BYTES  = 10 * 1024 * 1024; // 10 MB
-const LONG_WAIT_MS    = 8_000;
-const FILE_CHANGE_ID  = '__cv_file__';
-
-// Matches sidebar section order; used to group review fields
-const SECTION_ORDER = [
-  'Personal',
-  'Address',
-  'Salary',
-  'Work Authorization',
-  'Work History',
-  'Education',
-  'Languages',
-  'Links',
-  'Documents',
-];
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
+const LONG_WAIT_MS   = 8_000;
+const FILE_CHANGE_ID = '__cv_file__';
 
 const PROGRESS_STEPS: { id: ImportProgressStep; label: string }[] = [
   { id: 'reading',    label: 'Reading file…' },
@@ -64,7 +53,7 @@ interface Props {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-type Screen = 'dialog' | 'progress' | 'review' | 'done';
+type Screen = 'dialog' | 'progress' | 'summary' | 'review' | 'done';
 
 export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: Props) {
   const { showToast }  = useToast();
@@ -79,16 +68,17 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
   const [errorMsg,     setErrorMsg]     = useState<string | null>(null);
   const [errorCode,    setErrorCode]    = useState<ImportErrorCode | null>(null);
   const [changes,      setChanges]      = useState<FieldChange[]>([]);
+  const [saving,       setSaving]       = useState(false);
   const [summary,      setSummary]      = useState<{ updated: number; conflicts: number; skipped: number } | null>(null);
 
-  const fileInputRef      = useRef<HTMLInputElement>(null);
+  const fileInputRef       = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const longWaitTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longWaitTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load API key on mount; dialog is already open (screen initialises to 'dialog')
+  // Load API key on mount
   useEffect(() => {
     Promise.all([getGeminiApiKey(), getGeminiModel()]).then(([key, mdl]) => {
-      setApiKey(key ?? '');  // '' = confirmed no key; null stays as loading sentinel
+      setApiKey(key ?? '');
       setModel(mdl);
     });
     return () => {
@@ -189,7 +179,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
         accepted:         true,
       };
       setChanges([fileChange, ...aiChanges]);
-      setScreen('review');
+      setScreen('summary');
     } catch (err) {
       if ((err as { name?: string })?.name === 'AbortError') return;
       const e = err as { name?: string; message?: string; code?: ImportErrorCode };
@@ -202,7 +192,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
     }
   };
 
-  // ── Retry (network failure — file already read, skip reading step) ───────────
+  // ── Retry (network failure — file already read, skip reading step) ────────────
 
   const handleRetry = async () => {
     if (!selectedFile || !apiKey || !model) return;
@@ -215,10 +205,9 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
     setShowLongWait(false);
     longWaitTimerRef.current = setTimeout(() => setShowLongWait(true), LONG_WAIT_MS);
 
-    // If the file was never read (very unlikely), fall back to full extract
     const dataUri = fileDataUri ?? await fileToDataUri(selectedFile);
     if (!fileDataUri) setFileDataUri(dataUri);
-    const base64  = dataUri.split(',')[1] ?? '';
+    const base64   = dataUri.split(',')[1] ?? '';
     const mimeType = getMimeType(selectedFile);
 
     try {
@@ -240,7 +229,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
         accepted:         true,
       };
       setChanges([fileChange, ...aiChanges]);
-      setScreen('review');
+      setScreen('summary');
     } catch (err) {
       if ((err as { name?: string })?.name === 'AbortError') return;
       const e = err as { name?: string; message?: string; code?: ImportErrorCode };
@@ -253,26 +242,15 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
     }
   };
 
-  // ── Review helpers ────────────────────────────────────────────────────────────
-
-  const toggleAccepted = (id: string) =>
-    setChanges((prev) => prev.map((c) => (c.id === id ? { ...c, accepted: !c.accepted } : c)));
-
-  const acceptAllNew = () =>
-    setChanges((prev) => prev.map((c) => (c.status === 'new' ? { ...c, accepted: true } : c)));
-
-  const setConflictChoice = (id: string, useSuggested: boolean) =>
-    setChanges((prev) => prev.map((c) => (c.id === id ? { ...c, accepted: useSuggested } : c)));
-
   // ── Save ──────────────────────────────────────────────────────────────────────
 
-  const handleSave = async () => {
-    const fileChange   = changes.find((c) => c.id === FILE_CHANGE_ID);
-    const aiChanges    = changes.filter((c) => c.id !== FILE_CHANGE_ID);
+  const performSave = async (finalChanges: FieldChange[]): Promise<void> => {
+    const fileChange   = finalChanges.find((c) => c.id === FILE_CHANGE_ID);
+    const aiChanges    = finalChanges.filter((c) => c.id !== FILE_CHANGE_ID);
 
-    const newAccepted      = changes.filter((c) => c.status === 'new'     && c.accepted).length;
-    const conflictAccepted = changes.filter((c) => c.status === 'conflict' && c.accepted).length;
-    const skipped          = changes.filter((c) => c.status !== 'unchanged' && !c.accepted).length;
+    const newAccepted      = finalChanges.filter((c) => c.status === 'new'      && c.accepted).length;
+    const conflictAccepted = finalChanges.filter((c) => c.status === 'conflict' && c.accepted).length;
+    const skipped          = finalChanges.filter((c) => c.status !== 'unchanged' && !c.accepted).length;
 
     let updated = applyChanges(profile, aiChanges);
 
@@ -294,20 +272,17 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
       };
     }
 
+    setSaving(true);
     try {
       await onSave(updated);
       setSummary({ updated: newAccepted, conflicts: conflictAccepted, skipped });
       setScreen('done');
     } catch {
       showToast('error', 'Save failed. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
-
-  // ── Derived ───────────────────────────────────────────────────────────────────
-
-  const newFields = changes.filter((c) => c.status === 'new');
-  const conflicts = changes.filter((c) => c.status === 'conflict');
-  const unchanged = changes.filter((c) => c.status === 'unchanged');
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -413,7 +388,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
                 </>
               )}
 
-              {/* Still loading key — show nothing (brief flash) */}
+              {/* Still loading key — brief placeholder */}
               {apiKey === null && <div className="py-8" />}
             </div>
 
@@ -552,109 +527,31 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
       )}
 
       {/* ════════════════════════════════════════════════════════════════════════
-          Review UI
+          Summary — counts of new / conflict / unchanged fields
+          ════════════════════════════════════════════════════════════════════ */}
+      {screen === 'summary' && (
+        <ImportSummaryDialog
+          changes={changes}
+          title="Review Suggestions"
+          onAcceptAll={() => void performSave(changes)}
+          onRejectAll={() => setScreen('dialog')}
+          onReview={() => setScreen('review')}
+          isProcessing={saving}
+        />
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════════
+          Review — per-field accept / reject
           ════════════════════════════════════════════════════════════════════ */}
       {screen === 'review' && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={() => setScreen('dialog')}
-        >
-          <div
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-2xl mx-4 flex flex-col max-h-[90vh]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
-              <div>
-                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                  Review Suggestions
-                </h3>
-                {(newFields.length > 0 || conflicts.length > 0) && (
-                  <p className="text-xs mt-0.5">
-                    {newFields.length > 0 && (
-                      <span className="text-green-600 dark:text-green-400">New {newFields.length}</span>
-                    )}
-                    {newFields.length > 0 && conflicts.length > 0 && ' · '}
-                    {conflicts.length > 0 && (
-                      <span className="text-yellow-600 dark:text-yellow-500">Conflicts {conflicts.length}</span>
-                    )}
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                {newFields.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={acceptAllNew}
-                    className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
-                  >
-                    Accept All New Fields
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setScreen('dialog')}
-                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-
-            {/* Scrollable body — fields grouped by sidebar section */}
-            <div className="flex-1 overflow-y-auto px-6 py-5">
-              <div className="space-y-6">
-                {SECTION_ORDER.map((section) => {
-                  const fields = changes.filter((c) => c.section === section);
-                  if (fields.length === 0) return null;
-                  // Only render the section if it has at least one actionable field
-                  if (!fields.some((f) => f.status !== 'unchanged')) return null;
-                  return (
-                    <div key={section}>
-                      <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-                        {section}
-                      </h4>
-                      <div className="space-y-1.5">
-                        {fields.filter((c) => c.status !== 'unchanged').map((change) => (
-                          <FieldRow
-                            key={change.id}
-                            change={change}
-                            onToggle={toggleAccepted}
-                            onConflictChoice={setConflictChoice}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {newFields.length === 0 && conflicts.length === 0 && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">
-                  No new information found in your resume.
-                </p>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
-              <button
-                type="button"
-                onClick={() => setScreen('dialog')}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:scale-95 transition-colors"
-              >
-                Save selected
-              </button>
-            </div>
-          </div>
-        </div>
+        <ImportReviewScreen
+          changes={changes}
+          onSave={performSave}
+          onBack={() => setScreen('summary')}
+          isSaving={saving}
+          title="Review Suggestions"
+          saveLabel="Save selected"
+        />
       )}
 
       {/* ════════════════════════════════════════════════════════════════════════
@@ -683,91 +580,6 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// ── Helper sub-components ─────────────────────────────────────────────────────
-
-function MultilineValue({ value, className }: { value: string; className?: string }) {
-  const lines = value.split('\n').filter(Boolean);
-  if (lines.length <= 1) return <p className={className}>{value || '—'}</p>;
-  return (
-    <ul className={`list-none space-y-0.5 ${className ?? ''}`}>
-      {lines.map((line, i) => (
-        <li key={i} className="flex gap-1">
-          <span className="shrink-0 text-gray-400">·</span>
-          <span>{line}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function FieldRow({
-  change,
-  onToggle,
-  onConflictChoice,
-}: {
-  change: FieldChange;
-  onToggle: (id: string) => void;
-  onConflictChoice: (id: string, useSuggested: boolean) => void;
-}) {
-  if (change.status === 'new') {
-    return (
-      <label className="flex items-start gap-3 p-2.5 bg-green-50 dark:bg-green-900/15 border border-green-200 dark:border-green-800 rounded-lg cursor-pointer">
-        <input
-          type="checkbox"
-          checked={change.accepted}
-          onChange={() => onToggle(change.id)}
-          className="mt-0.5 shrink-0 accent-green-600"
-        />
-        <div className="min-w-0">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">{change.label}</p>
-          <MultilineValue value={change.displaySuggested} className="text-sm text-gray-900 dark:text-gray-100" />
-        </div>
-      </label>
-    );
-  }
-
-  if (change.status === 'conflict') {
-    return (
-      <div className="p-2.5 bg-yellow-50 dark:bg-yellow-900/15 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{change.label}</p>
-        <label className="flex items-start gap-2 mb-2 cursor-pointer">
-          <input
-            type="radio"
-            name={change.id}
-            checked={!change.accepted}
-            onChange={() => onConflictChoice(change.id, false)}
-            className="mt-0.5 shrink-0"
-          />
-          <div className="min-w-0">
-            <span className="text-xs text-gray-400 dark:text-gray-500">Keep current</span>
-            <MultilineValue value={change.displayCurrent} className="text-sm text-gray-700 dark:text-gray-300" />
-          </div>
-        </label>
-        <label className="flex items-start gap-2 cursor-pointer">
-          <input
-            type="radio"
-            name={change.id}
-            checked={change.accepted}
-            onChange={() => onConflictChoice(change.id, true)}
-            className="mt-0.5 shrink-0"
-          />
-          <div className="min-w-0">
-            <span className="text-xs text-gray-400 dark:text-gray-500">Use suggested</span>
-            <MultilineValue value={change.displaySuggested} className="text-sm font-medium text-gray-900 dark:text-gray-100" />
-          </div>
-        </label>
-      </div>
-    );
-  }
-
-  // unchanged — muted label, no interaction
-  return (
-    <div className="flex items-center px-2.5 py-1">
-      <span className="text-xs text-gray-400 dark:text-gray-500">{change.label}</span>
     </div>
   );
 }
