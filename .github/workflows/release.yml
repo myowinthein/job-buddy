@@ -12,6 +12,7 @@ jobs:
   release:
     name: Build, publish to Chrome Web Store, create GitHub Release
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Checkout (full history)
         uses: actions/checkout@v4
@@ -42,18 +43,6 @@ jobs:
           ZIP_PATH=$(ls .output/*-chrome.zip | head -n1)
           echo "path=$ZIP_PATH" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "$ZIP_PATH")" >> "$GITHUB_OUTPUT"
-
-      - name: Debug env vars
-        env:
-          CLI_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
-          CLI_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
-          CLI_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
-          CLI_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
-        run: |
-          echo "CLI_EXTENSION_ID is set: ${{ env.CLI_EXTENSION_ID != '' }}"
-          echo "CLI_CLIENT_ID is set: ${{ env.CLI_CLIENT_ID != '' }}"
-          echo "CLI_CLIENT_SECRET is set: ${{ env.CLI_CLIENT_SECRET != '' }}"
-          echo "CLI_REFRESH_TOKEN is set: ${{ env.CLI_REFRESH_TOKEN != '' }}"
 
       - name: Upload to Chrome Web Store and submit for review
         env:
