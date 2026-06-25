@@ -134,7 +134,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   }>({ connected: false, lastSynced: null, pendingSync: false, error: null });
   const [driveConnecting,       setDriveConnecting]       = useState(false);
   const [driveSyncing,          setDriveSyncing]          = useState(false);
-  const [driveDisconnectDialog, setDriveDisconnectDialog] = useState(false);
+  const [driveDisconnectDialog,   setDriveDisconnectDialog]   = useState(false);
+  const [disconnectDeleteBackup,  setDisconnectDeleteBackup]  = useState(false);
   const [driveRestoreCase,      setDriveRestoreCase]      = useState<'empty' | 'conflict' | null>(null);
   const [driveRestoreData,      setDriveRestoreData]      = useState<DriveBackupFile | null>(null);
   const [driveLocalProfile,     setDriveLocalProfile]     = useState<Partial<Profile> | null>(null);
@@ -197,6 +198,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       await saveGeminiModel(DEFAULT_GEMINI_MODEL);
       setGeminiModel(DEFAULT_GEMINI_MODEL);
       setGeminiKeyStatus('valid');
+      showToast('success', 'API key saved.');
 
       // Step 3: background model probe — fully decoupled from key validation
       const probeId = ++probeIdRef.current;
@@ -424,6 +426,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
   const handleDriveDisconnect = async (deleteFile: boolean) => {
     setDriveDisconnectDialog(false);
+    setDisconnectDeleteBackup(false);
     try {
       await disconnectDrive(deleteFile);
       showToast('success', deleteFile ? 'Disconnected and Drive backup deleted' : 'Disconnected from Google Drive');
@@ -589,9 +592,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
         {geminiKeyStatus === 'validating' && (
           <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Validating…</p>
-        )}
-        {geminiKeyStatus === 'valid' && (
-          <p className="mt-1.5 text-xs text-green-600 dark:text-green-400">API key saved.</p>
         )}
         {geminiKeyStatus === 'no_model' && (
           <p className="mt-1.5 text-xs text-yellow-600 dark:text-yellow-400">
@@ -795,9 +795,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                 Disconnect
               </button>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Drive acts as backup only. Changes sync from here to Drive, not the other way.
-            </p>
           </div>
         )}
       </section>
@@ -990,51 +987,68 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       {driveDisconnectDialog && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={() => setDriveDisconnectDialog(false)}
+          onClick={() => { setDriveDisconnectDialog(false); setDisconnectDeleteBackup(false); }}
         >
           <div
             className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-md mx-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Disconnect Google Drive</h3>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">What to do with your Drive backup?</h3>
               <button
                 type="button"
-                onClick={() => setDriveDisconnectDialog(false)}
+                onClick={() => { setDriveDisconnectDialog(false); setDisconnectDeleteBackup(false); }}
                 className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
               >
                 ×
               </button>
             </div>
-            <div className="px-6 py-5">
-              <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
-                What would you like to do with the backup file in your Google Drive?
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Either way, your local profile on this device is untouched.
-              </p>
+            <div className="px-6 py-5 space-y-3">
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="disconnectScope"
+                  checked={!disconnectDeleteBackup}
+                  onChange={() => setDisconnectDeleteBackup(false)}
+                  className="mt-0.5 text-blue-600"
+                />
+                <div>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Keep the backup file</span>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Your Drive backup remains accessible if you reconnect later.
+                  </p>
+                </div>
+              </label>
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="disconnectScope"
+                  checked={disconnectDeleteBackup}
+                  onChange={() => setDisconnectDeleteBackup(true)}
+                  className="mt-0.5 text-blue-600"
+                />
+                <div>
+                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Delete the backup file</span>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    Permanently removes the backup from Google Drive.
+                  </p>
+                </div>
+              </label>
             </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex-wrap">
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <button
                 type="button"
-                onClick={() => setDriveDisconnectDialog(false)}
+                onClick={() => { setDriveDisconnectDialog(false); setDisconnectDeleteBackup(false); }}
                 className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={() => handleDriveDisconnect(false)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
+                onClick={() => void handleDriveDisconnect(disconnectDeleteBackup)}
+                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:scale-95 transition-colors"
               >
-                Keep Drive Backup
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDriveDisconnect(true)}
-                className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 active:scale-95 transition-colors"
-              >
-                Delete Drive Backup
+                Disconnect
               </button>
             </div>
           </div>
