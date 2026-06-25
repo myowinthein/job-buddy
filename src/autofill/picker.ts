@@ -3,7 +3,7 @@ import { COUNTRIES } from '../data/countries';
 import { LANGUAGES } from '../data/languages';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
 import { fmtYearMonth } from '../utils/dateFormat';
-import { getProfile } from '../utils/storage';
+import { getProfile, getThemePreference } from '../utils/storage';
 import { resolveProfileValue } from './resolver';
 
 // All styles are inline — no Tailwind, no external CSS — to avoid host page conflicts.
@@ -81,6 +81,167 @@ interface Section {
   label: string;
   items: SectionItem[];
 }
+
+// ─── Theme ────────────────────────────────────────────────────────────────────
+//
+// The picker is rendered as inline-style DOM into arbitrary host pages, so it
+// cannot rely on Tailwind's `.dark` variant (the host's <html> never gets the
+// class). Instead we mirror the extension's themePreference manually:
+//
+//   - read `themePreference` from chrome.storage.local at module load
+//   - subscribe to chrome.storage.onChanged for live updates from other contexts
+//   - when preference === 'system', subscribe to prefers-color-scheme so the
+//     picker follows the OS in real time
+//   - re-render any open picker whenever the effective theme flips
+
+interface PickerTheme {
+  cardBg:             string;
+  cardBorder:         string;
+  cardShadow:         string;
+  innerDivider:       string;
+  sectionHeaderBg:    string;
+  sectionHeaderHover: string;
+  sectionHeaderText:  string;
+  rowHoverBg:         string;
+  primaryText:        string;
+  secondaryText:      string;
+  tertiaryText:       string;
+  currentRowBg:       string;
+  currentRowHover:    string;
+  currentBadgeBg:     string;
+  currentBadgeText:   string;
+  buttonBg:           string;
+  buttonHoverBg:      string;
+  buttonText:         string;
+  searchBg:           string;
+  searchBgFocus:      string;
+  searchBorder:       string;
+  searchBorderFocus:  string;
+}
+
+const LIGHT_THEME: PickerTheme = {
+  cardBg:             '#ffffff',
+  cardBorder:         '#e5e7eb',
+  cardShadow:         '0 4px 16px -2px rgba(0,0,0,0.12),0 2px 6px -2px rgba(0,0,0,0.06)',
+  innerDivider:       '#f3f4f6',
+  sectionHeaderBg:    '#f3f4f6',
+  sectionHeaderHover: '#e5e7eb',
+  sectionHeaderText:  '#374151',
+  rowHoverBg:         '#f3f4f6',
+  primaryText:        '#111827',
+  secondaryText:      '#6b7280',
+  tertiaryText:       '#9ca3af',
+  currentRowBg:       '#f0fdf4',
+  currentRowHover:    '#dcfce7',
+  currentBadgeBg:     '#dcfce7',
+  currentBadgeText:   '#16a34a',
+  buttonBg:           '#2563eb',
+  buttonHoverBg:      '#1d4ed8',
+  buttonText:         '#ffffff',
+  searchBg:           '#f9fafb',
+  searchBgFocus:      '#ffffff',
+  searchBorder:       '#e5e7eb',
+  searchBorderFocus:  '#6366f1',
+};
+
+const DARK_THEME: PickerTheme = {
+  cardBg:             '#1e293b', // slate-800 (surface)
+  cardBorder:         '#334155', // slate-700
+  cardShadow:         '0 4px 16px -2px rgba(0,0,0,0.6),0 2px 6px -2px rgba(0,0,0,0.4)',
+  innerDivider:       '#334155', // slate-700
+  sectionHeaderBg:    '#0f172a', // slate-900 (background — darker stripe inside card)
+  sectionHeaderHover: '#1e293b', // slate-800
+  sectionHeaderText:  '#cbd5e1', // slate-300
+  rowHoverBg:         '#334155', // slate-700 (hover)
+  primaryText:        '#f1f5f9', // slate-100
+  secondaryText:      '#94a3b8', // slate-400
+  tertiaryText:       '#94a3b8', // slate-400 (same as secondary in dark)
+  currentRowBg:       '#14532d', // green-900
+  currentRowHover:    '#166534', // green-800
+  currentBadgeBg:     '#166534', // green-800
+  currentBadgeText:   '#86efac', // green-300
+  buttonBg:           '#1d4ed8', // blue-700 (selected/active per spec)
+  buttonHoverBg:      '#1e40af', // blue-800
+  buttonText:         '#ffffff',
+  searchBg:           '#0f172a', // slate-900
+  searchBgFocus:      '#1e293b', // slate-800
+  searchBorder:       '#334155', // slate-700
+  searchBorderFocus:  '#3b82f6', // blue-500
+};
+
+let isDark = false;
+let activeMql:   MediaQueryList | null = null;
+let mqlListener: ((e: MediaQueryListEvent) => void) | null = null;
+
+// Captured at showPicker time so we can rebuild the open picker on theme
+// change without needing the caller (attachPickerListeners) to re-trigger.
+interface ActivePickerSession {
+  element:  HTMLElement;
+  state:    PickerFieldState;
+  label:    string;
+  onSelect: (el: HTMLElement, path: string, val: string, st: PickerFieldState) => void;
+}
+let activeSession: ActivePickerSession | null = null;
+
+function theme(): PickerTheme {
+  return isDark ? DARK_THEME : LIGHT_THEME;
+}
+
+function teardownMediaListener(): void {
+  if (activeMql && mqlListener) {
+    try { activeMql.removeEventListener('change', mqlListener); } catch { /* no-op */ }
+  }
+  activeMql   = null;
+  mqlListener = null;
+}
+
+function setIsDark(next: boolean): void {
+  if (isDark === next) return;
+  isDark = next;
+  void rerenderActivePicker();
+}
+
+function applyThemePreference(pref: 'system' | 'light' | 'dark'): void {
+  teardownMediaListener();
+  if (pref === 'dark')  { setIsDark(true);  return; }
+  if (pref === 'light') { setIsDark(false); return; }
+  // 'system' — mirror OS preference and watch for live changes
+  try {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    setIsDark(mq.matches);
+    mqlListener = (e) => setIsDark(e.matches);
+    mq.addEventListener('change', mqlListener);
+    activeMql = mq;
+  } catch {
+    setIsDark(false);
+  }
+}
+
+async function rerenderActivePicker(): Promise<void> {
+  if (!activeSession) return;
+  const { element, state, label, onSelect } = activeSession;
+  const profile = await getProfile();
+  if (!profile) return;
+  // showPicker calls removePicker first, then re-establishes activeSession.
+  showPicker(element, state, label, buildPickerTree(profile), onSelect);
+}
+
+// Initialize theme at module load (once per content-script injection).
+void (async () => {
+  try {
+    const pref = await getThemePreference();
+    applyThemePreference(pref);
+  } catch { /* no-op — picker stays in light mode */ }
+})();
+
+try {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local') return;
+    if (!('themePreference' in changes)) return;
+    const next = (changes.themePreference.newValue as 'system' | 'light' | 'dark' | undefined) ?? 'system';
+    applyThemePreference(next);
+  });
+} catch { /* no-op — chrome.storage may be unavailable in some contexts */ }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -408,13 +569,15 @@ function buildPickerTree(profile: Profile): Section[] {
 // ─── DOM element builders ─────────────────────────────────────────────────────
 
 // Shared style for inline sub-headings (clusters and sub-group headers).
-const SUB_HEADING_STYLE: Record<string, string> = {
-  fontSize:      '10px',
-  fontWeight:    '700',
-  color:         '#6b7280',
-  textTransform: 'uppercase',
-  letterSpacing: '0.06em',
-};
+function subHeadingStyle(t: PickerTheme): Record<string, string> {
+  return {
+    fontSize:      '10px',
+    fontWeight:    '700',
+    color:         t.secondaryText,
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+  };
+}
 
 function buildRowEl(
   r: OptionRow,
@@ -424,12 +587,13 @@ function buildRowEl(
   indent: boolean,
   onSelect: (el: HTMLElement, path: string, val: string, st: PickerFieldState) => void,
 ): HTMLElement {
+  const t = theme();
   const isCurrent = state === 'needReview' && r.value === currentValue;
 
   const div = mk('div', {
     padding:         `5px ${indent ? '20px' : '12px'}`,
     cursor:          'pointer',
-    backgroundColor: isCurrent ? '#f0fdf4' : '',
+    backgroundColor: isCurrent ? t.currentRowBg : '',
     display:         'flex',
     alignItems:      'center',
     gap:             '8px',
@@ -439,7 +603,7 @@ function buildRowEl(
 
   const labelEl = mk('span', {
     fontSize:     '11px',
-    color:        '#9ca3af',
+    color:        t.tertiaryText,
     flexShrink:   '0',
     maxWidth:     '44%',
     whiteSpace:   'nowrap',
@@ -451,7 +615,7 @@ function buildRowEl(
   const valueEl = mk('span', {
     fontSize:     '13px',
     fontWeight:   '500',
-    color:        '#111827',
+    color:        t.primaryText,
     flex:         '1',
     minWidth:     '0',
     whiteSpace:   'nowrap',
@@ -467,8 +631,8 @@ function buildRowEl(
     const badge = mk('span', {
       fontSize:        '10px',
       fontWeight:      '600',
-      color:           '#16a34a',
-      backgroundColor: '#dcfce7',
+      color:           t.currentBadgeText,
+      backgroundColor: t.currentBadgeBg,
       padding:         '1px 5px',
       borderRadius:    '4px',
       whiteSpace:      'nowrap',
@@ -478,8 +642,8 @@ function buildRowEl(
     div.appendChild(badge);
   }
 
-  div.addEventListener('mouseenter', () => { div.style.backgroundColor = isCurrent ? '#dcfce7' : '#f3f4f6'; });
-  div.addEventListener('mouseleave', () => { div.style.backgroundColor = isCurrent ? '#f0fdf4' : ''; });
+  div.addEventListener('mouseenter', () => { div.style.backgroundColor = isCurrent ? t.currentRowHover : t.rowHoverBg; });
+  div.addEventListener('mouseleave', () => { div.style.backgroundColor = isCurrent ? t.currentRowBg    : ''; });
   div.addEventListener('mousedown', (e) => {
     e.preventDefault();
     onSelect(targetEl, r.fieldPath, r.value, state);
@@ -496,13 +660,14 @@ function buildClusterEl(
   currentValue: string,
   onSelect: (el: HTMLElement, path: string, val: string, st: PickerFieldState) => void,
 ): HTMLElement {
+  const t = theme();
   const wrapper = mk('div');
   wrapper.setAttribute('data-jb-cluster', '1');
 
   const heading = mk('div', {
-    ...SUB_HEADING_STYLE,
+    ...subHeadingStyle(t),
     padding:   '5px 12px 2px',
-    borderTop: '1px solid #f3f4f6',
+    borderTop: `1px solid ${t.innerDivider}`,
   });
   heading.textContent = cluster.heading;
   wrapper.appendChild(heading);
@@ -522,17 +687,18 @@ function buildSubGroupEl(
   initialExpanded: boolean,
   onSelect: (el: HTMLElement, path: string, val: string, st: PickerFieldState) => void,
 ): HTMLElement {
+  const t = theme();
   const wrapper = mk('div');
   wrapper.setAttribute('data-jb-subgroup', '1');
 
   const header = mk('div', {
-    ...SUB_HEADING_STYLE,
+    ...subHeadingStyle(t),
     padding:        '5px 12px 5px 16px',
     cursor:         'pointer',
     display:        'flex',
     alignItems:     'center',
     justifyContent: 'space-between',
-    borderTop:      '1px solid #f3f4f6',
+    borderTop:      `1px solid ${t.innerDivider}`,
     userSelect:     'none',
   });
   header.setAttribute('data-jb-subgroup-header', '1');
@@ -540,7 +706,7 @@ function buildSubGroupEl(
   const headingText = mk('span');
   headingText.textContent = sg.heading;
 
-  const chevron = mk('span', { fontSize: '9px', color: '#9ca3af', marginLeft: '6px', flexShrink: '0' });
+  const chevron = mk('span', { fontSize: '9px', color: t.tertiaryText, marginLeft: '6px', flexShrink: '0' });
   chevron.textContent = initialExpanded ? '▾' : '▸';
 
   header.appendChild(headingText);
@@ -556,7 +722,7 @@ function buildSubGroupEl(
   }
   wrapper.appendChild(body);
 
-  header.addEventListener('mouseenter', () => { header.style.backgroundColor = '#f3f4f6'; });
+  header.addEventListener('mouseenter', () => { header.style.backgroundColor = t.rowHoverBg; });
   header.addEventListener('mouseleave', () => { header.style.backgroundColor = ''; });
   header.addEventListener('mousedown', (e) => {
     e.preventDefault();
@@ -578,6 +744,7 @@ function buildSectionEl(
   isFirst: boolean,
   onSelect: (el: HTMLElement, path: string, val: string, st: PickerFieldState) => void,
 ): HTMLElement {
+  const t = theme();
   const isExpanded = openState.expandedSections.has(section.id);
 
   const wrapper = mk('div');
@@ -590,11 +757,11 @@ function buildSectionEl(
     display:         'flex',
     alignItems:      'center',
     justifyContent:  'space-between',
-    backgroundColor: '#f3f4f6',
-    borderTop:       isFirst ? 'none' : '1px solid #e5e7eb',
+    backgroundColor: t.sectionHeaderBg,
+    borderTop:       isFirst ? 'none' : `1px solid ${t.cardBorder}`,
     fontSize:        '11px',
     fontWeight:      '700',
-    color:           '#374151',
+    color:           t.sectionHeaderText,
     textTransform:   'uppercase',
     letterSpacing:   '0.06em',
     userSelect:      'none',
@@ -604,7 +771,7 @@ function buildSectionEl(
   const headingText = mk('span');
   headingText.textContent = section.label;
 
-  const chevron = mk('span', { fontSize: '10px', color: '#9ca3af', marginLeft: '4px', flexShrink: '0' });
+  const chevron = mk('span', { fontSize: '10px', color: t.tertiaryText, marginLeft: '4px', flexShrink: '0' });
   chevron.textContent = isExpanded ? '▾' : '▸';
 
   header.appendChild(headingText);
@@ -628,8 +795,8 @@ function buildSectionEl(
 
   wrapper.appendChild(body);
 
-  header.addEventListener('mouseenter', () => { header.style.backgroundColor = '#e5e7eb'; });
-  header.addEventListener('mouseleave', () => { header.style.backgroundColor = '#f3f4f6'; });
+  header.addEventListener('mouseenter', () => { header.style.backgroundColor = t.sectionHeaderHover; });
+  header.addEventListener('mouseleave', () => { header.style.backgroundColor = t.sectionHeaderBg; });
   header.addEventListener('mousedown', (e) => {
     e.preventDefault();
     const expanded = body.style.display !== 'none';
@@ -789,6 +956,7 @@ function removePicker(): void {
   activePicker?.remove();
   activePicker         = null;
   activePickerElement  = null;
+  activeSession        = null;
 }
 
 // ─── showPicker ───────────────────────────────────────────────────────────────
@@ -798,6 +966,7 @@ function removePicker(): void {
 // Options page. Uses the same inline-style approach as the rest of the picker
 // so it works on any host page without bleed from host CSS.
 function showNoDataCta(element: HTMLElement, label: string): void {
+  const t = theme();
   const rect = element.getBoundingClientRect();
 
   const picker = mk('div');
@@ -808,10 +977,10 @@ function showNoDataCta(element: HTMLElement, label: string): void {
     top:             '-9999px',
     left:            `${Math.max(0, rect.left)}px`,
     width:           '280px',
-    backgroundColor: '#ffffff',
-    border:          '1px solid #e5e7eb',
+    backgroundColor: t.cardBg,
+    border:          `1px solid ${t.cardBorder}`,
     borderRadius:    '8px',
-    boxShadow:       '0 4px 16px -2px rgba(0,0,0,0.12),0 2px 6px -2px rgba(0,0,0,0.06)',
+    boxShadow:       t.cardShadow,
     fontFamily:      'system-ui,-apple-system,sans-serif',
     fontSize:        '13px',
     padding:         '14px',
@@ -821,7 +990,7 @@ function showNoDataCta(element: HTMLElement, label: string): void {
   const title = mk('div', {
     fontSize:   '13px',
     fontWeight: '600',
-    color:      '#111827',
+    color:      t.primaryText,
     marginBottom: '4px',
   });
   title.textContent = `No ${label} saved in your profile yet`;
@@ -829,7 +998,7 @@ function showNoDataCta(element: HTMLElement, label: string): void {
 
   const help = mk('div', {
     fontSize:   '12px',
-    color:      '#6b7280',
+    color:      t.secondaryText,
     marginBottom: '12px',
     lineHeight: '1.4',
   });
@@ -841,8 +1010,8 @@ function showNoDataCta(element: HTMLElement, label: string): void {
   Object.assign(button.style, {
     width:           '100%',
     padding:         '7px 10px',
-    backgroundColor: '#2563EB',
-    color:           '#ffffff',
+    backgroundColor: t.buttonBg,
+    color:           t.buttonText,
     border:          'none',
     borderRadius:    '6px',
     fontSize:        '12px',
@@ -851,8 +1020,8 @@ function showNoDataCta(element: HTMLElement, label: string): void {
     fontFamily:      'inherit',
   });
   button.textContent = 'Go to Profile →';
-  button.addEventListener('mouseenter', () => { button.style.backgroundColor = '#1d4ed8'; });
-  button.addEventListener('mouseleave', () => { button.style.backgroundColor = '#2563EB'; });
+  button.addEventListener('mouseenter', () => { button.style.backgroundColor = t.buttonHoverBg; });
+  button.addEventListener('mouseleave', () => { button.style.backgroundColor = t.buttonBg; });
   button.addEventListener('mousedown', (e) => {
     e.preventDefault();
     try {
@@ -908,6 +1077,9 @@ function showPicker(
 ): void {
   removePicker();
 
+  // Snapshot the call so the theme change handler can rebuild from scratch.
+  activeSession = { element, state, label, onSelect };
+
   // For noData fields the user cannot pick anything — the profile is missing
   // the data entirely. Show a CTA pointing them to the Options page instead
   // of a generic profile-value list. Silent re-fill on tab refocus (see
@@ -917,6 +1089,7 @@ function showPicker(
     return;
   }
 
+  const t = theme();
   const rect = element.getBoundingClientRect();
   const currentValue =
     element instanceof HTMLInputElement    ? element.value :
@@ -957,10 +1130,10 @@ function showPicker(
     top:             '-9999px',
     left:            `${Math.max(0, rect.left)}px`,
     width:           '340px',
-    backgroundColor: '#ffffff',
-    border:          '1px solid #e5e7eb',
+    backgroundColor: t.cardBg,
+    border:          `1px solid ${t.cardBorder}`,
     borderRadius:    '8px',
-    boxShadow:       '0 4px 16px -2px rgba(0,0,0,0.12),0 2px 6px -2px rgba(0,0,0,0.06)',
+    boxShadow:       t.cardShadow,
     fontFamily:      'system-ui,-apple-system,sans-serif',
     fontSize:        '13px',
     overflow:        'hidden',
@@ -971,8 +1144,8 @@ function showPicker(
   // Header
   const header = mk('div', {
     padding:       '8px 12px 6px',
-    borderBottom:  '1px solid #f3f4f6',
-    color:         '#6b7280',
+    borderBottom:  `1px solid ${t.innerDivider}`,
+    color:         t.secondaryText,
     fontSize:      '11px',
     fontWeight:    '600',
     textTransform: 'uppercase',
@@ -982,18 +1155,18 @@ function showPicker(
   picker.appendChild(header);
 
   // Search input
-  const searchWrap = mk('div', { padding: '6px 10px', borderBottom: '1px solid #f3f4f6' });
+  const searchWrap = mk('div', { padding: '6px 10px', borderBottom: `1px solid ${t.innerDivider}` });
   const searchInput = document.createElement('input');
   Object.assign(searchInput.style, {
     width:           '100%',
     boxSizing:       'border-box',
     padding:         '5px 8px',
-    border:          '1px solid #e5e7eb',
+    border:          `1px solid ${t.searchBorder}`,
     borderRadius:    '5px',
     fontSize:        '12px',
     outline:         'none',
-    color:           '#111827',
-    backgroundColor: '#f9fafb',
+    color:           t.primaryText,
+    backgroundColor: t.searchBg,
     fontFamily:      'inherit',
   });
   searchInput.type        = 'text';
@@ -1014,7 +1187,7 @@ function showPicker(
   const noMatch = mk('div', {
     padding:   '14px 12px',
     textAlign: 'center',
-    color:     '#9ca3af',
+    color:     t.tertiaryText,
     fontSize:  '12px',
     display:   'none',
   });
@@ -1039,8 +1212,8 @@ function showPicker(
     repositionPicker(element);
   });
 
-  searchInput.addEventListener('focus', () => { searchInput.style.borderColor = '#6366f1'; searchInput.style.backgroundColor = '#fff'; });
-  searchInput.addEventListener('blur',  () => { searchInput.style.borderColor = '#e5e7eb'; searchInput.style.backgroundColor = '#f9fafb'; });
+  searchInput.addEventListener('focus', () => { searchInput.style.borderColor = t.searchBorderFocus; searchInput.style.backgroundColor = t.searchBgFocus; });
+  searchInput.addEventListener('blur',  () => { searchInput.style.borderColor = t.searchBorder;      searchInput.style.backgroundColor = t.searchBg; });
 
   activePickerElement = element;
 
