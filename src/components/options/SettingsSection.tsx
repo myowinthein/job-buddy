@@ -30,6 +30,7 @@ import {
   syncProfileToDrive,
   overwriteDriveWithLocal,
   isDriveConfigured,
+  deleteDriveBackup,
 } from '@/src/utils/driveSync';
 import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
 import type { FieldChange } from '@/src/resume-ai/types';
@@ -61,12 +62,23 @@ interface ParsedImport {
 
 
 // ── Drive timestamp formatter ────────────────────────────────────────────────
-// Renders an ISO timestamp as "Jun 24, 2026 · 3:42 PM" in the user's locale.
+// Timestamps are stored as UTC ISO strings. Display converts to local timezone:
+//   "Today at HH:mm" / "Yesterday at HH:mm" / full locale date for older entries.
 function fmtDriveTimestamp(iso: string | null): string {
   if (!iso) return 'Not synced yet';
   try {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return 'Not synced yet';
+
+    const now          = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const startOfD     = new Date(d.getFullYear(),   d.getMonth(),   d.getDate()).getTime();
+    const diffDays     = Math.round((startOfToday - startOfD) / 86_400_000);
+    const timeStr      = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+
+    if (diffDays === 0) return `Today at ${timeStr}`;
+    if (diffDays === 1) return `Yesterday at ${timeStr}`;
+
     return d.toLocaleString(undefined, {
       year:   'numeric',
       month:  'short',
@@ -497,13 +509,13 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     setResetting(true);
     try {
       if (resetScope === 'everywhere' && driveState.connected) {
-        await disconnectDrive(true);
+        await deleteDriveBackup();
       }
       await clearAllStorage();
       setShowResetDialog(false);
       setResetConfirmText('');
       setResetScope('device');
-      showToast('success', 'All data has been reset');
+      showToast('success', 'All data has been reset.');
       onResetComplete();
     } catch (err) {
       console.error('[Job Buddy] Reset failed:', err);
@@ -891,23 +903,14 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             </div>
 
             <div className="px-6 py-5">
-              <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">This will permanently delete:</p>
-              <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1 mb-4 pl-1">
-                {['Your profile data', 'Autofill learned mappings'].map((item) => (
-                  <li key={item} className="flex items-start gap-2">
-                    <span className="text-gray-400 dark:text-gray-500 mt-0.5">•</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                This will permanently delete your profile and all autofill data from this browser.{' '}
                 Consider{' '}
-                <button type="button" className="underline hover:text-gray-700 dark:hover:text-gray-200 transition-colors" onClick={handleExport}>
+                <button type="button" className="underline hover:text-gray-900 dark:hover:text-gray-100 transition-colors" onClick={handleExport}>
                   exporting your profile first
-                </button>{' '}
-                as a backup.
+                </button>.
               </p>
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-5">This cannot be undone.</p>
+              <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-5">This cannot be undone.</p>
 
               {driveState.connected && (
                 <div className="mb-5">
@@ -941,7 +944,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                       <div>
                         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Everywhere (delete Drive backup too)</span>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                          Removes the Drive backup file and disconnects.
+                          Removes the Drive backup file. Stays connected to Google Drive.
                         </p>
                       </div>
                     </label>
