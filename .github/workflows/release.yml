@@ -45,10 +45,10 @@ jobs:
 
       - name: Upload to Chrome Web Store and submit for review
         env:
-          EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
-          CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
-          REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          CLI_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CLI_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CLI_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CLI_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
         run: |
           npx --yes chrome-webstore-upload-cli@3 upload \
             --source "${{ steps.zip.outputs.path }}" \
