@@ -142,7 +142,7 @@ export function LinksSection({ profile, onSave }: Props) {
 
       <div className="mb-4">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-medium text-gray-700">Custom Links</p>
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Custom Links</p>
           <button
             type="button"
             onClick={() => { setCustom((rows) => [...rows, { label: '', url: '' }]); setNewEntryTick((t) => t + 1); }}
