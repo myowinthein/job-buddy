@@ -9,11 +9,21 @@ importantly — what it does *not* do.
 
 ## Summary
 
-Job Buddy operates entirely on your device. It does not have a server, it
-does not send your data anywhere, and it does not share your data with any
-third party. Everything described below stays in your browser's local
-storage, on the computer you installed the extension on, unless you
-explicitly export it yourself.
+Job Buddy has no servers of its own. By default it operates entirely on
+your device — everything stays in your browser's local storage. Three
+optional features can send data off-device, and only if you explicitly
+enable them:
+
+- **Cloud Backup** uploads your profile to your own Google Drive.
+- **AI Resume Import** sends a CV/resume file you choose to Google's
+  Gemini API for extraction.
+- **AI Autofill assist** sends form-field metadata together with your
+  profile to Google's Gemini API when a form has fields the rule-based
+  autofill couldn't confidently resolve.
+
+All three are off until you turn them on. Each is described in detail
+below. Job Buddy itself never stores your data and is not a party to
+your connection with Google.
 
 ## What information Job Buddy stores
 
@@ -43,10 +53,12 @@ extension can use them to autofill job application forms:
 - **Links** — LinkedIn, portfolio, and other links you choose to add.
 - **Documents** — if you upload a CV/resume file in the Documents section,
   the file is stored on-device as encoded file data alongside the rest of
-  your profile. It is never uploaded or transmitted anywhere.
+  your profile. It is not transmitted anywhere by default. If you have
+  enabled Cloud Backup, the file is included as part of the profile JSON
+  uploaded to your own Google Drive (see Cloud Backup below).
 
-In addition, Job Buddy stores two supporting categories of data that are
-generated automatically as you use the extension:
+In addition, Job Buddy stores several supporting categories of data
+generated automatically as you use the extension or change settings:
 
 - **Learned field mappings** — when you manually select a profile field
   for a form field Job Buddy didn't confidently recognize, it remembers
@@ -55,22 +67,36 @@ generated automatically as you use the extension:
   is stored per-domain and contains only field-name-to-profile-field
   associations — never the values you entered, and never the content of
   the page itself.
+- **AI settings** — if you opt in to the AI features (Resume Import or
+  AI Autofill assist), Job Buddy stores the Gemini API key you provide
+  and the selected model in your browser's local storage so the features
+  can authenticate with Google's API on your behalf. The key is never
+  included in profile export bundles and never transmitted to anyone
+  other than Google's Gemini API.
+- **Cloud Backup state** — if you connect Google Drive, Job Buddy stores
+  the OAuth access token and a small amount of bookkeeping (the backup
+  file's Drive ID, the last sync timestamp, and whether a retry is
+  pending) in your browser's local storage. The token is never included
+  in profile export bundles.
+- **Appearance preference** — your System / Light / Dark choice for the
+  extension's UI is saved locally so it persists across sessions.
 - **Application history** — Job Buddy's storage schema reserves a slot
   for tracking applications you've submitted. This feature is not yet
   active in the current version; nothing is currently written to it.
 
 ## What information Job Buddy does **not** do
 
-- **Job Buddy makes no network requests by default.** If you enable Cloud
-  Backup, your profile is synced directly between your browser and your
-  own Google Drive account using Google's secure OAuth and the narrow
-  `drive.appdata` scope. Job Buddy does not operate its own servers and
-  never stores your data. There is no backend, no analytics, and no
-  tracking SDKs of any kind built into the extension.
-- **Your data is never transmitted, sold, or shared.** Nothing you enter
-  into your profile leaves your device through Job Buddy except, if you
-  explicitly enable it, the direct browser-to-Drive sync described under
-  Cloud Backup below.
+- **Job Buddy makes no network requests by default.** Out of the box, the
+  extension runs entirely on your device. Network access only happens
+  through the three opt-in features described below (Cloud Backup, AI
+  Resume Import, AI Autofill assist), and only when you've configured
+  them. Job Buddy does not operate its own servers, never stores your
+  data, and has no backend, analytics, or tracking SDKs of any kind.
+- **Your data is never sold or shared.** Nothing you enter into your
+  profile leaves your device through Job Buddy except through opt-in
+  features you turn on — and even then, the connection is directly from
+  your browser to Google's API (Drive or Gemini), with no third party in
+  the middle.
 - **Your data is not synced through your Google account by default.** Job
   Buddy uses your browser's local, on-device storage only — not Chrome's
   account-sync storage. Your profile will not automatically appear on
@@ -78,12 +104,6 @@ generated automatically as you use the extension:
   prefer to move your profile manually, you can do so using the Export
   Profile / Import Profile feature in Settings, which produces a JSON
   file under your control.
-- **The Resume Import feature does not retain your file.** When you use
-  Import Resume to extract details from an existing PDF or DOCX resume,
-  only the extracted text is used, temporarily, to help you populate your
-  profile. The original file is not saved. (This is separate from
-  uploading a CV in the Documents section, described above, which is
-  saved on-device.)
 
 ## How Job Buddy accesses web pages
 
@@ -137,14 +157,53 @@ When enabled:
   by any third party. The connection is strictly between your browser
   and Google's Drive API.
 
+## AI features (optional)
+
+Job Buddy includes two AI-assisted features that use Google's Gemini
+API. Both are off until you paste a Gemini API key into Settings →
+AI Features. The key is yours — you obtain it directly from
+[Google AI Studio](https://aistudio.google.com/api-keys), and Job Buddy
+stores it only in your browser's local extension storage. Job Buddy
+itself has no AI service; everything goes from your browser straight to
+Google's API using your key.
+
+**AI Resume Import.** When you upload a PDF or DOCX résumé through the
+Import Resume dialog, the file is sent to the Gemini API as base64
+inline data along with a prompt asking it to extract structured profile
+fields. The extracted suggestions are shown to you in a review screen
+where you accept or reject each one — nothing is written to your profile
+until you confirm. The file itself is not retained by Job Buddy unless
+you separately accept the "Resume File" entry in the review screen, in
+which case it is saved to your local profile under Documents (and, if
+Cloud Backup is enabled, included in your Drive backup).
+
+**AI Autofill assist.** When you click Auto Fill, the rule-based pipeline
+runs first. Any fields it couldn't confidently resolve — together with
+your profile JSON — are sent to the Gemini API so it can suggest matches.
+The picker overlay highlights those AI-resolved fields and you can edit
+or override before submitting the form. The form fields' labels, names,
+and surrounding text are sent; the entire HTML of the page is not.
+
+What this means for your data:
+- The contents of any résumé you import, and the contents of your
+  profile when you use AI Autofill on a form, are processed by Google
+  under their API terms. Job Buddy is not in the middle of that
+  connection and never receives a copy.
+- If you do not provide a Gemini API key, neither AI feature ever runs
+  and no data is sent to the Gemini API.
+- Clearing the key from Settings stops all future AI requests.
+
 ## Permissions Job Buddy requests, and why
 
 | Permission | Why it's needed |
 |---|---|
-| `storage` | To save your profile, learned field mappings, and related settings in your browser's local storage. |
+| `storage` | To save your profile, learned field mappings, AI settings, theme preference, and Cloud Backup state in your browser's local storage. |
 | `tabs` | To identify the tab you're currently viewing and send it the Auto Fill / Clear / Status commands when you click the corresponding buttons in the popup. Not used to read your browsing history or activity across tabs. |
 | `identity` | To perform the Google OAuth flow if you opt in to Cloud Backup. Used only when you click Connect Google Drive in Settings; never used otherwise. |
 | Content script on all pages | To allow the Auto Fill and field-picker features to work on whatever job application page you're using, only when you trigger them. |
+| Host access to `https://www.googleapis.com/*` | Used by Cloud Backup to upload, download, and delete your backup file inside Drive's hidden application-data folder. Only active while you are connected to Drive. |
+| Host access to `https://oauth2.googleapis.com/*` | Used to revoke your Google OAuth token when you disconnect Drive from Settings. |
+| Host access to `https://generativelanguage.googleapis.com/*` | Used by the optional AI features to send résumé/profile data to your own Gemini API endpoint. Never used unless you have configured a Gemini API key. |
 
 Job Buddy does not request access to your browsing history, bookmarks,
 cookies, downloads, or any other browser data, and does not request any
