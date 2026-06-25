@@ -54,6 +54,10 @@ the developer has been advised of the possibility of such damages.
 - You are responsible for reviewing and submitting your own applications.
   Job Buddy never submits a form on your behalf — it only fills fields
   for you to review.
+- If you choose to enable the AI features, you are responsible for
+  obtaining, securing, and managing your own Gemini API key, including
+  any usage costs or quota limits charged by Google. Do not paste an API
+  key you do not own into the extension.
 
 ## Third-party websites
 
@@ -83,6 +87,30 @@ The same "no warranty" and "limitation of liability" terms above apply
 to the Cloud Backup feature. You are responsible for the security of
 your Google account and for any consequences of connecting or
 disconnecting it from Job Buddy.
+
+## AI features (optional)
+
+Job Buddy includes optional AI-assisted features (Resume Import and
+AI Autofill assist) that use Google's Gemini API. These features are
+off until you paste a Gemini API key into Settings, which you obtain
+yourself from [Google AI Studio](https://aistudio.google.com/api-keys).
+Job Buddy does not provide an AI service; it sends requests directly
+from your browser to Google's API using your key.
+
+When you use either AI feature, your interaction with the Gemini API is
+governed by your separate agreement with Google, including the
+[Gemini API additional terms](https://ai.google.dev/gemini-api/terms)
+and Google's [Terms of Service](https://policies.google.com/terms) and
+[Privacy Policy](https://policies.google.com/privacy). Job Buddy is not
+a party to that relationship; it only acts as the client that submits
+your résumé or form-field data on your behalf so Google can return
+suggestions. API quotas, model availability, billing, and any other
+Gemini-related issues are handled by Google, not by Job Buddy.
+
+The same "no warranty" and "limitation of liability" terms above apply
+to the AI features. AI suggestions can be inaccurate, incomplete, or
+inappropriate; you are responsible for reviewing every AI-suggested
+value before accepting it or submitting the form.
 
 ## Open-source license
 
