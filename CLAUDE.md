@@ -405,7 +405,7 @@ Validation and completion logic (`src/utils/`) is the highest-value target when 
 
 Both files are gitignored — contributors must create their own from `.env.example`. **Never hardcode OAuth client IDs in source files.** Access the value in code via `import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_ID`.
 
-In Google Cloud Console, set the app type to **Chrome Extension** and use the extension's Item ID as the Application ID. Create separate client IDs for the dev (unpacked) and production (Web Store) builds — their extension IDs differ.
+In Google Cloud Console, set the app type to **Web Application** (NOT Chrome Extension — Chrome Extension type only works with `chrome.identity.getAuthToken()` and causes `redirect_uri_mismatch` with `launchWebAuthFlow`). Under Authorized Redirect URIs, register `https://YOUR_EXTENSION_ID.chromiumapp.org/`. Create separate client IDs for dev and production — their extension IDs differ.
 
 ---
 
@@ -428,14 +428,12 @@ Load in Chrome: `chrome://extensions` → "Load unpacked" → select `.output/ch
 
 - **Application history** — `applicationHistory` storage key and `ApplicationEntry` type exist; the key is included in profile export/import bundles, but no dedup or UI consumes it.
 - **Custom file-upload widgets** — only visible standard `<input type="file">` works today. ATS widgets that hide the input behind a styled button (Greenhouse, Lever's dropzone, Workday wizard, Fabric/MUI components) are deliberately out of scope — see § CV file upload.
-- **Cloud Backup (Phase 2)** — Google Drive backup via `drive.appdata` scope. Spec is fully defined; implementation not started. Key design decisions:
-  - OAuth via `chrome.identity.launchWebAuthFlow()` — client ID loaded from `VITE_GOOGLE_DRIVE_CLIENT_ID` env var
+- **Cloud Backup (Phase 2)** — Implemented. Google Drive backup via `drive.appdata` scope (`src/utils/driveSync.ts`). Current OAuth flow: implicit grant (`response_type=token`) via `chrome.identity.launchWebAuthFlow()`. Key design:
   - Single file `job-buddy-profile.json` in `appDataFolder` (invisible in Drive UI), wrapped as `{ lastModified, profile }`
   - Local-first: `chrome.storage.local` remains source of truth; Drive is backup only
-  - Sync triggered on every profile save (not background polling)
-  - Conflict resolution: last-write-wins after user confirmation (local vs Drive timestamps)
-  - Token stored in `chrome.storage.local`; never exposed in UI
-  - Reset dialog gets three options: "This device only" / "Everywhere" / "Cancel"
-  - Disconnect offers "Keep Drive Backup" or "Delete Drive Backup"; both revoke OAuth via `https://oauth2.googleapis.com/revoke` + `chrome.identity.removeCachedAuthToken()`
-  - New file: `src/utils/driveSync.ts`; new Settings subsection "Cloud Backup" above the legal footer
-  - Bidirectional sync / background polling explicitly deferred to Phase 3
+  - Sync fires on every profile save and after every profile import (fire-and-forget, never blocks local saves)
+  - Connect: if Drive has a backup, runs `generateDiff(localProfile, driveProfile)` and surfaces it through the shared `ImportSummaryDialog` / `ImportReviewScreen` flow. `handleRestoreFromDrive` validates the incoming Drive profile through `validateImportedProfile` before saving (invalid data is rejected with an error toast).
+  - Reset has "This device only" / "This device and Google Drive" scope only when Drive is connected; both paths disconnect Drive (`disconnectDrive(false|true)`)
+  - Disconnect dialog uses two radio options ("Keep the backup file" / "Delete the backup file") plus a single Disconnect button
+  - Settings privacy notice text updates when Drive connects/disconnects
+  - Bidirectional sync / background polling deferred to Phase 3
