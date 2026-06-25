@@ -14,7 +14,11 @@ import {
   getGeminiModel,
   saveGeminiModel,
   clearGeminiSettings,
+  getThemePreference,
+  saveThemePreference,
 } from '@/src/utils/storage';
+import { applyTheme } from '@/src/utils/theme';
+import type { ThemePreference } from '@/src/utils/theme';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
 import type { InvalidField } from '@/src/utils/profileValidator';
@@ -92,6 +96,19 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const [importBaseProfile, setImportBaseProfile] = useState<Partial<Profile>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Appearance state ─────────────────────────────────────────────────────────
+  const [themePreference, setThemePreference] = useState<ThemePreference>('system');
+
+  useEffect(() => {
+    getThemePreference().then(setThemePreference).catch(() => { /* silent */ });
+  }, []);
+
+  const handleThemeChange = (value: ThemePreference) => {
+    setThemePreference(value);
+    applyTheme(value);
+    void saveThemePreference(value);
+  };
 
   // ── AI Features state ────────────────────────────────────────────────────────
   const [geminiKey,        setGeminiKey]        = useState('');
@@ -511,6 +528,32 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Settings</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your profile data</p>
       </div>
+
+      {/* ── Appearance ────────────────────────────────────────────────────────── */}
+      <section className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
+        <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">Appearance</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Choose how Job Buddy looks on your device.
+        </p>
+        <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+          {(['system', 'light', 'dark'] as const).map((opt, i, arr) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => handleThemeChange(opt)}
+              className={[
+                'px-4 py-1.5 text-sm font-medium capitalize transition-colors',
+                i < arr.length - 1 ? 'border-r border-gray-300 dark:border-gray-600' : '',
+                themePreference === opt
+                  ? 'bg-blue-600 text-white border-blue-600 dark:border-blue-600'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700',
+              ].join(' ')}
+            >
+              {opt.charAt(0).toUpperCase() + opt.slice(1)}
+            </button>
+          ))}
+        </div>
+      </section>
 
       {/* ── AI Features ───────────────────────────────────────────────────────── */}
       <section className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
