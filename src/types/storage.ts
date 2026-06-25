@@ -35,4 +35,5 @@ export interface StorageSchema {
   applicationHistory: ApplicationEntry[];
   driveToken?:        string;
   driveBackupState?:  DriveBackupState;
+  themePreference?:   'system' | 'light' | 'dark';
 }
