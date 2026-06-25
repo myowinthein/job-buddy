@@ -28,6 +28,10 @@ import {
   overwriteDriveWithLocal,
   isDriveConfigured,
 } from '@/src/utils/driveSync';
+import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
+import type { FieldChange } from '@/src/resume-ai/types';
+import ImportSummaryDialog from '@/src/components/shared/ImportSummaryDialog';
+import ImportReviewScreen from '@/src/components/shared/ImportReviewScreen';
 
 const DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite';
 
@@ -52,39 +56,6 @@ interface ParsedImport {
   exportData:    ExportData;
 }
 
-// ── Merge helpers ─────────────────────────────────────────────────────────────
-
-function isEmptyPrimitive(val: unknown): boolean {
-  if (val === undefined || val === null) return true;
-  if (typeof val === 'string')  return val === '';
-  if (typeof val === 'number')  return val === 0;
-  return false;
-}
-
-function mergeValues(current: unknown, imported: unknown): unknown {
-  // Arrays: all-or-nothing
-  if (Array.isArray(imported)) {
-    return Array.isArray(current) && current.length > 0 ? current : imported;
-  }
-  // Objects: field-by-field
-  if (typeof imported === 'object' && imported !== null) {
-    if (typeof current !== 'object' || current === null) return imported;
-    const result: Record<string, unknown> = { ...(current as Record<string, unknown>) };
-    for (const key of Object.keys(imported as Record<string, unknown>)) {
-      result[key] = mergeValues(
-        result[key],
-        (imported as Record<string, unknown>)[key],
-      );
-    }
-    return result;
-  }
-  // Primitive: keep current if non-empty
-  return isEmptyPrimitive(current) ? imported : current;
-}
-
-function mergeProfiles(current: Partial<Profile>, imported: Partial<Profile>): Partial<Profile> {
-  return mergeValues(current, imported) as Partial<Profile>;
-}
 
 // ── Drive timestamp formatter ────────────────────────────────────────────────
 // Renders an ISO timestamp as "Jun 24, 2026 · 3:42 PM" in the user's locale.
@@ -115,9 +86,10 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const [resetConfirmText,   setResetConfirmText]   = useState('');
   const [resetting,          setResetting]          = useState(false);
 
-  const [parsedImport,       setParsedImport]       = useState<ParsedImport | null>(null);
-  const [showConflictDialog, setShowConflictDialog] = useState(false);
-  const [importMode,         setImportMode]         = useState<'merge' | 'overwrite'>('merge');
+  const [parsedImport,      setParsedImport]      = useState<ParsedImport | null>(null);
+  const [importScreen,      setImportScreen]      = useState<'idle' | 'summary' | 'review'>('idle');
+  const [importChanges,     setImportChanges]     = useState<FieldChange[]>([]);
+  const [importBaseProfile, setImportBaseProfile] = useState<Partial<Profile>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -135,14 +107,16 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     pendingSync: boolean;
     error:       DriveError;
   }>({ connected: false, lastSynced: null, pendingSync: false, error: null });
-  const [driveConnecting,        setDriveConnecting]        = useState(false);
-  const [driveSyncing,           setDriveSyncing]           = useState(false);
-  const [driveDisconnectDialog,  setDriveDisconnectDialog]  = useState(false);
-  const [driveRestoreCase,       setDriveRestoreCase]       = useState<'empty' | 'conflict' | null>(null);
-  const [driveRestoreData,       setDriveRestoreData]       = useState<DriveBackupFile | null>(null);
-  const [driveLocalProfile,      setDriveLocalProfile]      = useState<Partial<Profile> | null>(null);
-  const [driveRestoreBusy,       setDriveRestoreBusy]       = useState(false);
-  const [resetScope,             setResetScope]             = useState<'device' | 'everywhere'>('device');
+  const [driveConnecting,       setDriveConnecting]       = useState(false);
+  const [driveSyncing,          setDriveSyncing]          = useState(false);
+  const [driveDisconnectDialog, setDriveDisconnectDialog] = useState(false);
+  const [driveRestoreCase,      setDriveRestoreCase]      = useState<'empty' | 'conflict' | null>(null);
+  const [driveRestoreData,      setDriveRestoreData]      = useState<DriveBackupFile | null>(null);
+  const [driveLocalProfile,     setDriveLocalProfile]     = useState<Partial<Profile> | null>(null);
+  const [driveRestoreBusy,      setDriveRestoreBusy]      = useState(false);
+  const [driveConflictChanges,  setDriveConflictChanges]  = useState<FieldChange[]>([]);
+  const [driveConflictScreen,   setDriveConflictScreen]   = useState<'summary' | 'review'>('summary');
+  const [resetScope,            setResetScope]            = useState<'device' | 'everywhere'>('device');
 
   useEffect(() => {
     Promise.all([getGeminiApiKey(), getGeminiModel()]).then(([key, model]) => {
@@ -313,56 +287,56 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       return;
     }
 
-    // Non-empty profile: let the user choose merge or overwrite.
-    setParsedImport({
-      sanitized:     validation.sanitized,
-      invalidFields: validation.invalidFields,
-      exportData,
-    });
-    setImportMode('merge');
-    setShowConflictDialog(true);
+    // Non-empty profile: compute diff and show summary → review flow.
+    const diff = generateDiff(currentProfile ?? {}, validation.sanitized);
+    setImportBaseProfile(currentProfile ?? {});
+    setImportChanges(diff);
+    setParsedImport({ sanitized: validation.sanitized, invalidFields: validation.invalidFields, exportData });
+    setImportScreen('summary');
   };
 
-  // ── Import — confirm ─────────────────────────────────────────────────────────
+  // ── Import — shared save helper ───────────────────────────────────────────────
 
-  const handleImportConfirm = async () => {
+  const performImportSave = async (finalChanges: FieldChange[]) => {
     if (!parsedImport) return;
     setImporting(true);
     try {
-      if (importMode === 'overwrite') {
-        await saveProfile(parsedImport.sanitized as Profile);
-        if (parsedImport.exportData.learnedMappings) {
-          await saveLearmedMappings(parsedImport.exportData.learnedMappings);
-        }
-        if (parsedImport.exportData.applicationHistory) {
-          await saveApplicationHistory(parsedImport.exportData.applicationHistory);
-        }
-      } else {
-        const current = (await getProfile()) ?? {};
-        const merged  = mergeProfiles(current, parsedImport.sanitized);
-        await saveProfile(merged as Profile);
+      const applied = applyChanges(importBaseProfile, finalChanges);
+      await saveProfile(applied as Profile);
+      if (parsedImport.exportData.learnedMappings) {
+        await saveLearmedMappings(parsedImport.exportData.learnedMappings);
       }
-
-      const skipped  = parsedImport.invalidFields.length;
-      const suffix   = skipped > 0 ? ` (${skipped} field${skipped !== 1 ? 's' : ''} skipped)` : '';
-      const message  = importMode === 'merge'
-        ? `Profile merged successfully${suffix}`
-        : `Profile imported successfully${suffix}`;
-
-      setShowConflictDialog(false);
+      if (parsedImport.exportData.applicationHistory) {
+        await saveApplicationHistory(parsedImport.exportData.applicationHistory);
+      }
+      const skipped = parsedImport.invalidFields.length;
+      const suffix  = skipped > 0 ? ` (${skipped} field${skipped !== 1 ? 's' : ''} skipped)` : '';
+      showToast('success', `Profile imported successfully${suffix}`);
+      setImportScreen('idle');
+      setImportChanges([]);
+      setImportBaseProfile({});
       setParsedImport(null);
-      showToast('success', message);
       onImportComplete();
     } catch (err) {
       console.error('[Job Buddy] Import failed:', err);
-      setImportError('Import failed. Please try again.');
+      showToast('error', 'Import failed. Please try again.');
     } finally {
       setImporting(false);
     }
   };
 
-  const handleDialogClose = () => {
-    setShowConflictDialog(false);
+  const handleImportAcceptAll = () => {
+    void performImportSave(importChanges);
+  };
+
+  const handleImportReviewSave = async (finalChanges: FieldChange[]) => {
+    await performImportSave(finalChanges);
+  };
+
+  const handleImportRejectAll = () => {
+    setImportScreen('idle');
+    setImportChanges([]);
+    setImportBaseProfile({});
     setParsedImport(null);
   };
 
@@ -380,6 +354,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           setDriveRestoreCase('empty');
           setDriveRestoreData(backup);
         } else {
+          const diff = generateDiff(localProfile ?? {}, backup.profile);
+          setDriveConflictChanges(diff);
+          setDriveConflictScreen('summary');
           setDriveRestoreCase('conflict');
           setDriveRestoreData(backup);
         }
@@ -435,16 +412,21 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     setDriveRestoreCase(null);
     setDriveRestoreData(null);
     setDriveLocalProfile(null);
+    setDriveConflictChanges([]);
+    setDriveConflictScreen('summary');
   };
 
   const handleRestoreFromDrive = async () => {
     if (!driveRestoreData) return;
     setDriveRestoreBusy(true);
     try {
-      await saveProfile(driveRestoreData.profile);
-      // Update the lastSynced timestamp on the Drive state to reflect that
-      // local now matches Drive (no further write needed — backup file is
-      // already current).
+      const validation = validateImportedProfile(driveRestoreData.profile);
+      if (Object.keys(validation.sanitized).length === 0) {
+        showToast('error', 'Drive backup contains invalid profile data.');
+        closeRestoreDialog();
+        return;
+      }
+      await saveProfile(validation.sanitized as Profile);
       const fresh = await getFullDriveState();
       setDriveState(fresh);
       showToast('success', 'Profile restored from Google Drive');
@@ -472,6 +454,23 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         showToast('warning', 'Sync failed — will retry automatically.');
       }
       closeRestoreDialog();
+    } finally {
+      setDriveRestoreBusy(false);
+    }
+  };
+
+  const handleDriveReviewSave = async (finalChanges: FieldChange[]) => {
+    if (!driveLocalProfile) return;
+    setDriveRestoreBusy(true);
+    try {
+      const applied = applyChanges(driveLocalProfile, finalChanges);
+      await saveProfile(applied as Profile);
+      void syncProfileToDrive(applied as Profile);
+      showToast('success', 'Profile updated from Drive backup');
+      onImportComplete();
+      closeRestoreDialog();
+    } catch {
+      showToast('error', 'Save failed. Please try again.');
     } finally {
       setDriveRestoreBusy(false);
     }
@@ -753,7 +752,10 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
       {/* ── Privacy notice ────────────────────────────────────────────────────── */}
       <p className="mb-8 text-xs text-gray-500 dark:text-gray-400">
-        Your profile data stays on this device and is never sent anywhere.{' '}
+        {driveState.connected
+          ? 'Your profile data is stored locally and backed up to your Google Drive.'
+          : 'Your profile data stays on this device and is never sent anywhere.'
+        }{' '}
         <a
           href="https://github.com/myowinthein/job-buddy/blob/main/PRIVACY.md"
           target="_blank"
@@ -805,107 +807,26 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         </button>
       </section>
 
-      {/* ── Conflict dialog ───────────────────────────────────────────────────── */}
-      {showConflictDialog && parsedImport && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={handleDialogClose}
-        >
-          <div
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-md mx-4 flex flex-col max-h-[90vh]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Dialog header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Import Profile</h3>
-              <button
-                type="button"
-                onClick={handleDialogClose}
-                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Dialog body */}
-            <div className="flex-1 overflow-y-auto px-6 py-5">
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-4">How would you like to import?</p>
-
-              <div className="space-y-3">
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="importMode"
-                    value="merge"
-                    checked={importMode === 'merge'}
-                    onChange={() => setImportMode('merge')}
-                    className="mt-0.5 text-blue-600"
-                  />
-                  <div>
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Merge</span>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-0.5">
-                      Fill only empty fields. Your existing data is kept.
-                    </p>
-                  </div>
-                </label>
-
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="importMode"
-                    value="overwrite"
-                    checked={importMode === 'overwrite'}
-                    onChange={() => setImportMode('overwrite')}
-                    className="mt-0.5 text-blue-600"
-                  />
-                  <div>
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Overwrite</span>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 dark:text-gray-500 mt-0.5">
-                      Replace all data with the imported profile.
-                    </p>
-                  </div>
-                </label>
-              </div>
-
-              {/* Validation warnings */}
-              {parsedImport.invalidFields.length > 0 && (
-                <div className="mt-5 p-3 bg-amber-50 dark:bg-amber-900/30 rounded-lg border border-amber-200 dark:border-amber-800">
-                  <p className="text-xs font-medium text-amber-800 dark:text-amber-200 mb-2">
-                    ⚠ {parsedImport.invalidFields.length} field{parsedImport.invalidFields.length !== 1 ? 's' : ''} will be skipped:
-                  </p>
-                  <ul className="space-y-1.5">
-                    {parsedImport.invalidFields.map((f) => (
-                      <li key={f.path} className="text-xs text-amber-700 dark:text-amber-300">
-                        <span className="font-mono">{f.path}</span>
-                        <br />
-                        <span className="ml-2 text-amber-600 dark:text-amber-400">({f.reason})</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {/* Dialog footer */}
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-              <button
-                type="button"
-                onClick={handleDialogClose}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleImportConfirm}
-                disabled={importing}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
-              >
-                {importing ? 'Importing…' : 'Import'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* ── Import Profile — summary / review dialogs ──────────────────────────── */}
+      {importScreen === 'summary' && (
+        <ImportSummaryDialog
+          changes={importChanges}
+          title="Import Profile"
+          onAcceptAll={handleImportAcceptAll}
+          onRejectAll={handleImportRejectAll}
+          onReview={() => setImportScreen('review')}
+          isProcessing={importing}
+        />
+      )}
+      {importScreen === 'review' && (
+        <ImportReviewScreen
+          changes={importChanges}
+          onSave={handleImportReviewSave}
+          onBack={() => setImportScreen('summary')}
+          isSaving={importing}
+          title="Review Import"
+          saveLabel="Import Selected"
+        />
       )}
 
       {/* ── Reset confirmation dialog ─────────────────────────────────────────── */}
@@ -1127,61 +1048,26 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         </div>
       )}
 
-      {/* ── Drive restore dialog — conflict ──────────────────────────────────── */}
-      {driveRestoreCase === 'conflict' && driveRestoreData && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={closeRestoreDialog}
-        >
-          <div
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-md mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Profile conflict</h3>
-              <button
-                type="button"
-                onClick={closeRestoreDialog}
-                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
-              >
-                ×
-              </button>
-            </div>
-            <div className="px-6 py-5">
-              <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
-                Your local profile and Google Drive backup are different.
-              </p>
-              <div className="space-y-3 mb-4">
-                <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">This device</p>
-                  <p className="text-sm text-gray-900 dark:text-gray-100">Your current profile</p>
-                </div>
-                <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Google Drive backup</p>
-                  <p className="text-sm text-gray-900 dark:text-gray-100">{fmtDriveTimestamp(driveRestoreData.lastModified)}</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex-wrap">
-              <button
-                type="button"
-                onClick={handleKeepLocal}
-                disabled={driveRestoreBusy}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 active:scale-95 transition-colors"
-              >
-                {driveRestoreBusy ? 'Working…' : 'Keep Local'}
-              </button>
-              <button
-                type="button"
-                onClick={handleRestoreFromDrive}
-                disabled={driveRestoreBusy}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
-              >
-                {driveRestoreBusy ? 'Working…' : 'Use Drive Backup'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* ── Drive restore — conflict: summary → review ────────────────────────── */}
+      {driveRestoreCase === 'conflict' && driveConflictScreen === 'summary' && (
+        <ImportSummaryDialog
+          changes={driveConflictChanges}
+          title="Profile Conflict"
+          onAcceptAll={() => void handleRestoreFromDrive()}
+          onRejectAll={() => void handleKeepLocal()}
+          onReview={() => setDriveConflictScreen('review')}
+          isProcessing={driveRestoreBusy}
+        />
+      )}
+      {driveRestoreCase === 'conflict' && driveConflictScreen === 'review' && (
+        <ImportReviewScreen
+          changes={driveConflictChanges}
+          onSave={handleDriveReviewSave}
+          onBack={() => setDriveConflictScreen('summary')}
+          isSaving={driveRestoreBusy}
+          title="Review Drive Backup"
+          saveLabel="Apply Selected"
+        />
       )}
     </div>
   );
