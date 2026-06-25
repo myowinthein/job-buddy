@@ -83,6 +83,42 @@ export const FIELD_DEFS: FieldDef[] = [
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
+  {
+    id: 'personal.gender',
+    label: 'Gender',
+    section: 'Personal',
+    getValue: (p) => p.personal?.gender ?? null,
+    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), gender: v as string } }),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? '').replace(/_/g, ' '),
+  },
+  {
+    id: 'personal.ethnicity',
+    label: 'Ethnicity',
+    section: 'Personal',
+    getValue: (p) => p.personal?.ethnicity ?? null,
+    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), ethnicity: v as string } }),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? ''),
+  },
+  {
+    id: 'personal.veteranStatus',
+    label: 'Veteran Status',
+    section: 'Personal',
+    getValue: (p) => p.personal?.veteranStatus ?? null,
+    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), veteranStatus: v as string } }),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? '').replace(/_/g, ' '),
+  },
+  {
+    id: 'personal.disabilityStatus',
+    label: 'Disability Status',
+    section: 'Personal',
+    getValue: (p) => p.personal?.disabilityStatus ?? null,
+    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), disabilityStatus: v as string } }),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? '').replace(/_/g, ' '),
+  },
   // ── Address ─────────────────────────────────────────────────────────────────
   {
     id: 'address.city',
@@ -142,6 +178,21 @@ export const FIELD_DEFS: FieldDef[] = [
       return s.length > 120 ? s.slice(0, 117) + '…' : s;
     },
   },
+  {
+    id: 'professional.noticePeriod',
+    label: 'Notice Period',
+    section: 'Work History',
+    getValue: (p) => p.professional?.noticePeriod ?? null,
+    setValue: (p, v) => ({ ...p, professional: { ...(p.professional ?? {}), noticePeriod: v as Profile['professional']['noticePeriod'] } }),
+    isEmpty: (v) => !v || typeof v !== 'object',
+    display: (v) => {
+      if (!v || typeof v !== 'object') return '';
+      const np = v as { immediate?: boolean; value?: number; unit?: string };
+      if (np.immediate) return 'Immediate';
+      if (np.value != null && np.unit) return `${np.value} ${np.unit}${np.value !== 1 ? 's' : ''}`;
+      return '';
+    },
+  },
   // ── Salary ───────────────────────────────────────────────────────────────────
   {
     id: 'salary.current',
@@ -161,6 +212,27 @@ export const FIELD_DEFS: FieldDef[] = [
       if (!v) return '';
       const s = v as Partial<Profile['salary']['current']>;
       return [s.amount, s.currency].filter((x) => x !== undefined && x !== null).join(' ');
+    },
+  },
+  {
+    id: 'salary.expected',
+    label: 'Expected Salary',
+    section: 'Salary',
+    getValue: (p) => p.salary?.expected ?? [],
+    setValue: (p, v) => ({
+      ...p,
+      salary: { ...(p.salary ?? { current: { amount: 0, currency: '' }, expected: [] }), expected: v as Profile['salary']['expected'] },
+    }),
+    isEmpty: emptyArr,
+    display: (v) => {
+      const arr = (v ?? []) as Profile['salary']['expected'];
+      return arr.map((e) => {
+        const parts: string[] = [];
+        if (e.amount != null) parts.push(String(e.amount));
+        if (e.currency)       parts.push(e.currency);
+        if (e.country)        parts.push(`(${e.country})`);
+        return parts.join(' ');
+      }).join('\n');
     },
   },
   // ── Work Authorization ───────────────────────────────────────────────────────
@@ -243,6 +315,52 @@ export const FIELD_DEFS: FieldDef[] = [
     setValue: (p, v) => ({ ...p, links: { ...(p.links ?? {} as Profile['links']), portfolio: v as string } }),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
+  },
+  {
+    id: 'links.custom',
+    label: 'Custom Links',
+    section: 'Links',
+    getValue: (p) => p.links?.custom ?? [],
+    setValue: (p, v) => ({ ...p, links: { ...(p.links ?? {} as Profile['links']), custom: v as Profile['links']['custom'] } }),
+    isEmpty: emptyArr,
+    display: (v) => {
+      const arr = (v ?? []) as { label: string; url: string }[];
+      return arr.map((l) => `${l.label}: ${l.url}`).join('\n');
+    },
+  },
+  // ── Documents ────────────────────────────────────────────────────────────────
+  {
+    id: 'documents.cv.url',
+    label: 'CV URL',
+    section: 'Documents',
+    getValue: (p) => p.documents?.cv?.url ?? null,
+    setValue: (p, v) => ({
+      ...p,
+      documents: {
+        ...(p.documents ?? {} as Profile['documents']),
+        cv: { ...(p.documents?.cv ?? {}), url: v as string },
+      },
+    }),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? ''),
+  },
+  {
+    id: 'documents.cv.file',
+    label: 'CV File',
+    section: 'Documents',
+    getValue: (p) => p.documents?.cv?.file ?? null,
+    setValue: (p, v) => ({
+      ...p,
+      documents: {
+        ...(p.documents ?? {} as Profile['documents']),
+        cv: { ...(p.documents?.cv ?? {}), file: v as NonNullable<Profile['documents']['cv']['file']> },
+      },
+    }),
+    isEmpty: (v) => !v || typeof v !== 'object',
+    display: (v) => {
+      if (!v || typeof v !== 'object') return '';
+      return (v as { name: string }).name ?? '';
+    },
   },
 ];
 
