@@ -2,6 +2,15 @@ import { getThemePreference } from './storage';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 
+// Tracks the last value passed to applyTheme so components can read it
+// synchronously — avoids a storage round-trip on every mount.
+let currentPreference: ThemePreference = 'system';
+
+/** Returns the preference that was last passed to applyTheme. */
+export function getCurrentTheme(): ThemePreference {
+  return currentPreference;
+}
+
 // Module-level references so we can tear down the previous listener before
 // setting a new one when the user switches preference.
 let activeMediaQuery: MediaQueryList | null = null;
@@ -24,6 +33,7 @@ function setDarkClass(dark: boolean): void {
 }
 
 export function applyTheme(preference: ThemePreference): void {
+  currentPreference = preference;
   removeMediaListener();
 
   if (preference === 'dark') {
