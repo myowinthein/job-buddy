@@ -346,7 +346,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
                     onDrop={handleDrop}
                     className={`flex flex-col items-center justify-center gap-3 border-2 border-dashed rounded-xl py-10 px-4 transition-colors cursor-pointer ${
                       isDragging
-                        ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                        ? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                         : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
                     }`}
                     onClick={() => fileInputRef.current?.click()}

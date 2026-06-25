@@ -312,7 +312,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
 
       {/* ── Work Entries ────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-3 mt-2">
-        <p className="text-sm font-medium text-gray-700">Work Experience</p>
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Work Experience</p>
         <button
           type="button"
           onClick={() => { setEntries((rows) => [...rows, emptyRow()]); setNewEntryTick((t) => t + 1); }}
@@ -426,7 +426,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
               onChange={(e) => updateEntry(idx, 'isCurrent', e.target.checked)}
               className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400"
             />
-            <span className="text-sm text-gray-700">Currently active</span>
+            <span className="text-sm text-gray-700 dark:text-gray-300">Currently active</span>
           </label>
 
           <FormField label="Description" optional>
@@ -478,7 +478,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
 
         {!noticeImmediate && (
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-sm text-gray-600 shrink-0">Available after</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">Available after</span>
             <div className="w-20">
               <input
                 type="number"
