@@ -308,7 +308,7 @@ export function EducationSection({ profile, onSave }: Props) {
               onChange={(e) => update(idx, 'isCurrent', e.target.checked)}
               className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400"
             />
-            <span className="text-sm text-gray-700">Currently active</span>
+            <span className="text-sm text-gray-700 dark:text-gray-300">Currently active</span>
           </label>
         </ExpandableCard>
       ))}

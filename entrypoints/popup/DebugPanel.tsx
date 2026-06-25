@@ -59,7 +59,7 @@ export function DebugPanel({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh] text-gray-900 dark:text-gray-100"
+        className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-md flex flex-col max-h-[90vh] text-gray-900 dark:text-gray-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
