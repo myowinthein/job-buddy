@@ -141,6 +141,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const [driveRestoreBusy,      setDriveRestoreBusy]      = useState(false);
   const [driveConflictChanges,  setDriveConflictChanges]  = useState<FieldChange[]>([]);
   const [driveConflictScreen,   setDriveConflictScreen]   = useState<'summary' | 'review'>('summary');
+  const [resetScope,            setResetScope]            = useState<'device' | 'everywhere'>('device');
 
   useEffect(() => {
     Promise.all([getGeminiApiKey(), getGeminiModel()]).then(([key, model]) => {
@@ -507,11 +508,13 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     setResetting(true);
     try {
       if (driveState.connected) {
-        await disconnectDrive(true);
+        // 'device' → keep Drive backup file; 'everywhere' → delete it
+        await disconnectDrive(resetScope === 'everywhere');
       }
       await clearAllStorage();
       setShowResetDialog(false);
       setResetConfirmText('');
+      setResetScope('device');
       showToast('success', 'All data has been reset.');
       onResetComplete();
     } catch (err) {
@@ -525,6 +528,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const handleResetDialogClose = () => {
     setShowResetDialog(false);
     setResetConfirmText('');
+    setResetScope('device');
   };
 
   return (
@@ -907,6 +911,46 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                 </button>.
               </p>
               <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-5">This cannot be undone.</p>
+
+              {driveState.connected && (
+                <div className="mb-5">
+                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Also reset Google Drive?</p>
+                  <div className="space-y-2">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="resetScope"
+                        value="device"
+                        checked={resetScope === 'device'}
+                        onChange={() => setResetScope('device')}
+                        className="mt-0.5 text-red-600"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">This device only</span>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          Disconnects Drive. Your Drive backup file is kept.
+                        </p>
+                      </div>
+                    </label>
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="resetScope"
+                        value="everywhere"
+                        checked={resetScope === 'everywhere'}
+                        onChange={() => setResetScope('everywhere')}
+                        className="mt-0.5 text-red-600"
+                      />
+                      <div>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">This device and Google Drive</span>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          Disconnects Drive and deletes the Drive backup file.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
 
               <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
                 Type <code className="font-mono font-bold text-red-600 dark:text-red-400">DELETE</code> to confirm:
