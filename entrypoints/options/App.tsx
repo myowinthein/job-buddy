@@ -178,7 +178,10 @@ function App() {
 
   const handleImportComplete = () => {
     getProfile()
-      .then((p) => { setProfile(p ?? {}); })
+      .then((p) => {
+        setProfile(p ?? {});
+        if (p) void syncProfileToDrive(p);
+      })
       .catch((err) => console.error('[Job Buddy] Failed to reload profile after import:', err));
   };
 
