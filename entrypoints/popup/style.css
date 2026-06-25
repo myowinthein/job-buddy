@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@custom-variant dark (&:where(.dark, .dark *));
 
 *,
 *::before,
@@ -7,7 +8,7 @@
 }
 
 html {
-  /* Lets the browser pick light or dark UA defaults to match prefers-color-scheme. */
+  /* Lets the browser apply native light/dark defaults (scrollbars, form controls). */
   color-scheme: light dark;
 }
 
@@ -24,9 +25,7 @@ body {
   color: #0f172a;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: #0f172a; /* slate-900 */
-    color: #f1f5f9;            /* slate-100 */
-  }
+.dark body {
+  background-color: #0f172a; /* slate-900 */
+  color: #f1f5f9;            /* slate-100 */
 }
