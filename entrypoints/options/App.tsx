@@ -72,7 +72,9 @@ function App() {
   const [activeSection, setActiveSection] = useState<SectionId>(readSection);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(readSidebar);
   const [loading, setLoading] = useState(true);
-  const [focusTarget, setFocusTarget]           = useState<string | null>(null);
+  const [focusTarget, setFocusTarget] = useState<string | null>(null);
+  // Incremented on reset so all profile-editing sections remount and show cleared inputs.
+  const [sectionSeq, setSectionSeq] = useState(0);
 
   const skipAutoFocusRef  = useRef(false);
   const mountedRef        = useRef(false);
@@ -254,17 +256,17 @@ function App() {
       );
     }
     switch (activeSection) {
-      case 'personal':          return <PersonalSection key="personal" {...sectionProps} />;
-      case 'address':           return <AddressSection key="address" {...sectionProps} />;
-      case 'salary':            return <SalarySection key="salary" {...sectionProps} />;
-      case 'workAuthorization': return <WorkAuthorizationSection key="workAuthorization" {...sectionProps} />;
-      case 'workHistory':       return <WorkHistorySection key="workHistory" {...sectionProps} />;
-      case 'education':         return <EducationSection key="education" {...sectionProps} />;
-      case 'languages':         return <LanguagesSection key="languages" {...sectionProps} />;
-      case 'links':             return <LinksSection key="links" {...sectionProps} />;
-      case 'documents':         return <DocumentsSection key="documents" {...sectionProps} />;
+      case 'personal':          return <PersonalSection key={`personal-${sectionSeq}`} {...sectionProps} />;
+      case 'address':           return <AddressSection key={`address-${sectionSeq}`} {...sectionProps} />;
+      case 'salary':            return <SalarySection key={`salary-${sectionSeq}`} {...sectionProps} />;
+      case 'workAuthorization': return <WorkAuthorizationSection key={`workAuthorization-${sectionSeq}`} {...sectionProps} />;
+      case 'workHistory':       return <WorkHistorySection key={`workHistory-${sectionSeq}`} {...sectionProps} />;
+      case 'education':         return <EducationSection key={`education-${sectionSeq}`} {...sectionProps} />;
+      case 'languages':         return <LanguagesSection key={`languages-${sectionSeq}`} {...sectionProps} />;
+      case 'links':             return <LinksSection key={`links-${sectionSeq}`} {...sectionProps} />;
+      case 'documents':         return <DocumentsSection key={`documents-${sectionSeq}`} {...sectionProps} />;
       case 'resume':            return <ResumeImportSection key="resume" profile={profile} onSave={handleSave} onGoToApiKey={handleGoToApiKey} onClose={handleCloseResumeImport} />;
-      case 'settings':          return <SettingsSection key="settings" onImportComplete={handleImportComplete} onResetComplete={() => { handleImportComplete(); setActiveSection('personal'); }} />;
+      case 'settings':          return <SettingsSection key="settings" onImportComplete={handleImportComplete} onResetComplete={() => { handleImportComplete(); setSectionSeq((s) => s + 1); setActiveSection('personal'); }} />;
     }
   };
 
