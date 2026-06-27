@@ -63,7 +63,7 @@ export async function getLearnedMappings(): Promise<LearnedMappings> {
   return (result.learnedMappings as LearnedMappings) ?? {};
 }
 
-export async function saveLearmedMappings(mappings: LearnedMappings): Promise<void> {
+export async function saveLearnedMappings(mappings: LearnedMappings): Promise<void> {
   await storageSet({ learnedMappings: mappings });
 }
 
@@ -129,7 +129,7 @@ export async function saveLearnedMapping(
   const mappings = await getLearnedMappings();
   if (!mappings[domain]) mappings[domain] = {};
   mappings[domain][normalizedSignal] = fieldPath;
-  await saveLearmedMappings(mappings);
+  await saveLearnedMappings(mappings);
 }
 
 // ── Google Drive Cloud Backup ────────────────────────────────────────────────
