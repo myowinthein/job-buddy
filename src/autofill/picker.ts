@@ -2,7 +2,7 @@ import type { Profile, WorkHistoryEntry, EducationEntry } from '../types/profile
 import { COUNTRIES } from '../data/countries';
 import { LANGUAGES } from '../data/languages';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
-import { fmtYearMonth } from '../utils/dateFormat';
+import { fmtYearMonth, fmtAmount } from '../utils/dateFormat';
 import { getProfile, getThemePreference } from '../utils/storage';
 import { resolveProfileValue } from './resolver';
 
@@ -295,9 +295,6 @@ function educationHeading(entry: EducationEntry, idx: number): string {
   return `Entry ${idx + 1}`;
 }
 
-function fmtAmount(n: number): string {
-  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
 
 function fmtSalary(amount?: number | null, currency?: string | null): string {
   if (amount == null) return '';
