@@ -6,7 +6,7 @@ import {
   saveProfile,
   getLearnedMappings,
   getApplicationHistory,
-  saveLearmedMappings,
+  saveLearnedMappings,
   saveApplicationHistory,
   clearAllStorage,
   getGeminiApiKey,
@@ -299,7 +299,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       setImporting(true);
       try {
         await saveProfile(validation.sanitized as Profile);
-        if (exportData.learnedMappings) await saveLearmedMappings(exportData.learnedMappings);
+        if (exportData.learnedMappings) await saveLearnedMappings(exportData.learnedMappings);
         if (exportData.applicationHistory) await saveApplicationHistory(exportData.applicationHistory);
         const skipped0 = validation.invalidFields.length;
         const suffix0  = skipped0 > 0 ? ` (${skipped0} field${skipped0 !== 1 ? 's' : ''} skipped)` : '';
@@ -331,7 +331,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       const applied = applyChanges(importBaseProfile, finalChanges);
       await saveProfile(applied as Profile);
       if (parsedImport.exportData.learnedMappings) {
-        await saveLearmedMappings(parsedImport.exportData.learnedMappings);
+        await saveLearnedMappings(parsedImport.exportData.learnedMappings);
       }
       if (parsedImport.exportData.applicationHistory) {
         await saveApplicationHistory(parsedImport.exportData.applicationHistory);
