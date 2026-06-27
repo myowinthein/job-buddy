@@ -67,13 +67,10 @@ In the repository on GitHub → **Settings → Secrets and variables → Actions
 
 ## 6. Cut a release
 
-```bash
-pnpm release
-```
-
-The script prints commits since the last tag, suggests `patch` / `minor`
-/ `major`, lets you override, bumps `package.json`, commits, tags, and
-pushes. The `Release` workflow takes over from the tag push:
+Use the `/ship` command in Claude Code. It runs tests, proposes a version
+bump based on commits since the last tag, waits for confirmation, then
+commits, tags, and pushes. The `Release` workflow takes over from the tag
+push:
 
 1. Builds the production zip
 2. Uploads to the Chrome Web Store and submits for review (`--auto-publish`)

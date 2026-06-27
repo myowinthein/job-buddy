@@ -102,7 +102,6 @@ pnpm zip                # Chrome production zip
 pnpm compile            # tsc --noEmit (type-check only)
 pnpm lint               # ESLint
 pnpm format             # Prettier
-pnpm release            # interactive version bump + tag + push
 ```
 
 CI runs `pnpm compile`, `pnpm lint`, and `pnpm build` on every push and pull request. Pushing a `v*.*.*` tag triggers the release workflow, which builds the zip, uploads it to the Chrome Web Store with `--auto-publish`, and creates a GitHub Release. See [`.github/SETUP.md`](.github/SETUP.md) for the one-time Chrome Web Store secret setup.
