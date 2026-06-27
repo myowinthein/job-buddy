@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fmtYearMonth } from './dateFormat';
+import { fmtYearMonth, fmtAmount } from './dateFormat';
 
 describe('fmtYearMonth', () => {
   it('returns empty string for empty input', () => {
@@ -30,5 +30,27 @@ describe('fmtYearMonth', () => {
     // 'not-a-date' splits to year='not', m='a'; parseInt('a') is NaN so month is
     // undefined → falls back to returning year ('not').
     expect(fmtYearMonth('not-a-date')).toBe('not');
+  });
+});
+
+describe('fmtAmount', () => {
+  it('formats a whole number with thousands separator', () => {
+    expect(fmtAmount(80000)).toBe('80,000');
+  });
+
+  it('formats a million', () => {
+    expect(fmtAmount(1000000)).toBe('1,000,000');
+  });
+
+  it('rounds fractional amounts', () => {
+    expect(fmtAmount(80000.7)).toBe('80,001');
+  });
+
+  it('returns zero as "0"', () => {
+    expect(fmtAmount(0)).toBe('0');
+  });
+
+  it('returns small numbers without separator', () => {
+    expect(fmtAmount(999)).toBe('999');
   });
 });
