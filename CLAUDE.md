@@ -8,6 +8,8 @@ Chrome MV3 browser extension (WXT framework) that auto-fills job application for
 
 **Blast radius:** Pushing a `v*.*.*` tag to `origin` triggers auto-publish to the Chrome Web Store. There is no rollback CLI — only manual unpublish from the CWS dashboard.
 
+**Git mode:** `git-solo: true` — commits go directly to main; no feature branches or PRs required.
+
 ---
 
 ## 2. Dev Commands
@@ -45,6 +47,7 @@ pnpm test:run     # single run — run before committing
 - `src/utils/derivedFields.ts` — computes `fullName`, `currentTitle`, `currentCompany`, `totalExperience`, `age`
 - `src/utils/profileCompletion.ts` — `TOTAL_CHECKS = 15`; drives sidebar checkmarks and completion %
 - `src/autofill/constants.ts` — named confidence thresholds (`CONF_FILL`, `CONF_GREEN`, `CONF_CONFIRMED`, `CONF_AI_YELLOW`); always use these, never bare numbers
+- `src/autofill/mappings.ts` — `saveElementMappings()`; call this when saving learned mappings from an element's signals — do not re-inline the loop
 
 ---
 
@@ -87,4 +90,4 @@ pnpm test:run     # single run — run before committing
 
 - **Drive OAuth uses implicit grant via `chrome.identity.launchWebAuthFlow`.** Google Cloud app type must be "Web Application" (not "Chrome Extension" — that forces `getAuthToken()` and causes `redirect_uri_mismatch`). Needs separate client IDs for dev and prod. Set `VITE_GOOGLE_DRIVE_CLIENT_ID` in `.env.development` / `.env.production` (see `.env.example`).
 
-<!-- last-reviewed: b62df4d1585ebf60f3c8bd574093d14c9c2f4827 -->
+<!-- last-reviewed: ae0b820 -->
