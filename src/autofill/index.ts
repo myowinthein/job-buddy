@@ -1,4 +1,5 @@
 import { getProfile, getLearnedMappings, saveLearnedMapping } from '../utils/storage';
+import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED } from './constants';
 import { scanFields } from './scanner';
 import { extractSignals } from './signals';
 import type { FieldSignals } from './signals';
@@ -108,7 +109,7 @@ function attachEditWatchers(fields: PickerField[], result: AutofillResult): void
       if (currentValue === valueAtAttach) return; // nothing actually changed
 
       // User has handled this field — promote to No Review (green).
-      applyHighlight(element, 0.97);
+      applyHighlight(element, CONF_CONFIRMED);
 
       // noData fields were not yet in sessionElements; register now so Undo covers them.
       if (state === 'noData') sessionElements.push(element);
@@ -209,7 +210,7 @@ async function runSilentRefill(): Promise<void> {
 
     // Value is now available — fill silently and promote to noReview.
     await fillField(element, value);
-    applyHighlight(element, 0.97); // green
+    applyHighlight(element, CONF_CONFIRMED); // green
     sessionElements.push(element);
 
     result.noData    = Math.max(0, result.noData - 1);
@@ -285,7 +286,7 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
     const hasExistingValue = getFieldValue(element) !== '';
     const debugFieldId = `field_${String(i + 1).padStart(3, '0')}`;
 
-    if (match.confidence >= 0.60 && match.value) {
+    if (match.confidence >= CONF_FILL && match.value) {
       totalMatched++;
       if (hasExistingValue) preFilledCount++;
     }
@@ -349,12 +350,12 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   for (const { element, signals, match, hasExistingValue, debugFieldId } of pendingMatches) {
     // Merge mode: skip pre-filled fields that would otherwise be overwritten.
     // Only relevant when confidence >= 0.60 AND the profile has a value to fill.
-    if (mode === 'merge' && hasExistingValue && match.confidence >= 0.60 && match.value) {
+    if (mode === 'merge' && hasExistingValue && match.confidence >= CONF_FILL && match.value) {
       // For debug: pre-filled merge skip is reported as the would-have-been state.
       debugMapping.push({
         fieldId: debugFieldId, matchLayer: match.matchLayer, confidence: match.confidence,
         profilePath: match.fieldPath,
-        finalState: match.confidence >= 0.85 ? 'green' : 'yellow',
+        finalState: match.confidence >= CONF_GREEN ? 'green' : 'yellow',
       });
       continue;
     }
@@ -363,7 +364,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     const displayLabel = extractDisplayLabel(signals);
     let finalState: FieldFinalState;
 
-    if (match.confidence >= 0.60 && match.value) {
+    if (match.confidence >= CONF_FILL && match.value) {
       // Confident match with profile data → fill and highlight.
       let filled = true;
       if (isFileInput) {
@@ -386,10 +387,10 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         continue;
       }
 
-      applyHighlight(element, match.confidence); // green >=0.85, yellow 0.60–0.84
+      applyHighlight(element, match.confidence); // green >=CONF_GREEN, yellow CONF_FILL–0.84
       sessionElements.push(element);
 
-      if (match.confidence >= 0.85) {
+      if (match.confidence >= CONF_GREEN) {
         result.noReview++;
         // No picker for green (No Review) fields.
         finalState = 'green';
@@ -401,7 +402,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         finalState = 'yellow';
       }
 
-    } else if (match.confidence < 0.60) {
+    } else if (match.confidence < CONF_FILL) {
       // Low or no confidence — red highlight, picker for manual resolution.
       applyHighlight(element, 0);
       sessionElements.push(element);
@@ -471,7 +472,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
 
   attachPickerListeners(pickerFields, async (element, fieldPath, value, originalState: PickerFieldState) => {
     await fillField(element, value);
-    applyHighlight(element, 0.97); // green — user-confirmed, high confidence
+    applyHighlight(element, CONF_CONFIRMED); // green — user-confirmed, high confidence
 
     // noData fields are not in sessionElements yet; add them now so undo covers them.
     // needReview and lowConfidence fields are already tracked — don't double-push.
