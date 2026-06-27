@@ -76,9 +76,10 @@ generated automatically as you use the extension or change settings:
   in profile export bundles.
 - **Appearance preference** — your System / Light / Dark theme choice is
   saved locally so it persists across sessions.
-- **Application history** — Job Buddy's storage schema reserves a slot
-  for tracking applications you've submitted. This feature is not yet
-  active in the current version; nothing is currently written to it.
+- **Application history** — Job Buddy's storage schema includes an
+  `applicationHistory` key that is reserved but currently unused. Nothing
+  is written to it and it is included in profile export bundles for
+  forward compatibility only.
 
 ## Special category data (GDPR)
 
