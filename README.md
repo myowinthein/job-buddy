@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/myowinthein/job-buddy/actions/workflows/ci.yml/badge.svg)](https://github.com/myowinthein/job-buddy/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.8.7-informational.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-1.8.8-informational.svg)](package.json)
 
 > Chrome extension that autofills job application forms from a profile you set up once.
 
@@ -102,9 +102,11 @@ pnpm zip                # Chrome production zip
 pnpm compile            # tsc --noEmit (type-check only)
 pnpm lint               # ESLint
 pnpm format             # Prettier
+pnpm test               # Vitest watch mode
+pnpm test:run           # single run
 ```
 
-CI runs `pnpm compile`, `pnpm lint`, and `pnpm build` on every push and pull request. Pushing a `v*.*.*` tag triggers the release workflow, which builds the zip, uploads it to the Chrome Web Store with `--auto-publish`, and creates a GitHub Release. See [`.github/SETUP.md`](.github/SETUP.md) for the one-time Chrome Web Store secret setup.
+CI runs `pnpm compile`, `pnpm lint`, and `pnpm build` on every push and pull request. See [`.github/SETUP.md`](.github/SETUP.md) for the one-time Chrome Web Store secret setup.
 
 ## Architecture
 
@@ -142,4 +144,4 @@ Before submitting a PR:
 
 [MIT](LICENSE) © 2026 Myo Win Thein
 
-<!-- last-reviewed: b43ee65 -->
+<!-- last-reviewed: c4a758f -->
