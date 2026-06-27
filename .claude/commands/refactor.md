@@ -17,16 +17,14 @@ Current branch is {branch}. Please switch and re-run."
 
 ## Step 2 — Create refactor branch
 
-Propose creating a dedicated branch for refactoring changes:
-
-"I will create refactor/{YYYYMMDD-HHMMSS} from main to keep
-changes isolated for review before merging back. Confirm? (yes / no)"
+Create a dedicated branch for refactoring changes:
+  refactor/{YYYYMMDD-HHMMSS}
 
 If an existing refactor/* branch is detected, ask:
-"Found existing branch {branch}. Continue on this branch or
-create a new one? (continue / new)"
+1. Continue on {branch}
+2. Create new refactor branch
 
-On confirmation, create and switch to refactor branch.
+On selection, create or switch to refactor branch and proceed.
 
 ---
 
@@ -124,18 +122,19 @@ DEPENDENCIES          {X issues}
 TOTAL: {N} issues found
 ─────────────────────────────────
 
-Then present category selection:
+Then present multi-select category selection:
 
-"Which categories to apply?
+  Which categories to apply? (select all that apply)
 
-[ ] Architecture   (N issues)
-[ ] Code Quality   (N issues)
-[ ] Performance    (N issues)
-[ ] Tests          (N issues)
-[ ] Dependencies   (N issues)
+  [ ] 1. Architecture   (N issues)
+  [ ] 2. Code Quality   (N issues)
+  [ ] 3. Performance    (N issues)
+  [ ] 4. Tests          (N issues)
+  [ ] 5. Dependencies   (N issues)
+  [ ] 6. All
+  [ ] 7. Skip           → exit without applying changes
 
-Reply with numbers, names, or 'all' — e.g. '1 3' or 'architecture performance'
-Or 'skip' to exit without applying changes."
+  Reply with numbers or names — e.g. "1 3" or "architecture performance"
 
 Wait for response before proceeding.
 
@@ -146,7 +145,7 @@ Wait for response before proceeding.
 Apply selected categories one at a time.
 For each category:
 - Apply all findings in that category
-- Run tests if configured — stop and inform if tests fail
+- Run tests — stop and inform if tests fail
 - Run lint and formatter
 - Commit with conventional message:
   refactor({category}): {brief summary of changes}
@@ -163,23 +162,31 @@ Inform human and wait for resolution before continuing.
 
 ## Step 7 — Merge and cleanup
 
-Check CLAUDE.md for refactor-merge setting:
-  refactor-merge: auto    → merge automatically
-  refactor-merge: pr      → push and suggest PR
-  Default: pr
+Present single-select option to human:
 
-**Auto mode:**
+  Refactoring applied. What would you like to do next?
+
+  1. Merge to main automatically and delete refactor branch
+  2. Push branch and open PR for review
+  3. Leave branch as-is for now
+
+Wait for selection before proceeding.
+
+**Option 1 — Auto merge:**
 - Switch to main
 - Merge refactor/{timestamp} into main --no-ff
   with message: refactor(project): apply refactoring {timestamp}
 - Delete refactor branch locally and remotely
 - Push main
 
-**PR mode:**
+**Option 2 — PR:**
 - Push refactor/{timestamp} to remote
 - Inform user:
-  "Refactoring complete. Review changes on refactor/{timestamp}
-  and open a PR to merge into main when ready."
+  "Branch pushed. Open a PR to merge into main when ready."
+
+**Option 3 — Leave as-is:**
+- Inform user:
+  "Branch refactor/{timestamp} left intact locally."
 
 ---
 
@@ -200,5 +207,5 @@ Applied:
 
 Commits made:   {N}
 Tests passing:  yes/no
-Merged to main: yes/no (auto) | pending PR (pr mode)
+Outcome:        {merged to main / PR pending / branch left intact}
 ─────────────────────────────────
