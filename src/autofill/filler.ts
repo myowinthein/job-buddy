@@ -1,6 +1,5 @@
-import { distance } from 'fastest-levenshtein';
 import type { DocumentFile } from '../types/profile';
-import { normalize } from './normalizer';
+import { normalize, similarity } from './normalizer';
 
 // Capture native setters before any framework can shadow them on instances
 const nativeInputSetter    = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,    'value')?.set;
@@ -12,11 +11,6 @@ function dispatchEvents(element: HTMLElement): void {
   element.dispatchEvent(new Event('blur',   { bubbles: true }));
 }
 
-function sim(a: string, b: string): number {
-  const maxLen = Math.max(a.length, b.length);
-  if (maxLen === 0) return 1;
-  return 1 - distance(a, b) / maxLen;
-}
 
 function fillSelect(select: HTMLSelectElement, value: string): void {
   const normValue = normalize(value);
@@ -35,7 +29,7 @@ function fillSelect(select: HTMLSelectElement, value: string): void {
       return;
     }
 
-    const score = Math.max(sim(normText, normValue), sim(normVal, normValue));
+    const score = Math.max(similarity(normText, normValue), similarity(normVal, normValue));
     if (score > bestScore) { bestScore = score; bestIndex = i; }
   }
 

@@ -1,8 +1,7 @@
-import { distance } from 'fastest-levenshtein';
 import type { Profile } from '../types/profile';
 import type { LearnedMappings } from '../types/storage';
 import type { FieldSignals } from './signals';
-import { normalize } from './normalizer';
+import { normalize, similarity } from './normalizer';
 import { FIELD_DICTIONARY } from './dictionary';
 import { resolveProfileValue } from './resolver';
 import type { MatchLayer } from './debug';
@@ -31,11 +30,6 @@ const AUTOCOMPLETE_MAP: Record<string, { path: string; confidence: number }> = {
   'url':               { path: 'links.linkedin',            confidence: 0.80 },
 };
 
-function similarity(a: string, b: string): number {
-  const maxLen = Math.max(a.length, b.length);
-  if (maxLen === 0) return 1;
-  return 1 - distance(a, b) / maxLen;
-}
 
 function dictionaryExact(norm: string): string | null {
   for (const [fieldPath, variations] of Object.entries(FIELD_DICTIONARY)) {
