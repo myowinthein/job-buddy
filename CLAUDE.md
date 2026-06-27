@@ -19,7 +19,6 @@ pnpm zip          # production build + zip for CWS upload
 pnpm compile      # TypeScript type-check (no emit) — required before commit
 pnpm lint         # ESLint
 pnpm format       # Prettier
-pnpm release      # interactive version bump + tag + push (triggers release workflow)
 ```
 
 ---
@@ -65,7 +64,7 @@ pnpm release      # interactive version bump + tag + push (triggers release work
 ## 5. Hard Safety Rules
 
 - **Never push a `v*.*.*` tag without explicit user instruction.** Auto-publishes to Chrome Web Store immediately; no CLI rollback exists.
-- **Never run `pnpm release` autonomously** — the script ends with two `git push` calls after a single Y/N prompt.
+- **Never push a tag or trigger a release autonomously** — use `/ship` and wait for explicit user confirmation at each step.
 - **Never read or print `.env.development` / `.env.production`** — they contain real OAuth client IDs.
 - **ESLint must stay on v9.x.** `eslint-plugin-react@7.x` calls `context.getFilename()` removed in ESLint v10. Upgrading breaks the linter until the plugin ships a v8 stable.
 - **Always run `pnpm compile` before committing.** CI enforces type-check; failing commits are noisy on main.
@@ -85,7 +84,5 @@ pnpm release      # interactive version bump + tag + push (triggers release work
 - **`chrome.storage.local` 5 MB limit.** CV files stored as base64, capped at 4 MB in UI. Do not raise the cap without budgeting the rest of the profile.
 
 - **Drive OAuth uses implicit grant via `chrome.identity.launchWebAuthFlow`.** Google Cloud app type must be "Web Application" (not "Chrome Extension" — that forces `getAuthToken()` and causes `redirect_uri_mismatch`). Needs separate client IDs for dev and prod. Set `VITE_GOOGLE_DRIVE_CLIENT_ID` in `.env.development` / `.env.production` (see `.env.example`).
-
-- **No tests exist.** `src/utils/` (validation, completion) is the highest-value target when tests are added.
 
 <!-- last-reviewed: d82a18a449f3fba77273565046105360aef6b09c -->
