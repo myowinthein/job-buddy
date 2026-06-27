@@ -4,11 +4,10 @@ import { extractSignals } from './signals';
 
 beforeEach(() => {
   document.body.innerHTML = '';
-  // CSS.escape is not automatically a global in jsdom; stub it so the
-  // label[for] resolution path in signals.ts doesn't throw and get swallowed.
-  if (typeof CSS === 'undefined') {
-    vi.stubGlobal('CSS', { escape: (s: string) => s });
-  }
+  // CSS.escape is not reliably available in jsdom; always stub it so the
+  // label[for] resolution path in signals.ts is exercised rather than
+  // silently swallowed by the try/catch in getLabelText.
+  vi.stubGlobal('CSS', { escape: (s: string) => s });
 });
 
 function input(attrs: Record<string, string> = {}): HTMLInputElement {
