@@ -27,7 +27,9 @@ export function scanFields(options: ScanOptions = {}): HTMLElement[] {
         // input behind it. They almost always set tabindex="-1" on the input
         // because keyboard focus is meant to live on the button wrapper, not
         // the input. A genuinely user-facing file input would not have this.
-        // Skip in MVP — custom widgets are Phase 2.
+        // Custom upload widgets set tabindex="-1" on the hidden input because
+        // keyboard focus lives on their styled button wrapper, not the input.
+        // A genuinely user-facing file input would not have this attribute.
         if (el.getAttribute('tabindex') === '-1') return false;
       } else if (EXCLUDED_INPUT_TYPES.has(type)) {
         return false;
