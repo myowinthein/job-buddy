@@ -1,3 +1,17 @@
+### Init
+```shell
+# Go to the project root
+cd "[project]"
+
+# Create .claude/commands if it doesn't exist
+mkdir -p .claude/commands
+
+# Create or open sync-memory.md
+code .claude/commands/ship.md
+```
+
+### Prompt
+```text
 # ship
 
 ## Step 1 — Branch check
@@ -52,36 +66,50 @@ Read current version from detected file.
 Run: git describe --tags --abbrev=0
 If no tag exists, ask human to confirm base version before proceeding.
 
-Run: git log {last_tag}..HEAD --oneline
-Read commit messages and scan file changes.
+**Detect commit style**
+Scan last 20 commits for Conventional Commits pattern (feat/fix/chore format).
 
-Triage by commit type:
-- feat              → minor bump candidate
-- fix               → patch bump candidate
-- feat! or BREAKING CHANGE → major bump candidate
-- chore, docs, style, ci, build → ignore for version calculation
+If Conventional Commits detected:
+  Run: git log {last_tag}..HEAD --oneline
+  Read commit messages and scan file changes.
 
-Calculate next version based on highest-priority commit type:
-- Any BREAKING CHANGE or feat! → major bump
-- Any feat (no breaking change) → minor bump
-- Only fix/patch types → patch bump
+  Triage by commit type:
+  - feat              → minor bump candidate
+  - fix               → patch bump candidate
+  - feat! or BREAKING CHANGE → major bump candidate
+  - chore, docs, style, ci, build → ignore for version calculation
 
-Present to human:
+  Calculate next version based on highest-priority commit type:
+  - Any BREAKING CHANGE or feat! → major bump
+  - Any feat (no breaking change) → minor bump
+  - Only fix/patch types → patch bump
 
-Current version: v{last_tag}
-Next version:    v{proposed}
+  Present to human:
 
-Commits included:
-- {list of feat and fix commits, skip chore/docs/style}
+  Current version: v{last_tag}
+  Next version:    v{proposed}
 
-Deployment targets:
-- {selected environments from Step 2}
+  Commits included:
+  - {list of feat and fix commits, skip chore/docs/style}
 
-Select an option:
-1. Confirm v{proposed}  (recommended)
-2. Other               → prompt human to enter custom version
+  Deployment targets:
+  - {selected environments from Step 2}
 
-Wait for selection before proceeding.
+  Select an option:
+  1. Confirm v{proposed}  (recommended)
+  2. Other               → prompt human to enter custom version
+
+  Wait for selection before proceeding.
+
+If Conventional Commits not detected:
+  Inform human:
+  "Conventional Commits not detected in this repo.
+  Version cannot be calculated automatically.
+  Consider adopting Conventional Commits for future auto-versioning.
+  Current version: v{last_tag}
+  What should the next version be?"
+
+  Wait for human to input version before proceeding.
 
 ---
 
@@ -153,3 +181,4 @@ If on environment branch:
   - Branch pushed:         {branch}
   - Promoted to:           {next environment}
   - Deployment triggered:  yes/no (based on CI/CD presence)
+```
