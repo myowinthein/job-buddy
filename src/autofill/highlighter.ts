@@ -1,3 +1,5 @@
+import { CONF_FILL, CONF_GREEN } from './constants';
+
 // Confidence-based background tint applied directly to form elements.
 // Original background-color and transition are saved in data attributes
 // so they can be restored exactly on clear.
@@ -12,9 +14,9 @@ export function applyHighlight(element: HTMLElement, confidence: number): void {
 
   element.style.transition = 'background-color 0.2s ease';
   element.style.backgroundColor =
-    confidence >= 0.85 ? 'rgba(34, 197, 94, 0.12)' :
-    confidence >= 0.60 ? 'rgba(234, 179, 8, 0.12)' :
-                         'rgba(239, 68, 68, 0.12)';
+    confidence >= CONF_GREEN ? 'rgba(34, 197, 94, 0.12)' :
+    confidence >= CONF_FILL  ? 'rgba(234, 179, 8, 0.12)' :
+                               'rgba(239, 68, 68, 0.12)';
 }
 
 export function clearElementHighlight(element: HTMLElement): void {
