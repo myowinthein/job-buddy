@@ -19,6 +19,8 @@ pnpm zip          # production build + zip for CWS upload
 pnpm compile      # TypeScript type-check (no emit) — required before commit
 pnpm lint         # ESLint
 pnpm format       # Prettier
+pnpm test         # Vitest watch mode
+pnpm test:run     # single run — run before committing
 ```
 
 ---
@@ -42,12 +44,13 @@ pnpm format       # Prettier
 - `src/utils/driveSync.ts` — Google Drive backup via `drive.appdata` scope; implicit OAuth token flow
 - `src/utils/derivedFields.ts` — computes `fullName`, `currentTitle`, `currentCompany`, `totalExperience`, `age`
 - `src/utils/profileCompletion.ts` — `TOTAL_CHECKS = 15`; drives sidebar checkmarks and completion %
+- `src/autofill/constants.ts` — named confidence thresholds (`CONF_FILL`, `CONF_GREEN`, `CONF_CONFIRMED`, `CONF_AI_YELLOW`); always use these, never bare numbers
 
 ---
 
 ## 4. Behavior Rules
 
-**Autofill confidence thresholds:** ≥0.85 → green (fill, no picker) · 0.60–0.84 → yellow (fill + picker) · <0.60 → red (no fill + picker) · ≥0.60 but profile value empty → gray/noData (no highlight, picker shows "Go to Profile" CTA)
+**Autofill confidence thresholds:** ≥0.85 → green (fill, no picker) · 0.60–0.84 → yellow (fill + picker) · <0.60 → red (no fill + picker) · ≥0.60 but profile value empty → gray/noData (no highlight, picker shows "Go to Profile" CTA). Thresholds are defined as named constants in `src/autofill/constants.ts`.
 
 **Two-phase fill:** `AUTOFILL_SCAN` maps fields into `pendingMatches` (no fill). `AUTOFILL_FILL { mode }` executes — merge skips pre-filled fields, overwrite replaces all. Never re-run scan between the two phases.
 
@@ -63,8 +66,7 @@ pnpm format       # Prettier
 
 ## 5. Hard Safety Rules
 
-- **Never push a `v*.*.*` tag without explicit user instruction.** Auto-publishes to Chrome Web Store immediately; no CLI rollback exists.
-- **Never push a tag or trigger a release autonomously** — use `/ship` and wait for explicit user confirmation at each step.
+- **Never push a `v*.*.*` tag or trigger a release without explicit user instruction.** Releases auto-publish to the Chrome Web Store with no CLI rollback. Use `/ship` and wait for confirmation at each step.
 - **Never read or print `.env.development` / `.env.production`** — they contain real OAuth client IDs.
 - **ESLint must stay on v9.x.** `eslint-plugin-react@7.x` calls `context.getFilename()` removed in ESLint v10. Upgrading breaks the linter until the plugin ships a v8 stable.
 - **Always run `pnpm compile` before committing.** CI enforces type-check; failing commits are noisy on main.
@@ -85,4 +87,4 @@ pnpm format       # Prettier
 
 - **Drive OAuth uses implicit grant via `chrome.identity.launchWebAuthFlow`.** Google Cloud app type must be "Web Application" (not "Chrome Extension" — that forces `getAuthToken()` and causes `redirect_uri_mismatch`). Needs separate client IDs for dev and prod. Set `VITE_GOOGLE_DRIVE_CLIENT_ID` in `.env.development` / `.env.production` (see `.env.example`).
 
-<!-- last-reviewed: d82a18a449f3fba77273565046105360aef6b09c -->
+<!-- last-reviewed: b62df4d1585ebf60f3c8bd574093d14c9c2f4827 -->
