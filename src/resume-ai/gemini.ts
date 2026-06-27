@@ -133,11 +133,15 @@ export async function extractFromResume(
   throw importError('rate_limit', 'All AI models are currently busy. Try again later or check your usage at Google AI Studio.');
 }
 
-function parseResponse(text: string): Partial<Profile> {
-  const cleaned = text
+function stripMarkdown(text: string): string {
+  return text
     .replace(/^```(?:json)?\s*/m, '')
     .replace(/\s*```\s*$/m, '')
     .trim();
+}
+
+function parseResponse(text: string): Partial<Profile> {
+  const cleaned = stripMarkdown(text);
   try {
     return JSON.parse(cleaned) as Partial<Profile>;
   } catch {
@@ -216,10 +220,7 @@ export async function resolveFieldsWithAI(
 }
 
 function parseAutofillResponse(text: string): AIFieldResponse[] {
-  const cleaned = text
-    .replace(/^```(?:json)?\s*/m, '')
-    .replace(/\s*```\s*$/m, '')
-    .trim();
+  const cleaned = stripMarkdown(text);
 
   let parsed: unknown;
   try { parsed = JSON.parse(cleaned); } catch { return []; }

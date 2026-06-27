@@ -1,11 +1,7 @@
 import type { Profile } from '../types/profile';
 import { COUNTRIES } from '../data/countries';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
-import { fmtYearMonth } from '../utils/dateFormat';
-
-function formatAmount(amount: number): string {
-  return Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
+import { fmtYearMonth, fmtAmount } from '../utils/dateFormat';
 
 export function resolveProfileValue(profile: Profile, fieldPath: string): string {
   if (!fieldPath) return '';
@@ -52,7 +48,7 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
     case 'salary.current.formatted': {
       const cur = profile.salary?.current;
       if (!cur?.amount) return '';
-      return cur.currency ? `${formatAmount(cur.amount)} ${cur.currency}` : formatAmount(cur.amount);
+      return cur.currency ? `${fmtAmount(cur.amount)} ${cur.currency}` : fmtAmount(cur.amount);
     }
 
     case 'derived.totalExperience.years': {
@@ -91,7 +87,7 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
   if (expMatch) {
     const entry = profile.salary?.expected?.[parseInt(expMatch[1], 10)];
     if (!entry?.amount) return '';
-    return entry.currency ? `${formatAmount(entry.amount)} ${entry.currency}` : formatAmount(entry.amount);
+    return entry.currency ? `${fmtAmount(entry.amount)} ${entry.currency}` : fmtAmount(entry.amount);
   }
 
   // Handle workHistory.N.* — virtual / computed sub-fields.

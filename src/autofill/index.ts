@@ -1,4 +1,4 @@
-import { getProfile, getLearnedMappings, saveLearnedMapping } from '../utils/storage';
+import { getProfile, getLearnedMappings } from '../utils/storage';
 import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED } from './constants';
 import { scanFields } from './scanner';
 import { extractSignals } from './signals';
@@ -11,6 +11,7 @@ import { attachPickerListeners, removePickerListener, closePickerIfOpenFor } fro
 import type { PickerField, PickerFieldState } from './picker';
 import { normalize } from './normalizer';
 import { resolveProfileValue } from './resolver';
+import { saveElementMappings } from './mappings';
 import { runAIAutofill } from './ai';
 import type { AITextCandidate } from './ai';
 import type { DebugSession, DebugScanField, DebugMappingField, DebugAIField, FieldFinalState } from './debug';
@@ -488,19 +489,10 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       editWatchers.delete(element);
     }
 
-    const sigs = extractSignals(element);
-    const signalTexts = [
-      sigs.name, sigs.id, sigs.placeholder,
-      sigs.ariaLabel, sigs.label, sigs.nearbyText,
-    ].filter(Boolean);
-
     // Learned-mapping saves are best-effort: a storage quota error must not
     // prevent the result counts from updating or produce an unhandled rejection.
     try {
-      for (const text of signalTexts) {
-        const norm = normalize(text);
-        if (norm) await saveLearnedMapping(domain, norm, fieldPath);
-      }
+      await saveElementMappings(domain, element, fieldPath);
     } catch {
       // Non-critical — mapping will be re-learned on the next picker selection.
     }

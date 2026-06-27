@@ -1,6 +1,5 @@
 import type { Profile } from '../types/profile';
 import type { FieldSignals } from './signals';
-import { extractSignals } from './signals';
 import { resolveProfileValue } from './resolver';
 import { resolveFieldsWithAI } from '../resume-ai/gemini';
 import type { AIFieldPayload, AIFieldResponse } from '../resume-ai/gemini';
@@ -13,6 +12,7 @@ import { attachPickerListeners } from './picker';
 import type { PickerField, PickerFieldState } from './picker';
 import { getGeminiApiKey, getGeminiModel, saveLearnedMapping } from '../utils/storage';
 import { normalize } from './normalizer';
+import { saveElementMappings } from './mappings';
 import type { DebugAIField } from './debug';
 
 // Mutable result shape — matches the fields of AutofillResult that AI updates
@@ -218,12 +218,7 @@ export async function runAIAutofill(
       if (originalState === 'needReview')    result.needReview    = Math.max(0, result.needReview    - 1);
       if (originalState === 'noData')        result.noData        = Math.max(0, result.noData        - 1);
 
-      const sigs = extractSignals(element);
-      const sigTexts = [sigs.name, sigs.id, sigs.placeholder, sigs.ariaLabel, sigs.label, sigs.nearbyText].filter(Boolean);
-      for (const t of sigTexts) {
-        const norm = normalize(t);
-        if (norm) void saveLearnedMapping(domain, norm, fieldPath);
-      }
+      void saveElementMappings(domain, element, fieldPath);
     });
   }
 

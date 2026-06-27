@@ -4,38 +4,33 @@
 
 Check current branch.
 
-If on environment branch (staging, production, etc):
-  Stop and inform user:
-  "Environment branches are reflections of main and cannot be used
-  as a release source. Please switch to main or master and run /ship
-  from there."
+If on main or master:
+  Proceed normally — full ship flow including version tagging.
 
-If on feature or any other non-main branch:
+If on environment branch (staging, production, etc):
+  Proceed with promotion only — no version tagging.
+  Inform user:
+  "On {branch}. Promoting to next environment only — no version tagging."
+
+If on feature or any other branch:
   Stop and inform user:
   "Feature branches must be merged to main via PR before releasing.
   Please merge your branch, switch to main or master, and run /ship
   from there."
 
-Only proceed if on main or master.
-
 ---
 
-## Step 2 — Discover environment branches (first run only)
+## Step 2 — Select deployment targets (main branch only)
 
-If environment branches are not recorded in CLAUDE.md:
-- Run: git branch -r
-- Identify environment branches (staging, production, or similar)
-- Record in CLAUDE.md under Project Identity
-- Example: "environments: staging, production"
+Skip this step if on environment branch — proceed directly to Step 6.
 
----
-
-## Step 3 — Select deployment targets
+Discover environment branches via: git branch -r
+Filter for known environment names (staging, production, or similar).
 
 If no environment branches exist:
-  Skip this step. Deploy to main only.
+  Skip this step. Tag and push main only.
 
-If environment branches exist, present checkbox:
+If environment branches exist, present selection:
 
   Select environments to deploy to:
   [x] main/master (always selected, cannot deselect)
@@ -43,21 +38,16 @@ If environment branches exist, present checkbox:
   [ ] production
 
   Default: main/master only.
-  Human selects additional environments before proceeding.
+  Wait for human selection before proceeding.
 
 ---
 
-## Step 4 — Discover version file (first run only)
+## Step 3 — Calculate and propose version (main branch only)
 
-If version file location is not recorded in CLAUDE.md:
-- Scan for package.json, composer.json, VERSION file
-- Identify which file holds the version number
-- Record in CLAUDE.md under Project Identity
-- Example: "version-file: package.json"
+Skip this step if on environment branch — proceed directly to Step 6.
 
----
-
-## Step 5 — Calculate and propose version
+Detect version file by scanning for package.json, composer.json, VERSION file.
+Read current version from detected file.
 
 Run: git describe --tags --abbrev=0
 If no tag exists, ask human to confirm base version before proceeding.
@@ -85,29 +75,36 @@ Commits included:
 - {list of feat and fix commits, skip chore/docs/style}
 
 Deployment targets:
-- {selected environments}
+- {selected environments from Step 2}
 
-Confirm release v{proposed}? (yes / no / adjust version)
+Select an option:
+1. Confirm v{proposed}  (recommended)
+2. Other               → prompt human to enter custom version
 
-Wait for confirmation before proceeding.
+Wait for selection before proceeding.
 
 ---
 
-## Step 6 — Run tests
+## Step 4 — Run tests
 
-Check CLAUDE.md Dev Commands for test command.
-If not recorded, detect test framework and record in CLAUDE.md.
-Run full suite — stop and inform human if tests fail.
+Run full test suite using detected test framework.
+If tests fail, stop and inform human:
+"Tests failed. Fix before releasing."
 Do not proceed until tests pass.
-Skip silently if no test framework configured.
+Skip silently if no test framework detected.
 
 ---
 
-## Step 7 — Execute release
+## Step 5 — Execute release on main
 
-Bump version file to {version}.
+Only run this step if on main or master.
 
-Commit, tag, and push main:
+Bump version in detected version file to {version}.
+
+Scan README.md for version references (badges, inline mentions).
+If found, update to {version}. Skip silently if none found.
+
+Commit, tag, and push:
 - git add -A
 - git commit -m "chore(release): bump version to {version}"
 - git tag -a v{version} -m "Release v{version}"
@@ -122,10 +119,37 @@ For each selected environment branch:
 
 ---
 
-## Step 8 — Confirm completion
+## Step 6 — Execute promotion on environment branch
 
-Report:
-- Version tagged: v{version}
-- Tag pushed: yes
-- Environments promoted: {list of environments}
-- Deployment triggered: yes/no (based on CI/CD presence)
+Only run this step if on environment branch.
+
+Determine next environment in promotion chain:
+  staging    → production
+  production → no further promotion, inform human and exit
+
+If next environment exists:
+  git push origin {current_branch}
+  Inform human:
+  "Pushed {current_branch}. CI/CD will deploy to corresponding server."
+
+If no next environment (already on production):
+  Stop and inform human:
+  "Already on production. Nothing to promote further."
+
+---
+
+## Step 7 — Confirm completion
+
+If on main or master:
+  Report:
+  - Version tagged:        v{version}
+  - Tag pushed:            yes
+  - README updated:        yes/no
+  - Environments promoted: {list or none}
+  - Deployment triggered:  yes/no (based on CI/CD presence)
+
+If on environment branch:
+  Report:
+  - Branch pushed:         {branch}
+  - Promoted to:           {next environment}
+  - Deployment triggered:  yes/no (based on CI/CD presence)
