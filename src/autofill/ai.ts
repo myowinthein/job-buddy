@@ -8,6 +8,7 @@ import { scanRadioGroups, scanCheckboxGroups } from './scanner';
 import type { RadioGroup, CheckboxGroup } from './scanner';
 import { fillField, fillRadioInput, fillCheckboxInput } from './filler';
 import { applyHighlight } from './highlighter';
+import { CONF_CONFIRMED, CONF_AI_YELLOW } from './constants';
 import { attachPickerListeners } from './picker';
 import type { PickerField, PickerFieldState } from './picker';
 import { getGeminiApiKey, getGeminiModel, saveLearnedMapping } from '../utils/storage';
@@ -126,7 +127,7 @@ export async function runAIAutofill(
     }
 
     const isHigh    = resp.confidence === 'high';
-    const confScore = isHigh ? 0.97 : 0.70;
+    const confScore = isHigh ? CONF_CONFIRMED : CONF_AI_YELLOW;
 
     if (candidate.type === 'text' && resp.profilePath) {
       const value = resolveProfileValue(profile, resp.profilePath);
@@ -209,7 +210,7 @@ export async function runAIAutofill(
   if (pickerFields.length > 0) {
     attachPickerListeners(pickerFields, async (element, fieldPath, value, originalState: PickerFieldState) => {
       await fillField(element, value);
-      applyHighlight(element, 0.97);
+      applyHighlight(element, CONF_CONFIRMED);
       if (originalState === 'noData') sessionElements.push(element);
 
       result.noReview++;
