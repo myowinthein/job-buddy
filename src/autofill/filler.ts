@@ -1,5 +1,6 @@
 import type { DocumentFile } from '../types/profile';
 import { normalize, similarity } from './normalizer';
+import { CONF_FUZZY_THRESHOLD } from './constants';
 
 // Capture native setters before any framework can shadow them on instances
 const nativeInputSetter    = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,    'value')?.set;
@@ -105,7 +106,7 @@ function fillSelect(select: HTMLSelectElement, value: string): void {
     );
     if (score > bestScore) { bestScore = score; bestIndex = i; }
   }
-  if (bestScore >= 0.75 && bestIndex >= 0) {
+  if (bestScore >= CONF_FUZZY_THRESHOLD && bestIndex >= 0) {
     select.selectedIndex = bestIndex;
     select.dispatchEvent(new Event('change', { bubbles: true }));
   }
@@ -162,7 +163,7 @@ function findBestAriaOption(options: HTMLElement[], target: string): HTMLElement
     );
     if (s > bestScore) { bestScore = s; best = o; }
   }
-  return bestScore >= 0.75 ? best : null;
+  return bestScore >= CONF_FUZZY_THRESHOLD ? best : null;
 }
 
 // Polls for [role="option"] elements that appear after the trigger is opened.
