@@ -98,7 +98,13 @@ ${hyperlinksSection}Rules:
 - Return valid JSON only
 - For array fields with no data found, return []
 - professional.summary: copy verbatim from the resume; preserve paragraph breaks as \\n\\n
-- workHistory[].description: include all content under the role — company context, responsibilities, achievements, and bullet points; if multiple sections exist, concatenate them with \\n\\n. Format every responsibility, achievement, or paragraph as its own line starting with "- " so the result is a bullet list. Do not add an extra bullet to lines that already begin with -, •, *, or another bullet marker.
+- workHistory[].description: include all content under the role, structured EXACTLY as follows:
+  1. If the resume has any company/team/product/role context (e.g. "Led design at TechCo, a B2B SaaS startup focused on…"), put it FIRST as ONE plain-prose paragraph with NO bullet marker.
+  2. If you wrote a context paragraph, follow it with a SINGLE BLANK LINE.
+  3. Then write EACH responsibility, achievement, duty, or impact statement on its own line starting with "- " (hyphen + space).
+  If the resume contains only responsibilities and no context paragraph, return ONLY the bullet list (no leading paragraph, no leading blank line).
+  Never bullet a company/role context line. Never wrap a single sentence of context with a bullet marker.
+  Do not add an extra bullet to lines that already begin with -, •, *, or another bullet marker.
 - address.state: infer from city only when unambiguous (e.g. Bangkok → Bangkok, London → England); otherwise omit
 - workAuthorization: only include if explicitly stated in the resume; omit otherwise
 - noticePeriod: if resume says "immediate", "immediately available", or similar → { "immediate": true, "value": null, "unit": null }; if a duration is given → { "immediate": false, "value": <n>, "unit": "day"|"week"|"month" }; if not mentioned → null

@@ -6,23 +6,64 @@ import type { Profile } from '@/src/types/profile';
 const BULLET_RE = /^\s*[-•*·◦‣▪■▶▸▹►→]\s+/;
 
 /**
- * Normalises a free-text description into a bullet list:
- *   - Each non-empty line becomes a bullet line prefixed with "- ".
- *   - Lines that already begin with a bullet marker are left unchanged.
- *   - Blank lines are preserved as paragraph separators.
+ * Normalises a free-text description into an intro paragraph + bullet list.
+ *
+ * Detection of where the bullet section starts:
+ *   1. The first line that already carries a bullet marker, OR
+ *   2. The first non-blank line that follows a blank-line separator
+ *      (the resume-import prompt instructs Gemini to use this exact shape).
+ *
+ * Lines BEFORE the bullet section are preserved verbatim — they're the
+ * company/team/product/role context paragraph that shouldn't be bulletised.
+ *
+ * Lines AT or AFTER the bullet section:
+ *   - Blank lines pass through as paragraph separators.
+ *   - Lines that already begin with -, •, *, ·, ◦, ‣, ▪, ■, ▶, ▸, ▹, ►, → are kept as-is.
+ *   - All other non-blank lines get a "- " prefix.
+ *
+ * If no structure (no marker, no blank-line separator) is detected, the text
+ * is returned UNCHANGED. This is intentional: blindly bulleting plain prose
+ * would convert legitimate context paragraphs into responsibility lines.
  *
  * Idempotent: running this twice on the same input produces the same output.
  */
 export function normalizeBullets(text: string): string {
   if (!text) return text;
-  return text
-    .split('\n')
-    .map((line) => {
-      if (!line.trim()) return '';
-      if (BULLET_RE.test(line)) return line;
-      return `- ${line.trim()}`;
-    })
-    .join('\n');
+  const lines = text.split('\n');
+
+  let bulletStartIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (BULLET_RE.test(lines[i])) {
+      bulletStartIdx = i;
+      break;
+    }
+    if (!lines[i].trim() && i + 1 < lines.length && lines[i + 1].trim()) {
+      bulletStartIdx = i + 1;
+      break;
+    }
+  }
+
+  if (bulletStartIdx === -1) return text;
+
+  const result: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (i < bulletStartIdx) {
+      result.push(lines[i]);
+      continue;
+    }
+    const line = lines[i];
+    if (!line.trim()) {
+      result.push('');
+      continue;
+    }
+    if (BULLET_RE.test(line)) {
+      result.push(line);
+      continue;
+    }
+    result.push(`- ${line.trim()}`);
+  }
+
+  return result.join('\n');
 }
 
 /**
