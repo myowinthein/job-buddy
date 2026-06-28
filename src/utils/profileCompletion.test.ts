@@ -14,7 +14,7 @@ const COMPLETE: Profile = {
   professional: {
     noticePeriod: { immediate: false, value: 2, unit: 'week' },
   },
-  salary: { current: { amount: 60000, currency: 'THB' }, expected: [] },
+  salary: { current: { amount: 60000, currency: 'THB', period: 'monthly' }, expected: [] },
   workAuthorization: [{ country: 'TH', status: 'citizen_or_pr' }],
   workHistory: [{ company: 'Acme', title: 'Engineer', startDate: '2020-01', isCurrent: true }],
   education: [{ institution: 'MIT', degree: 'B.Sc.', fieldOfStudy: 'CS', startDate: '2015-09' }],
@@ -52,7 +52,7 @@ describe('calculateCompletion', () => {
   it('accepts salary amount of 0', () => {
     const result = calculateCompletion({
       ...COMPLETE,
-      salary: { current: { amount: 0, currency: 'THB' }, expected: [] },
+      salary: { current: { amount: 0, currency: 'THB', period: 'monthly' }, expected: [] },
     });
     expect(result.missingFields).not.toContain('Current Salary Amount');
   });
@@ -60,7 +60,7 @@ describe('calculateCompletion', () => {
   it('reports missing salary when amount is negative', () => {
     const result = calculateCompletion({
       ...COMPLETE,
-      salary: { current: { amount: -1, currency: 'THB' }, expected: [] },
+      salary: { current: { amount: -1, currency: 'THB', period: 'monthly' }, expected: [] },
     });
     expect(result.missingFields).toContain('Current Salary Amount');
   });
@@ -157,7 +157,7 @@ describe('getSectionCompletion', () => {
   it('returns false for salary when currency is missing', () => {
     const result = getSectionCompletion({
       ...COMPLETE,
-      salary: { current: { amount: 1000, currency: '' }, expected: [] },
+      salary: { current: { amount: 1000, currency: '', period: 'monthly' }, expected: [] },
     });
     expect(result.salary).toBe(false);
   });

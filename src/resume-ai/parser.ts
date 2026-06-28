@@ -225,7 +225,7 @@ export const FIELD_DEFS: FieldDef[] = [
     getValue: (p) => p.salary?.expected ?? [],
     setValue: (p, v) => ({
       ...p,
-      salary: { ...(p.salary ?? { current: { amount: 0, currency: '' }, expected: [] }), expected: v as Profile['salary']['expected'] },
+      salary: { ...(p.salary ?? { current: { amount: 0, currency: '', period: 'monthly' }, expected: [] }), expected: v as Profile['salary']['expected'] },
     }),
     isEmpty: emptyArr,
     display: (v) => {
