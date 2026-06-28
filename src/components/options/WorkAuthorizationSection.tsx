@@ -6,6 +6,7 @@ import { WORK_AUTH_STATUS_OPTIONS } from '@/src/data/workAuthorization';
 import { FormField } from './shared/FormField';
 import { SearchableCountryDropdown } from './shared/SearchableCountryDropdown';
 import { RemoveButton } from './shared/RemoveButton';
+import { saveSection } from './shared/saveSection';
 
 interface Props {
   profile: Partial<Profile>;
@@ -83,13 +84,12 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await onSave({
+    await saveSection(onSave, {
       workAuthorization: entries.map((r) => ({
         country: r.country,
         status: r.status as WorkAuthorizationStatus,
       })),
-    }).then(() => showToast('success', 'Work authorization saved'))
-      .catch(() => showToast('error', 'Failed to save. Please try again.'));
+    }, showToast, 'Work authorization saved');
     setSaving(false);
   };
 

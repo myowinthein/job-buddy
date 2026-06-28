@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import type { Profile, CustomLink } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
 import { RemoveButton } from './shared/RemoveButton';
+import { saveSection } from './shared/saveSection';
 
 interface Props {
   profile: Partial<Profile>;
@@ -97,7 +98,7 @@ export function LinksSection({ profile, onSave }: Props) {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await onSave({
+    await saveSection(onSave, {
       links: {
         linkedin:  form.linkedin.trim(),
         portfolio: form.portfolio || undefined,
@@ -108,8 +109,7 @@ export function LinksSection({ profile, onSave }: Props) {
         dribbble: l?.dribbble,
         behance:  l?.behance,
       },
-    }).then(() => showToast('success', 'Links saved'))
-      .catch(() => showToast('error', 'Failed to save. Please try again.'));
+    }, showToast, 'Links saved');
     setSaving(false);
   };
 

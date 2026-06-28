@@ -1,5 +1,6 @@
 import type { Profile } from '../types/profile';
 import type { FieldSignals } from './signals';
+import { bestLabel } from './signals';
 import { resolveProfileValue } from './resolver';
 import { resolveFieldsWithAI } from '../resume-ai/gemini';
 import type { AIFieldPayload, AIFieldResponse, AIOptionPayload } from '../resume-ai/gemini';
@@ -142,8 +143,7 @@ export async function runAIAutofill(
   ) => {
     if (!debug) return;
     const label = candidate.type === 'text'
-      ? (candidate.signals.label || candidate.signals.ariaLabel
-         || candidate.signals.placeholder || candidate.signals.name || '')
+      ? bestLabel(candidate.signals)
       : candidate.group.groupLabel;
     debug.push({ fieldId, label, type: candidate.type, aiResult, aiConfidence, finalState });
   };
@@ -215,8 +215,7 @@ export async function runAIAutofill(
         pickerFields.push({
           element: candidate.element,
           state:   candidate.originalState as PickerFieldState,
-          label:   candidate.signals.label || candidate.signals.ariaLabel
-                || candidate.signals.placeholder || 'this field',
+          label:   bestLabel(candidate.signals) || 'this field',
         });
       }
       recordDebug(candidate, fieldId, aiResult, resp.confidence, isHigh ? 'green' : 'yellow');
