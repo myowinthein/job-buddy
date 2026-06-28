@@ -178,11 +178,16 @@ function App() {
     return () => cancelAnimationFrame(raf);
   }, [focusTarget]);
 
-  const handleImportComplete = () => {
+  // Pass `afterLoad` when the caller needs to remount section components only
+  // AFTER the new profile has been written to state. This avoids the race
+  // where sectionSeq bumps synchronously while setProfile runs inside the
+  // async .then() — the section would otherwise remount with the OLD profile.
+  const handleImportComplete = (afterLoad?: () => void) => {
     getProfile()
       .then((p) => {
         setProfile(p ?? {});
         if (p) void syncProfileToDrive(p);
+        afterLoad?.();
       })
       .catch((err) => console.error('[Job Buddy] Failed to reload profile after import:', err));
   };
@@ -266,7 +271,7 @@ function App() {
       case 'links':             return <LinksSection key={`links-${sectionSeq}`} {...sectionProps} />;
       case 'documents':         return <DocumentsSection key={`documents-${sectionSeq}`} {...sectionProps} />;
       case 'resume':            return <ResumeImportSection key="resume" profile={profile} onSave={handleSave} onGoToApiKey={handleGoToApiKey} onClose={handleCloseResumeImport} />;
-      case 'settings':          return <SettingsSection key="settings" onImportComplete={handleImportComplete} onResetComplete={() => { handleImportComplete(); setSectionSeq((s) => s + 1); setActiveSection('personal'); }} />;
+      case 'settings':          return <SettingsSection key="settings" onImportComplete={handleImportComplete} onResetComplete={() => handleImportComplete(() => { setSectionSeq((s) => s + 1); setActiveSection('personal'); })} />;
     }
   };
 

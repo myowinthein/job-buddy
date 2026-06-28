@@ -7,15 +7,18 @@ describe('normalizeBullets', () => {
     expect(normalizeBullets('')).toBe('');
   });
 
-  it('prepends "- " to a single plain line', () => {
-    expect(normalizeBullets('Led mobile design.')).toBe('- Led mobile design.');
+  // ── No structure → leave alone ─────────────────────────────────────────────
+
+  it('leaves a single plain line unchanged (no markers, no separator)', () => {
+    expect(normalizeBullets('Led mobile design.')).toBe('Led mobile design.');
   });
 
-  it('prepends "- " to each line of a multi-line block', () => {
-    const input  = 'Led mobile design.\nCollaborated with PMs.\nImproved retention.';
-    const output = '- Led mobile design.\n- Collaborated with PMs.\n- Improved retention.';
-    expect(normalizeBullets(input)).toBe(output);
+  it('leaves a multi-line plain prose block unchanged when no marker/separator is present', () => {
+    const input = 'Worked at TechCo.\nLed mobile design.\nCollaborated with PMs.';
+    expect(normalizeBullets(input)).toBe(input);
   });
+
+  // ── Already-bulleted content → preserved ───────────────────────────────────
 
   it('preserves lines that already start with "- "', () => {
     const input = '- Led mobile design.\n- Improved retention.';
@@ -31,27 +34,55 @@ describe('normalizeBullets', () => {
     expect(normalizeBullets('* One\n* Two')).toBe('* One\n* Two');
   });
 
-  it('preserves blank lines as paragraph separators', () => {
-    const input  = 'Led mobile design.\n\nImproved retention.';
-    const output = '- Led mobile design.\n\n- Improved retention.';
+  // ── Intro paragraph + bullet section → keep intro, bullet the rest ─────────
+
+  it('preserves a one-line context paragraph followed by a blank-line separator and plain lines', () => {
+    const input  = 'Worked at TechCo as Senior PD.\n\nLed mobile design.\nCollaborated with PMs.';
+    const output = 'Worked at TechCo as Senior PD.\n\n- Led mobile design.\n- Collaborated with PMs.';
     expect(normalizeBullets(input)).toBe(output);
   });
 
-  it('mixes existing bullets and plain lines correctly', () => {
+  it('preserves a context paragraph immediately followed by pre-bulleted lines (no blank)', () => {
+    const input = 'Worked at TechCo as Senior PD.\n- Led mobile design.\n- Collaborated with PMs.';
+    expect(normalizeBullets(input)).toBe(input);
+  });
+
+  it('mixes a first-line bullet with subsequent plain lines (no intro to preserve)', () => {
     const input  = '- Already bullet.\nPlain line.';
     const output = '- Already bullet.\n- Plain line.';
     expect(normalizeBullets(input)).toBe(output);
   });
 
-  it('is idempotent — running twice produces the same output', () => {
-    const input = 'Led mobile design.\nCollaborated with PMs.';
+  // ── Blank-line semantics ───────────────────────────────────────────────────
+
+  it('preserves trailing blank lines between bullets', () => {
+    const input  = 'Context.\n\n- One.\n\n- Two.';
+    const output = 'Context.\n\n- One.\n\n- Two.';
+    expect(normalizeBullets(input)).toBe(output);
+  });
+
+  // ── Idempotence ────────────────────────────────────────────────────────────
+
+  it('is idempotent for already-structured input', () => {
+    const input = 'Context.\n\n- Led design.\n- Improved retention.';
     const once  = normalizeBullets(input);
     const twice = normalizeBullets(once);
     expect(twice).toBe(once);
   });
 
-  it('trims surrounding whitespace from converted lines', () => {
-    expect(normalizeBullets('   indented line.   ')).toBe('- indented line.');
+  it('is idempotent for plain-prose input (returns same text on each pass)', () => {
+    const input = 'Worked at TechCo.\nLed design.';
+    const once  = normalizeBullets(input);
+    expect(once).toBe(input);
+    expect(normalizeBullets(once)).toBe(input);
+  });
+
+  // ── Whitespace handling inside the bullet section ──────────────────────────
+
+  it('trims surrounding whitespace from converted lines inside the bullet section', () => {
+    const input  = 'Context.\n\n   indented line.   ';
+    const output = 'Context.\n\n- indented line.';
+    expect(normalizeBullets(input)).toBe(output);
   });
 });
 
@@ -63,7 +94,11 @@ describe('normalizeExtractedProfile', () => {
         title: 'Senior PD',
         startDate: '2020-01',
         isCurrent: true,
-        description: 'Led mobile design.\nCollaborated with PMs.',
+        // Context paragraph + blank separator + plain responsibilities is the
+        // shape the updated prompt asks Gemini for. The normaliser turns the
+        // bullet-section lines into "- " bullets while leaving the context
+        // paragraph alone.
+        description: 'Led design at Acme, a B2B SaaS startup.\n\nLed mobile design.\nCollaborated with PMs.',
       },
     ],
   };
@@ -73,10 +108,10 @@ describe('normalizeExtractedProfile', () => {
     expect(normalizeExtractedProfile(input)).toBe(input);
   });
 
-  it('normalises workHistory[].description', () => {
+  it('normalises only the bullet section of workHistory[].description, preserving the context paragraph', () => {
     const result = normalizeExtractedProfile(PARTIAL);
     expect(result.workHistory?.[0]?.description).toBe(
-      '- Led mobile design.\n- Collaborated with PMs.',
+      'Led design at Acme, a B2B SaaS startup.\n\n- Led mobile design.\n- Collaborated with PMs.',
     );
   });
 
