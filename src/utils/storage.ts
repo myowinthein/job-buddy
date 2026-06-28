@@ -1,5 +1,6 @@
 import type { Profile } from '../types/profile';
 import type { LearnedMappings, ApplicationEntry, DriveBackupState } from '../types/storage';
+import { normalizeProfile } from './migrate';
 
 // Wraps chrome.storage.local.get so that the returned Promise always resolves.
 // A synchronous throw (e.g. permission missing) or a runtime error in the
@@ -46,16 +47,35 @@ function storageSet(items: Record<string, unknown>): Promise<void> {
 
 export async function getProfile(): Promise<Profile | null> {
   const result = await storageGet('profile');
-  const profile = (result.profile as Profile) ?? null;
-  if (profile && !profile.id) {
-    profile.id = crypto.randomUUID();
-    await storageSet({ profile });
+  const raw = (result.profile as Profile) ?? null;
+  if (!raw) return null;
+
+  // On-read migrations are folded into a single write so the user never
+  // pays for two storage round-trips when both id backfill and salary period
+  // defaulting need to run on the same old profile.
+  let profile = raw;
+  let migrated = false;
+
+  if (!profile.id) {
+    profile = { ...profile, id: crypto.randomUUID() };
+    migrated = true;
   }
+
+  const normalized = normalizeProfile(profile);
+  if (normalized !== profile) {
+    profile = normalized;
+    migrated = true;
+  }
+
+  if (migrated) await storageSet({ profile });
   return profile;
 }
 
 export async function saveProfile(profile: Profile): Promise<void> {
-  await storageSet({ profile });
+  // Belt-and-braces: normalise on every write so callers cannot persist a
+  // salary entry without a valid period, even via Drive restore or resume
+  // import paths that bypass validateImportedProfile.
+  await storageSet({ profile: normalizeProfile(profile) });
 }
 
 export async function getLearnedMappings(): Promise<LearnedMappings> {
