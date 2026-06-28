@@ -1,4 +1,11 @@
-export function buildPrompt(currentProfileJson: string): string {
+export function buildPrompt(currentProfileJson: string, links: string[] = []): string {
+  const hyperlinksSection = links.length > 0
+    ? `Extracted hyperlinks from document metadata (use these for the links fields):
+${links.join('\n')}
+
+`
+    : '';
+
   return `You are a resume parser for a job application autofill tool called Job Buddy.
 
 Extract structured data from the attached resume document and return ONLY a valid JSON object. No markdown, no code blocks, no explanation — raw JSON only.
@@ -21,7 +28,12 @@ Schema (omit or set null for any field not found in the resume):
     "postalCode": string | null
   },
   "professional": {
-    "summary": string | null
+    "summary": string | null,
+    "noticePeriod": {
+      "immediate": boolean,
+      "value": number | null,
+      "unit": "day" | "week" | "month" | null
+    } | null
   },
   "salary": {
     "current": { "amount": number | null, "currency": "3-letter ISO 4217 e.g. USD" } | null,
@@ -69,7 +81,10 @@ Schema (omit or set null for any field not found in the resume):
   }
 }
 
-Rules:
+Current profile (for conflict detection only — do NOT use as extraction source):
+${currentProfileJson}
+
+${hyperlinksSection}Rules:
 - Never invent or guess values not present in the document
 - Dates: workHistory/education use YYYY-MM; dateOfBirth uses YYYY-MM-DD
 - country/countryCode must be ISO 3166-1 alpha-2 (e.g. US, GB, SG, AU, CA, MM)
@@ -79,7 +94,11 @@ Rules:
 - salary.expected: always return empty array []
 - Do not include: id, derived, documents, coverLetter
 - Return valid JSON only
-
-Current profile (do not copy — extract from resume only):
-${currentProfileJson}`;
+- For array fields with no data found, return []
+- professional.summary: copy verbatim from the resume; preserve paragraph breaks as \\n\\n
+- workHistory[].description: include all content under the role — company context, responsibilities, achievements, and bullet points; if multiple sections exist, concatenate them with \\n\\n
+- address.state: infer from city only when unambiguous (e.g. Bangkok → Bangkok, London → England); otherwise omit
+- workAuthorization: only include if explicitly stated in the resume; omit otherwise
+- noticePeriod: if resume says "immediate", "immediately available", or similar → { "immediate": true, "value": null, "unit": null }; if a duration is given → { "immediate": false, "value": <n>, "unit": "day"|"week"|"month" }; if not mentioned → null
+- Never guess gender or ethnicity; omit unless explicitly stated in the resume`;
 }

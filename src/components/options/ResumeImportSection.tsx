@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Profile, DocumentFile } from '@/src/types/profile';
 import { getGeminiApiKey, getGeminiModel } from '@/src/utils/storage';
 import { extractFromResume } from '@/src/resume-ai/gemini';
+import { extractLinks } from '@/src/resume-ai/extractLinks';
 import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
 import type { FieldChange, ImportProgressStep, ImportErrorCode } from '@/src/resume-ai/types';
 import { useToast } from '@/src/components/ui/Toast';
@@ -70,6 +71,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
   const [changes,      setChanges]      = useState<FieldChange[]>([]);
   const [saving,       setSaving]       = useState(false);
   const [summary,      setSummary]      = useState<{ updated: number; conflicts: number; skipped: number } | null>(null);
+  const [extractedLinks, setExtractedLinks] = useState<string[]>([]);
 
   const fileInputRef       = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -159,9 +161,11 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
       const dataUri  = await fileToDataUri(selectedFile);
       const base64   = dataUri.split(',')[1] ?? '';
       setFileDataUri(dataUri);
+      const links = await extractLinks(selectedFile);
+      setExtractedLinks(links);
 
       setProgressStep('sending');
-      const extracted = await extractFromResume(apiKey, model, base64, mimeType, profile, controller.signal);
+      const extracted = await extractFromResume(apiKey, model, base64, mimeType, profile, controller.signal, links);
 
       setProgressStep('processing');
       const aiChanges = generateDiff(profile, extracted);
@@ -212,7 +216,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
 
     try {
       setProgressStep('sending');
-      const extracted = await extractFromResume(apiKey, model, base64, mimeType, profile, controller.signal);
+      const extracted = await extractFromResume(apiKey, model, base64, mimeType, profile, controller.signal, extractedLinks);
 
       setProgressStep('processing');
       const aiChanges = generateDiff(profile, extracted);
