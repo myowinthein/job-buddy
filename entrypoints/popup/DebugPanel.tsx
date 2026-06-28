@@ -1,13 +1,5 @@
 import type { DebugSession } from '@/src/autofill/debug';
 
-interface DriveStatus {
-  connected:   boolean;
-  hasToken:    boolean;
-  lastSynced:  string | null;
-  pendingSync: boolean;
-  error:       string | null;
-}
-
 const LAYER_LABEL: Record<string, string> = {
   learned:          'Learned',
   autocomplete:     'Autocomplete',
@@ -44,12 +36,10 @@ function StateDot({ state }: { state: string }) {
 
 export function DebugPanel({
   session,
-  driveStatus,
   onClose,
 }: {
-  session:      DebugSession;
-  driveStatus?: DriveStatus | null;
-  onClose:      () => void;
+  session: DebugSession;
+  onClose: () => void;
 }) {
   const aiByFieldId = new Map(session.ai.map((a) => [a.fieldId, a]));
 
@@ -77,50 +67,10 @@ export function DebugPanel({
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-5 text-xs">
 
-          {/* ── Drive Backup ────────────────────────────────────────────── */}
-          {driveStatus && (
-            <section>
-              <h4 className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
-                Drive Backup
-              </h4>
-              <div className="px-2 py-1.5 bg-gray-50 dark:bg-gray-800 rounded space-y-0.5 font-mono text-[10px] text-gray-600 dark:text-gray-400">
-                <div>connected={String(driveStatus.connected)}</div>
-                <div>token={driveStatus.hasToken ? 'present' : 'missing'}</div>
-                <div>lastSynced={driveStatus.lastSynced ?? '—'}</div>
-                <div>pendingSync={String(driveStatus.pendingSync)}</div>
-                <div>error={driveStatus.error ?? 'none'}</div>
-              </div>
-            </section>
-          )}
-
-          {/* ── Stage 1 — Scanner ───────────────────────────────────────── */}
+          {/* ── Manual Mapping ──────────────────────────────────────────── */}
           <section>
             <h4 className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
-              Stage 1 — Scanner ({session.scanner.length})
-            </h4>
-            {session.scanner.length === 0 ? (
-              <p className="text-gray-400 dark:text-gray-500 italic">No fields scanned.</p>
-            ) : (
-              <ul className="space-y-1.5">
-                {session.scanner.map((f) => (
-                  <li key={f.fieldId} className="px-2 py-1.5 bg-gray-50 dark:bg-gray-800 rounded">
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="font-mono text-[10px] text-gray-400">{f.fieldId}</span>
-                      <span className="font-medium truncate">{f.label || '(no label)'}</span>
-                    </div>
-                    <div className="font-mono text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                      type={f.type || '—'} · name={f.name || '—'} · id={f.id || '—'}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          {/* ── Stage 2 — Manual Mapping ────────────────────────────────── */}
-          <section>
-            <h4 className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
-              Stage 2 — Manual Mapping ({session.mapping.length})
+              Manual Mapping ({session.mapping.length})
             </h4>
             {session.mapping.length === 0 ? (
               <p className="text-gray-400 dark:text-gray-500 italic">No mapping data.</p>
@@ -151,10 +101,10 @@ export function DebugPanel({
             )}
           </section>
 
-          {/* ── Stage 3 — AI Layer ──────────────────────────────────────── */}
+          {/* ── AI Mapping ──────────────────────────────────────────────── */}
           <section>
             <h4 className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
-              Stage 3 — AI Layer ({session.ai.length})
+              AI Mapping ({session.ai.length})
             </h4>
             {session.aiSkipped ? (
               <p className="text-gray-400 dark:text-gray-500 italic">AI layer skipped — no API key configured.</p>
@@ -183,37 +133,9 @@ export function DebugPanel({
             )}
           </section>
 
-          {/* ── Stage 4 — Final Summary ─────────────────────────────────── */}
-          <section>
-            <h4 className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
-              Stage 4 — Final Summary
-            </h4>
-            <div className="grid grid-cols-2 gap-2">
-              <SummaryCell color="green"  label="Green (no review)"  count={session.summary.green} />
-              <SummaryCell color="yellow" label="Yellow (review)"    count={session.summary.yellow} />
-              <SummaryCell color="red"    label="Red (low conf)"     count={session.summary.red} />
-              <SummaryCell color="gray"   label="Gray (no data)"     count={session.summary.gray} />
-            </div>
-          </section>
-
         </div>
 
       </div>
-    </div>
-  );
-}
-
-function SummaryCell({ color, label, count }: { color: 'green' | 'yellow' | 'red' | 'gray'; label: string; count: number }) {
-  const ring = {
-    green:  'border-green-300 dark:border-green-700  bg-green-50 dark:bg-green-900/20',
-    yellow: 'border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/20',
-    red:    'border-red-300 dark:border-red-700      bg-red-50 dark:bg-red-900/20',
-    gray:   'border-gray-300 dark:border-gray-700    bg-gray-50 dark:bg-gray-800',
-  }[color];
-  return (
-    <div className={`px-2 py-1.5 rounded border ${ring}`}>
-      <div className="text-[10px] text-gray-500 dark:text-gray-400">{label}</div>
-      <div className="text-base font-semibold text-gray-900 dark:text-gray-100">{count}</div>
     </div>
   );
 }
