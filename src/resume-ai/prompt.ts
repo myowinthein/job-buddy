@@ -36,7 +36,7 @@ Schema (omit or set null for any field not found in the resume):
     } | null
   },
   "salary": {
-    "current": { "amount": number | null, "currency": "3-letter ISO 4217 e.g. USD" } | null,
+    "current": { "amount": number | null, "currency": "3-letter ISO 4217 e.g. USD", "period": "monthly" | "annual" } | null,
     "expected": []
   },
   "workAuthorization": [
@@ -63,9 +63,9 @@ Schema (omit or set null for any field not found in the resume):
       "institution": string,
       "degree": string,
       "fieldOfStudy": string,
-      "startDate": "YYYY-MM",
+      "startDate": "YYYY-MM" | "YYYY",
       "isCurrent": boolean | null,
-      "endDate": "YYYY-MM" | null,
+      "endDate": "YYYY-MM" | "YYYY" | null,
       "grade": string | null
     }
   ],
@@ -86,12 +86,13 @@ ${currentProfileJson}
 
 ${hyperlinksSection}Rules:
 - Never invent or guess values not present in the document
-- Dates: workHistory/education use YYYY-MM; dateOfBirth uses YYYY-MM-DD
+- Dates: workHistory uses YYYY-MM (month required); education uses YYYY-MM when month is given, or YYYY when only the year is available; dateOfBirth uses YYYY-MM-DD
 - country/countryCode must be ISO 3166-1 alpha-2 (e.g. US, GB, SG, AU, CA, MM)
 - currency must be ISO 4217 3-letter code (e.g. USD, GBP, SGD, MMK)
 - phone: split calling code from local number; infer country from context if needed
 - language proficiency: infer from context ("mother tongue" → native_bilingual, "fluent" → full_professional, "conversational" → professional_working)
 - salary.expected: always return empty array []
+- salary.current.period: "monthly" or "annual"; if resume says "per month" / "p.m." / "/mo" → monthly, if "per annum" / "p.a." / "/year" → annual; default to "monthly" if unclear
 - Do not include: id, derived, documents, coverLetter
 - Return valid JSON only
 - For array fields with no data found, return []
