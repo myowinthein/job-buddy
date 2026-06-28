@@ -139,6 +139,7 @@ export function validateImportedProfile(raw: unknown): ValidationResult {
         ss.current = {
           amount: cur.amount,
           currency: cur.currency,
+          country: typeof cur.country === 'string' ? cur.country : undefined,
           period: cur.period === 'annual' ? 'annual' : 'monthly',
         };
       } else {
