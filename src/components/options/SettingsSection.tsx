@@ -455,6 +455,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         return;
       }
       await saveProfile(validation.sanitized as Profile);
+      if (driveRestoreData.learnedMappings) {
+        await saveLearnedMappings(driveRestoreData.learnedMappings);
+      }
       const fresh = await getFullDriveState();
       setDriveState(fresh);
       showToast('success', 'Profile restored from Google Drive');
@@ -493,6 +496,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     try {
       const applied = applyChanges(driveLocalProfile, finalChanges);
       await saveProfile(applied as Profile);
+      if (driveRestoreData?.learnedMappings) {
+        await saveLearnedMappings(driveRestoreData.learnedMappings);
+      }
       void syncProfileToDrive(applied as Profile);
       showToast('success', 'Profile updated from Drive backup');
       onImportComplete();
@@ -837,7 +843,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       <section className="pt-2">
         <h3 className="text-base font-semibold text-red-700 dark:text-red-400 mb-1">Reset All Data</h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Permanently delete your profile and autofill data from this browser. This cannot be undone.
+          Permanently delete your profile, learned autofill mappings, and all data from this browser. This cannot be undone.
         </p>
         <button
           type="button"
@@ -901,7 +907,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
             <div className="px-6 py-5">
               <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
-                This will permanently delete your profile and all autofill data from this browser.{' '}
+                This will permanently delete your profile, learned autofill mappings, and all data from this browser.{' '}
                 Consider{' '}
                 <button type="button" className="underline hover:text-gray-900 dark:hover:text-gray-100 transition-colors" onClick={handleExport}>
                   exporting your profile first
