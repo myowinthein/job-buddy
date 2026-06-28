@@ -1,7 +1,16 @@
 import type { Profile } from './profile';
 
+export interface LearnedMappingEntry {
+  path:  string;
+  count: number;
+}
+
+// A mapping value is either the legacy plain-string format (trusted as-is,
+// written by older versions) or the new counted-entry format.
+export type LearnedMappingValue = string | LearnedMappingEntry;
+
 export interface LearnedMappings {
-  [domain: string]: { [signal: string]: string };
+  [domain: string]: { [signal: string]: LearnedMappingValue };
 }
 
 export interface ApplicationEntry {
@@ -25,8 +34,9 @@ export interface DriveBackupState {
 }
 
 export interface DriveBackupFile {
-  profile:      Profile;
-  lastModified: string;
+  profile:          Profile;
+  learnedMappings?: LearnedMappings;
+  lastModified:     string;
 }
 
 export interface StorageSchema {

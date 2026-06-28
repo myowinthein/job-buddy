@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { resolveProfileValue } from './resolver';
 import type { Profile } from '../types/profile';
 
@@ -258,6 +258,27 @@ describe('resolveProfileValue', () => {
     expect(resolveProfileValue(PROFILE, 'education.1.endDate.formatted')).toBe('Present');
   });
 
+  // Notice period — available date (date-independent assertions)
+  it('returns empty for professional.noticePeriod.availableDate when noticePeriod is absent', () => {
+    const p = { ...PROFILE, professional: {} };
+    expect(resolveProfileValue(p, 'professional.noticePeriod.availableDate')).toBe('');
+  });
+
+  it('returns empty when value is undefined', () => {
+    const p = { ...PROFILE, professional: { noticePeriod: { immediate: false, unit: 'week' as const } } };
+    expect(resolveProfileValue(p, 'professional.noticePeriod.availableDate')).toBe('');
+  });
+
+  it('returns empty when unit is undefined', () => {
+    const p = { ...PROFILE, professional: { noticePeriod: { immediate: false, value: 2 } } };
+    expect(resolveProfileValue(p, 'professional.noticePeriod.availableDate')).toBe('');
+  });
+
+  it('returns empty when value is 0', () => {
+    const p = { ...PROFILE, professional: { noticePeriod: { immediate: false, value: 0, unit: 'day' as const } } };
+    expect(resolveProfileValue(p, 'professional.noticePeriod.availableDate')).toBe('');
+  });
+
   // Documents
   it('resolves documents.cv.file to the filename', () => {
     expect(resolveProfileValue(PROFILE, 'documents.cv.file')).toBe('jane-cv.pdf');
@@ -266,5 +287,47 @@ describe('resolveProfileValue', () => {
   it('returns empty for documents.cv.file when no file is stored', () => {
     const p = { ...PROFILE, documents: { cv: { url: 'https://example.com/cv.pdf' } } };
     expect(resolveProfileValue(p, 'documents.cv.file')).toBe('');
+  });
+});
+
+describe('resolveProfileValue — notice period: availableDate (date-pinned)', () => {
+  // Pin local time to 2024-06-15 so computed dates are deterministic.
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2024, 5, 15)); // June 15 2024 (month is 0-indexed)
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('returns today for immediate availability', () => {
+    const p = { ...PROFILE, professional: { noticePeriod: { immediate: true } } };
+    expect(resolveProfileValue(p, 'professional.noticePeriod.availableDate')).toBe('2024-06-15');
+  });
+
+  it('adds days to today', () => {
+    const p = { ...PROFILE, professional: { noticePeriod: { immediate: false, value: 14, unit: 'day' as const } } };
+    expect(resolveProfileValue(p, 'professional.noticePeriod.availableDate')).toBe('2024-06-29');
+  });
+
+  it('adds weeks to today (2 weeks = 14 days)', () => {
+    const p = { ...PROFILE, professional: { noticePeriod: { immediate: false, value: 2, unit: 'week' as const } } };
+    expect(resolveProfileValue(p, 'professional.noticePeriod.availableDate')).toBe('2024-06-29');
+  });
+
+  it('adds months to today', () => {
+    const p = { ...PROFILE, professional: { noticePeriod: { immediate: false, value: 1, unit: 'month' as const } } };
+    expect(resolveProfileValue(p, 'professional.noticePeriod.availableDate')).toBe('2024-07-15');
+  });
+
+  it('adds multiple months to today', () => {
+    const p = { ...PROFILE, professional: { noticePeriod: { immediate: false, value: 3, unit: 'month' as const } } };
+    expect(resolveProfileValue(p, 'professional.noticePeriod.availableDate')).toBe('2024-09-15');
+  });
+
+  it('returns YYYY-MM-DD format', () => {
+    const p = { ...PROFILE, professional: { noticePeriod: { immediate: true } } };
+    const result = resolveProfileValue(p, 'professional.noticePeriod.availableDate');
+    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

@@ -125,17 +125,46 @@ describe('learned mappings', () => {
     expect(await getLearnedMappings()).toEqual({});
   });
 
-  it('saves a learned mapping and retrieves it', async () => {
+  it('stores the first confirmation as count:1 (not yet trusted)', async () => {
     await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
     const mappings = await getLearnedMappings();
-    expect(mappings['example.com']?.['firstname']).toBe('personal.firstName');
+    expect(mappings['example.com']?.['firstname']).toEqual({ path: 'personal.firstName', count: 1 });
   });
 
-  it('accumulates mappings across multiple saves', async () => {
+  it('increments count on repeated same-path confirmation', async () => {
+    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
+    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
+    const entry = (await getLearnedMappings())['example.com']?.['firstname'];
+    expect(entry).toEqual({ path: 'personal.firstName', count: 2 });
+  });
+
+  it('resets to count:1 when a conflicting path is confirmed (new entry)', async () => {
+    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
+    await saveLearnedMapping('example.com', 'firstname', 'personal.lastName');
+    const entry = (await getLearnedMappings())['example.com']?.['firstname'];
+    expect(entry).toEqual({ path: 'personal.lastName', count: 1 });
+  });
+
+  it('accumulates distinct signals across multiple saves', async () => {
     await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
     await saveLearnedMapping('example.com', 'email', 'personal.email');
     const mappings = await getLearnedMappings();
     expect(Object.keys(mappings['example.com'] ?? {})).toHaveLength(2);
+  });
+
+  it('leaves a legacy string entry untouched when same path is confirmed again', async () => {
+    // Simulate old-format data already in storage (plain string, already trusted)
+    store['learnedMappings'] = { 'example.com': { 'firstname': 'personal.firstName' } };
+    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
+    const entry = (await getLearnedMappings())['example.com']?.['firstname'];
+    expect(entry).toBe('personal.firstName'); // stays as legacy string
+  });
+
+  it('resets a legacy string entry to count:1 when a conflicting path is confirmed', async () => {
+    store['learnedMappings'] = { 'example.com': { 'firstname': 'personal.firstName' } };
+    await saveLearnedMapping('example.com', 'firstname', 'personal.lastName');
+    const entry = (await getLearnedMappings())['example.com']?.['firstname'];
+    expect(entry).toEqual({ path: 'personal.lastName', count: 1 });
   });
 });
 
