@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeBullets, normalizeExtractedProfile } from './normalize';
+import { normalizeBullets, normalizeSummaryLineWraps, normalizeExtractedProfile } from './normalize';
 import type { Profile } from '@/src/types/profile';
 
 describe('normalizeBullets', () => {
@@ -86,6 +86,71 @@ describe('normalizeBullets', () => {
   });
 });
 
+describe('normalizeSummaryLineWraps', () => {
+  it('returns empty string unchanged', () => {
+    expect(normalizeSummaryLineWraps('')).toBe('');
+  });
+
+  it('returns a single-line summary unchanged', () => {
+    const s = 'Senior Product Designer with 10 years of experience.';
+    expect(normalizeSummaryLineWraps(s)).toBe(s);
+  });
+
+  it('merges soft line wraps within a single paragraph into spaces', () => {
+    const input  = 'Senior Product Designer specializing in complex systems, operational workflows, and multi-role\nplatforms across fintech and SaaS products.';
+    const output = 'Senior Product Designer specializing in complex systems, operational workflows, and multi-role platforms across fintech and SaaS products.';
+    expect(normalizeSummaryLineWraps(input)).toBe(output);
+  });
+
+  it('preserves intentional paragraph breaks (\\n\\n)', () => {
+    const input  = 'Paragraph one line one.\nParagraph one line two.\n\nParagraph two.';
+    const output = 'Paragraph one line one. Paragraph one line two.\n\nParagraph two.';
+    expect(normalizeSummaryLineWraps(input)).toBe(output);
+  });
+
+  it('handles the exact user-reported three-paragraph case', () => {
+    const input = [
+      'Senior Product Designer specializing in complex systems, operational workflows, and multi-role',
+      'platforms across fintech and SaaS products.',
+      '',
+      'Experienced in simplifying high-risk processes such as onboarding, authentication, and platform',
+      'operations into clear, scalable workflows aligned with business and technical constraints.',
+      '',
+      'Collaborates with product and engineering teams to translate complex requirements into structured',
+      'solutions for operational and customer-facing platforms.',
+    ].join('\n');
+
+    const expected = [
+      'Senior Product Designer specializing in complex systems, operational workflows, and multi-role platforms across fintech and SaaS products.',
+      '',
+      'Experienced in simplifying high-risk processes such as onboarding, authentication, and platform operations into clear, scalable workflows aligned with business and technical constraints.',
+      '',
+      'Collaborates with product and engineering teams to translate complex requirements into structured solutions for operational and customer-facing platforms.',
+    ].join('\n');
+
+    expect(normalizeSummaryLineWraps(input)).toBe(expected);
+  });
+
+  it('normalises multiple consecutive blank lines between paragraphs to a single \\n\\n', () => {
+    const input  = 'Para one.\n\n\n\nPara two.';
+    const output = 'Para one.\n\n\nPara two.';
+    // split on /\n{2,}/ then rejoin with \n\n — result has exactly \n\n
+    expect(normalizeSummaryLineWraps(input)).toBe('Para one.\n\nPara two.');
+  });
+
+  it('trims leading and trailing whitespace from each line within a paragraph', () => {
+    const input  = '  Line one with leading space.  \n  Line two with leading space.  ';
+    const output = 'Line one with leading space. Line two with leading space.';
+    expect(normalizeSummaryLineWraps(input)).toBe(output);
+  });
+
+  it('is idempotent', () => {
+    const input = 'Line one.\nLine two.\n\nParagraph two.';
+    const once  = normalizeSummaryLineWraps(input);
+    expect(normalizeSummaryLineWraps(once)).toBe(once);
+  });
+});
+
 describe('normalizeExtractedProfile', () => {
   const PARTIAL: Partial<Profile> = {
     workHistory: [
@@ -138,5 +203,39 @@ describe('normalizeExtractedProfile', () => {
     const original = PARTIAL.workHistory?.[0]?.description;
     normalizeExtractedProfile(PARTIAL);
     expect(PARTIAL.workHistory?.[0]?.description).toBe(original);
+  });
+
+  it('merges soft line wraps in professional.summary', () => {
+    const input: Partial<Profile> = {
+      professional: {
+        summary: 'Senior Designer specializing in complex systems,\nand multi-role platforms.\n\nExperienced in simplifying processes\nacross fintech.',
+      },
+    };
+    const result = normalizeExtractedProfile(input);
+    expect(result.professional?.summary).toBe(
+      'Senior Designer specializing in complex systems, and multi-role platforms.\n\nExperienced in simplifying processes across fintech.',
+    );
+  });
+
+  it('leaves professional.summary unchanged when there are no soft line wraps', () => {
+    const input: Partial<Profile> = {
+      professional: {
+        summary: 'Senior Designer.\n\nExperienced in fintech.',
+      },
+    };
+    const result = normalizeExtractedProfile(input);
+    expect(result.professional?.summary).toBe('Senior Designer.\n\nExperienced in fintech.');
+  });
+
+  it('preserves noticePeriod when normalising summary', () => {
+    const input: Partial<Profile> = {
+      professional: {
+        summary: 'Line one.\nLine two.',
+        noticePeriod: { immediate: false, value: 1, unit: 'month' },
+      },
+    };
+    const result = normalizeExtractedProfile(input);
+    expect(result.professional?.noticePeriod).toEqual({ immediate: false, value: 1, unit: 'month' });
+    expect(result.professional?.summary).toBe('Line one. Line two.');
   });
 });
