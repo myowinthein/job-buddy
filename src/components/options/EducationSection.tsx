@@ -124,12 +124,18 @@ export function EducationSection({ profile, onSave }: Props) {
         setErrors((e) => ({ ...e, [ek]: `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}` }));
         return;
       }
-      // End date before start date (only when endDate has a complete month+year)
-      if (key === 'endDate' && month) {
+      // End date before start date — supports both YYYY and YYYY-MM.
+      // Compare on YYYY-MM with end-padded to "-12" and start-padded to "-01"
+      // when month is missing, so partial dates don't generate false errors.
+      if (key === 'endDate') {
         const startDate = entries[idx].startDate;
-        if (startDate && `${year}-${month}` < startDate) {
-          setErrors((e) => ({ ...e, [ek]: 'End date cannot be before start date' }));
-          return;
+        if (startDate) {
+          const endNorm   = month ? `${year}-${month}` : `${year}-12`;
+          const startNorm = startDate.length === 7 ? startDate : `${startDate}-01`;
+          if (endNorm < startNorm) {
+            setErrors((e) => ({ ...e, [ek]: 'End date cannot be before start date' }));
+            return;
+          }
         }
       }
       setErrors((e) => {
@@ -195,8 +201,12 @@ export function EducationSection({ profile, onSave }: Props) {
           const ey = parseInt(row.endDate.split('-')[0] ?? '', 10);
           if (ey > EDU_MAX_YEAR || ey < EDU_MIN_YEAR)
             e[`${idx}.endDate`] = `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}`;
-          else if (row.startDate.trim() && row.endDate < row.startDate)
-            e[`${idx}.endDate`] = 'End date cannot be before start date';
+          else if (row.startDate.trim()) {
+            const endNorm   = row.endDate.length === 7   ? row.endDate   : `${row.endDate}-12`;
+            const startNorm = row.startDate.length === 7 ? row.startDate : `${row.startDate}-01`;
+            if (endNorm < startNorm)
+              e[`${idx}.endDate`] = 'End date cannot be before start date';
+          }
         }
       }
     });
@@ -287,6 +297,7 @@ export function EducationSection({ profile, onSave }: Props) {
                 onYearChange={(y) => handleYearChange(idx, 'startDate', y)}
                 onBlur={(m, y) => handleDateBlur(idx, 'startDate', m, y)}
                 error={errors[`${idx}.startDate`]}
+                monthOptional
               />
             </FormField>
             <FormField label="End Date" required={!row.isCurrent} error={errors[`${idx}.endDate`]}>
@@ -297,6 +308,7 @@ export function EducationSection({ profile, onSave }: Props) {
                 onBlur={(m, y) => handleDateBlur(idx, 'endDate', m, y)}
                 error={errors[`${idx}.endDate`]}
                 disabled={row.isCurrent}
+                monthOptional
               />
             </FormField>
           </div>

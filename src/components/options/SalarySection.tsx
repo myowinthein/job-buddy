@@ -1,6 +1,6 @@
 import { useToast } from '@/src/components/ui/Toast';
 import { useState, useRef, useEffect } from 'react';
-import type { Profile } from '@/src/types/profile';
+import type { Profile, SalaryPeriod } from '@/src/types/profile';
 import { findCountryByNameOrCode } from '@/src/data/countries';
 import { COUNTRY_TO_CURRENCY, findCurrency, primaryCountryForCurrency } from '@/src/data/currencies';
 import { FormField } from './shared/FormField';
@@ -14,10 +14,10 @@ interface Props {
 }
 
 // ── Expected-salary row ───────────────────────────────────────────────────────
-type ExpectedRow = { countryCode: string; amount: string };
+type ExpectedRow = { countryCode: string; amount: string; period: SalaryPeriod };
 
 function emptyExpected(): ExpectedRow {
-  return { countryCode: '', amount: '' };
+  return { countryCode: '', amount: '', period: 'monthly' };
 }
 
 // Migration: old rows stored only `currency` (e.g. "SGD"). New rows store
@@ -26,7 +26,8 @@ function emptyExpected(): ExpectedRow {
 //   2. Fall back to reverse-looking up `currency` — but only if the currency
 //      maps to exactly one country (unambiguous). EUR/USD/XOF etc. are left
 //      empty so the user explicitly picks.
-function initExpectedRow(raw: { country?: string; amount?: number; currency?: string }): ExpectedRow {
+// `period` defaults to 'monthly' for any row that doesn't have one stored.
+function initExpectedRow(raw: { country?: string; amount?: number; currency?: string; period?: SalaryPeriod }): ExpectedRow {
   let countryCode = '';
 
   if (raw.country) {
@@ -41,6 +42,7 @@ function initExpectedRow(raw: { country?: string; amount?: number; currency?: st
   return {
     countryCode,
     amount: raw.amount != null ? String(raw.amount) : '',
+    period: raw.period ?? 'monthly',
   };
 }
 
@@ -60,6 +62,9 @@ export function SalarySection({ profile, onSave }: Props) {
   const [currentCurrency, setCurrentCurrency] = useState(initCurrentCurrency);
   const [currentAmount, setCurrentAmount] = useState(
     s?.current?.amount != null ? String(s.current.amount) : '',
+  );
+  const [currentPeriod, setCurrentPeriod] = useState<SalaryPeriod>(
+    s?.current?.period ?? 'monthly',
   );
 
   // ── Expected salary rows ────────────────────────────────────────────────────
@@ -111,7 +116,11 @@ export function SalarySection({ profile, onSave }: Props) {
 
   const setExpectedField = (idx: number, key: keyof ExpectedRow, value: string) => {
     setExpected((rows) => {
-      const next = rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r));
+      const next = rows.map((r, i) => {
+        if (i !== idx) return r;
+        if (key === 'period') return { ...r, period: value as SalaryPeriod };
+        return { ...r, [key]: value };
+      });
       recheckExpectedRow(idx, next[idx]);
       return next;
     });
@@ -136,6 +145,7 @@ export function SalarySection({ profile, onSave }: Props) {
         current: {
           amount: Number(currentAmount),
           currency: currentCurrency,
+          period: currentPeriod,
         },
         expected: expected
           // Drop fully-empty rows so the user can leave the form with no
@@ -145,6 +155,7 @@ export function SalarySection({ profile, onSave }: Props) {
             country: r.countryCode || undefined,
             currency: r.countryCode ? (COUNTRY_TO_CURRENCY[r.countryCode] || undefined) : undefined,
             amount: r.amount !== '' ? Number(r.amount) : undefined,
+            period: r.period,
           })),
       },
     }).then(() => showToast('success', 'Salary saved'))
@@ -163,7 +174,7 @@ export function SalarySection({ profile, onSave }: Props) {
       <div className="mb-6">
         <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">Current Salary</h3>
         <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <FormField label="Currency" required error={errors.currentCurrency}>
               <SearchableCurrencySelect
                 id="field-currentCurrency"
@@ -193,6 +204,16 @@ export function SalarySection({ profile, onSave }: Props) {
                 placeholder="80000"
               />
             </FormField>
+            <FormField label="Period">
+              <select
+                className={cls()}
+                value={currentPeriod}
+                onChange={(e) => setCurrentPeriod(e.target.value as SalaryPeriod)}
+              >
+                <option value="monthly">Monthly</option>
+                <option value="annual">Annual</option>
+              </select>
+            </FormField>
           </div>
         </div>
       </div>
@@ -219,7 +240,7 @@ export function SalarySection({ profile, onSave }: Props) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <FormField label="Country" error={errors[`expected.${idx}.countryCode`]}>
                 <SearchableCountryWithCurrencyDropdown
                   value={row.countryCode}
@@ -236,6 +257,16 @@ export function SalarySection({ profile, onSave }: Props) {
                   onBlur={() => recheckExpectedRow(idx, row)}
                   placeholder="100000"
                 />
+              </FormField>
+              <FormField label="Period">
+                <select
+                  className={cls()}
+                  value={row.period}
+                  onChange={(e) => setExpectedField(idx, 'period', e.target.value)}
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="annual">Annual</option>
+                </select>
               </FormField>
             </div>
           </div>

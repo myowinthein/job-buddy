@@ -211,7 +211,11 @@ export const FIELD_DEFS: FieldDef[] = [
     display: (v) => {
       if (!v) return '';
       const s = v as Partial<Profile['salary']['current']>;
-      return [s.amount, s.currency].filter((x) => x !== undefined && x !== null).join(' ');
+      const parts: string[] = [];
+      if (s.amount != null) parts.push(String(s.amount));
+      if (s.currency)       parts.push(s.currency);
+      if (s.period)         parts.push(`(${s.period})`);
+      return parts.join(' ');
     },
   },
   {
@@ -230,6 +234,7 @@ export const FIELD_DEFS: FieldDef[] = [
         const parts: string[] = [];
         if (e.amount != null) parts.push(String(e.amount));
         if (e.currency)       parts.push(e.currency);
+        if (e.period)         parts.push(`(${e.period})`);
         if (e.country)        parts.push(`(${e.country})`);
         return parts.join(' ');
       }).join('\n');
