@@ -13,6 +13,7 @@ export type LanguageProficiency =
   | 'limited_working'
   | 'elementary';
 export type WorkArrangement = 'onsite' | 'remote' | 'hybrid';
+export type SalaryPeriod = 'monthly' | 'annual';
 
 export interface WorkLocation {
   countryCode?: string;
@@ -28,12 +29,14 @@ export interface NoticePeriod {
 export interface CurrentSalary {
   amount: number;
   currency: string;
+  period?: SalaryPeriod;
 }
 
 export interface ExpectedSalaryEntry {
   country?: string;
   amount?: number;
   currency?: string;
+  period?: SalaryPeriod;
 }
 
 export interface WorkAuthorizationEntry {

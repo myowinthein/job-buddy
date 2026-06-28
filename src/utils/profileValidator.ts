@@ -13,6 +13,7 @@ export interface ValidationResult {
 
 const RE_EMAIL    = /^[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}$/;
 const RE_YYYYMM   = /^\d{4}-\d{2}$/;
+const RE_YYYY_OR_YYYYMM = /^\d{4}(-\d{2})?$/;
 const RE_YYYYMMDD = /^\d{4}-\d{2}-\d{2}$/;
 const RE_CURRENCY = /^[A-Z]{3}$/;
 
@@ -135,7 +136,11 @@ export function validateImportedProfile(raw: unknown): ValidationResult {
       const cur = sal.current as Record<string, unknown>;
       if (typeof cur.amount === 'number' && cur.amount > 0 &&
           typeof cur.currency === 'string' && RE_CURRENCY.test(cur.currency)) {
-        ss.current = { amount: cur.amount, currency: cur.currency };
+        ss.current = {
+          amount: cur.amount,
+          currency: cur.currency,
+          period: cur.period === 'annual' ? 'annual' : 'monthly',
+        };
       } else {
         if (typeof cur.amount !== 'number' || cur.amount <= 0) err('salary.current.amount', 'expected positive number');
         if (typeof cur.currency !== 'string' || !RE_CURRENCY.test(cur.currency)) err('salary.current.currency', 'expected 3-letter uppercase currency code');
@@ -148,11 +153,12 @@ export function validateImportedProfile(raw: unknown): ValidationResult {
         if (typeof entry === 'object' && entry !== null) {
           const e = entry as Record<string, unknown>;
           if (typeof e.currency === 'string') {
-            // Current shape: { country?, currency, amount? }
+            // Current shape: { country?, currency, amount?, period? }
             expected.push({
               country:  typeof e.country === 'string' ? e.country : undefined,
               currency: e.currency,
               amount:   typeof e.amount === 'number' ? e.amount : undefined,
+              period:   e.period === 'annual' ? 'annual' : 'monthly',
             });
           }
           // Entries missing currency (e.g. partially-filled rows from older
@@ -224,20 +230,23 @@ export function validateImportedProfile(raw: unknown): ValidationResult {
         if (
           typeof e.institution === 'string' && typeof e.degree === 'string' &&
           typeof e.fieldOfStudy === 'string' &&
-          typeof e.startDate === 'string' && RE_YYYYMM.test(e.startDate)
+          typeof e.startDate === 'string' && RE_YYYY_OR_YYYYMM.test(e.startDate)
         ) {
+          const endDate = typeof e.endDate === 'string' && RE_YYYY_OR_YYYYMM.test(e.endDate)
+            ? e.endDate
+            : undefined;
           valid.push({
             institution: e.institution,
             degree:      e.degree,
             fieldOfStudy: e.fieldOfStudy,
             startDate:   e.startDate,
             isCurrent:   typeof e.isCurrent === 'boolean' ? e.isCurrent : false,
-            endDate:     typeof e.endDate === 'string' ? e.endDate : undefined,
+            endDate,
             grade:       typeof e.grade === 'string' ? e.grade : undefined,
             description: typeof e.description === 'string' ? e.description : undefined,
           });
         } else {
-          err(`education[${i}]`, 'missing institution, degree, fieldOfStudy, or startDate (YYYY-MM)');
+          err(`education[${i}]`, 'missing institution, degree, fieldOfStudy, or startDate (YYYY or YYYY-MM)');
         }
       }
     });
