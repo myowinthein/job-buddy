@@ -13,6 +13,16 @@ export interface FieldSignals {
 const WRAPPER_SELECTORS =
   '.form-field, .form-group, .field, .input-wrapper, .form-item';
 
+// Resolves space-separated element IDs from aria-labelledby / aria-describedby
+// into their visible text content, joined by a space.
+function resolveAriaRef(attr: string | null): string {
+  if (!attr) return '';
+  return attr.split(/\s+/)
+    .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
+    .filter(Boolean)
+    .join(' ');
+}
+
 function getLabelText(element: HTMLElement): string {
   // 1. <label for="id">
   if (element.id) {
@@ -40,14 +50,37 @@ function getNearbyText(element: HTMLElement): string {
 
 export function extractSignals(element: HTMLElement): FieldSignals {
   const inp = element as HTMLInputElement;
+  const isNative = element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT';
+
+  // For ARIA custom components, derive the semantic type from the role attribute
+  // rather than the HTML tag (which would be 'div', 'span', etc.).
+  let type: string;
+  if (isNative) {
+    type = inp.type ?? element.tagName.toLowerCase();
+  } else {
+    const role = element.getAttribute('role');
+    type = role ?? (element.hasAttribute('contenteditable') ? 'textbox' : element.tagName.toLowerCase());
+  }
+
+  // aria-label: prefer explicit attribute, resolve aria-labelledby as fallback.
+  const explicitAriaLabel = element.getAttribute('aria-label') ?? '';
+  const labelledByText    = resolveAriaRef(element.getAttribute('aria-labelledby'));
+  const ariaLabel         = explicitAriaLabel || labelledByText;
+
+  // placeholder: native attribute first, then ARIA attribute.
+  const placeholder = inp.placeholder || element.getAttribute('aria-placeholder') || '';
+
+  // autocomplete: native attribute, then generic attribute (some frameworks use it on divs).
+  const autocomplete = inp.autocomplete || element.getAttribute('autocomplete') || '';
+
   return {
     element,
-    type:         inp.type        ?? element.tagName.toLowerCase(),
-    name:         inp.name        ?? '',
-    id:           element.id      ?? '',
-    placeholder:  inp.placeholder ?? '',
-    autocomplete: inp.autocomplete ?? '',
-    ariaLabel:    element.getAttribute('aria-label') ?? '',
+    type,
+    name:         inp.name ?? '',
+    id:           element.id ?? '',
+    placeholder,
+    autocomplete,
+    ariaLabel,
     label:        getLabelText(element),
     nearbyText:   getNearbyText(element),
   };

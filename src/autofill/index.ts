@@ -1,6 +1,6 @@
 import { getProfile, getLearnedMappings } from '../utils/storage';
 import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED } from './constants';
-import { scanFields } from './scanner';
+import { scanFields, scanAriaFields } from './scanner';
 import { extractSignals } from './signals';
 import type { FieldSignals } from './signals';
 import { mapField } from './mapper';
@@ -275,7 +275,7 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
   // upload. Gating in the scanner keeps file inputs out of pendingMatches
   // entirely when no CV is saved, so they never contribute to result counters.
   const allowFileInputs = !!profile.documents?.cv?.file;
-  const fields = scanFields({ allowFileInputs });
+  const fields = [...scanFields({ allowFileInputs }), ...scanAriaFields()];
 
   let preFilledCount = 0;
   let totalMatched   = 0;

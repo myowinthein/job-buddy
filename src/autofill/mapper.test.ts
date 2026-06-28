@@ -46,7 +46,7 @@ const NO_MAPPINGS: LearnedMappings = {};
 const DOMAIN = 'example.com';
 
 describe('mapField — Layer 0: Learned mappings', () => {
-  it('returns a learned mapping with 0.97 confidence', () => {
+  it('returns a legacy string mapping with 0.97 confidence (trusted unconditionally)', () => {
     const mappings: LearnedMappings = { 'example.com': { 'customlabel': 'personal.firstName' } };
     const result = mapField(sig({ name: 'customlabel' }), PROFILE, mappings, DOMAIN);
     expect(result.matchLayer).toBe('learned');
@@ -66,6 +66,45 @@ describe('mapField — Layer 0: Learned mappings', () => {
     const result = mapField(sig({ name: 'givenname', autocomplete: 'given-name' }), PROFILE, mappings, DOMAIN);
     expect(result.matchLayer).toBe('learned');
     expect(result.fieldPath).toBe('personal.lastName');
+  });
+
+  // ── Confidence / threshold tests ─────────────────────────────────────────
+
+  it('does NOT promote a count:1 entry to Layer 0 (below threshold)', () => {
+    const mappings: LearnedMappings = {
+      'example.com': { 'customlabel': { path: 'personal.firstName', count: 1 } },
+    };
+    const result = mapField(sig({ name: 'customlabel' }), PROFILE, mappings, DOMAIN);
+    expect(result.matchLayer).not.toBe('learned');
+  });
+
+  it('DOES promote a count:2 entry to Layer 0 (meets threshold)', () => {
+    const mappings: LearnedMappings = {
+      'example.com': { 'customlabel': { path: 'personal.firstName', count: 2 } },
+    };
+    const result = mapField(sig({ name: 'customlabel' }), PROFILE, mappings, DOMAIN);
+    expect(result.matchLayer).toBe('learned');
+    expect(result.fieldPath).toBe('personal.firstName');
+    expect(result.confidence).toBe(0.97);
+  });
+
+  it('promotes a count well above threshold', () => {
+    const mappings: LearnedMappings = {
+      'example.com': { 'customlabel': { path: 'personal.email', count: 10 } },
+    };
+    const result = mapField(sig({ name: 'customlabel' }), PROFILE, mappings, DOMAIN);
+    expect(result.matchLayer).toBe('learned');
+    expect(result.fieldPath).toBe('personal.email');
+  });
+
+  it('falls through to dictionary when the only learned entry is below threshold', () => {
+    const mappings: LearnedMappings = {
+      'example.com': { 'email': { path: 'personal.firstName', count: 1 } }, // below threshold
+    };
+    // 'email' signal would hit dictionary (personal.email) if Layer 0 is skipped
+    const result = mapField(sig({ name: 'email' }), PROFILE, mappings, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('personal.email');
   });
 });
 
@@ -90,10 +129,22 @@ describe('mapField — Layer 1: Autocomplete attribute', () => {
     expect(result.value).toBe('jane@example.com');
   });
 
-  it('maps tel → personal.phone.number', () => {
+  it('maps tel → personal.phone.full (full number including calling code)', () => {
     const result = mapField(sig({ autocomplete: 'tel' }), PROFILE, NO_MAPPINGS, DOMAIN);
     expect(result.matchLayer).toBe('autocomplete');
+    expect(result.fieldPath).toBe('personal.phone.full');
+  });
+
+  it('maps tel-national → personal.phone.number (local number only)', () => {
+    const result = mapField(sig({ autocomplete: 'tel-national' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('autocomplete');
     expect(result.fieldPath).toBe('personal.phone.number');
+  });
+
+  it('maps tel-country-code → personal.phone.callingCode', () => {
+    const result = mapField(sig({ autocomplete: 'tel-country-code' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('autocomplete');
+    expect(result.fieldPath).toBe('personal.phone.callingCode');
   });
 
   it('maps country → address.country', () => {
@@ -137,10 +188,107 @@ describe('mapField — Layer 2: Dictionary exact match', () => {
     expect(result.fieldPath).toBe('links.linkedin');
   });
 
-  it('matches "phone" → personal.phone.number', () => {
+  it('matches "phone" → personal.phone.full (combined, for single-field forms)', () => {
     const result = mapField(sig({ name: 'phone' }), PROFILE, NO_MAPPINGS, DOMAIN);
     expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('personal.phone.full');
+  });
+
+  it('matches "phonenumber" → personal.phone.number (local number for two-field forms)', () => {
+    const result = mapField(sig({ name: 'phonenumber' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
     expect(result.fieldPath).toBe('personal.phone.number');
+  });
+
+  it('matches "countrycode" → personal.phone.callingCode', () => {
+    const result = mapField(sig({ name: 'countrycode' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('personal.phone.callingCode');
+  });
+
+  it('matches "callingcode" → personal.phone.callingCode', () => {
+    const result = mapField(sig({ name: 'callingcode' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('personal.phone.callingCode');
+  });
+
+  it('matches "dateavailable" → professional.noticePeriod.availableDate', () => {
+    const result = mapField(sig({ name: 'dateavailable' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('professional.noticePeriod.availableDate');
+  });
+
+  it('matches "availablefrom" → professional.noticePeriod.availableDate', () => {
+    const result = mapField(sig({ label: 'Available From' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('professional.noticePeriod.availableDate');
+  });
+
+  it('matches "portfoliowebsite" → links.portfolio', () => {
+    const result = mapField(sig({ label: 'Portfolio Website' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('links.portfolio');
+  });
+
+  it('matches "websiteblogorportfolio" → links.portfolio', () => {
+    const result = mapField(sig({ label: 'Website, Blog or Portfolio' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('links.portfolio');
+  });
+
+  it('matches "websiteblogportfolio" → links.portfolio', () => {
+    const result = mapField(sig({ label: 'Website / Blog / Portfolio' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('links.portfolio');
+  });
+});
+
+describe('mapField — signal priority: label beats name/id', () => {
+  it('prefers label over name when they point to different fields', () => {
+    // Real-world case: name="linkedin" on a "Website, Blog or Portfolio" field
+    const result = mapField(
+      sig({ name: 'linkedin', label: 'Website, Blog or Portfolio' }),
+      PROFILE, NO_MAPPINGS, DOMAIN,
+    );
+    expect(result.fieldPath).toBe('links.portfolio');
+    expect(result.matchLayer).toBe('dictionary_exact');
+  });
+
+  it('prefers label over id when they conflict', () => {
+    const result = mapField(
+      sig({ id: 'linkedin', label: 'Portfolio Website' }),
+      PROFILE, NO_MAPPINGS, DOMAIN,
+    );
+    expect(result.fieldPath).toBe('links.portfolio');
+  });
+
+  it('still matches name when label is absent', () => {
+    const result = mapField(sig({ name: 'linkedin' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('links.linkedin');
+  });
+});
+
+describe('mapField — autocomplete: url is not mapped to linkedin', () => {
+  it('does not match autocomplete="url" to any field (falls through to dictionary)', () => {
+    // url autocomplete is too generic — the label/name should decide the field.
+    const result = mapField(sig({ autocomplete: 'url' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).not.toBe('autocomplete');
+  });
+
+  it('still maps autocomplete="url" field to portfolio when label says so', () => {
+    const result = mapField(
+      sig({ autocomplete: 'url', label: 'Portfolio Website' }),
+      PROFILE, NO_MAPPINGS, DOMAIN,
+    );
+    expect(result.fieldPath).toBe('links.portfolio');
+  });
+
+  it('still maps autocomplete="url" field to linkedin when label says so', () => {
+    const result = mapField(
+      sig({ autocomplete: 'url', label: 'LinkedIn URL' }),
+      PROFILE, NO_MAPPINGS, DOMAIN,
+    );
+    expect(result.fieldPath).toBe('links.linkedin');
   });
 });
 

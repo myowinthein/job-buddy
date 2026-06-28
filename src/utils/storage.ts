@@ -1,5 +1,5 @@
 import type { Profile } from '../types/profile';
-import type { LearnedMappings, ApplicationEntry, DriveBackupState } from '../types/storage';
+import type { LearnedMappings, LearnedMappingValue, ApplicationEntry, DriveBackupState } from '../types/storage';
 import { normalizeProfile } from './migrate';
 
 // Wraps chrome.storage.local.get so that the returned Promise always resolves.
@@ -148,7 +148,25 @@ export async function saveLearnedMapping(
 ): Promise<void> {
   const mappings = await getLearnedMappings();
   if (!mappings[domain]) mappings[domain] = {};
-  mappings[domain][normalizedSignal] = fieldPath;
+  const existing: LearnedMappingValue | undefined = mappings[domain][normalizedSignal];
+
+  if (existing === undefined) {
+    // First confirmation — store with count 1, not yet trusted for Layer 0.
+    mappings[domain][normalizedSignal] = { path: fieldPath, count: 1 };
+  } else if (typeof existing === 'string') {
+    // Legacy format: already trusted. Leave untouched for same path; reset on conflict.
+    if (existing !== fieldPath) {
+      mappings[domain][normalizedSignal] = { path: fieldPath, count: 1 };
+    }
+  } else {
+    // New counted format: increment on same path, reset on conflict.
+    if (existing.path === fieldPath) {
+      mappings[domain][normalizedSignal] = { path: fieldPath, count: existing.count + 1 };
+    } else {
+      mappings[domain][normalizedSignal] = { path: fieldPath, count: 1 };
+    }
+  }
+
   await saveLearnedMappings(mappings);
 }
 
