@@ -4,6 +4,7 @@ import type { Profile, LanguageEntry, LanguageProficiency } from '@/src/types/pr
 import { FormField } from './shared/FormField';
 import { RemoveButton } from './shared/RemoveButton';
 import { SearchableLanguageSelect } from './shared/SearchableLanguageSelect';
+import { saveSection } from './shared/saveSection';
 
 interface Props {
   profile: Partial<Profile>;
@@ -102,13 +103,12 @@ export function LanguagesSection({ profile, onSave }: Props) {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await onSave({
+    await saveSection(onSave, {
       languages: entries.map((r) => ({
         language: r.language,
         proficiency: r.proficiency || 'professional_working',
       })),
-    }).then(() => showToast('success', 'Languages saved'))
-      .catch(() => showToast('error', 'Failed to save. Please try again.'));
+    }, showToast, 'Languages saved');
     setSaving(false);
   };
 

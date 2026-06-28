@@ -6,6 +6,7 @@ import { FormField } from './shared/FormField';
 import { ExpandableCard } from './shared/ExpandableCard';
 import { MonthYearPicker } from './shared/MonthYearPicker';
 import { SearchableCountryDropdown } from './shared/SearchableCountryDropdown';
+import { saveSection } from './shared/saveSection';
 
 interface Props {
   profile: Partial<Profile>;
@@ -265,7 +266,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await onSave({
+    await saveSection(onSave, {
       workHistory: entries.map((r) => ({
         company: r.company.trim(),
         title: r.title.trim(),
@@ -286,8 +287,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
           unit: noticeImmediate ? undefined : noticeUnit,
         },
       },
-    }).then(() => showToast('success', 'Work history saved'))
-      .catch(() => showToast('error', 'Failed to save. Please try again.'));
+    }, showToast, 'Work history saved');
     setSaving(false);
   };
 
