@@ -65,7 +65,7 @@ For a production build, use `pnpm build` (output: `.output/chrome-mv3/`) or `pnp
 4. **Review every field before submitting.** Job Buddy never submits a form on your behalf.
 5. **Undo if needed.** The popup has an Undo Auto-fill button that clears every value Job Buddy wrote in that session.
 
-Manually correcting a field via the overlay teaches Job Buddy that mapping for that domain — future fills on the same site use it directly (confidence 0.97).
+Manually correcting a field via the overlay teaches Job Buddy that mapping for that domain. The first confirmation is recorded but not yet trusted; once the same signal → profile path is confirmed twice on that domain, it's promoted and future fills on the same site use it directly at high confidence. This two-step trust prevents one accidental click from permanently mis-mapping a field.
 
 If your profile is updated in another tab while a job application tab is open, Job Buddy silently fills any previously-empty fields the next time you focus that tab — no other fields are touched.
 
@@ -73,7 +73,7 @@ If your profile is updated in another tab while a job application tab is open, J
 
 Two optional features use Google's Gemini API. Both are off until you paste a Gemini API key into **Settings → AI Features**. Obtain a key from [Google AI Studio](https://aistudio.google.com/api-keys); Job Buddy stores it only in `chrome.storage.local` and sends requests directly from your browser to Google's API.
 
-- **AI Resume Import.** Upload a PDF or DOCX résumé. The file is sent to Gemini as base64 inline data, and extracted fields are shown in a review flow where you accept or reject each suggestion before anything is saved to your profile.
+- **AI Resume Import.** Upload a PDF or DOCX résumé. The file is sent to Gemini as base64 inline data, and extracted fields are shown in a review flow where you accept or reject each suggestion before anything is saved to your profile. For PDFs, hyperlinks are extracted from the document's annotation layer and provided to Gemini directly so that LinkedIn / portfolio URLs come through verbatim instead of being inferred. Education dates are only kept when they're explicitly present in the résumé — never inferred from graduation conventions, work-history dates, or the candidate's age. Work-history descriptions are normalised into an intro paragraph followed by a bullet list when the source has any bullet structure.
 - **AI Autofill assist.** Runs after the rule-based autofill. Text fields the rule pipeline couldn't resolve, plus radio and checkbox groups, are sent to Gemini along with your profile JSON for matching. Consent checkboxes are filtered out before any request is made.
 
 Both features are silent on failure — autofill never blocks on the network. Clearing the API key in Settings stops all AI requests immediately.
@@ -83,7 +83,7 @@ Both features are silent on failure — autofill never blocks on the network. Cl
 An opt-in feature in **Settings → Cloud Backup** that syncs your profile to your own Google Drive.
 
 - Uses the `https://www.googleapis.com/auth/drive.appdata` scope — Job Buddy can read and write only its own hidden application-data folder, never the rest of your Drive.
-- Stored as a single JSON file (`job-buddy-profile.json`). If you've uploaded a CV under Documents, the encoded file is included.
+- Stored as a single JSON file (`job-buddy-profile.json`). If you've uploaded a CV under Documents, the encoded file is included. Learned per-domain field mappings are also included, so restoring a backup on a new machine carries over the autofill behaviour you've taught the extension on each site.
 - Local-first: `chrome.storage.local` remains the source of truth. Sync fires fire-and-forget on every profile save; it never blocks the local write.
 - Connect-time conflict resolution: if Drive already has a backup and your local profile is non-empty, you get a review screen to merge or replace.
 - Disconnect lets you keep or delete the Drive backup file.
@@ -118,8 +118,10 @@ entrypoints/
   options/          Full-page UI — 9 profile sections + Import Resume + Settings
 
 src/
-  autofill/         Scanner, signal extractor, 4-layer mapper, filler, highlighter,
-                    picker overlay, AI assist layer, debug session
+  autofill/         Scanner (native + ARIA combobox/textbox/contenteditable),
+                    signal extractor, 4-layer mapper, filler (incl. React-Select
+                    autocomplete + click-to-open dropdowns + date placeholder
+                    reformat), highlighter, picker overlay, AI assist, debug
   components/       React components per profile section, shared dialogs, Toast
   data/             ISO country/currency/language lists, work-authorization labels
   resume-ai/        Gemini client, prompt builder, diff engine (shared with Drive restore)
@@ -144,4 +146,4 @@ Before submitting a PR:
 
 [MIT](LICENSE) © 2026 Myo Win Thein
 
-<!-- last-reviewed: c4a758f -->
+<!-- last-reviewed: 02c0fd7 -->
