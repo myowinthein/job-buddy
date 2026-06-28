@@ -39,17 +39,21 @@ pnpm test:run     # single run — run before committing
 - `src/types/profile.ts` — canonical `Profile` type; 10 top-level keys including `derived`
 - `src/utils/storage.ts` — `chrome.storage.local` wrappers; reads always resolve, writes reject on quota
 - `src/autofill/index.ts` — orchestrator: `scanAutofill()`, `executeAutofill()`, `undoAutofill()`
-- `src/autofill/mapper.ts` — 4-layer match: learned (0.97) → autocomplete (0.95) → dict exact (0.85) → fuzzy → context (0.70)
+- `src/autofill/mapper.ts` — 4-layer match: learned (0.97, requires 2 confirmations) → autocomplete (0.95) → dict exact (0.85) → fuzzy (score × 0.85 / 0.75 by tier) → context (0.70). Signal priority is `[label, ariaLabel, placeholder, name, id]` — label first. See Known Traps.
 - `src/autofill/resolver.ts` — dot-notation resolver + virtual paths (phone.full, address.countryName, salary.*.formatted, etc.)
 - `src/autofill/picker.ts` — fixed-position DOM overlay; no React, inline styles only (avoids host-page CSS conflicts)
 - `src/resume-ai/gemini.ts` — `extractFromResume()` + `resolveFieldsWithAI()` via Gemini API
 - `src/utils/driveSync.ts` — Google Drive backup via `drive.appdata` scope; implicit OAuth token flow
 - `src/utils/derivedFields.ts` — computes `fullName`, `currentTitle`, `currentCompany`, `totalExperience`, `age`
 - `src/utils/profileCompletion.ts` — `TOTAL_CHECKS = 15`; drives sidebar checkmarks and completion %
-- `src/autofill/constants.ts` — named confidence thresholds (`CONF_FILL`, `CONF_GREEN`, `CONF_CONFIRMED`, `CONF_AI_YELLOW`); always use these, never bare numbers
+- `src/autofill/constants.ts` — named confidence thresholds. Tier values (`CONF_FILL`, `CONF_GREEN`, `CONF_CONFIRMED`, `CONF_AI_YELLOW`) + layer constants (`CONF_DICT_EXACT`, `CONF_CONTEXT`) + fuzzy controls (`CONF_FUZZY_THRESHOLD`, `CONF_FUZZY_STRONG_MULT`, `CONF_FUZZY_WEAK_MULT`). Always use these, never bare numbers.
 - `src/autofill/mappings.ts` — `saveElementMappings()`; call this when saving learned mappings from an element's signals — do not re-inline the loop
+- `src/autofill/scanner.ts` — `scanFields()` (native input/textarea/select with visibility + `EXCLUDED_INPUT_TYPES` filter) + `scanAriaFields()` (ARIA `role=combobox/textbox`, `aria-haspopup=listbox`, `contenteditable`). Both run during `scanAutofill()`.
+- `src/autofill/signals.ts` — `extractSignals()` reads `aria-labelledby` / `aria-placeholder` for non-native elements + `bestLabel(signals)` helper for the standard `label || ariaLabel || placeholder || name` fallback chain. Use `bestLabel`, don't re-inline.
+- `src/autofill/filler.ts` — type-aware fill: native input/textarea/select, ARIA listbox (click-to-open), React-Select autocomplete (type-and-wait via inner `aria-autocomplete` input), contenteditable / `role=textbox`, and date placeholder reformat (ISO → MM/DD/YYYY / DD/MM/YYYY based on the field's `placeholder` hint).
+- `src/components/options/shared/saveSection.ts` — every section's save flow goes through this. Wraps `onSave(patch)` with success/error toast. Error string (`"Failed to save. Please try again."`) lives only here. New section components must use it.
 - `src/utils/migrate.ts` — `normalizeProfile()` defaults missing salary period to `'monthly'`; called by both `getProfile()` and `saveProfile()` so every storage round-trip is hermetic. New on-load migrations belong here.
-- `src/resume-ai/normalize.ts` — `normalizeBullets()` / `normalizeExtractedProfile()`; bullet-normalises workHistory descriptions ONLY when structure is detected (existing bullet marker OR blank-line separator). Plain prose without either signal is returned unchanged — intentional, to preserve the context paragraph.
+- `src/resume-ai/normalize.ts` — `normalizeBullets()` + `normalizeSummaryLineWraps()` composed by `normalizeExtractedProfile()`. Bullet pass only fires when structure is detected (bullet marker OR blank-line separator) — intentional, to preserve plain context paragraphs. Summary pass merges PDF soft wraps within paragraphs without merging `\n\n` paragraph breaks.
 - `src/resume-ai/extractLinks.ts` — pulls hyperlinks from PDF annotation layer via `pdfjs-dist`; returns `[]` for non-PDF files and on any error. Result is passed into `extractFromResume()` so Gemini sees the real URLs.
 
 ---
@@ -71,6 +75,10 @@ pnpm test:run     # single run — run before committing
 **Profile schema fan-out:** Any field added or renamed on the `Profile` type must be reflected in four places: `src/types/profile.ts`, `src/resume-ai/prompt.ts` schema, `src/resume-ai/parser.ts` FIELD_DEFS, and `src/utils/profileValidator.ts`. Missing any one causes silent drift between resume import, profile import/export, and the diff/review UI.
 
 **Profile date formats are NOT unified:** work history dates require month (`YYYY-MM`); education dates accept either `YYYY` or `YYYY-MM`. The validator uses `RE_YYYYMM` for `workHistory` and `RE_YYYY_OR_YYYYMM` for `education` — keep them separate.
+
+**Learned mapping confidence:** `LearnedMappings` values are `string | { path: string; count: number }`. New mappings are written as `{ path, count: 1 }` and are NOT promoted to Layer 0 until count reaches 2. Legacy plain strings (written by older versions) stay trusted. Conflicts (same signal, different path) reset count to 1. `saveLearnedMapping()` in `src/utils/storage.ts` is the source of truth — don't bypass it.
+
+**Drive backup payload fan-out:** Adding a field to `DriveBackupFile` requires updating both `syncProfileToDrive()` (upload) and **two** restore paths in `SettingsSection` — `handleRestoreFromDrive` (empty-profile path) and `handleDriveReviewSave` (conflict-review path). Missing either leaves the field unrestored on certain code paths.
 
 ---
 
@@ -99,4 +107,10 @@ pnpm test:run     # single run — run before committing
 
 - **Drive OAuth uses implicit grant via `chrome.identity.launchWebAuthFlow`.** Google Cloud app type must be "Web Application" (not "Chrome Extension" — that forces `getAuthToken()` and causes `redirect_uri_mismatch`). Needs separate client IDs for dev and prod. Set `VITE_GOOGLE_DRIVE_CLIENT_ID` in `.env.development` / `.env.production` (see `.env.example`).
 
-<!-- last-reviewed: 5fd1c6b -->
+- **Mapper signal priority is label-first** in `src/autofill/mapper.ts`. The order `[label, ariaLabel, placeholder, name, id]` is deliberate — a portfolio field with `name="linkedin"` (legacy developer attribute) gets mis-mapped if you reorder to put `name`/`id` first. Tests in `mapper.test.ts` enforce the order.
+
+- **`autocomplete="url"` is intentionally absent** from `AUTOCOMPLETE_MAP` in `src/autofill/mapper.ts`. Was previously hardwired to `links.linkedin` and overrode portfolio matches via Layer 1. Don't re-add it — let the label/name signals decide.
+
+- **Date filler reads the placeholder.** `reformatDateForInput()` in `src/autofill/filler.ts` parses `input.placeholder` for `mm/dd/yyyy` / `dd/mm/yyyy` patterns and reformats ISO `YYYY-MM-DD` output before writing. Native `type="date"` inputs receive ISO unchanged. Changing what the resolver outputs for date paths (`personal.dateOfBirth`, `professional.noticePeriod.availableDate`) breaks this contract.
+
+<!-- last-reviewed: d5773b0 -->
