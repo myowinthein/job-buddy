@@ -78,8 +78,9 @@ export async function extractFromResume(
   mimeType: string,
   currentProfile: Partial<Profile>,
   signal?: AbortSignal,
+  links: string[] = [],
 ): Promise<Partial<Profile>> {
-  const prompt = buildPrompt(JSON.stringify(currentProfile, null, 2));
+  const prompt = buildPrompt(JSON.stringify(currentProfile, null, 2), links);
   const body = JSON.stringify({
     contents: [{
       parts: [
