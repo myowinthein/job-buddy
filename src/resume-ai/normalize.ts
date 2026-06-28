@@ -67,17 +67,61 @@ export function normalizeBullets(text: string): string {
 }
 
 /**
- * Post-processes the Partial<Profile> returned by Gemini. Currently:
+ * Merges soft line wraps inside a professional summary string.
+ *
+ * PDF text extraction inserts line breaks at column boundaries that are not
+ * intentional paragraph breaks. Gemini copies these verbatim. This function
+ * collapses single-newline soft wraps within each paragraph into spaces while
+ * keeping intentional paragraph separators (blank lines / \n\n) intact.
+ *
+ * Input:  "Senior Designer specializing in complex systems,\nand SaaS.\n\nExperienced in..."
+ * Output: "Senior Designer specializing in complex systems, and SaaS.\n\nExperienced in..."
+ *
+ * Idempotent: running twice produces the same result.
+ */
+export function normalizeSummaryLineWraps(text: string): string {
+  if (!text) return text;
+  // Split on one or more consecutive blank lines — these are intentional breaks.
+  const paragraphs = text.split(/\n{2,}/);
+  return paragraphs
+    .map((para) =>
+      para
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .join(' '),
+    )
+    .join('\n\n');
+}
+
+/**
+ * Post-processes the Partial<Profile> returned by Gemini:
  *   - Normalises every workHistory[].description into bullet form.
+ *   - Merges soft PDF line wraps in professional.summary into spaces.
  *
  * Pure: returns a new object, does not mutate the input.
  */
 export function normalizeExtractedProfile(p: Partial<Profile>): Partial<Profile> {
-  if (!p.workHistory?.length) return p;
-  return {
-    ...p,
-    workHistory: p.workHistory.map((entry) =>
-      entry.description ? { ...entry, description: normalizeBullets(entry.description) } : entry,
-    ),
-  };
+  let result = p;
+
+  if (p.workHistory?.length) {
+    result = {
+      ...result,
+      workHistory: p.workHistory.map((entry) =>
+        entry.description ? { ...entry, description: normalizeBullets(entry.description) } : entry,
+      ),
+    };
+  }
+
+  if (p.professional?.summary) {
+    result = {
+      ...result,
+      professional: {
+        ...p.professional,
+        summary: normalizeSummaryLineWraps(p.professional.summary),
+      },
+    };
+  }
+
+  return result;
 }

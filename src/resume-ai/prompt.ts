@@ -104,7 +104,7 @@ ${hyperlinksSection}Rules:
 - Do not include: id, derived, documents, coverLetter
 - Return valid JSON only
 - For array fields with no data found, return []
-- professional.summary: copy verbatim from the resume; preserve paragraph breaks as \\n\\n
+- professional.summary: extract the summary content from the resume; separate logical paragraphs with \\n\\n; within each paragraph merge soft line wraps (single newlines caused by PDF column width) into a single line — do not carry over artificial line breaks from the source
 - workHistory[].description: include all content under the role, structured EXACTLY as follows:
   1. If the resume has any company/team/product/role context (e.g. "Led design at TechCo, a B2B SaaS startup focused on…"), put it FIRST as ONE plain-prose paragraph with NO bullet marker.
   2. If you wrote a context paragraph, follow it with a SINGLE BLANK LINE.
