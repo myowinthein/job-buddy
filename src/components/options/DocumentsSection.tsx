@@ -2,6 +2,7 @@ import { useToast } from '@/src/components/ui/Toast';
 import { useState, useRef, DragEvent } from 'react';
 import type { Profile, DocumentEntry, DocumentFile } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
+import { saveSection } from './shared/saveSection';
 
 interface Props {
   profile: Partial<Profile>;
@@ -213,14 +214,13 @@ export function DocumentsSection({ profile, onSave }: Props) {
       }
     }
     setSaving(true);
-    await onSave({
+    await saveSection(onSave, {
       documents: {
         cv: toDocumentEntry(cv),
         // Preserve any existing cover letter data without showing it in the form
         coverLetter: profile.documents?.coverLetter,
       },
-    }).then(() => showToast('success', 'Documents saved'))
-      .catch(() => showToast('error', 'Failed to save. Please try again.'));
+    }, showToast, 'Documents saved');
     setSaving(false);
   };
 
