@@ -2,7 +2,7 @@ import type { Profile } from '../types/profile';
 import type { FieldSignals } from './signals';
 import { resolveProfileValue } from './resolver';
 import { resolveFieldsWithAI } from '../resume-ai/gemini';
-import type { AIFieldPayload, AIFieldResponse } from '../resume-ai/gemini';
+import type { AIFieldPayload, AIFieldResponse, AIOptionPayload } from '../resume-ai/gemini';
 import { scanRadioGroups, scanCheckboxGroups } from './scanner';
 import type { RadioGroup, CheckboxGroup } from './scanner';
 import { fillField, fillRadioInput, fillCheckboxInput } from './filler';
@@ -31,6 +31,25 @@ export interface AITextCandidate {
   originalFieldPath: string | null;
   /** Debug-only: ID assigned during scanAutofill so the debug panel can join scanner → mapping → AI. */
   debugFieldId?:    string;
+}
+
+// Normalized texts of common placeholder options that should not be sent to Gemini.
+const PLACEHOLDER_NORMS = new Set([
+  'pleaseselect', 'select', 'selectone', 'choose', 'chooseone',
+]);
+
+// Extracts real (non-placeholder, non-disabled) options from a select element.
+// Exported for testing only.
+export function extractSelectOptions(select: HTMLSelectElement): AIOptionPayload[] {
+  const opts: AIOptionPayload[] = [];
+  for (let i = 0; i < select.options.length; i++) {
+    const opt = select.options[i];
+    if (opt.disabled) continue;
+    if (!opt.value) continue;
+    if (PLACEHOLDER_NORMS.has(normalize(opt.text))) continue;
+    opts.push({ label: opt.text.trim(), value: opt.value });
+  }
+  return opts;
 }
 
 // Returns true if the AI layer ran (key was available), false if skipped (no key).
@@ -74,20 +93,33 @@ export async function runAIAutofill(
 
     if (c.type === 'text') {
       const s = c.signals;
-      return {
+      const baseLabel = s.label || s.ariaLabel || s.placeholder || s.name || '';
+      const base = {
         fieldId,
-        type:         'text',
-        label:        s.label || s.ariaLabel || s.placeholder || s.name || '',
+        label:        baseLabel,
         ...(s.placeholder && { placeholder: s.placeholder }),
         ...(s.name       && { name:        s.name }),
         ...(s.nearbyText && { nearbyText:  s.nearbyText }),
       };
+      if (c.element instanceof HTMLSelectElement) {
+        const options = extractSelectOptions(c.element);
+        return { ...base, type: 'select' as const, ...(options.length > 0 && { options }) };
+      }
+      // ARIA combobox/listbox: options are not available at scan time (dropdown
+      // is closed). Send as 'select' so Gemini returns a profilePath; the fill
+      // phase resolves the value and uses click-based option matching.
+      const ariaRole  = c.element.getAttribute('role');
+      const ariaPopup = c.element.getAttribute('aria-haspopup');
+      if (ariaRole === 'combobox' || ariaPopup === 'listbox') {
+        return { ...base, type: 'select' as const };
+      }
+      return { ...base, type: 'text' as const };
     }
     return {
       fieldId,
       type:    c.type,
       label:   c.group.groupLabel,
-      options: c.group.options.map((o) => o.label),
+      options: c.group.options.map((o) => ({ label: o.label, value: o.value })),
     };
   });
 
@@ -129,10 +161,27 @@ export async function runAIAutofill(
     const isHigh    = resp.confidence === 'high';
     const confScore = isHigh ? CONF_CONFIRMED : CONF_AI_YELLOW;
 
-    if (candidate.type === 'text' && resp.profilePath) {
-      const value = resolveProfileValue(profile, resp.profilePath);
+    if (candidate.type === 'text') {
+      const isSelect = candidate.element instanceof HTMLSelectElement;
+      // For select elements, Gemini may return selectedOption (chosen from the options list)
+      // instead of or in addition to profilePath. Prefer selectedOption for selects.
+      const hasActionable = resp.profilePath || (isSelect && resp.selectedOption);
+      if (!hasActionable) {
+        recordDebug(candidate, fieldId, null, resp.confidence, 'unchanged');
+        continue;
+      }
+
+      let value: string | null = null;
+      if (isSelect && resp.selectedOption) {
+        value = resp.selectedOption;
+      } else if (resp.profilePath) {
+        value = resolveProfileValue(profile, resp.profilePath);
+      }
+
+      const aiResult = isSelect && resp.selectedOption ? resp.selectedOption : (resp.profilePath ?? null);
+
       if (!value) {
-        recordDebug(candidate, fieldId, resp.profilePath, resp.confidence, 'unchanged');
+        recordDebug(candidate, fieldId, aiResult, resp.confidence, 'unchanged');
         continue;
       }
 
@@ -149,14 +198,17 @@ export async function runAIAutofill(
       if (isHigh) {
         result.noReview++;
         // Save learned mappings for high-confidence fills so the picker skips
-        // this field on the next autofill run on this domain.
-        const sigs = [
-          candidate.signals.name, candidate.signals.id,
-          candidate.signals.placeholder, candidate.signals.ariaLabel, candidate.signals.label,
-        ].filter(Boolean);
-        for (const sig of sigs) {
-          const norm = normalize(sig);
-          if (norm) void saveLearnedMapping(domain, norm, resp.profilePath!);
+        // this field on the next autofill run on this domain. Only when we
+        // have a profile path — selectedOption alone is not a stable signal.
+        if (resp.profilePath) {
+          const sigs = [
+            candidate.signals.name, candidate.signals.id,
+            candidate.signals.placeholder, candidate.signals.ariaLabel, candidate.signals.label,
+          ].filter(Boolean);
+          for (const sig of sigs) {
+            const norm = normalize(sig);
+            if (norm) void saveLearnedMapping(domain, norm, resp.profilePath);
+          }
         }
       } else {
         result.needReview++;
@@ -167,7 +219,7 @@ export async function runAIAutofill(
                 || candidate.signals.placeholder || 'this field',
         });
       }
-      recordDebug(candidate, fieldId, resp.profilePath, resp.confidence, isHigh ? 'green' : 'yellow');
+      recordDebug(candidate, fieldId, aiResult, resp.confidence, isHigh ? 'green' : 'yellow');
 
     } else if (candidate.type === 'radio' && resp.selectedOption) {
       const group  = candidate.group as RadioGroup;
@@ -225,12 +277,15 @@ export async function runAIAutofill(
   return true;
 }
 
-function findBestOption<T extends { label: string }>(options: T[], target: string): T | null {
+function findBestOption<T extends { label: string; value: string }>(options: T[], target: string): T | null {
   const norm = target.toLowerCase().trim();
-  const exact = options.find((o) => o.label.toLowerCase().trim() === norm);
+  const exact = options.find(
+    (o) => o.label.toLowerCase().trim() === norm || o.value.toLowerCase().trim() === norm,
+  );
   if (exact) return exact;
   const partial = options.find(
-    (o) => o.label.toLowerCase().includes(norm) || norm.includes(o.label.toLowerCase().trim()),
+    (o) => o.label.toLowerCase().includes(norm) || norm.includes(o.label.toLowerCase().trim())
+      || o.value.toLowerCase().includes(norm) || norm.includes(o.value.toLowerCase().trim()),
   );
   return partial ?? null;
 }
