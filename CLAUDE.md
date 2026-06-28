@@ -48,6 +48,9 @@ pnpm test:run     # single run — run before committing
 - `src/utils/profileCompletion.ts` — `TOTAL_CHECKS = 15`; drives sidebar checkmarks and completion %
 - `src/autofill/constants.ts` — named confidence thresholds (`CONF_FILL`, `CONF_GREEN`, `CONF_CONFIRMED`, `CONF_AI_YELLOW`); always use these, never bare numbers
 - `src/autofill/mappings.ts` — `saveElementMappings()`; call this when saving learned mappings from an element's signals — do not re-inline the loop
+- `src/utils/migrate.ts` — `normalizeProfile()` defaults missing salary period to `'monthly'`; called by both `getProfile()` and `saveProfile()` so every storage round-trip is hermetic. New on-load migrations belong here.
+- `src/resume-ai/normalize.ts` — `normalizeBullets()` / `normalizeExtractedProfile()`; bullet-normalises workHistory descriptions ONLY when structure is detected (existing bullet marker OR blank-line separator). Plain prose without either signal is returned unchanged — intentional, to preserve the context paragraph.
+- `src/resume-ai/extractLinks.ts` — pulls hyperlinks from PDF annotation layer via `pdfjs-dist`; returns `[]` for non-PDF files and on any error. Result is passed into `extractFromResume()` so Gemini sees the real URLs.
 
 ---
 
@@ -64,6 +67,10 @@ pnpm test:run     # single run — run before committing
 **AI is purely additive:** The extension works fully without a Gemini key. AI autofill runs after the rule pipeline; all failures must be silent — never surface network errors from the AI layer.
 
 **Toast system:** `useToast()` from `src/components/ui/Toast.tsx`. Never add inline "✓ Saved" labels to section components.
+
+**Profile schema fan-out:** Any field added or renamed on the `Profile` type must be reflected in four places: `src/types/profile.ts`, `src/resume-ai/prompt.ts` schema, `src/resume-ai/parser.ts` FIELD_DEFS, and `src/utils/profileValidator.ts`. Missing any one causes silent drift between resume import, profile import/export, and the diff/review UI.
+
+**Profile date formats are NOT unified:** work history dates require month (`YYYY-MM`); education dates accept either `YYYY` or `YYYY-MM`. The validator uses `RE_YYYYMM` for `workHistory` and `RE_YYYY_OR_YYYYMM` for `education` — keep them separate.
 
 ---
 
@@ -82,7 +89,9 @@ pnpm test:run     # single run — run before committing
 
 - **Backward-compat profile loaders:** Phone (string → `PhoneNumber`), work location (string → `{ countryCode?, city? }`), work auth country (free-text → ISO alpha-2), expected salary rows (currency-only → country+currency). Loaders live in section components — don't break them.
 
-- **`documents.cv` URL and file can coexist.** `{ url?, file? }` — both fields are intentionally preserved together. `DocumentsSection.toDocumentEntry()` must never make them mutually exclusive.
+- **`documents.cv` URL and file can coexist.** `{ url?, file? }` — both fields are intentionally preserved together. `DocumentsSection.toDocumentEntry()` must never make them mutually exclusive. Save fails if BOTH are empty: `DocumentsSection` enforces "URL or file upload required" via a single `requiredError` shown at the top of the card.
+
+- **Reset sequencing in `entrypoints/options/App.tsx` is timing-sensitive.** `sectionSeq` and `activeSection` are bumped INSIDE the `handleImportComplete(afterLoad)` callback, not synchronously after the reset call. Doing it synchronously remounts sections with the OLD profile because `setProfile` lives inside the async `.then()`.
 
 - **Work auth status labels: single source of truth.** `src/data/workAuthorization.ts` exports `WORK_AUTH_STATUS_OPTIONS` and `WORK_AUTH_STATUS_LABELS`. Never inline these strings in picker, resolver, or section components.
 
@@ -90,4 +99,4 @@ pnpm test:run     # single run — run before committing
 
 - **Drive OAuth uses implicit grant via `chrome.identity.launchWebAuthFlow`.** Google Cloud app type must be "Web Application" (not "Chrome Extension" — that forces `getAuthToken()` and causes `redirect_uri_mismatch`). Needs separate client IDs for dev and prod. Set `VITE_GOOGLE_DRIVE_CLIENT_ID` in `.env.development` / `.env.production` (see `.env.example`).
 
-<!-- last-reviewed: ae0b820 -->
+<!-- last-reviewed: 5fd1c6b -->
