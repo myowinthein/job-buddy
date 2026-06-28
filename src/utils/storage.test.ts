@@ -76,6 +76,48 @@ describe('profile storage', () => {
     expect(result?.id).toBeTruthy();
     expect(result?.id.length).toBeGreaterThan(0);
   });
+
+  it('migrates a stored profile missing salary.current.period to "monthly"', async () => {
+    store['profile'] = {
+      ...MINIMAL_PROFILE,
+      salary: {
+        current: { amount: 50000, currency: 'THB' },
+        expected: [],
+      },
+    };
+    const result = await getProfile();
+    expect(result?.salary.current.period).toBe('monthly');
+    // The migrated profile is also written back so subsequent reads are clean
+    const stored = store['profile'] as { salary: { current: { period?: string } } };
+    expect(stored.salary.current.period).toBe('monthly');
+  });
+
+  it('migrates expected salary entries missing period', async () => {
+    store['profile'] = {
+      ...MINIMAL_PROFILE,
+      salary: {
+        current: { amount: 50000, currency: 'THB', period: 'monthly' },
+        expected: [
+          { country: 'SG', currency: 'SGD', amount: 100000 },
+        ],
+      },
+    };
+    const result = await getProfile();
+    expect(result?.salary.expected[0]?.period).toBe('monthly');
+  });
+
+  it('saveProfile defaults a missing period before writing', async () => {
+    const partialPeriod = {
+      ...MINIMAL_PROFILE,
+      salary: {
+        current: { amount: 50000, currency: 'THB' },
+        expected: [],
+      },
+    } as unknown as typeof MINIMAL_PROFILE;
+    await saveProfile(partialPeriod);
+    const stored = store['profile'] as { salary: { current: { period?: string } } };
+    expect(stored.salary.current.period).toBe('monthly');
+  });
 });
 
 describe('learned mappings', () => {
