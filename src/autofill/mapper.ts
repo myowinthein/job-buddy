@@ -5,6 +5,10 @@ import { normalize, similarity } from './normalizer';
 import { FIELD_DICTIONARY } from './dictionary';
 import { resolveProfileValue } from './resolver';
 import type { MatchLayer } from './debug';
+import {
+  CONF_FILL, CONF_CONFIRMED, CONF_DICT_EXACT, CONF_FUZZY_THRESHOLD,
+  CONF_FUZZY_STRONG_MULT, CONF_FUZZY_WEAK_MULT, CONF_CONTEXT,
+} from './constants';
 
 export interface FieldMatch {
   fieldPath:  string | null;
@@ -54,7 +58,7 @@ function dictionaryFuzzy(norm: string): { fieldPath: string; score: number } | n
       if (s > bestScore) { bestScore = s; bestPath = fieldPath; }
     }
   }
-  return bestPath && bestScore >= 0.60 ? { fieldPath: bestPath, score: bestScore } : null;
+  return bestPath && bestScore >= CONF_FILL ? { fieldPath: bestPath, score: bestScore } : null;
 }
 
 function resolve(profile: Profile, fieldPath: string): string | null {
@@ -96,7 +100,7 @@ export function mapField(
       continue;
     }
 
-    return { fieldPath, confidence: 0.97, value: resolve(profile, fieldPath), matchLayer: 'learned' };
+    return { fieldPath, confidence: CONF_CONFIRMED, value: resolve(profile, fieldPath), matchLayer: 'learned' };
   }
 
   // ── Layer 1: Autocomplete attribute ───────────────────────────────────────
@@ -109,7 +113,7 @@ export function mapField(
   // ── Layer 2: Dictionary exact match ───────────────────────────────────────
   for (const n of normed) {
     const hit = dictionaryExact(n);
-    if (hit) return { fieldPath: hit, confidence: 0.85, value: resolve(profile, hit), matchLayer: 'dictionary_exact' };
+    if (hit) return { fieldPath: hit, confidence: CONF_DICT_EXACT, value: resolve(profile, hit), matchLayer: 'dictionary_exact' };
   }
 
   // ── Layer 3: Fuzzy matching on primary signals ────────────────────────────
@@ -120,11 +124,11 @@ export function mapField(
   }
   if (bestFuzzy) {
     const { fieldPath, score } = bestFuzzy;
-    if (score > 0.75) {
-      return { fieldPath, confidence: score * 0.85, value: resolve(profile, fieldPath), matchLayer: 'fuzzy' };
+    if (score > CONF_FUZZY_THRESHOLD) {
+      return { fieldPath, confidence: score * CONF_FUZZY_STRONG_MULT, value: resolve(profile, fieldPath), matchLayer: 'fuzzy' };
     }
-    if (score >= 0.60) {
-      return { fieldPath, confidence: score * 0.75, value: resolve(profile, fieldPath), matchLayer: 'fuzzy' };
+    if (score >= CONF_FILL) {
+      return { fieldPath, confidence: score * CONF_FUZZY_WEAK_MULT, value: resolve(profile, fieldPath), matchLayer: 'fuzzy' };
     }
   }
 
@@ -133,11 +137,11 @@ export function mapField(
   if (nearbyNorm) {
     const exactHit = dictionaryExact(nearbyNorm);
     if (exactHit) {
-      return { fieldPath: exactHit, confidence: 0.70, value: resolve(profile, exactHit), matchLayer: 'context' };
+      return { fieldPath: exactHit, confidence: CONF_CONTEXT, value: resolve(profile, exactHit), matchLayer: 'context' };
     }
     const fuzzyHit = dictionaryFuzzy(nearbyNorm);
-    if (fuzzyHit && fuzzyHit.score >= 0.75) {
-      return { fieldPath: fuzzyHit.fieldPath, confidence: 0.70, value: resolve(profile, fuzzyHit.fieldPath), matchLayer: 'context' };
+    if (fuzzyHit && fuzzyHit.score >= CONF_FUZZY_THRESHOLD) {
+      return { fieldPath: fuzzyHit.fieldPath, confidence: CONF_CONTEXT, value: resolve(profile, fuzzyHit.fieldPath), matchLayer: 'context' };
     }
   }
 
