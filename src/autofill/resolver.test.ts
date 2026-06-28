@@ -14,8 +14,8 @@ const PROFILE: Profile = {
   address: { city: 'Bangkok', country: 'TH', street: '123 Main St' },
   professional: { noticePeriod: { immediate: false, value: 2, unit: 'week' } },
   salary: {
-    current: { amount: 80000, currency: 'THB' },
-    expected: [{ country: 'SG', currency: 'SGD', amount: 120000 }],
+    current: { amount: 80000, currency: 'THB', period: 'monthly' },
+    expected: [{ country: 'SG', currency: 'SGD', amount: 120000, period: 'monthly' }],
   },
   workAuthorization: [
     { country: 'TH', status: 'citizen_or_pr' },
@@ -145,12 +145,12 @@ describe('resolveProfileValue', () => {
   });
 
   it('rounds fractional amounts in salary.current.formatted', () => {
-    const p = { ...PROFILE, salary: { ...PROFILE.salary, current: { amount: 80000.7, currency: 'THB' } } };
+    const p = { ...PROFILE, salary: { ...PROFILE.salary, current: { amount: 80000.7, currency: 'THB', period: 'monthly' as const } } };
     expect(resolveProfileValue(p, 'salary.current.formatted')).toBe('80,001 THB');
   });
 
   it('returns empty for salary.current.formatted when amount is 0', () => {
-    const p = { ...PROFILE, salary: { ...PROFILE.salary, current: { amount: 0, currency: 'THB' } } };
+    const p = { ...PROFILE, salary: { ...PROFILE.salary, current: { amount: 0, currency: 'THB', period: 'monthly' as const } } };
     expect(resolveProfileValue(p, 'salary.current.formatted')).toBe('');
   });
 

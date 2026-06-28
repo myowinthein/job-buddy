@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { LANGUAGES, findLanguage } from '@/src/data/languages';
 import type { Language } from '@/src/data/languages';
+import { getFlag } from '@/src/data/countries';
 
 interface Props {
   value: string;                   // ISO 639-1 code, e.g. "en"
@@ -95,7 +96,12 @@ export function SearchableLanguageSelect({ value, onChange, error, placeholder =
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        {displayName ? (
+        {selected ? (
+          <>
+            <span className="shrink-0">{getFlag(selected.country)}</span>
+            <span className="flex-1 text-gray-900 dark:text-gray-100">{selected.name}</span>
+          </>
+        ) : displayName ? (
           <span className="flex-1 text-gray-900 dark:text-gray-100">{displayName}</span>
         ) : (
           <span className="flex-1 text-gray-400 dark:text-gray-500">{placeholder}</span>
@@ -127,7 +133,7 @@ export function SearchableLanguageSelect({ value, onChange, error, placeholder =
                   key={l.code}
                   role="option"
                   aria-selected={l.code === value}
-                  className={`px-3 py-2 text-sm cursor-pointer select-none ${
+                  className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer select-none ${
                     idx === hlIdx
                       ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -136,7 +142,8 @@ export function SearchableLanguageSelect({ value, onChange, error, placeholder =
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => select(l)}
                 >
-                  {l.name}
+                  <span className="shrink-0 text-base">{getFlag(l.country)}</span>
+                  <span className="flex-1 truncate">{l.name}</span>
                 </li>
               ))
             )}

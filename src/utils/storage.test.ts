@@ -43,7 +43,7 @@ const MINIMAL_PROFILE: Profile = {
   },
   address: { city: 'Bangkok', country: 'TH' },
   professional: {},
-  salary: { current: { amount: 50000, currency: 'THB' }, expected: [] },
+  salary: { current: { amount: 50000, currency: 'THB', period: 'monthly' }, expected: [] },
   workAuthorization: [],
   workHistory: [],
   education: [],
