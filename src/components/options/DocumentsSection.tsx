@@ -19,6 +19,7 @@ interface DocState {
   dragOver: boolean;
   sizeError: string;
   urlError: string;
+  requiredError: string;
 }
 
 function initDocState(entry?: DocumentEntry): DocState {
@@ -29,11 +30,14 @@ function initDocState(entry?: DocumentEntry): DocState {
     dragOver: false,
     sizeError: '',
     urlError: '',
+    requiredError: '',
   };
 }
 
-function validateDocUrl(url: string, required: boolean, hasFile: boolean): string {
-  if (!url.trim()) return (required && !hasFile) ? 'CV URL is required' : '';
+// URL format check only — runs when the URL field has a value.
+// "At least one of URL or upload" is enforced separately in handleSave.
+function validateDocUrlFormat(url: string): string {
+  if (!url.trim()) return '';
   const normalized = /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
   try { return new URL(normalized).hostname.includes('.') ? '' : 'Enter a valid URL'; }
   catch { return 'Enter a valid URL'; }
@@ -82,6 +86,7 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
     onChange({
       file: { name: file.name, size: file.size, base64 },
       sizeError: '',
+      requiredError: '',
     });
   };
 
@@ -106,14 +111,14 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
         <div className="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden text-xs">
           <button
             type="button"
-            onClick={() => onChange({ mode: 'url' })}
+            onClick={() => onChange({ mode: 'url', requiredError: '' })}
             className={`px-3 py-1.5 active:scale-95 ${state.mode === 'url' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors`}
           >
             URL
           </button>
           <button
             type="button"
-            onClick={() => onChange({ mode: 'file' })}
+            onClick={() => onChange({ mode: 'file', requiredError: '' })}
             className={`px-3 py-1.5 active:scale-95 ${state.mode === 'file' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors`}
           >
             Upload
@@ -121,14 +126,18 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
         </div>
       </div>
 
+      {state.requiredError && (
+        <p className="text-xs text-red-500 dark:text-red-400 mb-2">{state.requiredError}</p>
+      )}
+
       {state.mode === 'url' ? (
         <FormField label="Document URL" error={state.urlError}>
           <input
             type="url"
             className={urlCls}
             value={state.url}
-            onChange={(e) => onChange({ url: e.target.value, urlError: '' })}
-            onBlur={(e) => onChange({ urlError: validateDocUrl(e.target.value, !!required, !!state.file) })}
+            onChange={(e) => onChange({ url: e.target.value, urlError: '', requiredError: '' })}
+            onBlur={(e) => onChange({ urlError: validateDocUrlFormat(e.target.value) })}
             placeholder="https://drive.google.com/file/..."
             maxLength={255}
           />
@@ -187,8 +196,17 @@ export function DocumentsSection({ profile, onSave }: Props) {
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
-    if (cv.mode === 'url') {
-      const urlError = validateDocUrl(cv.url, true, !!cv.file);
+    // Rule: each document must have at least one of URL or uploaded file.
+    const hasUrl  = !!cv.url.trim();
+    const hasFile = !!cv.file;
+
+    if (!hasUrl && !hasFile) {
+      setCv((s) => ({ ...s, requiredError: 'Provide a URL or upload a file' }));
+      return;
+    }
+
+    if (hasUrl) {
+      const urlError = validateDocUrlFormat(cv.url);
       if (urlError) {
         setCv((s) => ({ ...s, urlError }));
         return;

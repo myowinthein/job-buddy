@@ -27,7 +27,7 @@ const PROFILE: Profile = {
   },
   address: { city: 'Bangkok', country: 'TH' },
   professional: {},
-  salary: { current: { amount: 80000, currency: 'THB' }, expected: [] },
+  salary: { current: { amount: 80000, currency: 'THB', period: 'monthly' }, expected: [] },
   workAuthorization: [],
   workHistory: [{ company: 'Acme', title: 'Senior Engineer', startDate: '2020-01', isCurrent: true }],
   education: [],

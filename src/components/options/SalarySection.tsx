@@ -2,9 +2,8 @@ import { useToast } from '@/src/components/ui/Toast';
 import { useState, useRef, useEffect } from 'react';
 import type { Profile, SalaryPeriod } from '@/src/types/profile';
 import { findCountryByNameOrCode } from '@/src/data/countries';
-import { COUNTRY_TO_CURRENCY, findCurrency, primaryCountryForCurrency } from '@/src/data/currencies';
+import { COUNTRY_TO_CURRENCY, primaryCountryForCurrency } from '@/src/data/currencies';
 import { FormField } from './shared/FormField';
-import { SearchableCurrencySelect } from './shared/SearchableCurrencySelect';
 import { SearchableCountryWithCurrencyDropdown } from './shared/SearchableCountryWithCurrencyDropdown';
 import { RemoveButton } from './shared/RemoveButton';
 
@@ -55,11 +54,23 @@ export function SalarySection({ profile, onSave }: Props) {
   const s = profile.salary;
 
   // ── Current salary ──────────────────────────────────────────────────────────
-  const initCurrentCurrency = s?.current?.currency
-    ? (findCurrency(s.current.currency)?.code ?? s.current.currency)
-    : '';
+  // Migrate old shape:
+  //   1. Use `country` directly if present (new shape).
+  //   2. Otherwise reverse-look up `currency` — only if it maps to exactly one
+  //      country (unambiguous). EUR/USD/XOF etc. are left empty so the user
+  //      picks explicitly.
+  const initCurrentCountry = (() => {
+    if (s?.current?.country) {
+      const found = findCountryByNameOrCode(s.current.country);
+      if (found) return found.code;
+    }
+    if (s?.current?.currency) {
+      return primaryCountryForCurrency(s.current.currency) ?? '';
+    }
+    return '';
+  })();
 
-  const [currentCurrency, setCurrentCurrency] = useState(initCurrentCurrency);
+  const [currentCountry, setCurrentCountry] = useState(initCurrentCountry);
   const [currentAmount, setCurrentAmount] = useState(
     s?.current?.amount != null ? String(s.current.amount) : '',
   );
@@ -131,7 +142,8 @@ export function SalarySection({ profile, onSave }: Props) {
     if (currentAmount.trim() === '') e.currentAmount = 'Current salary amount is required';
     else if (isNaN(Number(currentAmount)) || Number(currentAmount) < 0)
       e.currentAmount = 'Enter a valid amount';
-    if (!currentCurrency) e.currentCurrency = 'Currency is required';
+    if (!currentCountry) e.currentCountry = 'Country is required';
+    if (!currentPeriod) e.currentPeriod = 'Period is required';
     expected.forEach((row, idx) => Object.assign(e, expectedRowErrors(row, idx)));
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -140,11 +152,13 @@ export function SalarySection({ profile, onSave }: Props) {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
+    const currentCurrency = COUNTRY_TO_CURRENCY[currentCountry] || '';
     await onSave({
       salary: {
         current: {
           amount: Number(currentAmount),
           currency: currentCurrency,
+          country: currentCountry || undefined,
           period: currentPeriod,
         },
         expected: expected
@@ -175,15 +189,14 @@ export function SalarySection({ profile, onSave }: Props) {
         <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">Current Salary</h3>
         <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="grid grid-cols-3 gap-4">
-            <FormField label="Currency" required error={errors.currentCurrency}>
-              <SearchableCurrencySelect
-                id="field-currentCurrency"
-                value={currentCurrency}
+            <FormField label="Country" required error={errors.currentCountry}>
+              <SearchableCountryWithCurrencyDropdown
+                value={currentCountry}
                 onChange={(code) => {
-                  setCurrentCurrency(code);
-                  setErrors((err) => ({ ...err, currentCurrency: code ? '' : 'Currency is required' }));
+                  setCurrentCountry(code);
+                  setErrors((err) => ({ ...err, currentCountry: code ? '' : 'Country is required' }));
                 }}
-                error={errors.currentCurrency}
+                error={errors.currentCountry}
               />
             </FormField>
             <FormField label="Amount" required error={errors.currentAmount}>
@@ -204,9 +217,9 @@ export function SalarySection({ profile, onSave }: Props) {
                 placeholder="80000"
               />
             </FormField>
-            <FormField label="Period">
+            <FormField label="Period" required error={errors.currentPeriod}>
               <select
-                className={cls()}
+                className={cls(errors.currentPeriod)}
                 value={currentPeriod}
                 onChange={(e) => setCurrentPeriod(e.target.value as SalaryPeriod)}
               >
@@ -258,7 +271,7 @@ export function SalarySection({ profile, onSave }: Props) {
                   placeholder="100000"
                 />
               </FormField>
-              <FormField label="Period">
+              <FormField label="Period" required>
                 <select
                   className={cls()}
                   value={row.period}
