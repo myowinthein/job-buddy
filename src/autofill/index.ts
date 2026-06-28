@@ -1,7 +1,7 @@
 import { getProfile, getLearnedMappings } from '../utils/storage';
 import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED } from './constants';
 import { scanFields, scanAriaFields } from './scanner';
-import { extractSignals } from './signals';
+import { extractSignals, bestLabel } from './signals';
 import type { FieldSignals } from './signals';
 import { mapField } from './mapper';
 import type { FieldMatch } from './mapper';
@@ -74,12 +74,7 @@ function teardownVisibilityListener(): void {
 // Picks the most human-readable label from a field's signals for use in the
 // picker noData CTA ("No <label> saved in your profile yet").
 function extractDisplayLabel(signals: FieldSignals): string {
-  return signals.label
-      || signals.ariaLabel
-      || signals.placeholder
-      || signals.name
-      || signals.id
-      || 'this field';
+  return bestLabel(signals) || signals.id || 'this field';
 }
 
 // Tracks the blur handler currently registered on each picker-eligible element so
@@ -294,7 +289,7 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
 
     debugScanner.push({
       fieldId: debugFieldId,
-      label:   signals.label || signals.ariaLabel || signals.placeholder || signals.name || '',
+      label:   bestLabel(signals),
       type:    signals.type,
       name:    signals.name,
       id:      signals.id,

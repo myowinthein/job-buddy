@@ -48,6 +48,13 @@ function getNearbyText(element: HTMLElement): string {
   return textEl?.textContent?.trim() ?? '';
 }
 
+// Picks the first non-empty human-readable label from a FieldSignals object:
+// label → ariaLabel → placeholder → name. Returns '' if all are empty so the
+// caller can chain `|| fallback` for further fallbacks (id, 'this field', etc.).
+export function bestLabel(signals: FieldSignals): string {
+  return signals.label || signals.ariaLabel || signals.placeholder || signals.name || '';
+}
+
 export function extractSignals(element: HTMLElement): FieldSignals {
   const inp = element as HTMLInputElement;
   const isNative = element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT';
