@@ -3,6 +3,7 @@ import { useToast } from '@/src/components/ui/Toast';
 import type { Profile } from '@/src/types/profile';
 import { findCountryByNameOrCode } from '@/src/data/countries';
 import { FormField } from './shared/FormField';
+import { saveSection } from './shared/saveSection';
 import { SearchableCountryDropdown } from './shared/SearchableCountryDropdown';
 
 interface Props {
@@ -58,7 +59,7 @@ export function AddressSection({ profile, onSave }: Props) {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await onSave({
+    await saveSection(onSave, {
       address: {
         city: form.city.trim(),
         country: form.countryCode,           // stores ISO code, e.g. "TH"
@@ -66,8 +67,7 @@ export function AddressSection({ profile, onSave }: Props) {
         state: form.state || undefined,
         postalCode: form.postalCode || undefined,
       },
-    }).then(() => showToast('success', 'Address saved'))
-      .catch(() => showToast('error', 'Failed to save. Please try again.'));
+    }, showToast, 'Address saved');
     setSaving(false);
   };
 

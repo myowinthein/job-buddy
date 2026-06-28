@@ -5,6 +5,7 @@ import { findCountry } from '@/src/data/countries';
 import { SearchableCountrySelect } from './shared/SearchableCountrySelect';
 import { ETHNICITIES } from '@/src/data/ethnicities';
 import { FormField } from './shared/FormField';
+import { saveSection } from './shared/saveSection';
 import { DateOfBirthPicker } from './shared/DateOfBirthPicker';
 
 interface Props {
@@ -149,7 +150,7 @@ export function PersonalSection({ profile, onSave }: Props) {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await onSave({
+    await saveSection(onSave, {
       personal: {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
@@ -165,8 +166,7 @@ export function PersonalSection({ profile, onSave }: Props) {
         veteranStatus: form.veteranStatus || undefined,
         disabilityStatus: form.disabilityStatus || undefined,
       },
-    }).then(() => showToast('success', 'Personal information saved'))
-      .catch(() => showToast('error', 'Failed to save. Please try again.'));
+    }, showToast, 'Personal information saved');
     setSaving(false);
   };
 
