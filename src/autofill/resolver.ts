@@ -3,6 +3,13 @@ import { COUNTRIES } from '../data/countries';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
 import { fmtYearMonth, fmtAmount } from '../utils/dateFormat';
 
+function formatISODate(d: Date): string {
+  const y  = d.getFullYear();
+  const m  = String(d.getMonth() + 1).padStart(2, '0');
+  const dy = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dy}`;
+}
+
 export function resolveProfileValue(profile: Profile, fieldPath: string): string {
   if (!fieldPath) return '';
 
@@ -63,6 +70,21 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
       return entry.status === 'requires_sponsorship'
         ? 'Requires sponsorship'
         : 'Yes, authorized to work';
+    }
+
+    case 'professional.noticePeriod.availableDate': {
+      const np = profile.professional?.noticePeriod;
+      if (!np) return '';
+      const today = new Date();
+      if (np.immediate) return formatISODate(today);
+      if (!np.value || !np.unit) return '';
+      const target = new Date(today);
+      switch (np.unit) {
+        case 'day':   target.setDate(target.getDate() + np.value); break;
+        case 'week':  target.setDate(target.getDate() + np.value * 7); break;
+        case 'month': target.setMonth(target.getMonth() + np.value); break;
+      }
+      return formatISODate(target);
     }
 
     case 'documents.cv.file': {

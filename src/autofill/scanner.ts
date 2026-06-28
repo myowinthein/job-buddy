@@ -3,6 +3,10 @@ const EXCLUDED_INPUT_TYPES = new Set([
   'radio', 'file', 'image', 'reset',
 ]);
 
+// Native HTML tags that are already handled by the native scanner —
+// ARIA scanner excludes elements whose tag is in this set to avoid duplicates.
+const NATIVE_FORM_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
+
 interface ScanOptions {
   // When true, visible `<input type="file">` elements are *not* filtered out.
   // The caller (executeAutofill) sets this only when the profile actually has a
@@ -19,21 +23,34 @@ export function scanFields(options: ScanOptions = {}): HTMLElement[] {
     // Excluded input types (hidden, submit, button, etc.)
     if (el instanceof HTMLInputElement) {
       const type = el.type.toLowerCase();
-      // 'file' is conditionally allowed; everything else in EXCLUDED stays excluded.
-      if (type === 'file') {
+
+      // ARIA override: an input with aria-haspopup="listbox" acts as a custom
+      // select trigger regardless of its type (e.g. Revolut uses
+      // <input type="button" aria-haspopup="listbox"> for the phone calling-code
+      // picker). Let it through before the type exclusion check.
+      if (el.getAttribute('aria-haspopup') === 'listbox') {
+        // fall through to the remaining visibility checks below
+      } else if (type === 'file') {
+        // 'file' is conditionally allowed; everything else in EXCLUDED stays excluded.
         if (!options.allowFileInputs) return false;
         // Custom upload widgets (Fluent UI / Fabric, MUI, Mantine, etc.) render
         // a styled button as the user-facing surface and hide the real file
         // input behind it. They almost always set tabindex="-1" on the input
         // because keyboard focus is meant to live on the button wrapper, not
         // the input. A genuinely user-facing file input would not have this.
-        // Custom upload widgets set tabindex="-1" on the hidden input because
-        // keyboard focus lives on their styled button wrapper, not the input.
-        // A genuinely user-facing file input would not have this attribute.
         if (el.getAttribute('tabindex') === '-1') return false;
       } else if (EXCLUDED_INPUT_TYPES.has(type)) {
         return false;
       }
+    }
+
+    // Skip inputs that live inside a non-native [role="combobox"] container.
+    // The outer combobox element is scanned separately by scanAriaFields() and
+    // receives click-based filling. Letting the inner search input through would
+    // result in a text fill that doesn't actually select an option.
+    if (el instanceof HTMLInputElement) {
+      const ancestor = el.closest('[role="combobox"]');
+      if (ancestor && !NATIVE_FORM_TAGS.has(ancestor.tagName)) return false;
     }
 
     // Disabled or read-only — not user-editable
@@ -179,4 +196,64 @@ export function scanCheckboxGroups(): CheckboxGroup[] {
     groups.push({ name: els[0].name ?? '', groupLabel, isConsent, options });
   }
   return groups;
+}
+
+// ── ARIA / custom-component scanning ─────────────────────────────────────────
+//
+// Covers four common patterns used by modern React/Vue job portals:
+//   aria-haspopup="listbox" — trigger button for a custom dropdown/select
+//   role="combobox"         — searchable select wrapper (e.g. React-Select outer div)
+//   role="textbox"          — non-native editable region
+//   contenteditable="true"  — free-edit div/span used as text input
+
+function isAriaVisible(el: HTMLElement): boolean {
+  if (el.getAttribute('aria-disabled') === 'true') return false;
+  if ((el as HTMLInputElement).disabled) return false;
+  if (el.closest('[hidden]') !== null) return false;
+  if (el.closest('[aria-hidden="true"]') !== null) return false;
+  if (el.offsetParent === null) return false;
+  const style = window.getComputedStyle(el);
+  if (style.display === 'none' || style.visibility === 'hidden') return false;
+  if (parseFloat(style.opacity) === 0) return false;
+  const rect = el.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
+
+/** Returns 'text' for custom text fields, 'select' for custom dropdowns, null otherwise. */
+export function getAriaElementType(el: HTMLElement): 'text' | 'select' | null {
+  const role = el.getAttribute('role');
+  if (role === 'textbox' || el.getAttribute('contenteditable') === 'true') return 'text';
+  if (role === 'combobox' || el.getAttribute('aria-haspopup') === 'listbox') return 'select';
+  return null;
+}
+
+/**
+ * Scans the page for visible ARIA custom form components that are NOT native
+ * input/textarea/select elements. Returns them in document order, deduplicated.
+ *
+ * These elements go through the same signal extraction and mapping pipeline as
+ * native fields. Only the fill phase differs (click-based for listbox/combobox,
+ * textContent-based for textbox/contenteditable).
+ */
+export function scanAriaFields(): HTMLElement[] {
+  const results: HTMLElement[] = [];
+  const seen = new Set<Element>();
+
+  function addIfEligible(el: HTMLElement): void {
+    if (seen.has(el)) return;
+    if (NATIVE_FORM_TAGS.has(el.tagName)) return; // handled by native scanner
+    if (!isAriaVisible(el)) return;
+    seen.add(el);
+    results.push(el);
+  }
+
+  // Text-input equivalents
+  document.querySelectorAll<HTMLElement>('[role="textbox"]').forEach(addIfEligible);
+  document.querySelectorAll<HTMLElement>('[contenteditable="true"]').forEach(addIfEligible);
+
+  // Select/dropdown equivalents
+  document.querySelectorAll<HTMLElement>('[aria-haspopup="listbox"]').forEach(addIfEligible);
+  document.querySelectorAll<HTMLElement>('[role="combobox"]').forEach(addIfEligible);
+
+  return results;
 }

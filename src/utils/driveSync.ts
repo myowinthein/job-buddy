@@ -7,6 +7,7 @@ import {
   getDriveBackupState,
   saveDriveBackupState,
   clearDriveBackupState,
+  getLearnedMappings,
 } from './storage';
 
 // ── OAuth ────────────────────────────────────────────────────────────────────
@@ -280,7 +281,10 @@ export async function syncProfileToDrive(profile: Profile): Promise<SyncResult> 
   const token = await getDriveToken();
   if (!token) return { success: false, errorCode: null };
 
-  const prevState = await getDriveBackupState();
+  const [prevState, learnedMappings] = await Promise.all([
+    getDriveBackupState(),
+    getLearnedMappings(),
+  ]);
 
   try {
     let fileId = prevState.fileId;
@@ -294,6 +298,7 @@ export async function syncProfileToDrive(profile: Profile): Promise<SyncResult> 
 
     const payload: DriveBackupFile = {
       profile,
+      learnedMappings,
       lastModified: new Date().toISOString(),
     };
 
