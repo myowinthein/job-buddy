@@ -93,3 +93,89 @@ describe('extractSignals', () => {
     expect(extractSignals(el).type).toBe('email');
   });
 });
+
+// ── ARIA-aware extraction (non-native elements) ─────────────────────────────
+
+function div(attrs: Record<string, string> = {}): HTMLDivElement {
+  const el = document.createElement('div');
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  document.body.appendChild(el);
+  return el;
+}
+
+describe('extractSignals — aria-labelledby resolution', () => {
+  it('resolves a single aria-labelledby ID to its text content', () => {
+    const label = document.createElement('span');
+    label.id = 'lbl-1';
+    label.textContent = 'Email Address';
+    document.body.appendChild(label);
+
+    const el = div({ 'aria-labelledby': 'lbl-1' });
+    expect(extractSignals(el).ariaLabel).toBe('Email Address');
+  });
+
+  it('joins multiple space-separated aria-labelledby IDs with a space', () => {
+    const a = document.createElement('span');
+    a.id = 'lbl-a';
+    a.textContent = 'Phone';
+    const b = document.createElement('span');
+    b.id = 'lbl-b';
+    b.textContent = 'Number';
+    document.body.appendChild(a);
+    document.body.appendChild(b);
+
+    const el = div({ 'aria-labelledby': 'lbl-a lbl-b' });
+    expect(extractSignals(el).ariaLabel).toBe('Phone Number');
+  });
+
+  it('returns empty string when aria-labelledby targets do not exist', () => {
+    const el = div({ 'aria-labelledby': 'missing-id' });
+    expect(extractSignals(el).ariaLabel).toBe('');
+  });
+
+  it('prefers explicit aria-label over aria-labelledby when both are present', () => {
+    const label = document.createElement('span');
+    label.id = 'lbl-x';
+    label.textContent = 'Via Labelledby';
+    document.body.appendChild(label);
+
+    const el = div({ 'aria-label': 'Via Aria-Label', 'aria-labelledby': 'lbl-x' });
+    expect(extractSignals(el).ariaLabel).toBe('Via Aria-Label');
+  });
+});
+
+describe('extractSignals — aria-placeholder fallback', () => {
+  it('reads aria-placeholder when the element has no native placeholder', () => {
+    const el = div({ 'aria-placeholder': 'Enter your name' });
+    expect(extractSignals(el).placeholder).toBe('Enter your name');
+  });
+
+  it('prefers native placeholder over aria-placeholder', () => {
+    const el = input({ type: 'text', placeholder: 'Native', 'aria-placeholder': 'Aria' });
+    expect(extractSignals(el).placeholder).toBe('Native');
+  });
+});
+
+describe('extractSignals — ARIA-derived type', () => {
+  it('uses role as type for a non-native element', () => {
+    const el = div({ role: 'combobox' });
+    expect(extractSignals(el).type).toBe('combobox');
+  });
+
+  it('uses "textbox" for contenteditable when there is no role', () => {
+    const el = div({ contenteditable: 'true' });
+    expect(extractSignals(el).type).toBe('textbox');
+  });
+
+  it('falls back to the lowercased tag name for non-native elements without role or contenteditable', () => {
+    const el = div();
+    expect(extractSignals(el).type).toBe('div');
+  });
+});
+
+describe('extractSignals — autocomplete on non-native elements', () => {
+  it('reads the autocomplete attribute from a non-native element', () => {
+    const el = div({ autocomplete: 'given-name' });
+    expect(extractSignals(el).autocomplete).toBe('given-name');
+  });
+});
