@@ -2,6 +2,7 @@ import type { Profile } from '@/src/types/profile';
 import type { GeminiModel, KeyValidationResult, ImportError } from './types';
 import { GEMINI_MODEL_PRIORITY } from './types';
 import { buildPrompt } from './prompt';
+import { normalizeExtractedProfile } from './normalize';
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -127,7 +128,7 @@ export async function extractFromResume(
 
     if (!text) throw importError('parse', "Couldn't read the response. Try again.");
 
-    return parseResponse(text);
+    return normalizeExtractedProfile(parseResponse(text));
   }
 
   // All models in the probe list returned 429
