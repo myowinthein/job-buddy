@@ -198,16 +198,6 @@ export function DebugPanel({
 
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-end px-4 py-3 border-t border-gray-200 dark:border-gray-700 shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-          >
-            Close
-          </button>
-        </div>
       </div>
     </div>
   );
