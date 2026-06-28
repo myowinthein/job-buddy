@@ -87,6 +87,7 @@ ${currentProfileJson}
 ${hyperlinksSection}Rules:
 - Never invent or guess values not present in the document
 - Dates: workHistory uses YYYY-MM (month required); education uses YYYY-MM when month is given, or YYYY when only the year is available; dateOfBirth uses YYYY-MM-DD
+- Education dates: NEVER infer, guess, estimate, or backfill education startDate or endDate. Do not derive education dates from degree level (e.g. "Bachelor's takes 4 years"), work history dates, the candidate's age, graduation conventions, or the current profile JSON. Only extract a date if it appears explicitly next to or within the same education entry in the resume. If no date is written, return null for startDate and endDate.
 - country/countryCode must be ISO 3166-1 alpha-2 (e.g. US, GB, SG, AU, CA, MM)
 - currency must be ISO 4217 3-letter code (e.g. USD, GBP, SGD, MMK)
 - phone: split calling code from local number; infer country from context if needed
@@ -97,7 +98,7 @@ ${hyperlinksSection}Rules:
 - Return valid JSON only
 - For array fields with no data found, return []
 - professional.summary: copy verbatim from the resume; preserve paragraph breaks as \\n\\n
-- workHistory[].description: include all content under the role — company context, responsibilities, achievements, and bullet points; if multiple sections exist, concatenate them with \\n\\n
+- workHistory[].description: include all content under the role — company context, responsibilities, achievements, and bullet points; if multiple sections exist, concatenate them with \\n\\n. Format every responsibility, achievement, or paragraph as its own line starting with "- " so the result is a bullet list. Do not add an extra bullet to lines that already begin with -, •, *, or another bullet marker.
 - address.state: infer from city only when unambiguous (e.g. Bangkok → Bangkok, London → England); otherwise omit
 - workAuthorization: only include if explicitly stated in the resume; omit otherwise
 - noticePeriod: if resume says "immediate", "immediately available", or similar → { "immediate": true, "value": null, "unit": null }; if a duration is given → { "immediate": false, "value": <n>, "unit": "day"|"week"|"month" }; if not mentioned → null
