@@ -6,6 +6,7 @@ import { COUNTRY_TO_CURRENCY, primaryCountryForCurrency } from '@/src/data/curre
 import { FormField } from './shared/FormField';
 import { SearchableCountryWithCurrencyDropdown } from './shared/SearchableCountryWithCurrencyDropdown';
 import { RemoveButton } from './shared/RemoveButton';
+import { saveSection } from './shared/saveSection';
 
 interface Props {
   profile: Partial<Profile>;
@@ -153,7 +154,7 @@ export function SalarySection({ profile, onSave }: Props) {
     if (!validate()) return;
     setSaving(true);
     const currentCurrency = COUNTRY_TO_CURRENCY[currentCountry] || '';
-    await onSave({
+    await saveSection(onSave, {
       salary: {
         current: {
           amount: Number(currentAmount),
@@ -172,8 +173,7 @@ export function SalarySection({ profile, onSave }: Props) {
             period: r.period,
           })),
       },
-    }).then(() => showToast('success', 'Salary saved'))
-      .catch(() => showToast('error', 'Failed to save. Please try again.'));
+    }, showToast, 'Salary saved');
     setSaving(false);
   };
 

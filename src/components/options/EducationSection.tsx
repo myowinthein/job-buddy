@@ -4,6 +4,7 @@ import type { Profile, EducationEntry } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
 import { ExpandableCard } from './shared/ExpandableCard';
 import { MonthYearPicker } from './shared/MonthYearPicker';
+import { saveSection } from './shared/saveSection';
 
 interface Props {
   profile: Partial<Profile>;
@@ -217,7 +218,7 @@ export function EducationSection({ profile, onSave }: Props) {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await onSave({
+    await saveSection(onSave, {
       education: entries.map((r) => ({
         institution: r.institution.trim(),
         degree: r.degree.trim(),
@@ -230,8 +231,7 @@ export function EducationSection({ profile, onSave }: Props) {
         grade: r.grade || undefined,
         description: r.description || undefined,
       })),
-    }).then(() => showToast('success', 'Education saved'))
-      .catch(() => showToast('error', 'Failed to save. Please try again.'));
+    }, showToast, 'Education saved');
     setSaving(false);
   };
 
