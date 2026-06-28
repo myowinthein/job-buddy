@@ -18,7 +18,11 @@ Schema (omit or set null for any field not found in the resume):
     "lastName": string | null,
     "email": string | null,
     "phone": { "countryCode": "ISO-2 e.g. US", "callingCode": "+1", "number": "local digits only" } | null,
-    "dateOfBirth": "YYYY-MM-DD" | null
+    "dateOfBirth": "YYYY-MM-DD" | null,
+    "gender": "male" | "female" | "other" | "prefer_not_to_say" | null,
+    "ethnicity": string | null,
+    "veteranStatus": "yes" | "no" | "prefer_not_to_say" | null,
+    "disabilityStatus": "yes" | "no" | "prefer_not_to_say" | null
   },
   "address": {
     "city": string | null,
@@ -43,7 +47,8 @@ Schema (omit or set null for any field not found in the resume):
     {
       "country": "ISO alpha-2",
       "status": "citizen_or_pr | work_visa | requires_sponsorship",
-      "visaType": string | null
+      "visaType": string | null,
+      "expiryDate": "YYYY-MM-DD" | null
     }
   ],
   "workHistory": [
@@ -66,7 +71,8 @@ Schema (omit or set null for any field not found in the resume):
       "startDate": "YYYY-MM" | "YYYY",
       "isCurrent": boolean | null,
       "endDate": "YYYY-MM" | "YYYY" | null,
-      "grade": string | null
+      "grade": string | null,
+      "description": string | null
     }
   ],
   "languages": [
@@ -77,7 +83,8 @@ Schema (omit or set null for any field not found in the resume):
   ],
   "links": {
     "linkedin": string | null,
-    "portfolio": string | null
+    "portfolio": string | null,
+    "custom": [ { "label": string, "url": string } ]
   }
 }
 
@@ -108,5 +115,5 @@ ${hyperlinksSection}Rules:
 - address.state: infer from city only when unambiguous (e.g. Bangkok → Bangkok, London → England); otherwise omit
 - workAuthorization: only include if explicitly stated in the resume; omit otherwise
 - noticePeriod: if resume says "immediate", "immediately available", or similar → { "immediate": true, "value": null, "unit": null }; if a duration is given → { "immediate": false, "value": <n>, "unit": "day"|"week"|"month" }; if not mentioned → null
-- Never guess gender or ethnicity; omit unless explicitly stated in the resume`;
+- Never guess gender, ethnicity, veteranStatus, or disabilityStatus; only set these fields when the resume EXPLICITLY states them. Do not infer from name, photo, achievements, affiliations, or any current profile data.`;
 }
