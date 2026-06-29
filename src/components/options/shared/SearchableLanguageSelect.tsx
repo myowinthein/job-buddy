@@ -29,15 +29,8 @@ export function SearchableLanguageSelect({ value, onChange, error, placeholder =
   const filtered = filterLanguages(search);
 
   useEffect(() => {
-    if (open) {
-      searchRef.current?.focus();
-      const idx = value ? LANGUAGES.findIndex((l) => l.code === value || l.name.toLowerCase() === value.toLowerCase()) : -1;
-      setHlIdx(idx >= 0 ? idx : 0);
-    } else {
-      setSearch('');
-      setHlIdx(0);
-    }
-  }, [open, value]);
+    if (open) searchRef.current?.focus();
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -48,7 +41,11 @@ export function SearchableLanguageSelect({ value, onChange, error, placeholder =
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!containerRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+        setHlIdx(0);
+      }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -57,6 +54,8 @@ export function SearchableLanguageSelect({ value, onChange, error, placeholder =
   const select = (l: Language) => {
     onChange(l.code);
     setOpen(false);
+    setSearch('');
+    setHlIdx(0);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -75,6 +74,8 @@ export function SearchableLanguageSelect({ value, onChange, error, placeholder =
         break;
       case 'Escape':
         setOpen(false);
+        setSearch('');
+        setHlIdx(0);
         e.preventDefault();
         break;
     }
@@ -91,7 +92,13 @@ export function SearchableLanguageSelect({ value, onChange, error, placeholder =
     <div ref={containerRef} className="relative w-full">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          if (!open) {
+            const idx = value ? LANGUAGES.findIndex((l) => l.code === value || l.name.toLowerCase() === value.toLowerCase()) : -1;
+            setHlIdx(idx >= 0 ? idx : 0);
+          }
+          setOpen((o) => !o);
+        }}
         className={`w-full px-3 py-2 border ${borderCls} rounded-lg text-sm text-left bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 flex items-center gap-2 min-h-[38px]`}
         aria-haspopup="listbox"
         aria-expanded={open}
