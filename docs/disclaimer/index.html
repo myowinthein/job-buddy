@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Disclaimer — Job Buddy</title>
+  <meta name="description" content="Job Buddy disclaimer — autofill accuracy limits, AI-generated content, and user responsibility." />
+  <link rel="icon" type="image/svg+xml" href="../assets/icons/icon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --brand:#4B79F7; --navy:#0D1B3E; --text:#1e293b; --muted:#64748b; --border:#e2e8f0; --bg:#f8fafc; }
+    html { scroll-behavior: smooth; }
+    body { font-family:'Inter',system-ui,-apple-system,sans-serif; color:var(--text); background:#fff; line-height:1.75; font-size:16px; }
+    .topbar { background:#fff; border-bottom:1px solid var(--border); padding:14px 24px; display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:10; }
+    .topbar a { text-decoration:none; }
+    .topbar-back { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:14px; font-weight:500; transition:color .15s; }
+    .topbar-back:hover { color:var(--brand); }
+    .topbar-sep { color:var(--border); font-size:18px; margin:0 4px; }
+    .topbar-title { color:var(--navy); font-size:14px; font-weight:600; }
+    .page { max-width:720px; margin:0 auto; padding:56px 24px 80px; }
+    .doc-label { display:inline-block; background:#EEF3FF; color:var(--brand); font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:4px 12px; border-radius:999px; margin-bottom:20px; }
+    h1 { font-size:2rem; font-weight:800; color:var(--navy); letter-spacing:-.02em; line-height:1.2; margin-bottom:8px; }
+    .effective-date { color:var(--muted); font-size:14px; margin-bottom:40px; padding-bottom:40px; border-bottom:1px solid var(--border); }
+    h2 { font-size:1.2rem; font-weight:700; color:var(--navy); margin:40px 0 12px; letter-spacing:-.01em; }
+    p { margin-bottom:16px; }
+    p:last-child { margin-bottom:0; }
+    ul,ol { margin:0 0 16px; padding-left:24px; }
+    li { margin-bottom:6px; }
+    li:last-child { margin-bottom:0; }
+    strong { font-weight:600; color:var(--navy); }
+    a { color:var(--brand); }
+    a:hover { text-decoration:underline; }
+    .related { margin-top:56px; padding-top:32px; border-top:1px solid var(--border); }
+    .related-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:14px; }
+    .related-links { display:flex; flex-wrap:wrap; gap:10px; }
+    .related-links a { font-size:14px; font-weight:500; color:var(--muted); text-decoration:none; padding:6px 14px; border:1px solid var(--border); border-radius:8px; transition:border-color .15s,color .15s; }
+    .related-links a:hover { border-color:var(--brand); color:var(--brand); }
+    .related-links a.current { color:var(--brand); border-color:var(--brand); background:#EEF3FF; pointer-events:none; }
+    .site-footer { margin-top:48px; padding-top:24px; border-top:1px solid var(--border); font-size:13px; color:var(--muted); display:flex; gap:16px; flex-wrap:wrap; }
+    .site-footer a { color:var(--muted); text-decoration:none; }
+    .site-footer a:hover { color:var(--brand); }
+  </style>
+</head>
+<body>
+
+  <nav class="topbar">
+    <a href="../" class="topbar-back">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+        <path d="M9 2L4 7L9 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Job Buddy
+    </a>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-title">Disclaimer</span>
+  </nav>
+
+  <main class="page">
+    <span class="doc-label">Legal</span>
+    <h1>Disclaimer</h1>
+    <p class="effective-date"><strong>Effective date:</strong> June 27, 2026</p>
+
+    <h2>Nature of the tool</h2>
+    <p>Job Buddy is an autofill convenience tool. It reads information from a profile you create and attempts to fill corresponding fields on job application forms. It is not a recruitment service, career advisor, employment agency, or professional advisory service of any kind.</p>
+
+    <h2>No guarantee of accuracy</h2>
+    <p>Job Buddy's field-matching is based on automated heuristics — HTML attributes, label text, dictionary matching, and fuzzy string comparison. This process is imperfect. Job Buddy may:</p>
+    <ul>
+      <li>Fill a field with the wrong profile value.</li>
+      <li>Fail to fill a field it should have filled.</li>
+      <li>Miss fields that are hidden, dynamically loaded, or built with non-standard components.</li>
+    </ul>
+    <p><strong>You must review every field Job Buddy fills before submitting any application.</strong> Job Buddy never submits a form on your behalf, but it is your responsibility to verify the content before you do.</p>
+
+    <h2>AI-generated content</h2>
+    <p>Job Buddy includes optional AI-assisted features (Resume Import and AI Autofill assist) that use Google's Gemini API via an API key you supply. AI-generated suggestions — including fields extracted from your résumé and field-match suggestions during autofill — are produced by a large language model and may be inaccurate, incomplete, outdated, or inappropriate.</p>
+    <ul>
+      <li>AI suggestions are a starting point, not a verified output.</li>
+      <li>Job Buddy does not independently verify any value produced by the AI.</li>
+      <li>You are solely responsible for reviewing, correcting, and accepting or rejecting every AI-generated suggestion before it is saved to your profile or submitted on a form.</li>
+    </ul>
+
+    <h2>No employment advice</h2>
+    <p>Job Buddy does not provide advice on how to complete job applications, what information to disclose, how to present your experience, or any other aspect of the job-seeking process. Nothing produced by Job Buddy — including AI-generated extractions or autofill suggestions — constitutes career, legal, or employment advice.</p>
+
+    <h2>Special category data</h2>
+    <p>Job Buddy's profile includes optional fields for gender, ethnicity, veteran status, and disability status. These fields exist because many job application forms include equivalent equal-opportunity employment questions. You are solely responsible for deciding whether and how to complete these fields on any application, and for understanding the implications of disclosing this information in the jurisdiction and context in which you are applying.</p>
+
+    <h2>Third-party platforms</h2>
+    <p>Job Buddy operates on third-party websites and applicant tracking systems that the developer has no control over. The developer makes no representation that Job Buddy is compatible with, permitted by, or endorsed by any specific platform, employer, or job board.</p>
+
+    <h2>User responsibility</h2>
+    <p>By using Job Buddy, you accept full responsibility for:</p>
+    <ul>
+      <li>The accuracy and completeness of the information in your profile.</li>
+      <li>Reviewing all autofilled fields before submitting any application.</li>
+      <li>Complying with the terms and policies of any platform you use Job Buddy on.</li>
+      <li>Any outcome — positive or negative — resulting from an application submitted with Job Buddy's assistance.</li>
+    </ul>
+
+    <h2>Limitation of liability</h2>
+    <p>To the fullest extent permitted by law, the developer of Job Buddy accepts no liability for incorrect, incomplete, or misleading job applications, missed opportunities, or any other consequence arising from reliance on Job Buddy or its AI-generated suggestions.</p>
+
+    <h2>Contact</h2>
+    <p>For questions, please open an issue on the GitHub repository:</p>
+    <p><a href="https://github.com/myowinthein/job-buddy/issues" target="_blank" rel="noopener">https://github.com/myowinthein/job-buddy/issues</a></p>
+
+    <nav class="related">
+      <p class="related-label">Related documents</p>
+      <div class="related-links">
+        <a href="../privacy/">Privacy Policy</a>
+        <a href="../terms/">Terms of Service</a>
+        <a href="../eula/">EULA</a>
+        <a href="../disclaimer/" class="current">Disclaimer</a>
+      </div>
+    </nav>
+
+    <footer class="site-footer">
+      <a href="../">← Back to Job Buddy</a>
+      <a href="https://github.com/myowinthein/job-buddy" target="_blank" rel="noopener">GitHub</a>
+      <span>MIT License © 2026 Myo Win Thein</span>
+    </footer>
+  </main>
+
+</body>
+</html>
