@@ -4,12 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>Job Buddy – Fill any job application form. Once, not every time.</title>
+  <title>Job Buddy – Fill any job form. Once, not every time.</title>
   <meta name="description" content="Set up your profile once. Job Buddy reads any job application form, matches every field to your profile, and fills what it can, with color-coded confidence on every answer. Free Chrome extension." />
 
   <!-- Open Graph -->
   <meta property="og:type"        content="website" />
-  <meta property="og:title"       content="Job Buddy – Fill any job application form. Once, not every time." />
+  <meta property="og:title"       content="Job Buddy – Fill any job form. Once, not every time." />
   <meta property="og:description" content="Set up your profile once. Job Buddy auto-fills job application forms with color-coded confidence. Free, local-first Chrome extension." />
   <meta property="og:image"       content="./assets/images/banner.webp" />
   <meta property="og:image:width"  content="1280" />
@@ -17,7 +17,7 @@
 
   <!-- Twitter / X -->
   <meta name="twitter:card"        content="summary_large_image" />
-  <meta name="twitter:title"       content="Job Buddy – Fill any job application form. Once, not every time." />
+  <meta name="twitter:title"       content="Job Buddy – Fill any job form. Once, not every time." />
   <meta name="twitter:description" content="Auto-fill job application forms from a profile you set up once. Free Chrome extension." />
   <meta name="twitter:image"       content="./assets/images/banner.webp" />
 
@@ -63,10 +63,9 @@
 
     /* Nav blur */
     .nav-blur {
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      background: rgba(255,255,255,0.85);
+      background: rgba(255,255,255,0.97);
       border-bottom: 1px solid rgba(75,121,247,0.10);
+      transform: translateZ(0); /* own compositing layer — no repaint on scroll */
     }
 
     /* Hero gradient */
@@ -265,7 +264,7 @@
 
       <!-- Headline -->
       <h1 class="text-white text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05] mb-6">
-        <span class="block">Fill any job application form.</span>
+        <span class="block">Fill any job form.</span>
         <span class="text-brand-muted">Once, not every time.</span>
       </h1>
 
@@ -360,7 +359,7 @@
           </div>
           <h3 class="font-bold text-xl text-navy mb-3">Build your profile</h3>
           <p class="text-navy/60 leading-relaxed text-[15px]">
-            Fill in your details once: name, address, work history, education, salary expectations, work authorization per country, and more. Or upload your résumé and let AI extract it for you.
+            Fill in your details once: name, address, work history, education, salary expectations, work authorization per country, and more. Or upload your résumé and Job Buddy reads it, pulling your roles, education, and contact details into a review screen.
           </p>
           <div class="mt-6 rounded-xl overflow-hidden border border-navy/5 shadow-card">
             <img src="./assets/images/1.webp"
@@ -472,9 +471,9 @@
               <path d="M10 2L11.5 6.5H16.5L12.5 9L14 13.5L10 11L6 13.5L7.5 9L3.5 6.5H8.5L10 2Z" stroke="#7C3AED" stroke-width="1.5" stroke-linejoin="round"/>
             </svg>
           </div>
-          <h3 class="font-bold text-navy text-[17px] mb-2">AI résumé import</h3>
+          <h3 class="font-bold text-navy text-[17px] mb-2">Résumé import</h3>
           <p class="text-navy/55 text-sm leading-relaxed">
-            Upload a PDF or DOCX and Gemini AI extracts your work history, education, skills, and contact details. Review each suggestion field-by-field before saving. Nothing writes until you say so.
+            Upload a PDF or DOCX and Gemini reads your résumé end-to-end, pulling out your work history, education, skills, and contact details into a field-by-field review. Nothing saves until you confirm.
           </p>
         </div>
 
@@ -520,12 +519,12 @@
       <div class="grid md:grid-cols-2 gap-12 items-center">
 
         <div>
-          <span class="inline-block bg-violet-100 text-violet-700 text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full mb-5">AI-powered</span>
+          <span class="inline-block bg-violet-100 text-violet-700 text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full mb-5">Reads your résumé</span>
           <h2 class="text-navy text-3xl md:text-4xl font-extrabold tracking-tight leading-tight mb-5">
             Import your résumé.<br />Skip the typing.
           </h2>
           <p class="text-navy/60 leading-relaxed mb-6">
-            Upload a PDF or DOCX résumé and Gemini AI reads it end-to-end, extracting your work history, education, contact details, and links. Hyperlinks are pulled directly from the PDF annotation layer so your LinkedIn and portfolio URLs come through exactly as written.
+            Upload a PDF or DOCX and Gemini reads it end-to-end, pulling your work history, education, contact details, and links into a review screen. Hyperlinks come directly from the PDF annotation layer, so your LinkedIn and portfolio URLs arrive exactly as written.
           </p>
           <ul class="space-y-3">
             <li class="flex items-start gap-3">
@@ -547,7 +546,7 @@
                 <circle cx="8" cy="8" r="7" fill="#d1fae5"/>
                 <path d="M5 8L7 10L11 6" stroke="#059669" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span class="text-navy/70 text-sm leading-relaxed">Works without an API key. AI features are always optional.</span>
+              <span class="text-navy/70 text-sm leading-relaxed">The rule-based autofill works without any key. Resume import is an optional extra.</span>
             </li>
           </ul>
         </div>
@@ -627,8 +626,11 @@
       </div>
 
       <p class="text-slate-500 text-sm">
-        Cloud Backup, AI résumé import, and AI autofill assist are optional and off by default.
-        They only activate if you explicitly enable them. &nbsp;<a href="./privacy/" class="text-slate-400 underline hover:text-white transition-colors">Read the full privacy policy →</a>
+        Cloud Backup, résumé import, and autofill assist are optional and off by default.
+        They only activate if you explicitly enable them.
+      </p>
+      <p class="mt-3">
+        <a href="./privacy/" class="text-slate-400 text-sm underline hover:text-white transition-colors">Read the full privacy policy →</a>
       </p>
 
     </div>
