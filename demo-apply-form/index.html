@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Job Buddy Demo Application</title>
+  <link rel="stylesheet" href="./assets/css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#" aria-label="Northstar Labs Careers">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Northstar Labs</span>
+    </a>
+
+    <a class="privacy-link" href="#">
+      <span aria-hidden="true">🔒</span>
+      Privacy Policy
+    </a>
+  </header>
+
+  <main class="page-shell">
+    <section class="application-card">
+      <a class="back-link" href="#">‹ Job Openings</a>
+
+      <div class="job-heading">
+        <h1>Senior Software Engineer</h1>
+        <p>Engineering · Remote · Bangkok, Thailand</p>
+      </div>
+
+      <form class="application-form" id="applicationForm">
+        <section class="form-section">
+          <h2>Personal Information</h2>
+
+          <div class="grid two">
+            <label>
+              First Name*
+              <input name="firstName" autocomplete="given-name" />
+            </label>
+
+            <label>
+              Last Name*
+              <input name="lastName" autocomplete="family-name" />
+            </label>
+          </div>
+
+          <label class="medium">
+            Email*
+            <input type="email" name="email" autocomplete="email" />
+          </label>
+
+          <label class="small">
+            Phone*
+            <input type="tel" name="phone" autocomplete="tel" />
+          </label>
+
+          <label class="medium">
+            Address*
+            <input name="address" autocomplete="street-address" />
+          </label>
+
+          <div class="grid three">
+            <label>
+              City*
+              <input name="city" autocomplete="address-level2" />
+            </label>
+
+            <label>
+              State / Province*
+              <input name="state" autocomplete="address-level1" />
+            </label>
+
+            <label>
+              Postal Code*
+              <input name="postalCode" autocomplete="postal-code" />
+            </label>
+          </div>
+
+          <label class="small">
+            Country*
+            <select name="country" autocomplete="country-name">
+              <option value="">Select country</option>
+              <option selected>Thailand</option>
+              <option>Singapore</option>
+              <option>Germany</option>
+              <option>Netherlands</option>
+              <option>United Kingdom</option>
+              <option>United States</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="form-section">
+          <h2>Professional Details</h2>
+
+          <label class="medium">
+            LinkedIn Profile
+            <input name="linkedin" autocomplete="url" placeholder="https://linkedin.com/in/yourname" />
+          </label>
+
+          <label class="medium">
+            Portfolio / Website
+            <input name="portfolio" autocomplete="url" placeholder="https://yourwebsite.com" />
+          </label>
+
+          <div class="grid two">
+            <label>
+              Current Salary
+              <input name="currentSalary" inputmode="numeric" />
+            </label>
+
+            <label>
+              Expected Salary
+              <input name="expectedSalary" inputmode="numeric" />
+            </label>
+          </div>
+
+          <label class="medium">
+            Work Authorization*
+            <select name="workAuthorization">
+              <option value="">Select status</option>
+              <option>Authorized to work</option>
+              <option>Requires visa sponsorship</option>
+              <option>Open to relocation</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="form-section">
+          <h2>Experience</h2>
+
+          <label class="medium">
+            Current Company
+            <input name="currentCompany" />
+          </label>
+
+          <label class="medium">
+            Current Job Title
+            <input name="currentTitle" />
+          </label>
+
+          <label>
+            Career Summary
+            <textarea name="summary" rows="5" placeholder="Briefly describe your relevant experience."></textarea>
+          </label>
+        </section>
+
+        <section class="form-section">
+          <h2>Education</h2>
+
+          <div class="grid two">
+            <label>
+              School / University
+              <input name="school" />
+            </label>
+
+            <label>
+              Degree
+              <input name="degree" />
+            </label>
+          </div>
+
+          <label class="medium">
+            Field of Study
+            <input name="fieldOfStudy" />
+          </label>
+        </section>
+
+        <section class="form-section">
+          <h2>Documents</h2>
+
+          <label class="upload-box">
+            <input type="file" name="resume" accept=".pdf,.doc,.docx" />
+            <span class="upload-title">Upload CV / Resume*</span>
+            <span class="upload-help">PDF, DOC, or DOCX accepted</span>
+          </label>
+        </section>
+
+        <div class="form-actions">
+          <button type="button" class="secondary-button" id="resetButton">Clear form</button>
+          <button type="submit" class="primary-button">Submit Application</button>
+        </div>
+      </form>
+    </section>
+
+    <aside class="job-sidebar">
+      <section class="sidebar-card">
+        <button class="outline-button">‹ View Job Description</button>
+
+        <div class="divider"></div>
+
+        <label class="copy-field">
+          Link to This Job
+          <input readonly value="https://demo.jobbuddy.app/jobs/senior-software-engineer" />
+        </label>
+
+        <div class="social-row" aria-label="Share links">
+          <button aria-label="LinkedIn">in</button>
+          <button aria-label="X">𝕏</button>
+          <button aria-label="Facebook">f</button>
+        </div>
+      </section>
+
+      <section class="summary-list">
+        <dl>
+          <div>
+            <dt>Location</dt>
+            <dd>Remote · Bangkok, Thailand</dd>
+          </div>
+          <div>
+            <dt>Department</dt>
+            <dd>Engineering</dd>
+          </div>
+          <div>
+            <dt>Employment Type</dt>
+            <dd>Full Time</dd>
+          </div>
+          <div>
+            <dt>Minimum Experience</dt>
+            <dd>Experienced</dd>
+          </div>
+          <div>
+            <dt>Work Arrangement</dt>
+            <dd>Hybrid / Remote</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="job-buddy-panel">
+        <div class="jb-icon">J</div>
+        <div>
+          <h2>Job Buddy Demo</h2>
+          <p>This page is built for testing autofill, highlights, missing data states, and screenshots.</p>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <script src="./assets/js/main.js"></script>
+</body>
+</html>
