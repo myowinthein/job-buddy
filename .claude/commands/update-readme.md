@@ -138,3 +138,8 @@ Propose changes per affected section. Ask for confirmation before writing.
 README.md = human-facing documentation (contributors, GitHub visitors, new users).
 Not a changelog. Not a technical spec. Not a deployment manual.
 Audience is humans, not future Claude sessions — keep it clear and scannable.
+
+**Writing style**
+- Use em-dashes sparingly. Only use one when no other punctuation
+  (comma, semicolon, colon, or a new sentence) works as well.
+  When in doubt, restructure the sentence instead.
