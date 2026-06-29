@@ -1007,12 +1007,13 @@ function showNoDataCta(element: HTMLElement, label: string, fieldPath?: string):
   picker.appendChild(title);
 
   const help = mk('div', {
-    fontSize:   '12px',
-    color:      t.secondaryText,
+    fontSize:    '12px',
+    color:       t.secondaryText,
     marginBottom: '12px',
-    lineHeight: '1.4',
+    lineHeight:  '1.4',
+    whiteSpace:  'nowrap',
   });
-  help.textContent = "Add it to your profile and we'll fill it next time.";
+  help.textContent = "Add it to your profile to fill next time.";
   picker.appendChild(help);
 
   const button = document.createElement('button');

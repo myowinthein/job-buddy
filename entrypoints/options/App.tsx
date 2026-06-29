@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Profile } from '@/src/types/profile';
 import { getProfile, saveProfile } from '@/src/utils/storage';
 import { calculateCompletion, getSectionCompletion, FIELD_FOCUS_IDS, resolvePathFocusTarget } from '@/src/utils/profileCompletion';
@@ -98,9 +98,11 @@ function App() {
   //   1. string 'gemini-api-key' — legacy popup shortcut to the AI key input
   //   2. { type: 'profilePath', path: 'personal.firstName' } — from the
   //      noData picker CTA, deep-links to the missing field's section + input.
-  // Only runs once after the initial profile load.
-  useEffect(() => {
-    if (loading) return;
+  // Runs after initial profile load AND on visibilitychange — the latter covers
+  // the case where the Options tab was already open when the user clicked
+  // "Go to Profile", so OPEN_OPTIONS just focused the existing tab without a
+  // reload.
+  const applyFocusTarget = useCallback(() => {
     try {
       chrome.storage.session.get('jb:focusOnLoad', (r) => {
         const target = r?.['jb:focusOnLoad'];
@@ -126,7 +128,20 @@ function App() {
         }
       });
     } catch { /* session storage unavailable — no-op */ }
-  }, [loading]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (loading) return;
+    applyFocusTarget();
+  }, [loading, applyFocusTarget]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') applyFocusTarget();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [applyFocusTarget]);
 
   // ── Persist active section ──────────────────────────────────────────────────
   useEffect(() => {
