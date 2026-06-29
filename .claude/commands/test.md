@@ -6,17 +6,21 @@ Scan for test framework configuration files and dependencies.
 
 If framework detected → proceed to Assessment.
 
-If no framework detected, present single-select recommendation:
+If no framework detected, use AskUserQuestion:
+  AskUserQuestion:
+    question: "No test framework detected. Which would you like to set up? (based on detected stack)"
+    header:   "Framework"
+    multiSelect: false
+    options:
+      - label: "{recommended framework} (Recommended)"
+        description: "{why it fits this stack}"
+      - label: "{alternative}"
+        description: "{brief reason}"
+      - label: "{alternative}"
+        description: "{brief reason}"
+      - label: "Skip"
+        description: "I'll set up testing manually"
 
-  No test framework detected. Which would you like to use?
-
-  Based on detected stack:
-  1. {recommended framework} (recommended)
-  2. {alternative}
-  3. {alternative}
-  4. Skip — I'll set up testing manually
-
-Wait for selection.
 If Skip selected → exit and inform user:
   "Configure a test framework and re-run /test."
 If framework selected → inform user how to install, then proceed to Assessment.
@@ -33,28 +37,59 @@ Check recent git activity and existing test coverage:
 
 Based on current state, determine which options are valid:
 
+Use AskUserQuestion (single-select) based on current state:
+
 If no existing tests found:
-  Present:
-  [One sentence — e.g. "No existing tests found. Full scan recommended."]
-  1. Full  → scan entire project for missing tests
-  2. Skip  → no tests needed
+  AskUserQuestion:
+    question: "{one sentence, e.g. 'No existing tests found — a full scan is recommended.'}"
+    header:   "Test scope"
+    multiSelect: false
+    options:
+      - label: "Full scan (Recommended)"
+        description: "Scan entire project for missing tests"
+      - label: "Skip"
+        description: "No tests needed"
 
 If existing tests found but no recent changes:
-  Present:
-  [One sentence describing coverage status and recommendation]
-  1. Full  → scan entire project for missing tests (recommended)
-  2. Skip  → no tests needed
+  AskUserQuestion:
+    question: "{one sentence describing coverage status and recommendation}"
+    header:   "Test scope"
+    multiSelect: false
+    options:
+      - label: "Full scan (Recommended)"
+        description: "Scan entire project for missing tests"
+      - label: "Skip"
+        description: "No tests needed"
 
 If existing tests found and recent changes detected:
   Form recommendation (Targeted or Full) based on gap significance.
-  Pre-select recommended option.
-  Present:
-  [One sentence describing coverage status and recommendation]
-  1. Targeted → write tests for recent changes only (recommended)
-  2. Full     → scan entire project for missing tests
-  3. Skip     → no tests needed
+  Put recommended option first.
 
-Wait for user selection before proceeding.
+  Targeted is the recommendation:
+  AskUserQuestion:
+    question: "{one sentence describing coverage status and recommendation}"
+    header:   "Test scope"
+    multiSelect: false
+    options:
+      - label: "Targeted (Recommended)"
+        description: "Write tests for recently changed files only"
+      - label: "Full scan"
+        description: "Scan entire project for missing tests"
+      - label: "Skip"
+        description: "No tests needed"
+
+  Full is the recommendation:
+  AskUserQuestion:
+    question: "{one sentence describing coverage status and recommendation}"
+    header:   "Test scope"
+    multiSelect: false
+    options:
+      - label: "Full scan (Recommended)"
+        description: "Scan entire project for missing tests"
+      - label: "Targeted"
+        description: "Write tests for recently changed files only"
+      - label: "Skip"
+        description: "No tests needed"
 
 ---
 
@@ -69,9 +104,17 @@ Before writing, present test plan:
   - {file}: {what will be tested}
   - {file}: {what will be tested}
 
-  Confirm? (yes / no)
+  AskUserQuestion:
+    question: "I will write tests for:\n- {file}: {what will be tested}\n- {file}: {what will be tested}\n\nProceed?"
+    header:   "Confirm"
+    multiSelect: false
+    options:
+      - label: "Write tests (Recommended)"
+        description: "Proceed with the test plan above"
+      - label: "Cancel"
+        description: "Exit without writing tests"
 
-Wait for confirmation before proceeding.
+Wait for response before proceeding.
 
 Write tests that reflect actual proven behavior — not speculative edge cases.
 Follow existing test conventions and file structure in the project.
@@ -118,17 +161,20 @@ LOW PRIORITY         {X untested}
 TOTAL: {N} untested areas found
 ─────────────────────────────────
 
-Then present multi-select priority selection:
+Then use AskUserQuestion for priority selection:
+  AskUserQuestion:
+    question: "Which priorities to cover?"
+    header:   "Priorities"
+    multiSelect: true
+    options:
+      - label: "High Priority"
+        description: "{N} areas — payment, auth, core business logic"
+      - label: "Medium Priority"
+        description: "{N} areas — API endpoints, data transformation"
+      - label: "Low Priority"
+        description: "{N} areas — everything else"
 
-  Which priorities to cover? (select all that apply)
-
-  [ ] 1. High Priority    (N areas)
-  [ ] 2. Medium Priority  (N areas)
-  [ ] 3. Low Priority     (N areas)
-  [ ] 4. All
-  [ ] 5. Skip             → exit without writing tests
-
-  Reply with numbers or names — e.g. "1 2" or "high medium"
+  Selecting none = skip. Do not add an explicit All or Skip option.
 
 Wait for response before proceeding.
 
