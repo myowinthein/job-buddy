@@ -1035,17 +1035,11 @@ function showNoDataCta(element: HTMLElement, label: string, fieldPath?: string):
   button.addEventListener('mouseleave', () => { button.style.backgroundColor = t.buttonBg; });
   button.addEventListener('mousedown', (e) => {
     e.preventDefault();
-    // Hand the target path to the Options page via session storage. The page
-    // reads `jb:focusOnLoad` once after mount, then clears it. Best-effort —
-    // if session storage is unavailable the page still opens, it just won't
-    // deep-link.
-    if (fieldPath) {
-      try {
-        chrome.storage.session.set({ 'jb:focusOnLoad': { type: 'profilePath', path: fieldPath } });
-      } catch { /* session storage unavailable — fall through to OPEN_OPTIONS */ }
-    }
+    // Pass focusPath through the background so the background can write to
+    // chrome.storage.session — content scripts cannot write to session storage
+    // without host_permissions for the page URL, but the service worker can.
     try {
-      chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' });
+      chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS', focusPath: fieldPath });
     } catch (err) {
       console.warn('[Job Buddy] OPEN_OPTIONS dispatch failed:', err);
     }
