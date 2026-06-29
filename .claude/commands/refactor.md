@@ -20,9 +20,16 @@ Current branch is {branch}. Please switch and re-run."
 Create a dedicated branch for refactoring changes:
   refactor/{YYYYMMDD-HHMMSS}
 
-If an existing refactor/* branch is detected, ask:
-1. Continue on {branch}
-2. Create new refactor branch
+If an existing refactor/* branch is detected, use AskUserQuestion:
+  AskUserQuestion:
+    question: "An existing refactor branch was found: {branch}. Continue on it or start fresh?"
+    header:   "Branch"
+    multiSelect: false
+    options:
+      - label: "Continue on {branch} (Recommended)"
+        description: "Switch to the existing branch and continue refactoring"
+      - label: "Create new branch"
+        description: "Start a new refactor/{YYYYMMDD-HHMMSS} branch"
 
 On selection, create or switch to refactor branch and proceed.
 
@@ -163,15 +170,20 @@ Inform human and wait for resolution before continuing.
 
 ## Step 7 — Merge and cleanup
 
-Present single-select option to human:
+Use AskUserQuestion:
+  AskUserQuestion:
+    question: "Refactoring applied. What would you like to do next?"
+    header:   "Next step"
+    multiSelect: false
+    options:
+      - label: "Merge to main (Recommended)"
+        description: "Merge refactor branch into main automatically and delete the branch"
+      - label: "Open PR"
+        description: "Push branch and open a pull request for review"
+      - label: "Leave branch"
+        description: "Leave the refactor branch as-is for now"
 
-  Refactoring applied. What would you like to do next?
-
-  1. Merge to main automatically and delete refactor branch
-  2. Push branch and open PR for review
-  3. Leave branch as-is for now
-
-Wait for selection before proceeding.
+Wait for response before proceeding.
 
 **Option 1 — Auto merge:**
 - Switch to main
