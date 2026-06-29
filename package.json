@@ -19,7 +19,8 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "format": "prettier --write .",
     "postinstall": "wxt prepare",
-    "serve:landing": "npx serve docs"
+    "serve:landing": "npx serve docs",
+    "serve:demo": "python3 -m http.server 8000 --directory demo-apply-form"
   },
   "dependencies": {
     "fastest-levenshtein": "^1.0.16",
