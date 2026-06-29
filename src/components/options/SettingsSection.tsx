@@ -812,7 +812,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           : 'Your profile data stays on this device and is never sent anywhere.'
         }{' '}
         <a
-          href="https://github.com/myowinthein/job-buddy/blob/main/PRIVACY.md"
+          href="https://myowinthein.github.io/job-buddy/privacy/"
           target="_blank"
           rel="noopener noreferrer"
           className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline font-medium"
@@ -821,7 +821,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         </a>
         {' · '}
         <a
-          href="https://github.com/myowinthein/job-buddy/blob/main/TERMS.md"
+          href="https://myowinthein.github.io/job-buddy/terms/"
           target="_blank"
           rel="noopener noreferrer"
           className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline font-medium"
@@ -835,7 +835,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           rel="noopener noreferrer"
           className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline font-medium"
         >
-          Support this project ☕
+          Support on Ko-fi ☕
         </a>
       </p>
 
@@ -906,8 +906,10 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             </div>
 
             <div className="px-6 py-5">
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                This will permanently delete your profile, learned autofill mappings, and all data from this browser.
+              </p>
               <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
-                This will permanently delete your profile, learned autofill mappings, and all data from this browser.{' '}
                 Consider{' '}
                 <button type="button" className="underline hover:text-gray-900 dark:hover:text-gray-100 transition-colors" onClick={handleExport}>
                   exporting your profile first
