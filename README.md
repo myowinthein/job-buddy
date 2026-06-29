@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/myowinthein/job-buddy/actions/workflows/ci.yml/badge.svg)](https://github.com/myowinthein/job-buddy/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.9.0-informational.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-1.9.1-informational.svg)](package.json)
 
 > Chrome extension that autofills job application forms from a profile you set up once.
 
