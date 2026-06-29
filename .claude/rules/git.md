@@ -4,7 +4,7 @@
 
 ## Solo Mode
 
-Activate by declaring in CLAUDE.md:
+Activate by declaring in CLAUDE.md (Project Config section):
   git-solo: true
 
 When active:

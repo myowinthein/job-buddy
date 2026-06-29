@@ -86,13 +86,28 @@ Before writing anything, investigate in this order:
 7. Identify operational context and common development workflows
 8. Review existing docs, README, .claude/rules
 
-Then write CLAUDE.md using the six-section schema:
+Then write CLAUDE.md using the seven-section schema:
 1. Project Identity (name, stack, purpose, blast radius)
-2. Dev Commands (install, run, test single file, migrate, logs)
-3. Architecture Pointers (key files with one-line why, not summaries)
-4. Behavior Rules (autonomy model, confirmation gates, test requirements)
-5. Hard Safety Rules (invariants, never-do list — keep brief, detail in .claude/rules/safety.md)
-6. Known Traps (initially empty or inferred from README warnings)
+2. Project Config (flag-style declarations read by .claude/rules, e.g. `git-solo: true`; keep heading even if empty)
+3. Dev Commands (install, run, test single file, migrate, logs)
+4. Architecture Pointers (key files with one-line why, not summaries)
+5. Behavior Rules (autonomy model, confirmation gates, test requirements)
+6. Hard Safety Rules (invariants, never-do list — keep brief, detail in .claude/rules/safety.md)
+7. Known Traps (initially empty or inferred from README warnings)
+
+Before writing the Project Config section, use AskUserQuestion to set git mode:
+  AskUserQuestion:
+    question: "Which git workflow does this project use?"
+    header:   "Git mode"
+    multiSelect: false
+    options:
+      - label: "GitHub Flow"
+        description: "Feature branches and PRs into main (default in .claude/rules/git.md)"
+      - label: "Solo"
+        description: "Commit direct to main; no feature branches, no PRs"
+
+  If Solo selected → write `git-solo: true` under Project Config.
+  If GitHub Flow selected → leave Project Config empty (GitHub Flow is the default).
 
 CLAUDE.md is not: a README, a file listing, a code walkthrough,
 a technical spec, or a changelog. Only include information a future

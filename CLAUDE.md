@@ -8,11 +8,17 @@ Chrome MV3 browser extension (WXT framework) that auto-fills job application for
 
 **Blast radius:** Pushing a `v*.*.*` tag triggers `release.yml`. The tag's annotation message controls CWS submission: `"release"` submits for review immediately, `"release:draft"` uploads as a draft only. There is no rollback CLI; unpublishing requires the CWS dashboard.
 
-**Git mode:** `git-solo: true` — commits go directly to main; no feature branches or PRs required.
+**Git mode:** Solo. Commits go directly to main; no feature branches or PRs required.
 
 ---
 
-## 2. Dev Commands
+## 2. Project Config
+
+- `git-solo: true` — commit directly to `main`, no feature branches, no PRs. See `.claude/rules/git.md`.
+
+---
+
+## 3. Dev Commands
 
 ```bash
 pnpm dev           # dev build → .output/chrome-mv3-dev/ (load unpacked in Chrome)
@@ -29,7 +35,7 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 
 ---
 
-## 3. Architecture Pointers
+## 4. Architecture Pointers
 
 **Entrypoints** (`entrypoints/`):
 - `background.ts` — service worker; routes `OPEN_OPTIONS` from content script, retries pending Drive sync on browser startup
@@ -64,7 +70,7 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 
 ---
 
-## 4. Behavior Rules
+## 5. Behavior Rules
 
 **Autofill confidence thresholds:** ≥0.85 → green (fill, no picker) · 0.60–0.84 → yellow (fill + picker) · <0.60 → red (no fill + picker) · ≥0.60 but profile value empty → gray/noData (no highlight, picker shows "Go to Profile" CTA). Thresholds are defined as named constants in `src/autofill/constants.ts`.
 
@@ -88,7 +94,7 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 
 ---
 
-## 5. Hard Safety Rules
+## 6. Hard Safety Rules
 
 - **Never push a `v*.*.*` tag without explicit user instruction.** Use `/ship` and confirm at each step. Tag annotation message `"release"` submits to CWS immediately; `"release:draft"` uploads as a draft only. No CLI rollback either way.
 - **Never read or print `.env.development` / `.env.production`** — they contain real OAuth client IDs.
@@ -97,7 +103,7 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 
 ---
 
-## 6. Known Traps
+## 7. Known Traps
 
 - **`MonthYearPicker` emits `onChange('')` during partial entry.** Do not treat this as a required-field error on each keystroke; enforce only at save time.
 
