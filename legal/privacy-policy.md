@@ -168,7 +168,6 @@ and never receives a copy.
 | Permission | Why it's needed |
 |---|---|
 | `storage` | To save your profile, learned field mappings, AI settings, theme preference, and Cloud Backup state in your browser's local storage. |
-| `tabs` | To identify the tab you're currently viewing and send it the Auto Fill / Clear / Status commands when you click the corresponding buttons in the popup. |
 | `identity` | To perform the Google OAuth flow if you opt in to Cloud Backup. Used only when you click Connect Google Drive in Settings. |
 | Content script on all pages | To allow the Auto Fill and field-picker features to work on whatever job application page you're using, only when you trigger them. |
 | Host access to `https://www.googleapis.com/*` | Used by Cloud Backup to upload, download, and delete your backup file inside Drive's hidden application-data folder. |
