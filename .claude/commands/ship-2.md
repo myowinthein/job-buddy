@@ -1,17 +1,3 @@
-### Init
-```shell
-# Go to the project root
-cd "[project]"
-
-# Create .claude/commands if it doesn't exist
-mkdir -p .claude/commands
-
-# Create or open sync-memory.md
-code .claude/commands/ship.md
-```
-
-### Prompt
-```text
 # ship
 
 ## Step 1 — Branch check
@@ -124,28 +110,6 @@ If Conventional Commits not detected:
 
 ---
 
-## Step 3b — Chrome Web Store submission mode (main branch only)
-
-Skip this step if on environment branch.
-
-Detect CWS pipeline: scan .github/workflows/ for a file containing
-chrome-webstore-upload-cli or CHROME_EXTENSION_ID. If none found, skip silently.
-
-If CWS pipeline detected, use AskUserQuestion:
-  AskUserQuestion:
-    question: "How should this version be submitted to the Chrome Web Store?"
-    header:   "CWS mode"
-    multiSelect: false
-    options:
-      - label: "Auto-publish (Recommended)"
-        description: "Upload and submit for review immediately"
-      - label: "Upload only"
-        description: "Upload as draft — submit manually from the CWS dashboard (use when updating store listing or screenshots)"
-
-  Wait for response before proceeding.
-
----
-
 ## Step 4 — Run tests
 
 Run full test suite using detected test framework.
@@ -168,8 +132,7 @@ If found, update to {version}. Skip silently if none found.
 Commit, tag, and push:
 - git add -A
 - git commit -m "chore(release): bump version to {version}"
-- If auto-publish selected: git tag -a v{version} -m "release"
-- If upload only selected:  git tag -a v{version} -m "release:draft"
+- git tag -a v{version} -m "Release v{version}"
 - git push origin HEAD
 - git push origin v{version}
 
@@ -215,4 +178,3 @@ If on environment branch:
   - Branch pushed:         {branch}
   - Promoted to:           {next environment}
   - Deployment triggered:  yes/no (based on CI/CD presence)
-```
