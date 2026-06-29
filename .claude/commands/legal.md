@@ -74,9 +74,9 @@ Generate if financial, health, legal advice or AI recommendations detected:
 Present to user before generating:
 
 "Based on project scan I will generate:
-- privacy-policy.md (always required)
-- terms.md (always required)
-- {conditional documents and why}
+- docs/privacy/index.html   — Privacy Policy (always required)
+- docs/terms/index.html     — Terms of Service (always required)
+- {conditional documents and why, with full docs/ paths}
 
 Jurisdiction: GDPR
 Tone: plain English
@@ -90,9 +90,37 @@ Wait for confirmation before proceeding.
 ## Step 4 — Generate documents
 
 Generate each document in plain English, GDPR compliant.
-Write to legal/ folder.
+Write to docs/ as standalone HTML files. Do not generate Markdown.
 
-**privacy-policy.md must cover:**
+Each file must match the format of existing docs legal pages:
+- Path: docs/{slug}/index.html
+  Slug mapping: privacy-policy → privacy, terms → terms,
+                eula → eula, disclaimer → disclaimer,
+                cookie-policy → cookie-policy, refund-policy → refund-policy
+- Standalone <!DOCTYPE html> with no build step or frontmatter
+- Inline <style> block using CSS variables:
+    --brand:#4B79F7  --navy:#0D1B3E  --text:#1e293b
+    --muted:#64748b  --border:#e2e8f0  --bg:#f8fafc
+- Sticky topbar: back arrow linking to ../ labelled "Job Buddy",
+  separator, breadcrumb with document title
+- Inter font via Google Fonts (weights 400;500;600;700)
+- Favicon: <link rel="icon" href="../assets/icons/icon.svg">
+- <span class="doc-label">Legal</span> badge before <h1>
+- <p class="effective-date"> immediately after <h1>
+- .related nav at bottom with links to all 4 standard docs
+  (privacy, terms, eula, disclaimer); add class="current" to the
+  link matching the page being generated
+- .site-footer with: ← Back to Job Buddy (../), GitHub link,
+  copyright line
+- All paths relative: ../ for home, ../assets/icons/icon.svg,
+  ../privacy/, ../terms/, ../eula/, ../disclaimer/
+
+**Writing style**
+- Use em-dashes sparingly. Only use one when no other punctuation
+  (comma, semicolon, colon, or a new sentence) works as well.
+  When in doubt, restructure the sentence instead.
+
+**docs/privacy/index.html must cover:**
 - What data is collected and why
 - How data is stored and protected
 - Whether data is shared with third parties (name them)
@@ -102,7 +130,7 @@ Write to legal/ folder.
 - Cookie usage (if applicable)
 - Last updated date
 
-**terms.md must cover:**
+**docs/terms/index.html must cover:**
 - What the service is and what it does
 - Acceptable use — what users can and cannot do
 - IP ownership — who owns the content and the software
@@ -112,19 +140,19 @@ Write to legal/ folder.
 - Contact information
 - Last updated date
 
-**cookie-policy.md must cover:**
+**docs/cookie-policy/index.html must cover:**
 - What cookies are used and why
 - Which are essential vs non-essential
 - How users can control cookies
 - Third party cookies (name them)
 
-**refund-policy.md must cover:**
+**docs/refund-policy/index.html must cover:**
 - Refund eligibility conditions
 - Refund request process and timeframe
 - Non-refundable items or conditions
 - Contact information for refund requests
 
-**eula.md must cover:**
+**docs/eula/index.html must cover:**
 - License grant — what users are permitted to do
 - Restrictions — what users cannot do
 - IP ownership
@@ -132,7 +160,7 @@ Write to legal/ folder.
 - Limitation of liability
 - Termination conditions
 
-**disclaimer.md must cover:**
+**docs/disclaimer/index.html must cover:**
 - Nature of the information provided
 - No professional advice claim
 - Accuracy limitations
@@ -141,23 +169,24 @@ Write to legal/ folder.
 
 ---
 
-## Step 5 — Generate legal/README.md
+## Step 5 — Update docs/index.html footer
 
-Create legal/README.md with the following content:
-- A title: "Legal Documents"
-- A table listing each generated document with columns: Document, Purpose, Last reviewed
-- A line stating the jurisdiction: GDPR
-- A line advising when to regenerate: "Regenerate with /legal when significant features are added."
+The landing page footer (docs/index.html) contains links to legal documents.
+Check whether it already links to each newly generated document.
+If any generated document is not yet linked in the footer, add it.
 
-Only include rows for documents that were actually generated.
-Use current date for Last reviewed column.
+Privacy Policy and Terms of Service are present by default. Only add links
+for documents not already present (e.g. EULA, Disclaimer, Cookie Policy).
+
+Cross-document navigation between legal pages is handled by the .related
+nav already included in each generated HTML file — no separate index needed.
 
 ---
 
 ## Step 6 — Commit
 
 Commit all generated documents:
-  docs(legal): generate legal documents for v{version}
+  docs(legal): regenerate legal pages under docs/
 
 ---
 
@@ -169,7 +198,7 @@ LEGAL COMPLETE
 Generated:
 - {list of documents generated}
 
-Location:     legal/
+Location:     docs/{slug}/index.html for each generated page
 Jurisdiction: GDPR
 Tone:         plain English
 Committed:    yes
