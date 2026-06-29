@@ -26,7 +26,7 @@ function mockPdf(annotationsByPage: Array<Array<{ subtype: string; url?: unknown
         }),
       ),
     }),
-  } as ReturnType<typeof pdfjs.getDocument>);
+  } as unknown as ReturnType<typeof pdfjs.getDocument>);
 }
 
 beforeEach(() => getDocumentMock.mockReset());
@@ -88,7 +88,7 @@ describe('extractLinks', () => {
   it('returns [] and never throws when pdfjs rejects', async () => {
     getDocumentMock.mockReturnValue({
       promise: Promise.reject(new Error('corrupt PDF')),
-    } as ReturnType<typeof pdfjs.getDocument>);
+    } as unknown as ReturnType<typeof pdfjs.getDocument>);
     const file = makeFile('bad.pdf', 'application/pdf');
     await expect(extractLinks(file)).resolves.toEqual([]);
   });
