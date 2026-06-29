@@ -347,19 +347,3 @@ export async function disconnectDrive(deleteFile: boolean): Promise<void> {
   await Promise.all([clearDriveToken(), clearDriveBackupState()]);
   dispatchDriveStateChanged();
 }
-
-// Delete the Drive backup file but keep the token (not currently used by UI;
-// reserved for callers that want to clear cloud state without re-OAuth).
-export async function deleteDriveBackup(): Promise<void> {
-  const [token, state] = await Promise.all([getDriveToken(), getDriveBackupState()]);
-  if (token && state.fileId) {
-    try { await deleteFromDrive(token, state.fileId); } catch { /* silent */ }
-  }
-  await saveDriveBackupState({
-    fileId:      null,
-    lastSynced:  null,
-    pendingSync: false,
-    error:       null,
-  });
-  dispatchDriveStateChanged();
-}
