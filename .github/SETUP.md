@@ -1,81 +1,197 @@
-# Automated Release Setup
+# Project Setup
 
-One-time configuration for the `Release` workflow. Once these are in place,
-pushing a `v*.*.*` tag automatically builds the extension, uploads it to the
-Chrome Web Store, submits for review, and creates a GitHub Release.
+One-time configuration for the three external integrations. Work through each
+section in order -- CI/CD depends on the Google Cloud project already existing
+when you reach it.
 
-## 1. Find your Chrome Web Store Extension ID
+---
 
-After the extension is published (or in draft) at the [Chrome Web Store
-developer dashboard](https://chrome.google.com/webstore/devconsole), each
-item has a 32-character ID visible in its URL:
+## 1. Gemini API Key
+
+The Gemini API key enables AI resume import and AI autofill assist inside the
+extension. It is entered by the user in Settings and is never required for the
+extension to function.
+
+1. Go to [Google AI Studio](https://aistudio.google.com/api-keys).
+2. Click **Create API key**.
+3. Copy the key.
+
+That key is what users paste into **Settings > AI Features** inside the
+extension. No further configuration is needed on your end.
+
+---
+
+## 2. CI/CD (Chrome Web Store Automated Releases)
+
+Pushing a `v*.*.*` tag triggers the Release workflow, which builds the
+extension and uploads it to the Chrome Web Store. The workflow needs four
+secrets stored in a GitHub **environment** named `production`.
+
+### 2a. Enable the Chrome Web Store API
+
+1. Open [Google Cloud Console](https://console.cloud.google.com/) and select
+   the **Job Buddy** project.
+2. Go to **APIs & Services > Library**.
+3. Search for **Chrome Web Store API** and click **Enable**.
+
+### 2b. Create an OAuth client for GitHub Actions
+
+1. Go to **APIs & Services > Credentials**.
+2. Click **Create Credentials > OAuth client ID**.
+3. Set **Application type** to **Desktop app**.
+4. Name it `GitHub Actions CI/CD`.
+5. Click **Create** and save the **Client ID** and **Client Secret**.
+
+### 2c. Find your Chrome Web Store Extension ID
+
+Open the [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole).
+The Extension ID is the 32-character string in the listing URL:
 
 ```
 https://chrome.google.com/webstore/detail/.../<EXTENSION_ID>
 ```
 
-Copy that value — it becomes the `CHROME_EXTENSION_ID` secret.
+### 2d. Generate a refresh token
 
-## 2. Enable the Chrome Web Store API
-
-1. Open [Google Cloud Console](https://console.cloud.google.com/).
-2. Create or select a project.
-3. Navigate to **APIs & Services → Library**.
-4. Search for **Chrome Web Store API** and click **Enable**.
-
-## 3. Create OAuth 2.0 credentials
-
-1. **APIs & Services → Credentials → Create Credentials → OAuth client ID**.
-2. If prompted, configure the OAuth consent screen (External, just fill the
-   required fields; you don't need to publish it).
-3. Application type: **Desktop app**.
-4. Name it (e.g. `Job Buddy Release CLI`) and **Create**.
-5. Copy the **Client ID** and **Client Secret** — these become the
-   `CHROME_CLIENT_ID` and `CHROME_CLIENT_SECRET` secrets.
-
-## 4. Generate a refresh token
-
-Run locally — the OAuth flow opens a browser window and asks you to
-authorise the Google account that owns the Chrome Web Store listing.
+Run this locally -- it opens a browser window to authorise the Google account
+that owns the Chrome Web Store listing.
 
 ```bash
 npx chrome-webstore-upload-keys
 ```
 
-Follow the prompts:
+When prompted:
 
-1. Paste the `Client ID` and `Client Secret` from step 3.
-2. Visit the URL it prints, sign in with the **publisher's** Google account,
-   and copy the authorisation code back to the terminal.
-3. The tool prints a **Refresh Token** — this becomes the
-   `CHROME_REFRESH_TOKEN` secret.
+1. Paste the **Client ID** and **Client Secret** from step 2b.
+2. Sign in with the account that owns the CWS listing.
+3. If Google shows a warning that the app is unverified, click **Advanced**
+   then **Go to Job Buddy (unsafe)**. This is expected for internal tools.
+4. Copy the **Refresh Token** from the browser.
 
-The refresh token does not expire unless you revoke it from the Google
-account's [security settings](https://myaccount.google.com/permissions).
+The refresh token does not expire unless you revoke it from
+[Google account permissions](https://myaccount.google.com/permissions).
 
-## 5. Add GitHub repository secrets
+### 2e. Add GitHub environment secrets
 
-In the repository on GitHub → **Settings → Secrets and variables → Actions
-→ New repository secret**, add all four:
+1. In the repository on GitHub, go to **Settings > Environments**.
+2. Create an environment named `production`.
+3. Inside it, add the following secrets under **Environment secrets**:
 
-| Secret name             | Value from step |
-| ----------------------- | --------------- |
-| `CHROME_EXTENSION_ID`   | 1               |
-| `CHROME_CLIENT_ID`      | 3               |
-| `CHROME_CLIENT_SECRET`  | 3               |
-| `CHROME_REFRESH_TOKEN`  | 4               |
+| Secret name            | Value                              |
+| ---------------------- | ---------------------------------- |
+| `CHROME_EXTENSION_ID`  | From step 2c                       |
+| `CHROME_CLIENT_ID`     | From step 2b                       |
+| `CHROME_CLIENT_SECRET` | From step 2b                       |
+| `CHROME_REFRESH_TOKEN` | From step 2d                       |
 
-## 6. Cut a release
+Once these are in place, use `/ship` in Claude Code to cut a release. It runs
+tests, proposes a version bump, waits for confirmation, then commits, tags, and
+pushes. The Release workflow takes over from there.
 
-Use the `/ship` command in Claude Code. It runs tests, proposes a version
-bump based on commits since the last tag, waits for confirmation, then
-commits, tags, and pushes. The `Release` workflow takes over from the tag
-push:
+---
 
-1. Builds the production zip
-2. Uploads to the Chrome Web Store and submits for review (`--auto-publish`)
-3. Creates a GitHub Release with auto-generated notes and the zip attached
+## 3. Google Drive Cloud Backup
 
-Chrome Web Store review typically takes a few hours to a few days. The
-upload itself fails fast if any secret is wrong — check the `Release` run
-in **Actions** to debug.
+The Drive backup feature lets users sync their profile to a private app folder
+in Google Drive. It uses `chrome.identity.launchWebAuthFlow`, which requires
+**Web Application** OAuth clients -- one for local development and one for
+production.
+
+### 3a. Enable the Google Drive API
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), select the
+   **Job Buddy** project.
+2. Go to **APIs & Services > Library**.
+3. Search for **Google Drive API** and click **Enable**.
+
+### 3b. Find your extension IDs for redirect URIs
+
+Each OAuth client needs a redirect URI in the format:
+
+```
+https://<EXTENSION_ID>.chromiumapp.org/
+```
+
+You need two IDs -- one for the dev build and one for the production build.
+
+**Dev extension ID:**
+1. Open your regular Chrome browser (not a Chromium dev instance).
+2. Go to `chrome://extensions/` and enable **Developer mode**.
+3. Click **Load unpacked**, navigate to the project folder, and select
+   `.output/chrome-mv3-dev` (press `Command + Shift + .` to show hidden
+   folders on macOS).
+4. Copy the Extension ID shown on the loaded extension card.
+
+**Production extension ID:**
+This is the same ID from step 2c (the Chrome Web Store listing ID).
+
+### 3c. Create OAuth clients for Drive
+
+1. Go to **APIs & Services > Credentials > OAuth consent screen**.
+2. Click **Clients**, then create two clients:
+
+**Client 1 -- Local development:**
+- Application type: **Web application**
+- Name: `Job Buddy Extension - Local`
+- Authorized redirect URIs: `https://<DEV_EXTENSION_ID>.chromiumapp.org/`
+- Save the **Client ID** and **Client Secret**
+
+**Client 2 -- Production:**
+- Application type: **Web application**
+- Name: `Job Buddy Extension - Production`
+- Authorized redirect URIs: `https://<PROD_EXTENSION_ID>.chromiumapp.org/`
+- Save the **Client ID** and **Client Secret**
+
+### 3d. Set environment variables
+
+Copy `.env.example` to create your local env files and fill in the client IDs:
+
+```bash
+cp .env.example .env.development
+cp .env.example .env.production
+```
+
+In `.env.development`:
+```
+VITE_GOOGLE_DRIVE_CLIENT_ID=<Client ID from Job Buddy Extension - Local>
+```
+
+In `.env.production`:
+```
+VITE_GOOGLE_DRIVE_CLIENT_ID=<Client ID from Job Buddy Extension - Production>
+```
+
+The client secrets are not used by the extension itself -- only the client IDs
+are embedded at build time.
+
+### 3e. Add test users
+
+While the OAuth consent screen is in **Testing** status, only explicitly added
+accounts can complete the Google sign-in flow.
+
+1. Go to **APIs & Services > OAuth consent screen > Audience**.
+2. Under **Test users**, click **Add users**.
+3. Add the email address of the Google account you want to use for testing
+   Drive backup.
+
+### 3f. Test the Drive connection
+
+Load the dev build in your **regular Chrome browser** (not the Chromium
+instance that the `pnpm dev` command opens -- Google restricts OAuth in
+Chromium dev environments).
+
+1. Open the extension's **Settings** page.
+2. Click **Connect Google Drive**.
+3. Complete the sign-in flow. If the app warning appears, click **Advanced >
+   Go to Job Buddy (unsafe)**.
+
+### 3g. Publish the OAuth app (before releasing to users)
+
+While the consent screen is in Testing status, users outside your test user
+list cannot connect Drive. Before publishing the extension publicly:
+
+1. Go to **APIs & Services > OAuth consent screen**.
+2. Click **Publish app**.
+
+This allows any Google account to authorise the Drive connection without
+needing to be added as a test user first.
