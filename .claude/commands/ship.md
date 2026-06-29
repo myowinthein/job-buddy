@@ -113,6 +113,24 @@ If Conventional Commits not detected:
 
 ---
 
+## Step 3b — Chrome Web Store submission mode (main branch only)
+
+Skip this step if on environment branch.
+
+Detect CWS pipeline: scan .github/workflows/ for a file containing
+chrome-webstore-upload-cli or CHROME_EXTENSION_ID. If none found, skip silently.
+
+If CWS pipeline detected, present selection:
+
+  Chrome Web Store submission mode:
+  1. Auto-publish  → upload and submit for review immediately (recommended)
+  2. Upload only   → upload as draft, submit manually from CWS dashboard
+                     (choose this when updating store listing or screenshots)
+
+  Wait for selection before proceeding.
+
+---
+
 ## Step 4 — Run tests
 
 Run full test suite using detected test framework.
@@ -135,7 +153,8 @@ If found, update to {version}. Skip silently if none found.
 Commit, tag, and push:
 - git add -A
 - git commit -m "chore(release): bump version to {version}"
-- git tag -a v{version} -m "Release v{version}"
+- If auto-publish selected: git tag -a v{version} -m "release"
+- If upload only selected:  git tag -a v{version} -m "release:draft"
 - git push origin HEAD
 - git push origin v{version}
 
