@@ -21,7 +21,7 @@ import type { ThemePreference } from '@/src/utils/theme';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
 import type { InvalidField } from '@/src/utils/profileValidator';
-import { useToast } from '@/src/components/ui/Toast';
+import { useToast } from '@/src/components/ui/useToast';
 import { validateApiKey, checkApiKey } from '@/src/resume-ai/gemini';
 import {
   getFullDriveState,
@@ -121,7 +121,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   // ── AI Features state ────────────────────────────────────────────────────────
   const [geminiKey,        setGeminiKey]        = useState('');
   const [geminiKeyStatus,  setGeminiKeyStatus]  = useState<'idle' | 'validating' | 'valid' | 'invalid' | 'no_model'>('idle');
-  const [geminiModel,      setGeminiModel]      = useState<string | null>(null);
+  const [_geminiModel,     setGeminiModel]      = useState<string | null>(null);
   const geminiDebounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const probeIdRef         = useRef(0);
 

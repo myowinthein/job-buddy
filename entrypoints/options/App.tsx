@@ -17,7 +17,7 @@ import { DocumentsSection } from '@/src/components/options/DocumentsSection';
 import { SettingsSection } from '@/src/components/options/SettingsSection';
 import { ResumeImportSection } from '@/src/components/options/ResumeImportSection';
 import { syncProfileToDrive } from '@/src/utils/driveSync';
-import { useToast } from '@/src/components/ui/Toast';
+import { useToast } from '@/src/components/ui/useToast';
 
 type SectionId =
   | 'personal'
@@ -128,7 +128,7 @@ function App() {
         }
       });
     } catch { /* session storage unavailable — no-op */ }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (loading) return;
@@ -165,7 +165,7 @@ function App() {
     };
     el.addEventListener('scroll', handler, { passive: true });
     return () => el.removeEventListener('scroll', handler);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Reset scroll on section navigation ──────────────────────────────────────
   useEffect(() => {
@@ -186,7 +186,7 @@ function App() {
       if (!skipAutoFocusRef.current) focusFirstEmpty(mainRef.current);
     });
     return () => cancelAnimationFrame(raf);
-  }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   // ── Autofocus first empty input when navigating sections ────────────────────
   useEffect(() => {
@@ -194,7 +194,7 @@ function App() {
     if (skipAutoFocusRef.current) { skipAutoFocusRef.current = false; return; }
     const raf = requestAnimationFrame(() => { focusFirstEmpty(document.querySelector('main')); });
     return () => cancelAnimationFrame(raf);
-  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeSection]);
 
   // ── Scroll/focus a specific field from the banner ───────────────────────────
   useEffect(() => {

@@ -1,5 +1,5 @@
 import type { Profile } from '../types/profile';
-import type { DriveBackupFile, DriveBackupState, DriveError } from '../types/storage';
+import type { DriveBackupFile, DriveError } from '../types/storage';
 import {
   getDriveToken,
   saveDriveToken,

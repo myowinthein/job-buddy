@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useToast } from '@/src/components/ui/Toast';
+import { useToast } from '@/src/components/ui/useToast';
 import type { Profile, PhoneNumber } from '@/src/types/profile';
 import { findCountry } from '@/src/data/countries';
 import { SearchableCountrySelect } from './shared/SearchableCountrySelect';
