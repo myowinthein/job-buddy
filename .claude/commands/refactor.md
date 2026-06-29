@@ -122,19 +122,20 @@ DEPENDENCIES          {X issues}
 TOTAL: {N} issues found
 ─────────────────────────────────
 
-Then present multi-select category selection:
+Then present multi-select category selection using the AskUserQuestion tool:
 
-  Which categories to apply? (select all that apply)
+  Question:    "Which categories to apply?"
+  multiSelect: true
+  Options (include only categories that have issues; max 4):
+    - Architecture   — "{N} issues: {one-line summary}"
+    - Code Quality   — "{N} issues: {one-line summary}"
+    - Tests          — "{N} issues: {one-line summary}"
+    - Dependencies   — "{N} issues: {one-line summary}"
 
-  [ ] 1. Architecture   (N issues)
-  [ ] 2. Code Quality   (N issues)
-  [ ] 3. Performance    (N issues)
-  [ ] 4. Tests          (N issues)
-  [ ] 5. Dependencies   (N issues)
-  [ ] 6. All
-  [ ] 7. Skip           → exit without applying changes
+  If more than 4 categories have issues, merge the smallest two into
+  one option (e.g. "Tests & Dependencies").
 
-  Reply with numbers or names — e.g. "1 3" or "architecture performance"
+  Selecting no options = skip. Do not add an explicit All or Skip option.
 
 Wait for response before proceeding.
 
