@@ -132,8 +132,7 @@ describe('normalizeSummaryLineWraps', () => {
   });
 
   it('normalises multiple consecutive blank lines between paragraphs to a single \\n\\n', () => {
-    const input  = 'Para one.\n\n\n\nPara two.';
-    const output = 'Para one.\n\n\nPara two.';
+    const input = 'Para one.\n\n\n\nPara two.';
     // split on /\n{2,}/ then rejoin with \n\n — result has exactly \n\n
     expect(normalizeSummaryLineWraps(input)).toBe('Para one.\n\nPara two.');
   });

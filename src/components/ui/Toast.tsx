@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { ToastContext } from './useToast';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -7,20 +8,6 @@ export interface ToastMessage {
   type:     'success' | 'error' | 'warning';
   message:  string;
   duration: number;
-}
-
-interface ToastContextValue {
-  showToast: (type: ToastMessage['type'], message: string, duration?: number) => void;
-}
-
-// ── Context ───────────────────────────────────────────────────────────────────
-
-const ToastContext = createContext<ToastContextValue | null>(null);
-
-export function useToast(): ToastContextValue {
-  const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToast must be used within a ToastProvider');
-  return ctx;
 }
 
 // ── Per-type defaults ─────────────────────────────────────────────────────────
@@ -63,7 +50,7 @@ function ToastItem({ toast, onRemove }: { toast: ToastMessage; onRemove: () => v
   const exitedRef = useRef(false);
   // Keep onRemove fresh inside stable callbacks
   const onRemoveRef = useRef(onRemove);
-  onRemoveRef.current = onRemove;
+  useEffect(() => { onRemoveRef.current = onRemove; });
 
   const dismiss = useCallback(() => {
     if (exitedRef.current) return;

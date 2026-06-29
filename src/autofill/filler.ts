@@ -191,7 +191,6 @@ async function waitForListboxOptions(
   };
 
   const deadline = Date.now() + maxMs;
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const opts = findOptions();
     if (opts.length > 0) return opts;

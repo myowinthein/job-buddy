@@ -1,4 +1,4 @@
-import { useToast } from '@/src/components/ui/Toast';
+import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef, useEffect } from 'react';
 import type { Profile, SalaryPeriod } from '@/src/types/profile';
 import { findCountryByNameOrCode } from '@/src/data/countries';

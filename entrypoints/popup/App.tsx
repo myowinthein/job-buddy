@@ -80,6 +80,12 @@ function App() {
       });
   }, []);
 
+  const sendToActiveTab = async (message: object) => {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) throw new Error('No active tab found');
+    return chrome.tabs.sendMessage(tab.id, message);
+  };
+
   // Lazily fetch the debug session from the content script when the user opens
   // the panel — keeps the popup's initial render cheap.
   const openDebugPanel = async () => {
@@ -104,7 +110,6 @@ function App() {
         // Content script not loaded on this page — stay in idle state.
       }
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -133,12 +138,6 @@ function App() {
     dismissNudge();
     try { chrome.storage.session.set({ 'jb:focusOnLoad': 'gemini-api-key' }); } catch { /* ignore */ }
     chrome.runtime.openOptionsPage();
-  };
-
-  const sendToActiveTab = async (message: object) => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) throw new Error('No active tab found');
-    return chrome.tabs.sendMessage(tab.id, message);
   };
 
   const handleAutofill = async () => {
