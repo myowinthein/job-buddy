@@ -71,19 +71,18 @@ Generate if Chrome extension, desktop app, or downloadable software:
 Generate if financial, health, legal advice or AI recommendations detected:
 - disclaimer.md
 
-Present to user before generating:
+Use AskUserQuestion to confirm before generating:
+  AskUserQuestion:
+    question: "Ready to generate the following legal pages?\n- docs/privacy/index.html — Privacy Policy\n- docs/terms/index.html — Terms of Service\n- {any conditional documents with full docs/ paths}\n\nJurisdiction: GDPR · Tone: plain English"
+    header:   "Confirm"
+    multiSelect: false
+    options:
+      - label: "Generate (Recommended)"
+        description: "Write the legal HTML pages to docs/"
+      - label: "Cancel"
+        description: "Exit without generating anything"
 
-"Based on project scan I will generate:
-- docs/privacy/index.html   — Privacy Policy (always required)
-- docs/terms/index.html     — Terms of Service (always required)
-- {conditional documents and why, with full docs/ paths}
-
-Jurisdiction: GDPR
-Tone: plain English
-
-Confirm? (yes / no)"
-
-Wait for confirmation before proceeding.
+Wait for response before proceeding.
 
 ---
 
