@@ -13,6 +13,57 @@ export interface CompletionGroup {
   fields: string[];
 }
 
+// Maps a dot-notation profile path (as used by the autofill resolver/picker)
+// to the matching options section and DOM input id, so the "Go to Profile"
+// CTA on a gray noData picker can deep-link the user to the exact missing
+// field. Prefix-matched in resolvePathFocusTarget(); the longest matching
+// path wins so e.g. `personal.dateOfBirth` is preferred over `personal.*`.
+export const PATH_FOCUS_TARGETS: Record<string, { section: string; fieldId?: string }> = {
+  'personal.firstName':            { section: 'personal', fieldId: 'field-firstName' },
+  'personal.lastName':             { section: 'personal', fieldId: 'field-lastName' },
+  'personal.email':                { section: 'personal', fieldId: 'field-email' },
+  'personal.phone':                { section: 'personal', fieldId: 'field-phone' },
+  'personal.dateOfBirth':          { section: 'personal', fieldId: 'field-dateOfBirth' },
+  'personal.gender':               { section: 'personal', fieldId: 'field-gender' },
+  'personal.ethnicity':            { section: 'personal', fieldId: 'field-ethnicity' },
+  'personal.veteranStatus':        { section: 'personal', fieldId: 'field-veteranStatus' },
+  'personal.disabilityStatus':     { section: 'personal', fieldId: 'field-disabilityStatus' },
+  'address.street':                { section: 'address',  fieldId: 'field-street' },
+  'address.city':                  { section: 'address',  fieldId: 'field-city' },
+  'address.state':                 { section: 'address',  fieldId: 'field-state' },
+  'address.postalCode':            { section: 'address',  fieldId: 'field-postalCode' },
+  'address.country':               { section: 'address',  fieldId: 'field-country' },
+  'salary.current.amount':         { section: 'salary',   fieldId: 'field-currentAmount' },
+  'salary.current.currency':       { section: 'salary',   fieldId: 'field-currentCurrency' },
+  'salary.expected':               { section: 'salary' },
+  'professional.summary':          { section: 'personal', fieldId: 'field-summary' },
+  'professional.noticePeriod':     { section: 'personal' },
+  'workAuthorization':             { section: 'workAuthorization' },
+  'workHistory':                   { section: 'workHistory' },
+  'education':                     { section: 'education' },
+  'languages':                     { section: 'languages' },
+  'links.linkedin':                { section: 'links',    fieldId: 'field-linkedin' },
+  'links.portfolio':               { section: 'links',    fieldId: 'field-portfolio' },
+  'links':                         { section: 'links' },
+  'documents':                     { section: 'documents' },
+  'derived.fullName':              { section: 'personal', fieldId: 'field-firstName' },
+  'derived.currentTitle':          { section: 'workHistory' },
+  'derived.currentCompany':        { section: 'workHistory' },
+};
+
+/** Resolves a dot-notation path to its target section + DOM id by longest-prefix match. */
+export function resolvePathFocusTarget(path: string): { section: string; fieldId?: string } | null {
+  if (!path) return null;
+  if (PATH_FOCUS_TARGETS[path]) return PATH_FOCUS_TARGETS[path];
+  const segments = path.split('.');
+  while (segments.length > 1) {
+    segments.pop();
+    const prefix = segments.join('.');
+    if (PATH_FOCUS_TARGETS[prefix]) return PATH_FOCUS_TARGETS[prefix];
+  }
+  return null;
+}
+
 // Maps the human-readable field label used in CompletionGroup.fields to the
 // DOM id of the corresponding input, so the banner can scroll+focus it.
 export const FIELD_FOCUS_IDS: Record<string, string> = {

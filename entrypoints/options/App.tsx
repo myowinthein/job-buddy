@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Profile } from '@/src/types/profile';
 import { getProfile, saveProfile } from '@/src/utils/storage';
-import { calculateCompletion, getSectionCompletion, FIELD_FOCUS_IDS } from '@/src/utils/profileCompletion';
+import { calculateCompletion, getSectionCompletion, FIELD_FOCUS_IDS, resolvePathFocusTarget } from '@/src/utils/profileCompletion';
 import { calculateDerivedFields } from '@/src/utils/derivedFields';
 import { Sidebar } from '@/src/components/options/Sidebar';
 import { CompletionBanner } from '@/src/components/options/CompletionBanner';
@@ -91,21 +91,38 @@ function App() {
       .finally(() => { setLoading(false); });
   }, []);
 
-  // ── Cross-context focus request (e.g. popup → Settings → API key input) ─────
-  // The popup writes 'jb:focusOnLoad' to chrome.storage.session before opening
-  // the options page; we read it here, clear it, and route to the appropriate
-  // section + focus target. Only runs once after the initial profile load.
+  // ── Cross-context focus request (popup → Options, picker → Options) ────────
+  // Callers write 'jb:focusOnLoad' to chrome.storage.session before opening the
+  // Options page; we read it here, clear it, and route to the appropriate
+  // section + focus target. Supports two shapes:
+  //   1. string 'gemini-api-key' — legacy popup shortcut to the AI key input
+  //   2. { type: 'profilePath', path: 'personal.firstName' } — from the
+  //      noData picker CTA, deep-links to the missing field's section + input.
+  // Only runs once after the initial profile load.
   useEffect(() => {
     if (loading) return;
     try {
       chrome.storage.session.get('jb:focusOnLoad', (r) => {
         const target = r?.['jb:focusOnLoad'];
-        if (typeof target !== 'string') return;
+        if (target == null) return;
         chrome.storage.session.remove('jb:focusOnLoad');
+
         if (target === 'gemini-api-key') {
           skipAutoFocusRef.current = true;
           setActiveSection('settings');
           setFocusTarget('gemini-api-key');
+          return;
+        }
+
+        if (typeof target === 'object') {
+          const obj = target as { type?: unknown; path?: unknown };
+          if (obj.type === 'profilePath' && typeof obj.path === 'string') {
+            const resolved = resolvePathFocusTarget(obj.path);
+            if (!resolved) return;
+            skipAutoFocusRef.current = true;
+            setActiveSection(resolved.section as SectionId);
+            if (resolved.fieldId) setFocusTarget(resolved.fieldId);
+          }
         }
       });
     } catch { /* session storage unavailable — no-op */ }
