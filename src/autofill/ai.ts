@@ -55,6 +55,12 @@ export function extractSelectOptions(select: HTMLSelectElement): AIOptionPayload
 
 // Returns true if the AI layer ran (key was available), false if skipped (no key).
 // Mutates `result` and `sessionElements` in-place.
+//
+// `aiGreenFilled` is an optional output set. When AI fills a field at
+// high confidence (green), the element is added to this set so the caller
+// can strip it from pickerFields / edit watchers before they're attached.
+// Without this, a green-filled element would still trigger the pre-AI picker
+// (gray "Go to Profile" CTA or red picker) on focus — wrong UX.
 export async function runAIAutofill(
   textCandidates: AITextCandidate[],
   profile: Profile,
@@ -62,6 +68,7 @@ export async function runAIAutofill(
   sessionElements: HTMLElement[],
   domain: string,
   debug?: DebugAIField[],
+  aiGreenFilled?: Set<HTMLElement>,
 ): Promise<boolean> {
   const [apiKey, model] = await Promise.all([getGeminiApiKey(), getGeminiModel()]);
   if (!apiKey || !model) return false;
@@ -197,6 +204,7 @@ export async function runAIAutofill(
 
       if (isHigh) {
         result.noReview++;
+        aiGreenFilled?.add(candidate.element);
         // Save learned mappings for high-confidence fills so the picker skips
         // this field on the next autofill run on this domain. Only when we
         // have a profile path — selectedOption alone is not a stable signal.
