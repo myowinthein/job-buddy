@@ -31,18 +31,10 @@ export function SearchableCountrySelect({ value, onChange }: Props) {
   const selected = findCountry(value);
   const filtered = filterCountries(search);
 
-  // On open: focus search + pre-highlight the current selection.
-  // On close: reset search text.
+  // On open: focus search input.
   useEffect(() => {
-    if (open) {
-      searchRef.current?.focus();
-      const idx = COUNTRIES.findIndex((c) => c.code === value);
-      setHlIdx(idx >= 0 ? idx : 0);
-    } else {
-      setSearch('');
-      setHlIdx(0);
-    }
-  }, [open, value]);
+    if (open) searchRef.current?.focus();
+  }, [open]);
 
   // Keep the highlighted row scrolled into view during keyboard navigation.
   useEffect(() => {
@@ -55,7 +47,11 @@ export function SearchableCountrySelect({ value, onChange }: Props) {
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!containerRef.current?.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+        setHlIdx(0);
+      }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -64,6 +60,8 @@ export function SearchableCountrySelect({ value, onChange }: Props) {
   const select = (c: Country) => {
     onChange(c.code);
     setOpen(false);
+    setSearch('');
+    setHlIdx(0);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -82,6 +80,8 @@ export function SearchableCountrySelect({ value, onChange }: Props) {
         break;
       case 'Escape':
         setOpen(false);
+        setSearch('');
+        setHlIdx(0);
         e.preventDefault();
         break;
     }
@@ -92,7 +92,13 @@ export function SearchableCountrySelect({ value, onChange }: Props) {
       {/* ── Trigger ─────────────────────────────────────────────────────────── */}
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          if (!open) {
+            const idx = COUNTRIES.findIndex((c) => c.code === value);
+            setHlIdx(idx >= 0 ? idx : 0);
+          }
+          setOpen((o) => !o);
+        }}
         className="h-full rounded-l-lg bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 px-2 py-2 text-sm cursor-pointer flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors whitespace-nowrap focus:outline-none"
         aria-haspopup="listbox"
         aria-expanded={open}
