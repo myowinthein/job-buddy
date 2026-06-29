@@ -4,7 +4,7 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: {
-    name: 'Job Buddy - Job Application Autofill',
+    name: 'Job Buddy - Autofill Job Applications',
     description: 'Automatically fill job application forms using your saved profile data.',
     permissions: ['storage', 'identity'],
     host_permissions: [

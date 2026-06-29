@@ -34,7 +34,7 @@ Job Buddy is built around three ideas:
 
 ### From the Chrome Web Store
 
-The released build is published on the Chrome Web Store as **Job Buddy - Job Application Autofill**.
+The released build is published on the Chrome Web Store as **Job Buddy - Autofill Job Applications**.
 
 ### From source (development build)
 
