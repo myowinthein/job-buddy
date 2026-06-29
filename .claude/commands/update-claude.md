@@ -155,3 +155,8 @@ Ask for confirmation before writing.
 CLAUDE.md = descriptive project knowledge (orientation layer).
 .claude/rules/ = prescriptive rules (architecture, safety, git, testing).
 Keep them consistent. Update rule files when conventions change.
+
+**Writing style**
+- Use em-dashes sparingly. Only use one when no other punctuation
+  (comma, semicolon, colon, or a new sentence) works as well.
+  When in doubt, restructure the sentence instead.
