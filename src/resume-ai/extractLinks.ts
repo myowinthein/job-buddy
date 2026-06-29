@@ -21,10 +21,11 @@ export async function extractLinks(file: File): Promise<string[]> {
     const pdfDoc = await pdfjs.getDocument({ data: new Uint8Array(buffer) }).promise;
     const seen   = new Set<string>();
 
+    interface PdfAnnotation { subtype?: unknown; url?: unknown }
+
     for (let page = 1; page <= pdfDoc.numPages; page++) {
       const pdfPage     = await pdfDoc.getPage(page);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const annotations = await pdfPage.getAnnotations() as any[];
+      const annotations = (await pdfPage.getAnnotations()) as PdfAnnotation[];
       for (const ann of annotations) {
         if (ann.subtype === 'Link' && typeof ann.url === 'string' && ann.url) {
           seen.add(ann.url);
