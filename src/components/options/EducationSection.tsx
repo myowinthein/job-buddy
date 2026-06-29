@@ -1,4 +1,4 @@
-import { useToast } from '@/src/components/ui/Toast';
+import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef, useEffect } from 'react';
 import type { Profile, EducationEntry } from '@/src/types/profile';
 import { FormField } from './shared/FormField';

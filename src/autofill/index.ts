@@ -9,7 +9,6 @@ import { fillField, fillFileField, clearFieldValue } from './filler';
 import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
 import { attachPickerListeners, removePickerListener, closePickerIfOpenFor } from './picker';
 import type { PickerField, PickerFieldState } from './picker';
-import { normalize } from './normalizer';
 import { resolveProfileValue } from './resolver';
 import { saveElementMappings } from './mappings';
 import { runAIAutofill } from './ai';
@@ -328,7 +327,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   const profile = await getProfile();
   if (!profile) return { noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0 };
 
-  const learnedMappings = await getLearnedMappings();
+  const _learnedMappings = await getLearnedMappings();
   const domain = window.location.hostname;
 
   const result: AutofillResult = {
