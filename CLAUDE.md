@@ -6,7 +6,7 @@ Chrome MV3 browser extension (WXT framework) that auto-fills job application for
 
 **Stack:** WXT 0.20.26 · React 19 · TypeScript 5.9 · Tailwind CSS v4 (`@tailwindcss/postcss`, not v3 config) · pnpm 11.7.0 · Node 22 (pinned via `.nvmrc`)
 
-**Blast radius:** Pushing a `v*.*.*` tag to `origin` triggers auto-publish to the Chrome Web Store. There is no rollback CLI — only manual unpublish from the CWS dashboard.
+**Blast radius:** Pushing a `v*.*.*` tag triggers `release.yml`. The tag's annotation message controls CWS submission: `"release"` submits for review immediately, `"release:draft"` uploads as a draft only. There is no rollback CLI; unpublishing requires the CWS dashboard.
 
 **Git mode:** `git-solo: true` — commits go directly to main; no feature branches or PRs required.
 
@@ -15,14 +15,16 @@ Chrome MV3 browser extension (WXT framework) that auto-fills job application for
 ## 2. Dev Commands
 
 ```bash
-pnpm dev          # dev build → .output/chrome-mv3-dev/ (load unpacked in Chrome)
-pnpm build        # production build
-pnpm zip          # production build + zip for CWS upload
-pnpm compile      # TypeScript type-check (no emit) — required before commit
-pnpm lint         # ESLint
-pnpm format       # Prettier
-pnpm test         # Vitest watch mode
-pnpm test:run     # single run — run before committing
+pnpm dev           # dev build → .output/chrome-mv3-dev/ (load unpacked in Chrome)
+pnpm build         # production build
+pnpm zip           # production build + zip for CWS upload
+pnpm compile       # TypeScript type-check (no emit) — required before commit
+pnpm lint          # ESLint
+pnpm format        # Prettier
+pnpm test          # Vitest watch mode
+pnpm test:run      # single run — run before committing
+pnpm serve:landing # serve docs/ (GitHub Pages site) at localhost:3000
+pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 ```
 
 ---
@@ -56,6 +58,10 @@ pnpm test:run     # single run — run before committing
 - `src/resume-ai/normalize.ts` — `normalizeBullets()` + `normalizeSummaryLineWraps()` composed by `normalizeExtractedProfile()`. Bullet pass only fires when structure is detected (bullet marker OR blank-line separator) — intentional, to preserve plain context paragraphs. Summary pass merges PDF soft wraps within paragraphs without merging `\n\n` paragraph breaks.
 - `src/resume-ai/extractLinks.ts` — pulls hyperlinks from PDF annotation layer via `pdfjs-dist`; returns `[]` for non-PDF files and on any error. Result is passed into `extractFromResume()` so Gemini sees the real URLs.
 
+**Site (`docs/`):**
+- `docs/index.html` — GitHub Pages landing page (no build step; Tailwind via CDN)
+- `docs/privacy/`, `docs/terms/`, `docs/eula/`, `docs/disclaimer/` — legal pages as standalone HTML; regenerate with `/legal`
+
 ---
 
 ## 4. Behavior Rules
@@ -84,7 +90,7 @@ pnpm test:run     # single run — run before committing
 
 ## 5. Hard Safety Rules
 
-- **Never push a `v*.*.*` tag or trigger a release without explicit user instruction.** Releases auto-publish to the Chrome Web Store with no CLI rollback. Use `/ship` and wait for confirmation at each step.
+- **Never push a `v*.*.*` tag without explicit user instruction.** Use `/ship` and confirm at each step. Tag annotation message `"release"` submits to CWS immediately; `"release:draft"` uploads as a draft only. No CLI rollback either way.
 - **Never read or print `.env.development` / `.env.production`** — they contain real OAuth client IDs.
 - **ESLint must stay on v9.x.** `eslint-plugin-react@7.x` calls `context.getFilename()` removed in ESLint v10. Upgrading breaks the linter until the plugin ships a v8 stable.
 - **Always run `pnpm compile` before committing.** CI enforces type-check; failing commits are noisy on main.
@@ -113,4 +119,4 @@ pnpm test:run     # single run — run before committing
 
 - **Date filler reads the placeholder.** `reformatDateForInput()` in `src/autofill/filler.ts` parses `input.placeholder` for `mm/dd/yyyy` / `dd/mm/yyyy` patterns and reformats ISO `YYYY-MM-DD` output before writing. Native `type="date"` inputs receive ISO unchanged. Changing what the resolver outputs for date paths (`personal.dateOfBirth`, `professional.noticePeriod.availableDate`) breaks this contract.
 
-<!-- last-reviewed: d5773b0 -->
+<!-- last-reviewed: 6671e56 -->
