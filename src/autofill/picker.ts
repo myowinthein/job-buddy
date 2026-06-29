@@ -46,6 +46,10 @@ export interface PickerField {
   // placeholder / name / id). Used by the noData CTA to address the missing
   // value by name (e.g. "No Phone Number saved in your profile yet").
   label:   string;
+  // Profile dot-notation path. Only meaningful for state === 'noData', where
+  // the "Go to Profile" CTA uses it to deep-link the Options page to the
+  // matching section + input. Other states ignore it.
+  fieldPath?: string;
 }
 
 // ─── Internal tree types ──────────────────────────────────────────────────────
@@ -176,10 +180,11 @@ let mqlListener: ((e: MediaQueryListEvent) => void) | null = null;
 // Captured at showPicker time so we can rebuild the open picker on theme
 // change without needing the caller (attachPickerListeners) to re-trigger.
 interface ActivePickerSession {
-  element:  HTMLElement;
-  state:    PickerFieldState;
-  label:    string;
-  onSelect: (el: HTMLElement, path: string, val: string, st: PickerFieldState) => void;
+  element:    HTMLElement;
+  state:      PickerFieldState;
+  label:      string;
+  fieldPath?: string;
+  onSelect:   (el: HTMLElement, path: string, val: string, st: PickerFieldState) => void;
 }
 let activeSession: ActivePickerSession | null = null;
 
@@ -219,11 +224,11 @@ function applyThemePreference(pref: 'system' | 'light' | 'dark'): void {
 
 async function rerenderActivePicker(): Promise<void> {
   if (!activeSession) return;
-  const { element, state, label, onSelect } = activeSession;
+  const { element, state, label, fieldPath, onSelect } = activeSession;
   const profile = await getProfile();
   if (!profile) return;
   // showPicker calls removePicker first, then re-establishes activeSession.
-  showPicker(element, state, label, buildPickerTree(profile), onSelect);
+  showPicker(element, state, label, buildPickerTree(profile), onSelect, fieldPath);
 }
 
 // Initialize theme at module load (once per content-script injection).
@@ -962,7 +967,12 @@ function removePicker(): void {
 // list with a message and a button that asks the background to open the
 // Options page. Uses the same inline-style approach as the rest of the picker
 // so it works on any host page without bleed from host CSS.
-function showNoDataCta(element: HTMLElement, label: string): void {
+//
+// When fieldPath is provided, the CTA writes it to chrome.storage.session
+// before dispatching OPEN_OPTIONS, so the Options page can scroll to and
+// focus the exact missing input. Without a path, the Options page just opens
+// to the user's last visited section.
+function showNoDataCta(element: HTMLElement, label: string, fieldPath?: string): void {
   const t = theme();
   const rect = element.getBoundingClientRect();
 
@@ -989,8 +999,11 @@ function showNoDataCta(element: HTMLElement, label: string): void {
     fontWeight: '600',
     color:      t.primaryText,
     marginBottom: '4px',
+    whiteSpace: 'nowrap',
+    overflow:   'hidden',
+    textOverflow: 'ellipsis',
   });
-  title.textContent = `No ${label} saved in your profile yet`;
+  title.textContent = `${label} not in profile`;
   picker.appendChild(title);
 
   const help = mk('div', {
@@ -999,7 +1012,7 @@ function showNoDataCta(element: HTMLElement, label: string): void {
     marginBottom: '12px',
     lineHeight: '1.4',
   });
-  help.textContent = 'Job Buddy will fill this field automatically when you return.';
+  help.textContent = "Add it to your profile and we'll fill it next time.";
   picker.appendChild(help);
 
   const button = document.createElement('button');
@@ -1021,6 +1034,15 @@ function showNoDataCta(element: HTMLElement, label: string): void {
   button.addEventListener('mouseleave', () => { button.style.backgroundColor = t.buttonBg; });
   button.addEventListener('mousedown', (e) => {
     e.preventDefault();
+    // Hand the target path to the Options page via session storage. The page
+    // reads `jb:focusOnLoad` once after mount, then clears it. Best-effort —
+    // if session storage is unavailable the page still opens, it just won't
+    // deep-link.
+    if (fieldPath) {
+      try {
+        chrome.storage.session.set({ 'jb:focusOnLoad': { type: 'profilePath', path: fieldPath } });
+      } catch { /* session storage unavailable — fall through to OPEN_OPTIONS */ }
+    }
     try {
       chrome.runtime.sendMessage({ action: 'OPEN_OPTIONS' });
     } catch (err) {
@@ -1071,18 +1093,19 @@ function showPicker(
   label: string,
   tree: Section[],
   onSelect: (element: HTMLElement, fieldPath: string, value: string, originalState: PickerFieldState) => void,
+  fieldPath?: string,
 ): void {
   removePicker();
 
   // Snapshot the call so the theme change handler can rebuild from scratch.
-  activeSession = { element, state, label, onSelect };
+  activeSession = { element, state, label, fieldPath, onSelect };
 
   // For noData fields the user cannot pick anything — the profile is missing
   // the data entirely. Show a CTA pointing them to the Options page instead
   // of a generic profile-value list. Silent re-fill on tab refocus (see
   // index.ts) handles the field automatically once the value is saved.
   if (state === 'noData') {
-    showNoDataCta(element, label);
+    showNoDataCta(element, label, fieldPath);
     return;
   }
 
@@ -1274,7 +1297,7 @@ export function attachPickerListeners(
   fields: PickerField[],
   onSelect: (element: HTMLElement, fieldPath: string, value: string, originalState: PickerFieldState) => void,
 ): void {
-  for (const { element, state, label } of fields) {
+  for (const { element, state, label, fieldPath } of fields) {
     const prev = pickerListeners.get(element);
     if (prev) element.removeEventListener('focus', prev);
 
@@ -1285,7 +1308,7 @@ export function attachPickerListeners(
       if (activePicker && activePickerElement === element) return;
       const profile = await getProfile();
       if (!profile) return;
-      showPicker(element, state, label, buildPickerTree(profile), onSelect);
+      showPicker(element, state, label, buildPickerTree(profile), onSelect, fieldPath);
     };
     element.addEventListener('focus', handler);
     pickerListeners.set(element, handler);

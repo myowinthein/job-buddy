@@ -414,7 +414,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       // No highlight; picker is offered so the user can choose an alternative value.
       result.noData++;
       if (!isFileInput) {
-        pickerFields.push({ element, state: 'noData', label: displayLabel });
+        pickerFields.push({ element, state: 'noData', label: displayLabel, fieldPath: match.fieldPath ?? undefined });
         // Track in the noData registry so silent re-fill on tab refocus can
         // re-resolve this field's profile path once the user updates it.
         // match.fieldPath is non-null when confidence >= 0.60 (only the
@@ -444,8 +444,22 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   if (noDataFields.length > 0) ensureVisibilityListener();
 
   const debugAI: DebugAIField[] = [];
-  const aiRan = await runAIAutofill(aiTextCandidates, profile, result, sessionElements, domain, debugAI);
+  const aiGreenFilled = new Set<HTMLElement>();
+  const aiRan = await runAIAutofill(aiTextCandidates, profile, result, sessionElements, domain, debugAI, aiGreenFilled);
   result.aiAvailable = aiRan;
+
+  // Strip pre-AI picker entries for elements AI confirmed green. Without this,
+  // an AI-filled green field would still trigger its original pre-AI picker
+  // (gray "Go to Profile" CTA or red picker) on focus. AI's high-confidence
+  // decision is final; the field should behave like any rule-pipeline green.
+  if (aiGreenFilled.size > 0) {
+    const filteredPickerFields = pickerFields.filter((pf) => !aiGreenFilled.has(pf.element));
+    pickerFields.length = 0;
+    pickerFields.push(...filteredPickerFields);
+    // Also drop these from the noData registry so silent re-fill doesn't try
+    // to overwrite AI's value when the user updates the related profile field.
+    noDataFields = noDataFields.filter((nd) => !aiGreenFilled.has(nd.element));
+  }
 
   // Finalise debug session — scanner was seeded in scanAutofill; fill in the rest.
   if (debugSession) {
