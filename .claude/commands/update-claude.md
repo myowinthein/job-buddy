@@ -18,36 +18,59 @@ Check CLAUDE.md:
 - If hash exists, run `git log {hash}..HEAD --oneline` to see the gap
 - How significant is the gap? (ignore: bug fixes, styling, dependency updates, routine CRUD)
 
-Based on current state, determine which options are valid:
+Based on current state, use AskUserQuestion (single-select) to present options:
 
 If CLAUDE.md is absent or empty:
-  Present:
-  [One sentence describing status — e.g. "CLAUDE.md not found. Full scan required."]
-  1. Full  → full project scan
-  2. Skip  → no update needed
+  AskUserQuestion:
+    question: "{one sentence status, e.g. 'CLAUDE.md not found — a full scan is required.'}"
+    header:   "Update mode"
+    multiSelect: false
+    options:
+      - label: "Full scan (Recommended)"
+        description: "Rewrite CLAUDE.md from a complete project scan"
+      - label: "Skip"
+        description: "No update needed"
 
 If CLAUDE.md exists but has no saved commit hash:
-  Present:
-  [One sentence describing status and recommendation]
-  1. Full  → full project scan
-  2. Skip  → no update needed
+  AskUserQuestion:
+    question: "{one sentence status and recommendation}"
+    header:   "Update mode"
+    multiSelect: false
+    options:
+      - label: "Full scan (Recommended)"
+        description: "Rewrite CLAUDE.md from a complete project scan"
+      - label: "Skip"
+        description: "No update needed"
 
 If CLAUDE.md exists with a saved commit hash:
   Form a recommendation (Full or Gap) based on gap significance.
-  Pre-select the recommended option.
-  Present:
-  [One sentence describing status and recommendation]
-  1. Full  → force full project scan
-  2. Gap   → update based on changes since last review (recommended)
-  3. Skip  → no update needed
+  Put the recommended option first.
 
-  Or if gap is large/significant, pre-select Full:
-  [One sentence describing status and recommendation]
-  1. Full  → force full project scan (recommended)
-  2. Gap   → update based on changes since last review
-  3. Skip  → no update needed
+  Gap is the recommendation (small or moderate gap):
+  AskUserQuestion:
+    question: "{one sentence status and recommendation}"
+    header:   "Update mode"
+    multiSelect: false
+    options:
+      - label: "Gap update (Recommended)"
+        description: "Update only sections affected by commits since last review"
+      - label: "Full scan"
+        description: "Rewrite CLAUDE.md from a complete project scan"
+      - label: "Skip"
+        description: "No update needed"
 
-Wait for user selection before proceeding.
+  Full is the recommendation (large or significant gap):
+  AskUserQuestion:
+    question: "{one sentence status and recommendation}"
+    header:   "Update mode"
+    multiSelect: false
+    options:
+      - label: "Full scan (Recommended)"
+        description: "Rewrite CLAUDE.md from a complete project scan"
+      - label: "Gap update"
+        description: "Update only sections affected by commits since last review"
+      - label: "Skip"
+        description: "No update needed"
 
 ---
 
