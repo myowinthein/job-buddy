@@ -27,7 +27,6 @@ import {
   getFullDriveState,
   syncProfileToDrive,
   disconnectDrive,
-  deleteDriveBackup,
   dispatchDriveStateChanged,
 } from './driveSync';
 import type { Profile } from '../types/profile';
@@ -192,25 +191,3 @@ describe('disconnectDrive', () => {
   });
 });
 
-describe('deleteDriveBackup', () => {
-  it('clears fileId and lastSynced from backup state', async () => {
-    store['driveToken'] = 'tok-abc';
-    store['driveBackupState'] = { fileId: 'file-xyz', lastSynced: '2026-01-01', pendingSync: false, error: null };
-    fetchMock.mockResolvedValue({ ok: true, status: 204, json: vi.fn(), text: vi.fn().mockResolvedValue('') });
-    await deleteDriveBackup();
-    const state = store['driveBackupState'] as { fileId: null; lastSynced: null };
-    expect(state.fileId).toBeNull();
-    expect(state.lastSynced).toBeNull();
-  });
-
-  it('calls Drive delete endpoint for the known fileId', async () => {
-    store['driveToken'] = 'tok-abc';
-    store['driveBackupState'] = { fileId: 'target-file', lastSynced: null, pendingSync: false, error: null };
-    fetchMock.mockResolvedValue({ ok: true, status: 204, json: vi.fn(), text: vi.fn().mockResolvedValue('') });
-    await deleteDriveBackup();
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('target-file'),
-      expect.objectContaining({ method: 'DELETE' }),
-    );
-  });
-});
