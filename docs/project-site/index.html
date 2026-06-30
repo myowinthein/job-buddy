@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Buddy — Project Overview</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="#top" class="header-logo">Job Buddy</a>
+  <nav class="header-nav">
+    <a href="#problem">Problem</a>
+    <a href="#users">Users</a>
+    <a href="#features">Features</a>
+    <a href="#workflow">Workflow</a>
+    <a href="#data">Data</a>
+    <a href="#permissions">Permissions</a>
+    <a href="#limitations">Limitations</a>
+    <a href="#roadmap">Roadmap</a>
+    <a href="#tech">Tech</a>
+    <a href="#status">Status</a>
+    <a href="#links">Links</a>
+  </nav>
+  <div class="header-actions">
+    <button class="btn-ghost" id="tech-btn">Show technical details</button>
+    <button class="btn-ghost" id="theme-btn" title="Toggle theme">☾</button>
+  </div>
+</header>
+
+<main class="page-wrap" id="top">
+
+  <!-- ── Hero ────────────────────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="hero-badges">
+      <span class="badge badge-green">v1.9.1</span>
+      <span class="badge badge-blue">Chrome Extension</span>
+      <span class="badge badge-muted">MIT</span>
+    </div>
+    <h1>Autofill job application forms from one saved profile</h1>
+    <p class="hero-tagline">
+      A Chrome extension that fills repetitive job application fields across thousands of employer
+      and Applicant Tracking System sites, using a structured profile the user maintains once.
+    </p>
+    <p class="hero-desc">
+      Job Buddy reads form fields on the page, matches them against a stored profile, and fills in
+      what it can with per-field confidence indicators. Everything stays in the browser's local
+      storage by default. Three optional features (Google Drive backup, AI resume import, AI autofill
+      assist) call out to Google's APIs only when the user explicitly enables them.
+    </p>
+
+    <div class="tech-only">
+      <div class="tech-block">
+        <div class="tech-block-label">Tech at a glance</div>
+        <ul>
+          <li><strong>Repo type:</strong> Single-package <code>pnpm</code> project, Chrome MV3 browser extension</li>
+          <li><strong>Build framework:</strong> WXT 0.20.26 (Vite-based)</li>
+          <li><strong>UI:</strong> React 19 + TypeScript 5.9 + Tailwind CSS v4</li>
+          <li><strong>Runtime:</strong> Node 22 (pinned via <code>.nvmrc</code>), pnpm 11.7.0</li>
+          <li><strong>Entrypoints:</strong> <code>entrypoints/background.ts</code>, <code>entrypoints/content.ts</code>, <code>entrypoints/popup/</code>, <code>entrypoints/options/</code></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── At a glance ─────────────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-label">At a glance</div>
+    <h2>What this is</h2>
+    <p class="section-subtitle">Facts confirmed from the repository.</p>
+
+    <div class="glance-grid">
+      <div class="glance-cell">
+        <div class="glance-label">Product type</div>
+        <div class="glance-value">Chrome browser extension</div>
+      </div>
+      <div class="glance-cell">
+        <div class="glance-label">Target user</div>
+        <div class="glance-value">Job seekers, multi-country</div>
+      </div>
+      <div class="glance-cell">
+        <div class="glance-label">Status</div>
+        <div class="glance-value">Published on Chrome Web Store</div>
+      </div>
+      <div class="glance-cell">
+        <div class="glance-label">Platforms</div>
+        <div class="glance-value">Chrome / Chromium (MV3)</div>
+      </div>
+      <div class="glance-cell">
+        <div class="glance-label">Data storage</div>
+        <div class="glance-value">Local, in <code>chrome.storage.local</code></div>
+      </div>
+      <div class="glance-cell">
+        <div class="glance-label">Backend</div>
+        <div class="glance-value">None</div>
+      </div>
+      <div class="glance-cell">
+        <div class="glance-label">License</div>
+        <div class="glance-value">MIT</div>
+      </div>
+      <div class="glance-cell">
+        <div class="glance-label">Distribution</div>
+        <div class="glance-value">Chrome Web Store + GitHub releases</div>
+      </div>
+    </div>
+
+    <div class="tech-only">
+      <div class="tech-block">
+        <div class="tech-block-label">Technical specifics</div>
+        <ul>
+          <li><strong>Package manager:</strong> pnpm 11.7.0 (lockfile committed)</li>
+          <li><strong>Build tool:</strong> WXT 0.20.26 (Vite under the hood)</li>
+          <li><strong>Language:</strong> TypeScript 5.9 (strict mode)</li>
+          <li><strong>Framework:</strong> React 19 (UI) + Tailwind CSS v4 (<code>@tailwindcss/postcss</code>, not the v3 config form)</li>
+          <li><strong>Storage API:</strong> <code>chrome.storage.local</code> (profile, learned mappings, application history) + <code>chrome.storage.session</code> (transient UI hints)</li>
+          <li><strong>Manifest:</strong> Manifest V3 (declared in <code>wxt.config.ts</code>)</li>
+          <li><strong>Key config files:</strong> <code>wxt.config.ts</code>, <code>tsconfig.json</code>, <code>eslint.config.js</code>, <code>package.json</code>, <code>.nvmrc</code></li>
+          <li><strong>CI/CD:</strong> GitHub Actions — <code>.github/workflows/ci.yml</code> (test/lint) + <code>release.yml</code> (CWS upload on <code>v*.*.*</code> tag push)</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Problem ──────────────────────────────────────────────────────────── -->
+  <section class="section" id="problem">
+    <div class="section-label">Problem</div>
+    <h2>Why this exists</h2>
+
+    <p>
+      Job seekers, especially those applying across multiple countries, retype the same personal
+      details, work history, salary expectations, and work authorization information into dozens of
+      slightly different forms. Every Applicant Tracking System (Workday, Greenhouse, Lever, and
+      various in-house custom forms) has its own field naming, layout, and quirks, so generic
+      browser autofill is too brittle to help reliably.
+    </p>
+
+    <p>
+      Job Buddy keeps one structured profile per user and applies it intelligently across any
+      employer site, with per-field confidence so the user knows where to look before submitting.
+    </p>
+  </section>
+
+  <!-- ── Target users ─────────────────────────────────────────────────────── -->
+  <section class="section" id="users">
+    <div class="section-label">Target users</div>
+    <h2>Who this is for</h2>
+
+    <p>The repository indicates the extension is designed for:</p>
+    <ul>
+      <li>Active job seekers applying to multiple roles across different companies</li>
+      <li>Multi-country applicants who deal with varying work authorization, salary currencies, and address formats</li>
+      <li>Users who want their data to stay on their own device and prefer a no-account, no-server tool</li>
+    </ul>
+
+    <p>It is not designed for:</p>
+    <ul>
+      <li>Submitting applications automatically. The user always reviews before submitting.</li>
+      <li>Recruiters or hiring teams. The product is for the applicant side only.</li>
+    </ul>
+
+    <div class="tech-only">
+      <div class="tech-block">
+        <div class="tech-block-label">User-role implementation notes</div>
+        <ul>
+          <li>Single-user model. No accounts, no roles, no multi-tenant logic anywhere in the codebase.</li>
+          <li>Profile is read and written by the options page (<code>entrypoints/options/</code>) and consumed by the autofill engine (<code>src/autofill/</code>).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Core features ───────────────────────────────────────────────────── -->
+  <section class="section" id="features">
+    <div class="section-label">Core features</div>
+    <h2>What it does today</h2>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">📝</div>
+        <div class="feature-name">One-click autofill</div>
+        <div class="feature-desc">
+          Scans visible form fields, matches them to the profile, and fills them in. Each filled
+          field is colour-coded by confidence.
+        </div>
+        <div class="feature-status"><span class="badge badge-green">Implemented</span></div>
+
+        <div class="tech-only">
+          <div class="tech-block">
+            <div class="tech-block-label">Relevant source files</div>
+            <ul>
+              <li><code>src/autofill/index.ts</code> — orchestrator (<code>scanAutofill</code>, <code>executeAutofill</code>, <code>undoAutofill</code>)</li>
+              <li><code>src/autofill/scanner.ts</code> — native + ARIA field discovery</li>
+              <li><code>src/autofill/filler.ts</code> — type-aware fill (input/select/React-Select/contenteditable/date)</li>
+              <li><code>src/autofill/constants.ts</code> — confidence thresholds</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🎯</div>
+        <div class="feature-name">Confidence-based field mapping</div>
+        <div class="feature-desc">
+          Four-layer pipeline: learned mappings, HTML autocomplete, a curated dictionary, and fuzzy
+          matching. Each field gets a green / yellow / red / grey tier.
+        </div>
+        <div class="feature-status"><span class="badge badge-green">Implemented</span></div>
+
+        <div class="tech-only">
+          <div class="tech-block">
+            <div class="tech-block-label">Implementation notes</div>
+            <ul>
+              <li><code>src/autofill/mapper.ts</code> — runs each layer in order; first match wins</li>
+              <li>Signal priority is fixed: <code>[label, ariaLabel, placeholder, name, id]</code> (tested in <code>mapper.test.ts</code>)</li>
+              <li>Thresholds defined as named constants — never raw numbers</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">👤</div>
+        <div class="feature-name">9-section profile editor</div>
+        <div class="feature-desc">
+          Personal, Address, Salary, Work Authorization, Work History, Education, Languages, Links,
+          Documents. Plus computed fields like full name, current title, total experience.
+        </div>
+        <div class="feature-status"><span class="badge badge-green">Implemented</span></div>
+
+        <div class="tech-only">
+          <div class="tech-block">
+            <div class="tech-block-label">Relevant source files</div>
+            <ul>
+              <li><code>src/types/profile.ts</code> — canonical <code>Profile</code> type</li>
+              <li><code>src/components/options/*Section.tsx</code> — one component per section</li>
+              <li><code>src/utils/derivedFields.ts</code> — computed (derived) fields</li>
+              <li><code>src/utils/profileCompletion.ts</code> — completion percentage tracking</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🎓</div>
+        <div class="feature-name">Learns per-domain corrections</div>
+        <div class="feature-desc">
+          When a user picks a different profile value via the picker overlay, that mapping is
+          remembered for that site. A two-confirmation threshold prevents accidental misclicks
+          from sticking.
+        </div>
+        <div class="feature-status"><span class="badge badge-green">Implemented</span></div>
+
+        <div class="tech-only">
+          <div class="tech-block">
+            <div class="tech-block-label">Implementation notes</div>
+            <ul>
+              <li><code>src/utils/storage.ts</code> — <code>saveLearnedMapping()</code> is source of truth (count logic + conflict reset)</li>
+              <li><code>src/autofill/mappings.ts</code> — <code>saveElementMappings()</code> iterates a field's signals</li>
+              <li>Learned mappings keyed by hostname + signal</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">☁️</div>
+        <div class="feature-name">Optional Google Drive backup</div>
+        <div class="feature-desc">
+          Off by default. When enabled, the profile syncs to a private app-only folder in the
+          user's Google Drive. Visible only to Job Buddy, not browseable.
+        </div>
+        <div class="feature-status"><span class="badge badge-green">Implemented (opt-in)</span></div>
+
+        <div class="tech-only">
+          <div class="tech-block">
+            <div class="tech-block-label">Implementation notes</div>
+            <ul>
+              <li><code>src/utils/driveSync.ts</code> — connect, disconnect, sync, restore</li>
+              <li>Uses <code>drive.appdata</code> scope (cannot read user's other Drive files)</li>
+              <li>OAuth via <code>chrome.identity.launchWebAuthFlow</code> (implicit grant)</li>
+              <li>Two restore paths in <code>SettingsSection</code>: empty-profile + conflict-review</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🧠</div>
+        <div class="feature-name">Optional AI resume import</div>
+        <div class="feature-desc">
+          Off by default. The user pastes their own Gemini API key, uploads a resume PDF or DOCX,
+          and reviews extracted fields before anything is saved.
+        </div>
+        <div class="feature-status"><span class="badge badge-green">Implemented (opt-in, BYOK)</span></div>
+
+        <div class="tech-only">
+          <div class="tech-block">
+            <div class="tech-block-label">Implementation notes</div>
+            <ul>
+              <li><code>src/resume-ai/gemini.ts</code> — <code>extractFromResume()</code></li>
+              <li><code>src/resume-ai/extractLinks.ts</code> — pulls PDF annotation-layer hyperlinks before sending to Gemini</li>
+              <li><code>src/resume-ai/normalize.ts</code> — bullet formatting, summary line-wrap merging</li>
+              <li>All failures must be silent — never block autofill</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🤖</div>
+        <div class="feature-name">Optional AI autofill assist</div>
+        <div class="feature-desc">
+          For fields the rule-based pipeline cannot resolve (complex selects, radio groups), the
+          extension can ask Gemini for a match. Off by default.
+        </div>
+        <div class="feature-status"><span class="badge badge-green">Implemented (opt-in, BYOK)</span></div>
+
+        <div class="tech-only">
+          <div class="tech-block">
+            <div class="tech-block-label">Implementation notes</div>
+            <ul>
+              <li><code>src/autofill/ai.ts</code> — runs after the rule pipeline</li>
+              <li>Filters out consent checkboxes before any request</li>
+              <li>If AI returns high confidence (green), the picker overlay is removed</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">↩️</div>
+        <div class="feature-name">Undo and re-fill</div>
+        <div class="feature-desc">
+          Clears every value the extension wrote. If the profile is updated in another tab,
+          previously-empty fields are filled in silently when the user returns to the application
+          tab.
+        </div>
+        <div class="feature-status"><span class="badge badge-green">Implemented</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── User workflow ────────────────────────────────────────────────────── -->
+  <section class="section" id="workflow">
+    <div class="section-label">User workflow</div>
+    <h2>How a user actually uses it</h2>
+
+    <div class="workflow-steps">
+      <div class="workflow-step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Set up the profile (once)</div>
+          <div class="step-desc">
+            Open the options page and fill in the nine sections. Optionally upload a resume and let
+            AI extract suggestions (with review). Optionally enable Google Drive backup.
+          </div>
+        </div>
+      </div>
+      <div class="workflow-step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Open a job application page</div>
+          <div class="step-desc">
+            Any employer or ATS site. The content script is present but does nothing until invoked.
+          </div>
+        </div>
+      </div>
+      <div class="workflow-step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">Click the toolbar icon and press Fill Form</div>
+          <div class="step-desc">
+            The extension scans the page, classifies each field, and fills what it can.
+          </div>
+        </div>
+      </div>
+      <div class="workflow-step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <div class="step-title">Review colour-coded fields</div>
+          <div class="step-desc">
+            Green = high confidence, yellow = medium (review), red = low (the picker overlay
+            offers alternatives), grey = no profile data (the picker offers a deep-link to the
+            relevant profile section).
+          </div>
+        </div>
+      </div>
+      <div class="workflow-step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <div class="step-title">Correct anything wrong, then submit</div>
+          <div class="step-desc">
+            Manually picking a different profile value via the picker teaches the extension that
+            site-specific mapping for next time. The user always submits the form themselves.
+          </div>
+        </div>
+      </div>
+      <div class="workflow-step">
+        <div class="step-num">6</div>
+        <div class="step-content">
+          <div class="step-title">Undo if needed</div>
+          <div class="step-desc">
+            One click clears every value the extension wrote in that session.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tech-only">
+      <div class="tech-block">
+        <div class="tech-block-label">Data flow</div>
+        <ul>
+          <li><strong>Popup click</strong> → <code>chrome.tabs.sendMessage</code> → content script <code>AUTOFILL_SCAN</code></li>
+          <li><strong>Scan</strong> → <code>scanner.ts</code> finds elements → <code>mapper.ts</code> classifies each → store as <code>pendingMatches</code> (no DOM changes yet)</li>
+          <li><strong>Fill</strong> → <code>AUTOFILL_FILL</code> → <code>filler.ts</code> writes values + <code>highlighter.ts</code> applies colour + <code>picker.ts</code> attaches overlay listeners</li>
+          <li><strong>AI assist</strong> (if enabled) → <code>ai.ts</code> resolves remaining fields via Gemini</li>
+          <li><strong>Deep-link to profile</strong> → content script sends <code>OPEN_OPTIONS</code> with <code>focusPath</code> → background writes session storage → options page reads it on mount or on tab focus</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Data and privacy ─────────────────────────────────────────────────── -->
+  <section class="section" id="data">
+    <div class="section-label">Data and privacy</div>
+    <h2>What's stored and where</h2>
+    <p class="section-subtitle">
+      Source of truth: the privacy policy under <code>docs/privacy/</code>.
+    </p>
+
+    <p>
+      According to the privacy policy, Job Buddy stores all profile data locally in the browser's
+      own storage. The extension has no servers and no user accounts. Data only leaves the user's
+      device through three opt-in features (Google Drive backup, AI resume import, AI autofill
+      assist), and only when the user explicitly enables each one.
+    </p>
+
+    <h3>What's stored locally</h3>
+    <ul>
+      <li>Profile fields the user entered (personal info, address, salary, work history, education, languages, links, work authorization)</li>
+      <li>Resume or CV file, if uploaded, encoded as file data</li>
+      <li>Per-domain learned field mappings (signal-to-profile-path only, never the values typed)</li>
+      <li>Application history (records of filled forms)</li>
+      <li>AI settings: Gemini API key and selected model (only if AI features are enabled)</li>
+      <li>Drive backup state: OAuth token and bookkeeping (only if Drive backup is enabled)</li>
+      <li>Theme preference</li>
+    </ul>
+
+    <div class="callout">
+      <strong>According to the privacy policy:</strong> the extension does not make network requests
+      by default, does not sell or share data, and does not use Chrome account sync. Data only
+      reaches third-party APIs (Google Drive, Google Gemini) through opt-in features the user
+      activates.
+    </div>
+
+    <h3>EEO fields</h3>
+    <p>
+      Optional gender, ethnicity, veteran status, and disability status fields are categorised as
+      special category data under GDPR Article 9. The privacy policy states they are processed only
+      on the basis of the user's explicit consent (which they provide by voluntarily entering
+      values), are stored only on-device, and can be deleted from the options page at any time.
+    </p>
+
+    <div class="tech-only">
+      <div class="tech-block">
+        <div class="tech-block-label">Storage technical details</div>
+        <ul>
+          <li><strong>Primary storage:</strong> <code>chrome.storage.local</code> (5 MB hard limit)</li>
+          <li><strong>Session storage:</strong> <code>chrome.storage.session</code> for transient UI hints (deep-link target, dismissed prompts)</li>
+          <li><strong>CV file cap:</strong> 4 MB (base64-encoded, kept under the 5 MB total quota)</li>
+          <li><strong>Export bundles:</strong> exclude <code>geminiApiKey</code>, <code>geminiModel</code>, <code>driveToken</code>, <code>driveBackupState</code></li>
+          <li><strong>Drive scope:</strong> <code>drive.appdata</code> only — the extension cannot read the user's other Drive files</li>
+          <li><strong>Relevant source files:</strong> <code>src/utils/storage.ts</code>, <code>src/utils/driveSync.ts</code>, <code>src/utils/migrate.ts</code></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Permissions ──────────────────────────────────────────────────────── -->
+  <section class="section" id="permissions">
+    <div class="section-label">Permissions</div>
+    <h2>What the extension can do in the browser</h2>
+    <p class="section-subtitle">
+      Source of truth: <code>wxt.config.ts</code>.
+    </p>
+
+    <div class="perm-list">
+      <div class="perm-card">
+        <div class="perm-icon">💾</div>
+        <div>
+          <div class="perm-name">Storage</div>
+          <div class="perm-why">
+            Used to save the user's profile, learned field mappings, application history, and UI
+            preferences locally on the device. Required for the core functionality.
+          </div>
+        </div>
+      </div>
+
+      <div class="perm-card">
+        <div class="perm-icon">👤</div>
+        <div>
+          <div class="perm-name">Identity</div>
+          <div class="perm-why">
+            Used only when the user opts in to Google Drive backup. Authenticates with Google via
+            <code>chrome.identity.launchWebAuthFlow</code>. Not used for any other purpose.
+          </div>
+        </div>
+      </div>
+
+      <div class="perm-card">
+        <div class="perm-icon">🗂️</div>
+        <div>
+          <div class="perm-name">Active Tab</div>
+          <div class="perm-why">
+            Used so the popup can send commands (Fill Form, Undo, status check) to the content
+            script on the tab the user is currently viewing. Only the active tab is ever
+            accessed.
+          </div>
+        </div>
+      </div>
+
+      <div class="perm-card">
+        <div class="perm-icon">🌐</div>
+        <div>
+          <div class="perm-name">Host access (<code>*://*/*</code>)</div>
+          <div class="perm-why">
+            The content script is loaded on any web page because job application forms appear
+            across thousands of unrelated employer and ATS domains. According to the manifest, the
+            script is passive and does nothing until the user clicks Fill Form. When activated it
+            reads form field metadata only (labels, attributes), not field values or page content.
+          </div>
+        </div>
+      </div>
+
+      <div class="perm-card">
+        <div class="perm-icon">🔌</div>
+        <div>
+          <div class="perm-name">Host permissions for Google APIs</div>
+          <div class="perm-why">
+            <code>generativelanguage.googleapis.com</code>, <code>www.googleapis.com</code>,
+            <code>oauth2.googleapis.com</code>. Used by the optional Gemini AI features and
+            Google Drive backup.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tech-only">
+      <div class="tech-block">
+        <div class="tech-block-label">Manifest details</div>
+        <ul>
+          <li><strong>Manifest version:</strong> 3 (MV3)</li>
+          <li><strong><code>permissions</code>:</strong> <code>storage</code>, <code>identity</code>, <code>activeTab</code></li>
+          <li><strong><code>host_permissions</code>:</strong> Google API hosts only (see above)</li>
+          <li><strong>Content script match pattern:</strong> <code>*://*/*</code></li>
+          <li><strong>Config file:</strong> <code>wxt.config.ts</code></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Current limitations ─────────────────────────────────────────────── -->
+  <section class="section" id="limitations">
+    <div class="section-label">Current limitations</div>
+    <h2>What it does not do today</h2>
+
+    <ul class="limit-list">
+      <li>Does not submit applications. The user always reviews and submits manually.</li>
+      <li>Does not work on Firefox, Safari, or mobile browsers. Chrome / Chromium (MV3) only.</li>
+      <li>CV or resume files are capped at 4 MB because of the <code>chrome.storage.local</code> 5 MB total quota.</li>
+      <li>Google Drive backup requires the user to set up their own OAuth client during development. The Chrome Web Store build uses a published OAuth client.</li>
+      <li>AI features require the user to obtain their own Google Gemini API key (BYOK model). The extension does not provide one.</li>
+      <li>Cross-device sync is only available through Google Drive backup. There is no first-party sync server.</li>
+      <li>Built-in browser autofill is not disabled and may overlap with the extension's behaviour on the same fields.</li>
+    </ul>
+
+    <div class="tech-only">
+      <div class="tech-block">
+        <div class="tech-block-label">Implementation constraints</div>
+        <ul>
+          <li><strong>Storage cap:</strong> <code>chrome.storage.local</code> 5 MB hard limit (Chrome-imposed)</li>
+          <li><strong>OAuth flow:</strong> Google Cloud OAuth client must be type "Web Application", not "Chrome Extension", to match <code>chrome.identity.launchWebAuthFlow</code></li>
+          <li><strong>Cross-context restriction:</strong> <code>chrome.storage.session.set</code> from content scripts is blocked unless the extension has <code>host_permissions</code> for the page URL — which it intentionally doesn't (only Google API hosts). All cross-context storage writes from the content script must route through the background service worker.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Roadmap / possible improvements ─────────────────────────────────── -->
+  <section class="section" id="roadmap">
+    <div class="section-label">Roadmap</div>
+    <h2>Possible future improvements</h2>
+    <p class="section-subtitle">
+      No formal roadmap is committed in the repository. The items below are conservative
+      observations from the codebase, not promises.
+    </p>
+
+    <ul>
+      <li>Firefox support, once the WXT build is configured for it (the framework supports multi-browser builds).</li>
+      <li>Application history dashboard. The data structure exists in storage but is not yet surfaced as a dedicated UI.</li>
+      <li>Broader localisation (the UI is currently English-only).</li>
+      <li>Expanded support for vendor-specific ATS quirks (custom date pickers, multi-step forms with hidden state).</li>
+      <li>Self-hosted or alternative AI model providers, given the BYOK architecture.</li>
+    </ul>
+
+    <div class="tech-only">
+      <div class="tech-block">
+        <div class="tech-block-label">Likely affected areas (for any of the above)</div>
+        <ul>
+          <li><code>wxt.config.ts</code> + <code>manifest</code> — multi-browser builds</li>
+          <li><code>src/types/profile.ts</code> + the four-place schema fan-out — any new profile field</li>
+          <li><code>src/autofill/filler.ts</code> — new field-type support</li>
+          <li><code>src/resume-ai/gemini.ts</code> — abstracting to other AI providers</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Technical summary ───────────────────────────────────────────────── -->
+  <section class="section" id="tech">
+    <div class="section-label">Technical summary</div>
+    <h2>For semi-technical readers</h2>
+
+    <p>
+      Job Buddy is a Chrome MV3 browser extension built with the WXT framework, React 19, and
+      TypeScript. There is no backend — the entire product runs inside the user's browser. Optional
+      integrations (Google Drive, Google Gemini) make outbound API calls from the browser directly,
+      with no proxy server in between.
+    </p>
+
+    <p>
+      The codebase is split into four entrypoints (background service worker, injected content
+      script, action popup, full-page options editor) plus shared modules for the autofill engine,
+      profile types, storage wrappers, and the optional AI integrations. Distribution is through
+      the Chrome Web Store, with automated uploads triggered by pushing semver tags to GitHub.
+    </p>
+
+    <div class="stack-grid">
+      <div class="stack-card">
+        <div class="stack-role">Build framework</div>
+        <div class="stack-value">WXT 0.20.26 (Vite)</div>
+      </div>
+      <div class="stack-card">
+        <div class="stack-role">UI</div>
+        <div class="stack-value">React 19 + Tailwind v4</div>
+      </div>
+      <div class="stack-card">
+        <div class="stack-role">Language</div>
+        <div class="stack-value">TypeScript 5.9</div>
+      </div>
+      <div class="stack-card">
+        <div class="stack-role">Runtime</div>
+        <div class="stack-value">Node 22, pnpm 11.7.0</div>
+      </div>
+      <div class="stack-card">
+        <div class="stack-role">Tests</div>
+        <div class="stack-value">Vitest (400+ unit tests)</div>
+      </div>
+      <div class="stack-card">
+        <div class="stack-role">Lint / Format</div>
+        <div class="stack-value">ESLint v9 + Prettier</div>
+      </div>
+    </div>
+
+    <div class="tech-only">
+      <div class="tech-block">
+        <div class="tech-block-label">Important commands (from <code>package.json</code>)</div>
+        <ul>
+          <li><code>pnpm dev</code> — dev build with hot reload at <code>.output/chrome-mv3-dev/</code></li>
+          <li><code>pnpm build</code> — production build at <code>.output/chrome-mv3/</code></li>
+          <li><code>pnpm zip</code> — production build + CWS-ready zip</li>
+          <li><code>pnpm compile</code> — TypeScript type-check (run before every commit)</li>
+          <li><code>pnpm test:run</code> — single Vitest run (run before every commit)</li>
+          <li><code>pnpm lint</code> — ESLint</li>
+          <li><code>pnpm serve:demo</code> — local demo form at <code>localhost:8000</code> for manual testing</li>
+        </ul>
+      </div>
+
+      <div class="tech-block">
+        <div class="tech-block-label">Architectural boundaries</div>
+        <ul>
+          <li><strong>Background service worker</strong> (<code>entrypoints/background.ts</code>) — routes <code>OPEN_OPTIONS</code>, writes session storage for cross-context deep-links, retries pending Drive sync on browser startup</li>
+          <li><strong>Content script</strong> (<code>entrypoints/content.ts</code>) — injected on all pages, passive until invoked, routes autofill messages</li>
+          <li><strong>Popup</strong> (<code>entrypoints/popup/</code>) — React UI for Fill / Undo / status, plus hidden debug panel</li>
+          <li><strong>Options page</strong> (<code>entrypoints/options/</code>) — full React profile editor (9 sections + Settings + Resume Import)</li>
+          <li><strong>Autofill core</strong> (<code>src/autofill/</code>) — engine that runs inside the content script context</li>
+          <li><strong>Resume AI</strong> (<code>src/resume-ai/</code>) — Gemini integration, isolated so it can fail silently without breaking core autofill</li>
+        </ul>
+      </div>
+
+      <div class="tech-block">
+        <div class="tech-block-label">Deployment / distribution</div>
+        <ul>
+          <li><strong>Distribution:</strong> Chrome Web Store as "Job Buddy - Autofill Job Applications"</li>
+          <li><strong>Release trigger:</strong> Pushing a <code>v*.*.*</code> tag triggers <code>.github/workflows/release.yml</code> which builds and uploads to the Chrome Web Store</li>
+          <li><strong>Tag annotation controls submission:</strong> <code>release</code> = submit for review; <code>release:draft</code> = upload as draft only</li>
+          <li><strong>CI:</strong> <code>.github/workflows/ci.yml</code> runs type-check, lint, and tests on every push and PR</li>
+          <li><strong>Setup notes:</strong> <code>.github/SETUP.md</code> documents Google Cloud + GitHub secret setup</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Project status ──────────────────────────────────────────────────── -->
+  <section class="section" id="status">
+    <div class="section-label">Project status</div>
+    <h2>Where the project is today</h2>
+
+    <p>
+      Based on repository evidence, Job Buddy appears to be a <strong>shipped, actively maintained
+      product</strong>:
+    </p>
+
+    <ul>
+      <li>Version <strong>1.9.1</strong> in <code>package.json</code>, with a continuous tag history visible in git</li>
+      <li>Published on the Chrome Web Store (referenced in <code>README.md</code> and <code>wxt.config.ts</code>)</li>
+      <li>Continuous Integration is configured (<code>.github/workflows/ci.yml</code>) and runs on every push and pull request</li>
+      <li>Automated release workflow (<code>.github/workflows/release.yml</code>) for Chrome Web Store uploads</li>
+      <li>Comprehensive legal documents under <code>docs/</code> (privacy, terms, EULA, disclaimer)</li>
+      <li>Documented developer setup (<code>.github/SETUP.md</code>) covering Google Cloud, GitHub secrets, and OAuth client configuration</li>
+      <li>Active commit history with feature work, bug fixes, and refactors</li>
+    </ul>
+
+    <p>
+      The repository indicates a single-maintainer ("solo mode") project: commits go directly to
+      <code>main</code> with no feature branches or pull requests required.
+    </p>
+
+    <div class="tech-only">
+      <div class="tech-block">
+        <div class="tech-block-label">Status evidence</div>
+        <ul>
+          <li><strong>Version:</strong> <code>package.json</code> v1.9.1; CWS listing live</li>
+          <li><strong>CI/CD:</strong> <code>.github/workflows/ci.yml</code> + <code>.github/workflows/release.yml</code></li>
+          <li><strong>Release process:</strong> <code>/ship</code> command (Claude Code) drives the version bump + tag + push</li>
+          <li><strong>Tag history:</strong> Semantic versioning with annotated tags (<code>release</code> or <code>release:draft</code>)</li>
+          <li><strong>Git mode:</strong> <code>git-solo: true</code> declared in <code>CLAUDE.md</code></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Links ───────────────────────────────────────────────────────────── -->
+  <section class="section" id="links">
+    <div class="section-label">Links</div>
+    <h2>Where to find more</h2>
+
+    <div class="links-grid">
+      <a class="link-card" href="https://github.com/myowinthein/job-buddy" target="_blank">
+        <span class="link-card-icon">⚡</span>
+        <span class="link-card-label">GitHub repository</span>
+      </a>
+      <a class="link-card" href="../" target="_blank">
+        <span class="link-card-icon">🌐</span>
+        <span class="link-card-label">Landing page</span>
+      </a>
+      <a class="link-card" href="../privacy/" target="_blank">
+        <span class="link-card-icon">🔒</span>
+        <span class="link-card-label">Privacy policy</span>
+      </a>
+      <a class="link-card" href="../terms/" target="_blank">
+        <span class="link-card-icon">📄</span>
+        <span class="link-card-label">Terms of service</span>
+      </a>
+      <a class="link-card" href="../eula/" target="_blank">
+        <span class="link-card-icon">📜</span>
+        <span class="link-card-label">EULA</span>
+      </a>
+      <a class="link-card" href="../disclaimer/" target="_blank">
+        <span class="link-card-icon">⚠️</span>
+        <span class="link-card-label">Disclaimer</span>
+      </a>
+      <a class="link-card" href="https://github.com/myowinthein/job-buddy/issues" target="_blank">
+        <span class="link-card-icon">💬</span>
+        <span class="link-card-label">Issues / support</span>
+      </a>
+    </div>
+
+    <div class="tech-only">
+      <div class="tech-block">
+        <div class="tech-block-label">Where each link came from</div>
+        <ul>
+          <li><strong>GitHub repo:</strong> referenced in <code>README.md</code></li>
+          <li><strong>Landing page:</strong> <code>docs/index.html</code> (served via GitHub Pages)</li>
+          <li><strong>Privacy / Terms / EULA / Disclaimer:</strong> <code>docs/privacy/</code>, <code>docs/terms/</code>, <code>docs/eula/</code>, <code>docs/disclaimer/</code></li>
+          <li><strong>Issues:</strong> referenced in <code>README.md</code> and the in-extension Settings page</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer ──────────────────────────────────────────────────────────── -->
+  <footer class="site-footer">
+    <div>
+      <strong>Job Buddy</strong> — generated from repository evidence at commit
+      <code>8f4458e5</code>.
+    </div>
+    <div>
+      <a href="../../README.md">README</a>
+    </div>
+  </footer>
+
+</main>
+
+<script src="assets/script.js"></script>
+<!-- last-reviewed: 8f4458e5f40f981da20cd8f29122e8bcfd71e820 -->
+</body>
+</html>
