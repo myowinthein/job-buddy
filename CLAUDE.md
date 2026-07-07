@@ -128,4 +128,10 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 
 - **Content scripts cannot write to `chrome.storage.session`.** The picker routes `OPEN_OPTIONS` + `focusPath` through the background service worker, which has unrestricted session storage access. Don't bypass this routing.
 
+## Rules
+
+This project follows the rules shipped in claude-helm:
+- ~/.claude/plugins/marketplaces/claude-helm/rules/git.md
+- ~/.claude/plugins/marketplaces/claude-helm/rules/safety.md
+
 <!-- last-reviewed: 300b0ce64e76d7f1240a8e502a1c4bd814dcc1b6 -->
