@@ -80,8 +80,8 @@
       transform: translateZ(0); /* own compositing layer — no repaint on scroll */
     }
     .dark .nav-blur {
-      background: rgba(10,12,18,0.97);
-      border-bottom-color: rgba(75,121,247,0.12);
+      background: rgba(12,24,41,0.96);
+      border-bottom-color: rgba(75,121,247,0.14);
     }
 
     /* Hero gradient */
@@ -180,11 +180,13 @@
       box-shadow: 0 8px 28px rgba(13,27,62,0.12), 0 2px 6px rgba(13,27,62,0.06);
     }
     .dark .feature-card {
-      background: #1e2433;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
+      background: #162d4a;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.15);
+      border: 1px solid rgba(75,121,247,0.08);
     }
     .dark .feature-card:hover {
-      box-shadow: 0 8px 28px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.2);
+      border-color: rgba(75,121,247,0.15);
     }
 
     /* Privacy pill */
@@ -255,7 +257,7 @@
   </style>
 </head>
 
-<body class="bg-white dark:bg-[#0f1117] text-navy dark:text-[#e2e8f0] antialiased">
+<body class="bg-white dark:bg-[#0c1829] text-navy dark:text-[#d8e8f8] antialiased">
 
   <!-- ── NAV ─────────────────────────────────────────────────── -->
   <header class="nav-blur sticky top-0 z-50">
@@ -348,32 +350,32 @@
 
 
   <!-- ── CONFIDENCE COLOUR KEY ───────────────────────────────── -->
-  <section class="bg-surface dark:bg-[#0f1117] py-12">
+  <section class="bg-surface dark:bg-[#0c1829] py-12">
     <div class="max-w-3xl mx-auto px-6">
-      <p class="text-center text-sm font-semibold text-navy/40 dark:text-white/30 uppercase tracking-widest mb-6">What the colours mean</p>
+      <p class="text-center text-sm font-semibold text-navy/40 dark:text-white/40 uppercase tracking-widest mb-6">What the colours mean</p>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div class="flex items-start gap-3 bg-white dark:bg-[#1e2433] rounded-xl p-4 shadow-card dark:shadow-none">
+        <div class="flex items-start gap-3 bg-white dark:bg-[#162d4a] rounded-xl p-4 shadow-card dark:shadow-none">
           <span class="w-3 h-3 rounded-full mt-0.5 flex-shrink-0" style="background:#22c55e"></span>
           <div>
             <p class="font-semibold text-sm text-navy dark:text-white">Green</p>
             <p class="text-xs text-navy/50 dark:text-white/40 mt-0.5 leading-snug">High confidence, filled automatically</p>
           </div>
         </div>
-        <div class="flex items-start gap-3 bg-white dark:bg-[#1e2433] rounded-xl p-4 shadow-card dark:shadow-none">
+        <div class="flex items-start gap-3 bg-white dark:bg-[#162d4a] rounded-xl p-4 shadow-card dark:shadow-none">
           <span class="w-3 h-3 rounded-full mt-0.5 flex-shrink-0" style="background:#f59e0b"></span>
           <div>
             <p class="font-semibold text-sm text-navy dark:text-white">Yellow</p>
             <p class="text-xs text-navy/50 dark:text-white/40 mt-0.5 leading-snug">Medium confidence, worth a glance</p>
           </div>
         </div>
-        <div class="flex items-start gap-3 bg-white dark:bg-[#1e2433] rounded-xl p-4 shadow-card dark:shadow-none">
+        <div class="flex items-start gap-3 bg-white dark:bg-[#162d4a] rounded-xl p-4 shadow-card dark:shadow-none">
           <span class="w-3 h-3 rounded-full mt-0.5 flex-shrink-0" style="background:#ef4444"></span>
           <div>
             <p class="font-semibold text-sm text-navy dark:text-white">Red</p>
             <p class="text-xs text-navy/50 dark:text-white/40 mt-0.5 leading-snug">Low confidence, pick from your profile</p>
           </div>
         </div>
-        <div class="flex items-start gap-3 bg-white dark:bg-[#1e2433] rounded-xl p-4 shadow-card dark:shadow-none">
+        <div class="flex items-start gap-3 bg-white dark:bg-[#162d4a] rounded-xl p-4 shadow-card dark:shadow-none">
           <span class="w-3 h-3 rounded-full mt-0.5 flex-shrink-0" style="background:#9ca3af"></span>
           <div>
             <p class="font-semibold text-sm text-navy dark:text-white">Gray</p>
@@ -386,7 +388,7 @@
 
 
   <!-- ── HOW IT WORKS ────────────────────────────────────────── -->
-  <section id="how-it-works" class="bg-white dark:bg-[#0f1117] py-24">
+  <section id="how-it-works" class="bg-white dark:bg-[#0c1829] py-24">
     <div class="max-w-6xl mx-auto px-6">
 
       <div class="text-center mb-16">
@@ -450,7 +452,7 @@
 
 
   <!-- ── FEATURES ────────────────────────────────────────────── -->
-  <section id="features" class="bg-surface dark:bg-[#161b27] py-24">
+  <section id="features" class="bg-surface dark:bg-[#0f2236] py-24">
     <div class="max-w-6xl mx-auto px-6">
 
       <div class="text-center mb-16">
@@ -558,7 +560,7 @@
 
 
   <!-- ── AI RESUME IMPORT FEATURE ────────────────────────────── -->
-  <section class="bg-white dark:bg-[#0f1117] py-24 overflow-hidden">
+  <section class="bg-white dark:bg-[#0c1829] py-24 overflow-hidden">
     <div class="max-w-6xl mx-auto px-6">
       <div class="grid md:grid-cols-2 gap-12 items-center">
 
@@ -707,7 +709,7 @@
 
 
   <!-- ── FOOTER ───────────────────────────────────────────────── -->
-  <footer class="bg-surface dark:bg-[#0f1117] border-t border-navy/5 dark:border-white/8 py-10">
+  <footer class="bg-surface dark:bg-[#0f2236] border-t border-navy/5 dark:border-white/6 py-10">
     <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
 
       <!-- Logo + copy -->
