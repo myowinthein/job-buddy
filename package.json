@@ -2,7 +2,7 @@
   "name": "job-buddy",
   "description": "AI-powered job application assistant browser extension",
   "private": true,
-  "version": "1.9.1",
+  "version": "1.9.2",
   "type": "module",
   "packageManager": "pnpm@11.7.0",
   "scripts": {
