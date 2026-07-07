@@ -29,10 +29,22 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
 
+  <!-- Anti-FOUC: apply saved theme before first paint -->
+  <script>
+    (function () {
+      var saved = localStorage.getItem('theme');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (saved === 'dark' || (!saved && prefersDark)) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
+
   <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           colors: {
@@ -66,6 +78,10 @@
       background: rgba(255,255,255,0.97);
       border-bottom: 1px solid rgba(75,121,247,0.10);
       transform: translateZ(0); /* own compositing layer — no repaint on scroll */
+    }
+    .dark .nav-blur {
+      background: rgba(10,12,18,0.97);
+      border-bottom-color: rgba(75,121,247,0.12);
     }
 
     /* Hero gradient */
@@ -163,6 +179,13 @@
       transform: translateY(-3px);
       box-shadow: 0 8px 28px rgba(13,27,62,0.12), 0 2px 6px rgba(13,27,62,0.06);
     }
+    .dark .feature-card {
+      background: #1e2433;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .dark .feature-card:hover {
+      box-shadow: 0 8px 28px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3);
+    }
 
     /* Privacy pill */
     .privacy-pill {
@@ -207,6 +230,7 @@
       padding: 2px 0;
       transition: color 0.15s ease;
     }
+    .dark .nav-link { color: rgba(226,232,240,0.65); }
     /* Hover: sliding blue underline */
     .nav-link::after {
       content: '';
@@ -223,11 +247,15 @@
       color: #4B79F7;
       font-weight: 600;
     }
+    .dark .nav-link.active { color: #4B79F7; }
     .nav-link.active::after { width: 0; }
+
+    /* Theme toggle icon visibility */
+    #icon-moon.hidden, #icon-sun.hidden { display: none; }
   </style>
 </head>
 
-<body class="bg-white text-navy antialiased">
+<body class="bg-white dark:bg-[#0f1117] text-navy dark:text-[#e2e8f0] antialiased">
 
   <!-- ── NAV ─────────────────────────────────────────────────── -->
   <header class="nav-blur sticky top-0 z-50">
@@ -235,15 +263,31 @@
       <!-- Logo -->
       <a href="/" class="flex items-center gap-2.5 no-underline">
         <img src="./assets/icons/icon.svg" width="32" height="32" alt="Job Buddy icon" class="rounded-lg" />
-        <span class="font-bold text-navy text-[17px] tracking-tight">Job Buddy</span>
+        <span class="font-bold text-navy dark:text-white text-[17px] tracking-tight">Job Buddy</span>
       </a>
 
-      <!-- Nav links (hidden on mobile) -->
-      <div class="hidden md:flex items-center gap-8">
-        <a href="#how-it-works" class="nav-link">How it works</a>
-        <a href="#features"     class="nav-link">Features</a>
-        <a href="#privacy"      class="nav-link">Privacy</a>
-        <a href="https://github.com/myowinthein/job-buddy" target="_blank" rel="noopener" class="nav-link">GitHub</a>
+      <!-- Nav links (hidden on mobile) + theme toggle -->
+      <div class="flex items-center gap-6">
+        <div class="hidden md:flex items-center gap-8">
+          <a href="#how-it-works" class="nav-link">How it works</a>
+          <a href="#features"     class="nav-link">Features</a>
+          <a href="#privacy"      class="nav-link">Privacy</a>
+          <a href="https://github.com/myowinthein/job-buddy" target="_blank" rel="noopener" class="nav-link">GitHub</a>
+        </div>
+
+        <!-- Dark mode toggle -->
+        <button id="theme-toggle" aria-label="Toggle dark mode"
+          class="w-9 h-9 rounded-lg flex items-center justify-center text-navy/40 hover:text-navy/70 hover:bg-navy/5 dark:text-white/40 dark:hover:text-white/70 dark:hover:bg-white/10 transition-colors">
+          <!-- Moon — shown in light mode -->
+          <svg id="icon-moon" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M15.5 11.5A7 7 0 0 1 6.5 2.5a7 7 0 1 0 9 9Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <!-- Sun — shown in dark mode -->
+          <svg id="icon-sun" class="hidden" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <circle cx="9" cy="9" r="3.5" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.22 3.22l1.42 1.42M13.36 13.36l1.42 1.42M14.78 3.22l-1.42 1.42M4.64 13.36l-1.42 1.42" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
       </div>
 
     </nav>
@@ -304,36 +348,36 @@
 
 
   <!-- ── CONFIDENCE COLOUR KEY ───────────────────────────────── -->
-  <section class="bg-surface py-12">
+  <section class="bg-surface dark:bg-[#0f1117] py-12">
     <div class="max-w-3xl mx-auto px-6">
-      <p class="text-center text-sm font-semibold text-navy/40 uppercase tracking-widest mb-6">What the colours mean</p>
+      <p class="text-center text-sm font-semibold text-navy/40 dark:text-white/30 uppercase tracking-widest mb-6">What the colours mean</p>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div class="flex items-start gap-3 bg-white rounded-xl p-4 shadow-card">
+        <div class="flex items-start gap-3 bg-white dark:bg-[#1e2433] rounded-xl p-4 shadow-card dark:shadow-none">
           <span class="w-3 h-3 rounded-full mt-0.5 flex-shrink-0" style="background:#22c55e"></span>
           <div>
-            <p class="font-semibold text-sm text-navy">Green</p>
-            <p class="text-xs text-navy/50 mt-0.5 leading-snug">High confidence, filled automatically</p>
+            <p class="font-semibold text-sm text-navy dark:text-white">Green</p>
+            <p class="text-xs text-navy/50 dark:text-white/40 mt-0.5 leading-snug">High confidence, filled automatically</p>
           </div>
         </div>
-        <div class="flex items-start gap-3 bg-white rounded-xl p-4 shadow-card">
+        <div class="flex items-start gap-3 bg-white dark:bg-[#1e2433] rounded-xl p-4 shadow-card dark:shadow-none">
           <span class="w-3 h-3 rounded-full mt-0.5 flex-shrink-0" style="background:#f59e0b"></span>
           <div>
-            <p class="font-semibold text-sm text-navy">Yellow</p>
-            <p class="text-xs text-navy/50 mt-0.5 leading-snug">Medium confidence, worth a glance</p>
+            <p class="font-semibold text-sm text-navy dark:text-white">Yellow</p>
+            <p class="text-xs text-navy/50 dark:text-white/40 mt-0.5 leading-snug">Medium confidence, worth a glance</p>
           </div>
         </div>
-        <div class="flex items-start gap-3 bg-white rounded-xl p-4 shadow-card">
+        <div class="flex items-start gap-3 bg-white dark:bg-[#1e2433] rounded-xl p-4 shadow-card dark:shadow-none">
           <span class="w-3 h-3 rounded-full mt-0.5 flex-shrink-0" style="background:#ef4444"></span>
           <div>
-            <p class="font-semibold text-sm text-navy">Red</p>
-            <p class="text-xs text-navy/50 mt-0.5 leading-snug">Low confidence, pick from your profile</p>
+            <p class="font-semibold text-sm text-navy dark:text-white">Red</p>
+            <p class="text-xs text-navy/50 dark:text-white/40 mt-0.5 leading-snug">Low confidence, pick from your profile</p>
           </div>
         </div>
-        <div class="flex items-start gap-3 bg-white rounded-xl p-4 shadow-card">
+        <div class="flex items-start gap-3 bg-white dark:bg-[#1e2433] rounded-xl p-4 shadow-card dark:shadow-none">
           <span class="w-3 h-3 rounded-full mt-0.5 flex-shrink-0" style="background:#9ca3af"></span>
           <div>
-            <p class="font-semibold text-sm text-navy">Gray</p>
-            <p class="text-xs text-navy/50 mt-0.5 leading-snug">Field matched but profile is empty</p>
+            <p class="font-semibold text-sm text-navy dark:text-white">Gray</p>
+            <p class="text-xs text-navy/50 dark:text-white/40 mt-0.5 leading-snug">Field matched but profile is empty</p>
           </div>
         </div>
       </div>
@@ -342,12 +386,12 @@
 
 
   <!-- ── HOW IT WORKS ────────────────────────────────────────── -->
-  <section id="how-it-works" class="bg-white py-24">
+  <section id="how-it-works" class="bg-white dark:bg-[#0f1117] py-24">
     <div class="max-w-6xl mx-auto px-6">
 
       <div class="text-center mb-16">
         <p class="text-brand font-semibold text-sm uppercase tracking-widest mb-3">How it works</p>
-        <h2 class="text-navy text-4xl md:text-5xl font-extrabold tracking-tight">Three steps, then you're done</h2>
+        <h2 class="text-navy dark:text-white text-4xl md:text-5xl font-extrabold tracking-tight">Three steps, then you're done</h2>
       </div>
 
       <div class="grid md:grid-cols-3 gap-8 md:gap-10">
@@ -357,11 +401,11 @@
           <div class="w-11 h-11 rounded-2xl bg-brand/10 flex items-center justify-center mb-5 flex-shrink-0">
             <span class="text-brand font-black text-lg">1</span>
           </div>
-          <h3 class="font-bold text-xl text-navy mb-3">Build your profile</h3>
-          <p class="text-navy/60 leading-relaxed text-[15px]">
+          <h3 class="font-bold text-xl text-navy dark:text-white mb-3">Build your profile</h3>
+          <p class="text-navy/60 dark:text-white/50 leading-relaxed text-[15px]">
             Fill in your details once: name, address, work history, education, salary expectations, work authorization per country, and more. Or upload your résumé and Job Buddy reads it, pulling your roles, education, and contact details into a review screen.
           </p>
-          <div class="mt-6 rounded-xl overflow-hidden border border-navy/5 shadow-card">
+          <div class="mt-6 rounded-xl overflow-hidden border border-navy/5 dark:border-white/8 shadow-card dark:shadow-none">
             <img src="./assets/images/1.webp"
                  alt="Job Buddy profile editor showing the Personal Information section"
                  class="w-full block" />
@@ -373,11 +417,11 @@
           <div class="w-11 h-11 rounded-2xl bg-brand/10 flex items-center justify-center mb-5 flex-shrink-0">
             <span class="text-brand font-black text-lg">2</span>
           </div>
-          <h3 class="font-bold text-xl text-navy mb-3">Click Fill Form ✨</h3>
-          <p class="text-navy/60 leading-relaxed text-[15px]">
+          <h3 class="font-bold text-xl text-navy dark:text-white mb-3">Click Fill Form ✨</h3>
+          <p class="text-navy/60 dark:text-white/50 leading-relaxed text-[15px]">
             Visit any job application page. Click the Job Buddy icon and press Fill Form. The extension scans every field, runs it through a four-layer matching pipeline, and fills what it can confidently.
           </p>
-          <div class="mt-6 rounded-xl overflow-hidden border border-navy/5 shadow-card">
+          <div class="mt-6 rounded-xl overflow-hidden border border-navy/5 dark:border-white/8 shadow-card dark:shadow-none">
             <img src="./assets/images/4.webp"
                  alt="Job Buddy filling a job application form with green-highlighted fields"
                  class="w-full block" />
@@ -389,11 +433,11 @@
           <div class="w-11 h-11 rounded-2xl bg-brand/10 flex items-center justify-center mb-5 flex-shrink-0">
             <span class="text-brand font-black text-lg">3</span>
           </div>
-          <h3 class="font-bold text-xl text-navy mb-3">Review, adjust, apply</h3>
-          <p class="text-navy/60 leading-relaxed text-[15px]">
+          <h3 class="font-bold text-xl text-navy dark:text-white mb-3">Review, adjust, apply</h3>
+          <p class="text-navy/60 dark:text-white/50 leading-relaxed text-[15px]">
             Click any highlighted field to see your profile options in a quick overlay. Correct a field and Job Buddy remembers that mapping for next time. Undo everything with one click.
           </p>
-          <div class="mt-6 rounded-xl overflow-hidden border border-navy/5 shadow-card">
+          <div class="mt-6 rounded-xl overflow-hidden border border-navy/5 dark:border-white/8 shadow-card dark:shadow-none">
             <img src="./assets/images/5.webp"
                  alt="Job Buddy field picker overlay showing profile value options"
                  class="w-full block" />
@@ -406,13 +450,13 @@
 
 
   <!-- ── FEATURES ────────────────────────────────────────────── -->
-  <section id="features" class="bg-surface py-24">
+  <section id="features" class="bg-surface dark:bg-[#161b27] py-24">
     <div class="max-w-6xl mx-auto px-6">
 
       <div class="text-center mb-16">
         <p class="text-brand font-semibold text-sm uppercase tracking-widest mb-3">Features</p>
-        <h2 class="text-navy text-4xl md:text-5xl font-extrabold tracking-tight">Built for real application forms</h2>
-        <p class="text-navy/50 text-lg mt-4 max-w-xl mx-auto">Workday, Greenhouse, Lever, and custom ATS forms. Job Buddy handles the quirks of each.</p>
+        <h2 class="text-navy dark:text-white text-4xl md:text-5xl font-extrabold tracking-tight">Built for real application forms</h2>
+        <p class="text-navy/50 dark:text-white/40 text-lg mt-4 max-w-xl mx-auto">Workday, Greenhouse, Lever, and custom ATS forms. Job Buddy handles the quirks of each.</p>
       </div>
 
       <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -426,8 +470,8 @@
               <circle cx="10" cy="10" r="1.5" fill="#4B79F7"/>
             </svg>
           </div>
-          <h3 class="font-bold text-navy text-[17px] mb-2">Four-layer field matching</h3>
-          <p class="text-navy/55 text-sm leading-relaxed">
+          <h3 class="font-bold text-navy dark:text-white text-[17px] mb-2">Four-layer field matching</h3>
+          <p class="text-navy/55 dark:text-white/45 text-sm leading-relaxed">
             Learned mappings → HTML autocomplete → dictionary exact match → fuzzy text comparison. Every layer has a confidence score, and the highest-confidence win is always chosen.
           </p>
         </div>
@@ -442,8 +486,8 @@
               <path d="M2 10H18" stroke="#4B79F7" stroke-width="1.5"/>
             </svg>
           </div>
-          <h3 class="font-bold text-navy text-[17px] mb-2">Works on any field type</h3>
-          <p class="text-navy/55 text-sm leading-relaxed">
+          <h3 class="font-bold text-navy dark:text-white text-[17px] mb-2">Works on any field type</h3>
+          <p class="text-navy/55 dark:text-white/45 text-sm leading-relaxed">
             Native inputs, textareas, selects, ARIA comboboxes, contenteditable fields, React-Select dropdowns, click-to-open listboxes, and date inputs. All supported out of the box.
           </p>
         </div>
@@ -458,28 +502,28 @@
               <path d="M10 12V11" stroke="#4B79F7" stroke-width="1.5" stroke-linecap="round"/>
             </svg>
           </div>
-          <h3 class="font-bold text-navy text-[17px] mb-2">Learns from your corrections</h3>
-          <p class="text-navy/55 text-sm leading-relaxed">
+          <h3 class="font-bold text-navy dark:text-white text-[17px] mb-2">Learns from your corrections</h3>
+          <p class="text-navy/55 dark:text-white/45 text-sm leading-relaxed">
             Correct a field via the overlay and Job Buddy records that mapping for that site. Confirm it twice and it's promoted to top priority. Future visits fill that field automatically at high confidence.
           </p>
         </div>
 
         <!-- Feature 4: AI resume import -->
         <div class="feature-card">
-          <div class="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center mb-4">
+          <div class="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center mb-4">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path d="M10 2L11.5 6.5H16.5L12.5 9L14 13.5L10 11L6 13.5L7.5 9L3.5 6.5H8.5L10 2Z" stroke="#7C3AED" stroke-width="1.5" stroke-linejoin="round"/>
             </svg>
           </div>
-          <h3 class="font-bold text-navy text-[17px] mb-2">Résumé import</h3>
-          <p class="text-navy/55 text-sm leading-relaxed">
+          <h3 class="font-bold text-navy dark:text-white text-[17px] mb-2">Résumé import</h3>
+          <p class="text-navy/55 dark:text-white/45 text-sm leading-relaxed">
             Upload a PDF or DOCX and Gemini reads your résumé end-to-end, pulling out your work history, education, skills, and contact details into a field-by-field review. Nothing saves until you confirm.
           </p>
         </div>
 
         <!-- Feature 5: Google Drive backup -->
         <div class="feature-card">
-          <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-4">
+          <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-4">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path d="M10 13V5M10 5L7 8M10 5L13 8" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               <path d="M5 13.5C3.34 13.5 2 12.16 2 10.5C2 9.02 3.02 7.78 4.41 7.54C4.7 5.56 6.41 4 8.5 4C9.4 4 10.22 4.3 10.88 4.8" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round"/>
@@ -487,23 +531,23 @@
               <path d="M5 17H15" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round"/>
             </svg>
           </div>
-          <h3 class="font-bold text-navy text-[17px] mb-2">Google Drive backup</h3>
-          <p class="text-navy/55 text-sm leading-relaxed">
+          <h3 class="font-bold text-navy dark:text-white text-[17px] mb-2">Google Drive backup</h3>
+          <p class="text-navy/55 dark:text-white/45 text-sm leading-relaxed">
             Optionally sync your profile, including learned mappings, to a private folder in your own Google Drive. Restore to any machine instantly. Your data, your Drive, your control.
           </p>
         </div>
 
         <!-- Feature 6: Multi-country -->
         <div class="feature-card">
-          <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center mb-4">
+          <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center mb-4">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <rect x="2" y="5" width="16" height="10" rx="2" stroke="#059669" stroke-width="1.5"/>
               <path d="M2 8H18" stroke="#059669" stroke-width="1.5"/>
               <path d="M7 8V15" stroke="#059669" stroke-width="1.5"/>
             </svg>
           </div>
-          <h3 class="font-bold text-navy text-[17px] mb-2">Multi-country ready</h3>
-          <p class="text-navy/55 text-sm leading-relaxed">
+          <h3 class="font-bold text-navy dark:text-white text-[17px] mb-2">Multi-country ready</h3>
+          <p class="text-navy/55 dark:text-white/45 text-sm leading-relaxed">
             Per-country salary expectations, per-country work authorization and visa status, structured international phone numbers, and ISO country/currency lists. Built for job seekers applying globally.
           </p>
         </div>
@@ -514,16 +558,16 @@
 
 
   <!-- ── AI RESUME IMPORT FEATURE ────────────────────────────── -->
-  <section class="bg-white py-24 overflow-hidden">
+  <section class="bg-white dark:bg-[#0f1117] py-24 overflow-hidden">
     <div class="max-w-6xl mx-auto px-6">
       <div class="grid md:grid-cols-2 gap-12 items-center">
 
         <div>
-          <span class="inline-block bg-violet-100 text-violet-700 text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full mb-5">Reads your résumé</span>
-          <h2 class="text-navy text-3xl md:text-4xl font-extrabold tracking-tight leading-tight mb-5">
+          <span class="inline-block bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full mb-5">Reads your résumé</span>
+          <h2 class="text-navy dark:text-white text-3xl md:text-4xl font-extrabold tracking-tight leading-tight mb-5">
             Import your résumé.<br />Skip the typing.
           </h2>
-          <p class="text-navy/60 leading-relaxed mb-6">
+          <p class="text-navy/60 dark:text-white/50 leading-relaxed mb-6">
             Upload a PDF or DOCX and Gemini reads it end-to-end, pulling your work history, education, contact details, and links into a review screen. Hyperlinks come directly from the PDF annotation layer, so your LinkedIn and portfolio URLs arrive exactly as written.
           </p>
           <ul class="space-y-3">
@@ -532,26 +576,26 @@
                 <circle cx="8" cy="8" r="7" fill="#d1fae5"/>
                 <path d="M5 8L7 10L11 6" stroke="#059669" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span class="text-navy/70 text-sm leading-relaxed">Review every extracted field before a single thing is saved</span>
+              <span class="text-navy/70 dark:text-white/55 text-sm leading-relaxed">Review every extracted field before a single thing is saved</span>
             </li>
             <li class="flex items-start gap-3">
               <svg class="mt-0.5 flex-shrink-0" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <circle cx="8" cy="8" r="7" fill="#d1fae5"/>
                 <path d="M5 8L7 10L11 6" stroke="#059669" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span class="text-navy/70 text-sm leading-relaxed">Education dates are never inferred; only extracted when explicitly stated</span>
+              <span class="text-navy/70 dark:text-white/55 text-sm leading-relaxed">Education dates are never inferred; only extracted when explicitly stated</span>
             </li>
             <li class="flex items-start gap-3">
               <svg class="mt-0.5 flex-shrink-0" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <circle cx="8" cy="8" r="7" fill="#d1fae5"/>
                 <path d="M5 8L7 10L11 6" stroke="#059669" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span class="text-navy/70 text-sm leading-relaxed">The rule-based autofill works without any key. Resume import is an optional extra.</span>
+              <span class="text-navy/70 dark:text-white/55 text-sm leading-relaxed">The rule-based autofill works without any key. Resume import is an optional extra.</span>
             </li>
           </ul>
         </div>
 
-        <div class="rounded-2xl overflow-hidden shadow-screen border border-navy/5">
+        <div class="rounded-2xl overflow-hidden shadow-screen border border-navy/5 dark:border-white/8">
           <img src="./assets/images/2.webp"
                alt="Job Buddy's AI resume import showing a review suggestions dialog with extracted profile fields"
                class="w-full block" />
@@ -663,46 +707,46 @@
 
 
   <!-- ── FOOTER ───────────────────────────────────────────────── -->
-  <footer class="bg-surface border-t border-navy/5 py-10">
+  <footer class="bg-surface dark:bg-[#0f1117] border-t border-navy/5 dark:border-white/8 py-10">
     <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
 
       <!-- Logo + copy -->
       <div class="flex items-center gap-2.5">
         <img src="./assets/icons/icon.svg" width="24" height="24" alt="" class="rounded-md opacity-70" />
-        <span class="text-navy/50 text-sm font-medium">Job Buddy</span>
-        <span class="text-navy/20 text-sm">·</span>
-        <span class="text-navy/35 text-sm">MIT License © 2026 Myo Win Thein</span>
+        <span class="text-navy/50 dark:text-white/40 text-sm font-medium">Job Buddy</span>
+        <span class="text-navy/20 dark:text-white/15 text-sm">·</span>
+        <span class="text-navy/35 dark:text-white/25 text-sm">MIT License © 2026 Myo Win Thein</span>
       </div>
 
       <!-- Links -->
       <nav class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
         <a href="https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk"
            target="_blank" rel="noopener"
-           class="text-navy/50 hover:text-brand text-sm font-medium transition-colors no-underline">
+           class="text-navy/50 dark:text-white/40 hover:text-brand text-sm font-medium transition-colors no-underline">
           Chrome Web Store
         </a>
         <a href="https://github.com/myowinthein/job-buddy" target="_blank" rel="noopener"
-           class="text-navy/50 hover:text-brand text-sm font-medium transition-colors no-underline">
+           class="text-navy/50 dark:text-white/40 hover:text-brand text-sm font-medium transition-colors no-underline">
           GitHub
         </a>
         <a href="./privacy/"
-           class="text-navy/50 hover:text-brand text-sm font-medium transition-colors no-underline">
+           class="text-navy/50 dark:text-white/40 hover:text-brand text-sm font-medium transition-colors no-underline">
           Privacy Policy
         </a>
         <a href="./terms/"
-           class="text-navy/50 hover:text-brand text-sm font-medium transition-colors no-underline">
+           class="text-navy/50 dark:text-white/40 hover:text-brand text-sm font-medium transition-colors no-underline">
           Terms of Service
         </a>
         <a href="./eula/"
-           class="text-navy/50 hover:text-brand text-sm font-medium transition-colors no-underline">
+           class="text-navy/50 dark:text-white/40 hover:text-brand text-sm font-medium transition-colors no-underline">
           EULA
         </a>
         <a href="./disclaimer/"
-           class="text-navy/50 hover:text-brand text-sm font-medium transition-colors no-underline">
+           class="text-navy/50 dark:text-white/40 hover:text-brand text-sm font-medium transition-colors no-underline">
           Disclaimer
         </a>
         <a href="https://ko-fi.com/myowinthein" target="_blank" rel="noopener"
-           class="text-navy/35 hover:text-brand text-sm transition-colors no-underline">
+           class="text-navy/35 dark:text-white/25 hover:text-brand text-sm transition-colors no-underline">
           Support on Ko-fi
         </a>
       </nav>
@@ -732,6 +776,29 @@
       }, { rootMargin: '-20% 0px -65% 0px' });
 
       sections.forEach(s => observer.observe(s));
+    })();
+
+    // Dark mode toggle — saves preference to localStorage.
+    (function () {
+      var root = document.documentElement;
+      var btn = document.getElementById('theme-toggle');
+      var iconMoon = document.getElementById('icon-moon');
+      var iconSun = document.getElementById('icon-sun');
+
+      function apply(dark) {
+        root.classList.toggle('dark', dark);
+        iconMoon.classList.toggle('hidden', dark);
+        iconSun.classList.toggle('hidden', !dark);
+      }
+
+      // Sync icons with whatever the anti-FOUC script already applied.
+      apply(root.classList.contains('dark'));
+
+      btn.addEventListener('click', function () {
+        var nowDark = !root.classList.contains('dark');
+        localStorage.setItem('theme', nowDark ? 'dark' : 'light');
+        apply(nowDark);
+      });
     })();
   </script>
 </body>
