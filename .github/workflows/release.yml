@@ -44,26 +44,14 @@ jobs:
           echo "path=$ZIP_PATH" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "$ZIP_PATH")" >> "$GITHUB_OUTPUT"
 
-      - name: Read tag annotation message
-        id: tag
-        run: |
-          MSG=$(git tag -l --format='%(contents)' "${{ github.ref_name }}")
-          if echo "$MSG" | grep -qi "draft"; then
-            echo "auto_publish=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "auto_publish=true"  >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Upload to Chrome Web Store
         run: |
-          [ "${{ steps.tag.outputs.auto_publish }}" = "true" ] && PUBLISH="--auto-publish" || PUBLISH=""
           npx --yes chrome-webstore-upload-cli@3 upload \
             --source "${{ steps.zip.outputs.path }}" \
             --extension-id "${{ secrets.CHROME_EXTENSION_ID }}" \
             --client-id "${{ secrets.CHROME_CLIENT_ID }}" \
             --client-secret "${{ secrets.CHROME_CLIENT_SECRET }}" \
-            --refresh-token "${{ secrets.CHROME_REFRESH_TOKEN }}" \
-            $PUBLISH
+            --refresh-token "${{ secrets.CHROME_REFRESH_TOKEN }}"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
