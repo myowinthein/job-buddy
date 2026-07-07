@@ -9,3 +9,9 @@ export function similarity(a: string, b: string): number {
   if (maxLen === 0) return 1;
   return 1 - distance(a, b) / maxLen;
 }
+
+// Normalised texts of common placeholder / sentinel options that indicate
+// "no selection" and should be skipped when filling or extracting options.
+export const PLACEHOLDER_OPTION_NORMS = new Set([
+  'pleaseselect', 'select', 'selectone', 'choose', 'chooseone',
+]);
