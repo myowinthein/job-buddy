@@ -1,14 +1,7 @@
 import type { Profile } from '../types/profile';
 import { COUNTRIES } from '../data/countries';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
-import { fmtYearMonth, fmtAmount } from '../utils/dateFormat';
-
-function formatISODate(d: Date): string {
-  const y  = d.getFullYear();
-  const m  = String(d.getMonth() + 1).padStart(2, '0');
-  const dy = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dy}`;
-}
+import { fmtYearMonth, fmtAmount, formatISODate } from '../utils/dateFormat';
 
 export function resolveProfileValue(profile: Profile, fieldPath: string): string {
   if (!fieldPath) return '';

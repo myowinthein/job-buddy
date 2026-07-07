@@ -12,7 +12,7 @@ import { CONF_CONFIRMED, CONF_AI_YELLOW } from './constants';
 import { attachPickerListeners } from './picker';
 import type { PickerField, PickerFieldState } from './picker';
 import { getGeminiApiKey, getGeminiModel, saveLearnedMapping } from '../utils/storage';
-import { normalize } from './normalizer';
+import { normalize, PLACEHOLDER_OPTION_NORMS } from './normalizer';
 import { saveElementMappings } from './mappings';
 import type { DebugAIField } from './debug';
 
@@ -34,11 +34,6 @@ export interface AITextCandidate {
   debugFieldId?:    string;
 }
 
-// Normalized texts of common placeholder options that should not be sent to Gemini.
-const PLACEHOLDER_NORMS = new Set([
-  'pleaseselect', 'select', 'selectone', 'choose', 'chooseone',
-]);
-
 // Extracts real (non-placeholder, non-disabled) options from a select element.
 // Exported for testing only.
 export function extractSelectOptions(select: HTMLSelectElement): AIOptionPayload[] {
@@ -47,7 +42,7 @@ export function extractSelectOptions(select: HTMLSelectElement): AIOptionPayload
     const opt = select.options[i];
     if (opt.disabled) continue;
     if (!opt.value) continue;
-    if (PLACEHOLDER_NORMS.has(normalize(opt.text))) continue;
+    if (PLACEHOLDER_OPTION_NORMS.has(normalize(opt.text))) continue;
     opts.push({ label: opt.text.trim(), value: opt.value });
   }
   return opts;

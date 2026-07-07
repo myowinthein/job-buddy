@@ -1,5 +1,5 @@
 import type { DocumentFile } from '../types/profile';
-import { normalize, similarity } from './normalizer';
+import { normalize, similarity, PLACEHOLDER_OPTION_NORMS } from './normalizer';
 import { CONF_FUZZY_THRESHOLD } from './constants';
 
 // Capture native setters before any framework can shadow them on instances
@@ -36,15 +36,10 @@ function dispatchEvents(element: HTMLElement): void {
 }
 
 
-// Normalized texts of common placeholder options that should not be selected.
-const PLACEHOLDER_NORMS = new Set([
-  'pleaseselect', 'select', 'selectone', 'choose', 'chooseone',
-]);
-
 function isSkippableOption(opt: HTMLOptionElement): boolean {
   if (opt.disabled) return true;
   if (!opt.value) return true;
-  return PLACEHOLDER_NORMS.has(normalize(opt.text));
+  return PLACEHOLDER_OPTION_NORMS.has(normalize(opt.text));
 }
 
 function fillSelect(select: HTMLSelectElement, value: string): void {
@@ -128,7 +123,7 @@ function isSkippableAriaOption(el: HTMLElement): boolean {
   if (el.getAttribute('aria-disabled') === 'true') return true;
   const text = el.textContent?.trim() ?? '';
   if (!text) return true;
-  return PLACEHOLDER_NORMS.has(normalize(text));
+  return PLACEHOLDER_OPTION_NORMS.has(normalize(text));
 }
 
 // Finds the best matching option element from a list of ARIA option elements,
@@ -348,16 +343,17 @@ export async function fillFileField(
 
 const nativeCheckedSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked')?.set;
 
-export function fillRadioInput(element: HTMLInputElement): void {
+function fillCheckedInput(element: HTMLInputElement): void {
   if (nativeCheckedSetter) nativeCheckedSetter.call(element, true);
   else element.checked = true;
   element.dispatchEvent(new Event('change', { bubbles: true }));
   element.dispatchEvent(new Event('input',  { bubbles: true }));
 }
 
+export function fillRadioInput(element: HTMLInputElement): void {
+  fillCheckedInput(element);
+}
+
 export function fillCheckboxInput(element: HTMLInputElement): void {
-  if (nativeCheckedSetter) nativeCheckedSetter.call(element, true);
-  else element.checked = true;
-  element.dispatchEvent(new Event('change', { bubbles: true }));
-  element.dispatchEvent(new Event('input',  { bubbles: true }));
+  fillCheckedInput(element);
 }
