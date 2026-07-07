@@ -210,7 +210,7 @@
   <main class="page">
     <span class="doc-label">Legal</span>
     <h1>Privacy Policy</h1>
-    <p class="effective-date"><strong>Effective date:</strong> June 29, 2026</p>
+    <p class="effective-date"><strong>Last updated:</strong> 2026-07-08</p>
 
     <div class="callout">
       <p>Job Buddy has no servers. Everything stays in your browser's local storage by default. Three optional features can send data off-device, and only when you explicitly enable them:</p>
@@ -222,13 +222,19 @@
       <p>All three are off until you turn them on. Job Buddy itself never stores your data on any server and is not a party to your connection with Google.</p>
     </div>
 
-    <h2>What Job Buddy stores</h2>
-    <p>When you fill out your profile, the following categories are saved to your browser's local storage so the extension can autofill job application forms:</p>
+    <h2>Who We Are</h2>
+    <p>Job Buddy is a free, open-source Chrome browser extension created and maintained by Myo Win Thein. It helps job seekers autofill application forms using a profile they build and store entirely on their own device. The extension is distributed through the Chrome Web Store and its source code is available at <a href="https://github.com/myowinthein/job-buddy" target="_blank" rel="noopener">github.com/myowinthein/job-buddy</a>.</p>
+    <p>There is no company behind Job Buddy, no servers, and no database. The developer is the data controller for the limited purposes described in this policy.</p>
+
+    <h2>What Data We Collect</h2>
+    <p>Job Buddy does not collect data in the traditional sense. All data is entered by you and stored locally in your browser's <code>chrome.storage.local</code>. The developer has no access to it. The following categories are stored:</p>
+
+    <h3>Profile data (stored on your device)</h3>
     <ul>
-      <li><strong>Personal information</strong> — name, email address, phone number, date of birth, and optional EEO fields (gender, ethnicity, veteran status, disability status). EEO fields are optional, provided voluntarily, and used solely to autofill matching questions on application forms.</li>
+      <li><strong>Personal information</strong> — name, email address, phone number, date of birth, and optional EEO fields (gender, ethnicity, veteran status, disability status). EEO fields are optional and voluntary.</li>
       <li><strong>Address</strong> — street, city, state or province, postal code, and country.</li>
       <li><strong>Professional summary</strong> — a career summary and notice period you write yourself.</li>
-      <li><strong>Salary information</strong> — current salary and expected salary figures you enter, including currency and pay period.</li>
+      <li><strong>Salary information</strong> — current salary and expected salary figures, currency, and pay period.</li>
       <li><strong>Work authorization</strong> — your authorization status, visa type, and visa expiry per country.</li>
       <li><strong>Work history</strong> — company names, job titles, dates, locations, work arrangement, and descriptions.</li>
       <li><strong>Education</strong> — institutions, degrees, fields of study, dates, and descriptions.</li>
@@ -237,40 +243,70 @@
       <li><strong>Documents</strong> — if you upload a CV or résumé, it is stored on-device as encoded file data. It is not sent anywhere by default; if you enable Cloud Backup it is included in the Drive backup.</li>
     </ul>
 
-    <p>Job Buddy also stores supporting data generated as you use the extension:</p>
+    <h3>Supporting data (generated as you use the extension)</h3>
     <ul>
       <li><strong>Learned field mappings</strong> — when you manually assign a profile field to a form field, Job Buddy remembers that pairing for the site's domain. Only field-name-to-profile-path associations are stored, never the values you typed or page content.</li>
       <li><strong>AI settings</strong> — if you enable AI features, your Gemini API key and selected model are stored locally. The key is never included in export bundles and never sent to anyone other than Google's Gemini API.</li>
       <li><strong>Cloud Backup state</strong> — if you connect Google Drive, the OAuth token and a small amount of bookkeeping (Drive file ID, last sync time, pending-sync flag) are stored locally. The token is never included in export bundles.</li>
-      <li><strong>Theme preference</strong> — your System / Light / Dark choice is saved so it persists across sessions.</li>
+      <li><strong>Theme preference</strong> — your System / Light / Dark choice.</li>
     </ul>
 
-    <h2>Special category data (GDPR Article 9)</h2>
+    <h2>Special Category Data (GDPR Article 9)</h2>
     <p>The optional EEO fields — gender, ethnicity, veteran status, and disability status — are special category data under Article 9 of the GDPR. Job Buddy processes this data solely on the basis of your explicit consent, which you provide by voluntarily entering values. This data is stored only on your device, is never sent to Job Buddy's servers (which do not exist), and reaches third-party APIs only through opt-in features you activate. You can delete any of these fields at any time from the Options page.</p>
 
-    <h2>What Job Buddy does not do</h2>
-    <ul>
-      <li><strong>No network requests by default.</strong> The extension runs entirely on your device out of the box. Network access only happens through the three opt-in features described below.</li>
-      <li><strong>No selling or sharing of data.</strong> Nothing you enter leaves your device through Job Buddy except through opt-in features. Even then, the connection is directly from your browser to Google's API, with no intermediary.</li>
-      <li><strong>No Chrome account sync.</strong> Job Buddy uses on-device local storage only. Your profile will not appear on other devices unless you opt in to Cloud Backup.</li>
-    </ul>
+    <h2>How We Use Your Data</h2>
+    <p>The table below lists each processing purpose and its GDPR legal basis under Article 6.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Purpose</th><th>Data used</th><th>Legal basis (GDPR Art. 6)</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Autofilling job application form fields</td>
+            <td>All profile fields</td>
+            <td>Art. 6(1)(a) — consent; you installed the extension and entered data for this purpose</td>
+          </tr>
+          <tr>
+            <td>Remembering learned field mappings to improve accuracy on sites you revisit</td>
+            <td>Form field identifiers, profile path associations</td>
+            <td>Art. 6(1)(f) — legitimate interests (improving autofill accuracy at your direction)</td>
+          </tr>
+          <tr>
+            <td>Remembering display preferences</td>
+            <td>Theme setting</td>
+            <td>Art. 6(1)(f) — legitimate interests</td>
+          </tr>
+          <tr>
+            <td>Cloud Backup to your Google Drive</td>
+            <td>Full profile, learned mappings, application history</td>
+            <td>Art. 6(1)(a) — consent (opt-in feature you explicitly enable)</td>
+          </tr>
+          <tr>
+            <td>AI Resume Import via Google Gemini API</td>
+            <td>Résumé file contents (sent to Gemini on your instruction)</td>
+            <td>Art. 6(1)(a) — consent (opt-in, triggered per upload)</td>
+          </tr>
+          <tr>
+            <td>AI Autofill assist via Google Gemini API</td>
+            <td>Profile JSON, form field labels and metadata</td>
+            <td>Art. 6(1)(a) — consent (opt-in feature you explicitly enable)</td>
+          </tr>
+          <tr>
+            <td>EEO fields (gender, ethnicity, veteran status, disability status)</td>
+            <td>Special category personal data</td>
+            <td>Art. 9(2)(a) — explicit consent</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-    <h2>How Job Buddy accesses web pages</h2>
+    <h2>How Job Buddy Accesses Web Pages</h2>
     <p>Job Buddy includes a content script that runs on web pages so that, when you click Auto Fill, it can scan the page for form fields and fill them using your profile. The script is present on all pages, which is why Chrome may show a permission notice describing access to "your data on all websites."</p>
     <p>In practice, the script does nothing on its own. It only scans or fills a page when you actively trigger it. It does not read, monitor, or transmit page content in the background.</p>
     <p>One exception, limited to fields you have already autofilled: if your profile is updated while a job application tab is open, Job Buddy may silently fill fields it identified earlier but had no value for, without touching any fields it already handled.</p>
 
-    <h2>Cloud Backup (optional)</h2>
-    <p>When enabled, Cloud Backup syncs your profile to your own Google Drive using the <code>https://www.googleapis.com/auth/drive.appdata</code> scope. This scope grants access only to a hidden application-data folder inside your Drive, not your general Drive contents. The backup file is not visible in the regular Google Drive UI.</p>
-    <p>Your local profile is the source of truth. Drive never overwrites your local data silently; restoring from Drive is always explicit. Your OAuth token is stored only in local extension storage and is never included in any export bundle. Disconnecting from Settings revokes the token and, at your choice, deletes the backup file from your Drive.</p>
-
-    <h2>AI features (optional)</h2>
-    <p>Two optional AI features use Google's Gemini API via an API key you supply yourself. Both are off until you paste a key into Settings. The key is yours, obtained directly from <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener">Google AI Studio</a>.</p>
-    <p><strong>AI Resume Import.</strong> When you upload a PDF or DOCX résumé, the file is sent to the Gemini API as base64 inline data. Extracted suggestions are shown in a review screen where you accept or reject each one; nothing writes to your profile until you confirm.</p>
-    <p><strong>AI Autofill assist.</strong> After the rule-based autofill runs, unresolved fields are sent to the Gemini API along with your profile JSON. Only field labels, names, and surrounding text are sent; the full HTML of the page is not.</p>
-    <p>If you do not provide a Gemini API key, neither AI feature runs. Clearing the key stops all future AI requests immediately. Data sent to the Gemini API is processed by Google under their API terms. Job Buddy is not in the middle of that connection and never receives a copy.</p>
-
-    <h2>Permissions and why they are needed</h2>
+    <h2>Permissions We Request</h2>
     <div class="table-wrap">
       <table>
         <thead>
@@ -305,27 +341,56 @@
       </table>
     </div>
 
-    <h2>Your rights under GDPR</h2>
-    <p>If you are in the European Economic Area, you have the following rights over your personal data:</p>
-    <ul>
-      <li><strong>Access</strong> — view all data Job Buddy holds by opening the Options page, or export a full JSON copy via Settings.</li>
-      <li><strong>Rectification</strong> — edit any field in your profile at any time from the Options page.</li>
-      <li><strong>Erasure</strong> — delete individual fields, or use Settings to reset all data permanently. Uninstalling the extension also removes all local data.</li>
-      <li><strong>Portability</strong> — Settings exports a JSON file containing your profile, learned mappings, and application history, importable into another Job Buddy instance.</li>
-      <li><strong>Withdraw consent</strong> — for EEO fields, you can delete them at any time; withdrawal does not affect the lawfulness of prior processing.</li>
-    </ul>
-    <p>Because Job Buddy stores data exclusively in your own browser and has no backend, you exercise these rights directly within the extension; no request to the developer is required.</p>
+    <h2>Cloud Backup (optional)</h2>
+    <p>When enabled, Cloud Backup syncs your profile to your own Google Drive using the <code>https://www.googleapis.com/auth/drive.appdata</code> scope. This scope grants access only to a hidden application-data folder inside your Drive, not your general Drive contents. The backup file is not visible in the regular Google Drive UI.</p>
+    <p>Your local profile is the source of truth. Drive never overwrites your local data silently; restoring from Drive is always explicit. Your OAuth token is stored only in local extension storage and is never included in any export bundle. Disconnecting from Settings revokes the token and, at your choice, deletes the backup file from your Drive.</p>
 
-    <h2>Data retention</h2>
+    <h2>AI Features (optional)</h2>
+    <p>Two optional AI features use Google's Gemini API via an API key you supply yourself. Both are off until you paste a key into Settings. The key is yours, obtained directly from <a href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener">Google AI Studio</a>.</p>
+    <p><strong>AI Resume Import.</strong> When you upload a PDF or DOCX résumé, the file is sent to the Gemini API as base64 inline data. Extracted suggestions are shown in a review screen where you accept or reject each one; nothing writes to your profile until you confirm.</p>
+    <p><strong>AI Autofill assist.</strong> After the rule-based autofill runs, unresolved fields are sent to the Gemini API along with your profile JSON. Only field labels, names, and surrounding text are sent; the full HTML of the page is not.</p>
+    <p>If you do not provide a Gemini API key, neither AI feature runs. Clearing the key stops all future AI requests immediately. Data sent to the Gemini API is processed by Google under their API terms. Job Buddy is not in the middle of that connection and never receives a copy.</p>
+
+    <h2>Data Sharing and Third Parties</h2>
+    <p>Job Buddy does not sell, rent, or share your data with any third party. Data leaves your device only through the two opt-in features described above:</p>
+    <ul>
+      <li><strong>Google Drive</strong> — if you enable Cloud Backup, your profile is uploaded to your own Google Drive account. Google processes this data under their <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Privacy Policy</a>.</li>
+      <li><strong>Google Gemini API</strong> — if you enable AI features, résumé content or profile data is sent to the Gemini API using your own API key. Google processes this data under their <a href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener">Gemini API additional terms</a>.</li>
+    </ul>
+    <p>There are no advertising networks, analytics services, crash reporters, or marketing tools integrated into Job Buddy.</p>
+
+    <h2>International Data Transfers</h2>
+    <p>By default, no data leaves your device, so no international transfers occur. When you use the optional Cloud Backup or AI features, your data is sent to Google's services, which are operated in the United States and other countries outside the European Economic Area (EEA).</p>
+    <p>Google participates in the EU–US Data Privacy Framework and uses Standard Contractual Clauses (SCCs) as safeguards for transfers from the EEA. More information is available in <a href="https://policies.google.com/privacy/frameworks" target="_blank" rel="noopener">Google's data transfer frameworks documentation</a>.</p>
+
+    <h2>Data Retention</h2>
     <p>Your data is retained in your browser's local storage for as long as you keep the extension installed and do not delete it. There is no automatic expiry. Uninstalling the extension removes all locally stored data.</p>
     <p>If you have connected Google Drive, your Drive backup is retained until you disconnect and choose to delete the file, or until you delete it manually from your Google account.</p>
+    <p>Learned field mappings are retained indefinitely unless you clear them via Settings. They contain no personal data, only field-name-to-profile-path associations.</p>
 
-    <h2>Changes to this policy</h2>
-    <p>If Job Buddy's data practices change, this policy will be updated and reflected in the Chrome Web Store listing.</p>
+    <h2>Your Rights</h2>
+    <p>If you are in the European Economic Area, you have the following rights over your personal data under GDPR Articles 15 to 21. Because Job Buddy stores all data locally on your device, you can exercise most of these rights directly within the extension without contacting the developer.</p>
+    <ul>
+      <li><strong>Access (Art. 15)</strong> — view all data Job Buddy holds by opening the Options page, or export a full JSON copy via Settings &gt; Export.</li>
+      <li><strong>Rectification (Art. 16)</strong> — edit any field in your profile at any time from the Options page.</li>
+      <li><strong>Erasure (Art. 17)</strong> — delete individual fields, or use Settings &gt; Reset to permanently clear all data. Uninstalling the extension also removes all local data.</li>
+      <li><strong>Restriction of processing (Art. 18)</strong> — you can stop Job Buddy from using specific data by removing it from your profile, or disable the extension entirely to halt all processing.</li>
+      <li><strong>Data portability (Art. 20)</strong> — Settings &gt; Export produces a JSON file containing your profile, learned mappings, and application history, importable into another Job Buddy instance.</li>
+      <li><strong>Objection (Art. 21)</strong> — where processing is based on legitimate interests (Art. 6(1)(f)), you may object at any time by removing the relevant data or uninstalling the extension.</li>
+      <li><strong>Withdraw consent</strong> — for EEO fields processed under Art. 9(2)(a), you can delete them at any time; withdrawal does not affect the lawfulness of prior processing.</li>
+    </ul>
+
+    <h2>Children's Privacy</h2>
+    <p>Job Buddy is a professional productivity tool intended for adults who are actively applying for employment. It is not directed at children under the age of 16, and the developer does not knowingly collect personal data from anyone under 16. If you believe a child has entered personal data into Job Buddy, you can clear all stored data from Settings &gt; Reset, or by uninstalling the extension.</p>
+
+    <h2>Supervisory Authority</h2>
+    <p>If you are in the EEA and believe your data protection rights have been infringed, you have the right to lodge a complaint with your national data protection authority (Art. 77 GDPR). A list of EEA supervisory authorities is available on the <a href="https://www.edpb.europa.eu/about-edpb/about-edpb/members_en" target="_blank" rel="noopener">European Data Protection Board website</a>. If you are in the UK, you may contact the <a href="https://ico.org.uk/make-a-complaint/" target="_blank" rel="noopener">Information Commissioner's Office (ICO)</a>.</p>
+
+    <h2>Changes to This Policy</h2>
+    <p>If Job Buddy's data practices change, this policy will be updated with a new effective date and the changes will be reflected in the Chrome Web Store listing. Continued use of the extension after an update constitutes acceptance of the revised policy.</p>
 
     <h2>Contact</h2>
-    <p>Job Buddy is an open-source project. For questions about this policy, please open an issue on the GitHub repository:</p>
-    <p><a href="https://github.com/myowinthein/job-buddy/issues" target="_blank" rel="noopener">https://github.com/myowinthein/job-buddy/issues</a></p>
+    <p>For questions about this Privacy Policy, open an issue at <a href="https://github.com/myowinthein/job-buddy/issues" target="_blank" rel="noopener">https://github.com/myowinthein/job-buddy/issues</a>.</p>
 
     <nav class="related">
       <p class="related-label">Related documents</p>
