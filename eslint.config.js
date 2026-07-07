@@ -9,7 +9,7 @@ import globals from 'globals';
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
-  { ignores: ['.wxt/**', '.output/**', 'node_modules/**', 'demo-apply-form/**'] },
+  { ignores: ['.wxt/**', '.output/**', 'node_modules/**', 'demo-apply-form/**', 'docs/**'] },
 
   js.configs.recommended,
 
