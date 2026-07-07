@@ -67,7 +67,7 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 **Site (`docs/`):**
 - `docs/index.html` — GitHub Pages landing page (no build step; Tailwind via CDN)
 - `docs/project-site/` — project overview mini-site
-- `docs/privacy/`, `docs/terms/`, `docs/eula/`, `docs/disclaimer/` — legal pages as standalone HTML; regenerate with `/legal`
+- `docs/legal/privacy/`, `docs/legal/terms/`, `docs/legal/eula/`, `docs/legal/disclaimer/` — legal pages as standalone HTML; regenerate with `/legal`
 
 ---
 
