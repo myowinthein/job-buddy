@@ -1,10 +1,18 @@
-import type { Profile, PhoneNumber } from '../types/profile';
+import type { Profile, PhoneNumber, NoticePeriod } from '../types/profile';
 
 function resolvePhoneNumber(raw: unknown): string {
   if (!raw) return '';
   if (typeof raw === 'string') return raw;
   const ph = raw as Partial<PhoneNumber>;
   return ph.number ?? '';
+}
+
+function isNoticePeriodValid(np: NoticePeriod | undefined): boolean {
+  if (np === undefined) return false;
+  return (
+    np.immediate === true ||
+    (np.immediate === false && typeof np.value === 'number' && np.value >= 1 && !!np.unit)
+  );
 }
 
 export interface CompletionGroup {
@@ -144,12 +152,8 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
       whEntries.every((e) => !!e.company?.trim() && !!e.title?.trim() && !!e.startDate?.trim()),
     'workHistory', 'Work History', 'At least one complete entry',
   );
-  const np = profile.professional?.noticePeriod;
   check(
-    np !== undefined && (
-      np.immediate === true ||
-      (np.immediate === false && typeof np.value === 'number' && np.value >= 1 && !!np.unit)
-    ),
+    isNoticePeriodValid(profile.professional?.noticePeriod),
     'workHistory', 'Work History', 'Notice Period',
   );
 
@@ -266,18 +270,10 @@ export function getSectionCompletion(profile: Partial<Profile>): Record<string, 
     workAuthorization:
       waEntries.length >= 1 && waEntries.every((e) => !!e.country?.trim() && !!e.status),
 
-    workHistory: (() => {
-      const npCheck = profile.professional?.noticePeriod;
-      const noticeValid = npCheck !== undefined && (
-        npCheck.immediate === true ||
-        (npCheck.immediate === false && typeof npCheck.value === 'number' && npCheck.value >= 1 && !!npCheck.unit)
-      );
-      return (
-        whEntries.length >= 1 &&
-        whEntries.every((e) => !!e.company?.trim() && !!e.title?.trim() && !!e.startDate?.trim()) &&
-        noticeValid
-      );
-    })(),
+    workHistory:
+      whEntries.length >= 1 &&
+      whEntries.every((e) => !!e.company?.trim() && !!e.title?.trim() && !!e.startDate?.trim()) &&
+      isNoticePeriodValid(profile.professional?.noticePeriod),
 
     education:
       eduEntries.length >= 1 &&

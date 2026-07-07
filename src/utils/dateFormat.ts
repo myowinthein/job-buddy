@@ -1,3 +1,11 @@
+// Formats a Date object to a YYYY-MM-DD ISO string in local calendar arithmetic.
+export function formatISODate(d: Date): string {
+  const y  = d.getFullYear();
+  const m  = String(d.getMonth() + 1).padStart(2, '0');
+  const dy = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dy}`;
+}
+
 export function fmtAmount(n: number): string {
   return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
