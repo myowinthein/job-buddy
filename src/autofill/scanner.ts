@@ -81,7 +81,9 @@ export function scanFields(options: ScanOptions = {}): HTMLElement[] {
 
 // ── Radio / checkbox scanning ─────────────────────────────────────────────────
 
-function isVisibleInput(el: HTMLElement): boolean {
+// Core visibility check shared by isVisibleInput and isAriaVisible.
+// Does not handle aria-disabled — that is an ARIA-only concern added by isAriaVisible.
+function isElementVisible(el: HTMLElement): boolean {
   if ((el as HTMLInputElement).disabled) return false;
   if (el.closest('[hidden]') !== null) return false;
   if (el.closest('[aria-hidden="true"]') !== null) return false;
@@ -91,6 +93,10 @@ function isVisibleInput(el: HTMLElement): boolean {
   if (parseFloat(style.opacity) === 0) return false;
   const rect = el.getBoundingClientRect();
   return rect.width > 0 && rect.height > 0;
+}
+
+function isVisibleInput(el: HTMLElement): boolean {
+  return isElementVisible(el);
 }
 
 function getOptionLabel(el: HTMLInputElement): string {
@@ -208,15 +214,7 @@ export function scanCheckboxGroups(): CheckboxGroup[] {
 
 function isAriaVisible(el: HTMLElement): boolean {
   if (el.getAttribute('aria-disabled') === 'true') return false;
-  if ((el as HTMLInputElement).disabled) return false;
-  if (el.closest('[hidden]') !== null) return false;
-  if (el.closest('[aria-hidden="true"]') !== null) return false;
-  if (el.offsetParent === null) return false;
-  const style = window.getComputedStyle(el);
-  if (style.display === 'none' || style.visibility === 'hidden') return false;
-  if (parseFloat(style.opacity) === 0) return false;
-  const rect = el.getBoundingClientRect();
-  return rect.width > 0 && rect.height > 0;
+  return isElementVisible(el);
 }
 
 /** Returns 'text' for custom text fields, 'select' for custom dropdowns, null otherwise. */
