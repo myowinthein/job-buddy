@@ -142,11 +142,11 @@
       "file": "postcss.config.js",
       "line": 4,
       "description": "autoprefixer is listed as a second PostCSS plugin after @tailwindcss/postcss. Tailwind CSS v4 already handles autoprefixing internally, so this is redundant. Remove autoprefixer from postcss.config.js and from package.json devDependencies.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "11b32dd",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0010",
@@ -157,7 +157,7 @@
       "depends_on": [],
       "file": "src/components/options/WorkHistorySection.tsx",
       "line": 109,
-      "description": "The newEntryTick + requestAnimationFrame scroll-and-focus useEffect is duplicated verbatim across WorkHistorySection, EducationSection, LanguagesSection, SalarySection, WorkAuthorizationSection, and LinksSection — 6 identical copies. Extract a useScrollToNewEntry(ref, tick) hook.",
+      "description": "The newEntryTick + requestAnimationFrame scroll-and-focus useEffect is duplicated verbatim across WorkHistorySection, EducationSection, LanguagesSection, SalarySection, WorkAuthorizationSection, and LinksSection \u2014 6 identical copies. Extract a useScrollToNewEntry(ref, tick) hook.",
       "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
@@ -173,7 +173,7 @@
       "depends_on": [],
       "file": "src/components/options/PersonalSection.tsx",
       "line": 19,
-      "description": "The cls(err?) helper function (Tailwind class string for normal/error state) is copy-pasted identically in AddressSection, PersonalSection, LinksSection, WorkHistorySection, EducationSection, SalarySection, WorkAuthorizationSection, LanguagesSection, and DocumentsSection — 9 copies. Move to src/components/options/shared/fieldCls.ts and import it.",
+      "description": "The cls(err?) helper function (Tailwind class string for normal/error state) is copy-pasted identically in AddressSection, PersonalSection, LinksSection, WorkHistorySection, EducationSection, SalarySection, WorkAuthorizationSection, LanguagesSection, and DocumentsSection \u2014 9 copies. Move to src/components/options/shared/fieldCls.ts and import it.",
       "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
@@ -222,11 +222,11 @@
       "file": "src/autofill/picker.ts",
       "line": 321,
       "description": "detectAutoExpand() re-implements field signal extraction from a raw DOM element (querying name, id, placeholder, autocomplete, aria-label, label) instead of calling extractSignals() from signals.ts. Replace manual attribute reads with a call to extractSignals(element) to use the already-tested, maintained path.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "9c59310",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0015",
@@ -254,11 +254,11 @@
       "file": "src/components/options/ResumeImportSection.tsx",
       "line": 174,
       "description": "The fileChange FieldChange literal (lines 174-184) is duplicated nearly verbatim in handleRetry (lines 224-234). Extract a makeFileChange(file) helper to eliminate the duplication and prevent the two copies from diverging.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "9c59310",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0017",
@@ -272,11 +272,11 @@
       "file": "src/components/options/ResumeImportSection.tsx",
       "line": 199,
       "description": "handleRetry duplicates the bulk of handleExtract's logic (abort controller setup, longWaitTimer, try/catch/finally, setChanges). The only difference is skipping the file-reading step. Refactor into a single runExtraction({ skipRead: boolean }) function that both paths call.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "9c59310",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0018",
@@ -399,7 +399,7 @@
       "depends_on": [],
       "file": "src/components/options/shared/FormField.tsx",
       "line": 5,
-      "description": "The optional prop is accepted but silently ignored — its JSDoc says 'the Optional tag is no longer rendered'. Remove the prop from the interface and update all callers that still pass optional. Dead prop creates confusion about whether it controls rendering.",
+      "description": "The optional prop is accepted but silently ignored \u2014 its JSDoc says 'the Optional tag is no longer rendered'. Remove the prop from the interface and update all callers that still pass optional. Dead prop creates confusion about whether it controls rendering.",
       "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
@@ -415,7 +415,7 @@
       "depends_on": [],
       "file": "src/components/options/WorkHistorySection.tsx",
       "line": 486,
-      "description": "Notice period validation logic (error message with pluralised unit) is inlined in the onChange handler for the value input, the onChange handler for the unit selector, and the validate() function — 3 separate copies. Extract a validateNoticeValue(value, unit) helper.",
+      "description": "Notice period validation logic (error message with pluralised unit) is inlined in the onChange handler for the value input, the onChange handler for the unit selector, and the validate() function \u2014 3 separate copies. Extract a validateNoticeValue(value, unit) helper.",
       "status": "open",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
@@ -431,7 +431,7 @@
       "depends_on": [],
       "file": "src/components/options/SettingsSection.tsx",
       "line": 163,
-      "description": "The load function inside the Drive state useEffect is wrapped in a named function then immediately called, and also assigned as handler. Just define handler once and call it directly — the intermediate load alias is noise.",
+      "description": "The load function inside the Drive state useEffect is wrapped in a named function then immediately called, and also assigned as handler. Just define handler once and call it directly \u2014 the intermediate load alias is noise.",
       "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
@@ -496,11 +496,11 @@
       "file": "entrypoints/popup/App.tsx",
       "line": 83,
       "description": "sendToActiveTab is a regular async function inside the component recreated on every render. Wrap in useCallback with an empty dependency array so it isn't re-created and can safely be listed as a dependency in any future useEffect.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "11b32dd",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0032",
@@ -512,11 +512,11 @@
       "file": "entrypoints/popup/App.tsx",
       "line": 169,
       "description": "handleConfirmFill duplicates the fill-dispatch and result-handling logic from the 'nothing pre-filled' branch of handleAutofill (lines 156-163). Extract a shared dispatchFill(mode) helper that both branches call.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "11b32dd",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0033",
@@ -640,11 +640,11 @@
       "file": "src/autofill/picker.ts",
       "line": 1078,
       "description": "The setTimeout + document.addEventListener pattern for activeOutsideHandler registration is duplicated in both showNoDataCta() and showPicker(). Extract a registerOutsideHandler(handler) helper so the timing behaviour cannot diverge.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "9c59310",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0041",
@@ -656,11 +656,11 @@
       "file": "src/autofill/scanner.ts",
       "line": 98,
       "description": "isVisibleInput() is a one-line wrapper that simply delegates to isElementVisible() with no additional logic. Remove it and call isElementVisible directly at its two call sites.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "PENDING",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0042",
@@ -688,11 +688,11 @@
       "file": "src/autofill/constants.ts",
       "line": 11,
       "description": "CONF_AI_YELLOW and CONF_CONTEXT both have value 0.70 and represent structurally different concepts. The comment correctly notes they 'can drift'. Add an explicit '// NOTE: intentionally equal today but conceptually separate' remark to make the duplication explicit.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "PENDING",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0044",
@@ -735,12 +735,12 @@
       "depends_on": [],
       "file": "src/data/countries.ts",
       "line": 208,
-      "description": "COUNTRIES.sort() is called as a side effect at module load time, mutating the exported array after the popular-countries-pinned ordering is defined. The comment 'Popular countries pinned first' is misleading — the sort silently erases the pin order on load. Document whether alphabetical or pinned order is the intent.",
-      "status": "open",
+      "description": "COUNTRIES.sort() is called as a side effect at module load time, mutating the exported array after the popular-countries-pinned ordering is defined. The comment 'Popular countries pinned first' is misleading \u2014 the sort silently erases the pin order on load. Document whether alphabetical or pinned order is the intent.",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "PENDING",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0047",
@@ -768,11 +768,11 @@
       "file": "src/utils/driveSync.ts",
       "line": 164,
       "description": "Multipart boundary is generated with Date.now() + Math.random().toString(36). crypto.randomUUID() (already used in storage.ts for profile IDs) would be more robust and is consistent with how randomness is handled elsewhere.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "PENDING",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0049",
@@ -784,11 +784,11 @@
       "file": "src/utils/experience.ts",
       "line": 64,
       "description": "merged.push([...current] as [number, number]) spreads an already-typed tuple unnecessarily. Push current directly to remove noise without any safety trade-off.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "PENDING",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0050",
@@ -800,11 +800,11 @@
       "file": "entrypoints/popup/App.tsx",
       "line": 101,
       "description": "The GET_STATUS IIFE in the second useEffect has no cleanup guard. If the popup unmounts before the promise resolves, the state setter fires on an unmounted component. Add a cancelled flag or AbortController guard.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "11b32dd",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0051",
@@ -816,11 +816,11 @@
       "file": "entrypoints/popup/App.tsx",
       "line": 115,
       "description": "The jb:ai:nudge:dismissed session-storage read and getGeminiApiKey fetch are in two separate useEffect hooks that both run once on mount with no dependencies. Combining them into a single effect or Promise.all reduces async round-trips during popup initialization.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "11b32dd",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0052",
@@ -929,7 +929,7 @@
       "depends_on": [],
       "file": "src/components/options/EducationSection.tsx",
       "line": 319,
-      "description": "checked={row.isCurrent ?? false} is redundant — isCurrent is guaranteed non-null by initRow (defaults to false) and emptyRow. Remove the ?? false.",
+      "description": "checked={row.isCurrent ?? false} is redundant \u2014 isCurrent is guaranteed non-null by initRow (defaults to false) and emptyRow. Remove the ?? false.",
       "status": "open",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
@@ -1057,7 +1057,7 @@
       "depends_on": [],
       "file": "src/autofill/mapper.ts",
       "line": 45,
-      "description": "dictionaryExact() iterates all FIELD_DICTIONARY entries on every call. Since the dictionary is static, build a reverse-lookup Map<string, string> (term → fieldPath) once at module load. Reduces inner-loop cost from O(entries × variations) to O(1) per lookup.",
+      "description": "dictionaryExact() iterates all FIELD_DICTIONARY entries on every call. Since the dictionary is static, build a reverse-lookup Map<string, string> (term \u2192 fieldPath) once at module load. Reduces inner-loop cost from O(entries \u00d7 variations) to O(1) per lookup.",
       "status": "open",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
@@ -1121,7 +1121,7 @@
       "depends_on": [],
       "file": "src/resume-ai/parser.ts",
       "line": 425,
-      "description": "applyChanges calls FIELD_DEFS.find(d => d.id === change.id) inside a loop over changes — O(n²). Pre-build a Map<string, FieldDef> from FIELD_DEFS at module level (it's immutable) to make lookups O(1).",
+      "description": "applyChanges calls FIELD_DEFS.find(d => d.id === change.id) inside a loop over changes \u2014 O(n\u00b2). Pre-build a Map<string, FieldDef> from FIELD_DEFS at module level (it's immutable) to make lookups O(1).",
       "status": "open",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
@@ -1201,7 +1201,7 @@
       "depends_on": [],
       "file": "src/components/options/shared/saveSection.test.ts",
       "line": 0,
-      "description": "No tests exist for any section component's validate() logic (e.g., WorkHistorySection's end-date-before-start-date check, EducationSection's year range boundary, PersonalSection's email regex). These are the highest-impact validation paths — a bug here silently stores corrupt data.",
+      "description": "No tests exist for any section component's validate() logic (e.g., WorkHistorySection's end-date-before-start-date check, EducationSection's year range boundary, PersonalSection's email regex). These are the highest-impact validation paths \u2014 a bug here silently stores corrupt data.",
       "status": "open",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
@@ -1249,7 +1249,7 @@
       "depends_on": [],
       "file": "entrypoints/popup/App.tsx",
       "line": 0,
-      "description": "The two-phase autofill flow (scan → confirming → fill with mode) is the primary user-facing interaction path with no unit or integration tests. Add tests for: (1) scan returning preFilledCount > 0 → confirming state, (2) merge dispatch, (3) overwrite dispatch, (4) error state on rejection.",
+      "description": "The two-phase autofill flow (scan \u2192 confirming \u2192 fill with mode) is the primary user-facing interaction path with no unit or integration tests. Add tests for: (1) scan returning preFilledCount > 0 \u2192 confirming state, (2) merge dispatch, (3) overwrite dispatch, (4) error state on rejection.",
       "status": "open",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
@@ -1329,7 +1329,7 @@
       "depends_on": [],
       "file": "src/autofill/filler.test.ts",
       "line": 0,
-      "description": "fillFileField has no tests. It handles base64 decoding, MIME type parsing, DataTransfer reconstruction, and event dispatch — all with silent fallbacks. Add tests for: successful reconstruction dispatching input and change events; malformed data-URL prefix returns false; missing comma in base64 returns false.",
+      "description": "fillFileField has no tests. It handles base64 decoding, MIME type parsing, DataTransfer reconstruction, and event dispatch \u2014 all with silent fallbacks. Add tests for: successful reconstruction dispatching input and change events; malformed data-URL prefix returns false; missing comma in base64 returns false.",
       "status": "open",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
@@ -1345,7 +1345,7 @@
       "depends_on": [],
       "file": "src/autofill/highlighter.test.ts",
       "line": 0,
-      "description": "clearHighlights() tests do not verify that data attributes (jbOrigBackground, jbOrigTransition) are removed from elements after clearing — only that background color is restored. Add assertions that confirm el.dataset.jbOrigBackground and el.dataset.jbOrigTransition are undefined after clearHighlights().",
+      "description": "clearHighlights() tests do not verify that data attributes (jbOrigBackground, jbOrigTransition) are removed from elements after clearing \u2014 only that background color is restored. Add assertions that confirm el.dataset.jbOrigBackground and el.dataset.jbOrigTransition are undefined after clearHighlights().",
       "status": "open",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
@@ -1441,7 +1441,7 @@
       "depends_on": [],
       "file": "src/utils/driveSync.test.ts",
       "line": 0,
-      "description": "revokeDriveToken() is not tested for the silent-failure path. The catch block at driveSync.ts:73 swallows network errors silently — add a test that confirms the error is swallowed and the function still resolves.",
+      "description": "revokeDriveToken() is not tested for the silent-failure path. The catch block at driveSync.ts:73 swallows network errors silently \u2014 add a test that confirms the error is swallowed and the function still resolves.",
       "status": "open",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
@@ -1473,7 +1473,7 @@
       "depends_on": [],
       "file": "src/utils/profileCompletion.test.ts",
       "line": 0,
-      "description": "resolvePathFocusTarget() is exported but has zero test coverage. The longest-prefix match loop (segments.pop() loop) is untested — a path like 'salary.expected.0.currency' should resolve to 'salary' via prefix walk.",
+      "description": "resolvePathFocusTarget() is exported but has zero test coverage. The longest-prefix match loop (segments.pop() loop) is untested \u2014 a path like 'salary.expected.0.currency' should resolve to 'salary' via prefix walk.",
       "status": "open",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
@@ -1601,7 +1601,7 @@
       "depends_on": [],
       "file": "src/utils/profileValidator.test.ts",
       "line": 0,
-      "description": "coverLetter pass-through in the documents section (profileValidator.ts line 320) is entirely untested — no test imports a profile with a documents.coverLetter field.",
+      "description": "coverLetter pass-through in the documents section (profileValidator.ts line 320) is entirely untested \u2014 no test imports a profile with a documents.coverLetter field.",
       "status": "open",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
@@ -1617,12 +1617,12 @@
       "depends_on": [],
       "file": "package.json",
       "line": 18,
-      "description": "The lint script uses --ext .ts,.tsx which is an ESLint v8 flag. ESLint v9 flat config ignores --ext entirely — file targeting is done via the files glob in eslint.config.js. Remove --ext .ts,.tsx from both lint and lint:fix scripts.",
-      "status": "open",
+      "description": "The lint script uses --ext .ts,.tsx which is an ESLint v8 flag. ESLint v9 flat config ignores --ext entirely \u2014 file targeting is done via the files glob in eslint.config.js. Remove --ext .ts,.tsx from both lint and lint:fix scripts.",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "11b32dd",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0102",
@@ -1634,11 +1634,11 @@
       "file": "package.json",
       "line": 42,
       "description": "autoprefixer is listed as a devDependency but Tailwind CSS v4 bundles its own vendor-prefix handling. Remove autoprefixer from package.json (already covered by f-0009 in architecture).",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "11b32dd",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0103",
@@ -1665,12 +1665,12 @@
       "depends_on": [],
       "file": "entrypoints/popup/App.css",
       "line": 0,
-      "description": "entrypoints/popup/App.css contains only a comment and is never imported anywhere (only style.css is imported in main.tsx). This file is dead — remove it.",
-      "status": "open",
+      "description": "entrypoints/popup/App.css contains only a comment and is never imported anywhere (only style.css is imported in main.tsx). This file is dead \u2014 remove it.",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "11b32dd",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0105",
@@ -1681,7 +1681,7 @@
       "depends_on": [],
       "file": "src/components/options/shared/SearchableCountrySelect.tsx",
       "line": 2,
-      "description": "SearchableCountrySelect imports findCountry from countries.ts; the other three Searchable components inline COUNTRIES.find() directly. Minor inconsistency — standardize on findCountry across all four for clarity.",
+      "description": "SearchableCountrySelect imports findCountry from countries.ts; the other three Searchable components inline COUNTRIES.find() directly. Minor inconsistency \u2014 standardize on findCountry across all four for clarity.",
       "status": "open",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
