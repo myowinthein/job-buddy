@@ -32,11 +32,10 @@ import {
   isDriveConfigured,
 } from '@/src/utils/driveSync';
 import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
+import { DEFAULT_GEMINI_MODEL } from '@/src/resume-ai/types';
 import type { FieldChange } from '@/src/resume-ai/types';
 import ImportSummaryDialog from '@/src/components/shared/ImportSummaryDialog';
 import ImportReviewScreen from '@/src/components/shared/ImportReviewScreen';
-
-const DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite';
 
 interface Props {
   onImportComplete: () => void;
@@ -121,7 +120,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   // ── AI Features state ────────────────────────────────────────────────────────
   const [geminiKey,        setGeminiKey]        = useState('');
   const [geminiKeyStatus,  setGeminiKeyStatus]  = useState<'idle' | 'validating' | 'valid' | 'invalid' | 'no_model'>('idle');
-  const [_geminiModel,     setGeminiModel]      = useState<string | null>(null);
+  const [latestGeminiModel, setGeminiModel]      = useState<string | null>(null);
   const geminiDebounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const probeIdRef         = useRef(0);
 
