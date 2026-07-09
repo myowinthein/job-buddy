@@ -193,7 +193,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Postal Code',
     section: 'Address',
     getValue: (p) => p.address?.postalCode ?? null,
-    setValue: (p, v) => ({ ...p, address: { ...(p.address ?? {} as Profile['address']), postalCode: v as string } }),
+    setValue: setNestedField('address', 'postalCode', {} as Profile['address']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
@@ -203,7 +203,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Career Summary',
     section: 'Professional',
     getValue: (p) => p.professional?.summary ?? null,
-    setValue: (p, v) => ({ ...p, professional: { ...(p.professional ?? {}), summary: v as string } }),
+    setValue: setNestedField('professional', 'summary', {}),
     isEmpty: emptyStr,
     display: (v) => {
       const s = String(v ?? '');
@@ -215,7 +215,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Notice Period',
     section: 'Professional',
     getValue: (p) => p.professional?.noticePeriod ?? null,
-    setValue: (p, v) => ({ ...p, professional: { ...(p.professional ?? {}), noticePeriod: v as Profile['professional']['noticePeriod'] } }),
+    setValue: setNestedField('professional', 'noticePeriod', {}),
     isEmpty: (v) => !v || typeof v !== 'object',
     display: (v) => {
       if (!v || typeof v !== 'object') return '';
@@ -340,7 +340,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'LinkedIn URL',
     section: 'Links',
     getValue: (p) => p.links?.linkedin ?? null,
-    setValue: (p, v) => ({ ...p, links: { ...(p.links ?? {} as Profile['links']), linkedin: v as string } }),
+    setValue: setNestedField('links', 'linkedin', {} as Profile['links']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
@@ -349,7 +349,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Portfolio URL',
     section: 'Links',
     getValue: (p) => p.links?.portfolio ?? null,
-    setValue: (p, v) => ({ ...p, links: { ...(p.links ?? {} as Profile['links']), portfolio: v as string } }),
+    setValue: setNestedField('links', 'portfolio', {} as Profile['links']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
@@ -358,7 +358,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Custom Links',
     section: 'Links',
     getValue: (p) => p.links?.custom ?? [],
-    setValue: (p, v) => ({ ...p, links: { ...(p.links ?? {} as Profile['links']), custom: v as Profile['links']['custom'] } }),
+    setValue: setNestedField('links', 'custom', {} as Profile['links']),
     isEmpty: emptyArr,
     display: (v) => {
       const arr = (v ?? []) as { label: string; url: string }[];
