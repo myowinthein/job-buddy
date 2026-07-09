@@ -7,6 +7,9 @@ export type GeminiModel =
 
 // Models tried in order during the background probe. gemini-2.5-flash-lite is
 // recognised as a valid stored model but is not a probe candidate.
+// gemini-3.x entries are reserved for future Gemini releases — they are probe
+// candidates but not yet in production. When Google releases these models,
+// remove this comment and verify the model IDs match the official naming.
 export const GEMINI_MODEL_PRIORITY: GeminiModel[] = [
   'gemini-3.1-flash-lite',
   'gemini-3.5-flash',

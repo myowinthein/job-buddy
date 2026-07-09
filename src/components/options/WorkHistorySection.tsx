@@ -343,13 +343,13 @@ export function WorkHistorySection({ profile, onSave }: Props) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Country" optional>
+            <FormField label="Country">
               <SearchableCountryDropdown
                 value={row.locationCountry}
                 onChange={(code) => updateEntry(idx, 'locationCountry', code)}
               />
             </FormField>
-            <FormField label="City" optional>
+            <FormField label="City">
               <input
                 className={cls()}
                 value={row.locationCity}
@@ -414,7 +414,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
             <span className="text-sm text-gray-700 dark:text-gray-300">Currently active</span>
           </label>
 
-          <FormField label="Description" optional>
+          <FormField label="Description">
             <textarea
               className={`${cls()} min-h-[100px] resize-y`}
               value={row.description}

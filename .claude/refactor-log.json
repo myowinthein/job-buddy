@@ -158,11 +158,11 @@
       "file": "src/components/options/WorkHistorySection.tsx",
       "line": 109,
       "description": "The newEntryTick + requestAnimationFrame scroll-and-focus useEffect is duplicated verbatim across WorkHistorySection, EducationSection, LanguagesSection, SalarySection, WorkAuthorizationSection, and LinksSection — 6 identical copies. Extract a useScrollToNewEntry(ref, tick) hook.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "821aea6692e1cffb3c1816bcdd7363b7fb462cf7",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0011",
@@ -174,11 +174,11 @@
       "file": "src/components/options/PersonalSection.tsx",
       "line": 19,
       "description": "The cls(err?) helper function (Tailwind class string for normal/error state) is copy-pasted identically in AddressSection, PersonalSection, LinksSection, WorkHistorySection, EducationSection, SalarySection, WorkAuthorizationSection, LanguagesSection, and DocumentsSection — 9 copies. Move to src/components/options/shared/fieldCls.ts and import it.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "821aea6692e1cffb3c1816bcdd7363b7fb462cf7",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0012",
@@ -266,7 +266,9 @@
       "priority": "medium",
       "risk": "safe",
       "cluster_id": "c-014",
-      "depends_on": ["f-0016"],
+      "depends_on": [
+        "f-0016"
+      ],
       "file": "src/components/options/ResumeImportSection.tsx",
       "line": 199,
       "description": "handleRetry duplicates the bulk of handleExtract's logic (abort controller setup, longWaitTimer, try/catch/finally, setChanges). The only difference is skipping the file-reading step. Refactor into a single runExtraction({ skipRead: boolean }) function that both paths call.",
@@ -526,11 +528,11 @@
       "file": "src/autofill/index.ts",
       "line": 330,
       "description": "_learnedMappings is fetched with getLearnedMappings() inside executeAutofill() but never used (prefixed with _ and immediately discarded). This is a dead storage read on every autofill execution. Remove both the await call and the binding.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "821aea6692e1cffb3c1816bcdd7363b7fb462cf7",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0034",
@@ -574,11 +576,11 @@
       "file": "demo-apply-form/assets/css/styles.css",
       "line": 150,
       "description": "font-weight: 650 and font-weight: 750 (lines 150, 237, 328) are not valid CSS font-weight values. Browsers round these to nearest valid values (600 and 800). Replace with standard values (600/700 or 700/800) to make intent explicit.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "821aea6692e1cffb3c1816bcdd7363b7fb462cf7",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0037",
@@ -590,11 +592,11 @@
       "file": "src/autofill/index.ts",
       "line": 422,
       "description": "Two consecutive if(match.fieldPath) guards at lines 422 and 425 in the noData branch check the same condition independently. Merge into a single if block that pushes to both noDataFields and aiTextCandidates.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "821aea6692e1cffb3c1816bcdd7363b7fb462cf7",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0038",
@@ -606,11 +608,11 @@
       "file": "src/autofill/index.ts",
       "line": 518,
       "description": "runAutofill() is exported as 'legacy single-phase entry point' but has zero callers outside this file. Remove it or add @deprecated JSDoc and document where it should be called from.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "821aea6692e1cffb3c1816bcdd7363b7fb462cf7",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0039",
@@ -826,7 +828,9 @@
       "priority": "low",
       "risk": "safe",
       "cluster_id": "c-004",
-      "depends_on": ["f-0004"],
+      "depends_on": [
+        "f-0004"
+      ],
       "file": "entrypoints/popup/App.tsx",
       "line": 276,
       "description": "The 'No AI key' tooltip in the Autofill section header uses raw group/group-hover Tailwind classes instead of the InfoTooltip component defined in the same file. Refactor to use InfoTooltip for consistency.",

@@ -212,7 +212,7 @@ export async function clearDriveBackupState(): Promise<void> {
 export async function getThemePreference(): Promise<'system' | 'light' | 'dark'> {
   const result = await storageGet('themePreference');
   const val = result.themePreference as string | undefined;
-  if (val === 'light' || val === 'dark') return val;
+  if (val === 'light' || val === 'dark' || val === 'system') return val;
   return 'system';
 }
 

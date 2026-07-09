@@ -156,11 +156,10 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
   // ── Cloud Backup — load state and listen for cross-component updates ────────
   useEffect(() => {
-    const load = () => {
+    const handler = () => {
       void getFullDriveState().then(setDriveState).catch(() => { /* silent */ });
     };
-    load();
-    const handler = () => load();
+    handler();
     window.addEventListener('jb:drive:state-changed', handler);
     return () => window.removeEventListener('jb:drive:state-changed', handler);
   }, []);
@@ -354,10 +353,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
   const handleImportAcceptAll = () => {
     void performImportSave(importChanges);
-  };
-
-  const handleImportReviewSave = async (finalChanges: FieldChange[]) => {
-    await performImportSave(finalChanges);
   };
 
   const handleImportRejectAll = () => {
@@ -876,7 +871,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       {importScreen === 'review' && (
         <ImportReviewScreen
           changes={importChanges}
-          onSave={handleImportReviewSave}
+          onSave={performImportSave}
           onBack={() => setImportScreen('summary')}
           isSaving={importing}
           title="Review Import"
