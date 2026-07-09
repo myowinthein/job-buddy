@@ -1,5 +1,5 @@
 import { useToast } from '@/src/components/ui/useToast';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import type { Profile, SalaryPeriod } from '@/src/types/profile';
 import { findCountryByNameOrCode } from '@/src/data/countries';
 import { COUNTRY_TO_CURRENCY, primaryCountryForCurrency } from '@/src/data/currencies';
@@ -7,6 +7,8 @@ import { FormField } from './shared/FormField';
 import { SearchableCountryWithCurrencyDropdown } from './shared/SearchableCountryWithCurrencyDropdown';
 import { RemoveButton } from './shared/RemoveButton';
 import { saveSection } from './shared/saveSection';
+import { fieldCls as cls } from './shared/fieldCls';
+import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 
 interface Props {
   profile: Partial<Profile>;
@@ -45,11 +47,6 @@ function initExpectedRow(raw: { country?: string; amount?: number; currency?: st
     period: raw.period ?? 'monthly',
   };
 }
-
-const cls = (err?: string) =>
-  err
-    ? 'w-full px-3 py-2 border border-red-300 dark:border-red-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
-    : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 export function SalarySection({ profile, onSave }: Props) {
   const s = profile.salary;
@@ -91,18 +88,7 @@ export function SalarySection({ profile, onSave }: Props) {
 
   const [newEntryTick, setNewEntryTick] = useState(0);
   const entriesContainerRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!newEntryTick) return;
-    const raf = requestAnimationFrame(() => {
-      const last = entriesContainerRef.current?.lastElementChild as HTMLElement | null;
-      last?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      last?.querySelector<HTMLElement>(
-        'input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]):not([readonly]),' +
-        ' select, button[aria-haspopup="listbox"]',
-      )?.focus();
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [newEntryTick]);
+  useScrollToNewEntry(entriesContainerRef, newEntryTick);
 
   // Per-row partial-entry validation: if either field is set, both are required.
   // Returns errors keyed as `expected.<idx>.countryCode` / `expected.<idx>.amount`.

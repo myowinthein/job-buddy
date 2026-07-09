@@ -1,5 +1,5 @@
 import { useToast } from '@/src/components/ui/useToast';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import type { Profile, WorkHistoryEntry, WorkArrangement, WorkLocation, NoticePeriodUnit } from '@/src/types/profile';
 import { calculateExperience } from '@/src/utils/experience';
 import { FormField } from './shared/FormField';
@@ -7,16 +7,13 @@ import { ExpandableCard } from './shared/ExpandableCard';
 import { MonthYearPicker } from './shared/MonthYearPicker';
 import { SearchableCountryDropdown } from './shared/SearchableCountryDropdown';
 import { saveSection } from './shared/saveSection';
+import { fieldCls as cls } from './shared/fieldCls';
+import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 
 interface Props {
   profile: Partial<Profile>;
   onSave: (updates: Partial<Profile>) => Promise<void>;
 }
-
-const cls = (err?: string) =>
-  err
-    ? 'w-full px-3 py-2 border border-red-300 dark:border-red-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
-    : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MIN_YEAR = CURRENT_YEAR - 100;
@@ -105,19 +102,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   // Scroll to and focus the first input of a newly added work entry.
   const [newEntryTick, setNewEntryTick] = useState(0);
   const entriesContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!newEntryTick) return;
-    const raf = requestAnimationFrame(() => {
-      const last = entriesContainerRef.current?.lastElementChild as HTMLElement | null;
-      last?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      last?.querySelector<HTMLElement>(
-        'input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]):not([readonly]),' +
-        ' select, button[aria-haspopup="listbox"]',
-      )?.focus();
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [newEntryTick]);
+  useScrollToNewEntry(entriesContainerRef, newEntryTick);
 
   // Experience calculation reads only startDate / isCurrent / endDate — safe cast.
   const experience = calculateExperience(entries as unknown as WorkHistoryEntry[]);
