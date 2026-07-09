@@ -624,11 +624,11 @@
       "file": "src/autofill/mapper.ts",
       "line": 64,
       "description": "The resolve() private wrapper is a one-liner that only converts empty string from resolveProfileValue to null. Inline resolveProfileValue(profile, fieldPath) || null at each call site and remove the wrapper.",
-      "status": "open",
+      "status": "skipped-by-user",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
       "resolved_commit": null,
-      "resolved_date": null
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0040",
@@ -672,11 +672,11 @@
       "file": "src/autofill/ai.ts",
       "line": 282,
       "description": "findBestOption() uses toLowerCase().trim() for matching instead of the project's canonical normalize() function from normalizer.ts. This is inconsistent and could miss options differing only in punctuation or hyphens. Replace with normalize() calls.",
-      "status": "open",
+      "status": "skipped-by-user",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
       "resolved_commit": null,
-      "resolved_date": null
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0043",
@@ -720,11 +720,11 @@
       "file": "src/resume-ai/types.ts",
       "line": 1,
       "description": "GeminiModel includes 'gemini-3.5-flash' and 'gemini-3.1-flash-lite' which don't match any known Gemini naming convention (real models are gemini-2.5-flash, gemini-2.5-pro). If these are future placeholders comment them as such; if they are typos they are dead enum values that will fail at runtime.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "bc4b6c2",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0046",
@@ -914,11 +914,11 @@
       "file": "src/components/options/WorkHistorySection.tsx",
       "line": 384,
       "description": "The Work Arrangement radio group uses onChange={() => {}} as a no-op plus onClick for toggle logic. This is an accessibility anti-pattern: screen readers won't announce the radio as interactive. Use onChange for value change and track deselect separately.",
-      "status": "open",
+      "status": "skipped-by-user",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
       "resolved_commit": null,
-      "resolved_date": null
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0058",
@@ -930,11 +930,11 @@
       "file": "src/components/options/EducationSection.tsx",
       "line": 319,
       "description": "checked={row.isCurrent ?? false} is redundant \u2014 isCurrent is guaranteed non-null by initRow (defaults to false) and emptyRow. Remove the ?? false.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "bc4b6c2",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0059",
@@ -946,11 +946,11 @@
       "file": "src/components/options/shared/MonthYearPicker.tsx",
       "line": 60,
       "description": "isValidYear is defined inside the component body but doesn't close over any state. Hoist it to module scope to avoid re-creation on every render.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "bc4b6c2",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0060",
@@ -962,11 +962,11 @@
       "file": "src/components/options/shared/DateOfBirthPicker.tsx",
       "line": 3,
       "description": "MONTHS in DateOfBirthPicker uses value: number (1-12) while MONTHS in MonthYearPicker uses value: string ('01'-'12'). Both contain the same 12 labels. Consider a shared MONTH_NAMES constant to prevent label drift.",
-      "status": "open",
+      "status": "skipped-by-user",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
       "resolved_commit": null,
-      "resolved_date": null
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0061",
@@ -978,11 +978,11 @@
       "file": "src/resume-ai/normalize.ts",
       "line": 104,
       "description": "normalizeExtractedProfile does two sequential spread-copy passes over the result (lines 108-114 for workHistory, lines 116-124 for professional.summary). These could be combined into a single object construction, reducing allocations.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "bc4b6c2",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0062",
@@ -994,11 +994,11 @@
       "file": "demo-apply-form/assets/js/main.js",
       "line": 27,
       "description": "fillDemoData() and clearDemoData() access form.elements without null-checking form first. If the element ID changes, both throw. Add if (!form) return; at the top of both functions.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "bc4b6c2",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0063",
@@ -1010,11 +1010,11 @@
       "file": "demo-apply-form/assets/js/main.js",
       "line": 33,
       "description": "The index % 7 === 0 heuristic to assign the 'review' CSS class has no comment explaining the intent (~14% yellow/review-state). Extract as a named constant or add a comment so future maintainers understand it is intentional.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "bc4b6c2",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0064",
@@ -1026,11 +1026,11 @@
       "file": "eslint.config.js",
       "line": 26,
       "description": "globals.node is included for all TypeScript files. Extension source files run in the browser or service worker, not Node.js. Having Node globals active means ESLint won't flag accidental Node API usage in content scripts or popup code. Scope Node globals to config/build files only.",
-      "status": "open",
+      "status": "skipped-by-user",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
       "resolved_commit": null,
-      "resolved_date": null
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0065",
