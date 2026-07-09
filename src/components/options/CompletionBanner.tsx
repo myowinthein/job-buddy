@@ -1,6 +1,52 @@
 import { useState } from 'react';
 import type { CompletionGroup } from '@/src/utils/profileCompletion';
 
+interface DropdownPanelProps {
+  heading:      string;
+  groups:       CompletionGroup[];
+  bulletCls:    string;
+  onClose:      () => void;
+  onNavigate:   (sectionId: string) => void;
+  onFocusField: (sectionId: string, field: string) => void;
+}
+
+function DropdownPanel({ heading, groups, bulletCls, onClose, onNavigate, onFocusField }: DropdownPanelProps) {
+  return (
+    <div className="absolute right-0 top-full mt-1 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-black/40 border border-gray-200 dark:border-gray-700 z-50 py-2">
+      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 px-3 pb-1.5 border-b border-gray-100 dark:border-gray-700">
+        {heading}
+      </p>
+      <ul className="max-h-64 overflow-y-auto py-1">
+        {groups.map((group) => (
+          <li key={group.sectionId}>
+            <button
+              type="button"
+              onClick={() => { onNavigate(group.sectionId); onClose(); }}
+              className="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-colors"
+            >
+              {group.sectionLabel} →
+            </button>
+            <ul>
+              {group.fields.map((field) => (
+                <li key={field}>
+                  <button
+                    type="button"
+                    onClick={() => { onFocusField(group.sectionId, field); onClose(); }}
+                    className="w-full text-left flex items-center gap-2 px-5 py-1 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-colors rounded"
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${bulletCls} shrink-0`} />
+                    {field}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 interface CompletionBannerProps {
   percentage:              number;
   isCoreComplete:          boolean;
@@ -68,40 +114,15 @@ export function CompletionBanner({
             </span>
             Missing {showDropdown ? '▲' : '▼'}
           </button>
-
           {showDropdown && (
-            <div className="absolute right-0 top-full mt-1 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-black/40 border border-gray-200 dark:border-gray-700 z-50 py-2">
-              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 px-3 pb-1.5 border-b border-gray-100 dark:border-gray-700">
-                Required Fields
-              </p>
-              <ul className="max-h-64 overflow-y-auto py-1">
-                {missingGroups.map((group) => (
-                  <li key={group.sectionId}>
-                    <button
-                      type="button"
-                      onClick={() => { onNavigate(group.sectionId); close(); }}
-                      className="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-colors"
-                    >
-                      {group.sectionLabel} →
-                    </button>
-                    <ul>
-                      {group.fields.map((field) => (
-                        <li key={field}>
-                          <button
-                            type="button"
-                            onClick={() => { onFocusField(group.sectionId, field); close(); }}
-                            className="w-full text-left flex items-center gap-2 px-5 py-1 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-colors rounded"
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                            {field}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <DropdownPanel
+              heading="Required Fields"
+              groups={missingGroups}
+              bulletCls="bg-red-400"
+              onClose={close}
+              onNavigate={onNavigate}
+              onFocusField={onFocusField}
+            />
           )}
         </div>
       )}
@@ -118,40 +139,15 @@ export function CompletionBanner({
             </span>
             Missing {showDropdown ? '▲' : '▼'}
           </button>
-
           {showDropdown && (
-            <div className="absolute right-0 top-full mt-1 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-black/40 border border-gray-200 dark:border-gray-700 z-50 py-2">
-              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 px-3 pb-1.5 border-b border-gray-100 dark:border-gray-700">
-                Optional Fields
-              </p>
-              <ul className="max-h-64 overflow-y-auto py-1">
-                {optionalGroups.map((group) => (
-                  <li key={group.sectionId}>
-                    <button
-                      type="button"
-                      onClick={() => { onNavigate(group.sectionId); close(); }}
-                      className="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-colors"
-                    >
-                      {group.sectionLabel} →
-                    </button>
-                    <ul>
-                      {group.fields.map((field) => (
-                        <li key={field}>
-                          <button
-                            type="button"
-                            onClick={() => { onFocusField(group.sectionId, field); close(); }}
-                            className="w-full text-left flex items-center gap-2 px-5 py-1 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-colors rounded"
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full bg-gray-300 shrink-0" />
-                            {field}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <DropdownPanel
+              heading="Optional Fields"
+              groups={optionalGroups}
+              bulletCls="bg-gray-300"
+              onClose={close}
+              onNavigate={onNavigate}
+              onFocusField={onFocusField}
+            />
           )}
         </div>
       )}
