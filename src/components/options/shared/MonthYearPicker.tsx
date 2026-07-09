@@ -33,6 +33,12 @@ interface Props {
   monthOptional?: boolean;
 }
 
+function isValidYear(s: string): boolean {
+  if (s.length !== 4) return false;
+  const n = parseInt(s, 10);
+  return !isNaN(n);
+}
+
 export function MonthYearPicker({
   value,
   onChange,
@@ -55,12 +61,6 @@ export function MonthYearPicker({
   const handleMonth = (m: string) => {
     setMonth(m);
     emit(m, isValidYear(yearStr) ? yearStr : '');
-  };
-
-  const isValidYear = (s: string): boolean => {
-    if (s.length !== 4) return false;
-    const n = parseInt(s, 10);
-    return !isNaN(n);
   };
 
   const handleYearInput = (raw: string) => {

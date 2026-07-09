@@ -301,7 +301,7 @@ export function EducationSection({ profile, onSave }: Props) {
           <label className="flex items-center gap-2 mb-4 cursor-pointer">
             <input
               type="checkbox"
-              checked={row.isCurrent ?? false}
+              checked={row.isCurrent}
               onChange={(e) => update(idx, 'isCurrent', e.target.checked)}
               className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400"
             />

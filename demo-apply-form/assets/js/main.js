@@ -23,6 +23,7 @@ const demoValues = {
 
 function fillDemoData() {
   const form = document.getElementById("applicationForm");
+  if (!form) return;
 
   Object.entries(demoValues).forEach(([name, value], index) => {
     const field = form.elements[name];
@@ -31,27 +32,29 @@ function fillDemoData() {
 
     setTimeout(() => {
       field.value = value;
+      // Distribute "review" class across entries so the demo shows a mix of fill states.
       field.classList.add(index % 7 === 0 ? "review" : "autofilled");
     }, index * 90);
   });
 
   const resume = form.elements["resume"];
-  const uploadBox = resume.closest(".upload-box");
-  uploadBox.classList.add("missing");
+  const uploadBox = resume?.closest(".upload-box");
+  uploadBox?.classList.add("missing");
 }
 
 function clearDemoData() {
   const form = document.getElementById("applicationForm");
+  if (!form) return;
   form.reset();
 
   form.querySelectorAll("input, select, textarea").forEach((field) => {
     field.classList.remove("autofilled", "review", "missing");
   });
 
-  document.querySelector(".upload-box").classList.remove("missing");
+  document.querySelector(".upload-box")?.classList.remove("missing");
 }
 
-document.getElementById("resetButton").addEventListener("click", clearDemoData);
+document.getElementById("resetButton")?.addEventListener("click", clearDemoData);
 
 document.getElementById("applicationForm").addEventListener("submit", (event) => {
   event.preventDefault();
