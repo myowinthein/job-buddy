@@ -110,16 +110,19 @@ export interface CompletionResult {
 
 const TOTAL_CHECKS = 15;
 
-export function calculateCompletion(profile: Partial<Profile>): CompletionResult {
-  const groups: CompletionGroup[] = [];
-
-  function check(condition: boolean, sectionId: string, sectionLabel: string, field: string) {
+function makeChecker(target: CompletionGroup[]) {
+  return (condition: boolean, sectionId: string, sectionLabel: string, field: string) => {
     if (!condition) {
-      let g = groups.find((x) => x.sectionId === sectionId);
-      if (!g) { g = { sectionId, sectionLabel, fields: [] }; groups.push(g); }
+      let g = target.find((x) => x.sectionId === sectionId);
+      if (!g) { g = { sectionId, sectionLabel, fields: [] }; target.push(g); }
       g.fields.push(field);
     }
-  }
+  };
+}
+
+export function calculateCompletion(profile: Partial<Profile>): CompletionResult {
+  const groups: CompletionGroup[] = [];
+  const check = makeChecker(groups);
 
   // Personal (4)
   check(!!profile.personal?.firstName?.trim(), 'personal', 'Personal Information', 'First Name');
@@ -193,19 +196,7 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
 
   // Optional fields — count unfilled; also build groups for the dropdown
   const optGroups: CompletionGroup[] = [];
-
-  function optCheck(
-    condition: boolean,
-    sectionId: string,
-    sectionLabel: string,
-    field: string,
-  ) {
-    if (!condition) {
-      let g = optGroups.find((x) => x.sectionId === sectionId);
-      if (!g) { g = { sectionId, sectionLabel, fields: [] }; optGroups.push(g); }
-      g.fields.push(field);
-    }
-  }
+  const optCheck = makeChecker(optGroups);
 
   optCheck(!!profile.personal?.dateOfBirth?.trim(),    'personal',    'Personal Information', 'Date of Birth');
   optCheck(!!profile.personal?.gender?.trim(),         'personal',    'Personal Information', 'Gender');
@@ -249,46 +240,17 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
 }
 
 export function getSectionCompletion(profile: Partial<Profile>): Record<string, boolean> {
-  const waEntries = profile.workAuthorization ?? [];
-  const whEntries = profile.workHistory ?? [];
-  const eduEntries = profile.education ?? [];
-
+  const { missingGroups } = calculateCompletion(profile);
+  const missing = new Set(missingGroups.map((g) => g.sectionId));
   return {
-    personal:
-      !!profile.personal?.firstName?.trim() &&
-      !!profile.personal?.lastName?.trim() &&
-      !!profile.personal?.email?.trim() &&
-      !!resolvePhoneNumber(profile.personal?.phone).trim(),
-
-    address: !!profile.address?.city?.trim() && !!profile.address?.country?.trim(),
-
-    salary:
-      typeof profile.salary?.current?.amount === 'number' &&
-      profile.salary.current.amount >= 0 &&
-      !!profile.salary?.current?.currency?.trim(),
-
-    workAuthorization:
-      waEntries.length >= 1 && waEntries.every((e) => !!e.country?.trim() && !!e.status),
-
-    workHistory:
-      whEntries.length >= 1 &&
-      whEntries.every((e) => !!e.company?.trim() && !!e.title?.trim() && !!e.startDate?.trim()) &&
-      isNoticePeriodValid(profile.professional?.noticePeriod),
-
-    education:
-      eduEntries.length >= 1 &&
-      eduEntries.every(
-        (e) =>
-          !!e.institution?.trim() &&
-          !!e.degree?.trim() &&
-          !!e.fieldOfStudy?.trim() &&
-          !!e.startDate?.trim(),
-      ),
-
-    languages: (profile.languages ?? []).length >= 1,
-
-    links: !!profile.links?.linkedin?.trim(),
-
-    documents: !!(profile.documents?.cv?.url?.trim() || profile.documents?.cv?.file),
+    personal:          !missing.has('personal'),
+    address:           !missing.has('address'),
+    salary:            !missing.has('salary'),
+    workAuthorization: !missing.has('workAuthorization'),
+    workHistory:       !missing.has('workHistory'),
+    education:         !missing.has('education'),
+    languages:         !missing.has('languages'),
+    links:             !missing.has('links'),
+    documents:         !missing.has('documents'),
   };
 }

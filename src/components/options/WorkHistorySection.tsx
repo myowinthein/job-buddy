@@ -24,6 +24,15 @@ const NOTICE_MAX: Record<NoticePeriodUnit, number> = {
   month: 24,
 };
 
+function validateNoticePeriod(raw: string, unit: NoticePeriodUnit): string {
+  const val = Number(raw);
+  const max = NOTICE_MAX[unit];
+  if (!raw.trim() || isNaN(val)) return 'Enter a duration';
+  if (val < 1) return 'Must be at least 1';
+  if (val > max) return `Maximum is ${max} ${unit}${max !== 1 ? 's' : ''}`;
+  return '';
+}
+
 // Flat UI state for each work entry — location is split into country/city,
 // arrangement is kept as a string to allow the empty placeholder state.
 type LocalRow = {
@@ -233,15 +242,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
     });
 
     if (!noticeImmediate) {
-      const val = Number(noticeValue);
-      const max = NOTICE_MAX[noticeUnit];
-      if (!noticeValue.trim() || isNaN(val)) {
-        e.noticeValue = 'Enter a duration';
-      } else if (val < 1) {
-        e.noticeValue = 'Must be at least 1';
-      } else if (val > max) {
-        e.noticeValue = `Maximum is ${max} ${noticeUnit}${max !== 1 ? 's' : ''}`;
-      }
+      e.noticeValue = validateNoticePeriod(noticeValue, noticeUnit);
     }
 
     setErrors(e);
@@ -475,13 +476,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                   const raw = e.target.value;
                   if (raw === '' || Number(raw) <= 999) {
                     setNoticeValue(raw);
-                    const val = Number(raw);
-                    const max = NOTICE_MAX[noticeUnit];
-                    let err = '';
-                    if (!raw.trim() || isNaN(val)) err = 'Enter a duration';
-                    else if (val < 1) err = 'Must be at least 1';
-                    else if (val > max) err = `Maximum is ${max} ${noticeUnit}${max !== 1 ? 's' : ''}`;
-                    setErrors((prev) => ({ ...prev, noticeValue: err }));
+                    setErrors((prev) => ({ ...prev, noticeValue: validateNoticePeriod(raw, noticeUnit) }));
                   }
                 }}
                 placeholder="3"
@@ -494,17 +489,10 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                 onChange={(e) => {
                   const newUnit = e.target.value as NoticePeriodUnit;
                   setNoticeUnit(newUnit);
-                  if (noticeValue.trim()) {
-                    const val = Number(noticeValue);
-                    const max = NOTICE_MAX[newUnit];
-                    let err = '';
-                    if (isNaN(val)) err = 'Enter a duration';
-                    else if (val < 1) err = 'Must be at least 1';
-                    else if (val > max) err = `Maximum is ${max} ${newUnit}${max !== 1 ? 's' : ''}`;
-                    setErrors((prev) => ({ ...prev, noticeValue: err }));
-                  } else {
-                    setErrors((prev) => ({ ...prev, noticeValue: '' }));
-                  }
+                  setErrors((prev) => ({
+                    ...prev,
+                    noticeValue: noticeValue.trim() ? validateNoticePeriod(noticeValue, newUnit) : '',
+                  }));
                 }}
               >
                 <option value="day">days</option>
