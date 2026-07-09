@@ -69,7 +69,7 @@ export function calculateExperience(
       // Overlapping — extend the last merged interval if needed
       last[1] = Math.max(last[1], current[1]);
     } else {
-      merged.push([...current] as [number, number]);
+      merged.push(current);
     }
   }
 
