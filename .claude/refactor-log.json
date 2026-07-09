@@ -238,11 +238,11 @@
       "file": "src/autofill/picker.ts",
       "line": 304,
       "description": "fmtSalary() in picker.ts duplicates salary-formatting logic already in resolver.ts. Both produce \"{amount} {currency}\" via fmtAmount. Extract a shared formatSalaryAmount(amount, currency) helper (e.g. into utils/dateFormat.ts alongside fmtAmount) and use it in both files.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "b4c0466",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0016",
@@ -336,11 +336,11 @@
       "file": "src/resume-ai/gemini.ts",
       "line": 138,
       "description": "stripMarkdown is defined in gemini.ts (network layer) but is a pure text utility with no Gemini-specific logic. It should live in a shared utility module so it can be reused without importing from the network-layer file.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "8974c47",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0022",
@@ -352,11 +352,11 @@
       "file": "src/resume-ai/gemini.ts",
       "line": 156,
       "description": "AIOptionPayload, AIFieldPayload, and AIFieldResponse are declared inside gemini.ts (network layer) but describe the autofill domain model. Move them to src/resume-ai/types.ts alongside FieldChange, ImportError, etc. to keep type declarations co-located.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "8974c47",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0023",
@@ -704,11 +704,11 @@
       "file": "src/resume-ai/parser.ts",
       "line": 31,
       "description": "The setValue helpers on every FieldDef entry repeat the same spread pattern ~20 times: { ...p, personal: { ...(p.personal ?? {} as Profile['personal']), field: v } }. A small patchNested(p, 'personal', { firstName: v }) helper would eliminate repetition and the forced casts.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "8974c47",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0045",
@@ -882,11 +882,11 @@
       "file": "src/components/options/SettingsSection.tsx",
       "line": 124,
       "description": "_geminiModel (underscore prefix) is set and read in the debounce callback. The underscore suggests unused but it is actively read. Rename to geminiModel or activeGeminiModel for clarity.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "b4c0466",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0056",
@@ -898,11 +898,11 @@
       "file": "src/components/options/SettingsSection.tsx",
       "line": 38,
       "description": "DEFAULT_GEMINI_MODEL is hardcoded locally in SettingsSection. If this value is also defined in src/utils/storage.ts or src/resume-ai/gemini.ts, import from there rather than duplicating, to prevent drift when the model name changes.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "b4c0466",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0057",
