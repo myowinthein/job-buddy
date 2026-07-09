@@ -288,11 +288,11 @@
       "file": "src/utils/profileCompletion.ts",
       "line": 113,
       "description": "calculateCompletion() duplicates the validation logic already in getSectionCompletion(). The mandatory checks are written out twice in parallel. getSectionCompletion() should be called inside calculateCompletion() and the section booleans used to drive the check() calls.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "48299e8",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0019",
@@ -304,11 +304,11 @@
       "file": "src/utils/profileCompletion.ts",
       "line": 116,
       "description": "check() and optCheck() are identically structured inner functions differing only in their target array. Extract a makeChecker(target) factory and call it twice to remove the structural duplication.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "48299e8",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0020",
@@ -384,11 +384,11 @@
       "file": "src/components/options/CompletionBanner.tsx",
       "line": 59,
       "description": "The 'Missing' dropdown trigger and panel are duplicated for the !isCoreComplete case and the isCoreComplete && optionalFieldsRemaining > 0 case. The only differences are panel heading text and dot color. Extract a MissingDropdown sub-component with those as props.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "48299e8",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0025",
@@ -416,11 +416,11 @@
       "file": "src/components/options/WorkHistorySection.tsx",
       "line": 486,
       "description": "Notice period validation logic (error message with pluralised unit) is inlined in the onChange handler for the value input, the onChange handler for the unit selector, and the validate() function \u2014 3 separate copies. Extract a validateNoticeValue(value, unit) helper.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "48299e8",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0027",
@@ -834,11 +834,11 @@
       "file": "entrypoints/popup/App.tsx",
       "line": 276,
       "description": "The 'No AI key' tooltip in the Autofill section header uses raw group/group-hover Tailwind classes instead of the InfoTooltip component defined in the same file. Refactor to use InfoTooltip for consistency.",
-      "status": "open",
+      "status": "skipped-by-user",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
       "resolved_commit": null,
-      "resolved_date": null
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0053",
@@ -850,11 +850,11 @@
       "file": "entrypoints/options/App.tsx",
       "line": 283,
       "description": "sectionProps is reconstructed as a new object literal { profile, onSave: handleSave } on every render, causing every section component to receive a new prop reference even when profile and handleSave haven't changed. Wrap in useMemo.",
-      "status": "open",
+      "status": "skipped-by-user",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
       "resolved_commit": null,
-      "resolved_date": null
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0054",
@@ -866,11 +866,11 @@
       "file": "entrypoints/options/App.tsx",
       "line": 306,
       "description": "The settings case in renderSection passes an inline arrow () => handleImportComplete(...) to onResetComplete, creating a new function reference every render. Extract it to a named handler (handleResetComplete) for stability.",
-      "status": "open",
+      "status": "skipped-by-user",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
       "resolved_commit": null,
-      "resolved_date": null
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0055",
