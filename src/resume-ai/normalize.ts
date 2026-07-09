@@ -95,6 +95,18 @@ export function normalizeSummaryLineWraps(text: string): string {
 }
 
 /**
+ * Strips a Markdown code-fence wrapper from an AI text response.
+ * Handles optional language tag (e.g. ```json) on the opening fence.
+ * Returns the trimmed inner text, or the original string if no fence found.
+ */
+export function stripMarkdown(text: string): string {
+  return text
+    .replace(/^```(?:json)?\s*/m, '')
+    .replace(/\s*```\s*$/m, '')
+    .trim();
+}
+
+/**
  * Post-processes the Partial<Profile> returned by Gemini:
  *   - Normalises every workHistory[].description into bullet form.
  *   - Merges soft PDF line wraps in professional.summary into spaces.

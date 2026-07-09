@@ -1,8 +1,8 @@
 import type { Profile } from '@/src/types/profile';
-import type { GeminiModel, KeyValidationResult, ImportError } from './types';
+import type { GeminiModel, KeyValidationResult, ImportError, AIFieldPayload, AIFieldResponse, AIOptionPayload } from './types';
 import { GEMINI_MODEL_PRIORITY } from './types';
 import { buildPrompt } from './prompt';
-import { normalizeExtractedProfile } from './normalize';
+import { normalizeExtractedProfile, stripMarkdown } from './normalize';
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -135,13 +135,6 @@ export async function extractFromResume(
   throw importError('rate_limit', 'All AI models are currently busy. Try again later or check your usage at Google AI Studio.');
 }
 
-function stripMarkdown(text: string): string {
-  return text
-    .replace(/^```(?:json)?\s*/m, '')
-    .replace(/\s*```\s*$/m, '')
-    .trim();
-}
-
 function parseResponse(text: string): Partial<Profile> {
   const cleaned = stripMarkdown(text);
   try {
@@ -152,29 +145,6 @@ function parseResponse(text: string): Partial<Profile> {
 }
 
 // ── AI autofill field resolution ─────────────────────────────────────────────
-
-export interface AIOptionPayload {
-  label: string;
-  value: string;
-}
-
-export interface AIFieldPayload {
-  fieldId:      string;
-  type:         'text' | 'select' | 'radio' | 'checkbox';
-  label:        string;
-  placeholder?: string;
-  name?:        string;
-  nearbyText?:  string;
-  options?:     AIOptionPayload[];
-}
-
-export interface AIFieldResponse {
-  fieldId:          string;
-  profilePath?:     string | null;
-  selectedOption?:  string | null;
-  selectedOptions?: string[] | null;
-  confidence:       'high' | 'low' | null;
-}
 
 const AUTOFILL_SYSTEM_PROMPT = `You are an autofill assistant for a job application tool.
 
