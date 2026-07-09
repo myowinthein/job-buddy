@@ -102,26 +102,26 @@ export function normalizeSummaryLineWraps(text: string): string {
  * Pure: returns a new object, does not mutate the input.
  */
 export function normalizeExtractedProfile(p: Partial<Profile>): Partial<Profile> {
-  let result = p;
+  const needsWorkNorm = !!p.workHistory?.length;
+  const needsSummaryNorm = !!p.professional?.summary;
+  if (!needsWorkNorm && !needsSummaryNorm) return p;
 
-  if (p.workHistory?.length) {
-    result = {
-      ...result,
-      workHistory: p.workHistory.map((entry) =>
-        entry.description ? { ...entry, description: normalizeBullets(entry.description) } : entry,
-      ),
-    };
-  }
-
-  if (p.professional?.summary) {
-    result = {
-      ...result,
-      professional: {
-        ...p.professional,
-        summary: normalizeSummaryLineWraps(p.professional.summary),
-      },
-    };
-  }
-
-  return result;
+  return {
+    ...p,
+    ...(needsWorkNorm
+      ? {
+          workHistory: p.workHistory!.map((entry) =>
+            entry.description ? { ...entry, description: normalizeBullets(entry.description) } : entry,
+          ),
+        }
+      : undefined),
+    ...(needsSummaryNorm
+      ? {
+          professional: {
+            ...p.professional,
+            summary: normalizeSummaryLineWraps(p.professional!.summary as string),
+          },
+        }
+      : undefined),
+  };
 }
