@@ -90,8 +90,14 @@ describe('validateImportedProfile', () => {
     expect(result.invalidFields.some((f) => f.path === 'salary.current.currency')).toBe(true);
   });
 
-  it('rejects salary with non-positive amount', () => {
+  it('accepts salary with zero amount', () => {
     const result = validateImportedProfile({ salary: { current: { amount: 0, currency: 'USD' } } });
+    expect(result.valid).toBe(true);
+    expect(result.sanitized.salary?.current?.amount).toBe(0);
+  });
+
+  it('rejects salary with negative amount', () => {
+    const result = validateImportedProfile({ salary: { current: { amount: -1, currency: 'USD' } } });
     expect(result.valid).toBe(false);
     expect(result.invalidFields.some((f) => f.path === 'salary.current.amount')).toBe(true);
   });

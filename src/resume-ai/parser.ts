@@ -169,7 +169,7 @@ export const FIELD_DEFS: FieldDef[] = [
   {
     id: 'professional.summary',
     label: 'Career Summary',
-    section: 'Work History',
+    section: 'Professional',
     getValue: (p) => p.professional?.summary ?? null,
     setValue: (p, v) => ({ ...p, professional: { ...(p.professional ?? {}), summary: v as string } }),
     isEmpty: emptyStr,
@@ -181,7 +181,7 @@ export const FIELD_DEFS: FieldDef[] = [
   {
     id: 'professional.noticePeriod',
     label: 'Notice Period',
-    section: 'Work History',
+    section: 'Professional',
     getValue: (p) => p.professional?.noticePeriod ?? null,
     setValue: (p, v) => ({ ...p, professional: { ...(p.professional ?? {}), noticePeriod: v as Profile['professional']['noticePeriod'] } }),
     isEmpty: (v) => !v || typeof v !== 'object',
