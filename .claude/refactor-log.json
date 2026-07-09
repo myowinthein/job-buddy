@@ -206,11 +206,11 @@
       "file": "entrypoints/options/App.tsx",
       "line": 227,
       "description": "handleSave calls saveProfile(merged) then immediately saveProfile(withDerived), two sequential writes per save. If the first write succeeds but derivation throws, the stored profile is correct but in-memory state (profile) is set to merged (without derived), creating a stale-state window. Consider computing derived fields before any storage write and only falling back if derivation fails.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "65a5510bd60cdaded480da2609cea7e255b6ad17",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0014",
@@ -320,11 +320,11 @@
       "file": "src/utils/profileValidator.ts",
       "line": 136,
       "description": "validateImportedProfile() rejects salary.current.amount of 0 (cur.amount > 0), but profileCompletion.ts accepts 0 as valid (amount >= 0). This inconsistency means a profile with amount=0 will fail re-import validation. The import validator should use cur.amount >= 0.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "65a5510bd60cdaded480da2609cea7e255b6ad17",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0021",
@@ -368,11 +368,11 @@
       "file": "src/resume-ai/parser.ts",
       "line": 174,
       "description": "professional.summary field def uses section: 'Work History' (line 172) and professional.noticePeriod uses the same (line 184). Both belong under a 'Professional' section heading in the diff UI, not 'Work History'. This mislabeling causes confusing grouping in the import review screen.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "65a5510bd60cdaded480da2609cea7e255b6ad17",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0024",
@@ -400,11 +400,11 @@
       "file": "src/components/options/shared/FormField.tsx",
       "line": 5,
       "description": "The optional prop is accepted but silently ignored — its JSDoc says 'the Optional tag is no longer rendered'. Remove the prop from the interface and update all callers that still pass optional. Dead prop creates confusion about whether it controls rendering.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "65a5510bd60cdaded480da2609cea7e255b6ad17",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0026",
@@ -432,11 +432,11 @@
       "file": "src/components/options/SettingsSection.tsx",
       "line": 163,
       "description": "The load function inside the Drive state useEffect is wrapped in a named function then immediately called, and also assigned as handler. Just define handler once and call it directly — the intermediate load alias is noise.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "65a5510bd60cdaded480da2609cea7e255b6ad17",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0028",
@@ -448,11 +448,11 @@
       "file": "src/components/options/SettingsSection.tsx",
       "line": 355,
       "description": "handleImportReviewSave is a one-liner that just calls performImportSave. Since performImportSave already has the required signature, pass it directly to ImportReviewScreen's onSave prop and remove the wrapper.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "65a5510bd60cdaded480da2609cea7e255b6ad17",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0029",
@@ -464,11 +464,11 @@
       "file": "entrypoints/options/App.tsx",
       "line": 260,
       "description": "handleGoToApiKey duplicates the body of the target === 'gemini-api-key' branch in applyFocusTarget (lines 112-115). Extract a shared focusGeminiKey() helper called by both.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "65a5510bd60cdaded480da2609cea7e255b6ad17",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0030",
@@ -480,11 +480,11 @@
       "file": "entrypoints/options/App.tsx",
       "line": 249,
       "description": "handleNavigate is a one-liner wrapper around setActiveSection with a redundant cast. Accept SectionId directly in CompletionBanner and Sidebar prop types, or inline the cast at the call site, and remove handleNavigate.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "65a5510bd60cdaded480da2609cea7e255b6ad17",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0031",
@@ -544,11 +544,11 @@
       "file": "src/resume-ai/types.ts",
       "line": 10,
       "description": "GEMINI_MODEL_PRIORITY includes 'gemini-3.1-flash-lite' and 'gemini-3.5-flash' but the comment says 'gemini-2.5-flash-lite' is a valid stored model NOT a probe candidate. If gemini-3.x models are also stored-only models, the comment is incomplete; if they are valid probe targets the comment is misleading. Document the relationship clearly.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "65a5510bd60cdaded480da2609cea7e255b6ad17",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0035",
@@ -560,11 +560,11 @@
       "file": "src/utils/storage.ts",
       "line": 212,
       "description": "getThemePreference() only checks 'light' and 'dark' explicitly, falling through to 'system' for everything else. 'system' stored explicitly is accepted via fallback implicitly. Add an explicit 'system' check to make the intent clear and prevent confusion if the type is extended.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "65a5510bd60cdaded480da2609cea7e255b6ad17",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0036",
@@ -752,11 +752,11 @@
       "file": "src/utils/profileValidator.ts",
       "line": 83,
       "description": "VALID_VETERAN is reused for disabilityStatus validation. Rename to VALID_YES_NO_PNTS or introduce a separate VALID_DISABILITY constant with the same values so the intent is self-documenting.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "65a5510bd60cdaded480da2609cea7e255b6ad17",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0048",
