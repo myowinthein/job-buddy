@@ -150,7 +150,7 @@ body {
 label {
   display: block;
   color: #3f4146;
-  font-weight: 650;
+  font-weight: 600;
   font-size: 15px;
   margin-bottom: 18px;
 }
@@ -233,7 +233,7 @@ button {
   border-radius: 999px;
   min-height: 48px;
   padding: 0 24px;
-  font-weight: 750;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -323,7 +323,7 @@ button {
 .summary-list dd {
   margin: 0;
   color: #444145;
-  font-weight: 650;
+  font-weight: 600;
   font-size: 16px;
 }
 

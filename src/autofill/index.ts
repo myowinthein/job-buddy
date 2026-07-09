@@ -327,7 +327,6 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   const profile = await getProfile();
   if (!profile) return { noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0 };
 
-  const _learnedMappings = await getLearnedMappings();
   const domain = window.location.hostname;
 
   const result: AutofillResult = {
@@ -421,8 +420,6 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // lowConfidence path above), but check explicitly for type safety.
         if (match.fieldPath) {
           noDataFields.push({ element, fieldPath: match.fieldPath, label: displayLabel });
-        }
-        if (match.fieldPath) {
           aiTextCandidates.push({ type: 'text', element, signals, originalState: 'noData', originalFieldPath: match.fieldPath, debugFieldId });
         }
       }
@@ -514,8 +511,3 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   return result;
 }
 
-// Legacy single-phase entry point (kept for internal use / backward compat).
-export async function runAutofill(): Promise<AutofillResult> {
-  await scanAutofill();
-  return executeAutofill('overwrite');
-}
