@@ -1,8 +1,6 @@
 interface FormFieldProps {
   label: string;
   required?: boolean;
-  /** Accepted for backward compat with callers; the "Optional" tag is no longer rendered. */
-  optional?: boolean;
   error?: string;
   hint?: string;
   children: React.ReactNode;

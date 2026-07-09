@@ -18,7 +18,7 @@ const RE_YYYYMMDD = /^\d{4}-\d{2}-\d{2}$/;
 const RE_CURRENCY = /^[A-Z]{3}$/;
 
 const VALID_GENDERS     = new Set(['male', 'female', 'other', 'prefer_not_to_say']);
-const VALID_VETERAN     = new Set(['yes', 'no', 'prefer_not_to_say']);
+const VALID_YES_NO_PNTS = new Set(['yes', 'no', 'prefer_not_to_say']);
 const VALID_AUTH_STATUS = new Set(['citizen_or_pr', 'work_visa', 'requires_sponsorship']);
 const VALID_PROFICIENCY = new Set([
   'native_bilingual', 'full_professional', 'professional_working',
@@ -76,11 +76,11 @@ export function validateImportedProfile(raw: unknown): ValidationResult {
     }
     if (p.ethnicity !== undefined && typeof p.ethnicity === 'string') sp.ethnicity = p.ethnicity;
     if (p.veteranStatus !== undefined) {
-      if (typeof p.veteranStatus === 'string' && VALID_VETERAN.has(p.veteranStatus)) sp.veteranStatus = p.veteranStatus;
+      if (typeof p.veteranStatus === 'string' && VALID_YES_NO_PNTS.has(p.veteranStatus)) sp.veteranStatus = p.veteranStatus;
       else err('personal.veteranStatus', 'expected yes | no | prefer_not_to_say');
     }
     if (p.disabilityStatus !== undefined) {
-      if (typeof p.disabilityStatus === 'string' && VALID_VETERAN.has(p.disabilityStatus)) sp.disabilityStatus = p.disabilityStatus;
+      if (typeof p.disabilityStatus === 'string' && VALID_YES_NO_PNTS.has(p.disabilityStatus)) sp.disabilityStatus = p.disabilityStatus;
       else err('personal.disabilityStatus', 'expected yes | no | prefer_not_to_say');
     }
 
@@ -134,7 +134,7 @@ export function validateImportedProfile(raw: unknown): ValidationResult {
 
     if ('current' in sal && typeof sal.current === 'object' && sal.current !== null) {
       const cur = sal.current as Record<string, unknown>;
-      if (typeof cur.amount === 'number' && cur.amount > 0 &&
+      if (typeof cur.amount === 'number' && cur.amount >= 0 &&
           typeof cur.currency === 'string' && RE_CURRENCY.test(cur.currency)) {
         ss.current = {
           amount: cur.amount,
@@ -143,7 +143,7 @@ export function validateImportedProfile(raw: unknown): ValidationResult {
           period: cur.period === 'annual' ? 'annual' : 'monthly',
         };
       } else {
-        if (typeof cur.amount !== 'number' || cur.amount <= 0) err('salary.current.amount', 'expected positive number');
+        if (typeof cur.amount !== 'number' || cur.amount < 0) err('salary.current.amount', 'expected non-negative number');
         if (typeof cur.currency !== 'string' || !RE_CURRENCY.test(cur.currency)) err('salary.current.currency', 'expected 3-letter uppercase currency code');
       }
     }
