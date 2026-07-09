@@ -17,6 +17,11 @@ export const GEMINI_MODEL_PRIORITY: GeminiModel[] = [
   'gemini-2.5-pro',
 ];
 
+// The default model applied immediately when a key is validated (Step 2 of the
+// debounce flow). The background probe (Step 3) may upgrade this to a higher
+// priority model. Must equal GEMINI_MODEL_PRIORITY[0].
+export const DEFAULT_GEMINI_MODEL: GeminiModel = GEMINI_MODEL_PRIORITY[0];
+
 export const MODEL_DISPLAY_NAMES: Record<GeminiModel, string> = {
   'gemini-3.5-flash':      'Gemini 3.5 Flash',
   'gemini-3.1-flash-lite': 'Gemini 3.1 Flash-Lite',
@@ -47,6 +52,32 @@ export interface FieldChange {
   status: FieldStatus;
   /** new: true = include; conflict: true = use suggested, false = keep current */
   accepted: boolean;
+}
+
+// ── AI autofill payload types ────────────────────────────────────────────────
+// Shared between src/resume-ai/gemini.ts (producer) and src/autofill/ai.ts (consumer).
+
+export interface AIOptionPayload {
+  label: string;
+  value: string;
+}
+
+export interface AIFieldPayload {
+  fieldId:      string;
+  type:         'text' | 'select' | 'radio' | 'checkbox';
+  label:        string;
+  placeholder?: string;
+  name?:        string;
+  nearbyText?:  string;
+  options?:     AIOptionPayload[];
+}
+
+export interface AIFieldResponse {
+  fieldId:          string;
+  profilePath?:     string | null;
+  selectedOption?:  string | null;
+  selectedOptions?: string[] | null;
+  confidence:       'high' | 'low' | null;
 }
 
 export interface KeyValidationResult {
