@@ -5,6 +5,7 @@ import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
 import { fmtYearMonth, fmtAmount } from '../utils/dateFormat';
 import { getProfile, getThemePreference } from '../utils/storage';
 import { resolveProfileValue } from './resolver';
+import { extractSignals, bestLabel } from './signals';
 
 // All styles are inline — no Tailwind, no external CSS — to avoid host page conflicts.
 
@@ -319,21 +320,15 @@ function mk(tag: string, css?: Record<string, string>): HTMLElement {
 // ─── Signal-based auto-expand ─────────────────────────────────────────────────
 
 function detectAutoExpand(element: HTMLElement): string | null {
-  const inp = element as HTMLInputElement;
-  const parts: string[] = [
-    inp.name ?? '', element.id ?? '', inp.placeholder ?? '',
-    inp.autocomplete ?? '', element.getAttribute('aria-label') ?? '',
-  ];
-  if (element.id) {
-    try {
-      const lbl = document.querySelector<HTMLLabelElement>(`label[for="${CSS.escape(element.id)}"]`);
-      if (lbl) parts.push(lbl.textContent ?? '');
-    } catch { /* ignore bad selectors */ }
-  }
-  const parent = element.closest('label');
-  if (parent) parts.push(parent.textContent ?? '');
-
-  const sig = parts.join(' ').toLowerCase();
+  const signals = extractSignals(element);
+  const sig = [
+    bestLabel(signals),
+    signals.name,
+    signals.id,
+    signals.placeholder,
+    signals.autocomplete,
+    signals.ariaLabel,
+  ].join(' ').toLowerCase();
 
   if (/salary|compensation|pay|wage|income|ctc|package/.test(sig))                  return 'salary';
   if (/visa|authoris|authoriz|permit|sponsorship|right.to.work/.test(sig))         return 'work-authorization';
@@ -961,6 +956,19 @@ function removePicker(): void {
   activeSession        = null;
 }
 
+// ─── Outside-click registration ───────────────────────────────────────────────
+
+// Wraps the zero-delay setTimeout pattern used to register the outside-click
+// handler after the current event loop turn, so the focus/click that opened
+// the picker is not immediately treated as an "outside" click.
+function registerOutsideClickHandler(): void {
+  setTimeout(() => {
+    if (activeOutsideHandler) {
+      document.addEventListener('mousedown', activeOutsideHandler, true);
+    }
+  }, 0);
+}
+
 // ─── showPicker ───────────────────────────────────────────────────────────────
 
 // Compact CTA used when state === 'noData'. Replaces the normal profile-tree
@@ -1075,11 +1083,7 @@ function showNoDataCta(element: HTMLElement, label: string, fieldPath?: string):
     if (activePickerElement?.contains(target)) return;
     removePicker();
   };
-  setTimeout(() => {
-    if (activeOutsideHandler) {
-      document.addEventListener('mousedown', activeOutsideHandler, true);
-    }
-  }, 0);
+  registerOutsideClickHandler();
 }
 
 function showPicker(
@@ -1263,11 +1267,7 @@ function showPicker(
     if (activePickerElement?.contains(target)) return; // click on the owning input
     removePicker();
   };
-  setTimeout(() => {
-    if (activeOutsideHandler) {
-      document.addEventListener('mousedown', activeOutsideHandler, true);
-    }
-  }, 0);
+  registerOutsideClickHandler();
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
