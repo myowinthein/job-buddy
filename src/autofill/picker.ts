@@ -2,7 +2,7 @@ import type { Profile, WorkHistoryEntry, EducationEntry } from '../types/profile
 import { COUNTRIES } from '../data/countries';
 import { LANGUAGES } from '../data/languages';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
-import { fmtYearMonth, fmtAmount } from '../utils/dateFormat';
+import { fmtYearMonth } from '../utils/dateFormat';
 import { getProfile, getThemePreference } from '../utils/storage';
 import { resolveProfileValue } from './resolver';
 import { extractSignals, bestLabel } from './signals';
@@ -302,11 +302,6 @@ function educationHeading(entry: EducationEntry, idx: number): string {
 }
 
 
-function fmtSalary(amount?: number | null, currency?: string | null): string {
-  if (amount == null) return '';
-  return currency ? `${fmtAmount(amount)} ${currency}` : fmtAmount(amount);
-}
-
 function row(label: string, fieldPath: string, value: string): OptionRow {
   return { kind: 'option', label, fieldPath, value };
 }
@@ -411,7 +406,7 @@ function buildPickerTree(profile: Profile): Section[] {
     const cur = profile.salary?.current;
     if (cur?.amount != null || cur?.currency) {
       const rows: OptionRow[] = [];
-      const full = fmtSalary(cur?.amount, cur?.currency);
+      const full = resolveProfileValue(profile, 'salary.current.formatted');
       if (full)                rows.push(row('Current Salary', 'salary.current.formatted', full));
       if (cur?.amount != null) rows.push(row('Amount',         'salary.current.amount',    String(cur.amount)));
       if (cur?.currency)       rows.push(row('Currency',       'salary.current.currency',  cur.currency));
@@ -422,7 +417,7 @@ function buildPickerTree(profile: Profile): Section[] {
       if (!entry.amount && !entry.currency) return;
       const name = entry.country ? countryName(entry.country) : `Entry ${idx + 1}`;
       const rows: OptionRow[] = [];
-      const full = fmtSalary(entry.amount, entry.currency);
+      const full = resolveProfileValue(profile, `salary.expected.${idx}.formatted`);
       if (full)                rows.push(row('Expected Salary', `salary.expected.${idx}.formatted`, full));
       if (entry.amount != null) rows.push(row('Amount',         `salary.expected.${idx}.amount`,    String(entry.amount)));
       if (entry.currency)       rows.push(row('Currency',       `salary.expected.${idx}.currency`,  entry.currency));
