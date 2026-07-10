@@ -1058,11 +1058,11 @@
       "file": "src/autofill/mapper.ts",
       "line": 45,
       "description": "dictionaryExact() iterates all FIELD_DICTIONARY entries on every call. Since the dictionary is static, build a reverse-lookup Map<string, string> (term \u2192 fieldPath) once at module load. Reduces inner-loop cost from O(entries \u00d7 variations) to O(1) per lookup.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "182b541",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0067",
@@ -1074,11 +1074,11 @@
       "file": "entrypoints/options/App.tsx",
       "line": 270,
       "description": "calculateCompletion(profile) and getSectionCompletion(profile) are called unconditionally on every render, traversing the entire profile object. Wrap both in useMemo with profile as the dependency.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "182b541",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0068",
@@ -1090,11 +1090,11 @@
       "file": "src/utils/profileCompletion.ts",
       "line": 118,
       "description": "In check() inner function, groups.find((x) => x.sectionId === sectionId) performs a linear scan per failing check. With 15 checks this is negligible, but a Map<string, CompletionGroup> keyed by sectionId would be O(1). Same pattern in optCheck.",
-      "status": "open",
+      "status": "skipped-by-user",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
       "resolved_commit": null,
-      "resolved_date": null
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0069",
@@ -1106,11 +1106,11 @@
       "file": "src/autofill/scanner.ts",
       "line": 69,
       "description": "scanFields() calls getComputedStyle(el) and getBoundingClientRect() on every element during filter pass. Both force style recalculation/layout. Reorder checks: hidden attribute and disabled first (zero cost), then offsetParent, then getComputedStyle, then getBoundingClientRect only as last resort.",
-      "status": "open",
+      "status": "auto-resolved",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "182b541",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0070",
@@ -1122,11 +1122,11 @@
       "file": "src/resume-ai/parser.ts",
       "line": 425,
       "description": "applyChanges calls FIELD_DEFS.find(d => d.id === change.id) inside a loop over changes \u2014 O(n\u00b2). Pre-build a Map<string, FieldDef> from FIELD_DEFS at module level (it's immutable) to make lookups O(1).",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "182b541",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0071",
@@ -1138,11 +1138,11 @@
       "file": "entrypoints/options/App.tsx",
       "line": 276,
       "description": "sectionsWithOptionalGaps and sectionFullCompletion are derived values rebuilt on every render. Combine into the same useMemo block as calculateCompletion/getSectionCompletion.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "182b541",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0072",
@@ -1154,11 +1154,11 @@
       "file": "entrypoints/popup/App.tsx",
       "line": 202,
       "description": "The color/colorMap derivation (lines 202-207) runs on every render even when percentage hasn't changed. Move into a useMemo or pure helper function to avoid re-creating the object on unrelated re-renders.",
-      "status": "open",
+      "status": "skipped-by-user",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
       "resolved_commit": null,
-      "resolved_date": null
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0073",
@@ -1170,11 +1170,11 @@
       "file": "entrypoints/popup/DebugPanel.tsx",
       "line": 44,
       "description": "aiByFieldId is built with new Map(...) on every render. Wrap in useMemo with session.ai as the dependency.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "e8782bd619944536db1ecf53fad419b8c2c02185",
       "first_found_date": "2026-07-10",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "182b541",
+      "resolved_date": "2026-07-10"
     },
     {
       "id": "f-0074",
