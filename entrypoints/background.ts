@@ -1,5 +1,4 @@
-import { getProfile, getDriveBackupState, getDriveToken } from '@/src/utils/storage';
-import { syncProfileToDrive } from '@/src/utils/driveSync';
+import { retryPendingDriveSync } from '@/src/utils/driveSync';
 
 export default defineBackground(() => {
   // Content scripts cannot reliably call chrome.runtime.openOptionsPage() in
@@ -36,15 +35,3 @@ export default defineBackground(() => {
     void retryPendingDriveSync();
   });
 });
-
-export async function retryPendingDriveSync(): Promise<void> {
-  try {
-    const [state, token] = await Promise.all([getDriveBackupState(), getDriveToken()]);
-    if (!state.pendingSync || !token) return;
-    const profile = await getProfile();
-    if (!profile) return;
-    await syncProfileToDrive(profile);
-  } catch {
-    /* never throw from startup handler */
-  }
-}
