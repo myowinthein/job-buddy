@@ -26,6 +26,17 @@ export interface AutofillResult {
   aiAvailable?:  boolean; // true if the AI layer ran (key configured), false/undefined if skipped
 }
 
+// Zero-valued result used as a safe fallback when a fill cycle throws before
+// producing a real count. Kept here beside AutofillResult so new fields on the
+// interface stay reflected in the fallback shape.
+export const EMPTY_AUTOFILL_RESULT: AutofillResult = {
+  noReview:      0,
+  needReview:    0,
+  lowConfidence: 0,
+  noData:        0,
+  totalScanned:  0,
+};
+
 export interface AutofillScanResult {
   preFilledCount: number;
   totalMatched:   number;
