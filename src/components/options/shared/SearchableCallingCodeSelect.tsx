@@ -1,12 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
 import { COUNTRIES, getFlag, findCountry } from '@/src/data/countries';
 import type { Country } from '@/src/data/countries';
+import { useSearchableDropdown } from './useSearchableDropdown';
 
 interface Props {
   value: string;                   // ISO 3166-1 alpha-2 code
   onChange: (code: string) => void;
 }
 
+// Unlike SearchableCountryDropdown, this also matches on calling code (e.g.
+// "+66") so users can find a country by dialing prefix during phone entry.
 function filterCountries(search: string): Country[] {
   const q = search.trim().toLowerCase();
   if (!q) return COUNTRIES;
@@ -19,86 +21,22 @@ function filterCountries(search: string): Country[] {
   );
 }
 
-export function SearchableCountrySelect({ value, onChange }: Props) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
-  const [hlIdx, setHlIdx] = useState(0);
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
-
+export function SearchableCallingCodeSelect({ value, onChange }: Props) {
   const selected = findCountry(value);
-  const filtered = filterCountries(search);
 
-  // On open: focus search input.
-  useEffect(() => {
-    if (open) searchRef.current?.focus();
-  }, [open]);
-
-  // Keep the highlighted row scrolled into view during keyboard navigation.
-  useEffect(() => {
-    if (!open) return;
-    const el = listRef.current?.children[hlIdx] as HTMLElement | undefined;
-    el?.scrollIntoView({ block: 'nearest' });
-  }, [hlIdx, open]);
-
-  // Close when the user clicks outside the component.
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) {
-        setOpen(false);
-        setSearch('');
-        setHlIdx(0);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const select = (c: Country) => {
-    onChange(c.code);
-    setOpen(false);
-    setSearch('');
-    setHlIdx(0);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    switch (e.key) {
-      case 'ArrowDown':
-        setHlIdx((i) => Math.min(i + 1, filtered.length - 1));
-        e.preventDefault();
-        break;
-      case 'ArrowUp':
-        setHlIdx((i) => Math.max(i - 1, 0));
-        e.preventDefault();
-        break;
-      case 'Enter':
-        if (filtered[hlIdx]) select(filtered[hlIdx]);
-        e.preventDefault();
-        break;
-      case 'Escape':
-        setOpen(false);
-        setSearch('');
-        setHlIdx(0);
-        e.preventDefault();
-        break;
-    }
-  };
+  const { open, search, hlIdx, filtered, containerRef, searchRef, listRef, setHlIdx, select, toggle, handleKeyDown, onSearchChange } =
+    useSearchableDropdown<Country>({
+      filter: filterCountries,
+      onSelect: (c) => onChange(c.code),
+      findOpenIndex: () => COUNTRIES.findIndex((c) => c.code === value),
+    });
 
   return (
     <div ref={containerRef} className="relative shrink-0">
       {/* ── Trigger ─────────────────────────────────────────────────────────── */}
       <button
         type="button"
-        onClick={() => {
-          if (!open) {
-            const idx = COUNTRIES.findIndex((c) => c.code === value);
-            setHlIdx(idx >= 0 ? idx : 0);
-          }
-          setOpen((o) => !o);
-        }}
+        onClick={toggle}
         className="h-full rounded-l-lg bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 px-2 py-2 text-sm cursor-pointer flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors whitespace-nowrap focus:outline-none"
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -120,10 +58,7 @@ export function SearchableCountrySelect({ value, onChange }: Props) {
               className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Search country or code…"
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setHlIdx(0);
-              }}
+              onChange={(e) => onSearchChange(e.target.value)}
               onKeyDown={handleKeyDown}
             />
           </div>

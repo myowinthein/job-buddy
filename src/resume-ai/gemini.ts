@@ -1,5 +1,5 @@
 import type { Profile } from '@/src/types/profile';
-import type { GeminiModel, KeyValidationResult, ImportError, AIFieldPayload, AIFieldResponse, AIOptionPayload } from './types';
+import type { GeminiModel, KeyValidationResult, ImportError, AIFieldPayload, AIFieldResponse } from './types';
 import { GEMINI_MODEL_PRIORITY } from './types';
 import { buildPrompt } from './prompt';
 import { normalizeExtractedProfile, stripMarkdown } from './normalize';
