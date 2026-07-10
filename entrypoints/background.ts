@@ -37,7 +37,7 @@ export default defineBackground(() => {
   });
 });
 
-async function retryPendingDriveSync(): Promise<void> {
+export async function retryPendingDriveSync(): Promise<void> {
   try {
     const [state, token] = await Promise.all([getDriveBackupState(), getDriveToken()]);
     if (!state.pendingSync || !token) return;
