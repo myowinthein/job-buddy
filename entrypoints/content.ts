@@ -1,4 +1,4 @@
-import { scanAutofill, executeAutofill, undoAutofill, getLastResult, getDebugSession } from '@/src/autofill/index';
+import { scanAutofill, executeAutofill, undoAutofill, getLastResult, getDebugSession, EMPTY_AUTOFILL_RESULT } from '@/src/autofill/index';
 
 export default defineContentScript({
   matches: ['*://*/*'],
@@ -15,7 +15,7 @@ export default defineContentScript({
         const mode: 'merge' | 'overwrite' = message.mode === 'merge' ? 'merge' : 'overwrite';
         executeAutofill(mode)
           .then(sendResponse)
-          .catch(() => sendResponse({ noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0 }));
+          .catch(() => sendResponse(EMPTY_AUTOFILL_RESULT));
         return true;
       }
 
