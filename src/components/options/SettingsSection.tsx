@@ -120,7 +120,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   // ── AI Features state ────────────────────────────────────────────────────────
   const [geminiKey,        setGeminiKey]        = useState('');
   const [geminiKeyStatus,  setGeminiKeyStatus]  = useState<'idle' | 'validating' | 'valid' | 'invalid' | 'no_model'>('idle');
-  const [latestGeminiModel, setGeminiModel]      = useState<string | null>(null);
+  // Write-only: the model is persisted via saveGeminiModel and re-read via
+  // getGeminiModel; this state drives the save flow and is not rendered.
+  const [_geminiModel,     setGeminiModel]      = useState<string | null>(null);
   const geminiDebounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const probeIdRef         = useRef(0);
 

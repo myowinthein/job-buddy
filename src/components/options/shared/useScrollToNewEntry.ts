@@ -13,5 +13,7 @@ export function useScrollToNewEntry(ref: RefObject<HTMLDivElement | null>, tick:
       last?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus();
     });
     return () => cancelAnimationFrame(raf);
+    // `ref` identity is stable across renders; `tick` is the intended trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick]);
 }
