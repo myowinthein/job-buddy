@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, it, expect } from 'vitest';
-import { fillField, clearFieldValue } from './filler';
+import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
+import { fillField, clearFieldValue, fillFileField } from './filler';
 
 beforeEach(() => {
   document.body.innerHTML = '';
@@ -329,6 +329,105 @@ describe('fillField — text input (regression)', () => {
     document.body.appendChild(el);
     await fillField(el, '');
     expect(el.value).toBe('original');
+  });
+});
+
+// ── fillFileField ─────────────────────────────────────────────────────────────
+// jsdom implements neither DataTransfer nor a settable HTMLInputElement.files
+// with a plain object, so we stub both: a minimal DataTransfer that produces a
+// FileList-like object, and a per-element `files` accessor that accepts it.
+
+class FakeDataTransfer {
+  private _files: File[] = [];
+  items = { add: (f: File) => { this._files.push(f); } };
+  get files(): FileList {
+    const arr = this._files.slice();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fl: any = { length: arr.length, item: (i: number) => arr[i] ?? null };
+    arr.forEach((f, i) => { fl[i] = f; });
+    return fl as FileList;
+  }
+}
+
+function makeFileInput(): HTMLInputElement {
+  const input = document.createElement('input');
+  input.type = 'file';
+  let stored: FileList | null = null;
+  Object.defineProperty(input, 'files', {
+    configurable: true,
+    get() { return stored; },
+    set(v: FileList | null) { stored = v; },
+  });
+  document.body.appendChild(input);
+  return input;
+}
+
+describe('fillFileField', () => {
+  beforeEach(() => {
+    vi.stubGlobal('DataTransfer', FakeDataTransfer);
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('reconstructs the File and dispatches input AND change events', async () => {
+    const input = makeFileInput();
+    let inputFired = false;
+    let changeFired = false;
+    input.addEventListener('input',  () => { inputFired = true; });
+    input.addEventListener('change', () => { changeFired = true; });
+
+    // "data:text/plain;base64," + base64("hello") = "aGVsbG8="
+    const ok = await fillFileField(input, {
+      name: 'resume.txt',
+      size: 5,
+      base64: 'data:text/plain;base64,aGVsbG8=',
+    });
+
+    expect(ok).toBe(true);
+    expect(input.files?.length).toBe(1);
+    expect(input.files?.[0].name).toBe('resume.txt');
+    expect(input.files?.[0].type).toBe('text/plain');
+    expect(inputFired).toBe(true);
+    expect(changeFired).toBe(true);
+  });
+
+  it('returns false and does not dispatch when the data-URL prefix is malformed', async () => {
+    const input = makeFileInput();
+    let fired = false;
+    input.addEventListener('input', () => { fired = true; });
+
+    // Has a comma, but the prefix is not "data:<mime>;base64".
+    const ok = await fillFileField(input, {
+      name: 'resume.txt',
+      size: 5,
+      base64: 'notadataurl:text/plain,aGVsbG8=',
+    });
+
+    expect(ok).toBe(false);
+    expect(input.files).toBeNull();
+    expect(fired).toBe(false);
+  });
+
+  it('returns false when the base64 string has no comma separator', async () => {
+    const input = makeFileInput();
+    const ok = await fillFileField(input, {
+      name: 'resume.txt',
+      size: 5,
+      base64: 'data:text/plain;base64;aGVsbG8=', // no comma at all
+    });
+    expect(ok).toBe(false);
+    expect(input.files).toBeNull();
+  });
+
+  it('returns false when the payload after the comma is empty', async () => {
+    const input = makeFileInput();
+    const ok = await fillFileField(input, {
+      name: 'resume.txt',
+      size: 0,
+      base64: 'data:text/plain;base64,',
+    });
+    expect(ok).toBe(false);
   });
 });
 
