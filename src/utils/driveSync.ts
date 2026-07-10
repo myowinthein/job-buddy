@@ -1,6 +1,7 @@
 import type { Profile } from '../types/profile';
 import type { DriveBackupFile, DriveError } from '../types/storage';
 import {
+  getProfile,
   getDriveToken,
   saveDriveToken,
   clearDriveToken,
@@ -332,6 +333,23 @@ export async function syncProfileToDrive(profile: Profile): Promise<SyncResult> 
 // user picks "Keep Local" in the restore conflict dialog.
 export async function overwriteDriveWithLocal(profile: Profile): Promise<SyncResult> {
   return syncProfileToDrive(profile);
+}
+
+// Retry a deferred Drive upload — invoked from the background service worker on
+// browser startup. No-op unless a sync is pending, a token exists, and there is
+// a profile to upload. Silent on failure: errors are captured in
+// driveBackupState by syncProfileToDrive itself, and this must never throw from
+// the startup handler.
+export async function retryPendingDriveSync(): Promise<void> {
+  try {
+    const [state, token] = await Promise.all([getDriveBackupState(), getDriveToken()]);
+    if (!state.pendingSync || !token) return;
+    const profile = await getProfile();
+    if (!profile) return;
+    await syncProfileToDrive(profile);
+  } catch {
+    /* never throw from startup handler */
+  }
 }
 
 // Disconnect: revoke token, optionally delete the Drive file, then clear all
