@@ -30,6 +30,7 @@ import {
   revokeDriveToken,
   disconnectDrive,
   dispatchDriveStateChanged,
+  retryPendingDriveSync,
 } from './driveSync';
 import type { Profile } from '../types/profile';
 
@@ -297,6 +298,56 @@ describe('disconnectDrive', () => {
       ([, init]) => (init as RequestInit)?.method === 'DELETE',
     );
     expect(deleteCalled).toBe(false);
+  });
+});
+
+describe('retryPendingDriveSync', () => {
+  it('does nothing when no sync is pending', async () => {
+    store['driveBackupState'] = { fileId: null, lastSynced: null, pendingSync: false, error: null };
+    store['driveToken'] = 'tok-abc';
+    store['profile'] = makeProfile();
+
+    await retryPendingDriveSync();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when there is no Drive token', async () => {
+    store['driveBackupState'] = { fileId: null, lastSynced: null, pendingSync: true, error: null };
+    store['profile'] = makeProfile();
+
+    await retryPendingDriveSync();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when there is no profile to upload', async () => {
+    store['driveBackupState'] = { fileId: null, lastSynced: null, pendingSync: true, error: null };
+    store['driveToken'] = 'tok-abc';
+
+    await retryPendingDriveSync();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('uploads the profile when a pending sync, token, and profile are all present', async () => {
+    store['driveBackupState'] = { fileId: 'file-id', lastSynced: null, pendingSync: true, error: null };
+    store['driveToken'] = 'tok-abc';
+    store['profile'] = makeProfile();
+    mockFetchSequence([{ ok: true, body: {} }]);
+
+    await retryPendingDriveSync();
+
+    expect(fetchMock).toHaveBeenCalled();
+  });
+
+  it('resolves without throwing when the upload fails', async () => {
+    store['driveBackupState'] = { fileId: 'file-id', lastSynced: null, pendingSync: true, error: null };
+    store['driveToken'] = 'tok-abc';
+    store['profile'] = makeProfile();
+    fetchMock.mockRejectedValue(new Error('network down'));
+
+    await expect(retryPendingDriveSync()).resolves.toBeUndefined();
   });
 });
 
