@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Profile } from '@/src/types/profile';
 import { getProfile, saveProfile } from '@/src/utils/storage';
 import { calculateCompletion, getSectionCompletion, FIELD_FOCUS_IDS, resolvePathFocusTarget } from '@/src/utils/profileCompletion';
@@ -264,19 +264,24 @@ function App() {
     setActiveSection('personal');
   };
 
-  const completion = calculateCompletion(profile);
-  const sectionCompletion = getSectionCompletion(profile);
-
-  // A section is "fully complete" when its mandatory fields are done AND it has
-  // no remaining optional fields. Derived from already-computed values — no
-  // extra profile traversal needed.
-  const sectionsWithOptionalGaps = new Set(completion.optionalGroups.map((g) => g.sectionId));
-  const sectionFullCompletion: Record<string, boolean> = Object.fromEntries(
-    Object.entries(sectionCompletion).map(([id, mandatoryDone]) => [
-      id,
-      mandatoryDone && !sectionsWithOptionalGaps.has(id),
-    ]),
-  );
+  // All completion-derived values are recomputed only when `profile` changes,
+  // rather than on every render. calculateCompletion traverses the whole
+  // profile, and getSectionCompletion calls it internally — so both are kept
+  // inside a single memo keyed on profile.
+  const { completion, sectionCompletion, sectionFullCompletion } = useMemo(() => {
+    const completion = calculateCompletion(profile);
+    const sectionCompletion = getSectionCompletion(profile);
+    // A section is "fully complete" when its mandatory fields are done AND it
+    // has no remaining optional fields. Derived from already-computed values.
+    const sectionsWithOptionalGaps = new Set(completion.optionalGroups.map((g) => g.sectionId));
+    const sectionFullCompletion: Record<string, boolean> = Object.fromEntries(
+      Object.entries(sectionCompletion).map(([id, mandatoryDone]) => [
+        id,
+        mandatoryDone && !sectionsWithOptionalGaps.has(id),
+      ]),
+    );
+    return { completion, sectionCompletion, sectionFullCompletion };
+  }, [profile]);
   const sectionProps = { profile, onSave: handleSave };
 
   const renderSection = () => {
