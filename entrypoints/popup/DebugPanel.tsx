@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import type { DebugSession } from '@/src/autofill/debug';
 
 const LAYER_LABEL: Record<string, string> = {
@@ -41,7 +42,10 @@ export function DebugPanel({
   session: DebugSession;
   onClose: () => void;
 }) {
-  const aiByFieldId = new Map(session.ai.map((a) => [a.fieldId, a]));
+  const aiByFieldId = useMemo(
+    () => new Map(session.ai.map((a) => [a.fieldId, a])),
+    [session.ai],
+  );
 
   return (
     <div

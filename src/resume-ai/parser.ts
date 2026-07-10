@@ -445,6 +445,10 @@ export function generateDiff(
 
 // ── Apply accepted changes ───────────────────────────────────────────────────
 
+// id → FieldDef index, built once at module load (FIELD_DEFS is immutable) so
+// applyChanges resolves each change in O(1) instead of scanning FIELD_DEFS.
+const FIELD_DEF_BY_ID: Map<string, FieldDef> = new Map(FIELD_DEFS.map((d) => [d.id, d]));
+
 export function applyChanges(
   baseProfile: Partial<Profile>,
   changes: FieldChange[],
@@ -454,7 +458,7 @@ export function applyChanges(
   for (const change of changes) {
     if (change.status === 'unchanged') continue;
     if (!change.accepted) continue;
-    const def = FIELD_DEFS.find((d) => d.id === change.id);
+    const def = FIELD_DEF_BY_ID.get(change.id);
     if (def) result = def.setValue(result, change.suggestedValue);
   }
 
