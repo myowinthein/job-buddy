@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useToast } from '@/src/components/ui/useToast';
 import type { Profile, PhoneNumber } from '@/src/types/profile';
 import { findCountry } from '@/src/data/countries';
-import { SearchableCountrySelect } from './shared/SearchableCountrySelect';
+import { SearchableCallingCodeSelect } from './shared/SearchableCallingCodeSelect';
 import { ETHNICITIES } from '@/src/data/ethnicities';
 import { FormField } from './shared/FormField';
 import { saveSection } from './shared/saveSection';
@@ -222,7 +222,7 @@ export function PersonalSection({ profile, onSave }: Props) {
             errors.phoneNumber ? 'focus-within:ring-red-500' : 'focus-within:ring-blue-500'
           } focus-within:border-transparent`}
         >
-          <SearchableCountrySelect
+          <SearchableCallingCodeSelect
             value={form.phoneCountry}
             onChange={handleCountryChange}
           />
