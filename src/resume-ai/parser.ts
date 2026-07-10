@@ -28,6 +28,38 @@ function emptyArr(v: unknown): boolean {
   return !Array.isArray(v) || (v as unknown[]).length === 0;
 }
 
+/**
+ * Returns a setValue implementation for a nested section field.
+ * Handles the common `{ ...p, section: { ...p.section, field: v } }` spread
+ * pattern so it doesn't have to be repeated inline for every FIELD_DEF entry.
+ *
+ * `K` — a top-level key of Profile that holds a plain object (personal, address, links, …)
+ * `F` — a key within that object
+ * `V` — the value type for the field
+ *
+ * The `fallback` parameter is the empty-object fallback used when `p[section]`
+ * is undefined. For sections whose type has required fields (personal, address,
+ * links) callers must supply `{} as Profile[K]` to satisfy TypeScript; for
+ * fully-optional sections (professional) a plain `{}` suffices.
+ */
+function setNestedField<
+  K extends keyof Profile,
+  F extends keyof NonNullable<Profile[K]>,
+>(
+  section: K,
+  field: F,
+  fallback: NonNullable<Profile[K]>,
+): FieldDef['setValue'] {
+  return (p, v) => ({
+    ...p,
+    [section]: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ...((p[section] as any) ?? fallback),
+      [field]: v as NonNullable<Profile[K]>[F],
+    },
+  });
+}
+
 export const FIELD_DEFS: FieldDef[] = [
   // ── Personal ────────────────────────────────────────────────────────────────
   {
@@ -35,7 +67,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'First Name',
     section: 'Personal',
     getValue: (p) => p.personal?.firstName ?? null,
-    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), firstName: v as string } }),
+    setValue: setNestedField('personal', 'firstName', {} as Profile['personal']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
@@ -44,7 +76,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Last Name',
     section: 'Personal',
     getValue: (p) => p.personal?.lastName ?? null,
-    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), lastName: v as string } }),
+    setValue: setNestedField('personal', 'lastName', {} as Profile['personal']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
@@ -53,7 +85,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Email',
     section: 'Personal',
     getValue: (p) => p.personal?.email ?? null,
-    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), email: v as string } }),
+    setValue: setNestedField('personal', 'email', {} as Profile['personal']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
@@ -62,7 +94,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Phone Number',
     section: 'Personal',
     getValue: (p) => p.personal?.phone ?? null,
-    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), phone: v as PhoneNumber } }),
+    setValue: setNestedField('personal', 'phone', {} as Profile['personal']),
     isEmpty: (v) => {
       if (!v) return true;
       const ph = v as Partial<PhoneNumber>;
@@ -79,7 +111,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Date of Birth',
     section: 'Personal',
     getValue: (p) => p.personal?.dateOfBirth ?? null,
-    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), dateOfBirth: v as string } }),
+    setValue: setNestedField('personal', 'dateOfBirth', {} as Profile['personal']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
@@ -88,7 +120,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Gender',
     section: 'Personal',
     getValue: (p) => p.personal?.gender ?? null,
-    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), gender: v as string } }),
+    setValue: setNestedField('personal', 'gender', {} as Profile['personal']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? '').replace(/_/g, ' '),
   },
@@ -97,7 +129,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Ethnicity',
     section: 'Personal',
     getValue: (p) => p.personal?.ethnicity ?? null,
-    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), ethnicity: v as string } }),
+    setValue: setNestedField('personal', 'ethnicity', {} as Profile['personal']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
@@ -106,7 +138,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Veteran Status',
     section: 'Personal',
     getValue: (p) => p.personal?.veteranStatus ?? null,
-    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), veteranStatus: v as string } }),
+    setValue: setNestedField('personal', 'veteranStatus', {} as Profile['personal']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? '').replace(/_/g, ' '),
   },
@@ -115,7 +147,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Disability Status',
     section: 'Personal',
     getValue: (p) => p.personal?.disabilityStatus ?? null,
-    setValue: (p, v) => ({ ...p, personal: { ...(p.personal ?? {} as Profile['personal']), disabilityStatus: v as string } }),
+    setValue: setNestedField('personal', 'disabilityStatus', {} as Profile['personal']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? '').replace(/_/g, ' '),
   },
@@ -125,7 +157,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'City',
     section: 'Address',
     getValue: (p) => p.address?.city ?? null,
-    setValue: (p, v) => ({ ...p, address: { ...(p.address ?? {} as Profile['address']), city: v as string } }),
+    setValue: setNestedField('address', 'city', {} as Profile['address']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
@@ -134,7 +166,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Country',
     section: 'Address',
     getValue: (p) => p.address?.country ?? null,
-    setValue: (p, v) => ({ ...p, address: { ...(p.address ?? {} as Profile['address']), country: v as string } }),
+    setValue: setNestedField('address', 'country', {} as Profile['address']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
@@ -143,7 +175,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Street',
     section: 'Address',
     getValue: (p) => p.address?.street ?? null,
-    setValue: (p, v) => ({ ...p, address: { ...(p.address ?? {} as Profile['address']), street: v as string } }),
+    setValue: setNestedField('address', 'street', {} as Profile['address']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
@@ -152,7 +184,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'State / Province',
     section: 'Address',
     getValue: (p) => p.address?.state ?? null,
-    setValue: (p, v) => ({ ...p, address: { ...(p.address ?? {} as Profile['address']), state: v as string } }),
+    setValue: setNestedField('address', 'state', {} as Profile['address']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
@@ -161,7 +193,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Postal Code',
     section: 'Address',
     getValue: (p) => p.address?.postalCode ?? null,
-    setValue: (p, v) => ({ ...p, address: { ...(p.address ?? {} as Profile['address']), postalCode: v as string } }),
+    setValue: setNestedField('address', 'postalCode', {} as Profile['address']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
@@ -169,9 +201,9 @@ export const FIELD_DEFS: FieldDef[] = [
   {
     id: 'professional.summary',
     label: 'Career Summary',
-    section: 'Work History',
+    section: 'Professional',
     getValue: (p) => p.professional?.summary ?? null,
-    setValue: (p, v) => ({ ...p, professional: { ...(p.professional ?? {}), summary: v as string } }),
+    setValue: setNestedField('professional', 'summary', {}),
     isEmpty: emptyStr,
     display: (v) => {
       const s = String(v ?? '');
@@ -181,9 +213,9 @@ export const FIELD_DEFS: FieldDef[] = [
   {
     id: 'professional.noticePeriod',
     label: 'Notice Period',
-    section: 'Work History',
+    section: 'Professional',
     getValue: (p) => p.professional?.noticePeriod ?? null,
-    setValue: (p, v) => ({ ...p, professional: { ...(p.professional ?? {}), noticePeriod: v as Profile['professional']['noticePeriod'] } }),
+    setValue: setNestedField('professional', 'noticePeriod', {}),
     isEmpty: (v) => !v || typeof v !== 'object',
     display: (v) => {
       if (!v || typeof v !== 'object') return '';
@@ -308,7 +340,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'LinkedIn URL',
     section: 'Links',
     getValue: (p) => p.links?.linkedin ?? null,
-    setValue: (p, v) => ({ ...p, links: { ...(p.links ?? {} as Profile['links']), linkedin: v as string } }),
+    setValue: setNestedField('links', 'linkedin', {} as Profile['links']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
@@ -317,7 +349,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Portfolio URL',
     section: 'Links',
     getValue: (p) => p.links?.portfolio ?? null,
-    setValue: (p, v) => ({ ...p, links: { ...(p.links ?? {} as Profile['links']), portfolio: v as string } }),
+    setValue: setNestedField('links', 'portfolio', {} as Profile['links']),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
@@ -326,7 +358,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'Custom Links',
     section: 'Links',
     getValue: (p) => p.links?.custom ?? [],
-    setValue: (p, v) => ({ ...p, links: { ...(p.links ?? {} as Profile['links']), custom: v as Profile['links']['custom'] } }),
+    setValue: setNestedField('links', 'custom', {} as Profile['links']),
     isEmpty: emptyArr,
     display: (v) => {
       const arr = (v ?? []) as { label: string; url: string }[];
@@ -413,6 +445,10 @@ export function generateDiff(
 
 // ── Apply accepted changes ───────────────────────────────────────────────────
 
+// id → FieldDef index, built once at module load (FIELD_DEFS is immutable) so
+// applyChanges resolves each change in O(1) instead of scanning FIELD_DEFS.
+const FIELD_DEF_BY_ID: Map<string, FieldDef> = new Map(FIELD_DEFS.map((d) => [d.id, d]));
+
 export function applyChanges(
   baseProfile: Partial<Profile>,
   changes: FieldChange[],
@@ -422,7 +458,7 @@ export function applyChanges(
   for (const change of changes) {
     if (change.status === 'unchanged') continue;
     if (!change.accepted) continue;
-    const def = FIELD_DEFS.find((d) => d.id === change.id);
+    const def = FIELD_DEF_BY_ID.get(change.id);
     if (def) result = def.setValue(result, change.suggestedValue);
   }
 

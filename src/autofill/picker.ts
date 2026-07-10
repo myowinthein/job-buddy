@@ -2,9 +2,10 @@ import type { Profile, WorkHistoryEntry, EducationEntry } from '../types/profile
 import { COUNTRIES } from '../data/countries';
 import { LANGUAGES } from '../data/languages';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
-import { fmtYearMonth, fmtAmount } from '../utils/dateFormat';
+import { fmtYearMonth } from '../utils/dateFormat';
 import { getProfile, getThemePreference } from '../utils/storage';
 import { resolveProfileValue } from './resolver';
+import { extractSignals, bestLabel } from './signals';
 
 // All styles are inline — no Tailwind, no external CSS — to avoid host page conflicts.
 
@@ -301,11 +302,6 @@ function educationHeading(entry: EducationEntry, idx: number): string {
 }
 
 
-function fmtSalary(amount?: number | null, currency?: string | null): string {
-  if (amount == null) return '';
-  return currency ? `${fmtAmount(amount)} ${currency}` : fmtAmount(amount);
-}
-
 function row(label: string, fieldPath: string, value: string): OptionRow {
   return { kind: 'option', label, fieldPath, value };
 }
@@ -319,21 +315,15 @@ function mk(tag: string, css?: Record<string, string>): HTMLElement {
 // ─── Signal-based auto-expand ─────────────────────────────────────────────────
 
 function detectAutoExpand(element: HTMLElement): string | null {
-  const inp = element as HTMLInputElement;
-  const parts: string[] = [
-    inp.name ?? '', element.id ?? '', inp.placeholder ?? '',
-    inp.autocomplete ?? '', element.getAttribute('aria-label') ?? '',
-  ];
-  if (element.id) {
-    try {
-      const lbl = document.querySelector<HTMLLabelElement>(`label[for="${CSS.escape(element.id)}"]`);
-      if (lbl) parts.push(lbl.textContent ?? '');
-    } catch { /* ignore bad selectors */ }
-  }
-  const parent = element.closest('label');
-  if (parent) parts.push(parent.textContent ?? '');
-
-  const sig = parts.join(' ').toLowerCase();
+  const signals = extractSignals(element);
+  const sig = [
+    bestLabel(signals),
+    signals.name,
+    signals.id,
+    signals.placeholder,
+    signals.autocomplete,
+    signals.ariaLabel,
+  ].join(' ').toLowerCase();
 
   if (/salary|compensation|pay|wage|income|ctc|package/.test(sig))                  return 'salary';
   if (/visa|authoris|authoriz|permit|sponsorship|right.to.work/.test(sig))         return 'work-authorization';
@@ -416,7 +406,7 @@ function buildPickerTree(profile: Profile): Section[] {
     const cur = profile.salary?.current;
     if (cur?.amount != null || cur?.currency) {
       const rows: OptionRow[] = [];
-      const full = fmtSalary(cur?.amount, cur?.currency);
+      const full = resolveProfileValue(profile, 'salary.current.formatted');
       if (full)                rows.push(row('Current Salary', 'salary.current.formatted', full));
       if (cur?.amount != null) rows.push(row('Amount',         'salary.current.amount',    String(cur.amount)));
       if (cur?.currency)       rows.push(row('Currency',       'salary.current.currency',  cur.currency));
@@ -427,7 +417,7 @@ function buildPickerTree(profile: Profile): Section[] {
       if (!entry.amount && !entry.currency) return;
       const name = entry.country ? countryName(entry.country) : `Entry ${idx + 1}`;
       const rows: OptionRow[] = [];
-      const full = fmtSalary(entry.amount, entry.currency);
+      const full = resolveProfileValue(profile, `salary.expected.${idx}.formatted`);
       if (full)                rows.push(row('Expected Salary', `salary.expected.${idx}.formatted`, full));
       if (entry.amount != null) rows.push(row('Amount',         `salary.expected.${idx}.amount`,    String(entry.amount)));
       if (entry.currency)       rows.push(row('Currency',       `salary.expected.${idx}.currency`,  entry.currency));
@@ -961,6 +951,19 @@ function removePicker(): void {
   activeSession        = null;
 }
 
+// ─── Outside-click registration ───────────────────────────────────────────────
+
+// Wraps the zero-delay setTimeout pattern used to register the outside-click
+// handler after the current event loop turn, so the focus/click that opened
+// the picker is not immediately treated as an "outside" click.
+function registerOutsideClickHandler(): void {
+  setTimeout(() => {
+    if (activeOutsideHandler) {
+      document.addEventListener('mousedown', activeOutsideHandler, true);
+    }
+  }, 0);
+}
+
 // ─── showPicker ───────────────────────────────────────────────────────────────
 
 // Compact CTA used when state === 'noData'. Replaces the normal profile-tree
@@ -1075,11 +1078,7 @@ function showNoDataCta(element: HTMLElement, label: string, fieldPath?: string):
     if (activePickerElement?.contains(target)) return;
     removePicker();
   };
-  setTimeout(() => {
-    if (activeOutsideHandler) {
-      document.addEventListener('mousedown', activeOutsideHandler, true);
-    }
-  }, 0);
+  registerOutsideClickHandler();
 }
 
 function showPicker(
@@ -1263,11 +1262,7 @@ function showPicker(
     if (activePickerElement?.contains(target)) return; // click on the owning input
     removePicker();
   };
-  setTimeout(() => {
-    if (activeOutsideHandler) {
-      document.addEventListener('mousedown', activeOutsideHandler, true);
-    }
-  }, 0);
+  registerOutsideClickHandler();
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────

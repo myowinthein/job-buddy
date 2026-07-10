@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Profile } from '@/src/types/profile';
 import { getProfile, saveProfile } from '@/src/utils/storage';
 import { calculateCompletion, getSectionCompletion, FIELD_FOCUS_IDS, resolvePathFocusTarget } from '@/src/utils/profileCompletion';
@@ -92,6 +92,12 @@ function App() {
   }, []);
 
   // ── Cross-context focus request (popup → Options, picker → Options) ────────
+  const focusGeminiKey = useCallback(() => {
+    skipAutoFocusRef.current = true;
+    setActiveSection('settings');
+    setFocusTarget('gemini-api-key');
+  }, []);
+
   // Callers write 'jb:focusOnLoad' to chrome.storage.session before opening the
   // Options page; we read it here, clear it, and route to the appropriate
   // section + focus target. Supports two shapes:
@@ -110,9 +116,7 @@ function App() {
         chrome.storage.session.remove('jb:focusOnLoad');
 
         if (target === 'gemini-api-key') {
-          skipAutoFocusRef.current = true;
-          setActiveSection('settings');
-          setFocusTarget('gemini-api-key');
+          focusGeminiKey();
           return;
         }
 
@@ -128,7 +132,7 @@ function App() {
         }
       });
     } catch { /* session storage unavailable — no-op */ }
-  }, []);
+  }, [focusGeminiKey]);
 
   useEffect(() => {
     if (loading) return;
@@ -226,28 +230,21 @@ function App() {
 
   const handleSave = async (updates: Partial<Profile>) => {
     const merged = { ...profile, ...updates } as Profile;
-    await saveProfile(merged);
-    setProfile(merged);
     let synced: Profile = merged;
     try {
       const derived = calculateDerivedFields(merged);
-      const withDerived: Profile = { ...merged, derived };
-      await saveProfile(withDerived);
-      setProfile(withDerived);
-      synced = withDerived;
+      synced = { ...merged, derived };
     } catch (err) {
-      console.error('[Job Buddy] Failed to write derived fields:', err);
+      console.error('[Job Buddy] Failed to compute derived fields:', err);
     }
+    await saveProfile(synced);
+    setProfile(synced);
     // Fire-and-forget Drive sync. Never blocks the local save flow.
     void syncProfileToDrive(synced).then((res) => {
       if (!res.success && res.errorCode) {
         showToast('warning', 'Profile saved. Drive sync failed — will retry.');
       }
     }).catch(() => { /* syncProfileToDrive never throws, but be defensive */ });
-  };
-
-  const handleNavigate = (sectionId: string) => {
-    setActiveSection(sectionId as SectionId);
   };
 
   const handleFocusField = (sectionId: string, fieldLabel: string) => {
@@ -257,29 +254,34 @@ function App() {
     if (fieldId) setFocusTarget(fieldId);
   };
 
-  const handleGoToApiKey = () => {
-    skipAutoFocusRef.current = true;
-    setActiveSection('settings');
-    setFocusTarget('gemini-api-key');
+  const handleGoToApiKey = focusGeminiKey;
+
+  const handleResetComplete = () => {
+    handleImportComplete(() => { setSectionSeq((s) => s + 1); setActiveSection('personal'); });
   };
 
   const handleCloseResumeImport = () => {
     setActiveSection('personal');
   };
 
-  const completion = calculateCompletion(profile);
-  const sectionCompletion = getSectionCompletion(profile);
-
-  // A section is "fully complete" when its mandatory fields are done AND it has
-  // no remaining optional fields. Derived from already-computed values — no
-  // extra profile traversal needed.
-  const sectionsWithOptionalGaps = new Set(completion.optionalGroups.map((g) => g.sectionId));
-  const sectionFullCompletion: Record<string, boolean> = Object.fromEntries(
-    Object.entries(sectionCompletion).map(([id, mandatoryDone]) => [
-      id,
-      mandatoryDone && !sectionsWithOptionalGaps.has(id),
-    ]),
-  );
+  // All completion-derived values are recomputed only when `profile` changes,
+  // rather than on every render. calculateCompletion traverses the whole
+  // profile, and getSectionCompletion calls it internally — so both are kept
+  // inside a single memo keyed on profile.
+  const { completion, sectionCompletion, sectionFullCompletion } = useMemo(() => {
+    const completion = calculateCompletion(profile);
+    const sectionCompletion = getSectionCompletion(profile);
+    // A section is "fully complete" when its mandatory fields are done AND it
+    // has no remaining optional fields. Derived from already-computed values.
+    const sectionsWithOptionalGaps = new Set(completion.optionalGroups.map((g) => g.sectionId));
+    const sectionFullCompletion: Record<string, boolean> = Object.fromEntries(
+      Object.entries(sectionCompletion).map(([id, mandatoryDone]) => [
+        id,
+        mandatoryDone && !sectionsWithOptionalGaps.has(id),
+      ]),
+    );
+    return { completion, sectionCompletion, sectionFullCompletion };
+  }, [profile]);
   const sectionProps = { profile, onSave: handleSave };
 
   const renderSection = () => {
@@ -303,7 +305,7 @@ function App() {
       case 'links':             return <LinksSection key={`links-${sectionSeq}`} {...sectionProps} />;
       case 'documents':         return <DocumentsSection key={`documents-${sectionSeq}`} {...sectionProps} />;
       case 'resume':            return <ResumeImportSection key="resume" profile={profile} onSave={handleSave} onGoToApiKey={handleGoToApiKey} onClose={handleCloseResumeImport} />;
-      case 'settings':          return <SettingsSection key="settings" onImportComplete={handleImportComplete} onResetComplete={() => handleImportComplete(() => { setSectionSeq((s) => s + 1); setActiveSection('personal'); })} />;
+      case 'settings':          return <SettingsSection key="settings" onImportComplete={handleImportComplete} onResetComplete={handleResetComplete} />;
     }
   };
 
@@ -324,7 +326,7 @@ function App() {
           optionalFieldsRemaining={completion.optionalFieldsRemaining}
           optionalGroups={completion.optionalGroups}
           missingGroups={completion.missingGroups}
-          onNavigate={handleNavigate}
+          onNavigate={(sectionId) => setActiveSection(sectionId as SectionId)}
           onFocusField={handleFocusField}
         />
         <main ref={mainRef} className="flex-1 overflow-y-auto p-8">

@@ -118,6 +118,20 @@ describe('clearHighlights', () => {
     expect(b.style.backgroundColor).toBe('blue');
   });
 
+  it('removes the saved data attributes from every cleared element', () => {
+    const a = makeInput('red', 'opacity 0.3s');
+    const b = makeInput('blue');
+    applyHighlight(a, CONF_GREEN);
+    applyHighlight(b, CONF_FILL);
+
+    clearHighlights();
+
+    expect(a.dataset.jbOrigBackground).toBeUndefined();
+    expect(a.dataset.jbOrigTransition).toBeUndefined();
+    expect(b.dataset.jbOrigBackground).toBeUndefined();
+    expect(b.dataset.jbOrigTransition).toBeUndefined();
+  });
+
   it('does not touch elements that were never highlighted', () => {
     const el = makeInput('green');
     clearHighlights();

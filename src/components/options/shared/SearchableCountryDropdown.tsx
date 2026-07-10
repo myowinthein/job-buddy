@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
-import { COUNTRIES, getFlag } from '@/src/data/countries';
+import { COUNTRIES, getFlag, findCountry } from '@/src/data/countries';
 import type { Country } from '@/src/data/countries';
+import { useSearchableDropdown } from './useSearchableDropdown';
 
 interface Props {
   value: string;
@@ -21,69 +21,14 @@ function filterCountries(search: string): Country[] {
 }
 
 export function SearchableCountryDropdown({ value, onChange, error, placeholder = 'Select country…', id }: Props) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
-  const [hlIdx, setHlIdx] = useState(0);
+  const selected = value ? findCountry(value) : undefined;
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
-
-  const selected = value ? COUNTRIES.find((c) => c.code === value) : undefined;
-  const filtered = filterCountries(search);
-
-  useEffect(() => {
-    if (open) searchRef.current?.focus();
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const el = listRef.current?.children[hlIdx] as HTMLElement | undefined;
-    el?.scrollIntoView({ block: 'nearest' });
-  }, [hlIdx, open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) {
-        setOpen(false);
-        setSearch('');
-        setHlIdx(0);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const select = (c: Country) => {
-    onChange(c.code);
-    setOpen(false);
-    setSearch('');
-    setHlIdx(0);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    switch (e.key) {
-      case 'ArrowDown':
-        setHlIdx((i) => Math.min(i + 1, filtered.length - 1));
-        e.preventDefault();
-        break;
-      case 'ArrowUp':
-        setHlIdx((i) => Math.max(i - 1, 0));
-        e.preventDefault();
-        break;
-      case 'Enter':
-        if (filtered[hlIdx]) select(filtered[hlIdx]);
-        e.preventDefault();
-        break;
-      case 'Escape':
-        setOpen(false);
-        setSearch('');
-        setHlIdx(0);
-        e.preventDefault();
-        break;
-    }
-  };
+  const { open, search, hlIdx, filtered, containerRef, searchRef, listRef, setHlIdx, select, toggle, handleKeyDown, onSearchChange } =
+    useSearchableDropdown<Country>({
+      filter: filterCountries,
+      onSelect: (c) => onChange(c.code),
+      findOpenIndex: () => (value ? COUNTRIES.findIndex((c) => c.code === value) : -1),
+    });
 
   const borderCls = error
     ? 'border-red-300 dark:border-red-500 focus:ring-red-500'
@@ -94,13 +39,7 @@ export function SearchableCountryDropdown({ value, onChange, error, placeholder 
       <button
         id={id}
         type="button"
-        onClick={() => {
-          if (!open) {
-            const idx = value ? COUNTRIES.findIndex((c) => c.code === value) : -1;
-            setHlIdx(idx >= 0 ? idx : 0);
-          }
-          setOpen((o) => !o);
-        }}
+        onClick={toggle}
         className={`w-full px-3 py-2 border ${borderCls} rounded-lg text-sm text-left bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 flex items-center gap-2 min-h-[38px]`}
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -125,10 +64,7 @@ export function SearchableCountryDropdown({ value, onChange, error, placeholder 
               className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Search country or code…"
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setHlIdx(0);
-              }}
+              onChange={(e) => onSearchChange(e.target.value)}
               onKeyDown={handleKeyDown}
             />
           </div>

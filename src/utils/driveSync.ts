@@ -161,7 +161,7 @@ async function uploadToDrive(
   }
 
   // Create: multipart upload with metadata + content.
-  const boundary = `jb-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const boundary = `jb-${crypto.randomUUID()}`;
   const metadata = {
     name:    BACKUP_FILENAME,
     parents: ['appDataFolder'],

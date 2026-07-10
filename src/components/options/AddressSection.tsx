@@ -5,16 +5,12 @@ import { findCountryByNameOrCode } from '@/src/data/countries';
 import { FormField } from './shared/FormField';
 import { saveSection } from './shared/saveSection';
 import { SearchableCountryDropdown } from './shared/SearchableCountryDropdown';
+import { fieldCls as cls } from './shared/fieldCls';
 
 interface Props {
   profile: Partial<Profile>;
   onSave: (updates: Partial<Profile>) => Promise<void>;
 }
-
-const cls = (err?: string) =>
-  err
-    ? 'w-full px-3 py-2 border border-red-300 dark:border-red-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
-    : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 // Back-compat: old profiles stored a country name ("Thailand"); new ones store
 // an ISO code ("TH"). Normalise to the ISO code on load.

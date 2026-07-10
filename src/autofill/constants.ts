@@ -7,7 +7,9 @@ export const CONF_GREEN = 0.85;
 /** Confidence assigned to user-confirmed values (picker selection, manual edit, silent re-fill). */
 export const CONF_CONFIRMED = 0.97;
 
-/** Confidence assigned to AI-resolved fields in the low/needReview tier. */
+/** Confidence assigned to AI-resolved fields in the low/needReview tier.
+ *  Intentionally equal to CONF_CONTEXT today but conceptually separate — these
+ *  represent different pipeline stages and may drift independently. */
 export const CONF_AI_YELLOW = 0.70;
 
 /** Confidence assigned to an exact dictionary match (Layer 2). Same numeric

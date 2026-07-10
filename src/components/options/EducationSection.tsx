@@ -1,10 +1,12 @@
 import { useToast } from '@/src/components/ui/useToast';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import type { Profile, EducationEntry } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
 import { ExpandableCard } from './shared/ExpandableCard';
 import { MonthYearPicker } from './shared/MonthYearPicker';
 import { saveSection } from './shared/saveSection';
+import { fieldCls as cls } from './shared/fieldCls';
+import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 
 interface Props {
   profile: Partial<Profile>;
@@ -15,11 +17,6 @@ const CURRENT_YEAR = new Date().getFullYear();
 // Match the same year bounds used for Date of Birth in Personal Information.
 const EDU_MIN_YEAR = CURRENT_YEAR - 100;
 const EDU_MAX_YEAR = CURRENT_YEAR;
-
-const cls = (err?: string) =>
-  err
-    ? 'w-full px-3 py-2 border border-red-300 dark:border-red-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
-    : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 type Row = EducationEntry;
 
@@ -61,19 +58,7 @@ export function EducationSection({ profile, onSave }: Props) {
 
   const [newEntryTick, setNewEntryTick] = useState(0);
   const entriesContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!newEntryTick) return;
-    const raf = requestAnimationFrame(() => {
-      const last = entriesContainerRef.current?.lastElementChild as HTMLElement | null;
-      last?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      last?.querySelector<HTMLElement>(
-        'input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]):not([readonly]),' +
-        ' select, button[aria-haspopup="listbox"]',
-      )?.focus();
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [newEntryTick]);
+  useScrollToNewEntry(entriesContainerRef, newEntryTick);
 
   const handleEntryBlur = (idx: number, key: 'institution' | 'degree' | 'fieldOfStudy') => {
     const value = String(entries[idx][key]);
@@ -316,7 +301,7 @@ export function EducationSection({ profile, onSave }: Props) {
           <label className="flex items-center gap-2 mb-4 cursor-pointer">
             <input
               type="checkbox"
-              checked={row.isCurrent ?? false}
+              checked={row.isCurrent}
               onChange={(e) => update(idx, 'isCurrent', e.target.checked)}
               className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400"
             />
