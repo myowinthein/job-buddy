@@ -32,11 +32,10 @@ import {
   isDriveConfigured,
 } from '@/src/utils/driveSync';
 import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
+import { DEFAULT_GEMINI_MODEL } from '@/src/resume-ai/types';
 import type { FieldChange } from '@/src/resume-ai/types';
 import ImportSummaryDialog from '@/src/components/shared/ImportSummaryDialog';
 import ImportReviewScreen from '@/src/components/shared/ImportReviewScreen';
-
-const DEFAULT_GEMINI_MODEL = 'gemini-3.1-flash-lite';
 
 interface Props {
   onImportComplete: () => void;
@@ -121,6 +120,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   // ── AI Features state ────────────────────────────────────────────────────────
   const [geminiKey,        setGeminiKey]        = useState('');
   const [geminiKeyStatus,  setGeminiKeyStatus]  = useState<'idle' | 'validating' | 'valid' | 'invalid' | 'no_model'>('idle');
+  // Write-only: the model is persisted via saveGeminiModel and re-read via
+  // getGeminiModel; this state drives the save flow and is not rendered.
   const [_geminiModel,     setGeminiModel]      = useState<string | null>(null);
   const geminiDebounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const probeIdRef         = useRef(0);
@@ -156,11 +157,10 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
   // ── Cloud Backup — load state and listen for cross-component updates ────────
   useEffect(() => {
-    const load = () => {
+    const handler = () => {
       void getFullDriveState().then(setDriveState).catch(() => { /* silent */ });
     };
-    load();
-    const handler = () => load();
+    handler();
     window.addEventListener('jb:drive:state-changed', handler);
     return () => window.removeEventListener('jb:drive:state-changed', handler);
   }, []);
@@ -354,10 +354,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
   const handleImportAcceptAll = () => {
     void performImportSave(importChanges);
-  };
-
-  const handleImportReviewSave = async (finalChanges: FieldChange[]) => {
-    await performImportSave(finalChanges);
   };
 
   const handleImportRejectAll = () => {
@@ -876,7 +872,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       {importScreen === 'review' && (
         <ImportReviewScreen
           changes={importChanges}
-          onSave={handleImportReviewSave}
+          onSave={performImportSave}
           onBack={() => setImportScreen('summary')}
           isSaving={importing}
           title="Review Import"

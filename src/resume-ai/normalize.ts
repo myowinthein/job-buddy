@@ -95,6 +95,18 @@ export function normalizeSummaryLineWraps(text: string): string {
 }
 
 /**
+ * Strips a Markdown code-fence wrapper from an AI text response.
+ * Handles optional language tag (e.g. ```json) on the opening fence.
+ * Returns the trimmed inner text, or the original string if no fence found.
+ */
+export function stripMarkdown(text: string): string {
+  return text
+    .replace(/^```(?:json)?\s*/m, '')
+    .replace(/\s*```\s*$/m, '')
+    .trim();
+}
+
+/**
  * Post-processes the Partial<Profile> returned by Gemini:
  *   - Normalises every workHistory[].description into bullet form.
  *   - Merges soft PDF line wraps in professional.summary into spaces.
@@ -102,26 +114,26 @@ export function normalizeSummaryLineWraps(text: string): string {
  * Pure: returns a new object, does not mutate the input.
  */
 export function normalizeExtractedProfile(p: Partial<Profile>): Partial<Profile> {
-  let result = p;
+  const needsWorkNorm = !!p.workHistory?.length;
+  const needsSummaryNorm = !!p.professional?.summary;
+  if (!needsWorkNorm && !needsSummaryNorm) return p;
 
-  if (p.workHistory?.length) {
-    result = {
-      ...result,
-      workHistory: p.workHistory.map((entry) =>
-        entry.description ? { ...entry, description: normalizeBullets(entry.description) } : entry,
-      ),
-    };
-  }
-
-  if (p.professional?.summary) {
-    result = {
-      ...result,
-      professional: {
-        ...p.professional,
-        summary: normalizeSummaryLineWraps(p.professional.summary),
-      },
-    };
-  }
-
-  return result;
+  return {
+    ...p,
+    ...(needsWorkNorm
+      ? {
+          workHistory: p.workHistory!.map((entry) =>
+            entry.description ? { ...entry, description: normalizeBullets(entry.description) } : entry,
+          ),
+        }
+      : undefined),
+    ...(needsSummaryNorm
+      ? {
+          professional: {
+            ...p.professional,
+            summary: normalizeSummaryLineWraps(p.professional!.summary as string),
+          },
+        }
+      : undefined),
+  };
 }

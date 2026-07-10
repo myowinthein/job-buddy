@@ -1,5 +1,5 @@
 import { useToast } from '@/src/components/ui/useToast';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import type { Profile, WorkHistoryEntry, WorkArrangement, WorkLocation, NoticePeriodUnit } from '@/src/types/profile';
 import { calculateExperience } from '@/src/utils/experience';
 import { FormField } from './shared/FormField';
@@ -7,16 +7,13 @@ import { ExpandableCard } from './shared/ExpandableCard';
 import { MonthYearPicker } from './shared/MonthYearPicker';
 import { SearchableCountryDropdown } from './shared/SearchableCountryDropdown';
 import { saveSection } from './shared/saveSection';
+import { fieldCls as cls } from './shared/fieldCls';
+import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 
 interface Props {
   profile: Partial<Profile>;
   onSave: (updates: Partial<Profile>) => Promise<void>;
 }
-
-const cls = (err?: string) =>
-  err
-    ? 'w-full px-3 py-2 border border-red-300 dark:border-red-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
-    : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MIN_YEAR = CURRENT_YEAR - 100;
@@ -26,6 +23,15 @@ const NOTICE_MAX: Record<NoticePeriodUnit, number> = {
   week: 52,
   month: 24,
 };
+
+function validateNoticePeriod(raw: string, unit: NoticePeriodUnit): string {
+  const val = Number(raw);
+  const max = NOTICE_MAX[unit];
+  if (!raw.trim() || isNaN(val)) return 'Enter a duration';
+  if (val < 1) return 'Must be at least 1';
+  if (val > max) return `Maximum is ${max} ${unit}${max !== 1 ? 's' : ''}`;
+  return '';
+}
 
 // Flat UI state for each work entry — location is split into country/city,
 // arrangement is kept as a string to allow the empty placeholder state.
@@ -105,19 +111,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   // Scroll to and focus the first input of a newly added work entry.
   const [newEntryTick, setNewEntryTick] = useState(0);
   const entriesContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!newEntryTick) return;
-    const raf = requestAnimationFrame(() => {
-      const last = entriesContainerRef.current?.lastElementChild as HTMLElement | null;
-      last?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      last?.querySelector<HTMLElement>(
-        'input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]):not([readonly]),' +
-        ' select, button[aria-haspopup="listbox"]',
-      )?.focus();
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [newEntryTick]);
+  useScrollToNewEntry(entriesContainerRef, newEntryTick);
 
   // Experience calculation reads only startDate / isCurrent / endDate — safe cast.
   const experience = calculateExperience(entries as unknown as WorkHistoryEntry[]);
@@ -248,15 +242,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
     });
 
     if (!noticeImmediate) {
-      const val = Number(noticeValue);
-      const max = NOTICE_MAX[noticeUnit];
-      if (!noticeValue.trim() || isNaN(val)) {
-        e.noticeValue = 'Enter a duration';
-      } else if (val < 1) {
-        e.noticeValue = 'Must be at least 1';
-      } else if (val > max) {
-        e.noticeValue = `Maximum is ${max} ${noticeUnit}${max !== 1 ? 's' : ''}`;
-      }
+      e.noticeValue = validateNoticePeriod(noticeValue, noticeUnit);
     }
 
     setErrors(e);
@@ -358,13 +344,13 @@ export function WorkHistorySection({ profile, onSave }: Props) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Country" optional>
+            <FormField label="Country">
               <SearchableCountryDropdown
                 value={row.locationCountry}
                 onChange={(code) => updateEntry(idx, 'locationCountry', code)}
               />
             </FormField>
-            <FormField label="City" optional>
+            <FormField label="City">
               <input
                 className={cls()}
                 value={row.locationCity}
@@ -429,7 +415,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
             <span className="text-sm text-gray-700 dark:text-gray-300">Currently active</span>
           </label>
 
-          <FormField label="Description" optional>
+          <FormField label="Description">
             <textarea
               className={`${cls()} min-h-[100px] resize-y`}
               value={row.description}
@@ -490,13 +476,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                   const raw = e.target.value;
                   if (raw === '' || Number(raw) <= 999) {
                     setNoticeValue(raw);
-                    const val = Number(raw);
-                    const max = NOTICE_MAX[noticeUnit];
-                    let err = '';
-                    if (!raw.trim() || isNaN(val)) err = 'Enter a duration';
-                    else if (val < 1) err = 'Must be at least 1';
-                    else if (val > max) err = `Maximum is ${max} ${noticeUnit}${max !== 1 ? 's' : ''}`;
-                    setErrors((prev) => ({ ...prev, noticeValue: err }));
+                    setErrors((prev) => ({ ...prev, noticeValue: validateNoticePeriod(raw, noticeUnit) }));
                   }
                 }}
                 placeholder="3"
@@ -509,17 +489,10 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                 onChange={(e) => {
                   const newUnit = e.target.value as NoticePeriodUnit;
                   setNoticeUnit(newUnit);
-                  if (noticeValue.trim()) {
-                    const val = Number(noticeValue);
-                    const max = NOTICE_MAX[newUnit];
-                    let err = '';
-                    if (isNaN(val)) err = 'Enter a duration';
-                    else if (val < 1) err = 'Must be at least 1';
-                    else if (val > max) err = `Maximum is ${max} ${newUnit}${max !== 1 ? 's' : ''}`;
-                    setErrors((prev) => ({ ...prev, noticeValue: err }));
-                  } else {
-                    setErrors((prev) => ({ ...prev, noticeValue: '' }));
-                  }
+                  setErrors((prev) => ({
+                    ...prev,
+                    noticeValue: noticeValue.trim() ? validateNoticePeriod(noticeValue, newUnit) : '',
+                  }));
                 }}
               >
                 <option value="day">days</option>

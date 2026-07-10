@@ -81,7 +81,6 @@ export function scanFields(options: ScanOptions = {}): HTMLElement[] {
 
 // ── Radio / checkbox scanning ─────────────────────────────────────────────────
 
-// Core visibility check shared by isVisibleInput and isAriaVisible.
 // Does not handle aria-disabled — that is an ARIA-only concern added by isAriaVisible.
 function isElementVisible(el: HTMLElement): boolean {
   if ((el as HTMLInputElement).disabled) return false;
@@ -93,10 +92,6 @@ function isElementVisible(el: HTMLElement): boolean {
   if (parseFloat(style.opacity) === 0) return false;
   const rect = el.getBoundingClientRect();
   return rect.width > 0 && rect.height > 0;
-}
-
-function isVisibleInput(el: HTMLElement): boolean {
-  return isElementVisible(el);
 }
 
 function getOptionLabel(el: HTMLInputElement): string {
@@ -162,7 +157,7 @@ export interface CheckboxGroup {
 
 export function scanRadioGroups(): RadioGroup[] {
   const all = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="radio"]'))
-    .filter((el) => !!el.name && isVisibleInput(el));
+    .filter((el) => !!el.name && isElementVisible(el));
 
   const byName = new Map<string, HTMLInputElement[]>();
   for (const el of all) {
@@ -183,7 +178,7 @@ export function scanRadioGroups(): RadioGroup[] {
 
 export function scanCheckboxGroups(): CheckboxGroup[] {
   const all = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'))
-    .filter((el) => isVisibleInput(el));
+    .filter((el) => isElementVisible(el));
 
   const byName = new Map<string, HTMLInputElement[]>();
   let anonCount = 0;
