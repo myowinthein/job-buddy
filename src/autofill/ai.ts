@@ -3,7 +3,7 @@ import type { FieldSignals } from './signals';
 import { bestLabel } from './signals';
 import { resolveProfileValue } from './resolver';
 import { resolveFieldsWithAI } from '../resume-ai/gemini';
-import type { AIFieldPayload, AIFieldResponse, AIOptionPayload } from '../resume-ai/gemini';
+import type { AIFieldPayload, AIFieldResponse, AIOptionPayload } from '../resume-ai/types';
 import { scanRadioGroups, scanCheckboxGroups } from './scanner';
 import type { RadioGroup, CheckboxGroup } from './scanner';
 import { fillField, fillRadioInput, fillCheckboxInput } from './filler';

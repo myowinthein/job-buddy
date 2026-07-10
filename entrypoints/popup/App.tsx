@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Info, CheckCircle } from 'lucide-react';
 import { getProfile, getGeminiApiKey } from '@/src/utils/storage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import type { DebugSession } from '@/src/autofill/debug';
 import { DebugPanel } from './DebugPanel';
+import { InfoTooltip } from '@/src/components/ui/InfoTooltip';
 
 
 interface AutofillResult {
@@ -29,22 +30,6 @@ interface CompletionState {
 // 'confirming' is shown when the scan found pre-filled fields and we need
 // the user to choose merge vs overwrite before proceeding.
 type AutofillState = 'idle' | 'loading' | 'confirming' | 'success' | 'error';
-
-// Hover tooltip using Tailwind peer pattern: the ⓘ span is the peer;
-// the following sibling reveals itself on peer-hover.
-// align="right" anchors the panel to the right of the icon (for right-side items
-// that would otherwise overflow the popup edge).
-function InfoTooltip({ text, align = 'left' }: { text: string; align?: 'left' | 'right' }) {
-  const anchor = align === 'right' ? 'right-0' : 'left-0';
-  return (
-    <span className="relative inline-flex shrink-0">
-      <span className="peer text-[10px] leading-none text-gray-400 dark:text-gray-500 cursor-default select-none">ⓘ</span>
-      <span className={`pointer-events-none absolute bottom-full ${anchor} z-50 mb-1.5 w-44 rounded-md bg-gray-800 dark:bg-gray-700 px-2 py-1.5 text-[11px] leading-snug text-white shadow-md opacity-0 peer-hover:opacity-100 transition-opacity`}>
-        {text}
-      </span>
-    </span>
-  );
-}
 
 function App() {
   const [completion, setCompletion] = useState<CompletionState>({
@@ -80,11 +65,21 @@ function App() {
       });
   }, []);
 
-  const sendToActiveTab = async (message: object) => {
+  const sendToActiveTab = useCallback(async (message: object) => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error('No active tab found');
     return chrome.tabs.sendMessage(tab.id, message);
-  };
+  }, []);
+
+  const dispatchFill = useCallback(async (mode: 'merge' | 'overwrite') => {
+    const result = await sendToActiveTab({ action: 'AUTOFILL_FILL', mode }) as AutofillResult;
+    if (result && typeof result.totalScanned === 'number') {
+      setAutofillResult(result);
+      setAutofillState('success');
+    } else {
+      setAutofillState('error');
+    }
+  }, [sendToActiveTab]);
 
   // Lazily fetch the debug session from the content script when the user opens
   // the panel — keeps the popup's initial render cheap.
@@ -96,13 +91,13 @@ function App() {
     setDebugOpen(true);
   };
 
-  // On mount, ask the content script for its last fill result so the popup
-  // restores the success state even after being closed and reopened.
+  // On mount: restore fill state, check AI nudge dismissal, check Gemini key.
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       try {
         const result = await sendToActiveTab({ action: 'GET_STATUS' }) as AutofillResult | null;
-        if (result && typeof result.totalScanned === 'number') {
+        if (!cancelled && result && typeof result.totalScanned === 'number') {
           setAutofillResult(result);
           setAutofillState('success');
         }
@@ -110,19 +105,14 @@ function App() {
         // Content script not loaded on this page — stay in idle state.
       }
     })();
-  }, []);
-
-  useEffect(() => {
     try {
       chrome.storage.session.get('jb:ai:nudge:dismissed', (r) => {
-        if (r?.['jb:ai:nudge:dismissed']) setNudgeDismissed(true);
+        if (!cancelled && r?.['jb:ai:nudge:dismissed']) setNudgeDismissed(true);
       });
     } catch { /* session storage unavailable — show nudge */ }
-  }, []);
-
-  useEffect(() => {
-    getGeminiApiKey().then((key) => setHasGeminiKey(!!key)).catch(() => setHasGeminiKey(false));
-  }, []);
+    getGeminiApiKey().then((key) => { if (!cancelled) setHasGeminiKey(!!key); }).catch(() => { if (!cancelled) setHasGeminiKey(false); });
+    return () => { cancelled = true; };
+  }, [sendToActiveTab]);
 
   const dismissNudge = () => {
     setNudgeDismissed(true);
@@ -145,21 +135,13 @@ function App() {
     setAutofillResult(null);
     try {
       const scan = await sendToActiveTab({ action: 'AUTOFILL_SCAN' }) as AutofillScanResult;
-
       if (scan?.preFilledCount > 0) {
         // Form already has data — ask the user how to proceed
         setPreFilledCount(scan.preFilledCount);
         setFillMode('merge');
         setAutofillState('confirming');
       } else {
-        // Nothing pre-filled: fill immediately
-        const result = await sendToActiveTab({ action: 'AUTOFILL_FILL', mode: 'overwrite' }) as AutofillResult;
-        if (result && typeof result.totalScanned === 'number') {
-          setAutofillResult(result);
-          setAutofillState('success');
-        } else {
-          setAutofillState('error');
-        }
+        await dispatchFill('overwrite');
       }
     } catch {
       setAutofillState('error');
@@ -169,13 +151,7 @@ function App() {
   const handleConfirmFill = async () => {
     setAutofillState('loading');
     try {
-      const result = await sendToActiveTab({ action: 'AUTOFILL_FILL', mode: fillMode }) as AutofillResult;
-      if (result && typeof result.totalScanned === 'number') {
-        setAutofillResult(result);
-        setAutofillState('success');
-      } else {
-        setAutofillState('error');
-      }
+      await dispatchFill(fillMode);
     } catch {
       setAutofillState('error');
     }

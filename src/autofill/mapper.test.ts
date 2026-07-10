@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { mapField } from './mapper';
+import { CONF_FUZZY_THRESHOLD, CONF_FUZZY_STRONG_MULT, CONF_FUZZY_WEAK_MULT } from './constants';
 import type { Profile } from '../types/profile';
 import type { LearnedMappings } from '../types/storage';
 
@@ -299,6 +300,31 @@ describe('mapField — Layer 3: Fuzzy match', () => {
     expect(result.fieldPath).toBe('personal.firstName');
     expect(result.matchLayer).toBe('fuzzy');
     expect(result.confidence).toBeGreaterThan(0);
+  });
+
+  it('applies the STRONG multiplier when the fuzzy score exceeds the threshold', () => {
+    // "firstnam" vs "firstname" → similarity 8/9 ≈ 0.8889 (> CONF_FUZZY_THRESHOLD).
+    const result = mapField(sig({ name: 'firstnam' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('fuzzy');
+    const score = 8 / 9; // 1 - levenshtein(1) / maxLen(9)
+    expect(score).toBeGreaterThan(CONF_FUZZY_THRESHOLD);
+    // confidence === score * CONF_FUZZY_STRONG_MULT
+    expect(result.confidence).toBeCloseTo(score * CONF_FUZZY_STRONG_MULT, 6);
+    // Sanity: strong tier stays below the green tint boundary.
+    expect(result.confidence).toBeLessThan(0.85);
+  });
+
+  it('applies the WEAK multiplier when CONF_FILL <= score <= threshold', () => {
+    // "compayn" vs dictionary "company" → similarity 5/7 ≈ 0.7143
+    // (>= CONF_FILL and <= CONF_FUZZY_THRESHOLD → weak tier).
+    const result = mapField(sig({ name: 'compayn' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('fuzzy');
+    expect(result.fieldPath).toBe('derived.currentCompany');
+    const score = 5 / 7; // 1 - levenshtein(2) / maxLen(7)
+    expect(score).toBeGreaterThanOrEqual(0.60);           // CONF_FILL
+    expect(score).toBeLessThanOrEqual(CONF_FUZZY_THRESHOLD);
+    // confidence === score * CONF_FUZZY_WEAK_MULT
+    expect(result.confidence).toBeCloseTo(score * CONF_FUZZY_WEAK_MULT, 6);
   });
 });
 

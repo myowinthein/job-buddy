@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateCompletion, getSectionCompletion } from './profileCompletion';
+import { calculateCompletion, getSectionCompletion, resolvePathFocusTarget } from './profileCompletion';
 import type { Profile } from '../types/profile';
 
 const COMPLETE: Profile = {
@@ -173,5 +173,46 @@ describe('getSectionCompletion', () => {
   it('returns false for workHistory when notice period is missing', () => {
     const result = getSectionCompletion({ ...COMPLETE, professional: {} });
     expect(result.workHistory).toBe(false);
+  });
+});
+
+describe('resolvePathFocusTarget', () => {
+  it('returns null for an empty path', () => {
+    expect(resolvePathFocusTarget('')).toBeNull();
+  });
+
+  it('returns the exact target when the full path is a key', () => {
+    expect(resolvePathFocusTarget('personal.dateOfBirth')).toEqual({
+      section: 'personal',
+      fieldId: 'field-dateOfBirth',
+    });
+  });
+
+  it('resolves a deeper path to a parent prefix (salary.expected.0.currency → salary)', () => {
+    // No exact key for the full path; the prefix walk pops segments until it
+    // hits 'salary.expected'.
+    expect(resolvePathFocusTarget('salary.expected.0.currency')).toEqual({ section: 'salary' });
+  });
+
+  it('walks up multiple segments to the shortest matching prefix', () => {
+    // 'links.custom.2.url' has no exact key nor 'links.custom' key; walks to 'links'.
+    expect(resolvePathFocusTarget('links.custom.2.url')).toEqual({ section: 'links' });
+  });
+
+  it('prefers the exact key over a shorter prefix', () => {
+    // 'links.linkedin' is itself a key, so the walk-up to 'links' never happens.
+    expect(resolvePathFocusTarget('links.linkedin')).toEqual({
+      section: 'links',
+      fieldId: 'field-linkedin',
+    });
+  });
+
+  it('returns null for an unknown top-level path', () => {
+    expect(resolvePathFocusTarget('nonexistent.path.here')).toBeNull();
+  });
+
+  it('returns null for an unknown single-segment path', () => {
+    // Loop requires segments.length > 1 to iterate; a lone unknown segment yields null.
+    expect(resolvePathFocusTarget('unknown')).toBeNull();
   });
 });

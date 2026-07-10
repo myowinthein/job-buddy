@@ -237,4 +237,32 @@ describe('normalizeExtractedProfile', () => {
     expect(result.professional?.noticePeriod).toEqual({ immediate: false, value: 1, unit: 'month' });
     expect(result.professional?.summary).toBe('Line one. Line two.');
   });
+
+  it('normalises workHistory descriptions AND professional.summary in a single call', () => {
+    const input: Partial<Profile> = {
+      workHistory: [
+        {
+          company: 'Acme',
+          title: 'Senior PD',
+          startDate: '2020-01',
+          isCurrent: true,
+          description: 'Led design at Acme, a B2B SaaS startup.\n\nLed mobile design.\nCollaborated with PMs.',
+        },
+      ],
+      professional: {
+        summary: 'Senior Designer specializing in complex systems,\nand multi-role platforms.\n\nExperienced in simplifying processes\nacross fintech.',
+      },
+    };
+    const result = normalizeExtractedProfile(input);
+
+    // workHistory description: context paragraph preserved, responsibilities bulleted
+    expect(result.workHistory?.[0]?.description).toBe(
+      'Led design at Acme, a B2B SaaS startup.\n\n- Led mobile design.\n- Collaborated with PMs.',
+    );
+
+    // summary: soft line wraps merged, paragraph break preserved
+    expect(result.professional?.summary).toBe(
+      'Senior Designer specializing in complex systems, and multi-role platforms.\n\nExperienced in simplifying processes across fintech.',
+    );
+  });
 });

@@ -27,12 +27,14 @@ vi.stubGlobal('chrome', {
 import {
   getProfile, saveProfile,
   getLearnedMappings, saveLearnedMapping,
+  getApplicationHistory, saveApplicationHistory,
   getGeminiApiKey, saveGeminiApiKey, clearGeminiSettings,
   getThemePreference, saveThemePreference,
   getDriveToken, saveDriveToken, clearDriveToken,
   clearAllStorage,
 } from './storage';
 import type { Profile } from '../types/profile';
+import type { ApplicationEntry } from '../types/storage';
 
 const MINIMAL_PROFILE: Profile = {
   id: 'test-id',
@@ -218,12 +220,46 @@ describe('Drive token', () => {
   });
 });
 
+describe('saveLearnedMapping failure propagation', () => {
+  it('rejects when chrome.storage.local.set fails', async () => {
+    const setSpy = vi
+      .spyOn(chrome.storage.local, 'set')
+      .mockImplementation((_items: Record<string, unknown>, cb: () => void) => {
+        const runtime = chrome.runtime as { lastError: { message: string } | null };
+        runtime.lastError = { message: 'QUOTA_BYTES exceeded' };
+        cb();
+        runtime.lastError = null;
+      });
+
+    await expect(
+      saveLearnedMapping('example.com', 'firstname', 'personal.firstName'),
+    ).rejects.toThrow('QUOTA_BYTES exceeded');
+
+    setSpy.mockRestore();
+  });
+});
+
 describe('clearAllStorage', () => {
   it('removes profile, learnedMappings, and applicationHistory', async () => {
+    // Seed all three keys, then confirm every one is removed.
     await saveProfile(MINIMAL_PROFILE);
     await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
+    await saveApplicationHistory([
+      { id: 'app-1', company: 'Acme', position: 'Dev', appliedAt: '2026-01-01', url: 'https://acme.example' },
+    ] as unknown as ApplicationEntry[]);
+
+    const removeSpy = vi.spyOn(chrome.storage.local, 'remove');
+
     await clearAllStorage();
+
+    expect(removeSpy).toHaveBeenCalledWith(
+      expect.arrayContaining(['profile', 'learnedMappings', 'applicationHistory']),
+      expect.any(Function),
+    );
     expect(await getProfile()).toBeNull();
     expect(await getLearnedMappings()).toEqual({});
+    expect(await getApplicationHistory()).toEqual([]);
+
+    removeSpy.mockRestore();
   });
 });

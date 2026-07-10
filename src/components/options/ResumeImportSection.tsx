@@ -23,6 +23,20 @@ const PROGRESS_STEPS: { id: ImportProgressStep; label: string }[] = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function makeFileChange(file: File): FieldChange {
+  return {
+    id:               FILE_CHANGE_ID,
+    label:            'Resume File',
+    section:          'Documents',
+    currentValue:     null,
+    suggestedValue:   file.name,
+    displayCurrent:   '',
+    displaySuggested: file.name,
+    status:           'new',
+    accepted:         true,
+  };
+}
+
 function getMimeType(file: File): string {
   if (file.type === 'application/pdf' || file.name.endsWith('.pdf'))
     return 'application/pdf';
@@ -141,6 +155,32 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
     if (file) handleFileSelect(file);
   };
 
+  // ── Extract core (shared between handleExtract and handleRetry) ──────────────
+
+  const runExtractCore = async (text: string, file: File, controller: AbortController, links: string[]) => {
+    const mimeType = getMimeType(file);
+    const base64   = text.split(',')[1] ?? '';
+    try {
+      setProgressStep('sending');
+      const extracted = await extractFromResume(apiKey!, model!, base64, mimeType, profile, controller.signal, links);
+
+      setProgressStep('processing');
+      const aiChanges = generateDiff(profile, extracted);
+
+      setChanges([makeFileChange(file), ...aiChanges]);
+      setScreen('summary');
+    } catch (err) {
+      if ((err as { name?: string })?.name === 'AbortError') return;
+      const e = err as { name?: string; message?: string; code?: ImportErrorCode };
+      setErrorCode(e.code ?? null);
+      setErrorMsg(e.message ?? 'Something went wrong. Try again.');
+    } finally {
+      if (longWaitTimerRef.current) clearTimeout(longWaitTimerRef.current);
+      setShowLongWait(false);
+      setProgressStep(null);
+    }
+  };
+
   // ── Extract ───────────────────────────────────────────────────────────────────
 
   const handleExtract = async () => {
@@ -157,39 +197,16 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
 
     try {
       setProgressStep('reading');
-      const mimeType = getMimeType(selectedFile);
-      const dataUri  = await fileToDataUri(selectedFile);
-      const base64   = dataUri.split(',')[1] ?? '';
+      const dataUri = await fileToDataUri(selectedFile);
       setFileDataUri(dataUri);
       const links = await extractLinks(selectedFile);
       setExtractedLinks(links);
-
-      setProgressStep('sending');
-      const extracted = await extractFromResume(apiKey, model, base64, mimeType, profile, controller.signal, links);
-
-      setProgressStep('processing');
-      const aiChanges = generateDiff(profile, extracted);
-
-      // Prepend the uploaded file as its own selectable new field
-      const fileChange: FieldChange = {
-        id:               FILE_CHANGE_ID,
-        label:            'Resume File',
-        section:          'Documents',
-        currentValue:     null,
-        suggestedValue:   selectedFile.name,
-        displayCurrent:   '',
-        displaySuggested: selectedFile.name,
-        status:           'new',
-        accepted:         true,
-      };
-      setChanges([fileChange, ...aiChanges]);
-      setScreen('summary');
+      await runExtractCore(dataUri, selectedFile, controller, links);
     } catch (err) {
       if ((err as { name?: string })?.name === 'AbortError') return;
       const e = err as { name?: string; message?: string; code?: ImportErrorCode };
       setErrorCode(e.code ?? null);
       setErrorMsg(e.message ?? 'Something went wrong. Try again.');
-    } finally {
       if (longWaitTimerRef.current) clearTimeout(longWaitTimerRef.current);
       setShowLongWait(false);
       setProgressStep(null);
@@ -211,39 +228,8 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
 
     const dataUri = fileDataUri ?? await fileToDataUri(selectedFile);
     if (!fileDataUri) setFileDataUri(dataUri);
-    const base64   = dataUri.split(',')[1] ?? '';
-    const mimeType = getMimeType(selectedFile);
 
-    try {
-      setProgressStep('sending');
-      const extracted = await extractFromResume(apiKey, model, base64, mimeType, profile, controller.signal, extractedLinks);
-
-      setProgressStep('processing');
-      const aiChanges = generateDiff(profile, extracted);
-
-      const fileChange: FieldChange = {
-        id:               FILE_CHANGE_ID,
-        label:            'Resume File',
-        section:          'Documents',
-        currentValue:     null,
-        suggestedValue:   selectedFile.name,
-        displayCurrent:   '',
-        displaySuggested: selectedFile.name,
-        status:           'new',
-        accepted:         true,
-      };
-      setChanges([fileChange, ...aiChanges]);
-      setScreen('summary');
-    } catch (err) {
-      if ((err as { name?: string })?.name === 'AbortError') return;
-      const e = err as { name?: string; message?: string; code?: ImportErrorCode };
-      setErrorCode(e.code ?? null);
-      setErrorMsg(e.message ?? 'Something went wrong. Try again.');
-    } finally {
-      if (longWaitTimerRef.current) clearTimeout(longWaitTimerRef.current);
-      setShowLongWait(false);
-      setProgressStep(null);
-    }
+    await runExtractCore(dataUri, selectedFile, controller, extractedLinks);
   };
 
   // ── Save ──────────────────────────────────────────────────────────────────────

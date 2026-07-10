@@ -24,8 +24,10 @@ function stubMatchMedia(prefersDark: boolean) {
 beforeEach(() => {
   document.documentElement.classList.remove('dark');
   vi.clearAllMocks();
-  // Reset theme module state between tests
-  applyTheme('system');
+  // Reset theme module state between tests. Use 'light' (never touches
+  // matchMedia) so the reset can't hit real jsdom matchMedia before a test's
+  // stubMatchMedia is installed.
+  applyTheme('light');
   document.documentElement.classList.remove('dark');
 });
 

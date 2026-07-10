@@ -26,10 +26,39 @@ import {
   isDriveConfigured,
   getFullDriveState,
   syncProfileToDrive,
+  overwriteDriveWithLocal,
+  revokeDriveToken,
   disconnectDrive,
   dispatchDriveStateChanged,
 } from './driveSync';
 import type { Profile } from '../types/profile';
+
+// Loads a fresh copy of the driveSync module with VITE_GOOGLE_DRIVE_CLIENT_ID
+// stubbed so isDriveConfigured() returns true — needed to exercise connectDrive,
+// whose launchDriveOAuth() short-circuits with 'not_configured' otherwise.
+async function importConfiguredDriveSync() {
+  vi.stubEnv('VITE_GOOGLE_DRIVE_CLIENT_ID', 'test-client-id');
+  vi.resetModules();
+  const mod = await import('./driveSync');
+  return mod;
+}
+
+// Drives chrome.identity.launchWebAuthFlow to resolve with a redirect URL that
+// carries the given access token in its fragment, or to fail via lastError.
+function mockAuthFlow(opts: { token?: string; fail?: boolean }) {
+  (chrome.identity.launchWebAuthFlow as ReturnType<typeof vi.fn>).mockImplementation(
+    (_details: unknown, cb: (url?: string) => void) => {
+      const runtime = chrome.runtime as { lastError: { message: string } | null };
+      if (opts.fail) {
+        runtime.lastError = { message: 'user cancelled' };
+        cb(undefined);
+        runtime.lastError = null;
+        return;
+      }
+      cb(`https://extension-redirect/#access_token=${opts.token}&token_type=Bearer`);
+    },
+  );
+}
 
 function makeProfile(): Profile {
   return { personal: { firstName: 'Test' } } as unknown as Profile;
@@ -154,6 +183,86 @@ describe('syncProfileToDrive', () => {
     await syncProfileToDrive(makeProfile());
     const saved = store['driveBackupState'] as { pendingSync: boolean };
     expect(saved.pendingSync).toBe(true);
+  });
+});
+
+describe('connectDrive', () => {
+  it('rejects when the OAuth flow fails', async () => {
+    const mod = await importConfiguredDriveSync();
+    mockAuthFlow({ fail: true });
+    await expect(mod.connectDrive()).rejects.toThrow('user cancelled');
+    vi.unstubAllEnvs();
+  });
+
+  it('OAuth succeeds but file lookup fails → stores token, writes pendingSync:true', async () => {
+    const mod = await importConfiguredDriveSync();
+    mockAuthFlow({ token: 'tok-fresh' });
+    // findBackupFileId → non-ok response → DriveApiError → classifyError.
+    mockFetchSequence([{ ok: false, status: 500, body: 'boom' }]);
+
+    const result = await mod.connectDrive();
+
+    expect(result).toEqual({ token: 'tok-fresh', backup: null, fileId: null });
+    expect(store['driveToken']).toBe('tok-fresh');
+    const state = store['driveBackupState'] as { pendingSync: boolean; error: string | null };
+    expect(state.pendingSync).toBe(true);
+    expect(state.error).toBe('sync_error');
+    vi.unstubAllEnvs();
+  });
+
+  it('full success: stores token, finds file, downloads backup, clears pending', async () => {
+    const mod = await importConfiguredDriveSync();
+    mockAuthFlow({ token: 'tok-ok' });
+    const backupFile = { profile: { personal: { firstName: 'Cloud' } }, learnedMappings: {}, lastModified: '2026-01-01T00:00:00Z' };
+    mockFetchSequence([
+      { ok: true, body: { files: [{ id: 'file-1', name: 'job-buddy-profile.json' }] } }, // findBackupFileId
+      { ok: true, body: backupFile },                                                     // downloadBackupFromDrive
+    ]);
+
+    const result = await mod.connectDrive();
+
+    expect(result.token).toBe('tok-ok');
+    expect(result.fileId).toBe('file-1');
+    expect(result.backup).toEqual(backupFile);
+    const state = store['driveBackupState'] as { pendingSync: boolean; error: string | null; fileId: string | null };
+    expect(state.pendingSync).toBe(false);
+    expect(state.error).toBeNull();
+    expect(state.fileId).toBe('file-1');
+    vi.unstubAllEnvs();
+  });
+});
+
+describe('overwriteDriveWithLocal', () => {
+  it('delegates to syncProfileToDrive and propagates its result', async () => {
+    // No token stored → syncProfileToDrive returns the no-token result, which
+    // overwriteDriveWithLocal must return verbatim.
+    const result = await overwriteDriveWithLocal(makeProfile());
+    expect(result).toEqual({ success: false, errorCode: null });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('propagates a successful sync result', async () => {
+    store['driveToken'] = 'tok-valid';
+    store['driveBackupState'] = { fileId: 'existing-id', lastSynced: null, pendingSync: false, error: null };
+    mockFetchSequence([{ ok: true, body: { id: 'existing-id' } }]); // PATCH update
+    const result = await overwriteDriveWithLocal(makeProfile());
+    expect(result).toEqual({ success: true, errorCode: null });
+  });
+});
+
+describe('revokeDriveToken', () => {
+  it('resolves silently when the revoke fetch rejects', async () => {
+    fetchMock.mockRejectedValue(new Error('network down'));
+    await expect(revokeDriveToken('tok-abc')).resolves.toBeUndefined();
+  });
+
+  it('POSTs to the revoke endpoint with the token', async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: vi.fn(), text: vi.fn() });
+    await revokeDriveToken('tok-xyz');
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('token=tok-xyz'),
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 });
 
