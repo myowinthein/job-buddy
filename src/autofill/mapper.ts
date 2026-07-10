@@ -42,11 +42,21 @@ const AUTOCOMPLETE_MAP: Record<string, { path: string; confidence: number }> = {
 };
 
 
-function dictionaryExact(norm: string): string | null {
+// Reverse index: normalized variation term → fieldPath. Built once at module
+// load since FIELD_DICTIONARY is static, turning dictionaryExact into an O(1)
+// Map lookup instead of an O(entries × variations) scan per call.
+const EXACT_TERM_TO_PATH: Map<string, string> = (() => {
+  const m = new Map<string, string>();
   for (const [fieldPath, variations] of Object.entries(FIELD_DICTIONARY)) {
-    if (variations.includes(norm)) return fieldPath;
+    for (const v of variations) {
+      if (!m.has(v)) m.set(v, fieldPath);
+    }
   }
-  return null;
+  return m;
+})();
+
+function dictionaryExact(norm: string): string | null {
+  return EXACT_TERM_TO_PATH.get(norm) ?? null;
 }
 
 function dictionaryFuzzy(norm: string): { fieldPath: string; score: number } | null {
