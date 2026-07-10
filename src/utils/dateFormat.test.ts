@@ -1,5 +1,39 @@
 import { describe, it, expect } from 'vitest';
-import { fmtYearMonth, fmtAmount } from './dateFormat';
+import { fmtYearMonth, fmtAmount, formatISODate } from './dateFormat';
+
+describe('formatISODate', () => {
+  it('formats a plain local date as YYYY-MM-DD', () => {
+    // Constructed with explicit local components (year, monthIndex, day).
+    expect(formatISODate(new Date(2023, 5, 9))).toBe('2023-06-09');
+  });
+
+  it('zero-pads single-digit month and day', () => {
+    expect(formatISODate(new Date(2024, 0, 1))).toBe('2024-01-01');
+  });
+
+  it('handles a two-digit month and day without padding artifacts', () => {
+    expect(formatISODate(new Date(2020, 11, 31))).toBe('2020-12-31');
+  });
+
+  it('uses local calendar arithmetic, not UTC (late-evening local time)', () => {
+    // 11:30 PM local on Jan 15. In many negative-offset UTC zones the UTC
+    // date would already be Jan 16, so toISOString() could disagree. This
+    // asserts the LOCAL calendar day is preserved regardless of timezone.
+    const d = new Date(2023, 0, 15, 23, 30, 0);
+    expect(formatISODate(d)).toBe('2023-01-15');
+    // Guard the assertion: the local calendar day is what we format.
+    expect(formatISODate(d)).toBe(
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+    );
+  });
+
+  it('preserves the local day for an early-morning local time', () => {
+    // 00:30 local on Jul 4. In positive-offset zones the UTC date could be
+    // Jul 3; formatISODate must still report the local day.
+    const d = new Date(2023, 6, 4, 0, 30, 0);
+    expect(formatISODate(d)).toBe('2023-07-04');
+  });
+});
 
 describe('fmtYearMonth', () => {
   it('returns empty string for empty input', () => {
