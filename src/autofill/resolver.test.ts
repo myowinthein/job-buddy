@@ -233,6 +233,14 @@ describe('resolveProfileValue', () => {
     expect(resolveProfileValue(PROFILE, 'workHistory.0.title')).toBe('Senior Engineer');
   });
 
+  it('resolves workHistory.0.description via generic fallthrough', () => {
+    const p = {
+      ...PROFILE,
+      workHistory: [{ ...PROFILE.workHistory[0], description: 'Led the platform team.' }],
+    };
+    expect(resolveProfileValue(p, 'workHistory.0.description')).toBe('Led the platform team.');
+  });
+
   it('returns empty for out-of-bounds work history', () => {
     expect(resolveProfileValue(PROFILE, 'workHistory.99.title')).toBe('');
   });
@@ -256,6 +264,14 @@ describe('resolveProfileValue', () => {
 
   it('resolves education.1.endDate.formatted as "Present" for a current entry', () => {
     expect(resolveProfileValue(PROFILE, 'education.1.endDate.formatted')).toBe('Present');
+  });
+
+  it('resolves education.0.description via generic fallthrough', () => {
+    const p = {
+      ...PROFILE,
+      education: [{ ...PROFILE.education[0], description: 'Graduated with honors.' }],
+    };
+    expect(resolveProfileValue(p, 'education.0.description')).toBe('Graduated with honors.');
   });
 
   // Notice period — available date (date-independent assertions)
