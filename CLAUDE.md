@@ -4,7 +4,7 @@
 
 Chrome MV3 browser extension (WXT framework) that auto-fills job application forms from a saved user profile. Aimed at multi-country job seekers. Single user, no server, no database — everything lives in `chrome.storage.local`. The only production surface is the Chrome Web Store.
 
-**Stack:** WXT 0.20.26 · React 19 · TypeScript 5.9 · Tailwind CSS v4 (`@tailwindcss/postcss`, not v3 config) · pnpm 11.7.0 · Node 22 (pinned via `.nvmrc`)
+**Stack:** WXT 0.20.26 · React 19.2.4 · TypeScript 5.9.3 · Tailwind CSS v4 (`@tailwindcss/postcss`, not v3 config) · Vitest 4.1.9 · pnpm 11.7.0 · Node 22 (pinned via `.nvmrc`)
 
 **Blast radius:** Pushing a `v*.*.*` tag triggers `release.yml`. The tag's annotation message controls CWS submission: `"release"` submits for review immediately, `"release:draft"` uploads as a draft only. There is no rollback CLI; unpublishing requires the CWS dashboard.
 
@@ -50,7 +50,8 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 - `src/autofill/resolver.ts` — dot-notation resolver + virtual paths (`phone.full`, `address.countryName`, `salary.*.formatted`, etc.)
 - `src/autofill/picker.ts` — fixed-position DOM overlay; no React, inline styles only (avoids host-page CSS conflicts). Cannot write to `chrome.storage.session` directly — routes `OPEN_OPTIONS` + `focusPath` through the background service worker instead.
 - `src/resume-ai/gemini.ts` — `extractFromResume()` + `resolveFieldsWithAI()` via Gemini API
-- `src/utils/driveSync.ts` — Google Drive backup via `drive.appdata` scope; implicit OAuth token flow
+- `src/resume-ai/autofillPrompt.ts` — `AUTOFILL_SYSTEM_PROMPT`; the AI autofill system prompt for resolving unmatched fields
+- `src/utils/driveSync.ts` — Google Drive backup via `drive.appdata` scope; implicit OAuth token flow; also owns `retryPendingDriveSync()` (called by background on startup)
 - `src/utils/derivedFields.ts` — computes `fullName`, `currentTitle`, `currentCompany`, `totalExperience`, `age`
 - `src/utils/profileCompletion.ts` — `TOTAL_CHECKS = 15`; drives sidebar checkmarks and completion %
 - `src/autofill/constants.ts` — named confidence thresholds. Always use these, never bare numbers.
@@ -59,6 +60,9 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 - `src/autofill/signals.ts` — `extractSignals()` + `bestLabel(signals)` helper (`label || ariaLabel || placeholder || name`). Use `bestLabel`, don't re-inline.
 - `src/autofill/filler.ts` — type-aware fill: native, ARIA listbox, React-Select, contenteditable, date reformat (ISO → MM/DD/YYYY or DD/MM/YYYY from placeholder hint)
 - `src/components/options/shared/saveSection.ts` — every section's save flow goes through this. Error string lives only here.
+- `src/components/options/shared/fieldCls.ts` — shared Tailwind class string for form inputs (error vs non-error variants). Don't inline these strings elsewhere.
+- `src/components/options/shared/useSearchableDropdown.ts` — keyboard nav + filter hook powering all 5 searchable dropdown components; memoises filter output per keystroke.
+- `src/components/options/shared/useScrollToNewEntry.ts` — scrolls and focuses a newly added card into view; used by all multi-entry sections.
 - `src/utils/migrate.ts` — `normalizeProfile()` defaults missing salary period to `'monthly'`; called by both `getProfile()` and `saveProfile()`. New on-load migrations belong here.
 - `src/resume-ai/normalize.ts` — `normalizeBullets()` + `normalizeSummaryLineWraps()`. Bullet pass fires only when bullet structure is detected — preserves plain context paragraphs.
 - `src/resume-ai/extractLinks.ts` — pulls hyperlinks from PDF annotation layer via `pdfjs-dist`; returns `[]` for non-PDF and on any error.
@@ -92,6 +96,8 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 **Learned mapping confidence:** `LearnedMappings` values are `string | { path: string; count: number }`. New mappings start at `count: 1` and are not promoted to Layer 0 until count reaches 2. `saveLearnedMapping()` in `src/utils/storage.ts` is the source of truth.
 
 **Drive backup payload fan-out:** Adding a field to `DriveBackupFile` requires updating both `syncProfileToDrive()` (upload) and two restore paths in `SettingsSection` — `handleRestoreFromDrive` and `handleDriveReviewSave`.
+
+**Test environment:** Vitest with per-file `// @vitest-environment jsdom` for DOM-dependent tests — no global jsdom switch. `@testing-library/react` is not installed; React component tests require adding it first.
 
 ---
 
@@ -128,6 +134,8 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 
 - **Content scripts cannot write to `chrome.storage.session`.** The picker routes `OPEN_OPTIONS` + `focusPath` through the background service worker, which has unrestricted session storage access. Don't bypass this routing.
 
+- **WXT entrypoint collision.** Every file under `entrypoints/` is treated as a browser entrypoint — placing test files there causes `Multiple entrypoints with the same name` build errors. Keep all test files under `src/` or alongside their source file, never in `entrypoints/`.
+
 ## Rules
 
 This project follows the rules shipped in claude-helm:
@@ -138,4 +146,4 @@ At the start of every session, check whether the paths above exist on this machi
 If either is missing, inform the user: "helm rules are referenced in CLAUDE.md but the
 plugin is not installed on this machine. Install it with: /plugin install claude-helm"
 
-<!-- last-reviewed: 300b0ce64e76d7f1240a8e502a1c4bd814dcc1b6 -->
+<!-- last-reviewed: 3102c42487c6303519834d99497e47949df839f9 -->
