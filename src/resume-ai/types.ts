@@ -1,20 +1,16 @@
 export type GeminiModel =
+  | 'gemini-3.6-flash'
   | 'gemini-3.5-flash'
-  | 'gemini-3.1-flash-lite'
-  | 'gemini-2.5-flash'
-  | 'gemini-2.5-flash-lite'
-  | 'gemini-2.5-pro';
+  | 'gemini-3.5-flash-lite'
+  | 'gemini-3.1-flash-lite';
 
-// Models tried in order during the background probe. gemini-2.5-flash-lite is
-// recognised as a valid stored model but is not a probe candidate.
-// gemini-3.x entries are reserved for future Gemini releases — they are probe
-// candidates but not yet in production. When Google releases these models,
-// remove this comment and verify the model IDs match the official naming.
+// Models tried in order during the background probe. The first model to respond
+// successfully is selected. Must equal GEMINI_MODEL_PRIORITY[0].
 export const GEMINI_MODEL_PRIORITY: GeminiModel[] = [
-  'gemini-3.1-flash-lite',
+  'gemini-3.5-flash-lite',
+  'gemini-3.6-flash',
   'gemini-3.5-flash',
-  'gemini-2.5-flash',
-  'gemini-2.5-pro',
+  'gemini-3.1-flash-lite',
 ];
 
 // The default model applied immediately when a key is validated (Step 2 of the
@@ -23,11 +19,10 @@ export const GEMINI_MODEL_PRIORITY: GeminiModel[] = [
 export const DEFAULT_GEMINI_MODEL: GeminiModel = GEMINI_MODEL_PRIORITY[0];
 
 export const MODEL_DISPLAY_NAMES: Record<GeminiModel, string> = {
+  'gemini-3.6-flash':      'Gemini 3.6 Flash',
   'gemini-3.5-flash':      'Gemini 3.5 Flash',
+  'gemini-3.5-flash-lite': 'Gemini 3.5 Flash-Lite',
   'gemini-3.1-flash-lite': 'Gemini 3.1 Flash-Lite',
-  'gemini-2.5-flash':      'Gemini 2.5 Flash',
-  'gemini-2.5-flash-lite': 'Gemini 2.5 Flash-Lite',
-  'gemini-2.5-pro':        'Gemini 2.5 Pro',
 };
 
 export type ImportProgressStep = 'reading' | 'sending' | 'processing';
