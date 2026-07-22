@@ -37,7 +37,7 @@ describe('parseAutofillResponse (via resolveFieldsWithAI)', () => {
 
   async function resolveWithText(text: string) {
     fetchMock.mockResolvedValueOnce(geminiTextResponse(text));
-    return resolveFieldsWithAI('key', 'gemini-2.5-flash', FIELDS, {});
+    return resolveFieldsWithAI('key', 'gemini-3.5-flash-lite', FIELDS, {});
   }
 
   it('returns [] when the model output is not JSON', async () => {
@@ -100,21 +100,21 @@ describe('parseAutofillResponse (via resolveFieldsWithAI)', () => {
       status: 200,
       json: () => Promise.reject(new Error('bad body')),
     });
-    const result = await resolveFieldsWithAI('key', 'gemini-2.5-flash', FIELDS, {});
+    const result = await resolveFieldsWithAI('key', 'gemini-3.5-flash-lite', FIELDS, {});
     expect(result).toEqual([]);
   });
 
   it('throws on a non-ok HTTP status', async () => {
     fetchMock.mockResolvedValueOnce(httpResponse(500));
     await expect(
-      resolveFieldsWithAI('key', 'gemini-2.5-flash', FIELDS, {}),
+      resolveFieldsWithAI('key', 'gemini-3.5-flash-lite', FIELDS, {}),
     ).rejects.toThrow('AI autofill request failed: 500');
   });
 
   it('throws a network error when fetch rejects', async () => {
     fetchMock.mockRejectedValueOnce(new Error('offline'));
     await expect(
-      resolveFieldsWithAI('key', 'gemini-2.5-flash', FIELDS, {}),
+      resolveFieldsWithAI('key', 'gemini-3.5-flash-lite', FIELDS, {}),
     ).rejects.toThrow('Network error during AI autofill');
   });
 });
@@ -155,7 +155,7 @@ describe('validateApiKey', () => {
     fetchMock.mockResolvedValueOnce(httpResponse(200));
     const result = await validateApiKey('key');
     expect(result.valid).toBe(true);
-    expect(result.model).toBe('gemini-3.1-flash-lite'); // GEMINI_MODEL_PRIORITY[0]
+    expect(result.model).toBe('gemini-3.5-flash-lite'); // GEMINI_MODEL_PRIORITY[0]
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -189,7 +189,7 @@ describe('validateApiKey', () => {
       .mockResolvedValueOnce(httpResponse(200));
     const result = await validateApiKey('key');
     expect(result.valid).toBe(true);
-    expect(result.model).toBe('gemini-3.5-flash'); // GEMINI_MODEL_PRIORITY[1]
+    expect(result.model).toBe('gemini-3.6-flash'); // GEMINI_MODEL_PRIORITY[1]
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -203,7 +203,7 @@ describe('validateApiKey', () => {
       .mockResolvedValueOnce(httpResponse(200));
     const result = await validateApiKey('key');
     expect(result.valid).toBe(true);
-    expect(result.model).toBe('gemini-3.5-flash');
+    expect(result.model).toBe('gemini-3.6-flash');
   });
 
   it('skips a 404 model and tries the next', async () => {
@@ -212,7 +212,7 @@ describe('validateApiKey', () => {
       .mockResolvedValueOnce(httpResponse(200));
     const result = await validateApiKey('key');
     expect(result.valid).toBe(true);
-    expect(result.model).toBe('gemini-3.5-flash');
+    expect(result.model).toBe('gemini-3.6-flash');
   });
 
   it('returns keyValidNoModel when every model in the priority list fails non-fatally', async () => {
