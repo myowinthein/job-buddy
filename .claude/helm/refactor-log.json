@@ -1859,11 +1859,11 @@
       "file": "src/components/options/AddressSection.tsx",
       "line": 133,
       "description": "Save-button markup (identical className string, only label/disabled differ) is duplicated verbatim across ~9 section components, plus two more Add-Entry-button style variants each duplicated across 3 files \u2014 no shared SaveButton/AddEntryButton despite the established FormField/RemoveButton/ExpandableCard pattern.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "643d6fd",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0117",
