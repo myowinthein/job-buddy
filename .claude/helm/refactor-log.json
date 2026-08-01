@@ -1875,11 +1875,11 @@
       "file": "src/components/options/shared/useSearchableDropdown.ts",
       "line": 0,
       "description": "Zero test coverage for useSearchableDropdown's keyboard navigation (ArrowUp/Down clamping, Enter-to-select, Escape-to-close, outside-click-to-close), used by all 5 searchable dropdown components.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "e0a3647",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0118",
@@ -1891,11 +1891,11 @@
       "file": "src/components/options/shared/DateOfBirthPicker.tsx",
       "line": 0,
       "description": "Zero test coverage for DateOfBirthPicker's pure functions (daysInMonth, computePartial, buildDOB) \u2014 real edge cases including Feb 29 leap-year handling and day auto-clamping when month/year changes.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "1f76fa7",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0119",
