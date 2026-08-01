@@ -1715,11 +1715,11 @@
       "file": "src/autofill/index.ts",
       "line": 193,
       "description": "Missing coverage for the silent re-fill flow (runSilentRefill) and edit-watcher blur-based promotion of manually-filled fields (attachEditWatchers, visibility listener) \u2014 the most stateful, order-sensitive logic in the file, completely unexercised by index.test.ts.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "2fae12a",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0108",
