@@ -2,7 +2,7 @@ import type { Profile } from '@/src/types/profile';
 
 // Matches any line that already starts with a common bullet marker so we
 // don't add a duplicate. Covers ASCII hyphens, asterisks, and common Unicode
-// bullets seen in resumes (•, ·, ◦, ‣, ▪, ▶, ▸, ►, →).
+// bullets seen in resumes (•, ·, ◦, ‣, ▪, ■, ▶, ▸, ▹, ►, →).
 const BULLET_RE = /^\s*[-•*·◦‣▪■▶▸▹►→]\s+/;
 
 /**
