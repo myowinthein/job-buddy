@@ -4,6 +4,7 @@ import { bestLabel } from './signals';
 import { resolveProfileValue } from './resolver';
 import { resolveFieldsWithAI } from '../resume-ai/gemini';
 import type { AIFieldPayload, AIFieldResponse, AIOptionPayload } from '../resume-ai/types';
+import { toGeminiModel } from '../resume-ai/types';
 import { scanRadioGroups, scanCheckboxGroups } from './scanner';
 import type { RadioGroup, CheckboxGroup } from './scanner';
 import { fillField, fillRadioInput, fillCheckboxInput } from './filler';
@@ -61,8 +62,9 @@ export async function runAIAutofill(
   debug?: DebugAIField[],
   aiGreenFilled?: Set<HTMLElement>,
 ): Promise<boolean> {
-  const [apiKey, model] = await Promise.all([getGeminiApiKey(), getGeminiModel()]);
-  if (!apiKey || !model) return false;
+  const [apiKey, storedModel] = await Promise.all([getGeminiApiKey(), getGeminiModel()]);
+  if (!apiKey || !storedModel) return false;
+  const model = toGeminiModel(storedModel);
 
   const radioGroups    = scanRadioGroups();
   const checkboxGroups = scanCheckboxGroups().filter((g) => !g.isConsent);
