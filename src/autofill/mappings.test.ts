@@ -85,4 +85,17 @@ describe('saveElementMappings', () => {
     await saveElementMappings('jobs.co.uk', el, 'address.city');
     expect(savedMappings.every((m) => m.domain === 'jobs.co.uk')).toBe(true);
   });
+
+  it('does not save a mapping for nearbyText, even when it is the only signal present', async () => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'form-field';
+    const span = document.createElement('span');
+    span.textContent = 'Contact Number';
+    const el = document.createElement('input'); // no name, id, placeholder, aria-label, or <label for>
+    wrapper.append(span, el);
+    document.body.appendChild(wrapper);
+
+    await saveElementMappings('example.com', el, 'personal.phone.number');
+    expect(savedMappings).toHaveLength(0);
+  });
 });
