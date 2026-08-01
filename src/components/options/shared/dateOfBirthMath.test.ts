@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { daysInMonth, computePartial, buildDOB } from './DateOfBirthPicker';
+import { daysInMonth, computePartial, buildDOB } from './dateOfBirthMath';
 
 describe('daysInMonth', () => {
   it('returns 31 when month is not yet set', () => {
