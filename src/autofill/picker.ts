@@ -341,7 +341,7 @@ function detectAutoExpand(element: HTMLElement): string | null {
 
 // ─── Tree builder ─────────────────────────────────────────────────────────────
 
-function buildPickerTree(profile: Profile): Section[] {
+export function buildPickerTree(profile: Profile): Section[] {
   const sections: Section[] = [];
 
   function addPath(items: SectionItem[], label: string, path: string): void {

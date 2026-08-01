@@ -59,7 +59,17 @@ function dictionaryExact(norm: string): string | null {
   return EXACT_TERM_TO_PATH.get(norm) ?? null;
 }
 
+// FIELD_DICTIONARY is static, so a given normalized signal always fuzzy-matches
+// to the same result — memoize per unique signal to avoid re-scanning all
+// ~100+ dictionary terms every time the same signal recurs (Layers 3 and 4
+// can each call this per field, so common signals get looked up repeatedly
+// within and across scans of a page).
+const fuzzyCache = new Map<string, { fieldPath: string; score: number } | null>();
+
 function dictionaryFuzzy(norm: string): { fieldPath: string; score: number } | null {
+  const cached = fuzzyCache.get(norm);
+  if (cached !== undefined) return cached;
+
   let bestScore = 0;
   let bestPath: string | null = null;
   for (const [fieldPath, variations] of Object.entries(FIELD_DICTIONARY)) {
@@ -68,7 +78,9 @@ function dictionaryFuzzy(norm: string): { fieldPath: string; score: number } | n
       if (s > bestScore) { bestScore = s; bestPath = fieldPath; }
     }
   }
-  return bestPath && bestScore >= CONF_FILL ? { fieldPath: bestPath, score: bestScore } : null;
+  const result = bestPath && bestScore >= CONF_FILL ? { fieldPath: bestPath, score: bestScore } : null;
+  fuzzyCache.set(norm, result);
+  return result;
 }
 
 function resolve(profile: Profile, fieldPath: string): string | null {

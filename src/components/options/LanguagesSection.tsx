@@ -5,6 +5,8 @@ import { FormField } from './shared/FormField';
 import { RemoveButton } from './shared/RemoveButton';
 import { SearchableLanguageSelect } from './shared/SearchableLanguageSelect';
 import { saveSection } from './shared/saveSection';
+import { SaveButton } from './shared/SaveButton';
+import { AddEntryButton } from './shared/AddEntryButton';
 import { fieldCls as cls } from './shared/fieldCls';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 
@@ -138,22 +140,10 @@ export function LanguagesSection({ profile, onSave }: Props) {
         ))}
       </div>
 
-      <button
-        type="button"
-        onClick={addEntry}
-        className="w-full py-2.5 border-2 border-dashed border-gray-300 dark:border-gray-600 text-sm text-gray-500 dark:text-gray-400 rounded-lg hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-500 dark:hover:text-blue-400 active:scale-95 transition-colors mb-4"
-      >
-        + Add Language
-      </button>
+      <AddEntryButton onClick={addEntry} label="+ Add Language" />
 
       <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
-        >
-          {saving ? 'Saving...' : 'Save Languages'}
-        </button>
+        <SaveButton onClick={handleSave} saving={saving} label="Save Languages" />
       </div>
     </div>
   );

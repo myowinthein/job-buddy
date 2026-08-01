@@ -202,12 +202,12 @@ export function findCountry(code: string): Country {
   return COUNTRIES.find((c) => c.code === code) ?? COUNTRIES[0];
 }
 
-// Handles backward-compat: old stored values may be a full country name
-// ("Thailand") rather than the ISO code ("TH"). Tries code first, then name.
 // Sort alphabetically by name so every dropdown using this list is consistent.
 COUNTRIES.sort((a, b) => a.name.localeCompare(b.name));
 Object.freeze(COUNTRIES);
 
+// Handles backward-compat: old stored values may be a full country name
+// ("Thailand") rather than the ISO code ("TH"). Tries code first, then name.
 export function findCountryByNameOrCode(value: string): Country | undefined {
   if (!value) return undefined;
   const upper = value.toUpperCase();

@@ -31,6 +31,27 @@ export function validateImportedProfile(raw: unknown): ValidationResult {
 
   function err(path: string, reason: string) { errors.push({ path, reason }); }
 
+  // Shared shape validation for documents.cv and documents.coverLetter —
+  // both are DocumentEntry (optional url, optional file).
+  function validateDocumentEntry(fieldPrefix: string, value: Record<string, unknown>): Profile['documents']['cv'] {
+    const entry: Profile['documents']['cv'] = {};
+
+    if (value.url !== undefined) {
+      if (typeof value.url === 'string' && value.url.length <= 255) entry.url = value.url;
+      else err(`${fieldPrefix}.url`, 'expected string, max 255 chars');
+    }
+    if (value.file !== undefined && typeof value.file === 'object' && value.file !== null) {
+      const f = value.file as Record<string, unknown>;
+      if (typeof f.name === 'string' && typeof f.size === 'number' && typeof f.base64 === 'string') {
+        entry.file = { name: f.name, size: f.size, base64: f.base64 };
+      } else {
+        err(`${fieldPrefix}.file`, 'expected object with name (string), size (number), base64 (string)');
+      }
+    }
+
+    return entry;
+  }
+
   if (typeof raw !== 'object' || raw === null) {
     return { valid: false, invalidFields: [{ path: 'root', reason: 'not an object' }], sanitized: {} };
   }
@@ -287,7 +308,22 @@ export function validateImportedProfile(raw: unknown): ValidationResult {
     if (lnk.twitter   !== undefined && typeof lnk.twitter   === 'string') sl.twitter   = lnk.twitter;
     if (lnk.dribbble  !== undefined && typeof lnk.dribbble  === 'string') sl.dribbble  = lnk.dribbble;
     if (lnk.behance   !== undefined && typeof lnk.behance   === 'string') sl.behance   = lnk.behance;
-    if (Array.isArray(lnk.custom)) sl.custom = lnk.custom as Profile['links']['custom'];
+    if (Array.isArray(lnk.custom)) {
+      const validCustom: NonNullable<Profile['links']['custom']> = [];
+      (lnk.custom as unknown[]).forEach((entry, i) => {
+        if (typeof entry === 'object' && entry !== null) {
+          const e = entry as Record<string, unknown>;
+          if (typeof e.label === 'string' && typeof e.url === 'string') {
+            validCustom.push({ label: e.label, url: e.url });
+          } else {
+            err(`links.custom[${i}]`, 'missing label string or url string');
+          }
+        } else {
+          err(`links.custom[${i}]`, 'missing label string or url string');
+        }
+      });
+      if (validCustom.length > 0) sl.custom = validCustom;
+    }
 
     if (Object.keys(sl).length > 0) s.links = sl as Profile['links'];
   }
@@ -298,27 +334,11 @@ export function validateImportedProfile(raw: unknown): ValidationResult {
     const sd: Partial<Profile['documents']> = {};
 
     if ('cv' in docs && typeof docs.cv === 'object' && docs.cv !== null) {
-      const cv = docs.cv as Record<string, unknown>;
-      const scv: Profile['documents']['cv'] = {};
-
-      if (cv.url !== undefined) {
-        if (typeof cv.url === 'string' && cv.url.length <= 255) scv.url = cv.url;
-        else err('documents.cv.url', 'expected string, max 255 chars');
-      }
-      if (cv.file !== undefined && typeof cv.file === 'object' && cv.file !== null) {
-        const f = cv.file as Record<string, unknown>;
-        if (typeof f.name === 'string' && typeof f.size === 'number' && typeof f.base64 === 'string') {
-          scv.file = { name: f.name, size: f.size, base64: f.base64 };
-        } else {
-          err('documents.cv.file', 'expected object with name (string), size (number), base64 (string)');
-        }
-      }
-
-      sd.cv = scv;
+      sd.cv = validateDocumentEntry('documents.cv', docs.cv as Record<string, unknown>);
     }
 
     if ('coverLetter' in docs && typeof docs.coverLetter === 'object' && docs.coverLetter !== null) {
-      sd.coverLetter = docs.coverLetter as Profile['documents']['coverLetter'];
+      sd.coverLetter = validateDocumentEntry('documents.coverLetter', docs.coverLetter as Record<string, unknown>);
     }
 
     if (Object.keys(sd).length > 0) s.documents = sd as Profile['documents'];

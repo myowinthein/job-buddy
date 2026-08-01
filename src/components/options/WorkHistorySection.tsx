@@ -7,6 +7,8 @@ import { ExpandableCard } from './shared/ExpandableCard';
 import { MonthYearPicker } from './shared/MonthYearPicker';
 import { SearchableCountryDropdown } from './shared/SearchableCountryDropdown';
 import { saveSection } from './shared/saveSection';
+import { SaveButton } from './shared/SaveButton';
+import { AddEntryButton } from './shared/AddEntryButton';
 import { fieldCls as cls } from './shared/fieldCls';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 
@@ -299,13 +301,11 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       {/* ── Work Entries ────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-3 mt-2">
         <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Work Experience</p>
-        <button
-          type="button"
+        <AddEntryButton
+          variant="pill"
           onClick={() => { setEntries((rows) => [...rows, emptyRow()]); setNewEntryTick((t) => t + 1); }}
-          className="text-xs px-3 py-1.5 border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-colors"
-        >
-          + Add Entry
-        </button>
+          label="+ Add Entry"
+        />
       </div>
 
       {errors.general && (
@@ -508,13 +508,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       </div>
 
       <div className="pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
-        >
-          {saving ? 'Saving...' : 'Save Work History'}
-        </button>
+        <SaveButton onClick={handleSave} saving={saving} label="Save Work History" />
       </div>
     </div>
   );

@@ -253,6 +253,9 @@ describe('FIELD_DEFS display functions', () => {
     it('omits missing parts', () => {
       expect(display('salary.current', { currency: 'USD' })).toBe('USD');
     });
+    it('appends country parenthetically, matching salary.expected\'s convention', () => {
+      expect(display('salary.current', { amount: 5000, currency: 'USD', period: 'monthly', country: 'US' })).toBe('5000 USD (monthly) (US)');
+    });
     it('returns "" for a null value', () => {
       expect(display('salary.current', null)).toBe('');
     });
@@ -311,5 +314,141 @@ describe('FIELD_DEFS display functions', () => {
         ]),
       ).toBe('PhD in AI, MIT (2020 – present)');
     });
+  });
+
+  describe('professional.summary', () => {
+    it('returns the summary unchanged when under the 120-char limit', () => {
+      expect(display('professional.summary', 'Short summary.')).toBe('Short summary.');
+    });
+    it('truncates to 117 chars plus an ellipsis at exactly 121 chars', () => {
+      const s = 'x'.repeat(121);
+      const result = display('professional.summary', s);
+      expect(result).toBe('x'.repeat(117) + '…');
+      expect(result.length).toBe(118);
+    });
+    it('does not truncate a summary of exactly 120 chars', () => {
+      const s = 'x'.repeat(120);
+      expect(display('professional.summary', s)).toBe(s);
+    });
+    it('returns "" for a null value', () => {
+      expect(display('professional.summary', null)).toBe('');
+    });
+  });
+
+  describe('links.linkedin', () => {
+    it('returns the URL as-is', () => {
+      expect(display('links.linkedin', 'https://linkedin.com/in/jane')).toBe('https://linkedin.com/in/jane');
+    });
+    it('returns "" for a null value', () => {
+      expect(display('links.linkedin', null)).toBe('');
+    });
+  });
+
+  describe('links.portfolio', () => {
+    it('returns the URL as-is', () => {
+      expect(display('links.portfolio', 'https://jane.dev')).toBe('https://jane.dev');
+    });
+    it('returns "" for a null value', () => {
+      expect(display('links.portfolio', null)).toBe('');
+    });
+  });
+
+  describe('links.custom', () => {
+    it('renders each link on its own line as "label: url"', () => {
+      expect(
+        display('links.custom', [
+          { label: 'GitHub', url: 'https://github.com/jane' },
+          { label: 'Blog', url: 'https://jane.blog' },
+        ]),
+      ).toBe('GitHub: https://github.com/jane\nBlog: https://jane.blog');
+    });
+    it('returns "" for an empty array', () => {
+      expect(display('links.custom', [])).toBe('');
+    });
+  });
+
+  describe('workAuthorization', () => {
+    it('renders each entry as "country — status" with underscores replaced', () => {
+      expect(
+        display('workAuthorization', [
+          { country: 'US', status: 'authorized_no_sponsorship' },
+        ]),
+      ).toBe('US — authorized no sponsorship');
+    });
+    it('joins multiple entries on separate lines', () => {
+      expect(
+        display('workAuthorization', [
+          { country: 'US', status: 'citizen' },
+          { country: 'TH', status: 'requires_sponsorship' },
+        ]),
+      ).toBe('US — citizen\nTH — requires sponsorship');
+    });
+    it('returns "" for an empty array', () => {
+      expect(display('workAuthorization', [])).toBe('');
+    });
+  });
+
+  describe('languages', () => {
+    it('renders each entry as "language (proficiency)" with underscores replaced', () => {
+      expect(
+        display('languages', [{ language: 'English', proficiency: 'native_bilingual' }]),
+      ).toBe('English (native bilingual)');
+    });
+    it('joins multiple entries on separate lines', () => {
+      expect(
+        display('languages', [
+          { language: 'English', proficiency: 'native' },
+          { language: 'Thai', proficiency: 'fluent' },
+        ]),
+      ).toBe('English (native)\nThai (fluent)');
+    });
+    it('returns "" for an empty array', () => {
+      expect(display('languages', [])).toBe('');
+    });
+  });
+
+  describe('documents.cv.url', () => {
+    it('returns the URL as-is', () => {
+      expect(display('documents.cv.url', 'https://drive.example/cv.pdf')).toBe('https://drive.example/cv.pdf');
+    });
+    it('returns "" for a null value', () => {
+      expect(display('documents.cv.url', null)).toBe('');
+    });
+  });
+
+  describe('documents.cv.file', () => {
+    it("returns the file's name", () => {
+      expect(display('documents.cv.file', { name: 'resume.pdf', size: 1024, base64: 'abc' })).toBe('resume.pdf');
+    });
+    it('returns "" for a null value', () => {
+      expect(display('documents.cv.file', null)).toBe('');
+    });
+    it('returns "" for a non-object value', () => {
+      expect(display('documents.cv.file', 'not-a-file-object')).toBe('');
+    });
+  });
+});
+
+describe('FIELD_DEFS setValue via applyChanges', () => {
+  it('sets documents.cv.url without disturbing an existing documents.cv.file', () => {
+    const base: Partial<Profile> = {
+      documents: { cv: { file: { name: 'old.pdf', size: 10, base64: 'xx' } } },
+    };
+    const diff = generateDiff(base, { documents: { cv: { url: 'https://drive.example/new.pdf' } } });
+    const result = applyChanges(base, diff);
+    expect(result.documents?.cv?.url).toBe('https://drive.example/new.pdf');
+    expect(result.documents?.cv?.file?.name).toBe('old.pdf');
+  });
+
+  it('sets documents.cv.file without disturbing an existing documents.cv.url', () => {
+    const base: Partial<Profile> = {
+      documents: { cv: { url: 'https://drive.example/old.pdf' } },
+    };
+    const diff = generateDiff(base, {
+      documents: { cv: { file: { name: 'new.pdf', size: 20, base64: 'yy' } } },
+    });
+    const result = applyChanges(base, diff);
+    expect(result.documents?.cv?.file?.name).toBe('new.pdf');
+    expect(result.documents?.cv?.url).toBe('https://drive.example/old.pdf');
   });
 });

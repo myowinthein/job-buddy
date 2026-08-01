@@ -38,8 +38,11 @@ import { scanAutofill, executeAutofill, undoAutofill, getLastResult, EMPTY_AUTOF
 import { getProfile } from '../utils/storage';
 import { scanFields, scanAriaFields } from './scanner';
 import { mapField } from './mapper';
-import { clearFieldValue } from './filler';
-import { clearElementHighlight, clearHighlights } from './highlighter';
+import { clearFieldValue, fillField } from './filler';
+import { clearElementHighlight, clearHighlights, applyHighlight } from './highlighter';
+import { removePickerListener, closePickerIfOpenFor } from './picker';
+import { resolveProfileValue } from './resolver';
+import { CONF_CONFIRMED } from './constants';
 
 function makeProfile(): Profile {
   return { personal: { firstName: 'Jane', lastName: 'Doe' } } as unknown as Profile;
@@ -235,5 +238,175 @@ describe('two-phase sequence', () => {
     const fillResult = await executeAutofill('overwrite');
     expect(fillResult.noReview).toBe(2);     // overwrite fills both green
     expect(fillResult.totalScanned).toBe(2);
+  });
+});
+
+describe('edit-watcher promotion (blur)', () => {
+  it('promotes a lowConfidence field to noReview on blur when its value changed', async () => {
+    const el = makeInput('');
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.3, value: null, fieldPath: 'a.b', matchLayer: 'fuzzy' });
+
+    await scanAutofill();
+    const result = await executeAutofill('merge');
+    expect(result.lowConfidence).toBe(1);
+
+    el.value = 'user typed this';
+    el.dispatchEvent(new Event('blur'));
+
+    expect(applyHighlight).toHaveBeenCalledWith(el, CONF_CONFIRMED);
+    expect(removePickerListener).toHaveBeenCalledWith(el);
+    const live = getLastResult();
+    expect(live?.noReview).toBe(1);
+    expect(live?.lowConfidence).toBe(0);
+  });
+
+  it('promotes a needReview field to noReview on blur and decrements needReview', async () => {
+    const el = makeInput('');
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.7, value: 'Jane', fieldPath: 'personal.firstName', matchLayer: 'context' });
+
+    await scanAutofill();
+    const result = await executeAutofill('merge');
+    expect(result.needReview).toBe(1);
+
+    el.value = 'user changed this';
+    el.dispatchEvent(new Event('blur'));
+
+    const live = getLastResult();
+    expect(live?.noReview).toBe(1);
+    expect(live?.needReview).toBe(0);
+  });
+
+  it('promotes a noData field to noReview on blur, decrements noData, and removes it from the silent-refill registry', async () => {
+    const el = makeInput('');
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.7, value: null, fieldPath: 'personal.email', matchLayer: 'context' });
+
+    await scanAutofill();
+    const result = await executeAutofill('merge');
+    expect(result.noData).toBe(1);
+
+    el.value = 'user typed this';
+    el.dispatchEvent(new Event('blur'));
+
+    const live = getLastResult();
+    expect(live?.noReview).toBe(1);
+    expect(live?.noData).toBe(0);
+
+    // The field left the silent-refill registry — a later visibilitychange
+    // must not touch it again (getProfile would be called again by
+    // runSilentRefill if the entry were still tracked).
+    vi.mocked(getProfile).mockClear();
+    document.dispatchEvent(new Event('visibilitychange'));
+    await Promise.resolve();
+    expect(getProfile).not.toHaveBeenCalled();
+  });
+
+  it('does not fire the promotion when blurring without any value change', async () => {
+    const el = makeInput('unchanged');
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.3, value: null, fieldPath: 'a.b', matchLayer: 'fuzzy' });
+
+    await scanAutofill();
+    await executeAutofill('merge');
+    vi.mocked(applyHighlight).mockClear();
+
+    el.dispatchEvent(new Event('blur'));
+
+    expect(applyHighlight).not.toHaveBeenCalled();
+    expect(getLastResult()?.lowConfidence).toBe(1);
+  });
+
+  it('ignores a stale blur after undo resets the session', async () => {
+    const el = makeInput('');
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.3, value: null, fieldPath: 'a.b', matchLayer: 'fuzzy' });
+
+    await scanAutofill();
+    await executeAutofill('merge');
+    undoAutofill();
+    vi.mocked(applyHighlight).mockClear();
+
+    el.value = 'typed after undo';
+    el.dispatchEvent(new Event('blur'));
+
+    expect(applyHighlight).not.toHaveBeenCalled();
+  });
+});
+
+describe('silent re-fill on visibilitychange', () => {
+  // jsdom's default document.visibilityState is 'prerender', not 'visible' —
+  // the handler no-ops unless the tab is actually visible.
+  beforeEach(() => {
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+  });
+
+  it('fills a noData field silently once the profile value becomes available', async () => {
+    const el = makeInput('');
+    document.body.appendChild(el);
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.7, value: null, fieldPath: 'personal.email', matchLayer: 'context' });
+
+    await scanAutofill();
+    const result = await executeAutofill('merge');
+    expect(result.noData).toBe(1);
+
+    vi.mocked(resolveProfileValue).mockReturnValue('jane@example.com');
+    vi.mocked(fillField).mockClear();
+
+    document.dispatchEvent(new Event('visibilitychange'));
+    await vi.waitFor(() => expect(fillField).toHaveBeenCalledWith(el, 'jane@example.com'));
+
+    expect(applyHighlight).toHaveBeenCalledWith(el, CONF_CONFIRMED);
+    expect(removePickerListener).toHaveBeenCalledWith(el);
+    expect(closePickerIfOpenFor).toHaveBeenCalledWith(el);
+    const live = getLastResult();
+    expect(live?.noData).toBe(0);
+    expect(live?.noReview).toBe(1);
+
+    el.remove();
+  });
+
+  it('leaves a noData field untouched and keeps watching when the profile value is still empty', async () => {
+    const el = makeInput('');
+    document.body.appendChild(el);
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.7, value: null, fieldPath: 'personal.email', matchLayer: 'context' });
+
+    await scanAutofill();
+    await executeAutofill('merge');
+
+    vi.mocked(resolveProfileValue).mockReturnValue('');
+    vi.mocked(fillField).mockClear();
+
+    document.dispatchEvent(new Event('visibilitychange'));
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(fillField).not.toHaveBeenCalled();
+    expect(getLastResult()?.noData).toBe(1);
+
+    el.remove();
+  });
+
+  it('drops a noData entry silently if its element has been removed from the DOM', async () => {
+    const el = makeInput('');
+    document.body.appendChild(el);
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.7, value: null, fieldPath: 'personal.email', matchLayer: 'context' });
+
+    await scanAutofill();
+    await executeAutofill('merge');
+
+    el.remove();
+    vi.mocked(resolveProfileValue).mockReturnValue('jane@example.com');
+    vi.mocked(fillField).mockClear();
+
+    document.dispatchEvent(new Event('visibilitychange'));
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(fillField).not.toHaveBeenCalled();
   });
 });

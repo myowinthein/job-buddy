@@ -247,6 +247,7 @@ export const FIELD_DEFS: FieldDef[] = [
       if (s.amount != null) parts.push(String(s.amount));
       if (s.currency)       parts.push(s.currency);
       if (s.period)         parts.push(`(${s.period})`);
+      if (s.country)        parts.push(`(${s.country})`);
       return parts.join(' ');
     },
   },
