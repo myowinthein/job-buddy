@@ -42,67 +42,50 @@ function isSkippableOption(opt: HTMLOptionElement): boolean {
   return PLACEHOLDER_OPTION_NORMS.has(normalize(opt.text));
 }
 
-function fillSelect(select: HTMLSelectElement, value: string): void {
-  const normValue = normalize(value);
+// Shared matching strategy used by both fillSelect (native <option>, primary =
+// raw value, secondary = trimmed text) and findBestAriaOption (ARIA elements,
+// primary = trimmed textContent, secondary = trimmed aria-label): exact primary
+// match, then exact secondary, then normalized primary, then normalized
+// secondary, then best fuzzy match across both fields (≥ CONF_FUZZY_THRESHOLD).
+function findBestMatch<T>(
+  eligible: T[],
+  target: string,
+  getPrimary: (item: T) => string,
+  getSecondary: (item: T) => string,
+): T | null {
+  if (!target || eligible.length === 0) return null;
+  const norm = normalize(target);
 
-  // Pass 1: exact value match (raw, case-sensitive)
-  for (let i = 0; i < select.options.length; i++) {
-    const opt = select.options[i];
-    if (isSkippableOption(opt)) continue;
-    if (opt.value === value) {
-      select.selectedIndex = i;
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-      return;
-    }
-  }
+  const exactPrimary = eligible.find((o) => getPrimary(o) === target);
+  if (exactPrimary) return exactPrimary;
 
-  // Pass 2: exact text/label match (raw, case-sensitive)
-  for (let i = 0; i < select.options.length; i++) {
-    const opt = select.options[i];
-    if (isSkippableOption(opt)) continue;
-    if (opt.text.trim() === value) {
-      select.selectedIndex = i;
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-      return;
-    }
-  }
+  const exactSecondary = eligible.find((o) => getSecondary(o) === target);
+  if (exactSecondary) return exactSecondary;
 
-  // Pass 3: normalized value match
-  for (let i = 0; i < select.options.length; i++) {
-    const opt = select.options[i];
-    if (isSkippableOption(opt)) continue;
-    if (normalize(opt.value) === normValue) {
-      select.selectedIndex = i;
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-      return;
-    }
-  }
+  const normPrimary = eligible.find((o) => normalize(getPrimary(o)) === norm);
+  if (normPrimary) return normPrimary;
 
-  // Pass 4: normalized text/label match
-  for (let i = 0; i < select.options.length; i++) {
-    const opt = select.options[i];
-    if (isSkippableOption(opt)) continue;
-    if (normalize(opt.text) === normValue) {
-      select.selectedIndex = i;
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-      return;
-    }
-  }
+  const normSecondary = eligible.find((o) => normalize(getSecondary(o)) === norm);
+  if (normSecondary) return normSecondary;
 
-  // Pass 5: best fuzzy match (safe threshold — only if clearly the right option)
-  let bestIndex = -1;
+  let best: T | null = null;
   let bestScore = 0;
-  for (let i = 0; i < select.options.length; i++) {
-    const opt = select.options[i];
-    if (isSkippableOption(opt)) continue;
+  for (const o of eligible) {
     const score = Math.max(
-      similarity(normalize(opt.text),  normValue),
-      similarity(normalize(opt.value), normValue),
+      similarity(normalize(getPrimary(o)),   norm),
+      similarity(normalize(getSecondary(o)), norm),
     );
-    if (score > bestScore) { bestScore = score; bestIndex = i; }
+    if (score > bestScore) { bestScore = score; best = o; }
   }
-  if (bestScore >= CONF_FUZZY_THRESHOLD && bestIndex >= 0) {
-    select.selectedIndex = bestIndex;
+  return bestScore >= CONF_FUZZY_THRESHOLD ? best : null;
+}
+
+function fillSelect(select: HTMLSelectElement, value: string): void {
+  const options  = Array.from(select.options);
+  const eligible = options.filter((opt) => !isSkippableOption(opt));
+  const match = findBestMatch(eligible, value, (o) => o.value, (o) => o.text.trim());
+  if (match) {
+    select.selectedIndex = options.indexOf(match);
     select.dispatchEvent(new Event('change', { bubbles: true }));
   }
 }
@@ -133,32 +116,12 @@ function isSkippableAriaOption(el: HTMLElement): boolean {
 //   5. Fuzzy (≥0.75)     6. No match → null
 function findBestAriaOption(options: HTMLElement[], target: string): HTMLElement | null {
   const eligible = options.filter((o) => !isSkippableAriaOption(o));
-  if (!target || eligible.length === 0) return null;
-
-  const norm = normalize(target);
-
-  const exactText  = eligible.find((o) => o.textContent?.trim() === target);
-  if (exactText) return exactText;
-
-  const exactLabel = eligible.find((o) => (o.getAttribute('aria-label') ?? '').trim() === target);
-  if (exactLabel) return exactLabel;
-
-  const normText  = eligible.find((o) => normalize(o.textContent?.trim() ?? '') === norm);
-  if (normText) return normText;
-
-  const normLabel = eligible.find((o) => normalize(o.getAttribute('aria-label') ?? '') === norm);
-  if (normLabel) return normLabel;
-
-  let best: HTMLElement | null = null;
-  let bestScore = 0;
-  for (const o of eligible) {
-    const s = Math.max(
-      similarity(normalize(o.textContent?.trim() ?? ''), norm),
-      similarity(normalize(o.getAttribute('aria-label') ?? ''), norm),
-    );
-    if (s > bestScore) { bestScore = s; best = o; }
-  }
-  return bestScore >= CONF_FUZZY_THRESHOLD ? best : null;
+  return findBestMatch(
+    eligible,
+    target,
+    (o) => o.textContent?.trim() ?? '',
+    (o) => (o.getAttribute('aria-label') ?? '').trim(),
+  );
 }
 
 // Polls for [role="option"] elements that appear after the trigger is opened.
