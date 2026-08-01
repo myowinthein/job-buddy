@@ -1731,11 +1731,11 @@
       "file": "src/autofill/ai.ts",
       "line": 99,
       "description": "ai.ts reimplements bestLabel()'s fallback chain inline (label||ariaLabel||placeholder||name) instead of calling the bestLabel() helper it already imports and uses elsewhere in the same file.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "b94c627",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0109",
@@ -1827,11 +1827,11 @@
       "file": "src/components/options/DocumentsSection.tsx",
       "line": 101,
       "description": "DocumentsSection's urlCls is a hand-written ternary producing the exact same two class strings as the shared fieldCls() helper, but the file never imports it.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "900ce0a",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0115",
@@ -1907,11 +1907,11 @@
       "file": "src/resume-ai/gemini.ts",
       "line": 127,
       "description": "The identical complex optional-chain response-text extraction ((data as {...})?.candidates?.[0]?.content?.parts?.[0]?.text) is copy-pasted verbatim in both extractFromResume and resolveFieldsWithAI instead of a shared extractGeminiText() helper.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "e9ef0c9",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0120",
@@ -1939,11 +1939,11 @@
       "file": "src/resume-ai/parser.test.ts",
       "line": 0,
       "description": "FIELD_DEFS display-function tests have zero coverage for professional.summary (including its 120-char truncation boundary), links.linkedin/portfolio/custom, workAuthorization, languages, and documents.cv.url/file's bespoke doubly-nested setValue logic.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "8507ad8",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0122",
@@ -1987,11 +1987,11 @@
       "file": "src/data/countries.ts",
       "line": 205,
       "description": "The doc comment describing findCountryByNameOrCode's backward-compat behavior is misplaced above COUNTRIES.sort()/Object.freeze(COUNTRIES) instead of above the function it actually documents.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "e259ea2",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0125",
@@ -2003,11 +2003,11 @@
       "file": "src/resume-ai/normalize.ts",
       "line": 3,
       "description": "normalizeBullets' top-level doc comment lists covered bullet markers but omits two (\u25b9 and \u25a0) that are actually handled by BULLET_RE and correctly listed in a second, more detailed comment further down. Cosmetic doc drift.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "beb04bb",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0126",
@@ -2019,11 +2019,11 @@
       "file": "entrypoints/popup/DebugPanel.tsx",
       "line": 84,
       "description": "session.scanner.find(s => s.fieldId === m.fieldId) runs inside session.mapping.map(...), an O(n*m) linear scan per row, when the same file already builds aiByFieldId as a useMemo'd Map for the identical fieldId-lookup shape 15 lines earlier.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "6ee5306",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0127",
@@ -2051,11 +2051,11 @@
       "file": "entrypoints/popup/App.tsx",
       "line": 19,
       "description": "AutofillScanResult.totalMatched is declared but never read anywhere; handleAutofill only checks scan?.preFilledCount. Dead field on an otherwise-small interface.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "aab6da5",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0129",
@@ -2099,11 +2099,11 @@
       "file": "src/utils/driveSync.ts",
       "line": 114,
       "description": "downloadBackupFromDrive's corrupted/partial-backup fallback paths (non-object JSON, missing .profile, JSON parse throw) are never exercised by driveSync.test.ts, which only covers full success and an HTTP-status lookup failure.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "78188c3",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0132",
@@ -2131,11 +2131,11 @@
       "file": "src/utils/storage.test.ts",
       "line": 247,
       "description": "The clearAllStorage test seeds applicationHistory with an object shaped {id, company, position, appliedAt, url} cast via 'as unknown as ApplicationEntry[]', but the real ApplicationEntry type requires jobTitle/status, not company/position \u2014 the cast silences a real type mismatch and the test gives no signal about correct usage.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "82d596d",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0134",
@@ -2147,11 +2147,11 @@
       "file": "package.json",
       "line": 36,
       "description": "@types/jsdom is an unused devDependency \u2014 a full-codebase grep for JSDOM finds zero hits. DOM tests use the // @vitest-environment jsdom pragma, which only needs the jsdom package itself, not its type stubs.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "a02ec8d",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0135",
@@ -2163,11 +2163,11 @@
       "file": ".prettierignore",
       "line": 0,
       "description": "No .prettierignore exists anywhere in the repo. pnpm format runs prettier --write . unscoped and is willing to reformat demo-apply-form/** and docs/**, which eslint.config.js explicitly excludes from linting \u2014 the two formatting/lint tools disagree about whether these hand-authored static sites are in scope.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "aa7b464",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0136",
@@ -2179,11 +2179,11 @@
       "file": "docs/404.html",
       "line": 49,
       "description": "The 'Back to Job Buddy' link uses a relative './' path while the two <img> tags in the same file correctly use the absolute /job-buddy/assets/icons/icon.svg path (necessary since a GitHub Pages 404 can be served from any arbitrarily deep broken URL). On a deep broken link the relative './' resolves to the wrong subdirectory while the images still load.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "bd07351",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0137",
@@ -2243,11 +2243,11 @@
       "file": "docs/index.html",
       "line": 344,
       "description": "All six screenshot <img> tags (~40-124KB webp each, ~370KB combined) load eagerly with no loading=\"lazy\" and no explicit width/height, unlike the two icon <img> tags which set both \u2014 below-the-fold images load immediately regardless of scroll position and missing dimensions invite layout shift.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "b25705d",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0141",
@@ -2259,11 +2259,11 @@
       "file": "demo-apply-form/assets/css/styles.css",
       "line": 1,
       "description": "Google Fonts is loaded via a CSS @import at the top of the stylesheet instead of an HTML <link> \u2014 a known render-blocking anti-pattern (the browser must fetch and parse the parent stylesheet before it even discovers the import). docs/index.html already does this correctly via <link rel=\"preconnect\"> + <link rel=\"stylesheet\">.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "b812647",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0142",
@@ -2275,11 +2275,11 @@
       "file": "demo-apply-form/assets/js/main.js",
       "line": 59,
       "description": "The applicationForm submit listener has no null-check, unlike fillDemoData(), clearDemoData(), and the resetButton listener earlier in the same small file, all of which guard against a missing element.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "b812647",
+      "resolved_date": "2026-08-01"
     }
   ]
 }
