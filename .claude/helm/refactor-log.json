@@ -1811,11 +1811,11 @@
       "file": "src/components/options/shared/SearchableCallingCodeSelect.tsx",
       "line": 34,
       "description": "useSearchableDropdown unified the state logic across the 5 searchable-dropdown components, but the surrounding rendering (trigger button shell, panel wrapper, search input, listbox with highlight classes, empty state) is still copy-pasted ~40-60 lines each across SearchableCallingCodeSelect, SearchableCountryDropdown, SearchableCountryWithCurrencyDropdown, SearchableCurrencySelect, and SearchableLanguageSelect.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "34f4163",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0114",
