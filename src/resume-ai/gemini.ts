@@ -80,7 +80,7 @@ export async function validateApiKey(apiKey: string): Promise<KeyValidationResul
 
 export async function extractFromResume(
   apiKey: string,
-  model: string,
+  model: GeminiModel,
   fileBase64: string,
   mimeType: string,
   currentProfile: Partial<Profile>,
@@ -153,7 +153,7 @@ function parseResponse(text: string): Partial<Profile> {
 
 export async function resolveFieldsWithAI(
   apiKey: string,
-  model: string,
+  model: GeminiModel,
   fields: AIFieldPayload[],
   profile: object,
 ): Promise<AIFieldResponse[]> {

@@ -5,6 +5,7 @@ import { extractFromResume } from '@/src/resume-ai/gemini';
 import { extractLinks } from '@/src/resume-ai/extractLinks';
 import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
 import type { FieldChange, ImportProgressStep, ImportErrorCode } from '@/src/resume-ai/types';
+import { toGeminiModel } from '@/src/resume-ai/types';
 import { useToast } from '@/src/components/ui/useToast';
 import ImportSummaryDialog from '@/src/components/shared/ImportSummaryDialog';
 import ImportReviewScreen from '@/src/components/shared/ImportReviewScreen';
@@ -162,7 +163,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
     const base64   = text.split(',')[1] ?? '';
     try {
       setProgressStep('sending');
-      const extracted = await extractFromResume(apiKey!, model!, base64, mimeType, profile, controller.signal, links);
+      const extracted = await extractFromResume(apiKey!, toGeminiModel(model), base64, mimeType, profile, controller.signal, links);
 
       setProgressStep('processing');
       const aiChanges = generateDiff(profile, extracted);
