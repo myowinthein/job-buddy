@@ -47,6 +47,10 @@
       darkMode: 'class',
       theme: {
         extend: {
+          // Canonical brand colors. Also hardcoded independently in
+          // docs/project-site/assets/style.css and
+          // demo-apply-form/assets/css/styles.css (no shared build step
+          // across these static sites) — keep all three in sync by hand.
           colors: {
             brand:  { DEFAULT: '#4B79F7', dark: '#3461E8', light: '#EEF3FF', muted: '#7B9EFA' },
             navy:   { DEFAULT: '#0D1B3E', light: '#1A2D5A', muted: '#2A3F6A' },

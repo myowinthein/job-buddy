@@ -1,4 +1,7 @@
 /* ── Tokens ─────────────────────────────────────────────────────────────── */
+/* --brand/--navy mirror docs/index.html's Tailwind brand/navy colors and
+   demo-apply-form/assets/css/styles.css's --blue (no shared build step
+   across these static sites) — keep all three in sync by hand. */
 :root {
   --brand:      #4B79F7;
   --brand-dim:  #EEF3FF;
