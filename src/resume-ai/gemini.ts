@@ -3,7 +3,7 @@ import type { GeminiModel, KeyValidationResult, ImportError, AIFieldPayload, AIF
 import { GEMINI_MODEL_PRIORITY } from './types';
 import { buildPrompt } from './prompt';
 import { normalizeExtractedProfile, stripMarkdown } from './normalize';
-import { AUTOFILL_SYSTEM_PROMPT } from './autofillPrompt';
+import { buildAutofillPrompt } from './autofillPrompt';
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -157,7 +157,7 @@ export async function resolveFieldsWithAI(
   fields: AIFieldPayload[],
   profile: object,
 ): Promise<AIFieldResponse[]> {
-  const body = JSON.stringify({ fields, profile }, null, 2);
+  const prompt = buildAutofillPrompt(fields, profile);
 
   let resp: Response;
   try {
@@ -165,7 +165,7 @@ export async function resolveFieldsWithAI(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `${AUTOFILL_SYSTEM_PROMPT}\n\n${body}` }] }],
+        contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0 },
       }),
     });
