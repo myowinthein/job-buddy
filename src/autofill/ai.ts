@@ -15,14 +15,10 @@ import { getGeminiApiKey, getGeminiModel, saveLearnedMapping } from '../utils/st
 import { normalize, PLACEHOLDER_OPTION_NORMS } from './normalizer';
 import { saveElementMappings } from './mappings';
 import type { DebugAIField } from './debug';
+import type { AutofillResult } from './index';
 
-// Mutable result shape — matches the fields of AutofillResult that AI updates
-interface MutableResult {
-  noReview:      number;
-  needReview:    number;
-  lowConfidence: number;
-  noData:        number;
-}
+// Mutable result shape — the subset of AutofillResult's fields that AI updates
+type MutableResult = Pick<AutofillResult, 'noReview' | 'needReview' | 'lowConfidence' | 'noData'>;
 
 export interface AITextCandidate {
   type:             'text';
