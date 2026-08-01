@@ -1747,11 +1747,11 @@
       "file": "src/autofill/scanner.ts",
       "line": 56,
       "description": "scanFields() re-implements the same disabled/hidden/aria-hidden/offsetParent/display/visibility/opacity/zero-rect checks as isElementVisible() nearly verbatim instead of calling it (plus its own extra readOnly check).",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "9f06a44",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0110",
@@ -1779,11 +1779,11 @@
       "file": "src/autofill/mapper.ts",
       "line": 62,
       "description": "dictionaryFuzzy() does a full linear scan of ~100+ dictionary terms per normalized signal, up to 5x per field across Layers 3 and 4 combined, with no memoization \u2014 unlike dictionaryExact() which was explicitly optimized into an O(1) Map lookup.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "8e6cfc2",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0112",
@@ -1795,11 +1795,11 @@
       "file": "src/autofill/ai.ts",
       "line": 20,
       "description": "MutableResult hand-duplicates fields already declared on AutofillResult (noReview/needReview/lowConfidence/noData) instead of deriving via Pick<>, so a rename on the source type won't be caught by the compiler here.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "8179562",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0113",
@@ -1923,11 +1923,11 @@
       "file": "src/resume-ai/parser.ts",
       "line": 243,
       "description": "salary.current's diff display (displayCurrent/displaySuggested) never includes the optional country field, unlike salary.expected which does append it \u2014 a reviewer can't see a country-only change during a Resume Import or Drive Restore conflict.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "328205d",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0121",
@@ -1955,11 +1955,11 @@
       "file": "src/resume-ai/gemini.ts",
       "line": 78,
       "description": "extractFromResume and resolveFieldsWithAI type their model parameter as bare string instead of the GeminiModel union, losing compile-time protection against a typo'd or stale model id.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "d0e43fc",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0123",
@@ -1971,11 +1971,11 @@
       "file": "src/resume-ai/gemini.ts",
       "line": 164,
       "description": "The AI-autofill prompt is assembled inline in resolveFieldsWithAI instead of exposing an equivalent buildAutofillPrompt() in autofillPrompt.ts, unlike resume extraction which cleanly separates prompt construction into buildPrompt() in prompt.ts.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "9af8848",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0124",
@@ -2067,11 +2067,11 @@
       "file": "src/utils/profileValidator.ts",
       "line": 320,
       "description": "documents.coverLetter is passed through wholesale with zero field-level validation, while documents.cv immediately above is deeply validated (url length cap, file shape with name/size/base64 typechecks) in the same function.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "a4aa926",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0130",
@@ -2083,11 +2083,11 @@
       "file": "src/utils/profileValidator.ts",
       "line": 290,
       "description": "links.custom is accepted with only an Array.isArray check and cast straight through, unlike every other array field in the same function (workAuthorization, workHistory, education, languages) which validates each entry's shape and drops/reports invalid ones.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "a4aa926",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0131",
