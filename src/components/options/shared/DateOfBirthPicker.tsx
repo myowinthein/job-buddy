@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fieldCls } from './fieldCls';
 
 const MONTHS = [
   { value: 1,  label: 'January' },
@@ -72,10 +73,7 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
   const [yearError, setYearError] = useState('');
 
   const hasAnyError = !!error || !!dayError || !!yearError;
-  const borderCls = hasAnyError
-    ? 'border-red-300 dark:border-red-500 focus:ring-red-500'
-    : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500';
-  const fieldCls = `w-full px-3 py-2 text-sm border ${borderCls} rounded-lg focus:outline-none focus:ring-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100`;
+  const inputCls = fieldCls(hasAnyError ? 'error' : undefined);
 
   const handleDayInput = (raw: string) => {
     const cleaned = raw.replace(/\D/g, '').slice(0, 2);
@@ -132,7 +130,7 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
             inputMode="numeric"
             pattern="\d{1,2}"
             maxLength={2}
-            className={fieldCls}
+            className={inputCls}
             value={dayStr}
             onChange={(e) => handleDayInput(e.target.value)}
             placeholder="DD"
@@ -145,7 +143,7 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
         <div className="flex-1 flex gap-2">
           <div className="flex-1">
             <select
-              className={fieldCls}
+              className={inputCls}
               value={month || ''}
               onChange={(e) => handleMonth(Number(e.target.value))}
               aria-label="Month"
@@ -164,7 +162,7 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
               inputMode="numeric"
               pattern="\d{4}"
               maxLength={4}
-              className={fieldCls}
+              className={inputCls}
               value={yearStr}
               onChange={(e) => handleYearInput(e.target.value)}
               placeholder="YYYY"
