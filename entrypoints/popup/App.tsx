@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Info, CheckCircle } from 'lucide-react';
 import { getProfile, getGeminiApiKey } from '@/src/utils/storage';
+import { sessionGet, sessionSet } from '@/src/utils/sessionStorage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import type { DebugSession } from '@/src/autofill/debug';
 import { DebugPanel } from './DebugPanel';
@@ -104,18 +105,16 @@ function App() {
         // Content script not loaded on this page — stay in idle state.
       }
     })();
-    try {
-      chrome.storage.session.get('jb:ai:nudge:dismissed', (r) => {
-        if (!cancelled && r?.['jb:ai:nudge:dismissed']) setNudgeDismissed(true);
-      });
-    } catch { /* session storage unavailable — show nudge */ }
+    sessionGet('jb:ai:nudge:dismissed').then((r) => {
+      if (!cancelled && r?.['jb:ai:nudge:dismissed']) setNudgeDismissed(true);
+    });
     getGeminiApiKey().then((key) => { if (!cancelled) setHasGeminiKey(!!key); }).catch(() => { if (!cancelled) setHasGeminiKey(false); });
     return () => { cancelled = true; };
   }, [sendToActiveTab]);
 
   const dismissNudge = () => {
     setNudgeDismissed(true);
-    try { chrome.storage.session.set({ 'jb:ai:nudge:dismissed': true }); } catch { /* ignore */ }
+    void sessionSet({ 'jb:ai:nudge:dismissed': true });
   };
 
   const openOptions = () => chrome.runtime.openOptionsPage();
@@ -125,7 +124,7 @@ function App() {
   // crosses the popup→options-page context boundary via chrome.storage.session.
   const goToSettingsKey = () => {
     dismissNudge();
-    try { chrome.storage.session.set({ 'jb:focusOnLoad': 'gemini-api-key' }); } catch { /* ignore */ }
+    void sessionSet({ 'jb:focusOnLoad': 'gemini-api-key' });
     chrome.runtime.openOptionsPage();
   };
 

@@ -23,28 +23,28 @@ beforeEach(() => {
 });
 
 describe('handleOpenOptions', () => {
-  it('writes jb:focusOnLoad to session storage when a focusPath is given, then opens options', () => {
+  it('writes jb:focusOnLoad to session storage when a focusPath is given, then opens options', async () => {
     const sendResponse = vi.fn();
-    handleOpenOptions('personal.firstName', sendResponse);
+    await handleOpenOptions('personal.firstName', sendResponse);
 
     expect(sessionStore['jb:focusOnLoad']).toEqual({ type: 'profilePath', path: 'personal.firstName' });
     expect(chrome.runtime.openOptionsPage).toHaveBeenCalledTimes(1);
     expect(sendResponse).toHaveBeenCalledWith({ success: true });
   });
 
-  it('opens options directly without touching session storage when focusPath is absent', () => {
+  it('opens options directly without touching session storage when focusPath is absent', async () => {
     const sendResponse = vi.fn();
-    handleOpenOptions(undefined, sendResponse);
+    await handleOpenOptions(undefined, sendResponse);
 
     expect(sessionStore['jb:focusOnLoad']).toBeUndefined();
     expect(chrome.runtime.openOptionsPage).toHaveBeenCalledTimes(1);
     expect(sendResponse).toHaveBeenCalledWith({ success: true });
   });
 
-  it('reports success: false when chrome.runtime.lastError is set', () => {
+  it('reports success: false when chrome.runtime.lastError is set', async () => {
     (chrome.runtime as unknown as { lastError: { message: string } | null }).lastError = { message: 'boom' };
     const sendResponse = vi.fn();
-    handleOpenOptions(undefined, sendResponse);
+    await handleOpenOptions(undefined, sendResponse);
 
     expect(sendResponse).toHaveBeenCalledWith({ success: false });
   });
