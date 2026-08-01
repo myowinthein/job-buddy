@@ -56,7 +56,7 @@ function clearDemoData() {
 
 document.getElementById("resetButton")?.addEventListener("click", clearDemoData);
 
-document.getElementById("applicationForm").addEventListener("submit", (event) => {
+document.getElementById("applicationForm")?.addEventListener("submit", (event) => {
   event.preventDefault();
   alert("Demo only. No application was submitted.");
 });
