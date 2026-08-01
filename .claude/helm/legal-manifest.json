@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "documents": [
+    { "file": "docs/legal/privacy/index.html", "generated_at": "2026-08-01", "generated_at_commit": "20c75709c386a4355b11b2568226d8c7237b7404" },
+    { "file": "docs/legal/terms/index.html", "generated_at": "2026-08-01", "generated_at_commit": "20c75709c386a4355b11b2568226d8c7237b7404" },
+    { "file": "docs/legal/eula/index.html", "generated_at": "2026-08-01", "generated_at_commit": "20c75709c386a4355b11b2568226d8c7237b7404" },
+    { "file": "docs/legal/disclaimer/index.html", "generated_at": "2026-08-01", "generated_at_commit": "20c75709c386a4355b11b2568226d8c7237b7404" }
+  ]
+}
