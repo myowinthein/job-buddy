@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fieldCls } from './fieldCls';
 
 const MONTHS = [
   { value: '01', label: 'January' },
@@ -71,12 +72,7 @@ export function MonthYearPicker({
     onYearChange?.(cleaned);
   };
 
-  const borderCls = error
-    ? 'border-red-300 dark:border-red-500 focus:ring-red-500'
-    : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500';
-  const baseCls = `w-full px-3 py-2 text-sm border ${borderCls} rounded-lg focus:outline-none focus:ring-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100`;
-  const disabledCls = disabled ? ' opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-700' : '';
-  const fieldCls = baseCls + disabledCls;
+  const inputCls = fieldCls(error, disabled);
 
   const handleGroupBlur = (e: React.FocusEvent<HTMLDivElement>) => {
     // Only fire when focus moves outside the entire month+year group,
@@ -90,7 +86,7 @@ export function MonthYearPicker({
     <div className="flex gap-2" onBlur={handleGroupBlur}>
       <div className="flex-1">
         <select
-          className={fieldCls}
+          className={inputCls}
           value={month}
           disabled={disabled}
           onChange={(e) => handleMonth(e.target.value)}
@@ -110,7 +106,7 @@ export function MonthYearPicker({
           inputMode="numeric"
           pattern="\d{4}"
           maxLength={4}
-          className={fieldCls}
+          className={inputCls}
           value={yearStr}
           disabled={disabled}
           onChange={(e) => handleYearInput(e.target.value)}
