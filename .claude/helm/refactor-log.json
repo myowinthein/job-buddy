@@ -2115,11 +2115,11 @@
       "file": "entrypoints/background.ts",
       "line": 9,
       "description": "The OPEN_OPTIONS handler (focus-path payload shape, chrome.storage.session write, openOptionsPage call) is inline inside defineBackground(). Per this project's own documented WXT trap, test files can't live under entrypoints/, so this logic structurally cannot get test coverage without extraction to a src/ helper.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "c35e9e9",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0133",
@@ -2195,11 +2195,11 @@
       "file": "docs/index.html",
       "line": 0,
       "description": "Brand colors #4B79F7 (blue) and #0D1B3E (navy) are independently hardcoded in three unrelated files \u2014 docs/index.html, docs/project-site/assets/style.css, and demo-apply-form/assets/css/styles.css \u2014 with no shared source. A rebrand requires manually touching all three with nothing to catch a missed spot.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "4d8b4ac",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0138",
@@ -2211,11 +2211,11 @@
       "file": "docs/project-site/index.html",
       "line": 37,
       "description": "The page hardcodes a stale version (v1.9.1, vs actual package.json version 1.10.0) and a stale commit hash (8f4458e5, several releases behind current HEAD), despite branding itself as 'generated from repository evidence' at a specific commit \u2014 implying it should be periodically regenerated.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "25abad5",
+      "resolved_date": "2026-08-01"
     },
     {
       "id": "f-0139",
