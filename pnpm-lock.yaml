@@ -33,9 +33,6 @@ importers:
       '@types/chrome':
         specifier: ^0.1.43
         version: 0.1.43
-      '@types/jsdom':
-        specifier: ^28.0.3
-        version: 28.0.3
       '@types/react':
         specifier: ^19.2.14
         version: 19.2.17
@@ -810,9 +807,6 @@ packages:
   '@types/har-format@1.2.16':
     resolution: {integrity: sha512-fluxdy7ryD3MV6h8pTfTYpy/xQzCFC7m89nOH9y94cNqJ1mDIDPut7MnRHI3F6qRmh/cT2fUjG1MLdCNb4hE9A==}
 
-  '@types/jsdom@28.0.3':
-    resolution: {integrity: sha512-/HQ2uFoetFTXuye8vzIcHw2z6Fwi7Hi/qcgC+RoS9NCyewiqxhVGqlG+ViGB6lkax481R6dmhf1I7lIGlzJStQ==}
-
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
 
@@ -829,9 +823,6 @@ packages:
 
   '@types/react@19.2.17':
     resolution: {integrity: sha512-MXfmqaVPEVgkBT/aY0aGCkRWWtByiYQXo3xdQ8r5RzuFrPiRn8Gar2tQdXSUQ2GKV3bkXckek89V8wQBY2Q/Aw==}
-
-  '@types/tough-cookie@4.0.5':
-    resolution: {integrity: sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==}
 
   '@types/webextension-polyfill@0.12.5':
     resolution: {integrity: sha512-uKSAv6LgcVdINmxXMKBuVIcg/2m5JZugoZO8x20g7j2bXJkPIl/lVGQcDlbV+aXAiTyXT2RA5U5mI4IGCDMQeg==}
@@ -3802,13 +3793,6 @@ snapshots:
 
   '@types/har-format@1.2.16': {}
 
-  '@types/jsdom@28.0.3':
-    dependencies:
-      '@types/node': 25.9.3
-      '@types/tough-cookie': 4.0.5
-      parse5: 8.0.1
-      undici-types: 7.24.6
-
   '@types/json-schema@7.0.15': {}
 
   '@types/minimatch@3.0.5': {}
@@ -3824,8 +3808,6 @@ snapshots:
   '@types/react@19.2.17':
     dependencies:
       csstype: 3.2.3
-
-  '@types/tough-cookie@4.0.5': {}
 
   '@types/webextension-polyfill@0.12.5': {}
 
