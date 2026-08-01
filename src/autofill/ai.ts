@@ -96,7 +96,7 @@ export async function runAIAutofill(
 
     if (c.type === 'text') {
       const s = c.signals;
-      const baseLabel = s.label || s.ariaLabel || s.placeholder || s.name || '';
+      const baseLabel = bestLabel(s);
       const base = {
         fieldId,
         label:        baseLabel,
