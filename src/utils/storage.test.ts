@@ -34,7 +34,6 @@ import {
   clearAllStorage,
 } from './storage';
 import type { Profile } from '../types/profile';
-import type { ApplicationEntry } from '../types/storage';
 
 const MINIMAL_PROFILE: Profile = {
   id: 'test-id',
@@ -245,8 +244,8 @@ describe('clearAllStorage', () => {
     await saveProfile(MINIMAL_PROFILE);
     await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
     await saveApplicationHistory([
-      { id: 'app-1', company: 'Acme', position: 'Dev', appliedAt: '2026-01-01', url: 'https://acme.example' },
-    ] as unknown as ApplicationEntry[]);
+      { id: 'app-1', jobTitle: 'Dev', company: 'Acme', url: 'https://acme.example', appliedAt: '2026-01-01', status: 'applied' },
+    ]);
 
     const removeSpy = vi.spyOn(chrome.storage.local, 'remove');
 
