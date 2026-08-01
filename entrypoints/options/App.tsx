@@ -109,37 +109,38 @@ function App() {
   // the case where the Options tab was already open when the user clicked
   // "Go to Profile", so OPEN_OPTIONS just focused the existing tab without a
   // reload.
-  const applyFocusTarget = useCallback(async () => {
-    const r = await sessionGet('jb:focusOnLoad');
-    const target = r?.['jb:focusOnLoad'];
-    if (target == null) return;
-    await sessionRemove('jb:focusOnLoad');
+  const applyFocusTarget = useCallback(() => {
+    sessionGet('jb:focusOnLoad').then((r) => {
+      const target = r?.['jb:focusOnLoad'];
+      if (target == null) return;
+      void sessionRemove('jb:focusOnLoad');
 
-    if (target === 'gemini-api-key') {
-      focusGeminiKey();
-      return;
-    }
-
-    if (typeof target === 'object') {
-      const obj = target as { type?: unknown; path?: unknown };
-      if (obj.type === 'profilePath' && typeof obj.path === 'string') {
-        const resolved = resolvePathFocusTarget(obj.path);
-        if (!resolved) return;
-        skipAutoFocusRef.current = true;
-        setActiveSection(resolved.section as SectionId);
-        if (resolved.fieldId) setFocusTarget(resolved.fieldId);
+      if (target === 'gemini-api-key') {
+        focusGeminiKey();
+        return;
       }
-    }
+
+      if (typeof target === 'object') {
+        const obj = target as { type?: unknown; path?: unknown };
+        if (obj.type === 'profilePath' && typeof obj.path === 'string') {
+          const resolved = resolvePathFocusTarget(obj.path);
+          if (!resolved) return;
+          skipAutoFocusRef.current = true;
+          setActiveSection(resolved.section as SectionId);
+          if (resolved.fieldId) setFocusTarget(resolved.fieldId);
+        }
+      }
+    });
   }, [focusGeminiKey]);
 
   useEffect(() => {
     if (loading) return;
-    void applyFocusTarget();
+    applyFocusTarget();
   }, [loading, applyFocusTarget]);
 
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') void applyFocusTarget();
+      if (document.visibilityState === 'visible') applyFocusTarget();
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
