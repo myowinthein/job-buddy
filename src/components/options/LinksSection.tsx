@@ -4,6 +4,8 @@ import type { Profile, CustomLink } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
 import { RemoveButton } from './shared/RemoveButton';
 import { saveSection } from './shared/saveSection';
+import { SaveButton } from './shared/SaveButton';
+import { AddEntryButton } from './shared/AddEntryButton';
 import { fieldCls as cls } from './shared/fieldCls';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 
@@ -129,13 +131,11 @@ export function LinksSection({ profile, onSave }: Props) {
       <div className="mb-4">
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Custom Links</p>
-          <button
-            type="button"
+          <AddEntryButton
+            variant="pill"
             onClick={() => { setCustom((rows) => [...rows, { label: '', url: '' }]); setNewEntryTick((t) => t + 1); }}
-            className="text-xs px-3 py-1.5 border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-colors"
-          >
-            + Add Entry
-          </button>
+            label="+ Add Entry"
+          />
         </div>
         <div ref={customContainerRef}>
         {custom.map((c, idx) => (
@@ -172,13 +172,7 @@ export function LinksSection({ profile, onSave }: Props) {
       </div>
 
       <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
-        >
-          {saving ? 'Saving...' : 'Save Links'}
-        </button>
+        <SaveButton onClick={handleSave} saving={saving} label="Save Links" />
       </div>
     </div>
   );
