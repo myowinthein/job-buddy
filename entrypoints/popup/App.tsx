@@ -18,7 +18,6 @@ interface AutofillResult {
 
 interface AutofillScanResult {
   preFilledCount: number;
-  totalMatched:   number;
 }
 
 interface CompletionState {
