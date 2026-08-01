@@ -75,7 +75,7 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 
 ---
 
-## 5. Behavior Rules
+## 5. Domain Rules
 
 **Autofill confidence tiers:** ≥0.85 → green (fill, no picker) · 0.60–0.84 → yellow (fill + picker) · <0.60 → red (no fill + picker) · ≥0.60 but profile value empty → gray/noData (no highlight, picker shows "Go to Profile" CTA). AI-resolved fields that reach ≥0.85 are treated as green and do not show the picker.
 
@@ -87,21 +87,25 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 
 **AI is purely additive:** The extension works fully without a Gemini key. AI autofill runs after the rule pipeline; all failures must be silent — never surface network errors from the AI layer.
 
-**Toast system:** `useToast()` from `src/components/ui/Toast.tsx`. Never add inline "✓ Saved" labels to section components.
-
 **Profile schema fan-out:** Any field added or renamed on `Profile` must be reflected in four places: `src/types/profile.ts`, `src/resume-ai/prompt.ts` schema, `src/resume-ai/parser.ts` FIELD_DEFS, and `src/utils/profileValidator.ts`.
 
 **Profile date formats are NOT unified:** work history dates require month (`YYYY-MM`); education dates accept either `YYYY` or `YYYY-MM`. Keep the validator regexes separate.
 
-**Learned mapping confidence:** `LearnedMappings` values are `string | { path: string; count: number }`. New mappings start at `count: 1` and are not promoted to Layer 0 until count reaches 2. `saveLearnedMapping()` in `src/utils/storage.ts` is the source of truth.
+**Learned mapping confidence:** `LearnedMappings` values are `string | { path: string; count: number }`. New mappings start at `count: 1` and are not promoted to Layer 0 until count reaches 2, and are matched only against `label/ariaLabel/placeholder/name/id` — never `nearbyText`. `saveLearnedMapping()` in `src/utils/storage.ts` is the source of truth.
 
 **Drive backup payload fan-out:** Adding a field to `DriveBackupFile` requires updating both `syncProfileToDrive()` (upload) and two restore paths in `SettingsSection` — `handleRestoreFromDrive` and `handleDriveReviewSave`.
+
+---
+
+## 6. Behavior Rules
+
+**Toast system:** `useToast()` from `src/components/ui/Toast.tsx`. Never add inline "✓ Saved" labels to section components.
 
 **Test environment:** Vitest with per-file `// @vitest-environment jsdom` for DOM-dependent tests — no global jsdom switch. `@testing-library/react` is not installed; React component tests require adding it first.
 
 ---
 
-## 6. Hard Safety Rules
+## 7. Hard Safety Rules
 
 - **Never push a `v*.*.*` tag without explicit user instruction.** Tag annotation `"release"` submits to CWS immediately; `"release:draft"` uploads as a draft. No CLI rollback either way.
 - **Never read or print `.env.development` / `.env.production`** — they contain real OAuth client IDs.
@@ -110,7 +114,7 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 
 ---
 
-## 7. Known Traps
+## 8. Known Traps
 
 - **`MonthYearPicker` emits `onChange('')` during partial entry.** Enforce required-field validation at save time only, not on each keystroke.
 
@@ -146,4 +150,4 @@ At the start of every session, check whether the paths above exist on this machi
 If either is missing, inform the user: "helm rules are referenced in CLAUDE.md but the
 plugin is not installed on this machine. Install it with: /plugin install claude-helm"
 
-<!-- last-reviewed: 3102c42487c6303519834d99497e47949df839f9 -->
+<!-- last-reviewed: 221ca8fbc513d3cd6ae1e072f5d7cef7f3dd7d5e -->
