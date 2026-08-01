@@ -3,6 +3,8 @@ import { useState, useRef, DragEvent } from 'react';
 import type { Profile, DocumentEntry, DocumentFile } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
 import { saveSection } from './shared/saveSection';
+import { fieldCls } from './shared/fieldCls';
+import { SaveButton } from './shared/SaveButton';
 
 interface Props {
   profile: Partial<Profile>;
@@ -98,9 +100,7 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
     if (file) handleFile(file);
   };
 
-  const urlCls = state.urlError
-    ? 'w-full px-3 py-2 border border-red-300 dark:border-red-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500'
-    : 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
+  const urlCls = fieldCls(state.urlError);
 
   return (
     <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
@@ -234,13 +234,7 @@ export function DocumentsSection({ profile, onSave }: Props) {
       <DocUploader label="CV / Résumé" required state={cv} onChange={(u) => setCv((s) => ({ ...s, ...u }))} />
 
       <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
-        >
-          {saving ? 'Saving...' : 'Save Documents'}
-        </button>
+        <SaveButton onClick={handleSave} saving={saving} label="Save Documents" />
       </div>
     </div>
   );

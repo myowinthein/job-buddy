@@ -22,4 +22,21 @@ describe('fieldCls', () => {
   it('returns different strings for error vs no-error', () => {
     expect(fieldCls('err')).not.toBe(fieldCls());
   });
+
+  it('appends disabled styling when disabled is true', () => {
+    const cls = fieldCls(undefined, true);
+    expect(cls).toContain('opacity-50');
+    expect(cls).toContain('cursor-not-allowed');
+  });
+
+  it('omits disabled styling when disabled is false or absent', () => {
+    expect(fieldCls()).not.toContain('opacity-50');
+    expect(fieldCls(undefined, false)).not.toContain('opacity-50');
+  });
+
+  it('applies disabled styling on top of the error variant', () => {
+    const cls = fieldCls('Required field', true);
+    expect(cls).toContain('border-red');
+    expect(cls).toContain('opacity-50');
+  });
 });

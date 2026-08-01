@@ -231,6 +231,65 @@ describe('connectDrive', () => {
     expect(state.fileId).toBe('file-1');
     vi.unstubAllEnvs();
   });
+
+  it('file found but body is not an object → treated as no backup, not a sync error', async () => {
+    const mod = await importConfiguredDriveSync();
+    mockAuthFlow({ token: 'tok-ok' });
+    mockFetchSequence([
+      { ok: true, body: { files: [{ id: 'file-1', name: 'job-buddy-profile.json' }] } }, // findBackupFileId
+      { ok: true, body: 'not-an-object' },                                               // downloadBackupFromDrive
+    ]);
+
+    const result = await mod.connectDrive();
+
+    expect(result).toEqual({ token: 'tok-ok', backup: null, fileId: 'file-1' });
+    const state = store['driveBackupState'] as { pendingSync: boolean; error: string | null };
+    expect(state.pendingSync).toBe(false);
+    expect(state.error).toBeNull();
+    vi.unstubAllEnvs();
+  });
+
+  it('file found but body is missing .profile → treated as no backup, not a sync error', async () => {
+    const mod = await importConfiguredDriveSync();
+    mockAuthFlow({ token: 'tok-ok' });
+    mockFetchSequence([
+      { ok: true, body: { files: [{ id: 'file-1', name: 'job-buddy-profile.json' }] } }, // findBackupFileId
+      { ok: true, body: { learnedMappings: {} } },                                       // downloadBackupFromDrive, no .profile
+    ]);
+
+    const result = await mod.connectDrive();
+
+    expect(result).toEqual({ token: 'tok-ok', backup: null, fileId: 'file-1' });
+    vi.unstubAllEnvs();
+  });
+
+  it('file found but response body fails to parse as JSON → treated as no backup, not a sync error', async () => {
+    const mod = await importConfiguredDriveSync();
+    mockAuthFlow({ token: 'tok-ok' });
+    let call = 0;
+    fetchMock.mockImplementation(() => {
+      call++;
+      if (call === 1) {
+        // findBackupFileId
+        return Promise.resolve({
+          ok: true, status: 200,
+          json: () => Promise.resolve({ files: [{ id: 'file-1', name: 'job-buddy-profile.json' }] }),
+          text: () => Promise.resolve(''),
+        });
+      }
+      // downloadBackupFromDrive — simulates an interrupted upload / hand-edited appdata file
+      return Promise.resolve({
+        ok: true, status: 200,
+        json: () => Promise.reject(new Error('bad body')),
+        text: () => Promise.resolve(''),
+      });
+    });
+
+    const result = await mod.connectDrive();
+
+    expect(result).toEqual({ token: 'tok-ok', backup: null, fileId: 'file-1' });
+    vi.unstubAllEnvs();
+  });
 });
 
 describe('overwriteDriveWithLocal', () => {

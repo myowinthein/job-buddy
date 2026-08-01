@@ -46,6 +46,10 @@ export function DebugPanel({
     () => new Map(session.ai.map((a) => [a.fieldId, a])),
     [session.ai],
   );
+  const scannerByFieldId = useMemo(
+    () => new Map(session.scanner.map((s) => [s.fieldId, s])),
+    [session.scanner],
+  );
 
   return (
     <div
@@ -81,7 +85,7 @@ export function DebugPanel({
             ) : (
               <ul className="space-y-1.5">
                 {session.mapping.map((m) => {
-                  const scanned = session.scanner.find((s) => s.fieldId === m.fieldId);
+                  const scanned = scannerByFieldId.get(m.fieldId);
                   return (
                     <li key={m.fieldId} className="px-2 py-1.5 bg-gray-50 dark:bg-gray-800 rounded">
                       <div className="flex items-baseline gap-1.5">

@@ -25,6 +25,15 @@ export const MODEL_DISPLAY_NAMES: Record<GeminiModel, string> = {
   'gemini-3.1-flash-lite': 'Gemini 3.1 Flash-Lite',
 };
 
+// Persisted model strings can predate the current GeminiModel union (e.g. an
+// older version's model name after a lineup change). Validates and falls back
+// to the current default rather than passing a stale/unknown id to the API.
+export function toGeminiModel(stored: string | null | undefined): GeminiModel {
+  return (GEMINI_MODEL_PRIORITY as string[]).includes(stored ?? '')
+    ? (stored as GeminiModel)
+    : DEFAULT_GEMINI_MODEL;
+}
+
 export type ImportProgressStep = 'reading' | 'sending' | 'processing';
 
 export type ImportErrorCode = 'rate_limit' | 'auth' | 'parse' | 'network' | 'file_too_large';

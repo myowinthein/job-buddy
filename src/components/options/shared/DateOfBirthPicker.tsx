@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { fieldCls } from './fieldCls';
+import { daysInMonth, parseDOB, buildDOB, computePartial } from './dateOfBirthMath';
 
 const MONTHS = [
   { value: 1,  label: 'January' },
@@ -29,35 +31,6 @@ interface Props {
   id?: string;
 }
 
-function daysInMonth(month: number, year: number): number {
-  if (!month) return 31;
-  if (!year) return month === 2 ? 29 : [4, 6, 9, 11].includes(month) ? 30 : 31;
-  return new Date(year, month, 0).getDate();
-}
-
-function parseDOB(raw: string): { month: number; day: number; year: number } {
-  if (!raw) return { month: 0, day: 0, year: 0 };
-  const parts = raw.split('-');
-  return {
-    year:  parseInt(parts[0] ?? '', 10) || 0,
-    month: parseInt(parts[1] ?? '', 10) || 0,
-    day:   parseInt(parts[2] ?? '', 10) || 0,
-  };
-}
-
-function buildDOB(month: number, day: number, year: number): string {
-  if (!month || !day || !year) return '';
-  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-function computePartial(dayStr: string, month: number, yearStr: string): boolean {
-  const dayFilled   = dayStr.length > 0;
-  const monthFilled = month > 0;
-  const yearFilled  = yearStr.length > 0;
-  const filledCount = (dayFilled ? 1 : 0) + (monthFilled ? 1 : 0) + (yearFilled ? 1 : 0);
-  return filledCount > 0 && filledCount < 3;
-}
-
 export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id }: Props) {
   const parsed = parseDOB(value);
   const [month, setMonth] = useState(parsed.month);
@@ -72,10 +45,7 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
   const [yearError, setYearError] = useState('');
 
   const hasAnyError = !!error || !!dayError || !!yearError;
-  const borderCls = hasAnyError
-    ? 'border-red-300 dark:border-red-500 focus:ring-red-500'
-    : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500';
-  const fieldCls = `w-full px-3 py-2 text-sm border ${borderCls} rounded-lg focus:outline-none focus:ring-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100`;
+  const inputCls = fieldCls(hasAnyError ? 'error' : undefined);
 
   const handleDayInput = (raw: string) => {
     const cleaned = raw.replace(/\D/g, '').slice(0, 2);
@@ -132,7 +102,7 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
             inputMode="numeric"
             pattern="\d{1,2}"
             maxLength={2}
-            className={fieldCls}
+            className={inputCls}
             value={dayStr}
             onChange={(e) => handleDayInput(e.target.value)}
             placeholder="DD"
@@ -145,7 +115,7 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
         <div className="flex-1 flex gap-2">
           <div className="flex-1">
             <select
-              className={fieldCls}
+              className={inputCls}
               value={month || ''}
               onChange={(e) => handleMonth(Number(e.target.value))}
               aria-label="Month"
@@ -164,7 +134,7 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
               inputMode="numeric"
               pattern="\d{4}"
               maxLength={4}
-              className={fieldCls}
+              className={inputCls}
               value={yearStr}
               onChange={(e) => handleYearInput(e.target.value)}
               placeholder="YYYY"

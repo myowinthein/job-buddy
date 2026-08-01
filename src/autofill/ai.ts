@@ -4,6 +4,7 @@ import { bestLabel } from './signals';
 import { resolveProfileValue } from './resolver';
 import { resolveFieldsWithAI } from '../resume-ai/gemini';
 import type { AIFieldPayload, AIFieldResponse, AIOptionPayload } from '../resume-ai/types';
+import { toGeminiModel } from '../resume-ai/types';
 import { scanRadioGroups, scanCheckboxGroups } from './scanner';
 import type { RadioGroup, CheckboxGroup } from './scanner';
 import { fillField, fillRadioInput, fillCheckboxInput } from './filler';
@@ -15,14 +16,10 @@ import { getGeminiApiKey, getGeminiModel, saveLearnedMapping } from '../utils/st
 import { normalize, PLACEHOLDER_OPTION_NORMS } from './normalizer';
 import { saveElementMappings } from './mappings';
 import type { DebugAIField } from './debug';
+import type { AutofillResult } from './index';
 
-// Mutable result shape — matches the fields of AutofillResult that AI updates
-interface MutableResult {
-  noReview:      number;
-  needReview:    number;
-  lowConfidence: number;
-  noData:        number;
-}
+// Mutable result shape — the subset of AutofillResult's fields that AI updates
+type MutableResult = Pick<AutofillResult, 'noReview' | 'needReview' | 'lowConfidence' | 'noData'>;
 
 export interface AITextCandidate {
   type:             'text';
@@ -65,8 +62,9 @@ export async function runAIAutofill(
   debug?: DebugAIField[],
   aiGreenFilled?: Set<HTMLElement>,
 ): Promise<boolean> {
-  const [apiKey, model] = await Promise.all([getGeminiApiKey(), getGeminiModel()]);
-  if (!apiKey || !model) return false;
+  const [apiKey, storedModel] = await Promise.all([getGeminiApiKey(), getGeminiModel()]);
+  if (!apiKey || !storedModel) return false;
+  const model = toGeminiModel(storedModel);
 
   const radioGroups    = scanRadioGroups();
   const checkboxGroups = scanCheckboxGroups().filter((g) => !g.isConsent);
@@ -96,7 +94,7 @@ export async function runAIAutofill(
 
     if (c.type === 'text') {
       const s = c.signals;
-      const baseLabel = s.label || s.ariaLabel || s.placeholder || s.name || '';
+      const baseLabel = bestLabel(s);
       const base = {
         fieldId,
         label:        baseLabel,

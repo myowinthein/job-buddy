@@ -260,4 +260,43 @@ describe('validateImportedProfile', () => {
     expect(result.valid).toBe(true);
     expect(result.sanitized.documents?.coverLetter).toEqual({ url: 'https://example.com/cl.pdf' });
   });
+
+  it('rejects documents.coverLetter.file missing base64, same rigor as cv.file', () => {
+    const result = validateImportedProfile({
+      documents: { coverLetter: { file: { name: 'cl.pdf', size: 1024 } } },
+    });
+    expect(result.valid).toBe(false);
+    expect(result.invalidFields.some((f) => f.path === 'documents.coverLetter.file')).toBe(true);
+  });
+
+  it('rejects documents.coverLetter.url over 255 chars', () => {
+    const result = validateImportedProfile({
+      documents: { coverLetter: { url: 'x'.repeat(256) } },
+    });
+    expect(result.valid).toBe(false);
+    expect(result.invalidFields.some((f) => f.path === 'documents.coverLetter.url')).toBe(true);
+  });
+
+  it('accepts valid links.custom entries', () => {
+    const result = validateImportedProfile({
+      links: { linkedin: '', custom: [{ label: 'GitHub', url: 'https://github.com/jane' }] },
+    });
+    expect(result.valid).toBe(true);
+    expect(result.sanitized.links?.custom).toEqual([{ label: 'GitHub', url: 'https://github.com/jane' }]);
+  });
+
+  it('drops a malformed links.custom entry and reports it, keeping valid entries', () => {
+    const result = validateImportedProfile({
+      links: {
+        linkedin: '',
+        custom: [
+          { label: 'GitHub', url: 'https://github.com/jane' },
+          { label: 'Missing URL' },
+        ],
+      },
+    });
+    expect(result.valid).toBe(false);
+    expect(result.invalidFields.some((f) => f.path === 'links.custom[1]')).toBe(true);
+    expect(result.sanitized.links?.custom).toEqual([{ label: 'GitHub', url: 'https://github.com/jane' }]);
+  });
 });

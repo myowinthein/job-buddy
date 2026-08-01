@@ -3,12 +3,17 @@ import type { GeminiModel, KeyValidationResult, ImportError, AIFieldPayload, AIF
 import { GEMINI_MODEL_PRIORITY } from './types';
 import { buildPrompt } from './prompt';
 import { normalizeExtractedProfile, stripMarkdown } from './normalize';
-import { AUTOFILL_SYSTEM_PROMPT } from './autofillPrompt';
+import { buildAutofillPrompt } from './autofillPrompt';
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 function endpoint(model: string, apiKey: string): string {
   return `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
+}
+
+function extractGeminiText(data: unknown): string | undefined {
+  return (data as { candidates?: { content?: { parts?: { text?: string }[] } }[] })
+    ?.candidates?.[0]?.content?.parts?.[0]?.text;
 }
 
 // ── Key validation (decoupled from model selection) ───────────────────────────
@@ -75,7 +80,7 @@ export async function validateApiKey(apiKey: string): Promise<KeyValidationResul
 
 export async function extractFromResume(
   apiKey: string,
-  model: string,
+  model: GeminiModel,
   fileBase64: string,
   mimeType: string,
   currentProfile: Partial<Profile>,
@@ -124,8 +129,7 @@ export async function extractFromResume(
       throw importError('parse', "Couldn't read the response. Try again.");
     }
 
-    const text = (data as { candidates?: { content?: { parts?: { text?: string }[] } }[] })
-      ?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const text = extractGeminiText(data);
 
     if (!text) throw importError('parse', "Couldn't read the response. Try again.");
 
@@ -149,11 +153,11 @@ function parseResponse(text: string): Partial<Profile> {
 
 export async function resolveFieldsWithAI(
   apiKey: string,
-  model: string,
+  model: GeminiModel,
   fields: AIFieldPayload[],
   profile: object,
 ): Promise<AIFieldResponse[]> {
-  const body = JSON.stringify({ fields, profile }, null, 2);
+  const prompt = buildAutofillPrompt(fields, profile);
 
   let resp: Response;
   try {
@@ -161,7 +165,7 @@ export async function resolveFieldsWithAI(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `${AUTOFILL_SYSTEM_PROMPT}\n\n${body}` }] }],
+        contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0 },
       }),
     });
@@ -174,8 +178,7 @@ export async function resolveFieldsWithAI(
   let data: unknown;
   try { data = await resp.json(); } catch { return []; }
 
-  const text = (data as { candidates?: { content?: { parts?: { text?: string }[] } }[] })
-    ?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  const text = extractGeminiText(data) ?? '';
 
   return parseAutofillResponse(text);
 }
