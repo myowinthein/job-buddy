@@ -9,7 +9,7 @@ export default defineBackground(() => {
   // one is already open instead of duplicating it.
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.action === 'OPEN_OPTIONS') {
-      handleOpenOptions(message.focusPath, sendResponse);
+      void handleOpenOptions(message.focusPath, sendResponse);
       return true; // async response
     }
   });
