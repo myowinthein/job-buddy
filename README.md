@@ -86,4 +86,4 @@ pnpm test:run  # Vitest
 
 [MIT](LICENSE) © 2026 Myo Win Thein
 
-<!-- last-reviewed: 87a3a2ac94059fc7f1476f8bf80c245dc6b4e865 -->
+<!-- last-reviewed: d50370b0f04e66dfa99aba465a423c90432bd264 -->

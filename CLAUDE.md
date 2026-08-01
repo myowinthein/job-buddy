@@ -14,6 +14,7 @@ Chrome MV3 browser extension (WXT framework) that auto-fills job application for
 
 - `git-strategy: solo` — commit directly to `main`, no feature branches, no PRs. See `.claude/rules/git.md`.
 - `git-auto-commit: true` — commit automatically after each task without prompting; push still requires confirmation.
+- `readme-style: standard` — README.md follows the Standard Readme spec structure.
 
 ---
 
