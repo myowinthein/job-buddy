@@ -1,0 +1,53 @@
+{
+  "schema_version": 2,
+  "last_run_commit": "0a19b6f1c4c724ef323d431ea37c8f66b561b81c",
+  "full_scan_ever_run": true,
+  "consecutive_catchup_count": 1,
+  "files": [
+    {
+      "file": "src/autofill/index.ts",
+      "priority": "high",
+      "last_judged_commit": "91658a1ea79502ab87737340554aa01c55715a40"
+    },
+    {
+      "file": "src/data/countries.ts",
+      "priority": "medium",
+      "last_judged_commit": "91658a1ea79502ab87737340554aa01c55715a40"
+    },
+    {
+      "file": "src/data/currencies.ts",
+      "priority": "medium",
+      "last_judged_commit": "91658a1ea79502ab87737340554aa01c55715a40"
+    },
+    {
+      "file": "src/data/languages.ts",
+      "priority": "medium",
+      "last_judged_commit": "91658a1ea79502ab87737340554aa01c55715a40"
+    },
+    {
+      "file": "src/components/options/shared/fieldCls.ts",
+      "priority": "low",
+      "last_judged_commit": "91658a1ea79502ab87737340554aa01c55715a40"
+    },
+    {
+      "file": "src/components/options/shared/saveSection.ts",
+      "priority": "low",
+      "last_judged_commit": "91658a1ea79502ab87737340554aa01c55715a40"
+    },
+    {
+      "file": "src/components/ui/Toast.tsx",
+      "priority": "low",
+      "last_judged_commit": "91658a1ea79502ab87737340554aa01c55715a40"
+    },
+    {
+      "file": "src/autofill/picker.ts",
+      "priority": "low",
+      "last_judged_commit": "91658a1ea79502ab87737340554aa01c55715a40"
+    },
+    {
+      "file": "src/utils/driveSync.ts",
+      "priority": "low",
+      "last_judged_commit": "91658a1ea79502ab87737340554aa01c55715a40"
+    }
+  ]
+}
