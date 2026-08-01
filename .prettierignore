@@ -1,0 +1,6 @@
+.wxt
+.output
+node_modules
+demo-apply-form
+docs
+pnpm-lock.yaml
