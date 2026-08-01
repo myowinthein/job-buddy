@@ -4,6 +4,7 @@ import type { Profile, DocumentEntry, DocumentFile } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
 import { saveSection } from './shared/saveSection';
 import { fieldCls } from './shared/fieldCls';
+import { SaveButton } from './shared/SaveButton';
 
 interface Props {
   profile: Partial<Profile>;
@@ -233,13 +234,7 @@ export function DocumentsSection({ profile, onSave }: Props) {
       <DocUploader label="CV / Résumé" required state={cv} onChange={(u) => setCv((s) => ({ ...s, ...u }))} />
 
       <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
-        >
-          {saving ? 'Saving...' : 'Save Documents'}
-        </button>
+        <SaveButton onClick={handleSave} saving={saving} label="Save Documents" />
       </div>
     </div>
   );
