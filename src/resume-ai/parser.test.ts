@@ -253,6 +253,9 @@ describe('FIELD_DEFS display functions', () => {
     it('omits missing parts', () => {
       expect(display('salary.current', { currency: 'USD' })).toBe('USD');
     });
+    it('appends country parenthetically, matching salary.expected\'s convention', () => {
+      expect(display('salary.current', { amount: 5000, currency: 'USD', period: 'monthly', country: 'US' })).toBe('5000 USD (monthly) (US)');
+    });
     it('returns "" for a null value', () => {
       expect(display('salary.current', null)).toBe('');
     });
