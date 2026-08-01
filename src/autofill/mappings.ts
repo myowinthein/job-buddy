@@ -3,7 +3,10 @@ import { normalize } from './normalizer';
 import { saveLearnedMapping } from '../utils/storage';
 
 // Saves a learned field→profilePath mapping for every normalised signal text
-// extracted from an element (name, id, placeholder, ariaLabel, label, nearbyText).
+// extracted from an element (name, id, placeholder, ariaLabel, label).
+// nearbyText is excluded: Layer 0 never reads it back (mapper.ts only checks
+// label/ariaLabel/placeholder/name/id), so saving it is a dead write that
+// just accumulates unused entries toward the storage.local quota.
 // Best-effort — callers may wrap in try/catch or fire-and-forget with void.
 export async function saveElementMappings(
   domain: string,
@@ -12,7 +15,7 @@ export async function saveElementMappings(
 ): Promise<void> {
   const sigs = extractSignals(element);
   const texts = [
-    sigs.name, sigs.id, sigs.placeholder, sigs.ariaLabel, sigs.label, sigs.nearbyText,
+    sigs.name, sigs.id, sigs.placeholder, sigs.ariaLabel, sigs.label,
   ].filter(Boolean);
   for (const text of texts) {
     const norm = normalize(text);
