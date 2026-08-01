@@ -1,4 +1,5 @@
 import { retryPendingDriveSync } from '@/src/utils/driveSync';
+import { handleOpenOptions } from '@/src/utils/backgroundHandlers';
 
 export default defineBackground(() => {
   // Content scripts cannot reliably call chrome.runtime.openOptionsPage() in
@@ -8,23 +9,7 @@ export default defineBackground(() => {
   // one is already open instead of duplicating it.
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.action === 'OPEN_OPTIONS') {
-      // Content scripts cannot write to chrome.storage.session (blocked without
-      // host_permissions for the page URL), so the picker passes focusPath here
-      // and the background writes it — service workers have unrestricted access.
-      const focusPath = message.focusPath;
-      const writeAndOpen = () => {
-        chrome.runtime.openOptionsPage(() => {
-          sendResponse({ success: !chrome.runtime.lastError });
-        });
-      };
-      if (focusPath) {
-        chrome.storage.session.set(
-          { 'jb:focusOnLoad': { type: 'profilePath', path: focusPath } },
-          writeAndOpen,
-        );
-      } else {
-        writeAndOpen();
-      }
+      handleOpenOptions(message.focusPath, sendResponse);
       return true; // async response
     }
   });
