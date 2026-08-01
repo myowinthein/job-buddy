@@ -11,6 +11,11 @@ function endpoint(model: string, apiKey: string): string {
   return `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
 }
 
+function extractGeminiText(data: unknown): string | undefined {
+  return (data as { candidates?: { content?: { parts?: { text?: string }[] } }[] })
+    ?.candidates?.[0]?.content?.parts?.[0]?.text;
+}
+
 // ── Key validation (decoupled from model selection) ───────────────────────────
 
 export async function checkApiKey(apiKey: string): Promise<'valid' | 'invalid' | 'network_error'> {
@@ -124,8 +129,7 @@ export async function extractFromResume(
       throw importError('parse', "Couldn't read the response. Try again.");
     }
 
-    const text = (data as { candidates?: { content?: { parts?: { text?: string }[] } }[] })
-      ?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const text = extractGeminiText(data);
 
     if (!text) throw importError('parse', "Couldn't read the response. Try again.");
 
@@ -174,8 +178,7 @@ export async function resolveFieldsWithAI(
   let data: unknown;
   try { data = await resp.json(); } catch { return []; }
 
-  const text = (data as { candidates?: { content?: { parts?: { text?: string }[] } }[] })
-    ?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  const text = extractGeminiText(data) ?? '';
 
   return parseAutofillResponse(text);
 }
