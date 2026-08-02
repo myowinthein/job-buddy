@@ -66,6 +66,10 @@ describe('buildPrompt — schema structure matches Profile', () => {
     expect(prompt).toContain('workHistory uses YYYY-MM (month required)');
   });
 
+  it('instructs not to duplicate a country-only location into workHistory city', () => {
+    expect(prompt).toContain('countryCode and city are independent — never duplicate the same place name into both');
+  });
+
   it('lists the top-level schema sections', () => {
     for (const key of ['personal', 'address', 'professional', 'salary', 'workAuthorization', 'workHistory', 'education', 'languages', 'links']) {
       expect(prompt).toContain(`"${key}"`);
