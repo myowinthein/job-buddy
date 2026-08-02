@@ -34,6 +34,9 @@ jobs:
       - name: Type-check
         run: pnpm compile
 
+      - name: Write production env file
+        run: printf '%s' "${{ secrets.ENV_PRODUCTION }}" > .env.production
+
       - name: Build and zip extension
         run: pnpm zip
 
