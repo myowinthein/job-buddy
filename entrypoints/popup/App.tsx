@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Info, CheckCircle } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 import { getProfile, getGeminiApiKey } from '@/src/utils/storage';
 import { sessionGet, sessionSet } from '@/src/utils/sessionStorage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import type { DebugSession } from '@/src/autofill/debug';
 import { DebugPanel } from './DebugPanel';
 import { InfoTooltip } from '@/src/components/ui/InfoTooltip';
+import { AiSparkIcon } from '@/src/components/ui/AiSparkIcon';
 
 
 interface AutofillResult {
@@ -190,7 +191,17 @@ function App() {
           className="w-8 h-8 shrink-0"
           onClick={(e) => { if (e.shiftKey && autofillState === 'success') openDebugPanel(); }}
         />
-        <h1 className="text-base font-bold text-gray-900 dark:text-gray-100 flex-1">Job Buddy</h1>
+        <div className="flex items-center gap-1 flex-1">
+          <h1 className="text-base font-bold text-gray-900 dark:text-gray-100">Job Buddy</h1>
+          <div className="relative group">
+            <AiSparkIcon active={hasGeminiKey === true} onClick={goToSettingsKey} />
+            {hasGeminiKey !== null && (
+              <div className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 z-50 mt-1.5 whitespace-nowrap rounded-md bg-gray-800 dark:bg-gray-700 px-2 py-1.5 text-[11px] leading-snug text-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
+                {hasGeminiKey ? 'AI-assisted autofill is on' : 'Add an AI key in Settings for smarter fills'}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Completion indicator */}
@@ -238,20 +249,6 @@ function App() {
       <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-1.5 mb-3">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide">Autofill</p>
-          {hasGeminiKey === false && (
-            <div className="relative group shrink-0">
-              <button
-                type="button"
-                onClick={goToSettingsKey}
-                className="flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400 active:scale-95 transition-colors"
-              >
-                <Info className="w-4 h-4" />
-              </button>
-              <div className="pointer-events-none absolute bottom-full left-0 z-50 mb-1.5 w-52 rounded-md bg-gray-800 dark:bg-gray-700 px-2 py-1.5 text-[11px] leading-snug text-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
-                Currently filling manually. Add an AI key in Settings for better accuracy.
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Loading skeleton */}

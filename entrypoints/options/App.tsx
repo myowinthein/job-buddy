@@ -146,6 +146,22 @@ function App() {
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [applyFocusTarget]);
 
+  // Covers the case where the Options tab is already the visible/focused tab —
+  // visibilitychange never fires then, so we also react to the storage write
+  // itself (e.g. clicking the popup's sparkle while already on this page).
+  useEffect(() => {
+    const handleStorageChange = (
+      changes: Record<string, chrome.storage.StorageChange>,
+      areaName: string,
+    ) => {
+      if (areaName === 'session' && 'jb:focusOnLoad' in changes && changes['jb:focusOnLoad'].newValue != null) {
+        applyFocusTarget();
+      }
+    };
+    chrome.storage.onChanged.addListener(handleStorageChange);
+    return () => chrome.storage.onChanged.removeListener(handleStorageChange);
+  }, [applyFocusTarget]);
+
   // ── Persist active section ──────────────────────────────────────────────────
   useEffect(() => {
     activeSectionRef.current = activeSection;
