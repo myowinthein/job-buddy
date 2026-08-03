@@ -237,13 +237,24 @@ function App() {
         </div>
       )}
 
-      {/* CTA button */}
-      <button
-        onClick={openOptions}
-        className="w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors mb-4"
-      >
-        {isCoreComplete ? 'Edit Profile' : 'Complete Your Profile'}
-      </button>
+      {/* CTA button — stays primary (bold blue) only while it's the sole
+          actionable button; once profile data exists, Fill Form becomes the
+          primary action below and this steps back to an outline style.
+          Skeleton avoids a blue-then-outline flash while profile is loading. */}
+      {loading ? (
+        <div className="h-9 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse mb-4" />
+      ) : (
+        <button
+          onClick={openOptions}
+          className={
+            hasProfileData
+              ? 'w-full py-2.5 px-4 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-95 transition-colors mb-4'
+              : 'w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors mb-4'
+          }
+        >
+          {isCoreComplete ? 'Edit Profile' : 'Complete Your Profile'}
+        </button>
+      )}
 
       {/* Autofill panel */}
       <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
