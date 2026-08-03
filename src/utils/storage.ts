@@ -119,9 +119,17 @@ export async function clearAllStorage(): Promise<void> {
 // ── Gemini AI settings ──────────────────────────────────────────────────────
 // Stored in chrome.storage.local only; never exported in profile bundles.
 
+// Falls back to VITE_GEMINI_API_KEY in dev builds only (gated on import.meta.env.DEV,
+// never true in a production/zip build) so `pnpm dev` doesn't require re-pasting a key
+// into Settings every time chrome.storage.local starts fresh.
 export async function getGeminiApiKey(): Promise<string | null> {
   const result = await storageGet('geminiApiKey');
-  return (result.geminiApiKey as string) ?? null;
+  const stored = (result.geminiApiKey as string | undefined) ?? null;
+  if (stored) return stored;
+  if (import.meta.env.DEV) {
+    return (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) ?? null;
+  }
+  return null;
 }
 
 export async function saveGeminiApiKey(key: string): Promise<void> {
