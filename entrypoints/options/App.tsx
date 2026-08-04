@@ -257,7 +257,7 @@ function App() {
     // Fire-and-forget Drive sync. Never blocks the local save flow.
     void syncProfileToDrive(synced).then((res) => {
       if (!res.success && res.errorCode) {
-        showToast('warning', 'Profile saved. Drive sync failed — will retry.');
+        showToast('warning', 'Profile saved. Drive sync failed, will retry.');
       }
     }).catch(() => { /* syncProfileToDrive never throws, but be defensive */ });
   };
