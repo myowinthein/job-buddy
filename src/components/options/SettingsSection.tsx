@@ -407,11 +407,11 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       if (res.success) {
         showToast('success', 'Synced to Google Drive');
       } else if (res.errorCode === 'storage_full') {
-        showToast('error', 'Google Drive storage full — sync paused.');
+        showToast('error', 'Google Drive storage full. Sync paused.');
       } else if (res.errorCode === 'token_expired') {
-        showToast('warning', 'Drive disconnected — reconnect to resume syncing.');
+        showToast('warning', 'Drive disconnected. Reconnect to resume syncing.');
       } else if (res.errorCode) {
-        showToast('warning', 'Sync failed — will retry automatically.');
+        showToast('warning', 'Sync failed. Will retry automatically.');
       }
     } finally {
       setDriveSyncing(false);
@@ -478,7 +478,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       if (res.success) {
         showToast('success', 'Local profile uploaded to Google Drive');
       } else if (res.errorCode) {
-        showToast('warning', 'Sync failed — will retry automatically.');
+        showToast('warning', 'Sync failed. Will retry automatically.');
       }
       closeRestoreDialog();
     } finally {
@@ -707,7 +707,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         {driveState.connected && driveState.error === 'token_expired' && (
           <div>
             <p className="text-sm text-yellow-700 dark:text-yellow-400 mb-3">
-              Drive disconnected — reconnect to resume syncing.
+              Drive disconnected. Reconnect to resume syncing.
             </p>
             <button
               type="button"
@@ -724,7 +724,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         {driveState.connected && driveState.error === 'storage_full' && (
           <div>
             <p className="text-sm text-red-600 dark:text-red-400 mb-3">
-              Google Drive storage full — sync paused.
+              Google Drive storage full. Sync paused.
             </p>
             <a
               href="https://one.google.com/storage"
@@ -741,7 +741,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         {driveState.connected && driveState.error === 'sync_error' && (
           <div>
             <p className="text-sm text-yellow-700 dark:text-yellow-400 mb-3">
-              Sync failed — will retry automatically.
+              Sync failed. Will retry automatically.
             </p>
             <button
               type="button"
