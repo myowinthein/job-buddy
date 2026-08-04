@@ -171,7 +171,7 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
             ) : (
               <>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Drag & drop a file here, or click to browse</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">PDF, DOCX — max 4 MB</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">PDF, DOCX · max 4 MB</p>
               </>
             )}
           </div>
@@ -228,7 +228,7 @@ export function DocumentsSection({ profile, onSave }: Props) {
     <div>
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Documents</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Upload or link your CV / Résumé — max 4 MB</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Upload or link your CV / Résumé · max 4 MB</p>
       </div>
 
       <DocUploader label="CV / Résumé" required state={cv} onChange={(u) => setCv((s) => ({ ...s, ...u }))} />

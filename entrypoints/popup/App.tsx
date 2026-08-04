@@ -232,7 +232,7 @@ function App() {
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
             {percentage < 50
               ? 'Complete your profile to start auto-filling job forms'
-              : 'Almost there — finish the remaining sections'}
+              : 'Almost there: finish the remaining sections'}
           </p>
         </div>
       )}
@@ -294,7 +294,7 @@ function App() {
                 />
                 <div>
                   <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Merge</span>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug">Only fill empty fields — keep existing values</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug">Only fill empty fields: keep existing values</p>
                 </div>
               </label>
 
