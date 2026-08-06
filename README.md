@@ -55,16 +55,16 @@ Job Buddy scans every field on the page, runs a four-layer matching pipeline (le
 |---|---|
 | Green | High confidence, filled automatically |
 | Yellow | Medium confidence, worth a quick review |
-| Red | Low confidence, pick your value from the picker overlay |
+| Red | Low confidence, left for you to fill in directly |
 | Gray | Field matched but your profile is missing that value |
 
-Click any highlighted field to open the picker and choose a different value. Job Buddy learns from your corrections and improves future fills on the same site.
+Type directly into any yellow, red, or gray field. Job Buddy learns from your corrections and improves future fills on the same site. Review or correct what it's learned anytime under Options → Learned Mappings.
 
 To undo all fills, click **Undo** in the popup.
 
 ## Optional features
 
-**AI-assisted autofill:** When a field can't be matched by rules alone (red or gray), Gemini resolves it from context — job title, nearby labels, and your profile. Requires a Gemini API key (set under Settings → AI Features).
+**AI-assisted autofill:** When a field can't be confidently matched by rules alone (yellow, red, or gray), Gemini resolves it from context: job title, nearby labels, and your profile. Requires a Gemini API key (set under Settings → AI Features).
 
 **Résumé import:** Upload a PDF or DOCX in Options and Job Buddy extracts your work history, education, and contact details for review before saving. Also requires a Gemini API key.
 
@@ -86,4 +86,4 @@ pnpm test:run  # Vitest
 
 [MIT](LICENSE) © 2026 Myo Win Thein
 
-<!-- last-reviewed: d50370b0f04e66dfa99aba465a423c90432bd264 -->
+<!-- last-reviewed: e1ccae1b96f279b9c94dcf4678e8c68b0045fc90 -->
