@@ -64,6 +64,10 @@ interface AutofillScanResult {
   preFilledCount: number;
 }
 
+// Read once from the manifest rather than hardcoded, so it can never drift
+// out of sync with what's actually installed.
+const EXTENSION_VERSION = chrome.runtime.getManifest().version;
+
 interface CompletionState {
   percentage:              number;
   isCoreComplete:          boolean;
@@ -254,6 +258,7 @@ function App() {
             )}
           </div>
         </div>
+        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">v{EXTENSION_VERSION}</span>
       </div>
 
       {/* Completion indicator */}
