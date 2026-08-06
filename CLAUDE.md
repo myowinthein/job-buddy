@@ -38,7 +38,7 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 ## 4. Architecture Pointers
 
 **Entrypoints** (`entrypoints/`):
-- `background.ts` — service worker; retries pending Drive sync on browser startup and debounces a Drive sync after autofill learns something new
+- `background.ts` — service worker; retries pending Drive sync on browser startup and debounces a Drive sync whenever the local `profile` or `learnedMappings` storage key changes
 - `content.ts` — matches `*://*/*`; routes `AUTOFILL_SCAN/FILL/CLEAR/GET_STATUS/GET_DEBUG_SESSION` to `src/autofill/`
 - `popup/` — action popup; React state lost on close, restored from `GET_STATUS` on mount. Debug panel hidden until Shift+click the logo post-fill.
 - `options/` — full-page profile editor (9 sections + Resume Import + Settings)
@@ -51,7 +51,7 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 - `src/autofill/resolver.ts` — dot-notation resolver + virtual paths (`phone.full`, `address.countryName`, `salary.*.formatted`, etc.); also `flattenProfileValues()`, the reverse — every raw (path, value) leaf, for matching typed text back to a profile field
 - `src/resume-ai/gemini.ts` — `extractFromResume()` + `resolveFieldsWithAI()` via Gemini API
 - `src/resume-ai/autofillPrompt.ts` — `AUTOFILL_SYSTEM_PROMPT`; the AI autofill system prompt for resolving unmatched fields
-- `src/utils/driveSync.ts` — Google Drive backup via `drive.appdata` scope; implicit OAuth token flow; also owns `retryPendingDriveSync()` (called by background on startup)
+- `src/utils/driveSync.ts` — Google Drive backup via `drive.appdata` scope; implicit OAuth token flow; also owns `retryPendingDriveSync()` (background, startup) and `syncIfConnected()` (background, debounced on `profile`/`learnedMappings` storage changes)
 - `src/utils/derivedFields.ts` — computes `fullName`, `currentTitle`, `currentCompany`, `totalExperience`, `age`
 - `src/utils/profileCompletion.ts` — `TOTAL_CHECKS = 15`; drives sidebar checkmarks and completion %
 - `src/autofill/constants.ts` — named confidence thresholds. Always use these, never bare numbers.

@@ -352,14 +352,16 @@ export async function retryPendingDriveSync(): Promise<void> {
   }
 }
 
-// Invoked from the background service worker (debounced) whenever
-// learnedMappings changes locally — e.g. autofill learning something new on
-// a job-site tab. Without this, newly-learned mappings would only reach
-// Drive as a side effect of an unrelated profile save or manual sync.
-// No-op unless Drive is connected. Silent on failure: errors are captured in
-// driveBackupState by syncProfileToDrive itself, and this must never throw
-// from a storage-change listener.
-export async function syncLearnedMappingsIfConnected(): Promise<void> {
+// Invoked from the background service worker (debounced) whenever the
+// profile or learnedMappings changes locally — e.g. autofill learning
+// something new on a job-site tab, or a migration write-back in getProfile().
+// Re-fetches the current profile and re-uploads the full bundle (profile +
+// learnedMappings are always synced together — see syncProfileToDrive).
+// Without this, such writes would only reach Drive as a side effect of an
+// unrelated explicit save. No-op unless Drive is connected. Silent on
+// failure: errors are captured in driveBackupState by syncProfileToDrive
+// itself, and this must never throw from a storage-change listener.
+export async function syncIfConnected(): Promise<void> {
   try {
     const token = await getDriveToken();
     if (!token) return;

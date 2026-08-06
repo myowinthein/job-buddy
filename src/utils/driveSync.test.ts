@@ -31,7 +31,7 @@ import {
   disconnectDrive,
   dispatchDriveStateChanged,
   retryPendingDriveSync,
-  syncLearnedMappingsIfConnected,
+  syncIfConnected,
 } from './driveSync';
 import type { Profile } from '../types/profile';
 
@@ -411,11 +411,11 @@ describe('retryPendingDriveSync', () => {
   });
 });
 
-describe('syncLearnedMappingsIfConnected', () => {
+describe('syncIfConnected', () => {
   it('does nothing when Drive is not connected (no token)', async () => {
     store['profile'] = makeProfile();
 
-    await syncLearnedMappingsIfConnected();
+    await syncIfConnected();
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -423,7 +423,7 @@ describe('syncLearnedMappingsIfConnected', () => {
   it('does nothing when there is no profile to upload', async () => {
     store['driveToken'] = 'tok-abc';
 
-    await syncLearnedMappingsIfConnected();
+    await syncIfConnected();
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -434,7 +434,7 @@ describe('syncLearnedMappingsIfConnected', () => {
     store['profile'] = makeProfile();
     mockFetchSequence([{ ok: true, body: {} }]);
 
-    await syncLearnedMappingsIfConnected();
+    await syncIfConnected();
 
     expect(fetchMock).toHaveBeenCalled();
   });
@@ -444,7 +444,7 @@ describe('syncLearnedMappingsIfConnected', () => {
     store['profile'] = makeProfile();
     fetchMock.mockRejectedValue(new Error('network down'));
 
-    await expect(syncLearnedMappingsIfConnected()).resolves.toBeUndefined();
+    await expect(syncIfConnected()).resolves.toBeUndefined();
   });
 });
 
