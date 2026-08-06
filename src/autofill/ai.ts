@@ -22,7 +22,7 @@ export interface AITextCandidate {
   type:             'text';
   element:          HTMLElement;
   signals:          FieldSignals;
-  originalState:    'lowConfidence' | 'noData';
+  originalState:    'needReview' | 'lowConfidence' | 'noData';
   originalFieldPath: string | null;
   /** Debug-only: ID assigned during scanAutofill so the debug panel can join scanner → mapping → AI. */
   debugFieldId?:    string;
@@ -51,11 +51,14 @@ export function extractSelectOptions(select: HTMLSelectElement): AIOptionPayload
 // attached. Without this, a green-filled element would still get a blur
 // watcher for its stale pre-AI state — wrong UX.
 //
-// Low-confidence (needReview) text candidates need no edit-watcher wiring of
-// our own here: they stay in the caller's original editable-fields list
-// (only aiGreenFilled elements get removed from it) with their original
-// lowConfidence/noData state, so the caller's own attachEditWatchers pass —
-// which runs after this function returns — attaches the real listener for them.
+// Text candidates come from all three non-green tiers (needReview, lowConfidence,
+// noData) — a needReview field is already filled from the rule pipeline, so a
+// high-confidence AI response overwrites that value, not just an empty field.
+// Any candidate AI doesn't turn green needs no edit-watcher wiring of our own
+// here: it stays in the caller's original editable-fields list (only
+// aiGreenFilled elements get removed from it) with its original state, so the
+// caller's own attachEditWatchers pass — which runs after this function
+// returns — attaches the real listener for it.
 export async function runAIAutofill(
   textCandidates: AITextCandidate[],
   profile: Profile,
@@ -192,6 +195,8 @@ export async function runAIAutofill(
 
       if (candidate.originalState === 'lowConfidence') {
         result.lowConfidence = Math.max(0, result.lowConfidence - 1);
+      } else if (candidate.originalState === 'needReview') {
+        result.needReview = Math.max(0, result.needReview - 1);
       } else {
         result.noData = Math.max(0, result.noData - 1);
       }

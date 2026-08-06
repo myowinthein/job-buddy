@@ -384,6 +384,11 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
 // sessionElements tracks every highlighted element (noReview + needReview + lowConfidence)
 // so undoAutofill can clear them all. noData fields are added to sessionElements only
 // when the user fills them in manually.
+//
+// All three non-green tiers (needReview, lowConfidence, noData) get a follow-up
+// AI pass below (runAIAutofill) when a Gemini key is configured — including
+// needReview, which AI can overwrite with a different value if it disagrees
+// with the rule pipeline's fill.
 export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<AutofillResult> {
   const profile = await getProfile();
   if (!profile) return { noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0 };
@@ -453,6 +458,9 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // File inputs are excluded from edit-watching — file selection is
         // handled silently by Auto Fill, not manual typing.
         if (!isFileInput) editableFields.push({ element, state: 'needReview' });
+        if (!isFileInput) {
+          aiTextCandidates.push({ type: 'text', element, signals, originalState: 'needReview', originalFieldPath: match.fieldPath, debugFieldId });
+        }
         finalState = 'yellow';
       }
 
