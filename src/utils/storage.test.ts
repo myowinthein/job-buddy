@@ -29,6 +29,7 @@ import {
   getLearnedMappings, saveLearnedMapping, mergeLearnedMappings,
   getApplicationHistory, saveApplicationHistory,
   getGeminiApiKey, saveGeminiApiKey, clearGeminiSettings,
+  getGeminiModel, saveGeminiModel,
   getThemePreference, saveThemePreference,
   getDriveToken, saveDriveToken, clearDriveToken,
   clearAllStorage,
@@ -269,6 +270,41 @@ describe('Gemini settings', () => {
     await saveGeminiApiKey('my-key-123');
     await clearGeminiSettings();
     expect(await getGeminiApiKey()).toBeNull();
+  });
+
+  it('falls back to VITE_GEMINI_API_KEY in dev and persists it to storage', async () => {
+    vi.stubEnv('VITE_GEMINI_API_KEY', 'dev-key-abc');
+    expect(await getGeminiApiKey()).toBe('dev-key-abc');
+    // Persisted so other contexts (content scripts/background, which never
+    // see this env var directly) pick it up via the normal storage read.
+    expect(store['geminiApiKey']).toBe('dev-key-abc');
+    vi.unstubAllEnvs();
+  });
+
+  it('does not fall back to the dev key in production (DEV stubbed false)', async () => {
+    vi.stubEnv('DEV', false);
+    vi.stubEnv('VITE_GEMINI_API_KEY', 'dev-key-abc');
+    expect(await getGeminiApiKey()).toBeNull();
+    expect(store['geminiApiKey']).toBeUndefined();
+    vi.unstubAllEnvs();
+  });
+
+  it('falls back to DEFAULT_GEMINI_MODEL when nothing is stored (dev) and persists it', async () => {
+    const model = await getGeminiModel();
+    expect(model).toBe('gemini-3.5-flash-lite'); // DEFAULT_GEMINI_MODEL / GEMINI_MODEL_PRIORITY[0]
+    expect(store['geminiModel']).toBe('gemini-3.5-flash-lite');
+  });
+
+  it('returns null for the model in production when nothing is stored (DEV stubbed false)', async () => {
+    vi.stubEnv('DEV', false);
+    expect(await getGeminiModel()).toBeNull();
+    expect(store['geminiModel']).toBeUndefined();
+    vi.unstubAllEnvs();
+  });
+
+  it('saves and retrieves a Gemini model, taking priority over the dev default', async () => {
+    await saveGeminiModel('gemini-3.6-flash');
+    expect(await getGeminiModel()).toBe('gemini-3.6-flash');
   });
 });
 
