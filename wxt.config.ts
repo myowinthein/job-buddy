@@ -6,7 +6,7 @@ export default defineConfig({
   manifest: {
     name: 'Job Buddy - Autofill Job Applications',
     description: 'Fill job application forms in one click using your saved profile. Works across any site, no account required.',
-    permissions: ['storage', 'identity', 'activeTab'],
+    permissions: ['storage', 'identity', 'activeTab', 'webNavigation'],
     host_permissions: [
       'https://generativelanguage.googleapis.com/*',
       'https://www.googleapis.com/*',
