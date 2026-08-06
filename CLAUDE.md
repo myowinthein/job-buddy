@@ -48,7 +48,7 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 - `src/utils/storage.ts` — `chrome.storage.local` wrappers; reads always resolve, writes reject on quota
 - `src/autofill/index.ts` — orchestrator: `scanAutofill()`, `executeAutofill()`, `undoAutofill()`
 - `src/autofill/mapper.ts` — 4-layer match: learned (0.97, requires 2 confirmations) → autocomplete (0.95) → dict exact (0.85) → fuzzy (score × 0.85 / 0.75 by tier) → context (0.70). Signal priority is `[label, ariaLabel, placeholder, name, id]` — label first.
-- `src/autofill/resolver.ts` — dot-notation resolver + virtual paths (`phone.full`, `address.countryName`, `salary.*.formatted`, etc.)
+- `src/autofill/resolver.ts` — dot-notation resolver + virtual paths (`phone.full`, `address.countryName`, `salary.*.formatted`, etc.); also `flattenProfileValues()`, the reverse — every raw (path, value) leaf, for matching typed text back to a profile field
 - `src/resume-ai/gemini.ts` — `extractFromResume()` + `resolveFieldsWithAI()` via Gemini API
 - `src/resume-ai/autofillPrompt.ts` — `AUTOFILL_SYSTEM_PROMPT`; the AI autofill system prompt for resolving unmatched fields
 - `src/utils/driveSync.ts` — Google Drive backup via `drive.appdata` scope; implicit OAuth token flow; also owns `retryPendingDriveSync()` (called by background on startup)
@@ -93,7 +93,7 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 
 **Learned mapping confidence:** `LearnedMappings` values are `string | { path: string; count: number }`. New mappings start at `count: 1` and are not promoted to Layer 0 until count reaches 2, and are matched only against `label/ariaLabel/placeholder/name/id` — never `nearbyText`. `saveLearnedMapping()` in `src/utils/storage.ts` is the source of truth.
 
-**Manual edits only feed learned mappings from `needReview` (yellow).** `attachEditWatchers()` in `src/autofill/index.ts` saves a mapping on blur only when the field's tier was `needReview` AND the edited value stays similar enough to what was pre-filled (`similarity()` from `normalizer.ts` ≥ `EDIT_LEARN_SIMILARITY_THRESHOLD`). `lowConfidence`/`noData` edits never save — their guessed path (when one exists) was too weak to trust even for filling, and typing into them can't be told apart from answering an unrelated custom question.
+**Manual edits feed learned mappings by content, not by the mapper's guess.** `attachEditWatchers()` in `src/autofill/index.ts` saves a mapping on blur (any tier — yellow/red/gray) only when the edited value is long enough (`EDIT_LEARN_MIN_VALUE_LENGTH`) and closely resembles some value already in the profile (`flattenProfileValues()` + `similarity()` ≥ `EDIT_LEARN_SIMILARITY_THRESHOLD`). The saved path is whichever profile value scored best — not necessarily the mapper's original `fieldPath` guess, which may be wrong or absent. A wildly different edit (a genuine custom-question answer) simply finds no match and is left unlearned.
 
 **Drive backup payload fan-out:** Adding a field to `DriveBackupFile` requires updating both `syncProfileToDrive()` (upload) and two restore paths in `SettingsSection` — `handleRestoreFromDrive` and `handleDriveReviewSave`.
 
