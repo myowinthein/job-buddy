@@ -26,14 +26,8 @@ vi.mock('./highlighter', () => ({
   clearElementHighlight: vi.fn(),
   clearHighlights: vi.fn(),
 }));
-vi.mock('./picker', () => ({
-  attachPickerListeners: vi.fn(),
-  removePickerListener: vi.fn(),
-  closePickerIfOpenFor: vi.fn(),
-}));
 vi.mock('./resolver', () => ({ resolveProfileValue: vi.fn() }));
 vi.mock('./mappings', () => ({
-  saveElementMappings: vi.fn().mockResolvedValue(undefined),
   refreshLearnedLabels: vi.fn().mockReturnValue(false),
 }));
 vi.mock('./ai', () => ({ runAIAutofill: vi.fn().mockResolvedValue(false) }));
@@ -44,7 +38,6 @@ import { scanFields, scanAriaFields } from './scanner';
 import { mapField } from './mapper';
 import { clearFieldValue, fillField } from './filler';
 import { clearElementHighlight, clearHighlights, applyHighlight } from './highlighter';
-import { removePickerListener, closePickerIfOpenFor } from './picker';
 import { resolveProfileValue } from './resolver';
 import { refreshLearnedLabels } from './mappings';
 import { CONF_CONFIRMED } from './constants';
@@ -277,7 +270,6 @@ describe('edit-watcher promotion (blur)', () => {
     el.dispatchEvent(new Event('blur'));
 
     expect(applyHighlight).toHaveBeenCalledWith(el, CONF_CONFIRMED);
-    expect(removePickerListener).toHaveBeenCalledWith(el);
     const live = getLastResult();
     expect(live?.noReview).toBe(1);
     expect(live?.lowConfidence).toBe(0);
@@ -381,8 +373,6 @@ describe('silent re-fill on visibilitychange', () => {
     await vi.waitFor(() => expect(fillField).toHaveBeenCalledWith(el, 'jane@example.com'));
 
     expect(applyHighlight).toHaveBeenCalledWith(el, CONF_CONFIRMED);
-    expect(removePickerListener).toHaveBeenCalledWith(el);
-    expect(closePickerIfOpenFor).toHaveBeenCalledWith(el);
     const live = getLastResult();
     expect(live?.noData).toBe(0);
     expect(live?.noReview).toBe(1);

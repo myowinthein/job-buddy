@@ -49,7 +49,6 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 - `src/autofill/index.ts` — orchestrator: `scanAutofill()`, `executeAutofill()`, `undoAutofill()`
 - `src/autofill/mapper.ts` — 4-layer match: learned (0.97, requires 2 confirmations) → autocomplete (0.95) → dict exact (0.85) → fuzzy (score × 0.85 / 0.75 by tier) → context (0.70). Signal priority is `[label, ariaLabel, placeholder, name, id]` — label first.
 - `src/autofill/resolver.ts` — dot-notation resolver + virtual paths (`phone.full`, `address.countryName`, `salary.*.formatted`, etc.)
-- `src/autofill/picker.ts` — fixed-position DOM overlay; no React, inline styles only (avoids host-page CSS conflicts). Cannot write to `chrome.storage.session` directly — routes `OPEN_OPTIONS` + `focusPath` through the background service worker instead.
 - `src/resume-ai/gemini.ts` — `extractFromResume()` + `resolveFieldsWithAI()` via Gemini API
 - `src/resume-ai/autofillPrompt.ts` — `AUTOFILL_SYSTEM_PROMPT`; the AI autofill system prompt for resolving unmatched fields
 - `src/utils/driveSync.ts` — Google Drive backup via `drive.appdata` scope; implicit OAuth token flow; also owns `retryPendingDriveSync()` (called by background on startup)
@@ -78,7 +77,7 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 
 ## 5. Domain Rules
 
-**Autofill confidence tiers:** ≥0.85 → green (fill, no picker) · 0.60–0.84 → yellow (fill + picker) · <0.60 → red (no fill + picker) · ≥0.60 but profile value empty → gray/noData (no highlight, picker shows "Go to Profile" CTA). AI-resolved fields that reach ≥0.85 are treated as green and do not show the picker.
+**Autofill confidence tiers:** ≥0.85 → green (fill) · 0.60–0.84 → yellow (fill) · <0.60 → red (no fill) · ≥0.60 but profile value empty → gray/noData (no highlight). Yellow, red, and gray fields are left for the user to type into directly — no picker overlay. AI-resolved fields that reach ≥0.85 are treated as green.
 
 **Two-phase fill:** `AUTOFILL_SCAN` maps fields into `pendingMatches` (no fill). `AUTOFILL_FILL { mode }` executes — merge skips pre-filled fields, overwrite replaces all. Never re-run scan between the two phases.
 
