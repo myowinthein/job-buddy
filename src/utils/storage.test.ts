@@ -61,8 +61,14 @@ beforeEach(() => {
 });
 
 describe('profile storage', () => {
-  it('returns null when no profile is stored', async () => {
+  it('returns null when no profile is stored (production — DEV fallback does not apply)', async () => {
+    vi.stubEnv('DEV', false);
     expect(await getProfile()).toBeNull();
+    vi.unstubAllEnvs();
+  });
+
+  it('returns the dev fallback profile when no profile is stored and DEV is true', async () => {
+    expect(await getProfile()).toMatchObject({ id: 'dev-profile', personal: { firstName: 'Jane' } });
   });
 
   it('saves and retrieves a profile', async () => {
@@ -335,7 +341,11 @@ describe('clearAllStorage', () => {
       expect.arrayContaining(['profile', 'learnedMappings', 'applicationHistory']),
       expect.any(Function),
     );
+    // DEV's dummy-profile fallback would otherwise mask storage genuinely
+    // being empty here — stub it off to assert the real cleared state.
+    vi.stubEnv('DEV', false);
     expect(await getProfile()).toBeNull();
+    vi.unstubAllEnvs();
     expect(await getLearnedMappings()).toEqual({});
     expect(await getApplicationHistory()).toEqual([]);
 

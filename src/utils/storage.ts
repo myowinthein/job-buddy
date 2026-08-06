@@ -1,6 +1,8 @@
 import type { Profile } from '../types/profile';
 import type { LearnedMappings, LearnedMappingValue, ApplicationEntry, DriveBackupState } from '../types/storage';
 import { normalizeProfile } from './migrate';
+import { DEV_PROFILE } from './devProfile';
+import { DEFAULT_GEMINI_MODEL } from '../resume-ai/types';
 
 // Wraps chrome.storage.local.get so that the returned Promise always resolves.
 // A synchronous throw (e.g. permission missing) or a runtime error in the
@@ -48,7 +50,15 @@ function storageSet(items: Record<string, unknown>): Promise<void> {
 export async function getProfile(): Promise<Profile | null> {
   const result = await storageGet('profile');
   const raw = (result.profile as Profile) ?? null;
-  if (!raw) return null;
+  if (!raw) {
+    // No profile saved yet. In local dev, fall back to a fully-filled dummy
+    // profile instead of null, so `pnpm dev` doesn't require re-entering
+    // profile data by hand every session. Never persisted — an explicit
+    // saveProfile() (e.g. editing a section in Options) still takes over
+    // normally on the next read. Never true in a production/zip build.
+    if (import.meta.env.DEV) return normalizeProfile(DEV_PROFILE);
+    return null;
+  }
 
   // On-read migrations are folded into a single write so the user never
   // pays for two storage round-trips when both id backfill and salary period
@@ -162,7 +172,16 @@ export async function getGeminiApiKey(): Promise<string | null> {
   const stored = (result.geminiApiKey as string | undefined) ?? null;
   if (stored) return stored;
   if (import.meta.env.DEV) {
-    return (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) ?? null;
+    const devKey = (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) ?? null;
+    // Persist so contexts WXT pre-bundles statically even in dev mode
+    // (content scripts, background — Chrome can't load a service worker or
+    // content script from the live Vite dev server the way popup/options
+    // do, so those bundles never see .env.development's custom VITE_* vars)
+    // still pick this up via the normal storage read above, rather than the
+    // dev key only ever working when getGeminiApiKey() happens to be called
+    // from the popup/options.
+    if (devKey) void storageSet({ geminiApiKey: devKey });
+    return devKey;
   }
   return null;
 }
@@ -173,7 +192,16 @@ export async function saveGeminiApiKey(key: string): Promise<void> {
 
 export async function getGeminiModel(): Promise<string | null> {
   const result = await storageGet('geminiModel');
-  return (result.geminiModel as string) ?? null;
+  const stored = (result.geminiModel as string) ?? null;
+  if (stored) return stored;
+  if (import.meta.env.DEV) {
+    // Same reasoning as getGeminiApiKey's dev fallback above — without a
+    // stored model, runAIAutofill's `!apiKey || !storedModel` check would
+    // still block AI even once the dev API key itself is picked up.
+    void storageSet({ geminiModel: DEFAULT_GEMINI_MODEL });
+    return DEFAULT_GEMINI_MODEL;
+  }
+  return null;
 }
 
 export async function saveGeminiModel(model: string): Promise<void> {

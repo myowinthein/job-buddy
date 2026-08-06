@@ -385,7 +385,11 @@ describe('retryPendingDriveSync', () => {
     store['driveBackupState'] = { fileId: null, lastSynced: null, pendingSync: true, error: null };
     store['driveToken'] = 'tok-abc';
 
+    // getProfile()'s DEV-only dummy-profile fallback would otherwise mask a
+    // genuinely-empty profile here — stub it off to assert the real path.
+    vi.stubEnv('DEV', false);
     await retryPendingDriveSync();
+    vi.unstubAllEnvs();
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -423,7 +427,11 @@ describe('syncIfConnected', () => {
   it('does nothing when there is no profile to upload', async () => {
     store['driveToken'] = 'tok-abc';
 
+    // getProfile()'s DEV-only dummy-profile fallback would otherwise mask a
+    // genuinely-empty profile here — stub it off to assert the real path.
+    vi.stubEnv('DEV', false);
     await syncIfConnected();
+    vi.unstubAllEnvs();
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
