@@ -154,3 +154,47 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
   if (typeof current === 'string') return current;
   return '';
 }
+
+export interface FlatProfileValue {
+  path:  string;
+  value: string;
+}
+
+// Reverse of resolveProfileValue: walks the raw Profile object and returns
+// every non-empty string/number leaf as a (path, value) pair — used to match
+// a manually-typed value back to whichever profile field it most resembles,
+// independent of any prior field-match guess. Skips 'id' (not a real
+// answerable field) and documents.cv.file (a multi-MB base64 blob — never a
+// meaningful comparison target). Only raw stored values; does not include
+// virtual/computed paths (phone.full, address.countryName, formatted salary,
+// etc.) that resolveProfileValue can produce.
+export function flattenProfileValues(profile: Profile): FlatProfileValue[] {
+  const out: FlatProfileValue[] = [];
+
+  function walk(node: unknown, path: string): void {
+    if (node == null) return;
+    if (path === 'id' || path === 'documents.cv.file') return;
+
+    if (typeof node === 'string') {
+      if (node) out.push({ path, value: node });
+      return;
+    }
+    if (typeof node === 'number') {
+      out.push({ path, value: String(node) });
+      return;
+    }
+    if (typeof node === 'boolean') return; // not a comparable text value
+    if (Array.isArray(node)) {
+      node.forEach((item, i) => walk(item, `${path}.${i}`));
+      return;
+    }
+    if (typeof node === 'object') {
+      for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+        walk(value, path ? `${path}.${key}` : key);
+      }
+    }
+  }
+
+  walk(profile, '');
+  return out;
+}

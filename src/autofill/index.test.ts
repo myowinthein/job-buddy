@@ -26,7 +26,13 @@ vi.mock('./highlighter', () => ({
   clearElementHighlight: vi.fn(),
   clearHighlights: vi.fn(),
 }));
-vi.mock('./resolver', () => ({ resolveProfileValue: vi.fn() }));
+// flattenProfileValues is left as the real implementation (pure, no chrome
+// deps) so the learned-mapping-linking tests exercise real matching logic;
+// only resolveProfileValue (used by the silent-refill tests) is mocked.
+vi.mock('./resolver', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./resolver')>();
+  return { ...actual, resolveProfileValue: vi.fn() };
+});
 vi.mock('./mappings', () => ({
   refreshLearnedLabels: vi.fn().mockReturnValue(false),
   saveElementMappings: vi.fn().mockResolvedValue(undefined),
@@ -44,7 +50,10 @@ import { refreshLearnedLabels, saveElementMappings } from './mappings';
 import { CONF_CONFIRMED } from './constants';
 
 function makeProfile(): Profile {
-  return { personal: { firstName: 'Jane', lastName: 'Doe' } } as unknown as Profile;
+  return {
+    personal: { firstName: 'Jane', lastName: 'Doe' },
+    links: { linkedin: 'https://linkedin.com/in/janedoe', portfolio: 'https://myportfolio.com' },
+  } as unknown as Profile;
 }
 
 function makeInput(value = ''): HTMLInputElement {
@@ -350,67 +359,83 @@ describe('edit-watcher promotion (blur)', () => {
   });
 });
 
-describe('learned-mapping linking on blur (needReview only)', () => {
-  it('saves a learned mapping when a needReview edit stays similar to the pre-filled value', async () => {
-    // fillField is mocked and never actually writes to the DOM, so the
-    // pre-filled value has to be seeded manually to simulate what a real
-    // fill would have left in the input before the user edited it.
-    const el = makeInput('Jane');
+describe('learned-mapping linking on blur (content-based, all tiers)', () => {
+  it('saves the profile path whose value best matches the edit, even when it differs from the mapper\'s guess', async () => {
+    // Guessed path ('a.b') is unrelated/wrong — the save should still find
+    // links.linkedin by matching the typed content, not the guess.
+    const el = makeInput('');
     vi.mocked(scanFields).mockReturnValue([el]);
-    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.7, value: 'Jane', fieldPath: 'personal.firstName', matchLayer: 'context' });
-
-    await scanAutofill();
-    // 'overwrite' — the field is pre-seeded non-empty to simulate a real fill,
-    // and 'merge' would skip an already-non-empty field before it ever reaches
-    // the editable-fields list.
-    await executeAutofill('overwrite');
-
-    el.value = 'Jane2'; // small correction, still similar
-    el.dispatchEvent(new Event('blur'));
-
-    await vi.waitFor(() =>
-      expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, el, 'personal.firstName'),
-    );
-  });
-
-  it('does not save a learned mapping when the edit is very different from the pre-filled value', async () => {
-    const el = makeInput('https://myportfolio.com');
-    vi.mocked(scanFields).mockReturnValue([el]);
-    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.7, value: 'https://myportfolio.com', fieldPath: 'links.portfolio', matchLayer: 'context' });
-
-    await scanAutofill();
-    await executeAutofill('overwrite');
-
-    el.value = 'https://linkedin.com/in/janedoe';
-    el.dispatchEvent(new Event('blur'));
-
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(saveElementMappings).not.toHaveBeenCalled();
-  });
-
-  it('does not save a learned mapping for lowConfidence or noData edits', async () => {
-    const elRed  = makeInput('');
-    const elGray = makeInput('');
-    vi.mocked(scanFields).mockReturnValue([elRed, elGray]);
-    vi.mocked(mapField)
-      .mockReturnValueOnce({ confidence: 0.3, value: null, fieldPath: 'a.b', matchLayer: 'fuzzy' })
-      .mockReturnValueOnce({ confidence: 0.7, value: null, fieldPath: 'personal.email', matchLayer: 'context' });
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.3, value: null, fieldPath: 'a.b', matchLayer: 'fuzzy' });
 
     await scanAutofill();
     await executeAutofill('merge');
 
-    elRed.value = 'typed answer';
+    el.value = 'https://linkedin.com/in/janedoe';
+    el.dispatchEvent(new Event('blur'));
+
+    await vi.waitFor(() =>
+      expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, el, 'links.linkedin'),
+    );
+  });
+
+  it('saves for needReview, lowConfidence, and noData alike — not just one tier', async () => {
+    const elYellow = makeInput('');
+    const elRed    = makeInput('');
+    const elGray   = makeInput('');
+    vi.mocked(scanFields).mockReturnValue([elYellow, elRed, elGray]);
+    vi.mocked(mapField)
+      .mockReturnValueOnce({ confidence: 0.7, value: 'Jane', fieldPath: 'personal.firstName', matchLayer: 'context' })
+      .mockReturnValueOnce({ confidence: 0.3, value: null, fieldPath: null, matchLayer: 'none' })
+      .mockReturnValueOnce({ confidence: 0.65, value: null, fieldPath: 'personal.email', matchLayer: 'context' });
+
+    await scanAutofill();
+    await executeAutofill('merge');
+
+    elYellow.value = 'Jane Doe';
+    elYellow.dispatchEvent(new Event('blur'));
+    elRed.value = 'https://myportfolio.com';
     elRed.dispatchEvent(new Event('blur'));
-    elGray.value = 'typed answer';
+    elGray.value = 'https://linkedin.com/in/janedoe';
     elGray.dispatchEvent(new Event('blur'));
+
+    await vi.waitFor(() => expect(saveElementMappings).toHaveBeenCalledTimes(3));
+    expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, elRed, 'links.portfolio');
+    expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, elGray, 'links.linkedin');
+  });
+
+  it('does not save when nothing in the profile resembles the edited value', async () => {
+    const el = makeInput('');
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.3, value: null, fieldPath: null, matchLayer: 'none' });
+
+    await scanAutofill();
+    await executeAutofill('merge');
+
+    el.value = 'I want to work here because of the great company culture';
+    el.dispatchEvent(new Event('blur'));
 
     await Promise.resolve();
     await Promise.resolve();
     expect(saveElementMappings).not.toHaveBeenCalled();
   });
 
-  it('does not save a learned mapping when a needReview field is cleared to empty', async () => {
+  it('does not save when the edited value is shorter than the minimum length', async () => {
+    const el = makeInput('');
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.3, value: null, fieldPath: null, matchLayer: 'none' });
+
+    await scanAutofill();
+    await executeAutofill('merge');
+
+    el.value = 'Doe'; // 3 chars, below EDIT_LEARN_MIN_VALUE_LENGTH
+    el.dispatchEvent(new Event('blur'));
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(saveElementMappings).not.toHaveBeenCalled();
+  });
+
+  it('does not save when the field is cleared to empty', async () => {
     const el = makeInput('Jane');
     vi.mocked(scanFields).mockReturnValue([el]);
     vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.7, value: 'Jane', fieldPath: 'personal.firstName', matchLayer: 'context' });
