@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings, LearnedMappingValue } from '@/src/types/storage';
 import { getProfile, getLearnedMappings, saveLearnedMappings } from '@/src/utils/storage';
+import { resolveProfileValue } from '@/src/autofill/resolver';
 import { useToast } from '@/src/components/ui/useToast';
 import { InfoTooltip } from '@/src/components/ui/InfoTooltip';
 import { ExpandableCard } from './shared/ExpandableCard';
@@ -33,6 +34,14 @@ function countTooltip(value: LearnedMappingValue): string {
   return isTrusted(value)
     ? 'This field now fills automatically without showing the picker.'
     : 'One more matching confirmation before this fills automatically.';
+}
+
+// True when the mapping's path no longer resolves to anything in the current
+// profile — e.g. it pointed to a work history row that was since deleted.
+// Purely informational: nothing here is auto-removed or auto-corrected: the
+// user decides via Edit/Delete below.
+function resolvesEmpty(value: LearnedMappingValue, profile: Partial<Profile>): boolean {
+  return !resolveProfileValue(profile as Profile, pathOf(value));
 }
 
 interface SignalRowProps {
@@ -105,6 +114,14 @@ function SignalRow({ signal, value, profile, onDelete, onUpdate }: SignalRowProp
               {countLabel(value)}
             </span>
             <InfoTooltip text={countTooltip(value)} />
+            {resolvesEmpty(value, profile) && (
+              <>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full shrink-0 bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                  Empty right now
+                </span>
+                <InfoTooltip text="This profile field is empty or no longer exists, so this mapping won't fill anything until you update it here or in your profile." />
+              </>
+            )}
           </div>
         )}
       </div>
