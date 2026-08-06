@@ -47,16 +47,15 @@ export function extractSelectOptions(select: HTMLSelectElement): AIOptionPayload
 //
 // `aiGreenFilled` is an optional output set. When AI fills a field at
 // high confidence (green), the element is added to this set so the caller
-// can strip it from pickerFields / edit watchers before they're attached.
-// Without this, a green-filled element would still trigger the pre-AI picker
-// (gray "Go to Profile" CTA or red picker) on focus — wrong UX.
+// can strip it from the editable-fields list before edit watchers are
+// attached. Without this, a green-filled element would still get a blur
+// watcher for its stale pre-AI state — wrong UX.
 //
-// Low-confidence (needReview) text candidates need no picker wiring of our
-// own here: they stay in the caller's original pickerFields list (only
-// aiGreenFilled elements get removed from it) with their original
-// lowConfidence/noData state, so the caller's own attachEditWatchers /
-// attachPickerListeners pass — which runs after this function returns —
-// attaches the real listener for them.
+// Low-confidence (needReview) text candidates need no edit-watcher wiring of
+// our own here: they stay in the caller's original editable-fields list
+// (only aiGreenFilled elements get removed from it) with their original
+// lowConfidence/noData state, so the caller's own attachEditWatchers pass —
+// which runs after this function returns — attaches the real listener for them.
 export async function runAIAutofill(
   textCandidates: AITextCandidate[],
   profile: Profile,
@@ -200,9 +199,9 @@ export async function runAIAutofill(
       if (isHigh) {
         result.noReview++;
         aiGreenFilled?.add(candidate.element);
-        // Save learned mappings for high-confidence fills so the picker skips
-        // this field on the next autofill run on this domain. Only when we
-        // have a profile path — selectedOption alone is not a stable signal.
+        // Save learned mappings for high-confidence fills so this field maps
+        // straight to green on the next autofill run on this domain. Only when
+        // we have a profile path — selectedOption alone is not a stable signal.
         if (resp.profilePath) {
           const sigs = [
             candidate.signals.name, candidate.signals.id,
