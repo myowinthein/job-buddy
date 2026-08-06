@@ -3,8 +3,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const fetchMock = vi.fn();
 vi.stubGlobal('fetch', fetchMock);
 
-import { checkApiKey, validateApiKey, resolveFieldsWithAI } from './gemini';
-import type { AIFieldPayload } from './types';
+import { checkApiKey, validateApiKey, resolveFieldsWithAI, extractFromResume } from './gemini';
+import type { AIFieldPayload, GeminiModel } from './types';
+import type { Profile } from '@/src/types/profile';
 
 /** Build a Gemini generateContent response whose candidate text is `text`. */
 function geminiTextResponse(text: string) {
@@ -230,5 +231,86 @@ describe('validateApiKey', () => {
     fetchMock.mockRejectedValueOnce(new Error('offline'));
     const result = await validateApiKey('key');
     expect(result).toEqual({ valid: false, error: 'Network error while validating key' });
+  });
+});
+
+// ── extractFromResume ────────────────────────────────────────────────────────
+
+describe('extractFromResume', () => {
+  const PROFILE_STUB = { personal: { firstName: 'Jane' } } as Partial<Profile>;
+
+  function extract(model: GeminiModel = 'gemini-3.5-flash-lite') {
+    return extractFromResume('key', model, 'base64data', 'application/pdf', PROFILE_STUB);
+  }
+
+  it('returns the extracted profile parsed from a successful response', async () => {
+    fetchMock.mockResolvedValueOnce(
+      geminiTextResponse(JSON.stringify({ personal: { firstName: 'Jane', lastName: 'Doe' } })),
+    );
+    const result = await extract();
+    expect(result).toMatchObject({ personal: { firstName: 'Jane', lastName: 'Doe' } });
+  });
+
+  it('strips markdown code fences before parsing the extracted profile', async () => {
+    fetchMock.mockResolvedValueOnce(geminiTextResponse('```json\n{"personal":{"firstName":"Jane"}}\n```'));
+    const result = await extract();
+    expect(result).toMatchObject({ personal: { firstName: 'Jane' } });
+  });
+
+  it('falls through to the next model on 429, trying the configured model first', async () => {
+    fetchMock
+      .mockResolvedValueOnce(httpResponse(429))
+      .mockResolvedValueOnce(geminiTextResponse(JSON.stringify({ personal: {} })));
+    await extract('gemini-3.6-flash');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][0]).toContain('gemini-3.6-flash');
+    expect(fetchMock.mock.calls[1][0]).toContain('gemini-3.5-flash-lite'); // GEMINI_MODEL_PRIORITY[0]
+  });
+
+  it('throws rate_limit when every model in the probe list returns 429', async () => {
+    fetchMock.mockResolvedValue(httpResponse(429));
+    await expect(extract()).rejects.toMatchObject({ code: 'rate_limit' });
+    expect(fetchMock).toHaveBeenCalledTimes(4); // GEMINI_MODEL_PRIORITY length, deduped against the configured model
+  });
+
+  it('rethrows AbortError as-is, not wrapped as a network error', async () => {
+    const abortErr = new DOMException('aborted', 'AbortError');
+    fetchMock.mockRejectedValueOnce(abortErr);
+    await expect(extract()).rejects.toBe(abortErr);
+  });
+
+  it('wraps a generic fetch failure as a network ImportError', async () => {
+    fetchMock.mockRejectedValueOnce(new Error('offline'));
+    await expect(extract()).rejects.toMatchObject({ code: 'network' });
+  });
+
+  it('throws an auth ImportError on 401', async () => {
+    fetchMock.mockResolvedValueOnce(httpResponse(401));
+    await expect(extract()).rejects.toMatchObject({ code: 'auth' });
+  });
+
+  it('throws an auth ImportError on 403', async () => {
+    fetchMock.mockResolvedValueOnce(httpResponse(403));
+    await expect(extract()).rejects.toMatchObject({ code: 'auth' });
+  });
+
+  it('throws a network ImportError on other non-ok, non-429 statuses', async () => {
+    fetchMock.mockResolvedValueOnce(httpResponse(500));
+    await expect(extract()).rejects.toMatchObject({ code: 'network' });
+  });
+
+  it('throws a parse ImportError when the response body cannot be read as JSON', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.reject(new Error('bad body')) });
+    await expect(extract()).rejects.toMatchObject({ code: 'parse' });
+  });
+
+  it('throws a parse ImportError when the response has no candidate text', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ candidates: [] }) });
+    await expect(extract()).rejects.toMatchObject({ code: 'parse' });
+  });
+
+  it('throws a parse ImportError when the candidate text is not valid JSON', async () => {
+    fetchMock.mockResolvedValueOnce(geminiTextResponse('this is not json'));
+    await expect(extract()).rejects.toMatchObject({ code: 'parse' });
   });
 });
