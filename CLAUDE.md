@@ -93,6 +93,8 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 
 **Learned mapping confidence:** `LearnedMappings` values are `string | { path: string; count: number }`. New mappings start at `count: 1` and are not promoted to Layer 0 until count reaches 2, and are matched only against `label/ariaLabel/placeholder/name/id` — never `nearbyText`. `saveLearnedMapping()` in `src/utils/storage.ts` is the source of truth.
 
+**Manual edits only feed learned mappings from `needReview` (yellow).** `attachEditWatchers()` in `src/autofill/index.ts` saves a mapping on blur only when the field's tier was `needReview` AND the edited value stays similar enough to what was pre-filled (`similarity()` from `normalizer.ts` ≥ `EDIT_LEARN_SIMILARITY_THRESHOLD`). `lowConfidence`/`noData` edits never save — their guessed path (when one exists) was too weak to trust even for filling, and typing into them can't be told apart from answering an unrelated custom question.
+
 **Drive backup payload fan-out:** Adding a field to `DriveBackupFile` requires updating both `syncProfileToDrive()` (upload) and two restore paths in `SettingsSection` — `handleRestoreFromDrive` and `handleDriveReviewSave`.
 
 ---

@@ -1,5 +1,5 @@
 import { getProfile, getLearnedMappings, saveLearnedMappings } from '../utils/storage';
-import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED } from './constants';
+import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED, EDIT_LEARN_SIMILARITY_THRESHOLD } from './constants';
 import { scanFields, scanAriaFields } from './scanner';
 import { extractSignals, bestLabel } from './signals';
 import type { FieldSignals } from './signals';
@@ -8,7 +8,8 @@ import type { FieldMatch } from './mapper';
 import { fillField, fillFileField, clearFieldValue } from './filler';
 import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
 import { resolveProfileValue } from './resolver';
-import { refreshLearnedLabels } from './mappings';
+import { similarity } from './normalizer';
+import { refreshLearnedLabels, saveElementMappings } from './mappings';
 import { runAIAutofill } from './ai';
 import type { AITextCandidate } from './ai';
 import type { DebugSession, DebugScanField, DebugMappingField, DebugAIField, FieldFinalState } from './debug';
@@ -90,18 +91,41 @@ type EditableFieldState = 'lowConfidence' | 'needReview' | 'noData';
 interface EditableField {
   element: HTMLElement;
   state:   EditableFieldState;
+  // Only set for 'needReview' — the sole tier a manual edit is trusted enough
+  // to feed into learned mappings. See attachEditWatchers.
+  fieldPath?: string;
 }
 
 // Tracks the blur handler currently registered on each non-green field so we
 // can remove stale handlers on re-run and during undo.
 const editWatchers = new WeakMap<HTMLElement, () => void>();
 
+// Serializes learned-mapping writes triggered by edit watchers. saveLearnedMapping
+// does a read-modify-write against chrome.storage.local, so two blur events firing
+// close together (e.g. tabbing quickly through fields) could otherwise race and
+// silently lose one write — the same class of bug fixed in ai.ts's sequential save loop.
+let mappingSaveChain: Promise<void> = Promise.resolve();
+function queueMappingSave(domain: string, element: HTMLElement, fieldPath: string): void {
+  mappingSaveChain = mappingSaveChain
+    .then(() => saveElementMappings(domain, element, fieldPath))
+    .catch(() => { /* best-effort — mapping will be re-learned on a future edit */ });
+}
+
 // Attaches a blur listener to each non-green field. On blur, if the value
 // changed since autofill ran, the field transitions to No Review (green) and
-// the popup counts are updated. No learned mapping is saved — manual edits are
-// intentionally kept separate from the learning mechanism.
-function attachEditWatchers(fields: EditableField[], result: AutofillResult): void {
-  for (const { element, state } of fields) {
+// the popup counts are updated.
+//
+// needReview fields additionally feed learned mappings: the rule pipeline
+// already had 0.60-0.84 confidence that fieldPath was correct, so an edit is
+// usually a refinement of that same field rather than an answer to something
+// else — but not always (e.g. the guessed field is entirely wrong and the user
+// types something unrelated). To guard against that, we only save when the
+// edited value is still reasonably similar to what was pre-filled; a wildly
+// different value looks like a different question, not a correction, and is
+// left unlearned. lowConfidence/noData never learn — their guesses (when
+// present at all) were too weak to trust even for filling.
+function attachEditWatchers(fields: EditableField[], result: AutofillResult, domain: string): void {
+  for (const { element, state, fieldPath } of fields) {
     const prev = editWatchers.get(element);
     if (prev) element.removeEventListener('blur', prev);
 
@@ -134,6 +158,13 @@ function attachEditWatchers(fields: EditableField[], result: AutofillResult): vo
         // registry so a later profile update doesn't overwrite the user's typing.
         noDataFields = noDataFields.filter((e) => e.element !== element);
         if (noDataFields.length === 0) teardownVisibilityListener();
+      }
+
+      if (
+        state === 'needReview' && fieldPath && currentValue &&
+        similarity(valueAtAttach, currentValue) >= EDIT_LEARN_SIMILARITY_THRESHOLD
+      ) {
+        queueMappingSave(domain, element, fieldPath);
       }
 
       // Field is resolved — tear down the edit watcher so it doesn't fire again.
@@ -406,7 +437,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         result.needReview++;
         // File inputs are excluded from edit-watching — file selection is
         // handled silently by Auto Fill, not manual typing.
-        if (!isFileInput) editableFields.push({ element, state: 'needReview' });
+        if (!isFileInput) editableFields.push({ element, state: 'needReview', fieldPath: match.fieldPath ?? undefined });
         finalState = 'yellow';
       }
 
@@ -489,7 +520,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   // place by those callbacks, so the reference remains accurate after they run.
   lastResult = result;
 
-  attachEditWatchers(editableFields, result);
+  attachEditWatchers(editableFields, result, domain);
 
   return result;
 }
