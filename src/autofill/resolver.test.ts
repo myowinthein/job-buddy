@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { resolveProfileValue } from './resolver';
+import { resolveProfileValue, flattenProfileValues } from './resolver';
 import type { Profile } from '../types/profile';
 
 const PROFILE: Profile = {
@@ -345,5 +345,55 @@ describe('resolveProfileValue — notice period: availableDate (date-pinned)', (
     const p = { ...PROFILE, professional: { noticePeriod: { immediate: true } } };
     const result = resolveProfileValue(p, 'professional.noticePeriod.availableDate');
     expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe('flattenProfileValues', () => {
+  it('excludes id and the CV file blob entirely', () => {
+    const flat = flattenProfileValues(PROFILE);
+    expect(flat.some((f) => f.path === 'id')).toBe(false);
+    expect(flat.some((f) => f.path.startsWith('documents.cv.file'))).toBe(false);
+  });
+
+  it('still includes the CV url alongside the excluded file blob', () => {
+    const flat = flattenProfileValues(PROFILE);
+    expect(flat).toContainEqual({ path: 'documents.cv.url', value: 'https://example.com/cv.pdf' });
+  });
+
+  it('includes simple string leaves at their dot-notation path', () => {
+    const flat = flattenProfileValues(PROFILE);
+    expect(flat).toContainEqual({ path: 'personal.firstName', value: 'Jane' });
+    expect(flat).toContainEqual({ path: 'links.linkedin', value: 'https://linkedin.com/in/jane' });
+  });
+
+  it('includes array entries by their real numeric index', () => {
+    const flat = flattenProfileValues(PROFILE);
+    expect(flat).toContainEqual({ path: 'workHistory.0.company', value: 'Acme' });
+    expect(flat).toContainEqual({ path: 'workHistory.1.company', value: 'Beta Corp' });
+    expect(flat).toContainEqual({ path: 'education.1.institution', value: 'Stanford' });
+  });
+
+  it('includes numeric leaves stringified', () => {
+    const flat = flattenProfileValues(PROFILE);
+    expect(flat).toContainEqual({ path: 'salary.current.amount', value: '80000' });
+    expect(flat).toContainEqual({ path: 'derived.age', value: '35' });
+  });
+
+  it('excludes boolean leaves', () => {
+    const flat = flattenProfileValues(PROFILE);
+    expect(flat.some((f) => f.path === 'workHistory.0.isCurrent')).toBe(false);
+    expect(flat.some((f) => f.path === 'professional.noticePeriod.immediate')).toBe(false);
+  });
+
+  it('excludes empty-string leaves', () => {
+    const p: Profile = { ...PROFILE, address: { ...PROFILE.address, street: '' } };
+    const flat = flattenProfileValues(p);
+    expect(flat.some((f) => f.path === 'address.street')).toBe(false);
+  });
+
+  it('does not include virtual/computed paths', () => {
+    const flat = flattenProfileValues(PROFILE);
+    expect(flat.some((f) => f.path === 'personal.phone.full')).toBe(false);
+    expect(flat.some((f) => f.path === 'address.countryName')).toBe(false);
   });
 });

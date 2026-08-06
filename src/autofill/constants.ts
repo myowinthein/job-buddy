@@ -31,8 +31,13 @@ export const CONF_FUZZY_WEAK_MULT = 0.75;
 /** Confidence floor for context-layer (nearbyText) matches. */
 export const CONF_CONTEXT = 0.70;
 
-/** Minimum value-similarity (pre-filled value vs. the edited value) required
- *  before a manual needReview edit is trusted enough to save a learned
- *  mapping. Below this, the edit looks like an answer to a different
- *  question rather than a refinement of the same field. */
+/** Minimum similarity between a manually-typed value and an existing profile
+ *  value before an edit-watcher (yellow/red/gray) save is trusted enough to
+ *  save a learned mapping. Below this, the edit doesn't look like it
+ *  corresponds to anything already in the profile. */
 export const EDIT_LEARN_SIMILARITY_THRESHOLD = 0.5;
+
+/** Minimum length (after trim) of a manually-typed value before attempting
+ *  the profile-value similarity match above. Short strings ("US", "5") can
+ *  coincidentally score high against unrelated short profile values. */
+export const EDIT_LEARN_MIN_VALUE_LENGTH = 4;
