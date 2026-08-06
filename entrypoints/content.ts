@@ -2,6 +2,12 @@ import { scanAutofill, executeAutofill, undoAutofill, getLastResult, getDebugSes
 
 export default defineContentScript({
   matches: ['*://*/*'],
+  // Many job application forms are embedded via a cross-origin iframe (ATS
+  // widgets, embedded application flows) rather than living on the top-level
+  // page. all_frames injects this script into every matching frame, not just
+  // the top one, so scanAutofill/executeAutofill can find fields there too.
+  // The popup's messaging layer is frame-aware to match (see popup/App.tsx).
+  allFrames: true,
   main() {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message.action === 'AUTOFILL_SCAN') {
