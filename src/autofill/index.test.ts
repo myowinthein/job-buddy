@@ -5,6 +5,7 @@ import type { Profile } from '../types/profile';
 vi.mock('../utils/storage', () => ({
   getProfile: vi.fn(),
   getLearnedMappings: vi.fn().mockResolvedValue({}),
+  saveLearnedMappings: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock('./scanner', () => ({
   scanFields: vi.fn().mockReturnValue([]),
@@ -31,17 +32,21 @@ vi.mock('./picker', () => ({
   closePickerIfOpenFor: vi.fn(),
 }));
 vi.mock('./resolver', () => ({ resolveProfileValue: vi.fn() }));
-vi.mock('./mappings', () => ({ saveElementMappings: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('./mappings', () => ({
+  saveElementMappings: vi.fn().mockResolvedValue(undefined),
+  refreshLearnedLabels: vi.fn().mockReturnValue(false),
+}));
 vi.mock('./ai', () => ({ runAIAutofill: vi.fn().mockResolvedValue(false) }));
 
 import { scanAutofill, executeAutofill, undoAutofill, getLastResult, EMPTY_AUTOFILL_RESULT } from './index';
-import { getProfile } from '../utils/storage';
+import { getProfile, saveLearnedMappings } from '../utils/storage';
 import { scanFields, scanAriaFields } from './scanner';
 import { mapField } from './mapper';
 import { clearFieldValue, fillField } from './filler';
 import { clearElementHighlight, clearHighlights, applyHighlight } from './highlighter';
 import { removePickerListener, closePickerIfOpenFor } from './picker';
 import { resolveProfileValue } from './resolver';
+import { refreshLearnedLabels } from './mappings';
 import { CONF_CONFIRMED } from './constants';
 
 function makeProfile(): Profile {
@@ -106,6 +111,23 @@ describe('scanAutofill', () => {
     const result = await scanAutofill();
     expect(result.totalMatched).toBe(2);
     expect(result.preFilledCount).toBe(1);
+  });
+
+  it('does not write learned mappings when no field label needed backfilling', async () => {
+    vi.mocked(scanFields).mockReturnValue([makeInput(), makeInput()]);
+    vi.mocked(refreshLearnedLabels).mockReturnValue(false);
+
+    await scanAutofill();
+    expect(saveLearnedMappings).not.toHaveBeenCalled();
+  });
+
+  it('batches label backfills from multiple fields into a single write', async () => {
+    vi.mocked(scanFields).mockReturnValue([makeInput(), makeInput(), makeInput()]);
+    vi.mocked(refreshLearnedLabels).mockReturnValue(true);
+
+    await scanAutofill();
+    expect(refreshLearnedLabels).toHaveBeenCalledTimes(3);
+    expect(saveLearnedMappings).toHaveBeenCalledTimes(1);
   });
 });
 

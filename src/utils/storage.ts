@@ -83,6 +83,41 @@ export async function getLearnedMappings(): Promise<LearnedMappings> {
   return (result.learnedMappings as LearnedMappings) ?? {};
 }
 
+// How trustworthy an entry is, for conflict resolution during a merge. A
+// legacy string entry was always unconditionally trusted, so it outranks any
+// counted entry regardless of count.
+function trustRank(value: LearnedMappingValue): number {
+  return typeof value === 'string' ? Infinity : value.count;
+}
+
+// Merges two LearnedMappings snapshots without losing data from either side —
+// used when restoring from a Drive backup, since a blind overwrite could
+// silently discard local learning that hadn't been synced to Drive yet.
+// Signals present on only one side are kept as-is. For a signal present on
+// both sides, keeps whichever entry is more trusted (higher count, or a
+// legacy string entry); ties keep the local entry.
+export function mergeLearnedMappings(local: LearnedMappings, remote: LearnedMappings): LearnedMappings {
+  const merged: LearnedMappings = {};
+  const domains = new Set([...Object.keys(local), ...Object.keys(remote)]);
+
+  for (const domain of domains) {
+    const localSignals  = local[domain]  ?? {};
+    const remoteSignals = remote[domain] ?? {};
+    const signals = new Set([...Object.keys(localSignals), ...Object.keys(remoteSignals)]);
+    const mergedSignals: Record<string, LearnedMappingValue> = {};
+
+    for (const signal of signals) {
+      const l = localSignals[signal];
+      const r = remoteSignals[signal];
+      if (l === undefined)      mergedSignals[signal] = r;
+      else if (r === undefined) mergedSignals[signal] = l;
+      else                      mergedSignals[signal] = trustRank(l) >= trustRank(r) ? l : r;
+    }
+    merged[domain] = mergedSignals;
+  }
+  return merged;
+}
+
 export async function saveLearnedMappings(mappings: LearnedMappings): Promise<void> {
   await storageSet({ learnedMappings: mappings });
 }
@@ -153,6 +188,7 @@ export async function saveLearnedMapping(
   domain: string,
   normalizedSignal: string,
   fieldPath: string,
+  label?: string,
 ): Promise<void> {
   const mappings = await getLearnedMappings();
   if (!mappings[domain]) mappings[domain] = {};
@@ -160,18 +196,22 @@ export async function saveLearnedMapping(
 
   if (existing === undefined) {
     // First confirmation — store with count 1, not yet trusted for Layer 0.
-    mappings[domain][normalizedSignal] = { path: fieldPath, count: 1 };
+    mappings[domain][normalizedSignal] = { path: fieldPath, count: 1, label };
   } else if (typeof existing === 'string') {
-    // Legacy format: already trusted. Leave untouched for same path; reset on conflict.
+    // Legacy format: already trusted. Leave the path untouched for the same path
+    // (but still attach a label if one wasn't recorded before), reset on conflict.
     if (existing !== fieldPath) {
-      mappings[domain][normalizedSignal] = { path: fieldPath, count: 1 };
+      mappings[domain][normalizedSignal] = { path: fieldPath, count: 1, label };
+    } else if (label) {
+      mappings[domain][normalizedSignal] = { path: existing, count: 2, label };
     }
   } else {
-    // New counted format: increment on same path, reset on conflict.
+    // New counted format: increment on same path, reset on conflict. Always
+    // refresh the label — it's a display aid, not part of the trust logic.
     if (existing.path === fieldPath) {
-      mappings[domain][normalizedSignal] = { path: fieldPath, count: existing.count + 1 };
+      mappings[domain][normalizedSignal] = { path: fieldPath, count: existing.count + 1, label: label ?? existing.label };
     } else {
-      mappings[domain][normalizedSignal] = { path: fieldPath, count: 1 };
+      mappings[domain][normalizedSignal] = { path: fieldPath, count: 1, label };
     }
   }
 

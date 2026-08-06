@@ -26,7 +26,7 @@ vi.stubGlobal('chrome', {
 // Import after the global is stubbed
 import {
   getProfile, saveProfile,
-  getLearnedMappings, saveLearnedMapping,
+  getLearnedMappings, saveLearnedMapping, mergeLearnedMappings,
   getApplicationHistory, saveApplicationHistory,
   getGeminiApiKey, saveGeminiApiKey, clearGeminiSettings,
   getThemePreference, saveThemePreference,
@@ -34,6 +34,7 @@ import {
   clearAllStorage,
 } from './storage';
 import type { Profile } from '../types/profile';
+import type { LearnedMappings } from '../types/storage';
 
 const MINIMAL_PROFILE: Profile = {
   id: 'test-id',
@@ -166,6 +167,85 @@ describe('learned mappings', () => {
     await saveLearnedMapping('example.com', 'firstname', 'personal.lastName');
     const entry = (await getLearnedMappings())['example.com']?.['firstname'];
     expect(entry).toEqual({ path: 'personal.lastName', count: 1 });
+  });
+
+  it('stores the given label alongside the first confirmation', async () => {
+    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName', 'First Name');
+    const entry = (await getLearnedMappings())['example.com']?.['firstname'];
+    expect(entry).toEqual({ path: 'personal.firstName', count: 1, label: 'First Name' });
+  });
+
+  it('refreshes the label on a repeated same-path confirmation', async () => {
+    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName', 'First Name');
+    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName', 'Legal First Name');
+    const entry = (await getLearnedMappings())['example.com']?.['firstname'];
+    expect(entry).toEqual({ path: 'personal.firstName', count: 2, label: 'Legal First Name' });
+  });
+
+  it('keeps the existing label when a later confirmation omits one', async () => {
+    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName', 'First Name');
+    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
+    const entry = (await getLearnedMappings())['example.com']?.['firstname'];
+    expect(entry).toEqual({ path: 'personal.firstName', count: 2, label: 'First Name' });
+  });
+
+  it('upgrades a legacy string entry to the counted format when a label is provided for the same path', async () => {
+    store['learnedMappings'] = { 'example.com': { 'firstname': 'personal.firstName' } };
+    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName', 'First Name');
+    const entry = (await getLearnedMappings())['example.com']?.['firstname'];
+    expect(entry).toEqual({ path: 'personal.firstName', count: 2, label: 'First Name' });
+  });
+});
+
+describe('mergeLearnedMappings', () => {
+  it('keeps a signal present only locally', () => {
+    const local: LearnedMappings = { 'example.com': { 'firstname': { path: 'personal.firstName', count: 1 } } };
+    const remote: LearnedMappings = {};
+    expect(mergeLearnedMappings(local, remote)).toEqual(local);
+  });
+
+  it('keeps a signal present only remotely', () => {
+    const local: LearnedMappings = {};
+    const remote: LearnedMappings = { 'example.com': { 'firstname': { path: 'personal.firstName', count: 2 } } };
+    expect(mergeLearnedMappings(local, remote)).toEqual(remote);
+  });
+
+  it('keeps the higher-count entry when the same signal conflicts', () => {
+    const local: LearnedMappings = { 'example.com': { 'firstname': { path: 'personal.firstName', count: 1 } } };
+    const remote: LearnedMappings = { 'example.com': { 'firstname': { path: 'personal.lastName', count: 2 } } };
+    const merged = mergeLearnedMappings(local, remote);
+    expect(merged['example.com']['firstname']).toEqual({ path: 'personal.lastName', count: 2 });
+  });
+
+  it('keeps the local entry on a count tie', () => {
+    const local: LearnedMappings = { 'example.com': { 'firstname': { path: 'personal.firstName', count: 1, label: 'Local' } } };
+    const remote: LearnedMappings = { 'example.com': { 'firstname': { path: 'personal.lastName', count: 1, label: 'Remote' } } };
+    const merged = mergeLearnedMappings(local, remote);
+    expect(merged['example.com']['firstname']).toEqual({ path: 'personal.firstName', count: 1, label: 'Local' });
+  });
+
+  it('a legacy string entry always outranks a counted entry, from either side', () => {
+    const local: LearnedMappings = { 'example.com': { 'firstname': 'personal.firstName' } };
+    const remote: LearnedMappings = { 'example.com': { 'firstname': { path: 'personal.lastName', count: 5 } } };
+    expect(mergeLearnedMappings(local, remote)['example.com']['firstname']).toBe('personal.firstName');
+    expect(mergeLearnedMappings(remote, local)['example.com']['firstname']).toBe('personal.firstName');
+  });
+
+  it('merges independently per domain, not just per top-level object', () => {
+    const local: LearnedMappings = {
+      'a.com': { 'x': { path: 'p1', count: 1 } },
+    };
+    const remote: LearnedMappings = {
+      'b.com': { 'y': { path: 'p2', count: 1 } },
+    };
+    const merged = mergeLearnedMappings(local, remote);
+    expect(Object.keys(merged).sort()).toEqual(['a.com', 'b.com']);
+    expect(merged['a.com']['x']).toEqual({ path: 'p1', count: 1 });
+    expect(merged['b.com']['y']).toEqual({ path: 'p2', count: 1 });
+  });
+
+  it('returns an empty object when both sides are empty', () => {
+    expect(mergeLearnedMappings({}, {})).toEqual({});
   });
 });
 
