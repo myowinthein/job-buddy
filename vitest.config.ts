@@ -9,5 +9,10 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,tsx}', 'entrypoints/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/**/*.d.ts'],
+    },
   },
 });
