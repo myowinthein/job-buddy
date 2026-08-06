@@ -39,9 +39,9 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 
 **Entrypoints** (`entrypoints/`):
 - `background.ts` — service worker; retries pending Drive sync on browser startup and debounces a Drive sync whenever the local `profile` or `learnedMappings` storage key changes
-- `content.ts` — matches `*://*/*`; routes `AUTOFILL_SCAN/FILL/CLEAR/GET_STATUS/GET_DEBUG_SESSION` to `src/autofill/`
-- `popup/` — action popup; React state lost on close, restored from `GET_STATUS` on mount. Debug panel hidden until Shift+click the logo post-fill.
-- `options/` — full-page profile editor (9 sections + Resume Import + Settings)
+- `content.ts` — matches `*://*/*`, `allFrames: true` (job forms are often embedded in a cross-origin iframe); routes `AUTOFILL_SCAN/FILL/CLEAR/GET_STATUS/GET_DEBUG_SESSION` to `src/autofill/`
+- `popup/` — action popup; React state lost on close, restored from `GET_STATUS` on mount. Debug panel hidden until Shift+click the logo post-fill. `sendToAllFrames()`/`mergeAutofillResults()` enumerate a tab's frames (`chrome.webNavigation.getAllFrames`) and aggregate results, since `chrome.tabs.sendMessage` only reaches the top frame by default.
+- `options/` — full-page profile editor (9 profile sections + Resume Import + Learned Mappings + Settings)
 
 **Key source files:**
 - `src/types/profile.ts` — canonical `Profile` type; 10 top-level keys including `derived`
@@ -67,6 +67,8 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 - `src/resume-ai/normalize.ts` — `normalizeBullets()` + `normalizeSummaryLineWraps()`. Bullet pass fires only when bullet structure is detected — preserves plain context paragraphs.
 - `src/resume-ai/extractLinks.ts` — pulls hyperlinks from PDF annotation layer via `pdfjs-dist`; returns `[]` for non-PDF and on any error.
 - `src/utils/theme.ts` — `ThemePreference` (`system | light | dark`); sets `.dark` on `document.documentElement`.
+- `src/utils/devProfile.ts` — `DEV_PROFILE`, a fully-filled dummy profile `getProfile()` falls back to when nothing is saved yet and `import.meta.env.DEV` is true. Never persisted, never present in a production build.
+- `src/autofill/profileFieldTree.ts` — `buildPickerTree()`; despite the name, no picker exists anymore. It now powers the grouped, searchable field dropdown in the Learned Mappings edit UI (`SearchableProfileFieldSelect`).
 
 **Site (`docs/`):**
 - `docs/index.html` — GitHub Pages landing page (no build step; Tailwind via CDN)
@@ -85,7 +87,11 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 
 **Storage privacy boundary:** `geminiApiKey`, `geminiModel`, `driveToken`, `driveBackupState` are never included in profile export bundles. Exports wrap only `{ profile, learnedMappings, applicationHistory }`.
 
-**AI is purely additive:** The extension works fully without a Gemini key. AI autofill runs after the rule pipeline; all failures must be silent — never surface network errors from the AI layer.
+**AI is purely additive:** The extension works fully without a Gemini key. AI autofill runs after the rule pipeline; all failures must be silent — never surface network errors from the AI layer. All three non-green tiers (needReview, lowConfidence, noData) get an AI pass, not just red/gray. A high-confidence AI response can overwrite a yellow field's rule-pipeline value.
+
+**Multi-frame autofill:** job forms are frequently embedded in a cross-origin iframe rather than the top-level page, so `content.ts` injects into every frame. The popup's messaging is frame-aware — every `AUTOFILL_*`/`GET_STATUS`/`GET_DEBUG_SESSION` message goes to every frame via `sendToAllFrames()`, with scan/fill/status counts summed across frames and the debug panel showing whichever frame actually scanned fields.
+
+**Stale learned mappings are flagged, never auto-corrected or auto-removed.** If a mapping's path no longer resolves (e.g. it pointed to a deleted work-history row), the Learned Mappings page shows an "Empty right now" badge (computed live via `resolveProfileValue()` against the current profile) — storage itself is untouched until the user acts.
 
 **Profile schema fan-out:** Any field added or renamed on `Profile` must be reflected in four places: `src/types/profile.ts`, `src/resume-ai/prompt.ts` schema, `src/resume-ai/parser.ts` FIELD_DEFS, and `src/utils/profileValidator.ts`.
 
@@ -140,6 +146,10 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 
 - **WXT entrypoint collision.** Every file under `entrypoints/` is treated as a browser entrypoint — placing test files there causes `Multiple entrypoints with the same name` build errors. Keep all test files under `src/` or alongside their source file, never in `entrypoints/`.
 
+- **Content scripts and the background service worker don't see custom `.env` vars in dev builds.** They're pre-bundled statically even under `pnpm dev` (Chrome can't load a service worker or content script from the live Vite dev server the way it loads popup/options), so `import.meta.env.VITE_*` custom vars resolve `undefined` there, even though Vite's built-in `import.meta.env.DEV` flag correctly resolves the same everywhere. A dev-only fallback that needs to reach the content script must persist to `chrome.storage.local` on first resolution (see `getGeminiApiKey()`/`getGeminiModel()` in `storage.ts`) rather than relying on the env var being visible where it's used.
+
+- **`chrome.tabs.sendMessage` only reaches the top frame by default.** Since `content.ts` runs in every frame, sending to a specific frame requires `{ frameId }`. See `sendToAllFrames()` in `popup/App.tsx`.
+
 ## Rules
 
 This project follows the rules shipped in claude-helm:
@@ -150,4 +160,4 @@ At the start of every session, check whether the paths above exist on this machi
 If either is missing, inform the user: "helm rules are referenced in CLAUDE.md but the
 plugin is not installed on this machine. Install it with: /plugin install claude-helm"
 
-<!-- last-reviewed: 221ca8fbc513d3cd6ae1e072f5d7cef7f3dd7d5e -->
+<!-- last-reviewed: 52bce8b37dbb654f5b5ef9332d322c40cdabaf64 -->
