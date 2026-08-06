@@ -468,6 +468,132 @@ describe('learned-mapping linking on blur (content-based, all tiers)', () => {
   });
 });
 
+describe('queueMappingSave serialization', () => {
+  it('does not start the next queued save until the previous one settles', async () => {
+    const el1 = makeInput('');
+    const el2 = makeInput('');
+    vi.mocked(scanFields).mockReturnValue([el1, el2]);
+    vi.mocked(mapField)
+      .mockReturnValueOnce({ confidence: 0.7, value: 'Jane', fieldPath: 'personal.firstName', matchLayer: 'context' })
+      .mockReturnValueOnce({ confidence: 0.7, value: null, fieldPath: 'links.linkedin', matchLayer: 'context' });
+
+    await scanAutofill();
+    await executeAutofill('merge');
+
+    let resolveFirst: () => void = () => {};
+    let callCount = 0;
+    vi.mocked(saveElementMappings).mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return new Promise((resolve) => { resolveFirst = resolve; });
+      return Promise.resolve();
+    });
+
+    el1.value = 'Jane Doe'; // similar to profile firstName — qualifies
+    el1.dispatchEvent(new Event('blur'));
+    el2.value = 'https://linkedin.com/in/janedoe'; // similar to profile linkedin — qualifies
+    el2.dispatchEvent(new Event('blur'));
+
+    // Both blur handlers ran synchronously, but the second save must not have
+    // started yet — it's chained behind the still-pending first save.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(saveElementMappings).toHaveBeenCalledTimes(1);
+
+    resolveFirst();
+    await vi.waitFor(() => expect(saveElementMappings).toHaveBeenCalledTimes(2));
+  });
+
+  it('continues processing later queued saves after an earlier one rejects', async () => {
+    const el1 = makeInput('');
+    const el2 = makeInput('');
+    vi.mocked(scanFields).mockReturnValue([el1, el2]);
+    vi.mocked(mapField)
+      .mockReturnValueOnce({ confidence: 0.7, value: 'Jane', fieldPath: 'personal.firstName', matchLayer: 'context' })
+      .mockReturnValueOnce({ confidence: 0.7, value: null, fieldPath: 'links.linkedin', matchLayer: 'context' });
+
+    await scanAutofill();
+    await executeAutofill('merge');
+
+    vi.mocked(saveElementMappings)
+      .mockRejectedValueOnce(new Error('quota exceeded'))
+      .mockResolvedValueOnce(undefined);
+
+    el1.value = 'Jane Doe';
+    el1.dispatchEvent(new Event('blur'));
+    el2.value = 'https://linkedin.com/in/janedoe';
+    el2.dispatchEvent(new Event('blur'));
+
+    await vi.waitFor(() => expect(saveElementMappings).toHaveBeenCalledTimes(2));
+  });
+});
+
+describe('AI green-filled elements are excluded from edit-watching', () => {
+  it('does not promote an AI-green-filled element on a later blur', async () => {
+    const el = makeInput('');
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.7, value: 'Jane', fieldPath: 'personal.firstName', matchLayer: 'context' });
+    vi.mocked(runAIAutofill).mockImplementation(async (_c, _p, _r, _s, _d, _dbg, aiGreenFilled) => {
+      aiGreenFilled?.add(el);
+      return true;
+    });
+
+    await scanAutofill();
+    await executeAutofill('overwrite');
+
+    vi.mocked(applyHighlight).mockClear();
+    vi.mocked(saveElementMappings).mockClear();
+
+    el.value = 'something the user typed afterward';
+    el.dispatchEvent(new Event('blur'));
+
+    await Promise.resolve();
+    await Promise.resolve();
+    // No edit-watcher was attached for this element (it was filtered out of
+    // editableFields before attachEditWatchers ran), so blurring it now does
+    // nothing — no promotion highlight, no learned-mapping save.
+    expect(applyHighlight).not.toHaveBeenCalled();
+    expect(saveElementMappings).not.toHaveBeenCalled();
+  });
+
+  it('still edit-watches a needReview field AI did not resolve to green', async () => {
+    const el = makeInput('');
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.7, value: 'Jane', fieldPath: 'personal.firstName', matchLayer: 'context' });
+    vi.mocked(runAIAutofill).mockResolvedValue(false); // AI unavailable — aiGreenFilled stays empty
+
+    await scanAutofill();
+    await executeAutofill('overwrite');
+    vi.mocked(applyHighlight).mockClear();
+
+    el.value = 'Jane Smith';
+    el.dispatchEvent(new Event('blur'));
+
+    expect(applyHighlight).toHaveBeenCalledWith(el, CONF_CONFIRMED);
+  });
+});
+
+describe('all three tiers reach the AI layer', () => {
+  it('sends lowConfidence and noData fields to runAIAutofill as text candidates', async () => {
+    const elRed  = makeInput();
+    const elGray = makeInput();
+    vi.mocked(scanFields).mockReturnValue([elRed, elGray]);
+    vi.mocked(mapField)
+      .mockReturnValueOnce({ confidence: 0.3, value: null, fieldPath: 'a.b', matchLayer: 'fuzzy' })
+      .mockReturnValueOnce({ confidence: 0.65, value: null, fieldPath: 'personal.email', matchLayer: 'context' });
+
+    await scanAutofill();
+    await executeAutofill('overwrite');
+
+    expect(runAIAutofill).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ element: elRed, originalState: 'lowConfidence' }),
+        expect.objectContaining({ element: elGray, originalState: 'noData' }),
+      ]),
+      expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(),
+    );
+  });
+});
+
 describe('silent re-fill on visibilitychange', () => {
   // jsdom's default document.visibilityState is 'prerender', not 'visible' —
   // the handler no-ops unless the tab is actually visible.
@@ -495,6 +621,14 @@ describe('silent re-fill on visibilitychange', () => {
     const live = getLastResult();
     expect(live?.noData).toBe(0);
     expect(live?.noReview).toBe(1);
+
+    // The blur watcher was torn down as part of the silent refill — a later
+    // edit must not re-fire the promotion logic a second time.
+    vi.mocked(applyHighlight).mockClear();
+    el.value = 'something else the user typed';
+    el.dispatchEvent(new Event('blur'));
+    expect(applyHighlight).not.toHaveBeenCalled();
+    expect(getLastResult()?.noReview).toBe(1); // unchanged, not double-counted
 
     el.remove();
   });
