@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Profile } from '../types/profile';
-import { buildPickerTree } from './picker';
+import { buildPickerTree } from './profileFieldTree';
 
 function emptyProfile(): Profile {
   return {
