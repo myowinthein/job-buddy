@@ -7,10 +7,8 @@ import { mapField } from './mapper';
 import type { FieldMatch } from './mapper';
 import { fillField, fillFileField, clearFieldValue } from './filler';
 import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
-import { attachPickerListeners, removePickerListener, closePickerIfOpenFor } from './picker';
-import type { PickerField, PickerFieldState } from './picker';
 import { resolveProfileValue } from './resolver';
-import { saveElementMappings, refreshLearnedLabels } from './mappings';
+import { refreshLearnedLabels } from './mappings';
 import { runAIAutofill } from './ai';
 import type { AITextCandidate } from './ai';
 import type { DebugSession, DebugScanField, DebugMappingField, DebugAIField, FieldFinalState } from './debug';
@@ -20,7 +18,7 @@ export { clearHighlights } from './highlighter';
 export interface AutofillResult {
   noReview:      number;  // filled, confidence >= 0.85 (green)
   needReview:    number;  // filled, 0.60 <= confidence < 0.85 (yellow)
-  lowConfidence: number;  // not filled, confidence < 0.60 — red highlight, picker offered
+  lowConfidence: number;  // not filled, confidence < 0.60 — red highlight
   noData:        number;  // not filled, confidence >= 0.60 but profile value is empty
   totalScanned:  number;  // every field found by the scanner, regardless of outcome
   aiAvailable?:  boolean; // true if the AI layer ran (key configured), false/undefined if skipped
@@ -44,8 +42,8 @@ export interface AutofillScanResult {
 
 // Every element that should be cleared by undoAutofill(). Populated on each
 // scan/fill cycle: initially noReview + needReview + lowConfidence (all get a
-// highlight). noData fields are added here only if the user fills them via the
-// picker during the same session.
+// highlight). noData fields are added here only if the user fills them in
+// manually during the same session.
 let sessionElements: HTMLElement[] = [];
 
 // Tracks the noData fields from the most recent executeAutofill run.
@@ -81,21 +79,28 @@ function teardownVisibilityListener(): void {
   visibilityHandler = null;
 }
 
-// Picks the most human-readable label from a field's signals for use in the
-// picker noData CTA ("No <label> saved in your profile yet").
+// Picks the most human-readable label from a field's signals for the noData
+// field registry.
 function extractDisplayLabel(signals: FieldSignals): string {
   return bestLabel(signals) || signals.id || 'this field';
 }
 
-// Tracks the blur handler currently registered on each picker-eligible element so
-// we can remove stale handlers on re-run and during undo.
+type EditableFieldState = 'lowConfidence' | 'needReview' | 'noData';
+
+interface EditableField {
+  element: HTMLElement;
+  state:   EditableFieldState;
+}
+
+// Tracks the blur handler currently registered on each non-green field so we
+// can remove stale handlers on re-run and during undo.
 const editWatchers = new WeakMap<HTMLElement, () => void>();
 
 // Attaches a blur listener to each non-green field. On blur, if the value
 // changed since autofill ran, the field transitions to No Review (green) and
 // the popup counts are updated. No learned mapping is saved — manual edits are
 // intentionally kept separate from the learning mechanism.
-function attachEditWatchers(fields: PickerField[], result: AutofillResult): void {
+function attachEditWatchers(fields: EditableField[], result: AutofillResult): void {
   for (const { element, state } of fields) {
     const prev = editWatchers.get(element);
     if (prev) element.removeEventListener('blur', prev);
@@ -131,11 +136,9 @@ function attachEditWatchers(fields: PickerField[], result: AutofillResult): void
         if (noDataFields.length === 0) teardownVisibilityListener();
       }
 
-      // Field is resolved — tear down both the edit watcher and the picker listener
-      // so focusing the now-green field no longer opens the picker.
+      // Field is resolved — tear down the edit watcher so it doesn't fire again.
       element.removeEventListener('blur', handler);
       editWatchers.delete(element);
-      removePickerListener(element);
     };
 
     element.addEventListener('blur', handler);
@@ -222,20 +225,13 @@ async function runSilentRefill(): Promise<void> {
     result.noData    = Math.max(0, result.noData - 1);
     result.noReview += 1;
 
-    // Tear down the picker focus listener and any blur watcher — the field is
-    // now resolved, so the picker should not open on focus, and an existing
+    // Tear down any blur watcher — the field is now resolved, so an existing
     // blur watcher would erroneously re-promote it on blur.
-    removePickerListener(element);
     const watcher = editWatchers.get(element);
     if (watcher) {
       element.removeEventListener('blur', watcher);
       editWatchers.delete(element);
     }
-
-    // If the noData CTA happens to be open for this element right now (user
-    // had focus on it before switching tabs), close it — the CTA is no longer
-    // accurate.
-    closePickerIfOpenFor(element);
   }
 
   noDataFields = remaining;
@@ -335,13 +331,13 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
 //
 // Four-way outcome per field:
 //   noReview      confidence >= 0.85, value present → fill, green highlight
-//   needReview    0.60 <= confidence < 0.85, value present → fill, yellow highlight, picker offered
-//   lowConfidence confidence < 0.60 (any value) → no fill, red highlight, picker offered
-//   noData        confidence >= 0.60, value empty → no fill, no highlight, picker offered
+//   needReview    0.60 <= confidence < 0.85, value present → fill, yellow highlight
+//   lowConfidence confidence < 0.60 (any value) → no fill, red highlight
+//   noData        confidence >= 0.60, value empty → no fill, no highlight
 //
 // sessionElements tracks every highlighted element (noReview + needReview + lowConfidence)
 // so undoAutofill can clear them all. noData fields are added to sessionElements only
-// when filled through the picker.
+// when the user fills them in manually.
 export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<AutofillResult> {
   const profile = await getProfile();
   if (!profile) return { noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0 };
@@ -352,7 +348,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     noReview: 0, needReview: 0, lowConfidence: 0, noData: 0,
     totalScanned: pendingMatches.length,
   };
-  const pickerFields: PickerField[] = [];
+  const editableFields: EditableField[] = [];
   const aiTextCandidates: AITextCandidate[] = [];
   const debugMapping: DebugMappingField[] = [];
 
@@ -405,22 +401,21 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
 
       if (match.confidence >= CONF_GREEN) {
         result.noReview++;
-        // No picker for green (No Review) fields.
         finalState = 'green';
       } else {
         result.needReview++;
-        // File inputs are deliberately excluded from the picker overlay —
-        // file selection is handled silently by Auto Fill, not the picker.
-        if (!isFileInput) pickerFields.push({ element, state: 'needReview', label: displayLabel });
+        // File inputs are excluded from edit-watching — file selection is
+        // handled silently by Auto Fill, not manual typing.
+        if (!isFileInput) editableFields.push({ element, state: 'needReview' });
         finalState = 'yellow';
       }
 
     } else if (match.confidence < CONF_FILL) {
-      // Low or no confidence — red highlight, picker for manual resolution.
+      // Low or no confidence — red highlight; left for manual resolution.
       applyHighlight(element, 0);
       sessionElements.push(element);
       result.lowConfidence++;
-      if (!isFileInput) pickerFields.push({ element, state: 'lowConfidence', label: displayLabel });
+      if (!isFileInput) editableFields.push({ element, state: 'lowConfidence' });
       if (!isFileInput) {
         aiTextCandidates.push({ type: 'text', element, signals, originalState: 'lowConfidence', originalFieldPath: match.fieldPath, debugFieldId });
       }
@@ -428,10 +423,10 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
 
     } else {
       // confidence >= 0.60 but profile value is empty — nothing to write.
-      // No highlight; picker is offered so the user can choose an alternative value.
+      // No highlight; the user can type the value in directly.
       result.noData++;
       if (!isFileInput) {
-        pickerFields.push({ element, state: 'noData', label: displayLabel, fieldPath: match.fieldPath ?? undefined });
+        editableFields.push({ element, state: 'noData' });
         // Track in the noData registry so silent re-fill on tab refocus can
         // re-resolve this field's profile path once the user updates it.
         // match.fieldPath is non-null when confidence >= 0.60 (only the
@@ -463,14 +458,15 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   const aiRan = await runAIAutofill(aiTextCandidates, profile, result, sessionElements, domain, debugAI, aiGreenFilled);
   result.aiAvailable = aiRan;
 
-  // Strip pre-AI picker entries for elements AI confirmed green. Without this,
-  // an AI-filled green field would still trigger its original pre-AI picker
-  // (gray "Go to Profile" CTA or red picker) on focus. AI's high-confidence
-  // decision is final; the field should behave like any rule-pipeline green.
+  // Strip pre-AI entries for elements AI confirmed green. Without this, an
+  // AI-filled green field would still get a blur watcher for its stale
+  // pre-AI state (yellow/red/gray), causing incorrect count updates if the
+  // user edits it further. AI's high-confidence decision is final; the field
+  // should behave like any rule-pipeline green.
   if (aiGreenFilled.size > 0) {
-    const filteredPickerFields = pickerFields.filter((pf) => !aiGreenFilled.has(pf.element));
-    pickerFields.length = 0;
-    pickerFields.push(...filteredPickerFields);
+    const filteredEditableFields = editableFields.filter((ef) => !aiGreenFilled.has(ef.element));
+    editableFields.length = 0;
+    editableFields.push(...filteredEditableFields);
     // Also drop these from the noData registry so silent re-fill doesn't try
     // to overwrite AI's value when the user updates the related profile field.
     noDataFields = noDataFields.filter((nd) => !aiGreenFilled.has(nd.element));
@@ -489,43 +485,11 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     };
   }
 
-  // Store before attaching picker listeners — the result object is mutated in
-  // place by picker callbacks, so the reference remains accurate after those run.
+  // Store before attaching edit watchers — the result object is mutated in
+  // place by those callbacks, so the reference remains accurate after they run.
   lastResult = result;
 
-  attachEditWatchers(pickerFields, result);
-
-  attachPickerListeners(pickerFields, async (element, fieldPath, value, originalState: PickerFieldState) => {
-    await fillField(element, value);
-    applyHighlight(element, CONF_CONFIRMED); // green — user-confirmed, high confidence
-
-    // noData fields are not in sessionElements yet; add them now so undo covers them.
-    // needReview and lowConfidence fields are already tracked — don't double-push.
-    if (originalState === 'noData') {
-      sessionElements.push(element);
-    }
-
-    // Remove the edit watcher so the blur that follows picker selection (when the
-    // user clicks elsewhere) doesn't trigger a second state transition.
-    const watcher = editWatchers.get(element);
-    if (watcher) {
-      element.removeEventListener('blur', watcher);
-      editWatchers.delete(element);
-    }
-
-    // Learned-mapping saves are best-effort: a storage quota error must not
-    // prevent the result counts from updating or produce an unhandled rejection.
-    try {
-      await saveElementMappings(domain, element, fieldPath);
-    } catch {
-      // Non-critical — mapping will be re-learned on the next picker selection.
-    }
-
-    result.noReview++;
-    if (originalState === 'lowConfidence') result.lowConfidence = Math.max(0, result.lowConfidence - 1);
-    if (originalState === 'needReview')    result.needReview    = Math.max(0, result.needReview    - 1);
-    if (originalState === 'noData')        result.noData        = Math.max(0, result.noData        - 1);
-  });
+  attachEditWatchers(editableFields, result);
 
   return result;
 }
