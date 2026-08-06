@@ -7,6 +7,7 @@ import {
   getLearnedMappings,
   getApplicationHistory,
   saveLearnedMappings,
+  mergeLearnedMappings,
   saveApplicationHistory,
   clearAllStorage,
   getGeminiApiKey,
@@ -299,7 +300,12 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       setImporting(true);
       try {
         await saveProfile(validation.sanitized as Profile);
-        if (exportData.learnedMappings) await saveLearnedMappings(exportData.learnedMappings);
+        // An empty profile doesn't mean there's no learned-mapping data to
+        // protect — those are unrelated. Merge rather than overwrite.
+        if (exportData.learnedMappings) {
+          const localMappings = await getLearnedMappings();
+          await saveLearnedMappings(mergeLearnedMappings(localMappings, exportData.learnedMappings));
+        }
         if (exportData.applicationHistory) await saveApplicationHistory(exportData.applicationHistory);
         const skipped0 = validation.invalidFields.length;
         const suffix0  = skipped0 > 0 ? ` (${skipped0} field${skipped0 !== 1 ? 's' : ''} skipped)` : '';
@@ -330,8 +336,12 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     try {
       const applied = applyChanges(importBaseProfile, finalChanges);
       await saveProfile(applied as Profile);
+      // The accept/reject review above only covers profile fields — merge
+      // learned mappings too rather than overwriting, so an older import
+      // can't silently erase newer local learning.
       if (parsedImport.exportData.learnedMappings) {
-        await saveLearnedMappings(parsedImport.exportData.learnedMappings);
+        const localMappings = await getLearnedMappings();
+        await saveLearnedMappings(mergeLearnedMappings(localMappings, parsedImport.exportData.learnedMappings));
       }
       if (parsedImport.exportData.applicationHistory) {
         await saveApplicationHistory(parsedImport.exportData.applicationHistory);
@@ -452,7 +462,12 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       }
       await saveProfile(validation.sanitized as Profile);
       if (driveRestoreData.learnedMappings) {
-        await saveLearnedMappings(driveRestoreData.learnedMappings);
+        // Merge rather than overwrite — the Drive copy may be stale (it only
+        // syncs on profile-related actions, not every time autofill learns
+        // something new), so a blind overwrite could silently discard newer
+        // local learning.
+        const localMappings = await getLearnedMappings();
+        await saveLearnedMappings(mergeLearnedMappings(localMappings, driveRestoreData.learnedMappings));
       }
       const fresh = await getFullDriveState();
       setDriveState(fresh);
@@ -493,7 +508,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       const applied = applyChanges(driveLocalProfile, finalChanges);
       await saveProfile(applied as Profile);
       if (driveRestoreData?.learnedMappings) {
-        await saveLearnedMappings(driveRestoreData.learnedMappings);
+        const localMappings = await getLearnedMappings();
+        await saveLearnedMappings(mergeLearnedMappings(localMappings, driveRestoreData.learnedMappings));
       }
       void syncProfileToDrive(applied as Profile);
       showToast('success', 'Profile updated from Drive backup');
