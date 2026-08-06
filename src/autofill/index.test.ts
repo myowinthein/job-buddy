@@ -47,6 +47,7 @@ import { clearFieldValue, fillField } from './filler';
 import { clearElementHighlight, clearHighlights, applyHighlight } from './highlighter';
 import { resolveProfileValue } from './resolver';
 import { refreshLearnedLabels, saveElementMappings } from './mappings';
+import { runAIAutofill } from './ai';
 import { CONF_CONFIRMED } from './constants';
 
 function makeProfile(): Profile {
@@ -163,6 +164,21 @@ describe('executeAutofill', () => {
     const result = await executeAutofill('overwrite');
     expect(result.needReview).toBe(1);
     expect(result.noReview).toBe(0);
+  });
+
+  it('sends a needReview field to the AI layer as a text candidate', async () => {
+    const el = makeInput();
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValue({ confidence: 0.7, value: 'Jane', fieldPath: 'personal.firstName', matchLayer: 'dictionary_exact' });
+    await scanAutofill();
+    await executeAutofill('overwrite');
+
+    expect(runAIAutofill).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ element: el, originalState: 'needReview', originalFieldPath: 'personal.firstName' }),
+      ]),
+      expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(),
+    );
   });
 
   it('overwrite: low-confidence field → lowConfidence (no fill, red highlight)', async () => {
