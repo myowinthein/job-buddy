@@ -439,7 +439,6 @@ function App() {
                 <p className="text-gray-500 dark:text-gray-400 mb-2.5">
                   This page might use a custom form (iframe or non-standard inputs) we don't support yet.
                 </p>
-                <p className="text-gray-500 dark:text-gray-400 mb-1">Found a bug? Let us know:</p>
                 <a
                   href="https://github.com/myowinthein/job-buddy/issues/new"
                   target="_blank"
