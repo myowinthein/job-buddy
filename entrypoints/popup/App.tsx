@@ -18,6 +18,48 @@ interface AutofillResult {
   aiAvailable?:  boolean;
 }
 
+// Sends `message` to every frame of the tab (content.ts runs in all frames —
+// see its allFrames flag — since job forms are frequently embedded in a
+// cross-origin iframe rather than living on the top-level page).
+// chrome.tabs.sendMessage only reaches the top frame unless a frameId is
+// given explicitly, so frames are enumerated first. Frames with no content
+// script listening (blocked cross-origin frames, about:blank, etc.) reject
+// and are silently dropped — that's expected for most iframes on a page
+// (ads, trackers, unrelated widgets), not an error condition.
+async function sendToAllFrames(tabId: number, message: object): Promise<unknown[]> {
+  let frameIds = [0]; // always include the top frame, even if enumeration fails
+  try {
+    const frames = await chrome.webNavigation.getAllFrames({ tabId });
+    if (frames) frameIds = [...new Set([0, ...frames.map((f) => f.frameId)])];
+  } catch {
+    // webNavigation unavailable or the call failed — fall back to top frame only.
+  }
+
+  const responses = await Promise.all(
+    frameIds.map((frameId) => chrome.tabs.sendMessage(tabId, message, { frameId }).catch(() => undefined)),
+  );
+  return responses.filter((r) => r !== undefined);
+}
+
+// Sums AutofillResult counts across frames — a job form split across an iframe
+// (the application widget) and the top page (rare, but possible) should read
+// as one combined outcome in the popup, not one frame's numbers silently
+// overwriting another's. aiAvailable is true if any frame's AI layer ran.
+function mergeAutofillResults(results: unknown[]): AutofillResult | null {
+  const valid = results.filter(
+    (r): r is AutofillResult => !!r && typeof (r as AutofillResult).totalScanned === 'number',
+  );
+  if (valid.length === 0) return null;
+  return valid.reduce((acc, r) => ({
+    noReview:      acc.noReview      + r.noReview,
+    needReview:    acc.needReview    + r.needReview,
+    lowConfidence: acc.lowConfidence + r.lowConfidence,
+    noData:        acc.noData        + r.noData,
+    totalScanned:  acc.totalScanned  + r.totalScanned,
+    aiAvailable:   acc.aiAvailable || !!r.aiAvailable,
+  }), { noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0, aiAvailable: false });
+}
+
 interface AutofillScanResult {
   preFilledCount: number;
 }
@@ -66,16 +108,17 @@ function App() {
       });
   }, []);
 
-  const sendToActiveTab = useCallback(async (message: object) => {
+  const sendToActiveTab = useCallback(async (message: object): Promise<unknown[]> => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error('No active tab found');
-    return chrome.tabs.sendMessage(tab.id, message);
+    return sendToAllFrames(tab.id, message);
   }, []);
 
   const dispatchFill = useCallback(async (mode: 'merge' | 'overwrite') => {
-    const result = await sendToActiveTab({ action: 'AUTOFILL_FILL', mode }) as AutofillResult;
-    if (result && typeof result.totalScanned === 'number') {
-      setAutofillResult(result);
+    const responses = await sendToActiveTab({ action: 'AUTOFILL_FILL', mode });
+    const merged = mergeAutofillResults(responses);
+    if (merged) {
+      setAutofillResult(merged);
       setAutofillState('success');
     } else {
       setAutofillState('error');
@@ -86,8 +129,15 @@ function App() {
   // the panel — keeps the popup's initial render cheap.
   const openDebugPanel = async () => {
     try {
-      const sess = await sendToActiveTab({ action: 'GET_DEBUG_SESSION' }) as DebugSession | null;
-      if (sess) setDebugSession(sess);
+      const responses = await sendToActiveTab({ action: 'GET_DEBUG_SESSION' });
+      const sessions = responses.filter((s): s is DebugSession => !!s);
+      // Multiple frames can each have their own session (e.g. an ATS iframe
+      // plus the mostly-empty top page) — surface whichever scanned the most
+      // fields, since that's the frame actually holding the form.
+      if (sessions.length > 0) {
+        const total = (s: DebugSession) => s.summary.green + s.summary.yellow + s.summary.red + s.summary.gray;
+        setDebugSession(sessions.reduce((a, b) => (total(b) > total(a) ? b : a)));
+      }
     } catch { /* content script absent */ }
     setDebugOpen(true);
   };
@@ -97,9 +147,10 @@ function App() {
     let cancelled = false;
     (async () => {
       try {
-        const result = await sendToActiveTab({ action: 'GET_STATUS' }) as AutofillResult | null;
-        if (!cancelled && result && typeof result.totalScanned === 'number') {
-          setAutofillResult(result);
+        const responses = await sendToActiveTab({ action: 'GET_STATUS' });
+        const merged = mergeAutofillResults(responses);
+        if (!cancelled && merged) {
+          setAutofillResult(merged);
           setAutofillState('success');
         }
       } catch {
@@ -133,10 +184,11 @@ function App() {
     setAutofillState('loading');
     setAutofillResult(null);
     try {
-      const scan = await sendToActiveTab({ action: 'AUTOFILL_SCAN' }) as AutofillScanResult;
-      if (scan?.preFilledCount > 0) {
+      const scanResponses = await sendToActiveTab({ action: 'AUTOFILL_SCAN' }) as AutofillScanResult[];
+      const preFilledCount = scanResponses.reduce((sum, r) => sum + (r?.preFilledCount ?? 0), 0);
+      if (preFilledCount > 0) {
         // Form already has data — ask the user how to proceed
-        setPreFilledCount(scan.preFilledCount);
+        setPreFilledCount(preFilledCount);
         setFillMode('merge');
         setAutofillState('confirming');
       } else {
