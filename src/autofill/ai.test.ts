@@ -48,7 +48,7 @@ function makeSignals(overrides: Partial<FieldSignals> = {}): FieldSignals {
 }
 
 function textCandidate(
-  originalState: 'lowConfidence' | 'noData',
+  originalState: 'needReview' | 'lowConfidence' | 'noData',
   labelText: string,
 ): AITextCandidate {
   const element = document.createElement('input');
@@ -326,6 +326,24 @@ describe('runAIAutofill — high-confidence text fills', () => {
     expect(aiGreenFilled.has(cand.element)).toBe(true);
   });
 
+  it('decrements needReview (not lowConfidence or noData) for a needReview-origin candidate, overwriting its rule-pipeline value', async () => {
+    const cand = textCandidate('needReview', 'LinkedIn URL');
+    (cand.element as HTMLInputElement).value = 'https://old-value.example'; // already filled by the rule pipeline
+    const result = { ...freshResult(), needReview: 1 };
+    const aiGreenFilled = new Set<HTMLElement>();
+
+    mockResponses([
+      { fieldId: 'field_001', profilePath: 'links.linkedin', confidence: 'high' },
+    ]);
+
+    await runAIAutofill([cand], PROFILE, result, [], 'example.com', undefined, aiGreenFilled);
+
+    expect(fillField).toHaveBeenCalledWith(cand.element, 'https://linkedin.com/in/jane');
+    expect(result.needReview).toBe(0);
+    expect(result.noReview).toBe(1);
+    expect(aiGreenFilled.has(cand.element)).toBe(true);
+  });
+
   it('does not underflow counters below zero', async () => {
     const cand = textCandidate('lowConfidence', 'First Name');
     const result = freshResult(); // lowConfidence already 0
@@ -354,6 +372,22 @@ describe('runAIAutofill — low-confidence text fills', () => {
     expect(result.needReview).toBe(1);
     expect(result.noReview).toBe(0);
     // Low confidence is NOT a green fill.
+    expect(aiGreenFilled.has(cand.element)).toBe(false);
+  });
+
+  it('leaves a needReview-origin candidate at needReview (net no count change) on a low-confidence AI response', async () => {
+    const cand = textCandidate('needReview', 'LinkedIn URL');
+    const result = { ...freshResult(), needReview: 1 };
+    const aiGreenFilled = new Set<HTMLElement>();
+
+    mockResponses([
+      { fieldId: 'field_001', profilePath: 'links.linkedin', confidence: 'low' },
+    ]);
+
+    await runAIAutofill([cand], PROFILE, result, [], 'example.com', undefined, aiGreenFilled);
+
+    expect(result.needReview).toBe(1);
+    expect(result.noReview).toBe(0);
     expect(aiGreenFilled.has(cand.element)).toBe(false);
   });
 
