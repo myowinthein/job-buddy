@@ -4,7 +4,7 @@ export const CONF_FILL = 0.60;
 /** Minimum confidence to fill without requiring review (green tier). */
 export const CONF_GREEN = 0.85;
 
-/** Confidence assigned to user-confirmed values (picker selection, manual edit, silent re-fill). */
+/** Confidence assigned to user-confirmed values (manual edit, silent re-fill). */
 export const CONF_CONFIRMED = 0.97;
 
 /** Confidence assigned to AI-resolved fields in the low/needReview tier.
@@ -30,3 +30,9 @@ export const CONF_FUZZY_WEAK_MULT = 0.75;
 
 /** Confidence floor for context-layer (nearbyText) matches. */
 export const CONF_CONTEXT = 0.70;
+
+/** Minimum value-similarity (pre-filled value vs. the edited value) required
+ *  before a manual needReview edit is trusted enough to save a learned
+ *  mapping. Below this, the edit looks like an answer to a different
+ *  question rather than a refinement of the same field. */
+export const EDIT_LEARN_SIMILARITY_THRESHOLD = 0.5;

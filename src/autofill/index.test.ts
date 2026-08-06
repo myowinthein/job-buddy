@@ -29,6 +29,7 @@ vi.mock('./highlighter', () => ({
 vi.mock('./resolver', () => ({ resolveProfileValue: vi.fn() }));
 vi.mock('./mappings', () => ({
   refreshLearnedLabels: vi.fn().mockReturnValue(false),
+  saveElementMappings: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock('./ai', () => ({ runAIAutofill: vi.fn().mockResolvedValue(false) }));
 
@@ -39,7 +40,7 @@ import { mapField } from './mapper';
 import { clearFieldValue, fillField } from './filler';
 import { clearElementHighlight, clearHighlights, applyHighlight } from './highlighter';
 import { resolveProfileValue } from './resolver';
-import { refreshLearnedLabels } from './mappings';
+import { refreshLearnedLabels, saveElementMappings } from './mappings';
 import { CONF_CONFIRMED } from './constants';
 
 function makeProfile(): Profile {
@@ -346,6 +347,83 @@ describe('edit-watcher promotion (blur)', () => {
     el.dispatchEvent(new Event('blur'));
 
     expect(applyHighlight).not.toHaveBeenCalled();
+  });
+});
+
+describe('learned-mapping linking on blur (needReview only)', () => {
+  it('saves a learned mapping when a needReview edit stays similar to the pre-filled value', async () => {
+    // fillField is mocked and never actually writes to the DOM, so the
+    // pre-filled value has to be seeded manually to simulate what a real
+    // fill would have left in the input before the user edited it.
+    const el = makeInput('Jane');
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.7, value: 'Jane', fieldPath: 'personal.firstName', matchLayer: 'context' });
+
+    await scanAutofill();
+    // 'overwrite' — the field is pre-seeded non-empty to simulate a real fill,
+    // and 'merge' would skip an already-non-empty field before it ever reaches
+    // the editable-fields list.
+    await executeAutofill('overwrite');
+
+    el.value = 'Jane2'; // small correction, still similar
+    el.dispatchEvent(new Event('blur'));
+
+    await vi.waitFor(() =>
+      expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, el, 'personal.firstName'),
+    );
+  });
+
+  it('does not save a learned mapping when the edit is very different from the pre-filled value', async () => {
+    const el = makeInput('https://myportfolio.com');
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.7, value: 'https://myportfolio.com', fieldPath: 'links.portfolio', matchLayer: 'context' });
+
+    await scanAutofill();
+    await executeAutofill('overwrite');
+
+    el.value = 'https://linkedin.com/in/janedoe';
+    el.dispatchEvent(new Event('blur'));
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(saveElementMappings).not.toHaveBeenCalled();
+  });
+
+  it('does not save a learned mapping for lowConfidence or noData edits', async () => {
+    const elRed  = makeInput('');
+    const elGray = makeInput('');
+    vi.mocked(scanFields).mockReturnValue([elRed, elGray]);
+    vi.mocked(mapField)
+      .mockReturnValueOnce({ confidence: 0.3, value: null, fieldPath: 'a.b', matchLayer: 'fuzzy' })
+      .mockReturnValueOnce({ confidence: 0.7, value: null, fieldPath: 'personal.email', matchLayer: 'context' });
+
+    await scanAutofill();
+    await executeAutofill('merge');
+
+    elRed.value = 'typed answer';
+    elRed.dispatchEvent(new Event('blur'));
+    elGray.value = 'typed answer';
+    elGray.dispatchEvent(new Event('blur'));
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(saveElementMappings).not.toHaveBeenCalled();
+  });
+
+  it('does not save a learned mapping when a needReview field is cleared to empty', async () => {
+    const el = makeInput('Jane');
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.7, value: 'Jane', fieldPath: 'personal.firstName', matchLayer: 'context' });
+
+    await scanAutofill();
+    await executeAutofill('overwrite');
+
+    el.value = '';
+    el.dispatchEvent(new Event('blur'));
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(saveElementMappings).not.toHaveBeenCalled();
   });
 });
 
