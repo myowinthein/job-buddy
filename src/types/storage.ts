@@ -3,6 +3,11 @@ import type { Profile } from './profile';
 export interface LearnedMappingEntry {
   path:  string;
   count: number;
+  // Best-available human-readable label (label/ariaLabel/placeholder/name) captured
+  // at write time, for display in the Learned Mappings UI. The signal key itself is
+  // normalized (lowercased, punctuation/spaces stripped) and unreadable on its own.
+  // Absent on entries written before this field existed.
+  label?: string;
 }
 
 // A mapping value is either the legacy plain-string format (trusted as-is,

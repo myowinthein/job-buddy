@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import { extractSignals } from './signals';
+import { extractSignals, displayLabel } from './signals';
+import type { FieldSignals } from './signals';
 
 beforeEach(() => {
   document.body.innerHTML = '';
@@ -61,6 +62,41 @@ describe('extractSignals', () => {
     expect(extractSignals(el).label).toBe('Phone');
   });
 
+  it('excludes a wrapped <select>\'s option text from the parent <label> (accessible calling-code dropdown)', () => {
+    // Reproduces a real bug: <label>Phone<select>…every country option…</select></label>
+    // caused .textContent to concatenate all 200+ option strings into the label signal.
+    const label = document.createElement('label');
+    label.append('Phone');
+    const select = document.createElement('select');
+    for (const [text, value] of [['United States', '1'], ['United Kingdom', '44'], ['Canada', '1']] as const) {
+      const opt = document.createElement('option');
+      opt.textContent = text;
+      opt.value = value;
+      select.appendChild(opt);
+    }
+    label.appendChild(select);
+    document.body.appendChild(label);
+    expect(extractSignals(select).label).toBe('Phone');
+  });
+
+  it('excludes a nested <select>\'s option text from a <label for> element too', () => {
+    const el = input({ type: 'text', id: 'field-name' });
+    const label = document.createElement('label');
+    label.setAttribute('for', 'field-name');
+    label.append('Full Name');
+    // Some accessible-forms markup wraps an unrelated control inside the same
+    // label as the one it's `for` — its option text must not leak in either.
+    const select = document.createElement('select');
+    for (const text of ['United States', 'United Kingdom', 'Canada']) {
+      const opt = document.createElement('option');
+      opt.textContent = text;
+      select.appendChild(opt);
+    }
+    label.appendChild(select);
+    document.body.appendChild(label);
+    expect(extractSignals(el).label).toBe('Full Name');
+  });
+
   it('returns empty label when no label is associated', () => {
     const el = input({ type: 'text', name: 'unlabelled' });
     expect(extractSignals(el).label).toBe('');
@@ -76,6 +112,24 @@ describe('extractSignals', () => {
     wrapper.appendChild(el);
     document.body.appendChild(wrapper);
     expect(extractSignals(el).nearbyText).toBe('City');
+  });
+
+  it('excludes a nested <select>\'s option text from nearbyText too', () => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'form-field';
+    const span = document.createElement('span');
+    span.append('Phone Code');
+    const select = document.createElement('select');
+    for (const text of ['United States', 'United Kingdom', 'Canada']) {
+      const opt = document.createElement('option');
+      opt.textContent = text;
+      select.appendChild(opt);
+    }
+    span.appendChild(select); // the matched <span> itself wraps the control
+    const el = document.createElement('input');
+    wrapper.append(span, el);
+    document.body.appendChild(wrapper);
+    expect(extractSignals(el).nearbyText).toBe('Phone Code');
   });
 
   it('returns empty nearbyText when no wrapper matches', () => {
@@ -177,5 +231,35 @@ describe('extractSignals — autocomplete on non-native elements', () => {
   it('reads the autocomplete attribute from a non-native element', () => {
     const el = div({ autocomplete: 'given-name' });
     expect(extractSignals(el).autocomplete).toBe('given-name');
+  });
+});
+
+function signals(overrides: Partial<FieldSignals> = {}): FieldSignals {
+  return {
+    element: document.createElement('input'),
+    type: 'text', name: '', id: '', placeholder: '', autocomplete: '',
+    ariaLabel: '', label: '', nearbyText: '',
+    ...overrides,
+  };
+}
+
+describe('displayLabel', () => {
+  it('prefers label/ariaLabel/placeholder/name over nearbyText', () => {
+    expect(displayLabel(signals({ label: 'First Name', nearbyText: 'Ignored' }))).toBe('First Name');
+  });
+
+  it('falls back to nearbyText when label/ariaLabel/placeholder/name are all empty', () => {
+    expect(displayLabel(signals({ nearbyText: 'Question 3: describe your experience' })))
+      .toBe('Question 3: describe your experience');
+  });
+
+  it('returns undefined when every signal, including nearbyText, is empty', () => {
+    expect(displayLabel(signals())).toBeUndefined();
+  });
+
+  it('truncates to 120 characters', () => {
+    const long = 'x'.repeat(200);
+    const result = displayLabel(signals({ nearbyText: long }));
+    expect(result).toHaveLength(120);
   });
 });
