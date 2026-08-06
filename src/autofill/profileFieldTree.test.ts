@@ -124,7 +124,7 @@ describe('buildPickerTree', () => {
 
       const salary = getSection(p, 'salary');
       const headings = salary.items.filter((i) => 'heading' in i).map((i) => (i as { heading: string }).heading);
-      expect(headings).toEqual(['Current Salary', 'Expected Salary — United States', 'Expected Salary — Entry 2']);
+      expect(headings).toEqual(['Current Salary', 'Expected Salary: United States', 'Expected Salary: Entry 2']);
     });
 
     it('skips an expected-salary entry with neither amount nor currency', () => {
@@ -166,7 +166,7 @@ describe('buildPickerTree', () => {
 
       const wh = getSection(p, 'work-history');
       const [entry] = wh.items;
-      expect('heading' in entry && entry.heading).toBe('Acme — Engineer');
+      expect('heading' in entry && entry.heading).toBe('Acme · Engineer');
       if ('rows' in entry) {
         expect(entry.rows.some((r) => r.label === 'End Date' && r.value === 'Present')).toBe(true);
       }
@@ -216,7 +216,7 @@ describe('buildPickerTree', () => {
       p.education = [{ institution: 'MIT', degree: 'BSc', fieldOfStudy: 'CS', startDate: '2014', isCurrent: false, endDate: '2018' }];
 
       const edu = getSection(p, 'education');
-      expect('heading' in edu.items[0] && edu.items[0].heading).toBe('MIT — BSc');
+      expect('heading' in edu.items[0] && edu.items[0].heading).toBe('MIT · BSc');
     });
 
     it('skips an entry with neither institution nor degree', () => {

@@ -72,22 +72,22 @@ function mostRecentIdx(entries: Array<{ startDate?: string; isCurrent?: boolean 
 }
 
 function workHistoryHeading(entry: WorkHistoryEntry, idx: number): string {
-  if (entry.company && entry.title) return `${entry.company} — ${entry.title}`;
+  if (entry.company && entry.title) return `${entry.company} · ${entry.title}`;
   if (entry.company) return entry.company;
   if (entry.title)   return entry.title;
   const sy = entry.startDate?.split('-')[0];
   const ey = entry.isCurrent ? 'Present' : entry.endDate?.split('-')[0];
-  if (sy) return ey ? `${sy} — ${ey}` : sy;
+  if (sy) return ey ? `${sy}–${ey}` : sy;
   return `Entry ${idx + 1}`;
 }
 
 function educationHeading(entry: EducationEntry, idx: number): string {
-  if (entry.institution && entry.degree) return `${entry.institution} — ${entry.degree}`;
+  if (entry.institution && entry.degree) return `${entry.institution} · ${entry.degree}`;
   if (entry.institution) return entry.institution;
   if (entry.degree)      return entry.degree;
   const sy = entry.startDate?.split('-')[0];
   const ey = entry.isCurrent ? 'Present' : entry.endDate?.split('-')[0];
-  if (sy) return ey ? `${sy} — ${ey}` : sy;
+  if (sy) return ey ? `${sy}–${ey}` : sy;
   return `Entry ${idx + 1}`;
 }
 
@@ -175,7 +175,7 @@ export function buildPickerTree(profile: Profile): Section[] {
       if (full)                rows.push(row('Expected Salary', `salary.expected.${idx}.formatted`, full));
       if (entry.amount != null) rows.push(row('Amount',         `salary.expected.${idx}.amount`,    String(entry.amount)));
       if (entry.currency)       rows.push(row('Currency',       `salary.expected.${idx}.currency`,  entry.currency));
-      if (rows.length) items.push({ kind: 'subgroup', heading: `Expected Salary — ${name}`, rows });
+      if (rows.length) items.push({ kind: 'subgroup', heading: `Expected Salary: ${name}`, rows });
     });
 
     if (items.length) sections.push({ id: 'salary', label: 'Salary', items });
