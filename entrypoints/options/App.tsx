@@ -17,6 +17,7 @@ import { LinksSection } from '@/src/components/options/LinksSection';
 import { DocumentsSection } from '@/src/components/options/DocumentsSection';
 import { SettingsSection } from '@/src/components/options/SettingsSection';
 import { ResumeImportSection } from '@/src/components/options/ResumeImportSection';
+import { LearnedMappingsSection } from '@/src/components/options/LearnedMappingsSection';
 import { syncProfileToDrive } from '@/src/utils/driveSync';
 import { useToast } from '@/src/components/ui/useToast';
 
@@ -31,6 +32,7 @@ type SectionId =
   | 'links'
   | 'documents'
   | 'resume'
+  | 'learnedMappings'
   | 'settings';
 
 // ── UI state persistence keys (sessionStorage) ───────────────────────────────
@@ -40,7 +42,7 @@ const UI_SCROLL_KEY   = (section: SectionId) => `jb:ui:scroll:${section}`;
 
 const VALID_SECTIONS = new Set<SectionId>([
   'personal', 'address', 'salary', 'workAuthorization',
-  'workHistory', 'education', 'languages', 'links', 'documents', 'resume', 'settings',
+  'workHistory', 'education', 'languages', 'links', 'documents', 'resume', 'learnedMappings', 'settings',
 ]);
 
 function readSection(): SectionId {
@@ -320,6 +322,7 @@ function App() {
       case 'links':             return <LinksSection key={`links-${sectionSeq}`} {...sectionProps} />;
       case 'documents':         return <DocumentsSection key={`documents-${sectionSeq}`} {...sectionProps} />;
       case 'resume':            return <ResumeImportSection key="resume" profile={profile} onSave={handleSave} onGoToApiKey={handleGoToApiKey} onClose={handleCloseResumeImport} />;
+      case 'learnedMappings':   return <LearnedMappingsSection key="learnedMappings" />;
       case 'settings':          return <SettingsSection key="settings" onImportComplete={handleImportComplete} onResetComplete={handleResetComplete} />;
     }
   };
