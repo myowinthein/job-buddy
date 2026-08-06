@@ -38,7 +38,7 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 ## 4. Architecture Pointers
 
 **Entrypoints** (`entrypoints/`):
-- `background.ts` — service worker; writes `jb:focusOnLoad` to `chrome.storage.session` and calls `openOptionsPage()` when picker sends `OPEN_OPTIONS`; retries pending Drive sync on browser startup
+- `background.ts` — service worker; retries pending Drive sync on browser startup and debounces a Drive sync after autofill learns something new
 - `content.ts` — matches `*://*/*`; routes `AUTOFILL_SCAN/FILL/CLEAR/GET_STATUS/GET_DEBUG_SESSION` to `src/autofill/`
 - `popup/` — action popup; React state lost on close, restored from `GET_STATUS` on mount. Debug panel hidden until Shift+click the logo post-fill.
 - `options/` — full-page profile editor (9 sections + Resume Import + Settings)
@@ -135,8 +135,6 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 - **`autocomplete="url"` is intentionally absent** from `AUTOCOMPLETE_MAP`. It was previously hardwired to `links.linkedin` and overrode portfolio matches via Layer 1. Don't re-add it.
 
 - **Date filler reads the placeholder.** `reformatDateForInput()` in `src/autofill/filler.ts` parses `input.placeholder` for `mm/dd/yyyy` / `dd/mm/yyyy` and reformats ISO output before writing. Changing what the resolver outputs for date paths breaks this contract.
-
-- **Content scripts cannot write to `chrome.storage.session`.** The picker routes `OPEN_OPTIONS` + `focusPath` through the background service worker, which has unrestricted session storage access. Don't bypass this routing.
 
 - **WXT entrypoint collision.** Every file under `entrypoints/` is treated as a browser entrypoint — placing test files there causes `Multiple entrypoints with the same name` build errors. Keep all test files under `src/` or alongside their source file, never in `entrypoints/`.
 

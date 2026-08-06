@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Profile } from '@/src/types/profile';
 import { getProfile, saveProfile } from '@/src/utils/storage';
 import { sessionGet, sessionRemove } from '@/src/utils/sessionStorage';
-import { calculateCompletion, getSectionCompletion, FIELD_FOCUS_IDS, resolvePathFocusTarget } from '@/src/utils/profileCompletion';
+import { calculateCompletion, getSectionCompletion, FIELD_FOCUS_IDS } from '@/src/utils/profileCompletion';
 import { calculateDerivedFields } from '@/src/utils/derivedFields';
 import { Sidebar } from '@/src/components/options/Sidebar';
 import { CompletionBanner } from '@/src/components/options/CompletionBanner';
@@ -94,23 +94,19 @@ function App() {
       .finally(() => { setLoading(false); });
   }, []);
 
-  // ── Cross-context focus request (popup → Options, picker → Options) ────────
+  // ── Cross-context focus request (popup → Options) ──────────────────────────
   const focusGeminiKey = useCallback(() => {
     skipAutoFocusRef.current = true;
     setActiveSection('settings');
     setFocusTarget('gemini-api-key');
   }, []);
 
-  // Callers write 'jb:focusOnLoad' to chrome.storage.session before opening the
-  // Options page; we read it here, clear it, and route to the appropriate
-  // section + focus target. Supports two shapes:
-  //   1. string 'gemini-api-key' — legacy popup shortcut to the AI key input
-  //   2. { type: 'profilePath', path: 'personal.firstName' } — from the
-  //      noData picker CTA, deep-links to the missing field's section + input.
-  // Runs after initial profile load AND on visibilitychange — the latter covers
-  // the case where the Options tab was already open when the user clicked
-  // "Go to Profile", so OPEN_OPTIONS just focused the existing tab without a
-  // reload.
+  // The popup writes 'jb:focusOnLoad': 'gemini-api-key' to chrome.storage.session
+  // before opening the Options page; we read it here, clear it, and focus the
+  // AI key input. Runs after initial profile load AND on visibilitychange — the
+  // latter covers the case where the Options tab was already open when the
+  // popup called openOptionsPage(), which just focused the existing tab
+  // without a reload.
   const applyFocusTarget = useCallback(() => {
     sessionGet('jb:focusOnLoad').then((r) => {
       const target = r?.['jb:focusOnLoad'];
@@ -119,18 +115,6 @@ function App() {
 
       if (target === 'gemini-api-key') {
         focusGeminiKey();
-        return;
-      }
-
-      if (typeof target === 'object') {
-        const obj = target as { type?: unknown; path?: unknown };
-        if (obj.type === 'profilePath' && typeof obj.path === 'string') {
-          const resolved = resolvePathFocusTarget(obj.path);
-          if (!resolved) return;
-          skipAutoFocusRef.current = true;
-          setActiveSection(resolved.section as SectionId);
-          if (resolved.fieldId) setFocusTarget(resolved.fieldId);
-        }
       }
     });
   }, [focusGeminiKey]);

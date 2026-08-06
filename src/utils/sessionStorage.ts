@@ -1,5 +1,5 @@
 // Wraps chrome.storage.session, mirroring storage.ts's chrome.storage.local
-// wrapper pattern. Used from background.ts, entrypoints/options/App.tsx, and
+// wrapper pattern. Used from entrypoints/options/App.tsx and
 // entrypoints/popup/App.tsx — content scripts cannot write to
 // chrome.storage.session (blocked without host_permissions for the page URL).
 // All three failure modes resolve rather than reject: every current caller
