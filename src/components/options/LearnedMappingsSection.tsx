@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
+import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings, LearnedMappingValue } from '@/src/types/storage';
-import { getLearnedMappings, saveLearnedMappings } from '@/src/utils/storage';
+import { getProfile, getLearnedMappings, saveLearnedMappings } from '@/src/utils/storage';
 import { useToast } from '@/src/components/ui/useToast';
 import { InfoTooltip } from '@/src/components/ui/InfoTooltip';
 import { ExpandableCard } from './shared/ExpandableCard';
 import { RemoveButton } from './shared/RemoveButton';
-import { fieldCls as cls } from './shared/fieldCls';
+import { SearchableProfileFieldSelect } from './shared/SearchableProfileFieldSelect';
 
 function pathOf(value: LearnedMappingValue): string {
   return typeof value === 'string' ? value : value.path;
@@ -37,11 +38,12 @@ function countTooltip(value: LearnedMappingValue): string {
 interface SignalRowProps {
   signal: string;
   value: LearnedMappingValue;
+  profile: Partial<Profile>;
   onDelete: () => void;
   onUpdate: (newPath: string) => void;
 }
 
-function SignalRow({ signal, value, onDelete, onUpdate }: SignalRowProps) {
+function SignalRow({ signal, value, profile, onDelete, onUpdate }: SignalRowProps) {
   const [editing, setEditing]         = useState(false);
   const [editValue, setEditValue]     = useState(pathOf(value));
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -70,12 +72,10 @@ function SignalRow({ signal, value, onDelete, onUpdate }: SignalRowProps) {
         )}
         {editing ? (
           <div className="flex items-center gap-2 mt-1">
-            <input
-              className={cls()}
+            <SearchableProfileFieldSelect
+              profile={profile}
               value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              placeholder="e.g. personal.firstName"
-              autoFocus
+              onChange={setEditValue}
             />
             <button
               type="button"
@@ -149,11 +149,12 @@ function SignalRow({ signal, value, onDelete, onUpdate }: SignalRowProps) {
 export function LearnedMappingsSection() {
   const { showToast } = useToast();
   const [mappings, setMappings] = useState<LearnedMappings>({});
+  const [profile, setProfile]   = useState<Partial<Profile>>({});
   const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
-    getLearnedMappings()
-      .then(setMappings)
+    Promise.all([getLearnedMappings(), getProfile()])
+      .then(([m, p]) => { setMappings(m); setProfile(p ?? {}); })
       .catch(() => showToast('error', 'Failed to load learned inputs.'))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -250,6 +251,7 @@ export function LearnedMappingsSection() {
                   key={signal}
                   signal={signal}
                   value={value}
+                  profile={profile}
                   onDelete={() => deleteSignal(domain, signal)}
                   onUpdate={(newPath) => updateSignal(domain, signal, newPath)}
                 />
