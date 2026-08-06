@@ -31,6 +31,7 @@ import {
   disconnectDrive,
   dispatchDriveStateChanged,
   retryPendingDriveSync,
+  syncLearnedMappingsIfConnected,
 } from './driveSync';
 import type { Profile } from '../types/profile';
 
@@ -407,6 +408,43 @@ describe('retryPendingDriveSync', () => {
     fetchMock.mockRejectedValue(new Error('network down'));
 
     await expect(retryPendingDriveSync()).resolves.toBeUndefined();
+  });
+});
+
+describe('syncLearnedMappingsIfConnected', () => {
+  it('does nothing when Drive is not connected (no token)', async () => {
+    store['profile'] = makeProfile();
+
+    await syncLearnedMappingsIfConnected();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when there is no profile to upload', async () => {
+    store['driveToken'] = 'tok-abc';
+
+    await syncLearnedMappingsIfConnected();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('uploads when Drive is connected and a profile exists, regardless of pendingSync', async () => {
+    store['driveBackupState'] = { fileId: 'file-id', lastSynced: null, pendingSync: false, error: null };
+    store['driveToken'] = 'tok-abc';
+    store['profile'] = makeProfile();
+    mockFetchSequence([{ ok: true, body: {} }]);
+
+    await syncLearnedMappingsIfConnected();
+
+    expect(fetchMock).toHaveBeenCalled();
+  });
+
+  it('resolves without throwing when the upload fails', async () => {
+    store['driveToken'] = 'tok-abc';
+    store['profile'] = makeProfile();
+    fetchMock.mockRejectedValue(new Error('network down'));
+
+    await expect(syncLearnedMappingsIfConnected()).resolves.toBeUndefined();
   });
 });
 

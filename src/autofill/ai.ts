@@ -1,6 +1,6 @@
 import type { Profile } from '../types/profile';
 import type { FieldSignals } from './signals';
-import { bestLabel } from './signals';
+import { bestLabel, displayLabel } from './signals';
 import { resolveProfileValue } from './resolver';
 import { resolveFieldsWithAI } from '../resume-ai/gemini';
 import type { AIFieldPayload, AIFieldResponse, AIOptionPayload } from '../resume-ai/types';
@@ -10,11 +10,8 @@ import type { RadioGroup, CheckboxGroup } from './scanner';
 import { fillField, fillRadioInput, fillCheckboxInput } from './filler';
 import { applyHighlight } from './highlighter';
 import { CONF_CONFIRMED, CONF_AI_YELLOW } from './constants';
-import { attachPickerListeners } from './picker';
-import type { PickerField, PickerFieldState } from './picker';
 import { getGeminiApiKey, getGeminiModel, saveLearnedMapping } from '../utils/storage';
 import { normalize, PLACEHOLDER_OPTION_NORMS } from './normalizer';
-import { saveElementMappings } from './mappings';
 import type { DebugAIField } from './debug';
 import type { AutofillResult } from './index';
 
@@ -53,6 +50,13 @@ export function extractSelectOptions(select: HTMLSelectElement): AIOptionPayload
 // can strip it from pickerFields / edit watchers before they're attached.
 // Without this, a green-filled element would still trigger the pre-AI picker
 // (gray "Go to Profile" CTA or red picker) on focus — wrong UX.
+//
+// Low-confidence (needReview) text candidates need no picker wiring of our
+// own here: they stay in the caller's original pickerFields list (only
+// aiGreenFilled elements get removed from it) with their original
+// lowConfidence/noData state, so the caller's own attachEditWatchers /
+// attachPickerListeners pass — which runs after this function returns —
+// attaches the real listener for them.
 export async function runAIAutofill(
   textCandidates: AITextCandidate[],
   profile: Profile,
@@ -131,8 +135,6 @@ export async function runAIAutofill(
     return true; // AI available but failed — silent fallback
   }
 
-  const pickerFields: PickerField[] = [];
-
   // Debug-only helper: append a debug record for an AI response.
   const recordDebug = (
     candidate: Candidate,
@@ -206,18 +208,18 @@ export async function runAIAutofill(
             candidate.signals.name, candidate.signals.id,
             candidate.signals.placeholder, candidate.signals.ariaLabel, candidate.signals.label,
           ].filter(Boolean);
+          const label = displayLabel(candidate.signals);
+          // Sequential, not fire-and-forget: saveLearnedMapping does a
+          // read-modify-write against chrome.storage.local, so unawaited
+          // concurrent calls for the same field's signals (or across fields
+          // in this loop) would race and silently lose all but the last write.
           for (const sig of sigs) {
             const norm = normalize(sig);
-            if (norm) void saveLearnedMapping(domain, norm, resp.profilePath);
+            if (norm) await saveLearnedMapping(domain, norm, resp.profilePath, label);
           }
         }
       } else {
         result.needReview++;
-        pickerFields.push({
-          element: candidate.element,
-          state:   candidate.originalState as PickerFieldState,
-          label:   bestLabel(candidate.signals) || 'this field',
-        });
       }
       recordDebug(candidate, fieldId, aiResult, resp.confidence, isHigh ? 'green' : 'yellow');
 
@@ -257,21 +259,6 @@ export async function runAIAutofill(
       // No actionable response shape (e.g. text without profilePath)
       recordDebug(candidate, fieldId, null, resp.confidence, 'unchanged');
     }
-  }
-
-  if (pickerFields.length > 0) {
-    attachPickerListeners(pickerFields, async (element, fieldPath, value, originalState: PickerFieldState) => {
-      await fillField(element, value);
-      applyHighlight(element, CONF_CONFIRMED);
-      if (originalState === 'noData') sessionElements.push(element);
-
-      result.noReview++;
-      if (originalState === 'lowConfidence') result.lowConfidence = Math.max(0, result.lowConfidence - 1);
-      if (originalState === 'needReview')    result.needReview    = Math.max(0, result.needReview    - 1);
-      if (originalState === 'noData')        result.noData        = Math.max(0, result.noData        - 1);
-
-      void saveElementMappings(domain, element, fieldPath);
-    });
   }
 
   return true;

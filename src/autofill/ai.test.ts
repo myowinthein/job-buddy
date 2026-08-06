@@ -14,7 +14,6 @@ vi.mock('./filler', () => ({
 }));
 vi.mock('./highlighter', () => ({ applyHighlight: vi.fn() }));
 vi.mock('./picker',      () => ({ attachPickerListeners: vi.fn() }));
-vi.mock('./mappings',    () => ({ saveElementMappings: vi.fn() }));
 vi.mock('../resume-ai/gemini', () => ({ resolveFieldsWithAI: vi.fn() }));
 // Control the radio/checkbox candidate lists independently of the DOM.
 vi.mock('./scanner', () => ({
@@ -24,7 +23,7 @@ vi.mock('./scanner', () => ({
 
 import { extractSelectOptions, runAIAutofill } from './ai';
 import type { AITextCandidate } from './ai';
-import { getGeminiApiKey, getGeminiModel } from '../utils/storage';
+import { getGeminiApiKey, getGeminiModel, saveLearnedMapping } from '../utils/storage';
 import { resolveFieldsWithAI } from '../resume-ai/gemini';
 import { scanRadioGroups, scanCheckboxGroups } from './scanner';
 import { fillField, fillRadioInput, fillCheckboxInput } from './filler';
@@ -272,9 +271,47 @@ describe('runAIAutofill — high-confidence text fills', () => {
     expect(result.lowConfidence).toBe(0);
     expect(result.noReview).toBe(1);
     expect(sessionElements).toContain(cand.element);
+    // The candidate's label ("First Name") is passed through so the Learned
+    // Mappings UI can show something readable instead of the normalised key.
+    expect(saveLearnedMapping).toHaveBeenCalledWith(
+      'example.com', expect.any(String), 'personal.firstName', 'First Name',
+    );
     expect(aiGreenFilled.has(cand.element)).toBe(true);
     // A green fill never queues a picker entry.
     expect(attachPickerListeners).not.toHaveBeenCalled();
+  });
+
+  it('saves each signal\'s learned mapping sequentially, never overlapping', async () => {
+    // Regression test: saveLearnedMapping does a read-modify-write against
+    // chrome.storage.local, so firing multiple calls without awaiting each
+    // one first (the previous bug) races and silently loses all but the
+    // last write. Two candidates with two non-empty signals each means four
+    // total saveLearnedMapping calls; none may overlap in-flight.
+    const cand1 = textCandidate('lowConfidence', 'First Name');
+    cand1.signals.name = 'firstName';
+    const cand2 = textCandidate('lowConfidence', 'Last Name');
+    cand2.signals.name = 'lastName';
+
+    let inFlight = 0;
+    let maxConcurrent = 0;
+    vi.mocked(saveLearnedMapping).mockImplementation(async () => {
+      inFlight++;
+      maxConcurrent = Math.max(maxConcurrent, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      inFlight--;
+    });
+
+    mockResponses([
+      { fieldId: 'field_001', profilePath: 'personal.firstName', confidence: 'high' },
+      { fieldId: 'field_002', profilePath: 'personal.lastName',  confidence: 'high' },
+    ]);
+
+    await runAIAutofill(
+      [cand1, cand2], PROFILE, freshResult(), [], 'example.com', undefined, new Set(),
+    );
+
+    expect(saveLearnedMapping).toHaveBeenCalledTimes(4);
+    expect(maxConcurrent).toBe(1);
   });
 
   it('decrements noData (not lowConfidence) for a noData-origin candidate', async () => {
@@ -305,7 +342,7 @@ describe('runAIAutofill — high-confidence text fills', () => {
 });
 
 describe('runAIAutofill — low-confidence text fills', () => {
-  it('fills, increments needReview, and queues a picker entry', async () => {
+  it('fills and increments needReview, leaving picker wiring to the caller', async () => {
     const cand = textCandidate('lowConfidence', 'First Name');
     const result = { ...freshResult(), lowConfidence: 1 };
     const aiGreenFilled = new Set<HTMLElement>();
@@ -322,12 +359,11 @@ describe('runAIAutofill — low-confidence text fills', () => {
     expect(result.noReview).toBe(0);
     // Low confidence is NOT a green fill.
     expect(aiGreenFilled.has(cand.element)).toBe(false);
-    // A picker entry is queued for the low-confidence field.
-    expect(attachPickerListeners).toHaveBeenCalledTimes(1);
-    const [fields] = vi.mocked(attachPickerListeners).mock.calls[0];
-    expect(fields).toHaveLength(1);
-    expect(fields[0].element).toBe(cand.element);
-    expect(fields[0].state).toBe('lowConfidence');
+    // The element stays in the caller's original pickerFields list (only
+    // aiGreenFilled elements get removed from it) with its original state,
+    // so index.ts's own attachEditWatchers/attachPickerListeners pass — not
+    // this function — is what wires up the picker for it.
+    expect(attachPickerListeners).not.toHaveBeenCalled();
   });
 
   it('does not fill or count when the resolved profile value is empty', async () => {

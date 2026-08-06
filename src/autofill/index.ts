@@ -1,4 +1,4 @@
-import { getProfile, getLearnedMappings } from '../utils/storage';
+import { getProfile, getLearnedMappings, saveLearnedMappings } from '../utils/storage';
 import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED } from './constants';
 import { scanFields, scanAriaFields } from './scanner';
 import { extractSignals, bestLabel } from './signals';
@@ -10,7 +10,7 @@ import { applyHighlight, clearElementHighlight, clearHighlights } from './highli
 import { attachPickerListeners, removePickerListener, closePickerIfOpenFor } from './picker';
 import type { PickerField, PickerFieldState } from './picker';
 import { resolveProfileValue } from './resolver';
-import { saveElementMappings } from './mappings';
+import { saveElementMappings, refreshLearnedLabels } from './mappings';
 import { runAIAutofill } from './ai';
 import type { AITextCandidate } from './ai';
 import type { DebugSession, DebugScanField, DebugMappingField, DebugAIField, FieldFinalState } from './debug';
@@ -285,6 +285,10 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
   let preFilledCount = 0;
   let totalMatched   = 0;
   const debugScanner: DebugScanField[] = [];
+  // Opportunistic label backfill for existing learned-mapping entries — see
+  // refreshLearnedLabels. Batched into one write after the loop rather than
+  // one per field.
+  let learnedLabelsDirty = false;
 
   fields.forEach((element, i) => {
     const signals = extractSignals(element);
@@ -297,6 +301,8 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
       if (hasExistingValue) preFilledCount++;
     }
 
+    if (refreshLearnedLabels(domain, signals, learnedMappings)) learnedLabelsDirty = true;
+
     debugScanner.push({
       fieldId: debugFieldId,
       label:   bestLabel(signals),
@@ -307,6 +313,8 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
 
     pendingMatches.push({ element, signals, match, hasExistingValue, debugFieldId });
   });
+
+  if (learnedLabelsDirty) void saveLearnedMappings(learnedMappings);
 
   // Seed an initial debug session — mapping/ai/summary are populated by executeAutofill.
   debugSession = {
