@@ -4,6 +4,10 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { SearchableProfileFieldSelect } from './SearchableProfileFieldSelect';
 import type { Profile } from '@/src/types/profile';
 
+// jsdom doesn't implement Element.scrollIntoView; the keyboard-highlight
+// effect calls it whenever the highlighted row changes.
+Element.prototype.scrollIntoView = vi.fn();
+
 afterEach(cleanup);
 
 const PROFILE = {
@@ -84,6 +88,50 @@ describe('SearchableProfileFieldSelect — selecting a row', () => {
     fireEvent.click(screen.getByText('First Name'));
     expect(onChange).toHaveBeenCalledWith('personal.firstName');
     expect(screen.queryByPlaceholderText('Search profile fields…')).toBeNull();
+  });
+});
+
+describe('SearchableProfileFieldSelect — keyboard navigation', () => {
+  it('Enter selects the first highlighted row without clicking', () => {
+    const { onChange } = renderSelect();
+    fireEvent.click(screen.getByRole('button'));
+    const input = screen.getByPlaceholderText('Search profile fields…');
+    fireEvent.change(input, { target: { value: 'Name' } });
+
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(['personal.firstName', 'personal.lastName']).toContain(onChange.mock.calls[0][0]);
+    expect(screen.queryByPlaceholderText('Search profile fields…')).toBeNull();
+  });
+
+  it('ArrowDown moves the highlight to the next visible row before Enter selects it', () => {
+    const onChangeA = vi.fn();
+    render(<SearchableProfileFieldSelect profile={PROFILE} value="" onChange={onChangeA} />);
+    fireEvent.click(screen.getByRole('button'));
+    const inputA = screen.getByPlaceholderText('Search profile fields…');
+    fireEvent.change(inputA, { target: { value: 'Name' } });
+    fireEvent.keyDown(inputA, { key: 'Enter' });
+    cleanup();
+
+    const onChangeB = vi.fn();
+    render(<SearchableProfileFieldSelect profile={PROFILE} value="" onChange={onChangeB} />);
+    fireEvent.click(screen.getByRole('button'));
+    const inputB = screen.getByPlaceholderText('Search profile fields…');
+    fireEvent.change(inputB, { target: { value: 'Name' } });
+    fireEvent.keyDown(inputB, { key: 'ArrowDown' });
+    fireEvent.keyDown(inputB, { key: 'Enter' });
+
+    expect(['personal.firstName', 'personal.lastName']).toContain(onChangeB.mock.calls[0][0]);
+    expect(onChangeB.mock.calls[0][0]).not.toBe(onChangeA.mock.calls[0][0]);
+  });
+
+  it('Escape closes the dropdown without selecting a field', () => {
+    const { onChange } = renderSelect();
+    fireEvent.click(screen.getByRole('button'));
+    const input = screen.getByPlaceholderText('Search profile fields…');
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(screen.queryByPlaceholderText('Search profile fields…')).toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
   });
 });
 

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { Profile } from '@/src/types/profile';
 import { buildPickerTree } from '@/src/autofill/profileFieldTree';
 import type { Section, SectionItem, OptionRow } from '@/src/autofill/profileFieldTree';
+import { useDropdownPanel } from './useDropdownPanel';
 
 interface Props {
   profile: Partial<Profile>;
@@ -63,16 +64,12 @@ export function SearchableProfileFieldSelect({ profile, value, onChange, placeho
     return null;
   }, [sections, value]);
 
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [collapsedSubGroups, setCollapsedSubGroups] = useState<Set<string>>(new Set());
+  const [hlIdx, setHlIdx] = useState(0);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
-
-  const toggle = () => {
-    if (!open) {
+  const { open, search, setSearch, containerRef, searchRef, toggle, close } = useDropdownPanel({
+    onOpen: () => {
       // Open near the section (and, if applicable, the specific subgroup
       // entry) that currently holds the selected value, same spirit as the
       // on-page picker auto-expanding a relevant section.
@@ -87,31 +84,15 @@ export function SearchableProfileFieldSelect({ profile, value, onChange, placeho
       const currentSubGroup = findSubGroupHeadingFor(sections, value);
       if (currentSubGroup) defaultCollapsed.delete(currentSubGroup);
       setCollapsedSubGroups(defaultCollapsed);
-      setSearch('');
-    }
-    setOpen((o) => !o);
-  };
+      setHlIdx(0);
+    },
+  });
 
-  useEffect(() => {
-    if (open) searchRef.current?.focus();
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) {
-        setOpen(false);
-        setSearch('');
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
+  const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const select = (fieldPath: string) => {
     onChange(fieldPath);
-    setOpen(false);
-    setSearch('');
+    close();
   };
 
   const q = search.trim().toLowerCase();
@@ -132,23 +113,31 @@ export function SearchableProfileFieldSelect({ profile, value, onChange, placeho
     });
   };
 
-  const renderRow = (row: OptionRow, indent: boolean) => (
-    <div
-      key={row.fieldPath}
-      role="option"
-      aria-selected={row.fieldPath === value}
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={() => select(row.fieldPath)}
-      className={`flex items-center gap-2 py-1.5 text-sm cursor-pointer select-none ${indent ? 'pl-5 pr-3' : 'px-3'} ${
-        row.fieldPath === value
-          ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-      }`}
-    >
-      <span className="shrink-0 w-2/5 text-xs text-gray-500 dark:text-gray-400 truncate">{row.label}</span>
-      <span className="flex-1 min-w-0 truncate font-medium">{row.value}</span>
-    </div>
-  );
+  const renderRow = (row: OptionRow, indent: boolean) => {
+    const isSelected = row.fieldPath === value;
+    const isHighlighted = row.fieldPath === highlightedPath;
+    return (
+      <div
+        key={row.fieldPath}
+        id={`spfs-option-${row.fieldPath}`}
+        ref={(el) => { if (el) rowRefs.current.set(row.fieldPath, el); else rowRefs.current.delete(row.fieldPath); }}
+        role="option"
+        aria-selected={isSelected}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => select(row.fieldPath)}
+        className={`flex items-center gap-2 py-1.5 text-sm cursor-pointer select-none ${indent ? 'pl-5 pr-3' : 'px-3'} ${
+          isSelected
+            ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+            : isHighlighted
+              ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+        }`}
+      >
+        <span className="shrink-0 w-2/5 text-xs text-gray-500 dark:text-gray-400 truncate">{row.label}</span>
+        <span className="flex-1 min-w-0 truncate font-medium">{row.value}</span>
+      </div>
+    );
+  };
 
   const renderItem = (item: SectionItem) => {
     if (item.kind === 'option') {
@@ -196,6 +185,65 @@ export function SearchableProfileFieldSelect({ profile, value, onChange, placeho
     });
   });
 
+  // Flattened, in-DOM-order list of currently visible row field paths —
+  // mirrors renderItem's own visibility rules (search filter, section
+  // expand/collapse, subgroup expand/collapse) so arrow-key navigation moves
+  // through exactly what's on screen. Recomputed on every render, same as
+  // visibleSections above — cheap, and there's no stable memoized input to
+  // key off since visibleSections itself isn't memoized.
+  const visibleRowPaths: string[] = [];
+  for (const section of visibleSections) {
+    const isExpanded = q ? true : expandedSections.has(section.id);
+    if (!isExpanded) continue;
+    for (const item of section.items) {
+      if (item.kind === 'option') {
+        if (q && !matchesSearch(item.label, q)) continue;
+        visibleRowPaths.push(item.fieldPath);
+      } else if (item.kind === 'cluster') {
+        if (q && !clusterMatches(item.rows, q)) continue;
+        const rows = q ? item.rows.filter((r) => matchesSearch(r.label, q)) : item.rows;
+        for (const r of rows) visibleRowPaths.push(r.fieldPath);
+      } else {
+        const hasMatch = !q || clusterMatches(item.rows, q);
+        if (!hasMatch) continue;
+        const expanded = q ? true : !collapsedSubGroups.has(item.heading);
+        if (!expanded) continue;
+        const rows = q ? item.rows.filter((r) => matchesSearch(r.label, q)) : item.rows;
+        for (const r of rows) visibleRowPaths.push(r.fieldPath);
+      }
+    }
+  }
+  // Clamp for display/selection purposes only — the underlying hlIdx state
+  // corrects itself on the next arrow-key press regardless (Math.min/max
+  // against the current list length), so no effect is needed to write it back.
+  const clampedHlIdx = Math.min(hlIdx, Math.max(visibleRowPaths.length - 1, 0));
+  const highlightedPath = visibleRowPaths[clampedHlIdx];
+
+  useEffect(() => {
+    if (highlightedPath) rowRefs.current.get(highlightedPath)?.scrollIntoView({ block: 'nearest' });
+  }, [highlightedPath]);
+
+  const handleSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    switch (e.key) {
+      case 'ArrowDown':
+        setHlIdx(Math.min(clampedHlIdx + 1, visibleRowPaths.length - 1));
+        e.preventDefault();
+        break;
+      case 'ArrowUp':
+        setHlIdx(Math.max(clampedHlIdx - 1, 0));
+        e.preventDefault();
+        break;
+      case 'Enter':
+        if (visibleRowPaths[clampedHlIdx]) select(visibleRowPaths[clampedHlIdx]);
+        e.preventDefault();
+        break;
+      case 'Escape':
+        close();
+        e.preventDefault();
+        break;
+    }
+  };
+
   return (
     <div ref={containerRef} className="relative w-full">
       <button
@@ -225,10 +273,15 @@ export function SearchableProfileFieldSelect({ profile, value, onChange, placeho
               className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Search profile fields…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setHlIdx(0); }}
+              onKeyDown={handleSearchKeyDown}
+              role="combobox"
+              aria-expanded={open}
+              aria-controls="spfs-listbox"
+              aria-activedescendant={highlightedPath ? `spfs-option-${highlightedPath}` : undefined}
             />
           </div>
-          <div className="max-h-72 overflow-y-auto py-1" role="listbox">
+          <div id="spfs-listbox" className="max-h-72 overflow-y-auto py-1" role="listbox">
             {visibleSections.length === 0 ? (
               <p className="px-3 py-3 text-sm text-gray-400 dark:text-gray-500 text-center select-none">
                 No matching fields.
