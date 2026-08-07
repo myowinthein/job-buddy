@@ -62,9 +62,13 @@ document.getElementById("applicationForm")?.addEventListener("submit", (event) =
 });
 
 // For screenshot/demo convenience.
-// Press F to simulate Job Buddy autofill.
+// Press F to simulate Job Buddy autofill — ignored while typing into a form
+// field so a word containing "f" doesn't silently overwrite the form mid-edit.
 document.addEventListener("keydown", (event) => {
-  if (event.key.toLowerCase() === "f") {
+  const target = event.target;
+  const isFormField = target instanceof HTMLElement &&
+    ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+  if (!isFormField && event.key.toLowerCase() === "f") {
     fillDemoData();
   }
 });
