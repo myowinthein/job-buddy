@@ -290,11 +290,7 @@ export async function syncProfileToDrive(profile: Profile): Promise<SyncResult> 
   try {
     let fileId = prevState.fileId;
     if (!fileId) {
-      try { fileId = await findBackupFileId(token); }
-      catch (err) {
-        if (err instanceof DriveApiError) throw err;
-        throw new DriveApiError(0, '');
-      }
+      fileId = await findBackupFileId(token);
     }
 
     const payload: DriveBackupFile = {
