@@ -23,9 +23,15 @@ export async function extractLinks(file: File): Promise<string[]> {
 
     interface PdfAnnotation { subtype?: unknown; url?: unknown }
 
-    for (let page = 1; page <= pdfDoc.numPages; page++) {
-      const pdfPage     = await pdfDoc.getPage(page);
-      const annotations = (await pdfPage.getAnnotations()) as PdfAnnotation[];
+    // Each page's annotation extraction is independent — parallelize instead
+    // of awaiting one page at a time, to reduce latency on multi-page resumes.
+    const pageAnnotations = await Promise.all(
+      Array.from({ length: pdfDoc.numPages }, async (_, i) => {
+        const pdfPage = await pdfDoc.getPage(i + 1);
+        return (await pdfPage.getAnnotations()) as PdfAnnotation[];
+      }),
+    );
+    for (const annotations of pageAnnotations) {
       for (const ann of annotations) {
         if (ann.subtype === 'Link' && typeof ann.url === 'string' && ann.url) {
           seen.add(ann.url);
