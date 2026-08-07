@@ -3525,11 +3525,11 @@
       "file": "docs/legal/privacy/index.html",
       "line": 1,
       "description": "All four legal pages (privacy, terms, eula, disclaimer under docs/legal/*/index.html) ship with zero CSS \u2014 no stylesheet link, no shared header/nav, no link back to the main site. They render as unstyled black-on-white browser-default text, completely disconnected from the branded landing page a visitor would have just come from. Consider a small shared stylesheet plus a 'back to Job Buddy' link/logo.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "110fe38",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0221",
