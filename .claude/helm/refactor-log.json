@@ -2883,11 +2883,11 @@
       "file": "src/components/options/shared/SearchableCountryDropdown.tsx",
       "line": 1,
       "description": "No dedicated test file exists for SearchableCountryDropdown, SearchableCountryWithCurrencyDropdown, SearchableCurrencySelect, or SearchableLanguageSelect. Component-specific behavior is consequently unverified: SearchableCountryWithCurrencyDropdown's `currencyFor` lookup/fallback and currency-text search match, and SearchableLanguageSelect's legacy free-text `displayName` fallback when `value` doesn't resolve to a known language code.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "cafeb839d1ecbba011b1ab0b3d0c9bb2422ad1f4",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0181",
