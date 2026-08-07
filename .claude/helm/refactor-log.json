@@ -3075,11 +3075,11 @@
       "file": "src/utils/profileValidator.ts",
       "line": 36,
       "description": "validateDocumentEntry() checks that file.base64 is a string but never bounds its length, unlike CLAUDE.md's documented 4MB UI cap on CV uploads. An imported/restored profile can carry a CV/cover-letter file well past that cap, which the sanitizer will happily accept and pass through to saveProfile(), risking a chrome.storage.local 5MB quota rejection at write time instead of being caught here with a clear validation error.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "6a7fad5",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0193",
@@ -3123,11 +3123,11 @@
       "file": "src/utils/sessionStorage.ts",
       "line": 10,
       "description": "sessionGet/sessionSet/sessionRemove duplicate the exact try/catch-around-chrome-callback shape of storageGet/storageSet/storageRemove in storage.ts, differing only in which chrome.storage.* area is used and that storage.ts's set rejects on failure while sessionStorage's never does. Consider a small shared factory (e.g. `wrapStorageArea(area, { rejectOnSetError })`) to remove the triplicated boilerplate while preserving the documented behavioral difference.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "8844ec2",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0196",
