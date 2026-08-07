@@ -96,4 +96,49 @@ describe('SalarySection — expected-salary rows', () => {
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('Country is required', { selector: 'p' })).toBeTruthy();
   });
+
+  it('rejects a negative expected-salary amount', () => {
+    const { onSave } = renderSection({
+      salary: {
+        current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' },
+        expected: [{ amount: 6000, currency: 'THB', country: 'TH', period: 'annual' }],
+      },
+    });
+    const amountInputs = screen.getAllByPlaceholderText('100000');
+    fireEvent.change(amountInputs[0], { target: { value: '-500' } });
+    expect(screen.getByText('Enter a valid amount', { selector: 'p' })).toBeTruthy();
+
+    fireEvent.click(screen.getByText('Save Salary'));
+    expect(onSave).not.toHaveBeenCalled();
+  });
+});
+
+describe('SalarySection — invalid current-salary amount', () => {
+  it('shows a live error for a negative amount as the user types', () => {
+    renderSection({
+      salary: { current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' }, expected: [] },
+    });
+    fireEvent.change(document.getElementById('field-currentAmount')!, { target: { value: '-100' } });
+    expect(screen.getByText('Enter a valid amount')).toBeTruthy();
+  });
+
+  it('blocks save for a negative current-salary amount', () => {
+    const { onSave } = renderSection({
+      salary: { current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' }, expected: [] },
+    });
+    fireEvent.change(document.getElementById('field-currentAmount')!, { target: { value: '-100' } });
+    fireEvent.click(screen.getByText('Save Salary'));
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('clears the error once the amount becomes valid', () => {
+    renderSection({
+      salary: { current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' }, expected: [] },
+    });
+    const input = document.getElementById('field-currentAmount')!;
+    fireEvent.change(input, { target: { value: '-100' } });
+    expect(screen.getByText('Enter a valid amount')).toBeTruthy();
+    fireEvent.change(input, { target: { value: '6000' } });
+    expect(screen.queryByText('Enter a valid amount')).toBeNull();
+  });
 });
