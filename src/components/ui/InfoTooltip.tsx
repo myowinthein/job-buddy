@@ -6,8 +6,8 @@ export function InfoTooltip({ text, align = 'left' }: { text: string; align?: 'l
   const anchor = align === 'right' ? 'right-0' : 'left-0';
   return (
     <span className="relative inline-flex shrink-0">
-      <span className="peer text-[10px] leading-none text-gray-400 dark:text-gray-500 cursor-default select-none">ⓘ</span>
-      <span className={`pointer-events-none absolute bottom-full ${anchor} z-50 mb-1.5 w-44 rounded-md bg-gray-800 dark:bg-gray-700 px-2 py-1.5 text-[11px] leading-snug text-white shadow-md opacity-0 peer-hover:opacity-100 transition-opacity`}>
+      <span tabIndex={0} className="peer text-[10px] leading-none text-gray-400 dark:text-gray-500 cursor-default select-none">ⓘ</span>
+      <span className={`pointer-events-none absolute bottom-full ${anchor} z-50 mb-1.5 w-44 rounded-md bg-gray-800 dark:bg-gray-700 px-2 py-1.5 text-[11px] leading-snug text-white shadow-md opacity-0 peer-hover:opacity-100 peer-focus:opacity-100 transition-opacity`}>
         {text}
       </span>
     </span>
