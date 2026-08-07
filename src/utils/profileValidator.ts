@@ -11,7 +11,7 @@ export interface ValidationResult {
   sanitized:     Partial<Profile>;
 }
 
-const RE_EMAIL    = /^[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}$/;
+const RE_EMAIL    = /^[\w.+-]+@[\w-]+(\.[\w-]+)*\.[a-zA-Z]{2,}$/;
 const RE_YYYYMM   = /^\d{4}-\d{2}$/;
 const RE_YYYY_OR_YYYYMM = /^\d{4}(-\d{2})?$/;
 const RE_YYYYMMDD = /^\d{4}-\d{2}-\d{2}$/;
@@ -292,6 +292,8 @@ function validateLinks(data: Record<string, unknown>, err: ErrFn): Profile['link
       if (lnk.linkedin) sl.linkedin = lnk.linkedin;
     } else if (typeof lnk.linkedin === 'string' && lnk.linkedin !== '') {
       err('links.linkedin', 'must contain linkedin.com');
+    } else {
+      err('links.linkedin', 'expected string');
     }
   }
   if (lnk.portfolio !== undefined && typeof lnk.portfolio === 'string') sl.portfolio = lnk.portfolio;
