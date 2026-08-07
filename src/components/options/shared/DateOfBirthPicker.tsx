@@ -40,6 +40,21 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
   const [dayStr,  setDayStr]  = useState(parsed.day  ? String(parsed.day)  : '');
   const [yearStr, setYearStr] = useState(parsed.year ? String(parsed.year) : '');
 
+  // Resync when `value` changes on an already-mounted instance (e.g. a list
+  // index shift after a sibling entry is deleted elsewhere in the profile) —
+  // the useState initializers above only run once, on mount. Adjusted during
+  // render (React's recommended pattern for this) rather than in an effect,
+  // so there's no extra commit/flicker between the stale and resynced values.
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
+    setMonth(parsed.month);
+    setDay(parsed.day);
+    setYear(parsed.year);
+    setDayStr(parsed.day  ? String(parsed.day)  : '');
+    setYearStr(parsed.year ? String(parsed.year) : '');
+  }
+
   // Inline range errors shown below the entire row, not inside individual inputs
   const [dayError,  setDayError]  = useState('');
   const [yearError, setYearError] = useState('');
