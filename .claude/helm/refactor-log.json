@@ -3267,11 +3267,11 @@
       "file": "entrypoints/options/App.tsx",
       "line": 241,
       "description": "handleSave awaits saveProfile(synced) with no try/catch, unlike the derivation step just above it and the Drive-sync step just below it. If saveProfile rejects (documented 5MB chrome.storage.local quota limit), the click handler produces an unhandled promise rejection, profile state is never updated, and the user gets zero feedback \u2014 no toast, no console.error. Wrap the call in try/catch and surface a toast (mirroring the 'Drive sync failed' warning pattern) on failure.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "7335521",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0205",
@@ -3301,11 +3301,11 @@
       "file": "entrypoints/options/App.tsx",
       "line": 200,
       "description": "The 'autofocus first empty input on section navigation' effect calls focusFirstEmpty(document.querySelector('main')) instead of the already-available mainRef.current, which its sibling effect (line 191) correctly uses. Use mainRef.current in both places for consistency and to avoid an extra DOM query.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "7335521",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0207",
@@ -3317,11 +3317,11 @@
       "file": "entrypoints/options/App.tsx",
       "line": 251,
       "description": "focusGeminiKey (lines 98-102) and handleFocusField (lines 251-256) both repeat the same three-step pattern (skipAutoFocusRef.current = true; setActiveSection(...); setFocusTarget(...)). Extract a small shared helper, e.g. navigateAndFocus(section, fieldId), to avoid the duplicated sequencing logic.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "7335521",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0208",
@@ -3333,11 +3333,11 @@
       "file": "entrypoints/popup/App.tsx",
       "line": 234,
       "description": "colorMap is a fully static object (keyed only by the derived `color` string) rebuilt on every render. Hoist the three-entry map to module scope and index into it, since none of its contents depend on props/state.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "0070624",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0209",
@@ -3381,11 +3381,11 @@
       "file": "entrypoints/popup/App.tsx",
       "line": 244,
       "description": "The shift+click debug-panel trigger is only reachable via mouse (onClick on an <img> with no role/tabIndex/keydown handler), unlike AiSparkIcon which implements a full keyboard-accessible pattern in the same file's tree. Low-impact since it's a hidden developer feature, but worth a same-file precedent note.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "0070624",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0212",
@@ -3397,11 +3397,11 @@
       "file": "src/components/ui/InfoTooltip.tsx",
       "line": 8,
       "description": "The tooltip only reveals on CSS :hover (peer-hover:opacity-100); the anchor span isn't focusable and there's no peer-focus variant, so keyboard-only and touch users can never see the tooltip text. Add tabIndex={0} to the anchor span and a peer-focus:opacity-100 (or peer-focus-visible:opacity-100) class alongside peer-hover.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "451f1af",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0213",
@@ -3413,11 +3413,11 @@
       "file": "src/components/shared/ImportReviewScreen.tsx",
       "line": 52,
       "description": "The modal backdrop's onClick={onBack} is not guarded by isSaving, while the footer's Back button is explicitly disabled during isSaving. A user can click outside the dialog mid-save and trigger onBack, letting the parent dismiss/unmount the review screen while a save is still in flight. Change to onClick={isSaving ? undefined : onBack} to match the footer's guard.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "be481a2",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0214",
@@ -3429,11 +3429,11 @@
       "file": "src/components/shared/ImportReviewScreen.tsx",
       "line": 229,
       "description": "FieldRow's final branch (rendering a plain label for change.status outside 'new'/'conflict') is dead code: FieldStatus only has 'new' | 'conflict' | 'unchanged', and the only caller always pre-filters to fields.filter(c => c.status !== 'unchanged') before mapping to FieldRow. Remove the unreachable branch or make FieldRow's prop type reflect only 'new' | 'conflict'.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "be481a2",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0215",
@@ -3445,11 +3445,11 @@
       "file": "src/components/shared/ImportReviewScreen.tsx",
       "line": 97,
       "description": "SECTION_ORDER.map re-filters the full `changes` array once per section (9 full scans) to group fields by section, instead of a single pass that buckets changes by section up front. Negligible at typical resume-field volumes, but an easy O(n) improvement if this ever runs on larger change sets.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "be481a2",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0216",
