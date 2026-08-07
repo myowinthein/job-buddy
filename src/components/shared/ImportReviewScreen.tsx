@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import type { FieldChange } from '@/src/resume-ai/types';
 
+// FieldRow only ever renders 'new' or 'conflict' rows — every caller
+// pre-filters out 'unchanged' fields before reaching it.
+type ReviewableChange = FieldChange & { status: 'new' | 'conflict' };
+
 const SECTION_ORDER = [
   'Personal',
   'Address',
@@ -46,10 +50,21 @@ export default function ImportReviewScreen({
 
   const handleSave = () => { void onSave(changes); };
 
+  // Single pass bucketing reviewable (non-'unchanged') fields by section,
+  // instead of re-filtering the full `changes` array once per SECTION_ORDER entry.
+  const reviewableBySection = new Map<string, ReviewableChange[]>();
+  for (const c of changes) {
+    if (c.status === 'unchanged') continue;
+    const reviewable = c as ReviewableChange;
+    const arr = reviewableBySection.get(c.section);
+    if (arr) arr.push(reviewable);
+    else reviewableBySection.set(c.section, [reviewable]);
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={onBack}
+      onClick={isSaving ? undefined : onBack}
     >
       <div
         className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-2xl mx-4 flex flex-col max-h-[90vh]"
@@ -95,16 +110,15 @@ export default function ImportReviewScreen({
         <div className="flex-1 overflow-y-auto px-6 py-5">
           <div className="space-y-6">
             {SECTION_ORDER.map((section) => {
-              const fields = changes.filter((c) => c.section === section);
-              if (fields.length === 0) return null;
-              if (!fields.some((f) => f.status !== 'unchanged')) return null;
+              const fields = reviewableBySection.get(section);
+              if (!fields || fields.length === 0) return null;
               return (
                 <div key={section}>
                   <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
                     {section}
                   </h4>
                   <div className="space-y-1.5">
-                    {fields.filter((c) => c.status !== 'unchanged').map((change) => (
+                    {fields.map((change) => (
                       <FieldRow
                         key={change.id}
                         change={change}
@@ -171,7 +185,7 @@ function FieldRow({
   onToggle,
   onConflictChoice,
 }: {
-  change:           FieldChange;
+  change:           ReviewableChange;
   onToggle:         (id: string) => void;
   onConflictChoice: (id: string, useSuggested: boolean) => void;
 }) {
@@ -192,43 +206,36 @@ function FieldRow({
     );
   }
 
-  if (change.status === 'conflict') {
-    return (
-      <div className="p-2.5 bg-yellow-50 dark:bg-yellow-900/15 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{change.label}</p>
-        <label className="flex items-start gap-2 mb-2 cursor-pointer">
-          <input
-            type="radio"
-            name={change.id}
-            checked={!change.accepted}
-            onChange={() => onConflictChoice(change.id, false)}
-            className="mt-0.5 shrink-0"
-          />
-          <div className="min-w-0">
-            <span className="text-xs text-gray-400 dark:text-gray-500">Keep current</span>
-            <MultilineValue value={change.displayCurrent} className="text-sm text-gray-700 dark:text-gray-300" />
-          </div>
-        </label>
-        <label className="flex items-start gap-2 cursor-pointer">
-          <input
-            type="radio"
-            name={change.id}
-            checked={change.accepted}
-            onChange={() => onConflictChoice(change.id, true)}
-            className="mt-0.5 shrink-0"
-          />
-          <div className="min-w-0">
-            <span className="text-xs text-gray-400 dark:text-gray-500">Use suggested</span>
-            <MultilineValue value={change.displaySuggested} className="text-sm font-medium text-gray-900 dark:text-gray-100" />
-          </div>
-        </label>
-      </div>
-    );
-  }
-
+  // change.status === 'conflict' — the only remaining case ReviewableChange allows.
   return (
-    <div className="flex items-center px-2.5 py-1">
-      <span className="text-xs text-gray-400 dark:text-gray-500">{change.label}</span>
+    <div className="p-2.5 bg-yellow-50 dark:bg-yellow-900/15 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{change.label}</p>
+      <label className="flex items-start gap-2 mb-2 cursor-pointer">
+        <input
+          type="radio"
+          name={change.id}
+          checked={!change.accepted}
+          onChange={() => onConflictChoice(change.id, false)}
+          className="mt-0.5 shrink-0"
+        />
+        <div className="min-w-0">
+          <span className="text-xs text-gray-400 dark:text-gray-500">Keep current</span>
+          <MultilineValue value={change.displayCurrent} className="text-sm text-gray-700 dark:text-gray-300" />
+        </div>
+      </label>
+      <label className="flex items-start gap-2 cursor-pointer">
+        <input
+          type="radio"
+          name={change.id}
+          checked={change.accepted}
+          onChange={() => onConflictChoice(change.id, true)}
+          className="mt-0.5 shrink-0"
+        />
+        <div className="min-w-0">
+          <span className="text-xs text-gray-400 dark:text-gray-500">Use suggested</span>
+          <MultilineValue value={change.displaySuggested} className="text-sm font-medium text-gray-900 dark:text-gray-100" />
+        </div>
+      </label>
     </div>
   );
 }
