@@ -44,9 +44,10 @@ vi.mock('@/src/utils/profileValidator', () => ({
 
 import { SettingsSection } from './SettingsSection';
 import { ToastProvider } from '@/src/components/ui/Toast';
-import { getProfile, getGeminiApiKey, clearAllStorage, saveLearnedMappings, getLearnedMappings, saveGeminiModel } from '@/src/utils/storage';
+import { getProfile, getGeminiApiKey, clearAllStorage, saveLearnedMappings, getLearnedMappings, saveGeminiModel, clearGeminiSettings, saveThemePreference } from '@/src/utils/storage';
 import { checkApiKey, validateApiKey } from '@/src/resume-ai/gemini';
 import { getFullDriveState, disconnectDrive } from '@/src/utils/driveSync';
+import { applyTheme } from '@/src/utils/theme';
 import type { Profile } from '@/src/types/profile';
 import type { KeyValidationResult } from '@/src/resume-ai/types';
 
@@ -165,6 +166,22 @@ describe('SettingsSection — Reset All Data confirmation gate', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reset All Data' }));
 
     await waitFor(() => expect(vi.mocked(disconnectDrive)).toHaveBeenCalledWith(true));
+  });
+
+  it('also clears the Gemini key and resets the theme preference, matching the "all data" UI copy', async () => {
+    vi.mocked(getProfile).mockResolvedValue(makeProfile());
+
+    renderSection();
+    fireEvent.click(await screen.findByText('Reset Now'));
+    await screen.findByText('This cannot be undone.');
+
+    fireEvent.change(screen.getByPlaceholderText('DELETE'), { target: { value: 'DELETE' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Reset All Data' }));
+
+    await waitFor(() => expect(vi.mocked(clearAllStorage)).toHaveBeenCalled());
+    expect(vi.mocked(clearGeminiSettings)).toHaveBeenCalled();
+    expect(vi.mocked(saveThemePreference)).toHaveBeenCalledWith('system');
+    expect(vi.mocked(applyTheme)).toHaveBeenCalledWith('system');
   });
 });
 
