@@ -7,52 +7,18 @@
 // try/catch, so this preserves that behavior instead of introducing new
 // unhandled-rejection risk.
 
+import { wrapStorageArea } from './storageArea';
+
+const session = wrapStorageArea(() => chrome.storage.session, 'session');
+
 export function sessionGet(key: string): Promise<Record<string, unknown>> {
-  return new Promise((resolve) => {
-    try {
-      chrome.storage.session.get(key, (result: Record<string, unknown>) => {
-        if (chrome.runtime.lastError) {
-          console.error('[Job Buddy] session.get error:', chrome.runtime.lastError.message);
-          resolve({});
-          return;
-        }
-        resolve(result);
-      });
-    } catch (err) {
-      console.error('[Job Buddy] session.get threw:', err);
-      resolve({});
-    }
-  });
+  return session.get(key);
 }
 
 export function sessionSet(items: Record<string, unknown>): Promise<void> {
-  return new Promise((resolve) => {
-    try {
-      chrome.storage.session.set(items, () => {
-        if (chrome.runtime.lastError) {
-          console.error('[Job Buddy] session.set error:', chrome.runtime.lastError.message);
-        }
-        resolve();
-      });
-    } catch (err) {
-      console.error('[Job Buddy] session.set threw:', err);
-      resolve();
-    }
-  });
+  return session.set(items);
 }
 
 export function sessionRemove(key: string): Promise<void> {
-  return new Promise((resolve) => {
-    try {
-      chrome.storage.session.remove(key, () => {
-        if (chrome.runtime.lastError) {
-          console.error('[Job Buddy] session.remove error:', chrome.runtime.lastError.message);
-        }
-        resolve();
-      });
-    } catch (err) {
-      console.error('[Job Buddy] session.remove threw:', err);
-      resolve();
-    }
-  });
+  return session.remove(key);
 }
