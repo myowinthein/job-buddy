@@ -137,6 +137,37 @@ describe('ResumeImportSection — cancel/abort during analysis', () => {
   }, 20000);
 });
 
+describe('ResumeImportSection — rate_limit error branch', () => {
+  it('shows the rate-limit-specific message with a Google AI Studio link', async () => {
+    vi.mocked(extractFromResume).mockReset().mockRejectedValue(
+      Object.assign(new Error('rate limited'), { code: 'rate_limit' }),
+    );
+
+    renderSection();
+    await screen.findByText(/Drop your CV here/);
+    await selectFile(pdfFile());
+    fireEvent.click(screen.getByText('Analyze CV'));
+
+    expect(await screen.findByText(/All AI models are currently busy/)).toBeTruthy();
+    const link = screen.getByText('Google AI Studio') as HTMLAnchorElement;
+    expect(link.href).toBe('https://aistudio.google.com/rate-limit');
+  });
+
+  it('shows the raw error message for a non-rate_limit failure instead', async () => {
+    vi.mocked(extractFromResume).mockReset().mockRejectedValue(
+      Object.assign(new Error('Invalid API key'), { code: 'invalid_key' }),
+    );
+
+    renderSection();
+    await screen.findByText(/Drop your CV here/);
+    await selectFile(pdfFile());
+    fireEvent.click(screen.getByText('Analyze CV'));
+
+    expect(await screen.findByText('Invalid API key')).toBeTruthy();
+    expect(screen.queryByText('Google AI Studio')).toBeNull();
+  });
+});
+
 describe('ResumeImportSection — retry after failure does not re-extract links', () => {
   // This test is 100% stable in isolation and under `vitest --no-file-parallelism`
   // (verified over 10+ repeated runs each way); it only flakes intermittently
