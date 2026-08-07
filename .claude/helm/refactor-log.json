@@ -3349,11 +3349,11 @@
       "file": "entrypoints/popup/App.tsx",
       "line": 134,
       "description": "openDebugPanel \u2014 including its multi-frame DebugSession selection logic (picking the session with the highest green+yellow+red+gray total) \u2014 has zero test coverage in src/popup/App.test.tsx. Add a test that renders multiple frame sessions via GET_DEBUG_SESSION responses and asserts the one with the most scanned fields is chosen, plus a basic shift-click trigger test.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "866e0281ccddba00754b66582f72945d54cd5be8",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0210",
@@ -3365,11 +3365,11 @@
       "file": "src/popup/App.test.tsx",
       "line": 110,
       "description": "Only the negative case for the AI nudge is tested (aiAvailable merges true \u2192 nudge hidden). There is no test for the positive case: aiAvailable false across all frames, hasGeminiKey false, and nudge not yet dismissed \u2192 nudge text should actually render. Add that assertion to close the gap.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "866e0281ccddba00754b66582f72945d54cd5be8",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0211",
