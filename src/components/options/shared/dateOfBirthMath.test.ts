@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { daysInMonth, computePartial, buildDOB } from './dateOfBirthMath';
+import { daysInMonth, computePartial, buildDOB, parseDOB } from './dateOfBirthMath';
 
 describe('daysInMonth', () => {
   it('returns 31 when month is not yet set', () => {
@@ -53,6 +53,27 @@ describe('computePartial', () => {
 
   it('returns false when all three are filled', () => {
     expect(computePartial('15', 6, '1990')).toBe(false);
+  });
+});
+
+describe('parseDOB', () => {
+  it('parses a well-formed ISO date into its numeric components', () => {
+    expect(parseDOB('1990-06-05')).toEqual({ year: 1990, month: 6, day: 5 });
+  });
+
+  it('returns all zeros for an empty string', () => {
+    expect(parseDOB('')).toEqual({ month: 0, day: 0, year: 0 });
+  });
+
+  it('defaults missing or non-numeric parts to 0 rather than NaN', () => {
+    expect(parseDOB('1990')).toEqual({ year: 1990, month: 0, day: 0 });
+    expect(parseDOB('1990-06')).toEqual({ year: 1990, month: 6, day: 0 });
+    expect(parseDOB('abcd-ef-gh')).toEqual({ year: 0, month: 0, day: 0 });
+  });
+
+  it('round-trips through buildDOB for a well-formed date', () => {
+    const parsed = parseDOB('2000-12-25');
+    expect(buildDOB(parsed.month, parsed.day, parsed.year)).toBe('2000-12-25');
   });
 });
 
