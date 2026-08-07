@@ -75,6 +75,34 @@ describe('DocumentsSection — required-field and URL-format validation', () => 
   });
 });
 
+describe('DocumentsSection — file-type restriction (drag-and-drop bypasses the input\'s accept attribute)', () => {
+  it('rejects a non-PDF/DOC/DOCX file selected via the file input', async () => {
+    renderSection({ documents: { cv: {} } });
+    fireEvent.click(screen.getByText('Upload'));
+
+    const file = new File(['not a document'], 'malware.exe', { type: 'application/octet-stream' });
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    expect(await screen.findByText('Only PDF and Word documents (.pdf, .doc, .docx) are supported')).toBeTruthy();
+    expect(screen.queryByText('malware.exe')).toBeNull();
+  });
+
+  it('accepts a .docx file', async () => {
+    renderSection({ documents: { cv: {} } });
+    fireEvent.click(screen.getByText('Upload'));
+
+    const file = new File(['fake docx content'], 'resume.docx', {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    expect(await screen.findByText('resume.docx')).toBeTruthy();
+    expect(screen.queryByText(/Only PDF and Word documents/)).toBeNull();
+  });
+});
+
 describe('DocumentsSection — cover letter preservation', () => {
   it('preserves an existing cover letter unchanged even though the form does not expose it', () => {
     const { onSave } = renderSection({
