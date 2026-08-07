@@ -11,7 +11,7 @@ import { fillField, fillRadioInput, fillCheckboxInput } from './filler';
 import { applyHighlight } from './highlighter';
 import { CONF_CONFIRMED, CONF_AI_YELLOW } from './constants';
 import { getGeminiApiKey, getGeminiModel, saveLearnedMapping } from '../utils/storage';
-import { normalize, PLACEHOLDER_OPTION_NORMS } from './normalizer';
+import { normalize, isSkippableOption } from './normalizer';
 import type { DebugAIField } from './debug';
 import type { AutofillResult } from './index';
 
@@ -34,9 +34,7 @@ export function extractSelectOptions(select: HTMLSelectElement): AIOptionPayload
   const opts: AIOptionPayload[] = [];
   for (let i = 0; i < select.options.length; i++) {
     const opt = select.options[i];
-    if (opt.disabled) continue;
-    if (!opt.value) continue;
-    if (PLACEHOLDER_OPTION_NORMS.has(normalize(opt.text))) continue;
+    if (isSkippableOption(opt)) continue;
     opts.push({ label: opt.text.trim(), value: opt.value });
   }
   return opts;

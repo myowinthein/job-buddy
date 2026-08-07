@@ -1,5 +1,5 @@
 import type { DocumentFile } from '../types/profile';
-import { normalize, similarity, PLACEHOLDER_OPTION_NORMS } from './normalizer';
+import { normalize, similarity, isSkippableOption, PLACEHOLDER_OPTION_NORMS } from './normalizer';
 import { CONF_FUZZY_THRESHOLD } from './constants';
 
 // Capture native setters before any framework can shadow them on instances
@@ -35,12 +35,6 @@ function dispatchEvents(element: HTMLElement): void {
   element.dispatchEvent(new Event('blur',   { bubbles: true }));
 }
 
-
-function isSkippableOption(opt: HTMLOptionElement): boolean {
-  if (opt.disabled) return true;
-  if (!opt.value) return true;
-  return PLACEHOLDER_OPTION_NORMS.has(normalize(opt.text));
-}
 
 // Shared matching strategy used by both fillSelect (native <option>, primary =
 // raw value, secondary = trimmed text) and findBestAriaOption (ARIA elements,
