@@ -60,6 +60,14 @@ interface ParsedImport {
 }
 
 
+// ── Shared button classes ────────────────────────────────────────────────────
+// disabled:opacity-50 is harmless on buttons that never receive a `disabled`
+// prop — the pseudo-class simply never matches — so one constant per variant
+// covers every button in this file, rather than fieldCls.ts-style per-state
+// strings.
+const btnPrimaryCls   = 'px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors';
+const btnSecondaryCls = 'px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 active:scale-95 transition-colors';
+
 // ── Drive timestamp formatter ────────────────────────────────────────────────
 // Timestamps are stored as UTC ISO strings. Display converts to local timezone:
 //   "Today at HH:mm" / "Yesterday at HH:mm" / full locale date for older entries.
@@ -145,11 +153,17 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   // ── AI Features state ────────────────────────────────────────────────────────
   const [geminiKey,        setGeminiKey]        = useState('');
   const [geminiKeyStatus,  setGeminiKeyStatus]  = useState<'idle' | 'validating' | 'valid' | 'invalid' | 'no_model'>('idle');
-  // Write-only: the model is persisted via saveGeminiModel and re-read via
-  // getGeminiModel; this state drives the save flow and is not rendered.
-  const [_geminiModel,     setGeminiModel]      = useState<string | null>(null);
   const geminiDebounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const probeIdRef         = useRef(0);
+
+  // The pending debounce is otherwise only cleared when the input changes
+  // again — without this, navigating away from Settings mid-debounce leaves
+  // the timeout to fire later and call setState on an unmounted component.
+  useEffect(() => {
+    return () => {
+      if (geminiDebounceRef.current) clearTimeout(geminiDebounceRef.current);
+    };
+  }, []);
 
   // ── Cloud Backup state ───────────────────────────────────────────────────────
   const [driveState, setDriveState] = useState<{
@@ -171,10 +185,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const [resetScope,            setResetScope]            = useState<'device' | 'everywhere'>('device');
 
   useEffect(() => {
-    Promise.all([getGeminiApiKey(), getGeminiModel()]).then(([key, model]) => {
+    Promise.all([getGeminiApiKey(), getGeminiModel()]).then(([key]) => {
       if (key) {
         setGeminiKey(key);
-        setGeminiModel(model);
         setGeminiKeyStatus('valid');
       }
     });
@@ -198,7 +211,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     if (!key.trim()) {
       probeIdRef.current++; // invalidate any in-flight debounce callback below
       setGeminiKeyStatus('idle');
-      setGeminiModel(null);
       void clearGeminiSettings();
       return;
     }
@@ -228,7 +240,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       await saveGeminiApiKey(trimmed);
       await saveGeminiModel(DEFAULT_GEMINI_MODEL);
       if (callId !== probeIdRef.current) return;
-      setGeminiModel(DEFAULT_GEMINI_MODEL);
       setGeminiKeyStatus('valid');
       showToast('success', 'API key saved.');
 
@@ -238,12 +249,10 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
       if (result.valid && result.model && result.model !== DEFAULT_GEMINI_MODEL) {
         await saveGeminiModel(result.model);
-        setGeminiModel(result.model);
       } else if (result.keyValidNoModel) {
         setGeminiKeyStatus('no_model');
       } else if (result.keyInvalid) {
         await clearGeminiSettings();
-        setGeminiModel(null);
         setGeminiKeyStatus('invalid');
       }
       // Network error during probe: leave key + default model in storage
@@ -555,7 +564,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       // up too — same pairing already used for the keyInvalid probe case above.
       setGeminiKey('');
       setGeminiKeyStatus('idle');
-      setGeminiModel(null);
       setShowResetDialog(false);
       setResetConfirmText('');
       setResetScope('device');
@@ -678,7 +686,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         <button
           type="button"
           onClick={handleExport}
-          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:scale-95 transition-colors"
+          className={btnPrimaryCls}
         >
           Download File
         </button>
@@ -700,7 +708,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
+          className={btnSecondaryCls}
         >
           Choose File
         </button>
@@ -728,7 +736,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           <button
             type="button"
             onClick={handleDriveConnect}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:scale-95 transition-colors"
+            className={btnPrimaryCls}
           >
             Connect Google Drive
           </button>
@@ -752,7 +760,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               type="button"
               onClick={handleDriveReconnect}
               disabled={driveConnecting}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
+              className={btnPrimaryCls}
             >
               Reconnect
             </button>
@@ -786,7 +794,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               type="button"
               onClick={handleDriveSyncNow}
               disabled={driveSyncing}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
+              className={btnPrimaryCls}
             >
               {driveSyncing ? 'Retrying…' : 'Retry'}
             </button>
@@ -803,7 +811,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               type="button"
               onClick={handleDriveSyncNow}
               disabled={driveSyncing}
-              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
+              className={btnPrimaryCls}
             >
               {driveSyncing ? 'Retrying…' : 'Retry'}
             </button>
@@ -824,14 +832,14 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                 type="button"
                 onClick={handleDriveSyncNow}
                 disabled={driveSyncing}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
+                className={btnPrimaryCls}
               >
                 {driveSyncing ? 'Syncing…' : 'Sync Now'}
               </button>
               <button
                 type="button"
                 onClick={() => setDriveDisconnectDialog(true)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
+                className={btnSecondaryCls}
               >
                 Disconnect
               </button>
@@ -934,6 +942,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               <button
                 type="button"
                 onClick={handleResetDialogClose}
+                aria-label="Close"
                 className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
               >
                 ×
@@ -1009,7 +1018,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               <button
                 type="button"
                 onClick={handleResetDialogClose}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
+                className={btnSecondaryCls}
               >
                 Cancel
               </button>
@@ -1041,6 +1050,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               <button
                 type="button"
                 onClick={() => { setDriveDisconnectDialog(false); setDisconnectDeleteBackup(false); }}
+                aria-label="Close"
                 className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
               >
                 ×
@@ -1082,14 +1092,14 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               <button
                 type="button"
                 onClick={() => { setDriveDisconnectDialog(false); setDisconnectDeleteBackup(false); }}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
+                className={btnSecondaryCls}
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={() => void handleDriveDisconnect(disconnectDeleteBackup)}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:scale-95 transition-colors"
+                className={btnPrimaryCls}
               >
                 Disconnect
               </button>
@@ -1113,6 +1123,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               <button
                 type="button"
                 onClick={closeRestoreDialog}
+                aria-label="Close"
                 className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
               >
                 ×
@@ -1131,7 +1142,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                 type="button"
                 onClick={closeRestoreDialog}
                 disabled={driveRestoreBusy}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 active:scale-95 transition-colors"
+                className={btnSecondaryCls}
               >
                 Skip
               </button>
@@ -1139,7 +1150,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                 type="button"
                 onClick={handleRestoreFromDrive}
                 disabled={driveRestoreBusy}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
+                className={btnPrimaryCls}
               >
                 {driveRestoreBusy ? 'Restoring…' : 'Restore'}
               </button>
