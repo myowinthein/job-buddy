@@ -2515,11 +2515,11 @@
       "file": "src/components/options/ResumeImportSection.test.tsx",
       "line": 168,
       "description": "No test covers the `errorCode === 'rate_limit'` branch (distinct copy + link to Google AI Studio), the final 'done' screen (summary counts/pluralization), or performSave's catch branch (onSave rejecting \u2192 'Save failed. Please try again.' toast).",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "abdd9b17f5f4b38e5bb1f68ea1f00e8c3e0f79ed",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0158",
