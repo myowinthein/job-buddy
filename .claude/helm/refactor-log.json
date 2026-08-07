@@ -2755,11 +2755,11 @@
       "file": "src/components/options/shared/DateOfBirthPicker.tsx",
       "line": 36,
       "description": "Same pattern as MonthYearPicker: `month`/`day`/`year`/`dayStr`/`yearStr` are derived from `value` only via the `useState` initializer, never resynced on later prop changes. Currently dormant since PersonalSection only renders one instance, but worth the same `useEffect` resync fix for defense-in-depth.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "e1fa52e",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0173",
