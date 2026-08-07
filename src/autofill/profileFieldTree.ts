@@ -7,9 +7,9 @@ import { resolveProfileValue } from './resolver';
 
 // Builds a human-labeled tree of every profile field that currently has a
 // value, pairing each with its dot-notation path. Pure function of `profile`
-// only, no DOM — shared by the on-page picker overlay (picker.ts) and the
-// Learned Mappings edit UI (LearnedMappingsSection.tsx) so there's exactly
-// one canonical list of valid paths, not two drifting copies.
+// only, no DOM — powers the grouped, searchable field dropdown in the
+// Learned Mappings edit UI (SearchableProfileFieldSelect.tsx), the one
+// canonical list of valid paths a learned mapping's path can be set to.
 
 export interface OptionRow {
   kind:      'option';
@@ -71,24 +71,24 @@ function mostRecentIdx(entries: Array<{ startDate?: string; isCurrent?: boolean 
   return best;
 }
 
-function workHistoryHeading(entry: WorkHistoryEntry, idx: number): string {
-  if (entry.company && entry.title) return `${entry.company} · ${entry.title}`;
-  if (entry.company) return entry.company;
-  if (entry.title)   return entry.title;
+// Shared by workHistoryHeading/educationHeading below: primary/secondary
+// field fallback, then start/end-year range fallback, then "Entry N".
+function entryHeading(primary: string | undefined, secondary: string | undefined, entry: { startDate?: string; isCurrent?: boolean; endDate?: string }, idx: number): string {
+  if (primary && secondary) return `${primary} · ${secondary}`;
+  if (primary)   return primary;
+  if (secondary) return secondary;
   const sy = entry.startDate?.split('-')[0];
   const ey = entry.isCurrent ? 'Present' : entry.endDate?.split('-')[0];
   if (sy) return ey ? `${sy}–${ey}` : sy;
   return `Entry ${idx + 1}`;
 }
 
+function workHistoryHeading(entry: WorkHistoryEntry, idx: number): string {
+  return entryHeading(entry.company, entry.title, entry, idx);
+}
+
 function educationHeading(entry: EducationEntry, idx: number): string {
-  if (entry.institution && entry.degree) return `${entry.institution} · ${entry.degree}`;
-  if (entry.institution) return entry.institution;
-  if (entry.degree)      return entry.degree;
-  const sy = entry.startDate?.split('-')[0];
-  const ey = entry.isCurrent ? 'Present' : entry.endDate?.split('-')[0];
-  if (sy) return ey ? `${sy}–${ey}` : sy;
-  return `Entry ${idx + 1}`;
+  return entryHeading(entry.institution, entry.degree, entry, idx);
 }
 
 function row(label: string, fieldPath: string, value: string): OptionRow {
