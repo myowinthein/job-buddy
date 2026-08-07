@@ -2787,11 +2787,11 @@
       "file": "src/components/options/shared/SearchableProfileFieldSelect.tsx",
       "line": 66,
       "description": "Reimplements the open/search/highlight state machinery that already exists in `useSearchableDropdown`, instead of composing from it like the other four Searchable* components do. The item-rendering here is genuinely different (grouped tree vs flat list) so full reuse isn't drop-in, but the open/search/outside-click plumbing (~40 lines) could still be extracted and shared.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "ecf9f31",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0175",
@@ -2803,11 +2803,11 @@
       "file": "src/components/options/shared/SearchableProfileFieldSelect.tsx",
       "line": 222,
       "description": "The search `<input>` and the `role=\"listbox\"`/`role=\"option\"` rows implement the ARIA listbox pattern but have no `onKeyDown` handler at all \u2014 no arrow-key highlight, no Enter-to-select, no Escape-to-close. A keyboard-only user can open the panel but cannot select an option without clicking it.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "ecf9f31",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0176",
