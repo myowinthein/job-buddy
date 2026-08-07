@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useState } from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { MonthYearPicker } from './MonthYearPicker';
@@ -15,6 +16,14 @@ function renderPicker(props: Partial<React.ComponentProps<typeof MonthYearPicker
   return { onChange, onYearChange, onBlur };
 }
 
+// Mirrors how a real caller (e.g. WorkHistorySection's updateEntry) wires
+// this up: onChange's result is written straight back as the controlled
+// `value` prop.
+function ControlledPicker({ initial }: { initial: string }) {
+  const [value, setValue] = useState(initial);
+  return <MonthYearPicker value={value} onChange={setValue} />;
+}
+
 describe('MonthYearPicker — initial value parsing', () => {
   it('splits an existing "YYYY-MM" value into month and year', () => {
     renderPicker({ value: '1990-06' });
@@ -26,6 +35,37 @@ describe('MonthYearPicker — initial value parsing', () => {
     renderPicker({ value: '1990' });
     expect((screen.getByLabelText('Month') as HTMLSelectElement).value).toBe('');
     expect((screen.getByLabelText('Year') as HTMLInputElement).value).toBe('1990');
+  });
+});
+
+describe('MonthYearPicker — resync when value changes to a different non-empty date', () => {
+  it('picks up a genuinely different external value on an already-mounted instance', () => {
+    const { rerender } = render(<MonthYearPicker value="1990-06" onChange={vi.fn()} />);
+    expect((screen.getByLabelText('Month') as HTMLSelectElement).value).toBe('06');
+
+    // Simulates a list-index shift: this instance now represents a
+    // different work-history/education entry entirely.
+    rerender(<MonthYearPicker value="2005-11" onChange={vi.fn()} />);
+    expect((screen.getByLabelText('Month') as HTMLSelectElement).value).toBe('11');
+    expect((screen.getByLabelText('Year') as HTMLInputElement).value).toBe('2005');
+  });
+});
+
+describe('MonthYearPicker — does not wipe the month when onChange(\'\') echoes back as value', () => {
+  it('editing the year field down to a partial value on an existing date does not clear month', () => {
+    render(<ControlledPicker initial="1990-06" />);
+
+    // Partially retyping the year: emit('') fires and, in a real caller,
+    // gets written straight back as this component's `value` prop.
+    fireEvent.change(screen.getByLabelText('Year'), { target: { value: '19' } });
+
+    // Month must survive — only the year was actually edited.
+    expect((screen.getByLabelText('Month') as HTMLSelectElement).value).toBe('06');
+    expect((screen.getByLabelText('Year') as HTMLInputElement).value).toBe('19');
+
+    // And the user can still complete a new year to get a valid date back.
+    fireEvent.change(screen.getByLabelText('Year'), { target: { value: '2010' } });
+    expect((screen.getByLabelText('Year') as HTMLInputElement).value).toBe('2010');
   });
 });
 
