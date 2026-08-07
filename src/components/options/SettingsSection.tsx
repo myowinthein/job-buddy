@@ -539,6 +539,18 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         await disconnectDrive(resetScope === 'everywhere');
       }
       await clearAllStorage();
+      // clearAllStorage() only covers profile/learnedMappings/applicationHistory —
+      // the UI copy promises "all data from this browser", so the Gemini key
+      // and theme preference need to go too.
+      await clearGeminiSettings();
+      await saveThemePreference('system');
+      applyTheme('system');
+      // SettingsSection stays mounted across a reset (it isn't remounted the
+      // way profile sections are), so its own displayed state needs to catch
+      // up too — same pairing already used for the keyInvalid probe case above.
+      setGeminiKey('');
+      setGeminiKeyStatus('idle');
+      setGeminiModel(null);
       setShowResetDialog(false);
       setResetConfirmText('');
       setResetScope('device');
