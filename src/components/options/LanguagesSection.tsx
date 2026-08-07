@@ -37,14 +37,14 @@ function migrateProficiency(raw: string): LanguageProficiency {
     : 'professional_working');
 }
 
-type Row = { language: string; proficiency: LanguageProficiency };
+type Row = { language: string; proficiency: LanguageProficiency | '' };
 
 function initRow(raw: LanguageEntry): Row {
   return { language: raw.language, proficiency: migrateProficiency(raw.proficiency) };
 }
 
 function emptyRow(): Row {
-  return { language: '', proficiency: '' as LanguageProficiency };
+  return { language: '', proficiency: '' };
 }
 
 export function LanguagesSection({ profile, onSave }: Props) {
