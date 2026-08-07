@@ -10,7 +10,7 @@ import { fillField, fillFileField, clearFieldValue } from './filler';
 import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
 import { resolveProfileValue, flattenProfileValues } from './resolver';
 import type { FlatProfileValue } from './resolver';
-import { similarity } from './normalizer';
+import { normalize, similarity } from './normalizer';
 import { refreshLearnedLabels, saveElementMappings } from './mappings';
 import { runAIAutofill } from './ai';
 import type { AITextCandidate } from './ai';
@@ -116,9 +116,10 @@ function queueMappingSave(domain: string, element: HTMLElement, fieldPath: strin
 // we ask independently: does this typed text resemble anything already in the
 // profile? Returns null if flatValues is empty.
 function findBestProfileMatch(flatValues: FlatProfileValue[], value: string): { path: string; score: number } | null {
+  const normValue = normalize(value);
   let best: { path: string; score: number } | null = null;
   for (const candidate of flatValues) {
-    const score = similarity(value, candidate.value);
+    const score = similarity(normValue, normalize(candidate.value));
     if (!best || score > best.score) best = { path: candidate.path, score };
   }
   return best;
