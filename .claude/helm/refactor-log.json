@@ -3139,11 +3139,11 @@
       "file": "src/utils/storage.test.ts",
       "line": 1,
       "description": "storageGet/storageSet/storageRemove in storage.ts each have a try/catch around a synchronous throw from chrome.storage.local.*, but storage.test.ts never exercises that path \u2014 only the chrome.runtime.lastError callback-based failure is tested. sessionStorage.test.ts has an entire describe block covering the equivalent case for sessionStorage.ts; storage.ts's parallel branches have no such coverage despite being the higher-stakes module.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "0a8c8032ad4cd740bb1d50b314e7195968dd8571",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0197",
