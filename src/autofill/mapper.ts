@@ -7,7 +7,7 @@ import { resolveProfileValue } from './resolver';
 import type { MatchLayer } from './debug';
 import {
   CONF_FILL, CONF_CONFIRMED, CONF_DICT_EXACT, CONF_FUZZY_THRESHOLD,
-  CONF_FUZZY_STRONG_MULT, CONF_FUZZY_WEAK_MULT, CONF_CONTEXT,
+  CONF_FUZZY_STRONG_MULT, CONF_FUZZY_WEAK_MULT, CONF_CONTEXT, CONF_AUTOCOMPLETE,
 } from './constants';
 
 export interface FieldMatch {
@@ -23,19 +23,19 @@ const LEARNED_MAPPING_THRESHOLD = 2;
 
 // ── Layer 1 — Autocomplete attribute map ────────────────────────────────────
 const AUTOCOMPLETE_MAP: Record<string, { path: string; confidence: number }> = {
-  'given-name':        { path: 'personal.firstName',        confidence: 0.95 },
-  'family-name':       { path: 'personal.lastName',         confidence: 0.95 },
-  'email':             { path: 'personal.email',            confidence: 0.95 },
-  'tel':               { path: 'personal.phone.full',        confidence: 0.95 },
-  'tel-national':      { path: 'personal.phone.number',      confidence: 0.95 },
-  'tel-country-code':  { path: 'personal.phone.callingCode', confidence: 0.95 },
-  'street-address':    { path: 'address.street',            confidence: 0.95 },
-  'address-level2':    { path: 'address.city',              confidence: 0.95 },
-  'country':           { path: 'address.country',           confidence: 0.95 },
-  'country-name':      { path: 'address.country',           confidence: 0.95 },
-  'postal-code':       { path: 'address.postalCode',        confidence: 0.95 },
-  'organization':      { path: 'derived.currentCompany',    confidence: 0.95 },
-  'organization-title':{ path: 'derived.currentTitle',      confidence: 0.95 },
+  'given-name':        { path: 'personal.firstName',        confidence: CONF_AUTOCOMPLETE },
+  'family-name':       { path: 'personal.lastName',         confidence: CONF_AUTOCOMPLETE },
+  'email':             { path: 'personal.email',            confidence: CONF_AUTOCOMPLETE },
+  'tel':               { path: 'personal.phone.full',        confidence: CONF_AUTOCOMPLETE },
+  'tel-national':      { path: 'personal.phone.number',      confidence: CONF_AUTOCOMPLETE },
+  'tel-country-code':  { path: 'personal.phone.callingCode', confidence: CONF_AUTOCOMPLETE },
+  'street-address':    { path: 'address.street',            confidence: CONF_AUTOCOMPLETE },
+  'address-level2':    { path: 'address.city',              confidence: CONF_AUTOCOMPLETE },
+  'country':           { path: 'address.country',           confidence: CONF_AUTOCOMPLETE },
+  'country-name':      { path: 'address.country',           confidence: CONF_AUTOCOMPLETE },
+  'postal-code':       { path: 'address.postalCode',        confidence: CONF_AUTOCOMPLETE },
+  'organization':      { path: 'derived.currentCompany',    confidence: CONF_AUTOCOMPLETE },
+  'organization-title':{ path: 'derived.currentTitle',      confidence: CONF_AUTOCOMPLETE },
   // 'url' is intentionally absent: autocomplete="url" is too generic to assign
   // to any specific link field. Let the label/name signals decide via the
   // dictionary instead.
