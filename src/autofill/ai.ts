@@ -89,14 +89,9 @@ export async function runAIAutofill(
   if (candidates.length === 0) return true;
 
   const candidateMap = new Map<string, Candidate>();
-  // Debug-only: remember the synthetic AI fieldId per candidate so we can
-  // surface the same identifier in both the AI debug record and the mapping
-  // debug record (for text candidates that originated from the rule pipeline).
-  const fieldIdByCandidate = new Map<Candidate, string>();
   const payload: AIFieldPayload[] = candidates.map((c, i) => {
     const fieldId = `field_${String(i + 1).padStart(3, '0')}`;
     candidateMap.set(fieldId, c);
-    fieldIdByCandidate.set(c, fieldId);
 
     if (c.type === 'text') {
       const s = c.signals;
@@ -155,7 +150,7 @@ export async function runAIAutofill(
   for (const resp of responses) {
     const candidate = candidateMap.get(resp.fieldId);
     if (!candidate) continue;
-    const fieldId = fieldIdByCandidate.get(candidate)!;
+    const fieldId = resp.fieldId;
 
     if (resp.confidence === null) {
       recordDebug(candidate, fieldId, null, null, 'unchanged');
