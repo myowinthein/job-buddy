@@ -9,6 +9,7 @@ import { SaveButton } from './shared/SaveButton';
 import { AddEntryButton } from './shared/AddEntryButton';
 import { fieldCls as cls } from './shared/fieldCls';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
+import { useDateRangeValidation } from './shared/useDateRangeValidation';
 
 interface Props {
   profile: Partial<Profile>;
@@ -72,77 +73,13 @@ export function EducationSection({ profile, onSave }: Props) {
     setErrors((e) => ({ ...e, [ek]: err }));
   };
 
-  // Year-only validation (fires on every year keystroke via onYearChange).
-  const handleYearChange = (idx: number, key: 'startDate' | 'endDate', year: string) => {
-    const ek = `${idx}.${key}`;
-    if (year.length < 4) {
-      setErrors((e) => {
-        const cur = e[ek] ?? '';
-        return cur.startsWith('Year must be') ? { ...e, [ek]: '' } : e;
-      });
-      return;
-    }
-    const y = parseInt(year, 10);
-    if (isNaN(y)) return;
-    const err = y > EDU_MAX_YEAR || y < EDU_MIN_YEAR
-      ? `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}`
-      : '';
-    setErrors((e) => ({ ...e, [ek]: err }));
-  };
-
-  // Blur handler for the full month+year group.
-  // Validation order: required (both empty) → year range (year present).
-  const handleDateBlur = (idx: number, key: 'startDate' | 'endDate', month: string, year: string) => {
-    const ek = `${idx}.${key}`;
-    const isRequired = key === 'startDate' || !entries[idx].isCurrent;
-
-    if (!month && !year.trim()) {
-      setErrors((e) => ({
-        ...e,
-        [ek]: isRequired
-          ? (key === 'startDate' ? 'Start date is required' : 'End date is required')
-          : '',
-      }));
-      return;
-    }
-
-    if (year.length === 4) {
-      const y = parseInt(year, 10);
-      if (!isNaN(y) && (y > EDU_MAX_YEAR || y < EDU_MIN_YEAR)) {
-        setErrors((e) => ({ ...e, [ek]: `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}` }));
-        return;
-      }
-      // End date before start date — supports both YYYY and YYYY-MM.
-      // Compare on YYYY-MM with end-padded to "-12" and start-padded to "-01"
-      // when month is missing, so partial dates don't generate false errors.
-      if (key === 'endDate') {
-        const startDate = entries[idx].startDate;
-        if (startDate) {
-          const endNorm   = month ? `${year}-${month}` : `${year}-12`;
-          const startNorm = startDate.length === 7 ? startDate : `${startDate}-01`;
-          if (endNorm < startNorm) {
-            setErrors((e) => ({ ...e, [ek]: 'End date cannot be before start date' }));
-            return;
-          }
-        }
-      }
-      setErrors((e) => {
-        const cur = e[ek] ?? '';
-        return (cur === 'Start date is required' || cur === 'End date is required')
-          ? { ...e, [ek]: '' }
-          : e;
-      });
-      return;
-    }
-
-    // Partial / in-progress — clear stale required errors only
-    setErrors((e) => {
-      const cur = e[ek] ?? '';
-      return (cur === 'Start date is required' || cur === 'End date is required')
-        ? { ...e, [ek]: '' }
-        : e;
-    });
-  };
+  // Education dates accept either YYYY or YYYY-MM (allowYearOnlyEnd) — unlike
+  // WorkHistorySection, which requires a month for both start and end.
+  const { handleYearChange, handleDateBlur } = useDateRangeValidation(entries, setErrors, {
+    minYear: EDU_MIN_YEAR,
+    maxYear: EDU_MAX_YEAR,
+    allowYearOnlyEnd: true,
+  });
 
   const update = (idx: number, key: keyof Row, value: string | boolean) => {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
