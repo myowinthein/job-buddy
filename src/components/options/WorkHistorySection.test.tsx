@@ -107,3 +107,51 @@ describe('WorkHistorySection — date validation across the keystroke/blur/save-
     expect(onSave).toHaveBeenCalled();
   });
 });
+
+describe('WorkHistorySection — Work Arrangement radio group', () => {
+  // Regression coverage for a real bug: native radios only fire `change` when
+  // the checked state actually flips (a genuinely new selection) — re-clicking
+  // an already-checked radio, or arrow-key navigation onto a new one, both
+  // rely on that same `change` event, distinct from `click`. A no-op onChange
+  // previously meant a new selection never reached React state unless `click`
+  // happened to also fire (which a keyboard-driven change does not). Selecting
+  // 'remote' below exercises exactly that onChange path — the fix doesn't
+  // distinguish click-driven from keyboard-driven changes, so this covers both.
+  it('selects an option (via its change event) and deselects it on a second click of the same option', () => {
+    const { onSave } = renderSection({
+      workHistory: [{ company: 'Acme', title: 'Engineer', startDate: '2020-01', isCurrent: true }],
+    });
+    fireEvent.click(screen.getByText(/Acme — Engineer/)); // expand the collapsed card
+    const remote = screen.getByDisplayValue('remote') as HTMLInputElement;
+
+    fireEvent.click(remote);
+    expect(remote.checked).toBe(true);
+
+    fireEvent.click(remote);
+    expect(remote.checked).toBe(false);
+
+    fireEvent.click(screen.getByText('Save Work History'));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      workHistory: [expect.objectContaining({ arrangement: undefined })],
+    }));
+  });
+
+  it('switching between two different options keeps only the newly-selected one checked', () => {
+    const { onSave } = renderSection({
+      workHistory: [{ company: 'Acme', title: 'Engineer', startDate: '2020-01', isCurrent: true }],
+    });
+    fireEvent.click(screen.getByText(/Acme — Engineer/));
+    const remote = screen.getByDisplayValue('remote') as HTMLInputElement;
+    const hybrid = screen.getByDisplayValue('hybrid') as HTMLInputElement;
+
+    fireEvent.click(remote);
+    fireEvent.click(hybrid);
+    expect(remote.checked).toBe(false);
+    expect(hybrid.checked).toBe(true);
+
+    fireEvent.click(screen.getByText('Save Work History'));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      workHistory: [expect.objectContaining({ arrangement: 'hybrid' })],
+    }));
+  });
+});
