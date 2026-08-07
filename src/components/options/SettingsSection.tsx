@@ -90,6 +90,30 @@ function fmtDriveTimestamp(iso: string | null): string {
   }
 }
 
+// A profile with 0% completion has nothing to conflict with, so both the
+// JSON-import path and the Drive-restore path skip the merge/review dialog
+// and save immediately when this is true.
+function isProfileEmpty(profile: Partial<Profile> | null): boolean {
+  return calculateCompletion(profile ?? {}).percentage === 0;
+}
+
+// Shared by the empty-profile fast path (handleFileChange) and the
+// diff/review path (performImportSave) so the two import flows can't drift
+// apart. Learned mappings are always merged, never overwritten, so an older
+// import can't silently erase newer local learning.
+async function saveImportedData(
+  profile: Profile,
+  learnedMappings: LearnedMappings | undefined,
+  applicationHistory: ApplicationEntry[] | undefined,
+): Promise<void> {
+  await saveProfile(profile);
+  if (learnedMappings) {
+    const localMappings = await getLearnedMappings();
+    await saveLearnedMappings(mergeLearnedMappings(localMappings, learnedMappings));
+  }
+  if (applicationHistory) await saveApplicationHistory(applicationHistory);
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
@@ -300,19 +324,11 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     // If the current profile is empty, skip the merge/overwrite dialog and
     // import immediately — there is nothing to conflict with.
     const currentProfile = await getProfile();
-    const { percentage } = calculateCompletion(currentProfile ?? {});
 
-    if (percentage === 0) {
+    if (isProfileEmpty(currentProfile)) {
       setImporting(true);
       try {
-        await saveProfile(validation.sanitized as Profile);
-        // An empty profile doesn't mean there's no learned-mapping data to
-        // protect — those are unrelated. Merge rather than overwrite.
-        if (exportData.learnedMappings) {
-          const localMappings = await getLearnedMappings();
-          await saveLearnedMappings(mergeLearnedMappings(localMappings, exportData.learnedMappings));
-        }
-        if (exportData.applicationHistory) await saveApplicationHistory(exportData.applicationHistory);
+        await saveImportedData(validation.sanitized as Profile, exportData.learnedMappings, exportData.applicationHistory);
         const skipped0 = validation.invalidFields.length;
         const suffix0  = skipped0 > 0 ? ` (${skipped0} field${skipped0 !== 1 ? 's' : ''} skipped)` : '';
         showToast('success', `Profile imported successfully${suffix0}`);
@@ -341,17 +357,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     setImporting(true);
     try {
       const applied = applyChanges(importBaseProfile, finalChanges);
-      await saveProfile(applied as Profile);
-      // The accept/reject review above only covers profile fields — merge
-      // learned mappings too rather than overwriting, so an older import
-      // can't silently erase newer local learning.
-      if (parsedImport.exportData.learnedMappings) {
-        const localMappings = await getLearnedMappings();
-        await saveLearnedMappings(mergeLearnedMappings(localMappings, parsedImport.exportData.learnedMappings));
-      }
-      if (parsedImport.exportData.applicationHistory) {
-        await saveApplicationHistory(parsedImport.exportData.applicationHistory);
-      }
+      await saveImportedData(applied as Profile, parsedImport.exportData.learnedMappings, parsedImport.exportData.applicationHistory);
       const skipped = parsedImport.invalidFields.length;
       const suffix  = skipped > 0 ? ` (${skipped} field${skipped !== 1 ? 's' : ''} skipped)` : '';
       showToast('success', `Profile imported successfully${suffix}`);
@@ -388,8 +394,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       const localProfile = await getProfile();
       setDriveLocalProfile(localProfile);
       if (backup) {
-        const localCompletion = calculateCompletion(localProfile ?? {});
-        if (localCompletion.percentage === 0) {
+        if (isProfileEmpty(localProfile)) {
           setDriveRestoreCase('empty');
           setDriveRestoreData(backup);
         } else {
