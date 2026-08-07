@@ -14,10 +14,10 @@ export const DEV_PROFILE: Profile = {
     email:             'jane.doe@example.com',
     phone:             { countryCode: 'US', callingCode: '+1', number: '5551234567' },
     dateOfBirth:       '1992-06-15',
-    gender:            'Female',
+    gender:            'female',
     ethnicity:         'Prefer not to say',
-    veteranStatus:     'Not a veteran',
-    disabilityStatus:  'No',
+    veteranStatus:     'no',
+    disabilityStatus:  'no',
   },
   address: {
     city:       'Austin',
