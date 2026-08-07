@@ -3592,11 +3592,11 @@
         "src/utils/storage.ts"
       ],
       "description": "handleReset (the 'Reset All Data' flow, gated behind a typed-DELETE confirmation) calls disconnectDrive() and clearAllStorage() \u2014 which only removes ['profile','learnedMappings','applicationHistory'] \u2014 but never calls clearGeminiSettings() or resets themePreference. The UI copy explicitly promises 'Permanently delete your profile, learned autofill mappings, and all data from this browser. This cannot be undone.' Despite that, the user's Gemini API key and theme preference silently survive a full reset. clearGeminiSettings() already exists and is used elsewhere (invalid-key cleanup) \u2014 it is simply not called here.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "7ba7ef3",
+      "resolved_date": "2026-08-07"
     }
   ]
 }
