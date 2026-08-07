@@ -15,3 +15,12 @@ export function similarity(a: string, b: string): number {
 export const PLACEHOLDER_OPTION_NORMS = new Set([
   'pleaseselect', 'select', 'selectone', 'choose', 'chooseone',
 ]);
+
+// A real, fillable <option> — not disabled, not a blank/empty value, and not
+// a placeholder/sentinel label like "Please select". Shared by filler.ts's
+// fillSelect and ai.ts's extractSelectOptions so the two never drift.
+export function isSkippableOption(opt: HTMLOptionElement): boolean {
+  if (opt.disabled) return true;
+  if (!opt.value) return true;
+  return PLACEHOLDER_OPTION_NORMS.has(normalize(opt.text));
+}
