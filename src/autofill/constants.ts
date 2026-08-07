@@ -16,6 +16,9 @@ export const CONF_AI_YELLOW = 0.70;
  *  value as CONF_GREEN today but kept separate so they can drift if needed. */
 export const CONF_DICT_EXACT = 0.85;
 
+/** Confidence assigned to an autocomplete-attribute match (Layer 1). */
+export const CONF_AUTOCOMPLETE = 0.95;
+
 /** Minimum normalised-similarity score for a fuzzy match to be eligible —
  *  used by Layer 3 (mapper) and by fillSelect / fillAriaListbox option matching. */
 export const CONF_FUZZY_THRESHOLD = 0.75;
