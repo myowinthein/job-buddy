@@ -373,8 +373,16 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                     name={`arrangement-${idx}`}
                     value={opt}
                     checked={row.arrangement === opt}
-                    onChange={() => {}}
-                    onClick={() => updateEntry(idx, 'arrangement', row.arrangement === opt ? '' : opt)}
+                    // A native radio only fires `change` when its checked
+                    // state actually flips — e.g. arrow-key navigation to a
+                    // different option in the group — so that alone is
+                    // enough to pick up a new selection. But re-clicking the
+                    // already-selected radio never flips its checked state,
+                    // so no `change` fires for that gesture; `click` still
+                    // fires regardless, which is what lets deselect-by-
+                    // reclick work.
+                    onChange={(e) => { if (e.target.checked) updateEntry(idx, 'arrangement', opt); }}
+                    onClick={() => { if (row.arrangement === opt) updateEntry(idx, 'arrangement', ''); }}
                     className="text-blue-600"
                   />
                   <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">{opt}</span>
