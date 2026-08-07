@@ -3155,11 +3155,11 @@
       "file": "src/utils/profileValidator.ts",
       "line": 28,
       "description": "validateImportedProfile() is a single ~320-line function handling all nine Profile sections inline with repeated typeof/err() boilerplate per field. Extracting one small validator function per section would shrink the function, make each section independently testable/reviewable, and reduce the risk of copy-paste drift between near-identical field checks.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "37a013f",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0198",
