@@ -2771,11 +2771,11 @@
       "file": "src/components/options/shared/FormField.tsx",
       "line": 12,
       "description": "The `<label>` has no `htmlFor` and does not wrap `children`, so it is never programmatically associated with the input it labels \u2014 clicking the label text won't focus/activate the field in any browser, and screen readers won't announce the label when the input receives focus. Every section in the app funnels through this component (9 sections), so this is a systemic accessibility gap. Fix: accept an `id` prop and set `htmlFor={id}` on the label, or wrap `children` inside the `<label>` element.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "bbb3fac",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0174",
@@ -2819,11 +2819,11 @@
       "file": "src/components/options/shared/ExpandableCard.tsx",
       "line": 20,
       "description": "`confirmDelete` has no escape hatch: clicking the summary/expand toggle, clicking anywhere outside the card, or pressing Escape does not reset it. A user who clicks the remove icon and then changes their mind by clicking elsewhere leaves the card silently armed. Add an outside-click or blur handler that resets `confirmDelete` to false.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "4b5deb8",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0177",
@@ -2835,11 +2835,11 @@
       "file": "src/components/options/shared/ExpandableCard.tsx",
       "line": 54,
       "description": "The chevron toggle button (\u25b2/\u25bc) and the summary button that also toggles expand/collapse have no `aria-expanded` attribute, and the chevron button has no accessible name. Add `aria-expanded={expanded}` and an `aria-label` (e.g. \"Expand\"/\"Collapse\") to the chevron button.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "4b5deb8",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0178",
@@ -2851,11 +2851,11 @@
       "file": "src/components/options/shared/SaveButton.tsx",
       "line": 9,
       "description": "The `<button>` has no `type=\"button\"` (defaults to `type=\"submit\"`), unlike every other button in this directory. Currently harmless since no section wraps its fields in a native `<form>`, but it's a landmine if one ever is added.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "1bf9a53",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0179",
@@ -2867,11 +2867,11 @@
       "file": "src/components/options/shared/MonthYearPicker.tsx",
       "line": 4,
       "description": "MonthYearPicker's `MONTHS` array (zero-padded string values) and DateOfBirthPicker's `MONTHS` array (numeric values) duplicate the same 12 month labels in two incompatible value shapes. Could share one canonical list with a formatter at each call site.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "ca63549",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0180",
