@@ -419,6 +419,26 @@ describe('learned-mapping linking on blur (content-based, all tiers)', () => {
     expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, elGray, 'links.linkedin');
   });
 
+  it('matches an edited value against a profile value in a different case', async () => {
+    // Profile stores 'Jane' (personal.firstName); typing the same text in a
+    // different case should still be recognized as a match — Levenshtein
+    // distance is case-sensitive, so this requires normalizing both sides
+    // before comparing, not just the caller's mapper-guess fallback.
+    const el = makeInput('');
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.3, value: null, fieldPath: null, matchLayer: 'none' });
+
+    await scanAutofill();
+    await executeAutofill('merge');
+
+    el.value = 'JANE';
+    el.dispatchEvent(new Event('blur'));
+
+    await vi.waitFor(() =>
+      expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, el, 'personal.firstName'),
+    );
+  });
+
   it('does not save when nothing in the profile resembles the edited value', async () => {
     const el = makeInput('');
     vi.mocked(scanFields).mockReturnValue([el]);
