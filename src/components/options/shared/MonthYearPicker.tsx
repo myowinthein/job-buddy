@@ -40,6 +40,13 @@ function isValidYear(s: string): boolean {
   return !isNaN(n);
 }
 
+function parseValue(v: string): { month: string; year: string } {
+  return {
+    month: v ? (v.split('-')[1] ?? '') : '',
+    year:  v ? (v.split('-')[0] ?? '') : '',
+  };
+}
+
 export function MonthYearPicker({
   value,
   onChange,
@@ -49,9 +56,35 @@ export function MonthYearPicker({
   disabled = false,
   monthOptional = false,
 }: Props) {
-  const [month, setMonth] = useState<string>(() => (value ? (value.split('-')[1] ?? '') : ''));
+  const parsed = parseValue(value);
+  const [month, setMonth] = useState(parsed.month);
   // yearStr tracks what the user has typed (may be partial, e.g. "199")
-  const [yearStr, setYearStr] = useState<string>(() => (value ? (value.split('-')[0] ?? '') : ''));
+  const [yearStr, setYearStr] = useState(parsed.year);
+
+  // Resync when `value` changes to a genuinely different, non-empty date on
+  // an already-mounted instance. Without this, deleting a non-last Work
+  // History/Education entry shifts every later row's index — since these
+  // pickers are keyed by index, React reuses the same instance for a
+  // different entry's date, and the useState initializers above (which only
+  // run once, on mount) leave it showing stale month/year until the user
+  // retypes it. Adjusted during render (React's recommended pattern for
+  // this) rather than via useEffect, avoiding an extra commit.
+  //
+  // Deliberately skipped when the incoming value is '': emit() itself
+  // returns '' the moment the year is only partially typed (the documented
+  // onChange('') trap — see CLAUDE.md's Known Traps), and callers commonly
+  // echo onChange's result straight back as this prop. Resyncing on '' would
+  // wipe the month field's in-progress state on every ordinary edit of an
+  // existing date, not just on an actual external reset — so only a
+  // non-empty external value is treated as one.
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
+    if (value) {
+      setMonth(parsed.month);
+      setYearStr(parsed.year);
+    }
+  }
 
   const emit = (m: string, y: string) => {
     if (m && y) onChange(`${y}-${m}`);
