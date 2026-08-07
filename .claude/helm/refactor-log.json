@@ -2307,11 +2307,11 @@
       "file": "src/components/options/SettingsSection.tsx",
       "line": 126,
       "description": "`_geminiModel` state is write-only: `setGeminiModel` is called at lines 153, 200, 211 and 216, but the state value itself is never read anywhere in the component (not rendered, not passed down). Either remove the state entirely or replace it with a plain variable/ref, since every `setGeminiModel` call currently forces a needless re-render for a value nothing consumes.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "215d5d0",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0145",
@@ -2323,11 +2323,11 @@
       "file": "src/components/options/SettingsSection.tsx",
       "line": 299,
       "description": "handleFileChange's empty-profile fast path (lines 299-320) re-implements the same save+merge+toast+callback sequence as performImportSave (lines 333-363: saveProfile, merge learnedMappings, saveApplicationHistory, skipped-fields toast, onImportComplete) instead of reusing it. Extract the common logic into one shared helper both call, so the two import code paths can't drift apart.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "215d5d0",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0146",
@@ -2339,11 +2339,11 @@
       "file": "src/components/options/SettingsSection.tsx",
       "line": 296,
       "description": "handleFileChange (line 299, via calculateCompletion) and handleDriveConnect (line 386, via calculateCompletion) each independently compute 'is the current profile empty enough to skip the merge/review flow' to decide between a direct save and a diff+summary/review flow. Extract a shared `isProfileEmpty(profile)` helper used by both instead of duplicating the completion-percentage check and the branching shape.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "215d5d0",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0147",
@@ -2355,11 +2355,11 @@
       "file": "src/components/options/SettingsSection.tsx",
       "line": 127,
       "description": "geminiDebounceRef's pending setTimeout is only cleared when the input changes again (line 172) \u2014 there is no unmount cleanup. If the user navigates away from Settings while the 800ms debounce is pending, the timeout still fires later and calls setState (setGeminiKeyStatus etc.) on an unmounted component. Add a useEffect that clears the timer on unmount, mirroring the pattern already used for abortControllerRef/longWaitTimerRef in ResumeImportSection.tsx.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "215d5d0",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0148",
@@ -2371,11 +2371,11 @@
       "file": "src/components/options/SettingsSection.tsx",
       "line": 658,
       "description": "The primary-button and secondary-button Tailwind class strings are duplicated verbatim roughly 8-10 times across this file (e.g. lines 658, 708, 732, 766, 804, 989, 1069, 1119). Given `fieldCls.ts` already establishes the precedent of centralizing shared class strings, extract equivalent `btnPrimaryCls`/`btnSecondaryCls` constants.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "215d5d0",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0149",
@@ -2387,11 +2387,11 @@
       "file": "src/components/options/SettingsSection.tsx",
       "line": 913,
       "description": "Icon-only dialog close buttons (the \u00d7 glyph) at lines ~913, 1020 and 1092 have no `aria-label`, so a screen reader announces only \"\u00d7\" with no indication it closes the dialog. Add `aria-label=\"Close\"` to each.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "215d5d0",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0150",
@@ -2403,11 +2403,11 @@
       "file": "src/components/options/ResumeImportSection.tsx",
       "line": 306,
       "description": "The dialog close button (the \u00d7 glyph, ~line 306) has no `aria-label`, same issue as SettingsSection.tsx's dialog close buttons. Add `aria-label=\"Close\"`.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "d92ca9a",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0151",
@@ -2419,11 +2419,11 @@
       "file": "src/components/options/ResumeImportSection.tsx",
       "line": 334,
       "description": "The drag/drop upload zone is a plain `<div onClick={...}>` (lines 334-343) with no `role=\"button\"`, `tabIndex`, or keydown handler, so it can't be reached or activated with a keyboard alone. Add `role=\"button\" tabIndex={0}` plus an Enter/Space `onKeyDown` handler, or wrap the hidden file `<input>` in a `<label>` instead of relying on the div's onClick.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "d92ca9a",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0152",
@@ -2451,11 +2451,11 @@
       "file": "src/components/options/ResumeImportSection.tsx",
       "line": 187,
       "description": "handleExtract (lines 187-215) and handleRetry (lines 219-234) duplicate the same setup block \u2014 new AbortController, clear errorMsg/errorCode, reset showLongWait, start longWaitTimerRef \u2014 before diverging. Extract the shared setup into one helper both call.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "d92ca9a",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0154",
