@@ -235,6 +235,15 @@ describe('validateImportedProfile', () => {
     expect(result.invalidFields.some((f) => f.path === 'documents.cv.file')).toBe(true);
   });
 
+  it('rejects a cv.file whose base64 payload exceeds the 4 MB cap', () => {
+    // Well past the ~5.6M-char base64 bound for a 4 MB raw file.
+    const result = validateImportedProfile({
+      documents: { cv: { file: { name: 'cv.pdf', size: 10 * 1024 * 1024, base64: 'a'.repeat(7 * 1024 * 1024) } } },
+    });
+    expect(result.valid).toBe(false);
+    expect(result.invalidFields.some((f) => f.path === 'documents.cv.file')).toBe(true);
+  });
+
   it('passes through professional.summary and noticePeriod (object)', () => {
     const result = validateImportedProfile({
       professional: {
