@@ -79,6 +79,75 @@ describe('PersonalSection — date of birth partial-entry error precedence', () 
   });
 });
 
+describe('PersonalSection — email format validation', () => {
+  it('shows "Enter a valid email address" for a malformed value', () => {
+    renderSection({ personal: {} as unknown as Profile['personal'] });
+    fireEvent.change(document.getElementById('field-email')!, { target: { value: 'not-an-email' } });
+    expect(screen.getByText('Enter a valid email address')).toBeTruthy();
+  });
+
+  it('clears the error once the value becomes valid', () => {
+    renderSection({ personal: {} as unknown as Profile['personal'] });
+    fireEvent.change(document.getElementById('field-email')!, { target: { value: 'not-an-email' } });
+    expect(screen.getByText('Enter a valid email address')).toBeTruthy();
+    fireEvent.change(document.getElementById('field-email')!, { target: { value: 'jane@example.com' } });
+    expect(screen.queryByText('Enter a valid email address')).toBeNull();
+  });
+});
+
+describe('PersonalSection — date of birth year-range validation at save time', () => {
+  // DateOfBirthPicker enforces its own [CURRENT_YEAR-100, CURRENT_YEAR] bound
+  // internally and never calls onChange with a non-empty value for an
+  // out-of-range year typed live, so PersonalSection's own year-range checks
+  // in fieldError/validate are only reachable through a stored profile value
+  // that already carries an out-of-range date (e.g. a corrupted/imported
+  // profile) — the two share the exact same messages and thresholds.
+  const CURRENT_YEAR = new Date().getFullYear();
+
+  it('rejects a stored date of birth after the current year on save', () => {
+    const { onSave } = renderSection({
+      personal: { dateOfBirth: `${CURRENT_YEAR + 1}-06-15` } as unknown as Profile['personal'],
+    });
+    fireEvent.change(document.getElementById('field-firstName')!, { target: { value: 'Jane' } });
+    fireEvent.change(document.getElementById('field-lastName')!, { target: { value: 'Doe' } });
+    fireEvent.change(document.getElementById('field-email')!, { target: { value: 'jane@example.com' } });
+    fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
+    fireEvent.click(screen.getByText('Save Personal Information'));
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText(`Date of birth cannot be after ${CURRENT_YEAR}`)).toBeTruthy();
+  });
+
+  it('rejects a stored date of birth more than 100 years ago on save', () => {
+    const { onSave } = renderSection({
+      personal: { dateOfBirth: `${CURRENT_YEAR - 101}-06-15` } as unknown as Profile['personal'],
+    });
+    fireEvent.change(document.getElementById('field-firstName')!, { target: { value: 'Jane' } });
+    fireEvent.change(document.getElementById('field-lastName')!, { target: { value: 'Doe' } });
+    fireEvent.change(document.getElementById('field-email')!, { target: { value: 'jane@example.com' } });
+    fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
+    fireEvent.click(screen.getByText('Save Personal Information'));
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText(`Year must be ${CURRENT_YEAR - 100} or later`)).toBeTruthy();
+  });
+
+  it('accepts a stored date of birth within range', () => {
+    const { onSave } = renderSection({
+      personal: { dateOfBirth: '1990-06-15' } as unknown as Profile['personal'],
+    });
+    fireEvent.change(document.getElementById('field-firstName')!, { target: { value: 'Jane' } });
+    fireEvent.change(document.getElementById('field-lastName')!, { target: { value: 'Doe' } });
+    fireEvent.change(document.getElementById('field-email')!, { target: { value: 'jane@example.com' } });
+    fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
+    fireEvent.click(screen.getByText('Save Personal Information'));
+
+    expect(onSave).toHaveBeenCalled();
+    expect(screen.queryByText(/Date of birth cannot be after/)).toBeNull();
+    expect(screen.queryByText(/Year must be.*or later/)).toBeNull();
+  });
+});
+
 describe('PersonalSection — save validation', () => {
   it('blocks save and shows required-field errors when mandatory fields are empty', () => {
     const { onSave } = renderSection({ personal: {} as unknown as Profile['personal'] });
