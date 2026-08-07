@@ -2531,11 +2531,11 @@
       "file": "src/components/options/LearnedMappingsSection.test.tsx",
       "line": 7,
       "description": "The `chrome.storage.onChanged` listener (component lines 184-195), which the component's own comment calls out as important for staying in sync with background autofill-learning writes, is never exercised. The `persist()` failure toast and the initial-load failure toast (Promise.all rejecting) are also untested.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "3f078a99400af5f1fb8dc781f6de99d71f9a6c93",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0159",
