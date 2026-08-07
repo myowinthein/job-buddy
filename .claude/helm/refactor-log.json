@@ -2291,11 +2291,11 @@
       "file": "src/components/options/SettingsSection.tsx",
       "line": 181,
       "description": "handleGeminiKeyChange only guards the background model-probe step (probeIdRef, line 205) against overlapping debounce cycles. The earlier checkApiKey/saveGeminiApiKey/saveGeminiModel(DEFAULT) steps (lines 186-201) have no such guard. If the user clears the key field (line 174, which synchronously calls clearGeminiSettings()) while a previous debounce callback is still awaiting checkApiKey/saveGeminiApiKey, that stale callback can complete afterward and re-save the very key the user just cleared. Extend the same id-guard pattern used for the probe to the validate+save steps.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "3ba4f9b",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0144",
