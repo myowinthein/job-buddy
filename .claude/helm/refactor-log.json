@@ -3235,11 +3235,11 @@
       "file": "src/data/workAuthorization.ts",
       "line": 15,
       "description": "WORK_AUTH_STATUS_LABELS is built with `Object.fromEntries(...) as Record<WorkAuthorizationStatus, string>`, an unchecked cast that gives no compile-time guarantee every WorkAuthorizationStatus member has a label. The accompanying test only checks a circular relationship that can't catch a status added to the union but never added to WORK_AUTH_STATUS_OPTIONS. Replace the cast with an exhaustiveness pattern so a forgotten status fails the build instead of silently missing a label at runtime.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "1e2b412",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0203",
