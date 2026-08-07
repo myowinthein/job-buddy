@@ -3557,11 +3557,11 @@
       "file": "package.json",
       "line": 41,
       "description": "`@vitest/coverage-v8` is pinned to an exact version (4.1.9) while `vitest` itself uses a caret range (^4.1.9). These two packages must stay in lockstep; the exact pin can silently drift out of sync the next time `vitest` bumps a minor/patch version via its caret range. Use matching version specifiers for both.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "fb4832d",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0223",
