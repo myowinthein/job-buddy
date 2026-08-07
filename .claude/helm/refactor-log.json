@@ -2547,11 +2547,11 @@
       "file": "src/components/options/WorkHistorySection.tsx",
       "line": 376,
       "description": "The Work Arrangement radio inputs use a no-op `onChange={() => {}}` and drive the actual state change from `onClick` (to allow deselecting a selected radio). Native keyboard navigation between radio buttons in the same named group fires a `change` event, not a `click` event, so arrow-key users can visually move the browser's radio selection without the no-op `onChange` ever updating React state \u2014 the saved value can silently diverge from what's shown. Move the toggle-to-deselect logic into `onChange` (checking `e.target.checked`) instead of `onClick`.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "56628b3",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0160",
