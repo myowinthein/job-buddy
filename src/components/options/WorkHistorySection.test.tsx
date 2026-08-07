@@ -155,3 +155,57 @@ describe('WorkHistorySection — Work Arrangement radio group', () => {
     }));
   });
 });
+
+describe('WorkHistorySection — Notice Period validation', () => {
+  it('shows the duration input only after selecting Available Later', () => {
+    renderSection({ workHistory: [] });
+    expect(screen.queryByPlaceholderText('3')).toBeNull();
+    fireEvent.click(screen.getByText('Available Later'));
+    expect(screen.getByPlaceholderText('3')).toBeTruthy();
+  });
+
+  it('shows "Enter a duration" when the value is cleared', () => {
+    renderSection({ workHistory: [] });
+    fireEvent.click(screen.getByText('Available Later'));
+    const input = screen.getByPlaceholderText('3');
+    fireEvent.change(input, { target: { value: '5' } });
+    fireEvent.change(input, { target: { value: '' } });
+    expect(screen.getByText('Enter a duration')).toBeTruthy();
+  });
+
+  it('shows "Must be at least 1" for zero or negative values', () => {
+    renderSection({ workHistory: [] });
+    fireEvent.click(screen.getByText('Available Later'));
+    fireEvent.change(screen.getByPlaceholderText('3'), { target: { value: '0' } });
+    expect(screen.getByText('Must be at least 1')).toBeTruthy();
+  });
+
+  it('shows the per-unit maximum error when the value exceeds it', () => {
+    renderSection({ workHistory: [] });
+    fireEvent.click(screen.getByText('Available Later'));
+    // Default unit is "week" (max 52).
+    fireEvent.change(screen.getByPlaceholderText('3'), { target: { value: '53' } });
+    expect(screen.getByText('Maximum is 52 weeks')).toBeTruthy();
+  });
+
+  it("re-validates against the new unit's max when the unit changes", () => {
+    renderSection({ workHistory: [] });
+    fireEvent.click(screen.getByText('Available Later'));
+    fireEvent.change(screen.getByPlaceholderText('3'), { target: { value: '30' } });
+    expect(screen.queryByText(/Maximum is/)).toBeNull();
+
+    // Switch to "months" (max 24) — 30 now exceeds it.
+    const unitSelect = screen.getByDisplayValue('weeks');
+    fireEvent.change(unitSelect, { target: { value: 'month' } });
+    expect(screen.getByText('Maximum is 24 months')).toBeTruthy();
+  });
+
+  it('accepts a valid duration with no error', () => {
+    renderSection({ workHistory: [] });
+    fireEvent.click(screen.getByText('Available Later'));
+    fireEvent.change(screen.getByPlaceholderText('3'), { target: { value: '4' } });
+    expect(screen.queryByText('Enter a duration')).toBeNull();
+    expect(screen.queryByText('Must be at least 1')).toBeNull();
+    expect(screen.queryByText(/Maximum is/)).toBeNull();
+  });
+});
