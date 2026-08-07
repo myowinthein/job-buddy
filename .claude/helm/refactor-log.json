@@ -2931,11 +2931,11 @@
       "file": "src/autofill/filler.ts",
       "line": 39,
       "description": "`isSkippableOption()` and the inline disabled/empty-value/placeholder-norm checks in `extractSelectOptions()` (src/autofill/ai.ts lines 36-39) duplicate the exact same 'is this a real, fillable <option>' predicate in two files. Extract one shared helper (e.g. next to `PLACEHOLDER_OPTION_NORMS` in normalizer.ts) and use it from both call sites so the two never drift.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "7e07ba7",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0184",
@@ -3011,11 +3011,11 @@
       "file": "src/autofill/index.ts",
       "line": 121,
       "description": "`findBestProfileMatch()` calls `similarity(value, candidate.value)` on raw, un-normalized strings, unlike every other `similarity()` call site in the module (mapper.ts's `dictionaryFuzzy`, filler.ts's `findBestMatch`), which all pass `normalize()`-cased strings first. Because Levenshtein distance is case-sensitive, a user typing a value in different case than the stored profile value can score below `EDIT_LEARN_SIMILARITY_THRESHOLD` and silently fail to link a learned mapping that should have matched. Normalize both sides before comparing, consistent with the rest of the codebase.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "88ef068",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0189",
