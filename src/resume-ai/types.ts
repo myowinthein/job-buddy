@@ -5,7 +5,7 @@ export type GeminiModel =
   | 'gemini-3.1-flash-lite';
 
 // Models tried in order during the background probe. The first model to respond
-// successfully is selected. Must equal GEMINI_MODEL_PRIORITY[0].
+// successfully is selected.
 export const GEMINI_MODEL_PRIORITY: GeminiModel[] = [
   'gemini-3.5-flash-lite',
   'gemini-3.6-flash',
