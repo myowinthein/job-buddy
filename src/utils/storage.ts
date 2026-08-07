@@ -3,48 +3,19 @@ import type { LearnedMappings, LearnedMappingValue, ApplicationEntry, DriveBacku
 import { normalizeProfile } from './migrate';
 import { DEV_PROFILE } from './devProfile';
 import { DEFAULT_GEMINI_MODEL } from '../resume-ai/types';
+import { wrapStorageArea } from './storageArea';
 
-// Wraps chrome.storage.local.get so that the returned Promise always resolves.
-// A synchronous throw (e.g. permission missing) or a runtime error in the
-// callback both resolve to an empty object rather than rejecting, keeping
-// callers free of unhandled-rejection hangs.
+// Rejects on a set() failure (e.g. quota exceeded) so callers can surface an
+// error instead of silently losing data — unlike sessionStorage.ts, where
+// every current caller already treats session storage as best-effort.
+const local = wrapStorageArea(() => chrome.storage.local, 'storage', { rejectOnSetError: true });
+
 function storageGet(key: string): Promise<Record<string, unknown>> {
-  return new Promise((resolve) => {
-    try {
-      chrome.storage.local.get(key, (result: Record<string, unknown>) => {
-        if (chrome.runtime.lastError) {
-          console.error('[Job Buddy] storage.get error:', chrome.runtime.lastError.message);
-          resolve({});
-          return;
-        }
-        resolve(result);
-      });
-    } catch (err) {
-      console.error('[Job Buddy] storage.get threw:', err);
-      resolve({});
-    }
-  });
+  return local.get(key);
 }
 
-// Wrapper for writes. Rejects when the write fails (e.g. quota exceeded) so
-// callers can surface an error instead of silently losing data.
 function storageSet(items: Record<string, unknown>): Promise<void> {
-  return new Promise((resolve, reject) => {
-    try {
-      chrome.storage.local.set(items, () => {
-        if (chrome.runtime.lastError) {
-          const msg = chrome.runtime.lastError.message ?? 'storage.set failed';
-          console.error('[Job Buddy] storage.set error:', msg);
-          reject(new Error(msg));
-          return;
-        }
-        resolve();
-      });
-    } catch (err) {
-      console.error('[Job Buddy] storage.set threw:', err);
-      reject(err);
-    }
-  });
+  return local.set(items);
 }
 
 export async function getProfile(): Promise<Profile | null> {
@@ -142,19 +113,7 @@ export async function saveApplicationHistory(history: ApplicationEntry[]): Promi
 }
 
 function storageRemove(keys: string[]): Promise<void> {
-  return new Promise((resolve) => {
-    try {
-      chrome.storage.local.remove(keys, () => {
-        if (chrome.runtime.lastError) {
-          console.error('[Job Buddy] storage.remove error:', chrome.runtime.lastError.message);
-        }
-        resolve();
-      });
-    } catch (err) {
-      console.error('[Job Buddy] storage.remove threw:', err);
-      resolve();
-    }
-  });
+  return local.remove(keys);
 }
 
 export async function clearAllStorage(): Promise<void> {
