@@ -18,6 +18,10 @@ import { getProfile, getLearnedMappings, saveLearnedMappings } from '@/src/utils
 import type { LearnedMappings } from '@/src/types/storage';
 import type { Profile } from '@/src/types/profile';
 
+// jsdom doesn't implement Element.scrollIntoView; SearchableProfileFieldSelect's
+// keyboard-highlight effect calls it whenever the highlighted row changes.
+Element.prototype.scrollIntoView = vi.fn();
+
 function renderSection() {
   render(
     <ToastProvider>
