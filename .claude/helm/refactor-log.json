@@ -2707,11 +2707,11 @@
       "file": "src/components/options/PersonalSection.test.tsx",
       "line": 111,
       "description": "No test covers the email-format branch of `fieldError`/`validate` (malformed email) or the Date of Birth year-range branches ('Date of birth cannot be after <year>' / 'Year must be <year> or later'). Only the 'empty/required' and partial-DOB paths are tested.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "cf52d16741a8d91d8a4c06b0b5ce64b1b19e08e9",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0170",
