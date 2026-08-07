@@ -158,3 +158,49 @@ describe('LearnedMappingsSection — manual edit is trusted immediately', () => 
     }));
   });
 });
+
+describe('LearnedMappingsSection — syncing with background storage writes', () => {
+  it('updates the displayed mappings when chrome.storage.onChanged fires for learnedMappings in the local area', async () => {
+    vi.mocked(getLearnedMappings).mockResolvedValue({
+      'acme.com': { sig1: { path: 'personal.firstName', count: 2 } },
+    });
+    renderSection();
+    await screen.findByText('acme.com');
+
+    const handler = vi.mocked(chrome.storage.onChanged.addListener).mock.calls[0][0];
+    handler(
+      { learnedMappings: { newValue: { 'beta.com': { sig2: { path: 'personal.lastName', count: 2 } } } } } as Record<string, chrome.storage.StorageChange>,
+      'local',
+    );
+
+    expect(await screen.findByText('beta.com')).toBeTruthy();
+    expect(screen.queryByText('acme.com')).toBeNull();
+  });
+
+  it('ignores a change from a non-local storage area', async () => {
+    vi.mocked(getLearnedMappings).mockResolvedValue({
+      'acme.com': { sig1: { path: 'personal.firstName', count: 2 } },
+    });
+    renderSection();
+    await screen.findByText('acme.com');
+
+    const handler = vi.mocked(chrome.storage.onChanged.addListener).mock.calls[0][0];
+    handler(
+      { learnedMappings: { newValue: { 'beta.com': {} } } } as Record<string, chrome.storage.StorageChange>,
+      'session',
+    );
+
+    expect(screen.getByText('acme.com')).toBeTruthy();
+    expect(screen.queryByText('beta.com')).toBeNull();
+  });
+
+  it('removes its listener on unmount', async () => {
+    vi.mocked(getLearnedMappings).mockResolvedValue({});
+    renderSection();
+    await screen.findByText('Nothing learned yet. Entries will appear here as you fill out job applications.');
+
+    const handler = vi.mocked(chrome.storage.onChanged.addListener).mock.calls[0][0];
+    cleanup();
+    expect(vi.mocked(chrome.storage.onChanged.removeListener)).toHaveBeenCalledWith(handler);
+  });
+});
