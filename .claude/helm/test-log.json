@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
-  "last_run_commit": "0a19b6f1c4c724ef323d431ea37c8f66b561b81c",
+  "last_run_commit": "4fe3387f46ee3887c0aefb099469ebd787a36ea3",
   "full_scan_ever_run": true,
-  "consecutive_catchup_count": 1,
+  "consecutive_catchup_count": 0,
   "files": [
     {
       "file": "src/autofill/index.ts",
@@ -36,11 +36,6 @@
     },
     {
       "file": "src/components/ui/Toast.tsx",
-      "priority": "low",
-      "last_judged_commit": "91658a1ea79502ab87737340554aa01c55715a40"
-    },
-    {
-      "file": "src/autofill/picker.ts",
       "priority": "low",
       "last_judged_commit": "91658a1ea79502ab87737340554aa01c55715a40"
     },
