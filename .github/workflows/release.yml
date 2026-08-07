@@ -34,6 +34,12 @@ jobs:
       - name: Type-check
         run: pnpm compile
 
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test:run
+
       - name: Write production env file
         run: printf '%s' "${{ secrets.ENV_PRODUCTION }}" > .env.production
 
