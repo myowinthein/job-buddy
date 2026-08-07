@@ -3059,11 +3059,11 @@
       "file": "src/utils/profileValidator.ts",
       "line": 14,
       "description": "RE_EMAIL (`/^[\\w.+-]+@[\\w-]+\\.[a-zA-Z]{2,}$/`) only allows a single dot in the domain, so it rejects valid addresses with multi-level TLDs or subdomains (e.g. user@mail.co.uk, user@company.com.au, user@sub.example.com). Given the extension explicitly targets multi-country job seekers, this will silently reject/flag common real-world emails on profile import. Fix by allowing multiple dot-separated domain labels, e.g. `/^[\\w.+-]+@[\\w-]+(\\.[\\w-]+)*\\.[a-zA-Z]{2,}$/`.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "b78f89e",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0192",
@@ -3091,11 +3091,11 @@
       "file": "src/utils/driveSync.ts",
       "line": 291,
       "description": "In syncProfileToDrive(), the inner try/catch around findBackupFileId() converts any non-DriveApiError into `new DriveApiError(0, '')` before rethrowing, but the outer catch already derives status=0/body='' for any non-DriveApiError error the exact same way. The inner try/catch is dead weight \u2014 remove it and let the error propagate to the outer catch unchanged.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "42443c2",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0194",
@@ -3107,11 +3107,11 @@
       "file": "src/utils/devProfile.ts",
       "line": 17,
       "description": "DEV_PROFILE.personal.gender is 'Female', veteranStatus is 'Not a veteran', and disabilityStatus is 'No' \u2014 none of these match the actual enum values the Personal section dropdowns use ('female'/'male'/'other'/'prefer_not_to_say' and 'yes'/'no'/'prefer_not_to_say'). In `pnpm dev`, these three selects will render blank even though profileCompletion.ts counts them as filled. Fix by using the lowercase enum values.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "eb98acf",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0195",
@@ -3171,11 +3171,11 @@
       "file": "src/utils/profileValidator.ts",
       "line": 299,
       "description": "links.linkedin validation only calls err() when the value is a non-empty string that fails the linkedin.com check; if lnk.linkedin is present but not a string at all, neither branch fires and it's silently dropped with no reported error \u2014 inconsistent with every other field in this function. Add an `else if (lnk.linkedin !== undefined)` branch that calls err('links.linkedin', ...) for the non-string case.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "b78f89e",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0199",
@@ -3187,11 +3187,11 @@
       "file": "src/data/countries.ts",
       "line": 13,
       "description": "The comment 'Popular countries pinned first, then all others alphabetically' describes the initial COUNTRIES array literal, but COUNTRIES.sort((a,b) => a.name.localeCompare(b.name)) on line 206 immediately re-sorts the whole array purely alphabetically, discarding the pinned ordering. Either drop the sort() (if pinning is actually wanted) or delete the misleading comment/regroup the literal alphabetically to match actual behavior.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "ac8398a",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0200",
@@ -3203,11 +3203,11 @@
       "file": "src/resume-ai/types.ts",
       "line": 7,
       "description": "The comment above GEMINI_MODEL_PRIORITY ('Must equal GEMINI_MODEL_PRIORITY[0]') is self-referential and doesn't make sense attached to the array's own definition \u2014 it appears to be a copy/paste of the comment correctly placed on DEFAULT_GEMINI_MODEL. Remove the stray sentence from the GEMINI_MODEL_PRIORITY comment.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "ac8398a",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0201",
@@ -3251,11 +3251,11 @@
       "file": "src/resume-ai/parser.ts",
       "line": 375,
       "description": "The setValue functions for 'documents.cv.url' and 'documents.cv.file' both repeat the same two-level spread pattern inline rather than sharing a small helper, unlike every other nested field which goes through setNestedField(). Consider a `setDoublyNestedField` helper mirroring setNestedField to remove the duplication.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "748fc2a",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0204",
