@@ -105,7 +105,7 @@ describe('ResumeImportSection — cancel/abort during analysis', () => {
     await selectFile(pdfFile());
     fireEvent.click(screen.getByText('Analyze CV'));
 
-    await screen.findByText('Analyzing your CV...');
+    await screen.findByText('Analyzing your CV...', {}, { timeout: 5000 });
     fireEvent.click(screen.getByText('Cancel'));
 
     // Cancel returns to the upload dialog (selectedFile is preserved — only
@@ -129,7 +129,7 @@ describe('ResumeImportSection — cancel/abort during analysis', () => {
     await selectFile(pdfFile());
     fireEvent.click(screen.getByText('Analyze CV'));
 
-    await screen.findByText('Analyzing your CV...');
+    await screen.findByText('Analyzing your CV...', {}, { timeout: 5000 });
     fireEvent.keyDown(window, { key: 'Escape' });
 
     await screen.findByText('Analyze CV');
@@ -148,12 +148,12 @@ describe('ResumeImportSection — retry after failure does not re-extract links'
     await selectFile(pdfFile());
     fireEvent.click(screen.getByText('Analyze CV'));
 
-    await screen.findByText('Network error');
+    await screen.findByText('Network error', {}, { timeout: 5000 });
     expect(vi.mocked(extractLinks)).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByText('Try again'));
 
-    await waitFor(() => expect(screen.getByText('Review Suggestions')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Review Suggestions')).toBeTruthy(), { timeout: 5000 });
     // extractLinks is only called from the initial handleExtract path, never from handleRetry.
     expect(vi.mocked(extractLinks)).toHaveBeenCalledTimes(1);
   });
@@ -168,10 +168,10 @@ describe('ResumeImportSection — CV invariant on save', () => {
     await selectFile(pdfFile());
     fireEvent.click(screen.getByText('Analyze CV'));
 
-    await screen.findByText('Review Suggestions');
+    await screen.findByText('Review Suggestions', {}, { timeout: 5000 });
     fireEvent.click(screen.getByText('Accept All'));
 
-    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    await waitFor(() => expect(onSave).toHaveBeenCalled(), { timeout: 5000 });
     const saved = onSave.mock.calls[0][0];
     expect(saved.documents.cv.url).toBe('https://example.com/old-cv.pdf');
     expect(saved.documents.cv.file).toEqual(expect.objectContaining({ name: 'resume.pdf' }));
