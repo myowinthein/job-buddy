@@ -2739,11 +2739,11 @@
       "file": "src/components/options/shared/MonthYearPicker.tsx",
       "line": 52,
       "description": "Internal `month`/`yearStr` state is seeded from the `value` prop only in the `useState` initializer, with no `useEffect` to resync when `value` changes on an already-mounted instance. WorkHistorySection.tsx and EducationSection.tsx render one `MonthYearPicker` per entry keyed by index and delete via `rows.filter((_, i) => i !== idx)`; deleting a non-last entry shifts every later index, so React reuses the same picker instances while their `value` prop now refers to a different entry's date. The displayed month/year stays stale until the user retypes it, and if they edit it, `emit()` computes from the stale local state and can write a wrong date back onto the wrong row. Fix: add a `useEffect(() => { setMonth(...); setYearStr(...); }, [value])` to resync, or key the list items by a stable entry id instead of index.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "68af9a6",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0172",
