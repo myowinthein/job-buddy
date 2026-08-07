@@ -360,6 +360,37 @@ describe('saveLearnedMapping failure propagation', () => {
   });
 });
 
+describe('storageGet/storageSet/storageRemove — synchronous throw from chrome.storage.local itself', () => {
+  // Distinct from the chrome.runtime.lastError tests above: here
+  // chrome.storage.local.get/set/remove throws synchronously (e.g. the API
+  // is unavailable in this context) rather than calling back with an error.
+  // storage.ts's set() rejects on failure (unlike sessionStorage.ts's, which
+  // resolves silently) — the higher stakes here (profile data, not UI state)
+  // is why callers need to know a save failed.
+  it('storageGet (via getProfile) resolves to null when chrome.storage.local.get throws synchronously', async () => {
+    vi.stubEnv('DEV', false);
+    const original = chrome.storage.local.get;
+    chrome.storage.local.get = () => { throw new Error('storage API unavailable'); };
+    await expect(getProfile()).resolves.toBeNull();
+    chrome.storage.local.get = original;
+    vi.unstubAllEnvs();
+  });
+
+  it('storageSet (via saveProfile) rejects when chrome.storage.local.set throws synchronously', async () => {
+    const original = chrome.storage.local.set;
+    chrome.storage.local.set = () => { throw new Error('storage API unavailable'); };
+    await expect(saveProfile(MINIMAL_PROFILE)).rejects.toThrow('storage API unavailable');
+    chrome.storage.local.set = original;
+  });
+
+  it('storageRemove (via clearAllStorage) resolves when chrome.storage.local.remove throws synchronously', async () => {
+    const original = chrome.storage.local.remove;
+    chrome.storage.local.remove = () => { throw new Error('storage API unavailable'); };
+    await expect(clearAllStorage()).resolves.toBeUndefined();
+    chrome.storage.local.remove = original;
+  });
+});
+
 describe('clearAllStorage', () => {
   it('removes profile, learnedMappings, and applicationHistory', async () => {
     // Seed all three keys, then confirm every one is removed.
