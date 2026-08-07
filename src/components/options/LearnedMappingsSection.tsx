@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings, LearnedMappingValue } from '@/src/types/storage';
 import { getProfile, getLearnedMappings, saveLearnedMappings } from '@/src/utils/storage';
@@ -57,6 +57,9 @@ function SignalRow({ signal, value, profile, onDelete, onUpdate }: SignalRowProp
   const [editValue, setEditValue]     = useState(pathOf(value));
   const [confirmDelete, setConfirmDelete] = useState(false);
   const label = labelOf(value);
+  // Re-runs resolveProfileValue on every render otherwise — a re-render
+  // happens on every persist() and every chrome.storage.onChanged event.
+  const empty = useMemo(() => resolvesEmpty(value, profile), [value, profile]);
 
   const startEdit = () => {
     setEditValue(pathOf(value));
@@ -114,7 +117,7 @@ function SignalRow({ signal, value, profile, onDelete, onUpdate }: SignalRowProp
               {countLabel(value)}
             </span>
             <InfoTooltip text={countTooltip(value)} />
-            {resolvesEmpty(value, profile) && (
+            {empty && (
               <>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full shrink-0 bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                   Empty right now
@@ -230,7 +233,18 @@ export function LearnedMappingsSection() {
     void persist(next, 'Updated learned input');
   };
 
-  const domains = Object.keys(mappings).sort((a, b) => a.localeCompare(b));
+  const domains = useMemo(() => Object.keys(mappings).sort((a, b) => a.localeCompare(b)), [mappings]);
+
+  // Sorted per-domain [signal, value] entries, keyed on `mappings` so the
+  // sort doesn't re-run on every render (persist() and every
+  // chrome.storage.onChanged event trigger one).
+  const signalsByDomain = useMemo(() => {
+    const m = new Map<string, [string, LearnedMappingValue][]>();
+    for (const domain of Object.keys(mappings)) {
+      m.set(domain, Object.entries(mappings[domain]).sort(([a], [b]) => a.localeCompare(b)));
+    }
+    return m;
+  }, [mappings]);
 
   return (
     <div>
@@ -255,7 +269,7 @@ export function LearnedMappingsSection() {
         </p>
       ) : (
         domains.map((domain) => {
-          const signals = Object.entries(mappings[domain]).sort(([a], [b]) => a.localeCompare(b));
+          const signals = signalsByDomain.get(domain) ?? [];
           return (
             <ExpandableCard
               key={domain}
