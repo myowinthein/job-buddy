@@ -135,6 +135,18 @@ describe('options App — handleSave contract', () => {
     await waitFor(() => expect(vi.mocked(saveProfile)).toHaveBeenCalledTimes(1));
     expect(await screen.findByText('Profile saved. Drive sync failed, will retry.')).toBeTruthy();
   });
+
+  it('shows an error toast and does not update profile state or sync to Drive when saveProfile rejects', async () => {
+    vi.mocked(saveProfile).mockRejectedValueOnce(new Error('QUOTA_BYTES quota exceeded'));
+    renderApp();
+    fireEvent.click(await screen.findByText('save-personal'));
+
+    await waitFor(() => expect(vi.mocked(saveProfile)).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText('Failed to save — storage may be full.')).toBeTruthy();
+    // Profile state was never updated with the value that failed to persist.
+    expect(screen.getByText('personal-section:Jane')).toBeTruthy();
+    expect(vi.mocked(syncProfileToDrive)).not.toHaveBeenCalled();
+  });
 });
 
 describe('options App — reset timing', () => {
