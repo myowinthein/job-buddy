@@ -43,6 +43,20 @@ describe('validateImportedProfile', () => {
     expect(result.invalidFields.some((f) => f.path === 'personal.email')).toBe(true);
   });
 
+  it('accepts emails with multi-level domains (subdomain or multi-part TLD)', () => {
+    const result = validateImportedProfile({
+      personal: { email: 'jane@mail.co.uk' },
+    });
+    expect(result.valid).toBe(true);
+    expect(result.sanitized.personal?.email).toBe('jane@mail.co.uk');
+
+    const result2 = validateImportedProfile({
+      personal: { email: 'jane@sub.example.com' },
+    });
+    expect(result2.valid).toBe(true);
+    expect(result2.sanitized.personal?.email).toBe('jane@sub.example.com');
+  });
+
   it('rejects invalid dateOfBirth format', () => {
     const result = validateImportedProfile({ personal: { dateOfBirth: '1990/01/15' } });
     expect(result.valid).toBe(false);
@@ -192,6 +206,12 @@ describe('validateImportedProfile', () => {
   it('accepts empty linkedin string', () => {
     const result = validateImportedProfile({ links: { linkedin: '' } });
     expect(result.valid).toBe(true);
+  });
+
+  it('rejects a non-string linkedin value instead of silently dropping it', () => {
+    const result = validateImportedProfile({ links: { linkedin: 12345 } });
+    expect(result.valid).toBe(false);
+    expect(result.invalidFields.some((f) => f.path === 'links.linkedin')).toBe(true);
   });
 
   it('accepts valid linkedin URL', () => {
