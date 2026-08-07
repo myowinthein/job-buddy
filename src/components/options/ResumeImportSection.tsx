@@ -275,6 +275,8 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
+  const currentStepIdx = PROGRESS_STEPS.findIndex((s) => s.id === progressStep);
+
   return (
     <div>
       {/* ════════════════════════════════════════════════════════════════════════
@@ -431,8 +433,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
 
             <div className="space-y-4">
               {PROGRESS_STEPS.map((step, i) => {
-                const currentIdx = PROGRESS_STEPS.findIndex((s) => s.id === progressStep);
-                const isDone     = !errorMsg && currentIdx > i;
+                const isDone     = !errorMsg && currentStepIdx > i;
                 const isActive   = !errorMsg && step.id === progressStep;
                 return (
                   <div key={step.id} className="flex items-center gap-3">
