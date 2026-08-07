@@ -10,7 +10,9 @@ export function getFlag(code: string): string {
     .join('');
 }
 
-// Popular countries pinned first, then all others alphabetically.
+// Listed roughly by relevance here for readability, but COUNTRIES.sort()
+// below re-sorts the whole array alphabetically at load, so this literal's
+// order has no effect on the exported list.
 export const COUNTRIES: Country[] = [
   { code: 'US', name: 'United States',              callingCode: '+1'   },
   { code: 'GB', name: 'United Kingdom',             callingCode: '+44'  },
