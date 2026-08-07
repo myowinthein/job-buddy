@@ -1,5 +1,5 @@
 import { useToast } from '@/src/components/ui/useToast';
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import type { Profile, WorkHistoryEntry, WorkArrangement, WorkLocation, NoticePeriodUnit } from '@/src/types/profile';
 import { calculateExperience } from '@/src/utils/experience';
 import { FormField } from './shared/FormField';
@@ -117,7 +117,15 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   useScrollToNewEntry(entriesContainerRef, newEntryTick);
 
   // Experience calculation reads only startDate / isCurrent / endDate — safe cast.
-  const experience = calculateExperience(entries as unknown as WorkHistoryEntry[]);
+  // Memoized on just those fields (not the whole `entries` reference, which
+  // changes on every keystroke including unrelated fields like company/title)
+  // so editing an unrelated field doesn't re-run date-parsing on every entry.
+  const experienceKey = entries.map((e) => `${e.startDate}|${e.isCurrent}|${e.endDate}`).join(',');
+  const experience = useMemo(
+    () => calculateExperience(entries as unknown as WorkHistoryEntry[]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on experienceKey, a derived summary of the fields that actually affect the result
+    [experienceKey],
+  );
 
   // Blur handler for text inputs — validates the current stored value so
   // focusing then leaving a blank required field shows an error.
