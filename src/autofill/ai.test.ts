@@ -454,6 +454,33 @@ describe('runAIAutofill — radio fills', () => {
     expect(fillRadioInput).not.toHaveBeenCalled();
     expect(result.noReview).toBe(0);
   });
+
+  it('still checks the matching radio for a low-confidence pick, but increments needReview instead of noReview', async () => {
+    const { group, el } = radioGroup();
+    vi.mocked(scanRadioGroups).mockReturnValue([group]);
+    const result = freshResult();
+
+    mockResponses([{ fieldId: 'field_001', selectedOption: 'Female', confidence: 'low' }]);
+
+    await runAIAutofill([], PROFILE, result, [], 'example.com');
+
+    expect(fillRadioInput).toHaveBeenCalledWith(el);
+    expect(result.needReview).toBe(1);
+    expect(result.noReview).toBe(0);
+  });
+
+  it('matches via the partial/substring fallback when the AI response is not an exact label match', async () => {
+    const { group, el } = radioGroup();
+    vi.mocked(scanRadioGroups).mockReturnValue([group]);
+    const result = freshResult();
+
+    mockResponses([{ fieldId: 'field_001', selectedOption: 'Fem', confidence: 'high' }]);
+
+    await runAIAutofill([], PROFILE, result, [], 'example.com');
+
+    expect(fillRadioInput).toHaveBeenCalledWith(el);
+    expect(result.noReview).toBe(1);
+  });
 });
 
 describe('runAIAutofill — checkbox fills', () => {
@@ -492,6 +519,23 @@ describe('runAIAutofill — checkbox fills', () => {
     expect(result.noReview).toBe(1); // once for the whole group
     expect(sessionElements).toContain(a);
     expect(sessionElements).toContain(b);
+  });
+
+  it('still checks matching checkboxes for a low-confidence pick, but increments needReview instead of noReview', async () => {
+    const { group, a, b } = checkboxGroup();
+    vi.mocked(scanCheckboxGroups).mockReturnValue([group]);
+    const result = freshResult();
+
+    mockResponses([
+      { fieldId: 'field_001', selectedOptions: ['JavaScript', 'TypeScript'], confidence: 'low' },
+    ]);
+
+    await runAIAutofill([], PROFILE, result, [], 'example.com');
+
+    expect(fillCheckboxInput).toHaveBeenCalledWith(a);
+    expect(fillCheckboxInput).toHaveBeenCalledWith(b);
+    expect(result.needReview).toBe(1);
+    expect(result.noReview).toBe(0);
   });
 
   it('excludes consent checkbox groups from AI candidates', async () => {
