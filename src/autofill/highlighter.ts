@@ -28,11 +28,5 @@ export function clearElementHighlight(element: HTMLElement): void {
 }
 
 export function clearHighlights(): void {
-  document.querySelectorAll<HTMLElement>('[data-jb-highlighted]').forEach((el) => {
-    el.style.backgroundColor = el.dataset.jbOrigBackground ?? '';
-    el.style.transition      = el.dataset.jbOrigTransition  ?? '';
-    delete el.dataset.jbHighlighted;
-    delete el.dataset.jbOrigBackground;
-    delete el.dataset.jbOrigTransition;
-  });
+  document.querySelectorAll<HTMLElement>('[data-jb-highlighted]').forEach(clearElementHighlight);
 }
