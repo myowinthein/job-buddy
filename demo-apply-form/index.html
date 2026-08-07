@@ -38,50 +38,50 @@
           <div class="grid two">
             <label>
               First Name*
-              <input name="firstName" autocomplete="given-name" />
+              <input name="firstName" autocomplete="given-name" required />
             </label>
 
             <label>
               Last Name*
-              <input name="lastName" autocomplete="family-name" />
+              <input name="lastName" autocomplete="family-name" required />
             </label>
           </div>
 
           <label class="medium">
             Email*
-            <input type="email" name="email" autocomplete="email" />
+            <input type="email" name="email" autocomplete="email" required />
           </label>
 
           <label class="small">
             Phone*
-            <input type="tel" name="phone" autocomplete="tel" />
+            <input type="tel" name="phone" autocomplete="tel" required />
           </label>
 
           <label class="medium">
             Address*
-            <input name="address" autocomplete="street-address" />
+            <input name="address" autocomplete="street-address" required />
           </label>
 
           <div class="grid three">
             <label>
               City*
-              <input name="city" autocomplete="address-level2" />
+              <input name="city" autocomplete="address-level2" required />
             </label>
 
             <label>
               State / Province*
-              <input name="state" autocomplete="address-level1" />
+              <input name="state" autocomplete="address-level1" required />
             </label>
 
             <label>
               Postal Code*
-              <input name="postalCode" autocomplete="postal-code" />
+              <input name="postalCode" autocomplete="postal-code" required />
             </label>
           </div>
 
           <label class="small">
             Country*
-            <select name="country" autocomplete="country-name">
+            <select name="country" autocomplete="country-name" required>
               <option value="">Select country</option>
               <option selected>Thailand</option>
               <option>Singapore</option>
@@ -120,7 +120,7 @@
 
           <label class="medium">
             Work Authorization*
-            <select name="workAuthorization">
+            <select name="workAuthorization" required>
               <option value="">Select status</option>
               <option>Authorized to work</option>
               <option>Requires visa sponsorship</option>
@@ -173,7 +173,7 @@
           <h2>Documents</h2>
 
           <label class="upload-box">
-            <input type="file" name="resume" accept=".pdf,.doc,.docx" />
+            <input type="file" name="resume" accept=".pdf,.doc,.docx" required />
             <span class="upload-title">Upload CV / Resume*</span>
             <span class="upload-help">PDF, DOC, or DOCX accepted</span>
           </label>
