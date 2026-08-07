@@ -2483,11 +2483,11 @@
       "file": "src/components/options/SettingsSection.test.tsx",
       "line": 191,
       "description": "The entire Google Drive connect/restore/conflict flow (handleDriveConnect, handleRestoreFromDrive's 'empty' case, handleKeepLocal, handleDriveReviewSave) has zero test coverage, even though it implements the same 'merge, never overwrite, learned mappings' safety invariant that IS tested for the plain JSON import path. Add an equivalent test that drives connectDrive() returning a backup and asserts the merge behavior on restore.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "2ba8f40",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0156",
@@ -2499,11 +2499,11 @@
       "file": "src/components/options/SettingsSection.test.tsx",
       "line": 191,
       "description": "handleExport (JSON blob construction, filename, and the 'No profile data to export' warning when getProfile() resolves null) is not exercised by any test.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "2ba8f40",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0157",
