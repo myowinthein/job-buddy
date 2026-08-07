@@ -60,6 +60,33 @@ function setNestedField<
   });
 }
 
+/**
+ * Same as setNestedField, one level deeper — for a field nested inside a
+ * sub-object of a top-level section (e.g. documents.cv.url).
+ */
+function setDoublyNestedField<
+  K extends keyof Profile,
+  SK extends keyof NonNullable<Profile[K]>,
+  F extends keyof NonNullable<NonNullable<Profile[K]>[SK]>,
+>(
+  section: K,
+  subSection: SK,
+  field: F,
+): FieldDef['setValue'] {
+  return (p, v) => ({
+    ...p,
+    [section]: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ...((p[section] as any) ?? {}),
+      [subSection]: {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ...((p[section] as any)?.[subSection] ?? {}),
+        [field]: v,
+      },
+    },
+  });
+}
+
 export const FIELD_DEFS: FieldDef[] = [
   // ── Personal ────────────────────────────────────────────────────────────────
   {
@@ -372,13 +399,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'CV URL',
     section: 'Documents',
     getValue: (p) => p.documents?.cv?.url ?? null,
-    setValue: (p, v) => ({
-      ...p,
-      documents: {
-        ...(p.documents ?? {} as Profile['documents']),
-        cv: { ...(p.documents?.cv ?? {}), url: v as string },
-      },
-    }),
+    setValue: setDoublyNestedField('documents', 'cv', 'url'),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
@@ -387,13 +408,7 @@ export const FIELD_DEFS: FieldDef[] = [
     label: 'CV File',
     section: 'Documents',
     getValue: (p) => p.documents?.cv?.file ?? null,
-    setValue: (p, v) => ({
-      ...p,
-      documents: {
-        ...(p.documents ?? {} as Profile['documents']),
-        cv: { ...(p.documents?.cv ?? {}), file: v as NonNullable<Profile['documents']['cv']['file']> },
-      },
-    }),
+    setValue: setDoublyNestedField('documents', 'cv', 'file'),
     isEmpty: (v) => !v || typeof v !== 'object',
     display: (v) => {
       if (!v || typeof v !== 'object') return '';
