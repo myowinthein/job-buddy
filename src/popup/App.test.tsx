@@ -46,7 +46,7 @@ const { sendMessageMock, getAllFramesMock, tabsQueryMock } = vi.hoisted(() => {
 });
 
 import App from '@/entrypoints/popup/App';
-import { getProfile } from '@/src/utils/storage';
+import { getProfile, getGeminiApiKey } from '@/src/utils/storage';
 import type { Profile } from '@/src/types/profile';
 
 function renderApp() {
@@ -66,6 +66,7 @@ function statusResult(overrides: Partial<Record<string, number>> = {}, aiAvailab
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getProfile).mockResolvedValue({ personal: { firstName: 'Jane', lastName: 'Doe', email: 'jane@x.com' } } as Profile);
+  vi.mocked(getGeminiApiKey).mockResolvedValue('fake-key');
   tabsQueryMock.mockResolvedValue([{ id: 123 }]);
   getAllFramesMock.mockRejectedValue(new Error('unavailable')); // single top frame by default
   sendMessageMock.mockRejectedValue(new Error('no listener')); // idle by default
@@ -86,6 +87,20 @@ describe('popup App — GET_STATUS frame aggregation on mount', () => {
     renderApp();
     // Combined totalScanned = 3 + 2 = 5, noReview = 2 + 1 = 3 -> "Filled (3)"
     await waitFor(() => expect(screen.getByText('(3)')).toBeTruthy());
+  });
+
+  it('shows the AI nudge when aiAvailable is false, no key is set, and it has not been dismissed', async () => {
+    vi.mocked(getGeminiApiKey).mockResolvedValue(null);
+    sendMessageMock.mockImplementation((_tabId, message) => {
+      if (message.action === 'GET_STATUS') return Promise.resolve(statusResult({ noReview: 1, totalScanned: 1 }, false));
+      return Promise.reject(new Error('n/a'));
+    });
+
+    renderApp();
+    // "Add an AI key in" also appears in the header sparkle's hover tooltip
+    // (always in the DOM, just hidden via CSS) — target the nudge banner's
+    // own distinguishing text instead.
+    expect(await screen.findByText(/to improve autofill accuracy\./)).toBeTruthy();
   });
 
   it('drops frames with no listener (rejected sendMessage) and still aggregates the rest', async () => {
@@ -180,6 +195,45 @@ describe('popup App — handleAutofill scan orchestration', () => {
     renderApp();
     fireEvent.click(await screen.findByText('Fill Form ✨'));
     expect(await screen.findByText(/Could not connect to page/)).toBeTruthy();
+  });
+});
+
+describe('popup App — openDebugPanel', () => {
+  it('picks the frame session with the highest green+yellow+red+gray total, opened via shift-click', async () => {
+    getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 5 }]);
+    sendMessageMock.mockImplementation((_tabId, message, opts) => {
+      if (message.action === 'GET_STATUS') {
+        if (opts.frameId === 0) return Promise.resolve(statusResult({ noReview: 1, totalScanned: 1 }));
+        return Promise.reject(new Error('no listener'));
+      }
+      if (message.action === 'GET_DEBUG_SESSION') {
+        if (opts.frameId === 0) {
+          return Promise.resolve({
+            timestamp: 1, scanner: [], mapping: [], ai: [],
+            summary: { green: 1, yellow: 0, red: 0, gray: 0 }, // total 1
+            aiSkipped: true,
+          });
+        }
+        if (opts.frameId === 5) {
+          return Promise.resolve({
+            timestamp: 2, scanner: [],
+            mapping: [{ fieldId: 'f1', matchLayer: 'dictionary_exact', confidence: 0.9, profilePath: 'personal.firstName', finalState: 'green' }],
+            ai: [],
+            summary: { green: 2, yellow: 1, red: 0, gray: 0 }, // total 3, higher
+            aiSkipped: true,
+          });
+        }
+      }
+      return Promise.reject(new Error('n/a'));
+    });
+
+    renderApp();
+    await screen.findByText('Undo'); // confirms autofillState === 'success' before shift-clicking
+    fireEvent.click(screen.getByAltText('Job Buddy'), { shiftKey: true });
+
+    // Frame 5's session (total 3) is chosen over frame 0's (total 1) — its
+    // one mapping entry renders as "Manual Mapping (1)", not frame 0's (0).
+    expect(await screen.findByText('Manual Mapping (1)')).toBeTruthy();
   });
 });
 
