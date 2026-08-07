@@ -3493,11 +3493,11 @@
       "file": "demo-apply-form/assets/js/main.js",
       "line": 66,
       "description": "The global `keydown` listener fires `fillDemoData()` whenever the 'f' key is pressed anywhere on the page, with no check of `event.target`. If the tester is typing into a text field and types a word containing 'f', it silently overwrites all form fields mid-edit. Guard with a check that `event.target` isn't an input/textarea/select, or require a modifier key.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "979623a",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0219",
@@ -3509,11 +3509,11 @@
       "file": "demo-apply-form/assets/css/styles.css",
       "line": 204,
       "description": "`.upload-box input { display: none; }` hides the r\u00e9sum\u00e9 file input using display:none, which removes it from the tab order entirely \u2014 keyboard-only users can never reach or activate the file picker via Tab. Use a visually-hidden pattern (e.g. position:absolute; width:1px; height:1px; opacity:0) that keeps the input focusable instead.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "fa15a43",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0220",
@@ -3573,11 +3573,11 @@
       "file": "demo-apply-form/index.html",
       "line": 40,
       "description": "Many fields are marked required via a visual '*' in the label text but none carry the `required` or `aria-required` attribute, so screen readers never announce them as mandatory. Since this is a manual-testing harness it's low-stakes, but adding `required` would make the demo form's accessibility semantics match its visual cues.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "f8da7f1",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0224",
