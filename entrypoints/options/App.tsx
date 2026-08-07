@@ -94,12 +94,19 @@ function App() {
       .finally(() => { setLoading(false); });
   }, []);
 
+  // Skips the "autofocus first empty input" effect that would otherwise fire
+  // on the section switch below, then focuses the specific target field once
+  // it renders (via the focusTarget effect).
+  const navigateAndFocus = useCallback((section: SectionId, fieldId?: string) => {
+    skipAutoFocusRef.current = true;
+    setActiveSection(section);
+    if (fieldId) setFocusTarget(fieldId);
+  }, []);
+
   // ── Cross-context focus request (popup → Options) ──────────────────────────
   const focusGeminiKey = useCallback(() => {
-    skipAutoFocusRef.current = true;
-    setActiveSection('settings');
-    setFocusTarget('gemini-api-key');
-  }, []);
+    navigateAndFocus('settings', 'gemini-api-key');
+  }, [navigateAndFocus]);
 
   // The popup writes 'jb:focusOnLoad': 'gemini-api-key' to chrome.storage.session
   // before opening the Options page; we read it here, clear it, and focus the
@@ -197,7 +204,7 @@ function App() {
   useEffect(() => {
     if (!mountedRef.current) { mountedRef.current = true; return; }
     if (skipAutoFocusRef.current) { skipAutoFocusRef.current = false; return; }
-    const raf = requestAnimationFrame(() => { focusFirstEmpty(document.querySelector('main')); });
+    const raf = requestAnimationFrame(() => { focusFirstEmpty(mainRef.current); });
     return () => cancelAnimationFrame(raf);
   }, [activeSection]);
 
@@ -238,7 +245,13 @@ function App() {
     } catch (err) {
       console.error('[Job Buddy] Failed to compute derived fields:', err);
     }
-    await saveProfile(synced);
+    try {
+      await saveProfile(synced);
+    } catch (err) {
+      console.error('[Job Buddy] Failed to save profile:', err);
+      showToast('error', 'Failed to save — storage may be full.');
+      return;
+    }
     setProfile(synced);
     // Fire-and-forget Drive sync. Never blocks the local save flow.
     void syncProfileToDrive(synced).then((res) => {
@@ -249,10 +262,7 @@ function App() {
   };
 
   const handleFocusField = (sectionId: string, fieldLabel: string) => {
-    skipAutoFocusRef.current = true;
-    setActiveSection(sectionId as SectionId);
-    const fieldId = FIELD_FOCUS_IDS[fieldLabel];
-    if (fieldId) setFocusTarget(fieldId);
+    navigateAndFocus(sectionId as SectionId, FIELD_FOCUS_IDS[fieldLabel]);
   };
 
   const handleGoToApiKey = focusGeminiKey;
