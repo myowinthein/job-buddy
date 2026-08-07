@@ -132,7 +132,6 @@ export function SalarySection({ profile, onSave }: Props) {
     else if (isNaN(Number(currentAmount)) || Number(currentAmount) < 0)
       e.currentAmount = 'Enter a valid amount';
     if (!currentCountry) e.currentCountry = 'Country is required';
-    if (!currentPeriod) e.currentPeriod = 'Period is required';
     expected.forEach((row, idx) => Object.assign(e, expectedRowErrors(row, idx)));
     setErrors(e);
     return Object.keys(e).length === 0;
