@@ -103,6 +103,34 @@ describe('DocumentsSection — file-type restriction (drag-and-drop bypasses the
   });
 });
 
+describe('DocumentsSection — file-size restriction (4 MB cap)', () => {
+  it('rejects a file over the 4 MB limit and reports its size', async () => {
+    renderSection({ documents: { cv: {} } });
+    fireEvent.click(screen.getByText('Upload'));
+
+    const file = new File(['x'], 'big.pdf', { type: 'application/pdf' });
+    Object.defineProperty(file, 'size', { value: 5 * 1024 * 1024 });
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    expect(await screen.findByText('File exceeds 4 MB limit (5.0 MB)')).toBeTruthy();
+    expect(screen.queryByText('big.pdf')).toBeNull();
+  });
+
+  it('accepts a file under the 4 MB limit', async () => {
+    renderSection({ documents: { cv: {} } });
+    fireEvent.click(screen.getByText('Upload'));
+
+    const file = new File(['x'], 'small.pdf', { type: 'application/pdf' });
+    Object.defineProperty(file, 'size', { value: 3 * 1024 * 1024 });
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    expect(await screen.findByText('small.pdf')).toBeTruthy();
+    expect(screen.queryByText(/exceeds 4 MB limit/)).toBeNull();
+  });
+});
+
 describe('DocumentsSection — cover letter preservation', () => {
   it('preserves an existing cover letter unchanged even though the form does not expose it', () => {
     const { onSave } = renderSection({
