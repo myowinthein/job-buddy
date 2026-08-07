@@ -21,6 +21,7 @@ interface DocState {
   file: DocumentFile | null;
   dragOver: boolean;
   sizeError: string;
+  typeError: string;
   urlError: string;
   requiredError: string;
 }
@@ -32,9 +33,20 @@ function initDocState(entry?: DocumentEntry): DocState {
     file: entry?.file ?? null,
     dragOver: false,
     sizeError: '',
+    typeError: '',
     urlError: '',
     requiredError: '',
   };
+}
+
+// The file <input>'s accept=".pdf,.doc,.docx" only restricts the native file
+// picker — drag-and-drop bypasses it entirely, so any file type reaches
+// handleFile unless checked here too.
+const ACCEPTED_DOCUMENT_EXTENSIONS = ['.pdf', '.doc', '.docx'];
+
+function isAcceptedDocumentFile(file: File): boolean {
+  const name = file.name.toLowerCase();
+  return ACCEPTED_DOCUMENT_EXTENSIONS.some((ext) => name.endsWith(ext));
 }
 
 // URL format check only — runs when the URL field has a value.
@@ -81,14 +93,19 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
+    if (!isAcceptedDocumentFile(file)) {
+      onChange({ typeError: 'Only PDF and Word documents (.pdf, .doc, .docx) are supported' });
+      return;
+    }
     if (file.size > MAX_FILE_SIZE) {
-      onChange({ sizeError: `File exceeds 4 MB limit (${formatBytes(file.size)})` });
+      onChange({ sizeError: `File exceeds 4 MB limit (${formatBytes(file.size)})`, typeError: '' });
       return;
     }
     const base64 = await fileToBase64(file);
     onChange({
       file: { name: file.name, size: file.size, base64 },
       sizeError: '',
+      typeError: '',
       requiredError: '',
     });
   };
@@ -184,6 +201,9 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
           />
           {state.sizeError && (
             <p className="text-xs text-red-500 dark:text-red-400 mt-1">{state.sizeError}</p>
+          )}
+          {state.typeError && (
+            <p className="text-xs text-red-500 dark:text-red-400 mt-1">{state.typeError}</p>
           )}
         </>
       )}
