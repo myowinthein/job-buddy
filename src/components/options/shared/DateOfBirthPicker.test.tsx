@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useState } from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { DateOfBirthPicker } from './DateOfBirthPicker';
@@ -8,6 +9,13 @@ afterEach(cleanup);
 function renderPicker(value = '', onChange = vi.fn(), onPartialChange = vi.fn()) {
   render(<DateOfBirthPicker value={value} onChange={onChange} onPartialChange={onPartialChange} />);
   return { onChange, onPartialChange };
+}
+
+// Mirrors how a real caller (e.g. PersonalSection) wires this up: onChange's
+// result is written straight back as the controlled `value` prop.
+function ControlledPicker({ initial }: { initial: string }) {
+  const [value, setValue] = useState(initial);
+  return <DateOfBirthPicker value={value} onChange={setValue} />;
 }
 
 describe('DateOfBirthPicker — initial value parsing', () => {
@@ -90,6 +98,39 @@ describe('DateOfBirthPicker — day clamping on month/year change', () => {
     renderPicker('2024-01-15');
     fireEvent.change(screen.getByLabelText('Month'), { target: { value: '2' } });
     expect((screen.getByLabelText('Day') as HTMLInputElement).value).toBe('15');
+  });
+});
+
+describe('DateOfBirthPicker — resync when value changes to a different non-empty date', () => {
+  it('picks up a genuinely different external value on an already-mounted instance', () => {
+    const { rerender } = render(<DateOfBirthPicker value="1990-06-15" onChange={vi.fn()} />);
+    expect((screen.getByLabelText('Day') as HTMLInputElement).value).toBe('15');
+
+    // Simulates a list-index shift: this instance now represents a
+    // different entry entirely, with a different date.
+    rerender(<DateOfBirthPicker value="2005-11-02" onChange={vi.fn()} />);
+    expect((screen.getByLabelText('Day') as HTMLInputElement).value).toBe('2');
+    expect((screen.getByLabelText('Month') as HTMLSelectElement).value).toBe('11');
+    expect((screen.getByLabelText('Year') as HTMLInputElement).value).toBe('2005');
+  });
+});
+
+describe('DateOfBirthPicker — does not wipe other fields when onChange(\'\') echoes back as value', () => {
+  it('editing the day field down to empty on an existing date does not clear month/year', () => {
+    render(<ControlledPicker initial="1990-06-15" />);
+
+    // Clearing the day field alone: buildDOB('') fires and, in a real
+    // caller, gets written straight back as this component's `value` prop.
+    fireEvent.change(screen.getByLabelText('Day'), { target: { value: '' } });
+
+    // Month and year must survive — only day was actually edited.
+    expect((screen.getByLabelText('Month') as HTMLSelectElement).value).toBe('6');
+    expect((screen.getByLabelText('Year') as HTMLInputElement).value).toBe('1990');
+    expect((screen.getByLabelText('Day') as HTMLInputElement).value).toBe('');
+
+    // And the user can still complete a new day to get a valid date back.
+    fireEvent.change(screen.getByLabelText('Day'), { target: { value: '20' } });
+    expect((screen.getByLabelText('Day') as HTMLInputElement).value).toBe('20');
   });
 });
 
