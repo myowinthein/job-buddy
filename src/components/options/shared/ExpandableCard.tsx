@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RemoveButton } from './RemoveButton';
 
 interface ExpandableCardProps {
@@ -18,14 +18,30 @@ export function ExpandableCard({
 }: ExpandableCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Reset the armed delete-confirmation state when the user clicks anywhere
+  // outside the card, so clicking the remove icon then changing their mind
+  // by clicking elsewhere doesn't leave it silently armed.
+  useEffect(() => {
+    if (!confirmDelete) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
+        setConfirmDelete(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [confirmDelete]);
 
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-lg mb-3 overflow-hidden">
+    <div ref={cardRef} className="border border-gray-200 dark:border-gray-700 rounded-lg mb-3 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800">
         <button
           type="button"
           className="flex-1 text-left min-w-0 mr-3"
-          onClick={() => setExpanded(!expanded)}
+          onClick={() => { setExpanded(!expanded); setConfirmDelete(false); }}
+          aria-expanded={expanded}
         >
           <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{summary}</p>
           {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{subtitle}</p>}
@@ -53,8 +69,10 @@ export function ExpandableCard({
           )}
           <button
             type="button"
-            onClick={() => setExpanded(!expanded)}
+            onClick={() => { setExpanded(!expanded); setConfirmDelete(false); }}
             className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 active:scale-95 transition-colors text-xs w-4 text-center"
+            aria-expanded={expanded}
+            aria-label={expanded ? 'Collapse' : 'Expand'}
           >
             {expanded ? '▲' : '▼'}
           </button>
