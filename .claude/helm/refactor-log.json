@@ -3461,11 +3461,11 @@
       "file": ".github/workflows/ci.yml",
       "line": 31,
       "description": "The CI workflow runs type-check, lint, and build but never runs the Vitest suite (`pnpm test:run`), even though the project has 1000+ unit tests and CLAUDE.md documents `test:run` as required before every commit. A broken test suite can be pushed and merged without CI ever catching it. Add a `pnpm test:run` step after the lint step.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "440441c",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0217",
@@ -3477,11 +3477,11 @@
       "file": ".github/workflows/release.yml",
       "line": 34,
       "description": "The release workflow only runs `pnpm compile` (type-check) before building, zipping, and uploading to the Chrome Web Store \u2014 there is no `pnpm lint` or `pnpm test:run` step. Since pushing a `v*.*.*` tag with a `release` annotation submits directly for CWS review with no CLI rollback, a regression that passes type-check but fails tests/lint can ship to production users. Add lint and test steps before the build/zip step.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "1500034",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0218",
