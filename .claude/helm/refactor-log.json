@@ -2723,11 +2723,11 @@
       "file": "src/components/options/EducationSection.test.tsx",
       "line": 91,
       "description": "Unlike WorkHistorySection.test.tsx's equivalent coverage, this file never exercises the live year-range validation path (`handleYearChange`/`onYearChange`) using `EDU_MIN_YEAR`/`EDU_MAX_YEAR`, so a regression that swapped in the wrong bounds for Education specifically would go undetected here.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "6799bc1daf3c92caab022d168d95af28c760f6da",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0171",
