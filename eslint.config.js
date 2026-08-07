@@ -9,9 +9,23 @@ import globals from 'globals';
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
-  { ignores: ['.wxt/**', '.output/**', 'node_modules/**', 'demo-apply-form/**', 'docs/**'] },
+  { ignores: ['.wxt/**', '.output/**', 'node_modules/**'] },
 
   js.configs.recommended,
+
+  // docs/ and demo-apply-form/ are static marketing/demo assets with no
+  // TypeScript config of their own — most of each directory (HTML, CSS,
+  // images) isn't matched by any `files` pattern below and so is never
+  // linted, but their plain .js files get basic recommended-JS checks
+  // (no-undef, syntax errors, etc.) instead of zero static analysis.
+  {
+    files: ['docs/**/*.js', 'demo-apply-form/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'script',
+      globals: { ...globals.browser },
+    },
+  },
 
   {
     files: ['**/*.{ts,tsx}'],
