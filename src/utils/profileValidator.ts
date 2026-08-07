@@ -25,6 +25,15 @@ const VALID_PROFICIENCY = new Set([
   'limited_working', 'elementary',
 ]);
 
+// Base64-encoded length bound matching DocumentsSection.tsx's 4 MB raw-file
+// cap (base64 inflates by ~4/3, plus a small allowance for the "data:...;
+// base64," prefix FileReader.readAsDataURL produces). Without this, an
+// imported/restored profile could carry a CV/cover-letter file well past the
+// UI cap, which would only fail later at chrome.storage.local's 5 MB quota
+// instead of being caught here with a clear validation error.
+const MAX_DOCUMENT_FILE_SIZE = 4 * 1024 * 1024;
+const MAX_DOCUMENT_BASE64_LENGTH = Math.ceil(MAX_DOCUMENT_FILE_SIZE / 3) * 4 + 100;
+
 type ErrFn = (path: string, reason: string) => void;
 
 // Shared shape validation for documents.cv and documents.coverLetter —
@@ -39,7 +48,11 @@ function validateDocumentEntry(fieldPrefix: string, value: Record<string, unknow
   if (value.file !== undefined && typeof value.file === 'object' && value.file !== null) {
     const f = value.file as Record<string, unknown>;
     if (typeof f.name === 'string' && typeof f.size === 'number' && typeof f.base64 === 'string') {
-      entry.file = { name: f.name, size: f.size, base64: f.base64 };
+      if (f.base64.length > MAX_DOCUMENT_BASE64_LENGTH) {
+        err(`${fieldPrefix}.file`, 'file exceeds 4 MB limit');
+      } else {
+        entry.file = { name: f.name, size: f.size, base64: f.base64 };
+      }
     } else {
       err(`${fieldPrefix}.file`, 'expected object with name (string), size (number), base64 (string)');
     }
