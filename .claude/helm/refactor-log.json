@@ -2643,11 +2643,11 @@
       "file": "src/components/options/DocumentsSection.test.tsx",
       "line": 76,
       "description": "`MAX_FILE_SIZE` rejection (the 'File exceeds 4 MB limit' `sizeError` path in `DocUploader.handleFile`) has no test at all, despite CLAUDE.md calling out the 4 MB cap as an explicit domain rule. Add a test that uploads/drops an oversized `File` and asserts the size error renders and save is blocked appropriately.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "7cb06016db799487304023250768d9cf463f5891",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0166",
