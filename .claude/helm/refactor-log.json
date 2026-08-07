@@ -2563,11 +2563,11 @@
       "file": "src/components/options/WorkHistorySection.tsx",
       "line": 134,
       "description": "`handleYearChange` (lines 134-149) and `handleDateBlur` (lines 153-199) are near-duplicates of the same-named functions in EducationSection.tsx (lines 76-145) \u2014 same algorithm, only the min/max year constants and the YYYY-vs-YYYY-MM end/start normalization differ. Worth extracting into a shared `useDateRangeValidation(minYear, maxYear, { monthOptional })` hook to avoid maintaining two copies of the same validation state machine.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "a91cb4cffdf7caf16edc31f7b8060c49f9b78473",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0161",
