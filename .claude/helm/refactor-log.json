@@ -2227,7 +2227,7 @@
       "file": "docs/index.html",
       "line": 44,
       "description": "Tailwind is loaded via the runtime CDN script (<script src=\"https://cdn.tailwindcss.com\">), un-deferred, blocking HTML parsing while it downloads and then runs a full JIT compiler client-side on every load of the site's primary marketing/conversion page. Tailwind's own docs state the CDN build isn't meant for production.",
-      "status": "open",
+      "status": "skipped-by-user",
       "first_found_commit": "895a6eaea1638a068273670123cc656c946c6fde",
       "first_found_date": "2026-08-01",
       "resolved_commit": null,
@@ -2435,11 +2435,11 @@
       "file": "src/components/options/ResumeImportSection.tsx",
       "line": 432,
       "description": "`PROGRESS_STEPS.findIndex(...)` is recomputed inside the `.map()` callback on every rendered step (3x per render) instead of once above the `.map()`. Hoist `const currentIdx = PROGRESS_STEPS.findIndex(s => s.id === progressStep);` above the `.map()` call.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "a9dcd16",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0153",
@@ -2467,11 +2467,11 @@
       "file": "src/components/options/LearnedMappingsSection.tsx",
       "line": 43,
       "description": "`resolvesEmpty()` (called per signal row during render, line 117) and the `domains`/per-domain `signals` sorts (lines 233, 258) run unmemoized on every render of the section. Since a re-render happens on every persist() and on every chrome.storage.onChanged event, wrap these in useMemo keyed on `mappings`/`profile` to avoid re-sorting and re-resolving every row each time.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "7c2c373",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0155",
@@ -2579,11 +2579,11 @@
       "file": "src/components/options/WorkHistorySection.tsx",
       "line": 119,
       "description": "`calculateExperience(entries as unknown as WorkHistoryEntry[])` runs unmemoized on every render, including renders triggered by unrelated field edits. For profiles with many work entries this recomputes date-parsing work on every keystroke. Wrap in `useMemo` keyed on the entries' `startDate`/`isCurrent`/`endDate` fields.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "09a25a8",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0162",
@@ -3219,11 +3219,11 @@
       "file": "src/resume-ai/extractLinks.ts",
       "line": 26,
       "description": "Pages are fetched and scanned for annotations sequentially in a for-loop with `await pdfDoc.getPage(page)` per iteration. Since each page's annotation extraction is independent, this could be parallelized with `Promise.all(...)` to reduce latency on multi-page resumes.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "2411dcf",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0202",
