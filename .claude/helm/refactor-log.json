@@ -2915,11 +2915,11 @@
       "file": "src/autofill/ai.ts",
       "line": 95,
       "description": "`fieldIdByCandidate` (built at lines 95/99, read at line 158) is entirely redundant: `candidateMap.get(resp.fieldId)` only succeeds because `resp.fieldId` is the exact key `fieldIdByCandidate` stores as the value for that candidate, so `fieldIdByCandidate.get(candidate)` always equals `resp.fieldId`. Delete the second Map and use `resp.fieldId` directly as `fieldId`.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "503edb4",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0183",
@@ -2947,11 +2947,11 @@
       "file": "src/autofill/mapper.ts",
       "line": 26,
       "description": "All 13 entries in `AUTOCOMPLETE_MAP` hardcode confidence as the bare literal `0.95`, unlike CONF_DICT_EXACT/CONF_CONTEXT/etc., which the project's own convention extracted into constants.ts. Add a `CONF_AUTOCOMPLETE = 0.95` to constants.ts and reference it here instead.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "27278d0",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0185",
@@ -2963,11 +2963,11 @@
       "file": "src/autofill/profileFieldTree.ts",
       "line": 10,
       "description": "The file header still says the tree is 'shared by the on-page picker overlay (picker.ts)', but picker.ts has already been removed from the codebase. Update the comment so it doesn't point future readers at a deleted file.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "80f1a15",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0186",
@@ -2979,11 +2979,11 @@
       "file": "src/autofill/highlighter.ts",
       "line": 30,
       "description": "`clearHighlights()` re-implements the same three restore/cleanup statements already in `clearElementHighlight()` instead of calling it: `document.querySelectorAll<HTMLElement>('[data-jb-highlighted]').forEach(clearElementHighlight)` would remove the duplication with identical behavior.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "41b384a",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0187",
@@ -2995,11 +2995,11 @@
       "file": "src/autofill/profileFieldTree.ts",
       "line": 74,
       "description": "`workHistoryHeading` and `educationHeading` are structurally identical (primary/secondary field fallback, then start/end-year range fallback, then 'Entry N') differing only in which two profile fields they read. Could be collapsed into one helper parameterized by primary/secondary field values.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "80f1a15",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0188",
