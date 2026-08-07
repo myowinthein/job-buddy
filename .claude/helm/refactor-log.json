@@ -3027,11 +3027,11 @@
       "file": "src/autofill/ai.test.ts",
       "line": 416,
       "description": "'runAIAutofill \u2014 radio fills' and 'runAIAutofill \u2014 checkbox fills' only exercise `confidence: 'high'` responses. The `needReview++` / non-green branch for radio and checkbox groups is never hit by a test, even though the equivalent low-confidence path is thoroughly tested for text candidates.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "9c4f8fc9c6153eefb171155f7a9275cde9acfe0e",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0190",
@@ -3043,11 +3043,11 @@
       "file": "src/autofill/ai.test.ts",
       "line": 448,
       "description": "`findBestOption()`'s partial/substring-match fallback is never exercised \u2014 all radio/checkbox tests use option labels that match the AI response exactly, plus one 'no match at all' case. A test where the AI returns a substring of a real option label would confirm the fuzzy fallback actually fires.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "9c4f8fc9c6153eefb171155f7a9275cde9acfe0e",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0191",
