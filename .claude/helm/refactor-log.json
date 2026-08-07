@@ -3541,11 +3541,11 @@
       "file": "eslint.config.js",
       "line": 12,
       "description": "The global `ignores` list excludes `docs/**` and `demo-apply-form/**` entirely, so the plain JS files get zero static analysis \u2014 not even basic no-undef/syntax checks. Consider adding a minimal JS-only ESLint block scoped to these two files instead of blanket-ignoring them.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "909d6d6",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0222",
