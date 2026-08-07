@@ -44,9 +44,9 @@ vi.mock('@/src/utils/profileValidator', () => ({
 
 import { SettingsSection } from './SettingsSection';
 import { ToastProvider } from '@/src/components/ui/Toast';
-import { getProfile, getGeminiApiKey, clearAllStorage, saveLearnedMappings, getLearnedMappings, saveGeminiModel, clearGeminiSettings, saveThemePreference } from '@/src/utils/storage';
+import { getProfile, saveProfile, getGeminiApiKey, clearAllStorage, saveLearnedMappings, getLearnedMappings, getApplicationHistory, saveGeminiModel, clearGeminiSettings, saveThemePreference } from '@/src/utils/storage';
 import { checkApiKey, validateApiKey } from '@/src/resume-ai/gemini';
-import { getFullDriveState, disconnectDrive } from '@/src/utils/driveSync';
+import { getFullDriveState, disconnectDrive, connectDrive, syncProfileToDrive } from '@/src/utils/driveSync';
 import { applyTheme } from '@/src/utils/theme';
 import type { Profile } from '@/src/types/profile';
 import type { KeyValidationResult } from '@/src/resume-ai/types';
@@ -203,5 +203,117 @@ describe('SettingsSection — fmtDriveTimestamp (via the connected Drive state d
     vi.mocked(getFullDriveState).mockResolvedValue({ connected: true, lastSynced: 'not-a-date', pendingSync: false, error: null });
     renderSection();
     expect(await screen.findByText(/Last synced: Not synced yet/)).toBeTruthy();
+  });
+});
+
+describe('SettingsSection — Google Drive connect/restore/conflict flow', () => {
+  it('shows a restore dialog when connecting with an empty local profile and a Drive backup exists', async () => {
+    vi.mocked(getProfile).mockResolvedValue(null);
+    vi.mocked(connectDrive).mockResolvedValue({
+      token: 't', fileId: 'f1',
+      backup: { profile: makeProfile(), lastModified: '2026-01-01T00:00:00.000Z' },
+    });
+
+    renderSection();
+    fireEvent.click(await screen.findByText('Connect Google Drive'));
+
+    expect(await screen.findByText('Profile found in Google Drive. Restore it?')).toBeTruthy();
+  });
+
+  it('restores the Drive backup on Restore, merges learned mappings, and completes the import', async () => {
+    vi.mocked(getProfile).mockResolvedValue(null);
+    const backupProfile = makeProfile();
+    vi.mocked(connectDrive).mockResolvedValue({
+      token: 't', fileId: 'f1',
+      backup: { profile: backupProfile, learnedMappings: { 'a.com': { sig: { path: 'a.b', count: 2 } } }, lastModified: '2026-01-01T00:00:00.000Z' },
+    });
+    vi.mocked(getLearnedMappings).mockResolvedValue({ 'b.com': { sig2: { path: 'c.d', count: 2 } } });
+
+    const { onImportComplete } = renderSection();
+    fireEvent.click(await screen.findByText('Connect Google Drive'));
+    fireEvent.click(await screen.findByText('Restore'));
+
+    await waitFor(() => expect(vi.mocked(saveProfile)).toHaveBeenCalledWith(backupProfile));
+    expect(vi.mocked(saveLearnedMappings)).toHaveBeenCalledWith(
+      expect.objectContaining({ 'a.com': expect.anything(), 'b.com': expect.anything() }),
+    );
+    expect(onImportComplete).toHaveBeenCalled();
+    // The restore dialog closes.
+    expect(screen.queryByText('Profile found in Google Drive. Restore it?')).toBeNull();
+  });
+
+  it('shows a conflict summary dialog when connecting with a non-empty local profile', async () => {
+    vi.mocked(getProfile).mockResolvedValue(makeProfile());
+    vi.mocked(connectDrive).mockResolvedValue({
+      token: 't', fileId: 'f1',
+      backup: { profile: makeProfile({ personal: { firstName: 'Other', lastName: 'Person' } } as Partial<Profile>), lastModified: '2026-01-01T00:00:00.000Z' },
+    });
+
+    renderSection();
+    fireEvent.click(await screen.findByText('Connect Google Drive'));
+
+    expect(await screen.findByText('Profile Conflict')).toBeTruthy();
+  });
+
+  it('pushes the local profile to Drive as the initial snapshot when no backup exists yet', async () => {
+    vi.mocked(getProfile).mockResolvedValue(makeProfile());
+    vi.mocked(connectDrive).mockResolvedValue({ token: 't', fileId: null, backup: null });
+
+    renderSection();
+    fireEvent.click(await screen.findByText('Connect Google Drive'));
+
+    await waitFor(() => expect(vi.mocked(syncProfileToDrive)).toHaveBeenCalled());
+  });
+
+  it('shows an error toast when connectDrive rejects', async () => {
+    vi.mocked(connectDrive).mockRejectedValue(new Error('oauth failed'));
+
+    renderSection();
+    fireEvent.click(await screen.findByText('Connect Google Drive'));
+
+    expect(await screen.findByText('Could not connect to Google Drive. Please try again.')).toBeTruthy();
+  });
+});
+
+describe('SettingsSection — Export', () => {
+  it('shows a warning and does not build a download when there is no profile', async () => {
+    vi.mocked(getProfile).mockResolvedValue(null);
+    renderSection();
+    fireEvent.click(await screen.findByText('Download File'));
+    expect(await screen.findByText('No profile data to export.')).toBeTruthy();
+  });
+
+  it('builds the export JSON blob with profile/learnedMappings/applicationHistory and triggers a download', async () => {
+    const profile = makeProfile({ id: 'abcdef1234567890' });
+    vi.mocked(getProfile).mockResolvedValue(profile);
+    vi.mocked(getLearnedMappings).mockResolvedValue({ 'a.com': { sig: { path: 'personal.firstName', count: 2 } } });
+    vi.mocked(getApplicationHistory).mockResolvedValue([]);
+
+    const createObjectURL = vi.fn((_blob: Blob) => 'blob:mock-url');
+    const revokeObjectURL = vi.fn();
+    URL.createObjectURL = createObjectURL as typeof URL.createObjectURL;
+    URL.revokeObjectURL = revokeObjectURL;
+    const clickSpy = vi.fn();
+    const realCreateElement = document.createElement.bind(document);
+    const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      const el = realCreateElement(tag);
+      if (tag === 'a') el.click = clickSpy;
+      return el;
+    });
+
+    renderSection();
+    fireEvent.click(await screen.findByText('Download File'));
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    const blob = createObjectURL.mock.calls[0][0] as Blob;
+    const parsed = JSON.parse(await blob.text());
+    expect(parsed.profile).toEqual(profile);
+    expect(parsed.learnedMappings).toEqual({ 'a.com': { sig: { path: 'personal.firstName', count: 2 } } });
+    expect(parsed.applicationHistory).toEqual([]);
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
+    expect(await screen.findByText('Profile exported successfully')).toBeTruthy();
+
+    createElementSpy.mockRestore();
   });
 });
