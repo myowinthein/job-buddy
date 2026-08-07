@@ -18,6 +18,14 @@ interface AutofillResult {
   aiAvailable?:  boolean;
 }
 
+// Static — none of its contents depend on props/state — so it's hoisted to
+// module scope rather than rebuilt on every render.
+const COLOR_MAP = {
+  red:    { bar: 'bg-red-500',    text: 'text-red-600 dark:text-red-400',       badge: 'bg-red-50 border-red-200 dark:bg-red-900/30 dark:border-red-800'             },
+  yellow: { bar: 'bg-yellow-500', text: 'text-yellow-600 dark:text-yellow-400', badge: 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-800' },
+  green:  { bar: 'bg-green-500',  text: 'text-green-600 dark:text-green-400',   badge: 'bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-800'     },
+};
+
 // Sends `message` to every frame of the tab (content.ts runs in all frames —
 // see its allFrames flag — since job forms are frequently embedded in a
 // cross-origin iframe rather than living on the top-level page).
@@ -231,11 +239,7 @@ function App() {
   const hasProfileData = !loading && percentage > 0;
 
   const color = percentage >= 80 ? 'green' : percentage >= 50 ? 'yellow' : 'red';
-  const colorMap = {
-    red:    { bar: 'bg-red-500',    text: 'text-red-600 dark:text-red-400',       badge: 'bg-red-50 border-red-200 dark:bg-red-900/30 dark:border-red-800'             },
-    yellow: { bar: 'bg-yellow-500', text: 'text-yellow-600 dark:text-yellow-400', badge: 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-800' },
-    green:  { bar: 'bg-green-500',  text: 'text-green-600 dark:text-green-400',   badge: 'bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-800'     },
-  }[color];
+  const colorMap = COLOR_MAP[color];
 
   return (
     <div className="w-[380px] p-5 font-sans bg-white dark:bg-gray-900">
@@ -245,7 +249,15 @@ function App() {
           src="/icon.svg"
           alt="Job Buddy"
           className="w-8 h-8 shrink-0"
+          role={autofillState === 'success' ? 'button' : undefined}
+          tabIndex={autofillState === 'success' ? 0 : undefined}
           onClick={(e) => { if (e.shiftKey && autofillState === 'success') openDebugPanel(); }}
+          onKeyDown={(e) => {
+            if (e.shiftKey && (e.key === 'Enter' || e.key === ' ') && autofillState === 'success') {
+              e.preventDefault();
+              openDebugPanel();
+            }
+          }}
         />
         <div className="flex items-center gap-1 flex-1">
           <h1 className="text-base font-bold text-gray-900 dark:text-gray-100">Job Buddy</h1>
