@@ -184,17 +184,22 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
 
   // ── Extract ───────────────────────────────────────────────────────────────────
 
-  const handleExtract = async () => {
-    if (!selectedFile || !apiKey || !model) return;
-
+  // Shared by handleExtract and handleRetry: fresh AbortController, cleared
+  // error state, and a restarted "taking a while" timer.
+  const beginExtraction = (): AbortController => {
     const controller = new AbortController();
     abortControllerRef.current = controller;
-
-    setScreen('progress');
     setErrorMsg(null);
     setErrorCode(null);
     setShowLongWait(false);
     longWaitTimerRef.current = setTimeout(() => setShowLongWait(true), LONG_WAIT_MS);
+    return controller;
+  };
+
+  const handleExtract = async () => {
+    if (!selectedFile || !apiKey || !model) return;
+    const controller = beginExtraction();
+    setScreen('progress');
 
     try {
       setProgressStep('reading');
@@ -218,14 +223,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
 
   const handleRetry = async () => {
     if (!selectedFile || !apiKey || !model) return;
-
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setErrorMsg(null);
-    setErrorCode(null);
-    setShowLongWait(false);
-    longWaitTimerRef.current = setTimeout(() => setShowLongWait(true), LONG_WAIT_MS);
+    const controller = beginExtraction();
 
     const dataUri = fileDataUri ?? await fileToDataUri(selectedFile);
     if (!fileDataUri) setFileDataUri(dataUri);
@@ -304,6 +302,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
               <button
                 type="button"
                 onClick={closeSection}
+                aria-label="Close"
                 className="ml-4 shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
               >
                 ×
@@ -332,6 +331,8 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
               {apiKey && (
                 <>
                   <div
+                    role="button"
+                    tabIndex={0}
                     onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                     onDragLeave={() => setIsDragging(false)}
                     onDrop={handleDrop}
@@ -341,6 +342,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
                         : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
                     }`}
                     onClick={() => fileInputRef.current?.click()}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click(); } }}
                   >
                     <span className="text-3xl">📄</span>
                     {selectedFile ? (
