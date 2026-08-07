@@ -172,6 +172,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     if (geminiDebounceRef.current) clearTimeout(geminiDebounceRef.current);
 
     if (!key.trim()) {
+      probeIdRef.current++; // invalidate any in-flight debounce callback below
       setGeminiKeyStatus('idle');
       setGeminiModel(null);
       void clearGeminiSettings();
@@ -180,10 +181,15 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
     geminiDebounceRef.current = setTimeout(async () => {
       const trimmed = key.trim();
+      // Guards the whole callback, not just the probe step — if the key is
+      // cleared or changed again before this settles, every checkpoint below
+      // bails out rather than resurrecting a stale value.
+      const callId = ++probeIdRef.current;
 
       // Step 1: validate the key independently via the models list endpoint
       setGeminiKeyStatus('validating');
       const keyCheck = await checkApiKey(trimmed);
+      if (callId !== probeIdRef.current) return;
 
       if (keyCheck === 'invalid') {
         setGeminiKeyStatus('invalid');
@@ -197,14 +203,14 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       // Step 2: key confirmed valid — save immediately with default model
       await saveGeminiApiKey(trimmed);
       await saveGeminiModel(DEFAULT_GEMINI_MODEL);
+      if (callId !== probeIdRef.current) return;
       setGeminiModel(DEFAULT_GEMINI_MODEL);
       setGeminiKeyStatus('valid');
       showToast('success', 'API key saved.');
 
       // Step 3: background model probe — fully decoupled from key validation
-      const probeId = ++probeIdRef.current;
       const result = await validateApiKey(trimmed);
-      if (probeId !== probeIdRef.current) return;
+      if (callId !== probeIdRef.current) return;
 
       if (result.valid && result.model && result.model !== DEFAULT_GEMINI_MODEL) {
         await saveGeminiModel(result.model);
