@@ -69,6 +69,24 @@ describe('EducationSection — YYYY vs YYYY-MM dual-format date comparison', () 
   });
 });
 
+describe('EducationSection — live year-range validation across the keystroke/onChange paths', () => {
+  it('shows a year-range error live while typing, before a month is even chosen (keystroke path)', () => {
+    renderSection({ education: [] });
+    const yearInputs = screen.getAllByLabelText('Year'); // [0]=start, [1]=end
+    fireEvent.change(yearInputs[0], { target: { value: '1800' } });
+    expect(screen.getByText(/Year must be between/)).toBeTruthy();
+  });
+
+  it('the direct-update path (onChange with a complete date) independently agrees on an out-of-range year', () => {
+    renderSection({ education: [] });
+    const yearInputs = screen.getAllByLabelText('Year');
+    const monthSelects = screen.getAllByLabelText('Month');
+    fireEvent.change(yearInputs[0], { target: { value: '1800' } });
+    fireEvent.change(monthSelects[0], { target: { value: '06' } }); // completes "1800-06"
+    expect(screen.getByText(/Year must be between/)).toBeTruthy();
+  });
+});
+
 describe('EducationSection — required-field validation', () => {
   it('requires institution, degree, field of study, and start date', () => {
     const { onSave } = renderSection({ education: [] });
