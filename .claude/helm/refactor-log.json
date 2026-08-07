@@ -2595,11 +2595,11 @@
       "file": "src/components/options/SalarySection.tsx",
       "line": 135,
       "description": "`validate()` includes `if (!currentPeriod) e.currentPeriod = 'Period is required';` but `currentPeriod` is a `<select>` with only 'monthly'/'annual' options and no blank option, initialized to `'monthly'` \u2014 it can never be empty, so this branch is dead code. Remove it (or add a blank option if an unset state is actually intended).",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "8bcca34",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0163",
@@ -2659,11 +2659,11 @@
       "file": "src/components/options/LinksSection.tsx",
       "line": 119,
       "description": "`id={key === 'linkedin' ? 'field-linkedin' : key === 'portfolio' ? 'field-portfolio' : undefined}` is a nested ternary that just reconstructs `field-${key}` the hard way. Simplify to `id={`field-${key}`}`.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "7bd4c8e",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0167",
@@ -2675,11 +2675,11 @@
       "file": "src/components/options/LanguagesSection.tsx",
       "line": 47,
       "description": "`Row.proficiency` is typed as the non-nullable `LanguageProficiency`, but `emptyRow()` assigns `'' as LanguageProficiency` \u2014 a cast that lies to the type system. `WorkAuthorizationSection.tsx`'s analogous `LocalRow` correctly types the field as `WorkAuthorizationStatus | ''`. Type `Row.proficiency` as `LanguageProficiency | ''` here too so the empty/unselected state is representable without an unsafe cast.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "faec111",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0168",
