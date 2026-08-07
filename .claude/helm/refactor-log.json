@@ -2691,11 +2691,11 @@
       "file": "src/components/options/WorkHistorySection.test.tsx",
       "line": 109,
       "description": "No test exercises the Work Arrangement radio group (onsite/remote/hybrid, including the click-to-deselect behavior) or the Notice Period value validation (min 1, per-unit max, non-numeric input) when 'Available Later' is selected.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "b422b6d50784b48cf62ec9f90d7fb97c7d875f8a",
       "first_found_date": "2026-08-07",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "e70972d06b7d2458c9d86ce7224aadb2d16e6c97",
+      "resolved_date": "2026-08-07"
     },
     {
       "id": "f-0169",
