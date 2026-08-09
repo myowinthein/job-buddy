@@ -36,20 +36,60 @@ function ownText(el: Element): string {
   return clone.textContent?.trim() ?? '';
 }
 
+// Some Web Component design systems (Lit/Stencil-based; confirmed on
+// SmartRecruiters' SPL components — spl-input, spl-phone-field, etc.) render
+// their real native input inside an open shadow root, but carry the
+// human-readable semantic attributes (label, id, aria-label, placeholder) on
+// the *custom element host* itself rather than forwarding them onto the
+// native input — e.g. <spl-input label="First name" id="linkedin-input">
+// wraps a bare, attribute-less <input>. Walk up through any shadow-root
+// boundaries so signal extraction can fall back to each host's attributes.
+function shadowHostChain(element: Element): Element[] {
+  const chain: Element[] = [];
+  let root = element.getRootNode();
+  while (root instanceof ShadowRoot) {
+    chain.push(root.host);
+    root = root.host.getRootNode();
+  }
+  return chain;
+}
+
+// Tries `element`'s own value first, then each shadow host up the chain —
+// stops at the first non-empty result.
+function withHostFallback(element: HTMLElement, getValue: (el: Element) => string): string {
+  const own = getValue(element);
+  if (own) return own;
+  for (const host of shadowHostChain(element)) {
+    const fromHost = getValue(host);
+    if (fromHost) return fromHost;
+  }
+  return '';
+}
+
 function getLabelText(element: HTMLElement): string {
-  // 1. <label for="id">
+  // 1. <label for="id"> within the element's own tree scope — label
+  // association never crosses a shadow boundary, so this must be scoped to
+  // getRootNode(), not always document.
   if (element.id) {
     try {
-      const linked = document.querySelector<HTMLLabelElement>(
+      const root = element.getRootNode() as Document | ShadowRoot;
+      const linked = root.querySelector<HTMLLabelElement>(
         `label[for="${CSS.escape(element.id)}"]`,
       );
       if (linked) return ownText(linked);
     } catch { /* invalid selector — skip */ }
   }
 
-  // 2. element.closest('label')
+  // 2. element.closest('label'), scoped the same way (closest() never
+  // crosses a shadow boundary either).
   const parentLabel = element.closest('label');
   if (parentLabel) return ownText(parentLabel);
+
+  // 3. A shadow host's own label/aria-label attribute (see shadowHostChain).
+  for (const host of shadowHostChain(element)) {
+    const hostLabel = host.getAttribute('label') || host.getAttribute('aria-label');
+    if (hostLabel) return hostLabel.trim();
+  }
 
   return '';
 }
@@ -94,22 +134,38 @@ export function extractSignals(element: HTMLElement): FieldSignals {
     type = role ?? (element.hasAttribute('contenteditable') ? 'textbox' : element.tagName.toLowerCase());
   }
 
-  // aria-label: prefer explicit attribute, resolve aria-labelledby as fallback.
-  const explicitAriaLabel = element.getAttribute('aria-label') ?? '';
+  // aria-label: prefer explicit attribute (falling back through the shadow
+  // host chain — see withHostFallback), then resolve aria-labelledby.
+  const explicitAriaLabel = withHostFallback(element, (el) => el.getAttribute('aria-label') ?? '');
   const labelledByText    = resolveAriaRef(element.getAttribute('aria-labelledby'));
   const ariaLabel         = explicitAriaLabel || labelledByText;
 
-  // placeholder: native attribute first, then ARIA attribute.
-  const placeholder = inp.placeholder || element.getAttribute('aria-placeholder') || '';
+  // placeholder: native property first, then ARIA/plain attribute, each with
+  // shadow-host fallback.
+  const placeholder = withHostFallback(
+    element,
+    (el) => (el as HTMLInputElement).placeholder || el.getAttribute('aria-placeholder') || el.getAttribute('placeholder') || '',
+  );
 
-  // autocomplete: native attribute, then generic attribute (some frameworks use it on divs).
-  const autocomplete = inp.autocomplete || element.getAttribute('autocomplete') || '';
+  // autocomplete: native property, then generic attribute (some frameworks
+  // use it on divs), with shadow-host fallback.
+  const autocomplete = withHostFallback(
+    element,
+    (el) => (el as HTMLInputElement).autocomplete || el.getAttribute('autocomplete') || '',
+  );
+
+  // name/id: native property/attribute, with shadow-host fallback — a
+  // wrapping custom element commonly carries the "real" id (e.g.
+  // <spl-input id="linkedin-input">) while its internal native input is
+  // attribute-sparse.
+  const name = withHostFallback(element, (el) => (el as HTMLInputElement).name || el.getAttribute('name') || '');
+  const id   = withHostFallback(element, (el) => el.id || '');
 
   return {
     element,
     type,
-    name:         inp.name ?? '',
-    id:           element.id ?? '',
+    name,
+    id,
     placeholder,
     autocomplete,
     ariaLabel,
