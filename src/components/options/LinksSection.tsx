@@ -8,6 +8,7 @@ import { SaveButton } from './shared/SaveButton';
 import { AddEntryButton } from './shared/AddEntryButton';
 import { fieldCls as cls } from './shared/fieldCls';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
+import { withScheme } from '@/src/utils/url';
 
 interface Props {
   profile: Partial<Profile>;
@@ -28,13 +29,6 @@ export function LinksSection({ profile, onSave }: Props) {
   const [newEntryTick, setNewEntryTick] = useState(0);
   const customContainerRef = useRef<HTMLDivElement>(null);
   useScrollToNewEntry(customContainerRef, newEntryTick);
-
-  // Adds a scheme if the user typed a bare domain (e.g. "linkedin.com/in/you").
-  // Applied at save time, not just for validation: a stored value without a
-  // scheme looks "filled" but fails native type="url" constraint validation
-  // on job sites, silently blocking submission even though autofill visibly
-  // wrote a value into the field.
-  const withScheme = (url: string): string => (/^https?:\/\//i.test(url) ? url : `https://${url}`);
 
   const isValidUrl = (url: string): boolean => {
     try { return new URL(withScheme(url)).hostname.includes('.'); } catch { return false; }
