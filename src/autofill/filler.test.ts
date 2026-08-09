@@ -330,6 +330,54 @@ describe('fillField — text input (regression)', () => {
     await fillField(el, '');
     expect(el.value).toBe('original');
   });
+
+  // Some stricter form/validation libraries specifically check
+  // `event instanceof InputEvent` (or read `inputType`) as a signal that a
+  // change is "real," and ignore a plain synthetic Event even though the DOM
+  // value visibly changed.
+  it('dispatches a real InputEvent (not a plain Event) with inputType "insertText" and the filled value as data', async () => {
+    const el = document.createElement('input');
+    el.type = 'text';
+    document.body.appendChild(el);
+    let captured: Event | null = null;
+    el.addEventListener('input', (e) => { captured = e; });
+
+    await fillField(el, 'Jane Doe');
+
+    expect(captured).toBeInstanceOf(InputEvent);
+    expect((captured as unknown as InputEvent).inputType).toBe('insertText');
+    expect((captured as unknown as InputEvent).data).toBe('Jane Doe');
+  });
+
+  it('dispatches a real InputEvent for a <textarea> fill too', async () => {
+    const el = document.createElement('textarea');
+    document.body.appendChild(el);
+    let captured: Event | null = null;
+    el.addEventListener('input', (e) => { captured = e; });
+
+    await fillField(el, 'A longer message');
+
+    expect(captured).toBeInstanceOf(InputEvent);
+    expect((captured as unknown as InputEvent).inputType).toBe('insertText');
+    expect((captured as unknown as InputEvent).data).toBe('A longer message');
+  });
+});
+
+describe('clearFieldValue — text input', () => {
+  it('dispatches a real InputEvent with inputType "deleteContentBackward" on clear', () => {
+    const el = document.createElement('input');
+    el.type = 'text';
+    el.value = 'existing';
+    document.body.appendChild(el);
+    let captured: Event | null = null;
+    el.addEventListener('input', (e) => { captured = e; });
+
+    clearFieldValue(el);
+
+    expect(captured).toBeInstanceOf(InputEvent);
+    expect((captured as unknown as InputEvent).inputType).toBe('deleteContentBackward');
+    expect(el.value).toBe('');
+  });
 });
 
 // ── fillFileField ─────────────────────────────────────────────────────────────
