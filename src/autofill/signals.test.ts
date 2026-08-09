@@ -234,6 +234,87 @@ describe('extractSignals — autocomplete on non-native elements', () => {
   });
 });
 
+// Design systems built as Web Components (e.g. SmartRecruiters' SPL
+// components — spl-input, spl-phone-field) render their real native input
+// inside an open shadow root, but carry the human-readable semantic
+// attributes on the custom element *host* rather than the native input
+// itself — e.g. <spl-input label="First name" id="linkedin-input"> wrapping
+// a bare <input>. Without a host-attribute fallback, extractSignals returns
+// an almost entirely blank signal set for these fields.
+describe('extractSignals — shadow DOM host attribute fallback', () => {
+  function shadowInput(hostAttrs: Record<string, string> = {}, ownAttrs: Record<string, string> = {}): HTMLInputElement {
+    const host = document.createElement('spl-input');
+    for (const [k, v] of Object.entries(hostAttrs)) host.setAttribute(k, v);
+    document.body.appendChild(host);
+    const shadow = host.attachShadow({ mode: 'open' });
+    const el = document.createElement('input');
+    for (const [k, v] of Object.entries(ownAttrs)) el.setAttribute(k, v);
+    shadow.appendChild(el);
+    return el;
+  }
+
+  it("falls back to the shadow host's label attribute", () => {
+    const el = shadowInput({ label: 'First name' });
+    expect(extractSignals(el).label).toBe('First name');
+  });
+
+  it("falls back to the shadow host's id, aria-label, placeholder, and autocomplete", () => {
+    const el = shadowInput({
+      id: 'linkedin-input',
+      'aria-label': 'LinkedIn profile',
+      placeholder: 'https://linkedin.com/in/you',
+      autocomplete: 'url',
+    });
+    const signals = extractSignals(el);
+    expect(signals.id).toBe('linkedin-input');
+    expect(signals.ariaLabel).toBe('LinkedIn profile');
+    expect(signals.placeholder).toBe('https://linkedin.com/in/you');
+    expect(signals.autocomplete).toBe('url');
+  });
+
+  it("prefers the native input's own attributes over the shadow host's", () => {
+    const el = shadowInput({ label: 'Host label' }, { 'aria-label': 'Own aria-label' });
+    expect(extractSignals(el).ariaLabel).toBe('Own aria-label');
+  });
+
+  it('walks two shadow-root levels deep for the label fallback', () => {
+    const outerHost = document.createElement('oc-input');
+    document.body.appendChild(outerHost);
+    const outerShadow = outerHost.attachShadow({ mode: 'open' });
+    const innerHost = document.createElement('spl-input');
+    innerHost.setAttribute('label', 'Deeply nested label');
+    outerShadow.appendChild(innerHost);
+    const innerShadow = innerHost.attachShadow({ mode: 'open' });
+    const el = document.createElement('input');
+    innerShadow.appendChild(el);
+
+    expect(extractSignals(el).label).toBe('Deeply nested label');
+  });
+
+  it("scopes the label[for] lookup to the element's own shadow root, not the top-level document", () => {
+    // A light-DOM label[for] pointing at an id that happens to match an id
+    // used inside a shadow root must NOT resolve — label association never
+    // crosses a shadow boundary.
+    const outsideLabel = document.createElement('label');
+    outsideLabel.setAttribute('for', 'shared-id');
+    outsideLabel.textContent = 'Wrong label from outside';
+    document.body.appendChild(outsideLabel);
+
+    const host = document.createElement('spl-input');
+    document.body.appendChild(host);
+    const shadow = host.attachShadow({ mode: 'open' });
+    const insideLabel = document.createElement('label');
+    insideLabel.setAttribute('for', 'shared-id');
+    insideLabel.textContent = 'Correct label from inside';
+    const el = document.createElement('input');
+    el.id = 'shared-id';
+    shadow.appendChild(insideLabel);
+    shadow.appendChild(el);
+
+    expect(extractSignals(el).label).toBe('Correct label from inside');
+  });
+});
+
 function signals(overrides: Partial<FieldSignals> = {}): FieldSignals {
   return {
     element: document.createElement('input'),
