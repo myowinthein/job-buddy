@@ -29,9 +29,15 @@ export function LinksSection({ profile, onSave }: Props) {
   const customContainerRef = useRef<HTMLDivElement>(null);
   useScrollToNewEntry(customContainerRef, newEntryTick);
 
+  // Adds a scheme if the user typed a bare domain (e.g. "linkedin.com/in/you").
+  // Applied at save time, not just for validation: a stored value without a
+  // scheme looks "filled" but fails native type="url" constraint validation
+  // on job sites, silently blocking submission even though autofill visibly
+  // wrote a value into the field.
+  const withScheme = (url: string): string => (/^https?:\/\//i.test(url) ? url : `https://${url}`);
+
   const isValidUrl = (url: string): boolean => {
-    const normalized = /^https?:\/\//i.test(url) ? url : `https://${url}`;
-    try { return new URL(normalized).hostname.includes('.'); } catch { return false; }
+    try { return new URL(withScheme(url)).hostname.includes('.'); } catch { return false; }
   };
 
   const fieldError = (key: string, value: string): string => {
@@ -88,9 +94,9 @@ export function LinksSection({ profile, onSave }: Props) {
     setSaving(true);
     await saveSection(onSave, {
       links: {
-        linkedin:  form.linkedin.trim(),
-        portfolio: form.portfolio || undefined,
-        custom:    custom.filter((c) => c.label && c.url),
+        linkedin:  withScheme(form.linkedin.trim()),
+        portfolio: form.portfolio.trim() ? withScheme(form.portfolio.trim()) : undefined,
+        custom:    custom.filter((c) => c.label.trim() && c.url.trim()).map((c) => ({ ...c, url: withScheme(c.url.trim()) })),
         // Preserve any IT-specific fields that may exist in older profiles
         github:   l?.github,
         twitter:  l?.twitter,
