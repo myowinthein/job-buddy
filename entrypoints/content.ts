@@ -8,6 +8,16 @@ export default defineContentScript({
   // the top one, so scanAutofill/executeAutofill can find fields there too.
   // The popup's messaging layer is frame-aware to match (see popup/App.tsx).
   allFrames: true,
+  // Some ATS widgets render their application form inside an about:blank (or
+  // srcdoc/data:) iframe rather than one with a real http(s) src (confirmed
+  // on moroku.com/designer) — matches: ['*://*/*'] alone never injects into
+  // those, since about:blank doesn't match an http(s) pattern. Both options
+  // extend injection to those empty-URL frames based on their creator's
+  // origin; matchOriginAsFallback is Chrome's newer, more robust mechanism
+  // (handles nested about:blank/data: chains), matchAboutBlank is kept
+  // alongside it for broader engine/version coverage.
+  matchAboutBlank: true,
+  matchOriginAsFallback: true,
   main() {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message.action === 'AUTOFILL_SCAN') {
