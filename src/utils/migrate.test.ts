@@ -121,4 +121,69 @@ describe('normalizeProfile', () => {
     };
     expect(normalizeProfile(p)).toBe(p);
   });
+
+  it('adds a scheme to a bare LinkedIn URL', () => {
+    const p = baseProfile();
+    p.links.linkedin = 'linkedin.com/in/jane';
+    const out = normalizeProfile(p);
+    expect(out.links.linkedin).toBe('https://linkedin.com/in/jane');
+  });
+
+  it('adds a scheme to a bare portfolio URL', () => {
+    const p = baseProfile();
+    p.links.portfolio = 'janedoe.dev';
+    const out = normalizeProfile(p);
+    expect(out.links.portfolio).toBe('https://janedoe.dev');
+  });
+
+  it('adds a scheme to each bare custom link URL', () => {
+    const p = baseProfile();
+    p.links.custom = [
+      { label: 'Blog', url: 'blog.janedoe.dev' },
+      { label: 'GitHub', url: 'https://github.com/janedoe' },
+    ];
+    const out = normalizeProfile(p);
+    expect(out.links.custom?.[0].url).toBe('https://blog.janedoe.dev');
+    expect(out.links.custom?.[1].url).toBe('https://github.com/janedoe'); // unchanged
+  });
+
+  it('leaves an empty portfolio value alone instead of producing "https://"', () => {
+    const p = baseProfile();
+    p.links.portfolio = '';
+    const out = normalizeProfile(p);
+    expect(out.links.portfolio).toBe('');
+  });
+
+  it('returns the same links reference when every URL already has a scheme', () => {
+    const p = baseProfile();
+    p.links = { linkedin: 'https://linkedin.com/in/jane', portfolio: 'https://janedoe.dev' };
+    const out = normalizeProfile(p);
+    expect(out.links).toBe(p.links);
+    expect(out).toBe(p);
+  });
+
+  it('does not mutate the input profile when normalizing links', () => {
+    const p = baseProfile();
+    p.links.linkedin = 'linkedin.com/in/jane';
+    const originalLinks = p.links;
+    normalizeProfile(p);
+    expect(p.links).toBe(originalLinks);
+    expect(p.links.linkedin).toBe('linkedin.com/in/jane');
+  });
+
+  it('handles a profile with no links object at all', () => {
+    const p = baseProfile();
+    p.links = undefined as unknown as Profile['links'];
+    expect(normalizeProfile(p)).toBe(p);
+  });
+
+  it('normalizes both salary and links together in one pass', () => {
+    const p = baseProfile();
+    p.salary.current = { amount: 80000, currency: 'THB' } as Profile['salary']['current'];
+    p.links.linkedin = 'linkedin.com/in/jane';
+    const out = normalizeProfile(p);
+    expect(out.salary.current.period).toBe('monthly');
+    expect(out.links.linkedin).toBe('https://linkedin.com/in/jane');
+    expect(out).not.toBe(p);
+  });
 });
