@@ -139,6 +139,49 @@ describe('scanFields', () => {
   });
 });
 
+// Design systems built as Web Components (e.g. SmartRecruiters' SPL
+// components — spl-input, spl-textarea) render their real native
+// input/textarea/select inside an open shadow root. A plain
+// document.querySelectorAll can't see across that boundary at all — these
+// tests prove the scanner's queryAllDeep helper actually reaches in.
+describe('scanFields — shadow DOM', () => {
+  it('finds an input rendered inside an open shadow root', () => {
+    const host = document.createElement('spl-input');
+    document.body.appendChild(host);
+    const shadow = host.attachShadow({ mode: 'open' });
+    const input = document.createElement('input');
+    input.type = 'text';
+    shadow.appendChild(input);
+
+    expect(scanFields()).toContain(input);
+  });
+
+  it('finds an input nested two shadow roots deep', () => {
+    const outerHost = document.createElement('oc-input');
+    document.body.appendChild(outerHost);
+    const outerShadow = outerHost.attachShadow({ mode: 'open' });
+    const innerHost = document.createElement('spl-input');
+    outerShadow.appendChild(innerHost);
+    const innerShadow = innerHost.attachShadow({ mode: 'open' });
+    const input = document.createElement('input');
+    input.type = 'text';
+    innerShadow.appendChild(input);
+
+    expect(scanFields()).toContain(input);
+  });
+
+  it('cannot see into a closed shadow root — there is no accessible API to reach it', () => {
+    const host = document.createElement('spl-input');
+    document.body.appendChild(host);
+    const shadow = host.attachShadow({ mode: 'closed' });
+    const input = document.createElement('input');
+    input.type = 'text';
+    shadow.appendChild(input);
+
+    expect(scanFields()).toHaveLength(0);
+  });
+});
+
 describe('scanAriaFields', () => {
   function makeVisible(el: HTMLElement): HTMLElement {
     document.body.appendChild(el);
@@ -350,6 +393,31 @@ describe('scanRadioGroups', () => {
     addRadio('country', 'sg');
     const groups = scanRadioGroups();
     expect(groups[0].groupLabel).toBe('country');
+  });
+
+  it('groups radios rendered inside an open shadow root, reading labels from within it', () => {
+    const host = document.createElement('spl-radio-group');
+    document.body.appendChild(host);
+    const shadow = host.attachShadow({ mode: 'open' });
+
+    const l1 = document.createElement('label');
+    const r1 = document.createElement('input');
+    r1.type = 'radio'; r1.name = 'visa'; r1.value = 'yes';
+    l1.appendChild(r1);
+    l1.appendChild(document.createTextNode('Requires sponsorship'));
+    const l2 = document.createElement('label');
+    const r2 = document.createElement('input');
+    r2.type = 'radio'; r2.name = 'visa'; r2.value = 'no';
+    l2.appendChild(r2);
+    l2.appendChild(document.createTextNode('Does not require sponsorship'));
+    shadow.appendChild(l1);
+    shadow.appendChild(l2);
+
+    const groups = scanRadioGroups();
+    expect(groups).toHaveLength(1);
+    const labels = groups[0].options.map((o) => o.label);
+    expect(labels).toContain('Requires sponsorship');
+    expect(labels).toContain('Does not require sponsorship');
   });
 });
 
