@@ -19,6 +19,19 @@ export default defineContentScript({
   matchAboutBlank: true,
   matchOriginAsFallback: true,
   main() {
+    // Idempotency guard: popup/App.tsx's sendToAllFrames() actively
+    // re-injects this same script via chrome.scripting.executeScript before
+    // every message, as a fallback for frames whose document was populated
+    // asynchronously via document.write() after the frame was created (e.g.
+    // HubSpot's embedded-form iframe pattern) — a known Chromium quirk where
+    // declarative content_scripts injection (matches/allFrames/
+    // matchAboutBlank/matchOriginAsFallback above) doesn't reliably re-run
+    // for those. That means this main() can legitimately run twice in the
+    // same frame; skip re-registering the message listener if it already is.
+    const g = globalThis as unknown as { __jobBuddyInjected?: boolean };
+    if (g.__jobBuddyInjected) return;
+    g.__jobBuddyInjected = true;
+
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message.action === 'AUTOFILL_SCAN') {
         scanAutofill()
