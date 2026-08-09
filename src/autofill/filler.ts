@@ -29,8 +29,21 @@ function reformatDateForInput(value: string, element: HTMLInputElement): string 
   return value; // no recognisable format hint — keep YYYY-MM-DD
 }
 
-function dispatchEvents(element: HTMLElement): void {
-  element.dispatchEvent(new Event('input',  { bubbles: true }));
+// Dispatches a real InputEvent (not a plain Event) for 'input', matching
+// what fillAriaTextbox already does and what a genuine keystroke produces.
+// Some stricter form/validation libraries (React Hook Form + Zod schemas,
+// and others) specifically check `event instanceof InputEvent` — or read
+// `inputType` — as a signal that a change is "real," and silently ignore a
+// plain synthetic Event even though the DOM value visibly changed. This
+// can't fix isTrusted (browsers force that false for any JS-dispatched
+// event, regardless of constructor), but it closes the gap for libraries
+// checking event class/inputType instead.
+function dispatchEvents(
+  element: HTMLElement,
+  inputType: 'insertText' | 'deleteContentBackward' = 'insertText',
+  data: string | null = null,
+): void {
+  element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType, data }));
   element.dispatchEvent(new Event('change', { bubbles: true }));
   element.dispatchEvent(new Event('blur',   { bubbles: true }));
 }
@@ -181,7 +194,7 @@ function setEmpty(element: HTMLElement): void {
   } else if (element instanceof HTMLTextAreaElement) {
     if (nativeTextareaSetter) nativeTextareaSetter.call(element, '');
     else element.value = '';
-    dispatchEvents(element);
+    dispatchEvents(element, 'deleteContentBackward');
   } else if (element instanceof HTMLInputElement) {
     if (element.type === 'file') {
       // Browsers reject `.value = anything-non-empty` for security; assigning
@@ -193,7 +206,7 @@ function setEmpty(element: HTMLElement): void {
     }
     if (nativeInputSetter) nativeInputSetter.call(element, '');
     else element.value = '';
-    dispatchEvents(element);
+    dispatchEvents(element, 'deleteContentBackward');
   } else {
     // ARIA custom elements: clear text for textbox/contenteditable;
     // no-op for combobox/listbox (cannot reliably reverse dropdown selection).
@@ -226,7 +239,7 @@ export async function fillField(element: HTMLElement, value: string): Promise<vo
   if (element instanceof HTMLTextAreaElement) {
     if (nativeTextareaSetter) nativeTextareaSetter.call(element, value);
     else (element as HTMLTextAreaElement).value = value;
-    dispatchEvents(element);
+    dispatchEvents(element, 'insertText', value);
     return;
   }
 
@@ -234,7 +247,7 @@ export async function fillField(element: HTMLElement, value: string): Promise<vo
     const fillValue = reformatDateForInput(value, element);
     if (nativeInputSetter) nativeInputSetter.call(element, fillValue);
     else element.value = fillValue;
-    dispatchEvents(element);
+    dispatchEvents(element, 'insertText', fillValue);
     return;
   }
 
