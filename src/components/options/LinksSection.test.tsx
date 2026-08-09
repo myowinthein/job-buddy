@@ -36,14 +36,30 @@ describe('LinksSection — LinkedIn validation', () => {
     fireEvent.click(screen.getByText('Save Links'));
     expect(onSave).toHaveBeenCalled();
   });
+
+  it('adds a scheme to a bare LinkedIn domain before saving', () => {
+    // A scheme-less linkedin.com/... value passes the "contains linkedin.com"
+    // check but fails native type="url" constraint validation on job sites —
+    // add https:// at save time so a filled field never silently fails to
+    // validate on submit.
+    const { onSave } = renderSection({ links: { linkedin: 'linkedin.com/in/johnsmith' } });
+    fireEvent.click(screen.getByText('Save Links'));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      links: expect.objectContaining({ linkedin: 'https://linkedin.com/in/johnsmith' }),
+    }));
+  });
 });
 
 describe('LinksSection — isValidUrl (via the optional Portfolio field)', () => {
-  it('accepts a bare domain without a protocol (auto-normalized for validation only)', () => {
+  it('accepts a bare domain without a protocol, saving it with an added https:// scheme', () => {
+    // A scheme-less stored value looks "filled" but fails native type="url"
+    // constraint validation on job sites, silently blocking submission even
+    // though autofill visibly wrote a value into the field — so the scheme
+    // is added at save time, not just accepted for validation.
     const { onSave } = renderSection({ links: { linkedin: 'https://linkedin.com/in/x', portfolio: 'johnsmith.dev' } });
     fireEvent.click(screen.getByText('Save Links'));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-      links: expect.objectContaining({ portfolio: 'johnsmith.dev' }), // saved raw, not normalized
+      links: expect.objectContaining({ portfolio: 'https://johnsmith.dev' }),
     }));
   });
 
@@ -109,6 +125,16 @@ describe('LinksSection — custom link silent-drop edge case', () => {
     fireEvent.click(screen.getByText('Save Links'));
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('Enter a valid URL')).toBeTruthy();
+  });
+
+  it('adds a scheme to a bare custom-link domain before saving', () => {
+    const { onSave } = renderSection({
+      links: { linkedin: 'https://linkedin.com/in/x', custom: [{ label: 'My Blog', url: 'blog.dev' }] },
+    });
+    fireEvent.click(screen.getByText('Save Links'));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      links: expect.objectContaining({ custom: [{ label: 'My Blog', url: 'https://blog.dev' }] }),
+    }));
   });
 });
 
