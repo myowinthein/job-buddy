@@ -33,6 +33,10 @@ function getListener(): (message: object, sender: object, sendResponse: SendResp
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // main()'s idempotency guard (see entrypoints/content.ts) sets a flag on
+  // globalThis that would otherwise persist across tests in this same file
+  // and silently no-op every main() call after the first.
+  delete (globalThis as { __jobBuddyInjected?: boolean }).__jobBuddyInjected;
   (contentScript as { main: () => void }).main();
 });
 
@@ -114,5 +118,18 @@ describe('content script — message dispatcher', () => {
 
     expect(sendResponse).not.toHaveBeenCalled();
     expect(handled).toBeUndefined();
+  });
+});
+
+describe('content script — re-injection idempotency guard', () => {
+  // popup/App.tsx's sendToAllFrames() actively re-injects this script via
+  // chrome.scripting.executeScript before every message (see its own
+  // comment for why) — main() can legitimately run more than once in the
+  // same frame as a result. A second run must not register a second
+  // message listener, which would otherwise double-handle every message.
+  it('does not register a second listener when main() runs again in the same frame', () => {
+    const callsBeforeSecondRun = onMessageAddListener.mock.calls.length;
+    (contentScript as { main: () => void }).main();
+    expect(onMessageAddListener.mock.calls.length).toBe(callsBeforeSecondRun);
   });
 });
