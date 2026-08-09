@@ -16,10 +16,11 @@ vi.mock('@/src/utils/sessionStorage', () => ({
 // plain `vi.stubGlobal` call textually preceding the import would execute,
 // per real ESM import evaluation order. `vi.hoisted` forces this to run
 // first, same as `vi.mock` factories.
-const { sendMessageMock, getAllFramesMock, tabsQueryMock } = vi.hoisted(() => {
+const { sendMessageMock, getAllFramesMock, tabsQueryMock, executeScriptMock } = vi.hoisted(() => {
   const sendMessageMock = vi.fn();
   const getAllFramesMock = vi.fn();
   const tabsQueryMock = vi.fn();
+  const executeScriptMock = vi.fn().mockResolvedValue(undefined);
 
   vi.stubGlobal('chrome', {
     runtime: {
@@ -34,6 +35,9 @@ const { sendMessageMock, getAllFramesMock, tabsQueryMock } = vi.hoisted(() => {
     webNavigation: {
       getAllFrames: getAllFramesMock,
     },
+    scripting: {
+      executeScript: executeScriptMock,
+    },
     storage: {
       session: {
         get: (_key: string, cb: (r: object) => void) => cb({}),
@@ -42,7 +46,7 @@ const { sendMessageMock, getAllFramesMock, tabsQueryMock } = vi.hoisted(() => {
     },
   });
 
-  return { sendMessageMock, getAllFramesMock, tabsQueryMock };
+  return { sendMessageMock, getAllFramesMock, tabsQueryMock, executeScriptMock };
 });
 
 import App from '@/entrypoints/popup/App';
@@ -70,9 +74,49 @@ beforeEach(() => {
   tabsQueryMock.mockResolvedValue([{ id: 123 }]);
   getAllFramesMock.mockRejectedValue(new Error('unavailable')); // single top frame by default
   sendMessageMock.mockRejectedValue(new Error('no listener')); // idle by default
+  executeScriptMock.mockResolvedValue(undefined); // injection succeeds by default
 });
 
 afterEach(cleanup);
+
+describe('popup App — active content-script re-injection', () => {
+  // Chrome's declarative content_scripts injection doesn't reliably re-run
+  // for a frame whose document was populated asynchronously via
+  // document.write() after the frame was created (e.g. HubSpot's
+  // embedded-form iframe) — sendToAllFrames actively re-injects via
+  // chrome.scripting.executeScript before messaging as a fallback.
+  it('injects the content script into every frame before sending a message to it', async () => {
+    getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 5 }]);
+    sendMessageMock.mockResolvedValue(statusResult());
+
+    renderApp();
+    await waitFor(() => expect(executeScriptMock).toHaveBeenCalledTimes(2));
+
+    expect(executeScriptMock).toHaveBeenCalledWith({
+      target: { tabId: 123, frameIds: [0] },
+      files: ['content-scripts/content.js'],
+    });
+    expect(executeScriptMock).toHaveBeenCalledWith({
+      target: { tabId: 123, frameIds: [5] },
+      files: ['content-scripts/content.js'],
+    });
+  });
+
+  it('still messages a frame whose injection call rejects (already has the script from declarative injection)', async () => {
+    getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 5 }]);
+    executeScriptMock.mockImplementation(({ target }: { target: { frameIds: number[] } }) =>
+      target.frameIds[0] === 5 ? Promise.reject(new Error('already injected')) : Promise.resolve(undefined),
+    );
+    sendMessageMock.mockImplementation((_tabId, message, opts) => {
+      if (message.action !== 'GET_STATUS') return Promise.reject(new Error('n/a'));
+      if (opts.frameId === 5) return Promise.resolve(statusResult({ noReview: 3, totalScanned: 3 }));
+      return Promise.reject(new Error('no listener'));
+    });
+
+    renderApp();
+    await waitFor(() => expect(screen.getByText('(3)')).toBeTruthy());
+  });
+});
 
 describe('popup App — GET_STATUS frame aggregation on mount', () => {
   it('sums per-frame results across multiple frames into one merged state', async () => {
