@@ -1,3 +1,19 @@
+// Recursively queries `selector` across the light DOM and any *open* shadow
+// roots nested within it. Some design systems (e.g. SmartRecruiters' SPL
+// components — spl-input, spl-textarea, spl-phone-field, spl-dropzone) render
+// their real native <input>/<textarea>/<select> inside a shadow root, which a
+// plain document.querySelectorAll cannot see at all — the scan would silently
+// return zero fields on such a page. Closed shadow roots have no accessible
+// API from content-script JS; there is no way to reach into them, so a form
+// entirely built from closed-shadow components still can't be detected.
+function queryAllDeep<T extends Element>(selector: string, root: ParentNode = document): T[] {
+  const results: T[] = Array.from(root.querySelectorAll<T>(selector));
+  root.querySelectorAll<HTMLElement>('*').forEach((el) => {
+    if (el.shadowRoot) results.push(...queryAllDeep<T>(selector, el.shadowRoot));
+  });
+  return results;
+}
+
 const EXCLUDED_INPUT_TYPES = new Set([
   'hidden', 'submit', 'button', 'checkbox',
   'radio', 'file', 'image', 'reset',
@@ -15,9 +31,7 @@ interface ScanOptions {
 }
 
 export function scanFields(options: ScanOptions = {}): HTMLElement[] {
-  const elements = Array.from(
-    document.querySelectorAll<HTMLElement>('input, textarea, select'),
-  );
+  const elements = queryAllDeep<HTMLElement>('input, textarea, select');
 
   return elements.filter((el) => {
     // Excluded input types (hidden, submit, button, etc.)
@@ -78,7 +92,11 @@ function isElementVisible(el: HTMLElement): boolean {
 function getOptionLabel(el: HTMLInputElement): string {
   if (el.id) {
     try {
-      const linked = document.querySelector<HTMLLabelElement>(`label[for="${CSS.escape(el.id)}"]`);
+      // A label[for] association only resolves within the same tree scope —
+      // if `el` lives inside a shadow root, its label (if any) must live
+      // there too, not in the top-level document.
+      const root = el.getRootNode() as Document | ShadowRoot;
+      const linked = root.querySelector<HTMLLabelElement>(`label[for="${CSS.escape(el.id)}"]`);
       if (linked) {
         const clone = linked.cloneNode(true) as HTMLElement;
         clone.querySelectorAll('input').forEach((i) => i.remove());
@@ -137,7 +155,7 @@ export interface CheckboxGroup {
 }
 
 export function scanRadioGroups(): RadioGroup[] {
-  const all = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="radio"]'))
+  const all = queryAllDeep<HTMLInputElement>('input[type="radio"]')
     .filter((el) => !!el.name && isElementVisible(el));
 
   const byName = new Map<string, HTMLInputElement[]>();
@@ -158,7 +176,7 @@ export function scanRadioGroups(): RadioGroup[] {
 }
 
 export function scanCheckboxGroups(): CheckboxGroup[] {
-  const all = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'))
+  const all = queryAllDeep<HTMLInputElement>('input[type="checkbox"]')
     .filter((el) => isElementVisible(el));
 
   const byName = new Map<string, HTMLInputElement[]>();
@@ -222,12 +240,12 @@ export function scanAriaFields(): HTMLElement[] {
   }
 
   // Text-input equivalents
-  document.querySelectorAll<HTMLElement>('[role="textbox"]').forEach(addIfEligible);
-  document.querySelectorAll<HTMLElement>('[contenteditable="true"]').forEach(addIfEligible);
+  queryAllDeep<HTMLElement>('[role="textbox"]').forEach(addIfEligible);
+  queryAllDeep<HTMLElement>('[contenteditable="true"]').forEach(addIfEligible);
 
   // Select/dropdown equivalents
-  document.querySelectorAll<HTMLElement>('[aria-haspopup="listbox"]').forEach(addIfEligible);
-  document.querySelectorAll<HTMLElement>('[role="combobox"]').forEach(addIfEligible);
+  queryAllDeep<HTMLElement>('[aria-haspopup="listbox"]').forEach(addIfEligible);
+  queryAllDeep<HTMLElement>('[role="combobox"]').forEach(addIfEligible);
 
   return results;
 }
