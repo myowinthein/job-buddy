@@ -28,7 +28,8 @@ Virtual profilePaths (valid even though they are not direct object keys):
 Link field priorities:
 - Use links.portfolio for any field mentioning portfolio, blog, personal website, or online portfolio — including "Website, Blog or Portfolio", "Website / Blog / Portfolio", "Online Portfolio", "Portfolio Website", "Personal Website"
 - Use links.linkedin ONLY for fields that specifically and unambiguously refer to LinkedIn (e.g. "LinkedIn URL", "LinkedIn Profile"). Do NOT use links.linkedin for generic website, URL, or blog fields
-- profile.links.custom is an array of { label, url } the applicant added themselves (e.g. GitHub, Behance, Dribbble, a personal blog). If a field's label matches one of these labels (exactly or closely, e.g. "GitHub Profile" vs a custom link labeled "GitHub"), use links.custom.N.url for that entry (N = its index in the array). Never invent a custom link that isn't in the profile`;
+- profile.links.custom is an array of { label, url } the applicant added themselves (e.g. GitHub, Behance, Dribbble, a personal blog). If a field's label matches one of these labels (exactly or closely, e.g. "GitHub Profile" vs a custom link labeled "GitHub"), use links.custom.N.url for that entry (N = its index in the array). Never invent a custom link that isn't in the profile
+- documents.cv.url — a link to the applicant's resume/CV (e.g. a Google Drive or Dropbox link); use for a text field asking to paste a resume/CV link. Never use this for an actual file upload field — those are handled separately and are never sent to you as a text/select field`;
 
 export function buildAutofillPrompt(fields: object, profile: object): string {
   const body = JSON.stringify({ fields, profile }, null, 2);
