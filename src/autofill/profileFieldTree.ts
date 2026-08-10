@@ -1,6 +1,6 @@
 import type { Profile, WorkHistoryEntry, EducationEntry } from '../types/profile';
 import { COUNTRIES } from '../data/countries';
-import { LANGUAGES } from '../data/languages';
+import { languageName, LANGUAGE_PROFICIENCY_LABELS } from '../data/languages';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
 import { fmtYearMonth } from '../utils/dateFormat';
 import { resolveProfileValue } from './resolver';
@@ -43,20 +43,8 @@ export interface Section {
   items: SectionItem[];
 }
 
-const LANG_PROF_LABELS: Record<string, string> = {
-  native_bilingual:     'Native / Bilingual',
-  full_professional:    'Full Professional',
-  professional_working: 'Professional Working',
-  limited_working:      'Limited Working',
-  elementary:           'Elementary',
-};
-
 function countryName(code: string): string {
   return COUNTRIES.find(c => c.code === code)?.name ?? code;
-}
-
-function languageName(codeOrName: string): string {
-  return LANGUAGES.find(l => l.code === codeOrName || l.name === codeOrName)?.name ?? codeOrName;
 }
 
 // Returns the index of the most recent entry (isCurrent first, then latest startDate).
@@ -285,7 +273,7 @@ export function buildPickerTree(profile: Profile): Section[] {
     (profile.languages ?? []).forEach((entry, idx) => {
       if (!entry.language) return;
       const name = languageName(entry.language);
-      const prof = LANG_PROF_LABELS[entry.proficiency] ?? entry.proficiency ?? '';
+      const prof = LANGUAGE_PROFICIENCY_LABELS[entry.proficiency] ?? entry.proficiency ?? '';
       items.push(row(name, `languages.${idx}.language`, prof || name));
     });
     if (items.length) sections.push({ id: 'languages', label: 'Languages', items });
