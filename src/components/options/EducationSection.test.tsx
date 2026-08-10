@@ -106,3 +106,51 @@ describe('EducationSection — required-field validation', () => {
     expect(onSave).toHaveBeenCalled();
   });
 });
+
+describe('EducationSection — end-date MonthYearPicker wiring', () => {
+  it('saves an end date entered via the month/year picker (not just an injected profile shape)', () => {
+    const { onSave } = renderSection({
+      education: [{ institution: 'MIT', degree: 'BSc', fieldOfStudy: 'CS', startDate: '2014-09', isCurrent: false }],
+    });
+    fireEvent.click(screen.getByText('MIT — BSc')); // entries default to collapsed
+
+    const yearInputs = screen.getAllByLabelText('Year'); // [0]=start, [1]=end
+    const monthSelects = screen.getAllByLabelText('Month');
+    fireEvent.change(monthSelects[1], { target: { value: '05' } });
+    fireEvent.change(yearInputs[1], { target: { value: '2018' } });
+
+    fireEvent.click(screen.getByText('Save Education'));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      education: [expect.objectContaining({ endDate: '2018-05' })],
+    }));
+  });
+
+  it('shows a live year-range error for the end date via onYearChange, independent of the start date', () => {
+    renderSection({
+      education: [{ institution: 'MIT', degree: 'BSc', fieldOfStudy: 'CS', startDate: '2014-09', isCurrent: false }],
+    });
+    fireEvent.click(screen.getByText('MIT — BSc'));
+
+    const yearInputs = screen.getAllByLabelText('Year');
+    fireEvent.change(yearInputs[1], { target: { value: '1800' } });
+    expect(screen.getByText(/Year must be between/)).toBeTruthy();
+  });
+
+  it('flags an end date before the start date at save time, entered entirely via the picker', () => {
+    const { onSave } = renderSection({
+      education: [{ institution: 'MIT', degree: 'BSc', fieldOfStudy: 'CS', startDate: '2014-09', isCurrent: false }],
+    });
+    fireEvent.click(screen.getByText('MIT — BSc'));
+
+    const yearInputs = screen.getAllByLabelText('Year');
+    const monthSelects = screen.getAllByLabelText('Month');
+    fireEvent.change(monthSelects[1], { target: { value: '01' } });
+    fireEvent.change(yearInputs[1], { target: { value: '2010' } });
+
+    fireEvent.click(screen.getByText('Save Education'));
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText('End date cannot be before start date')).toBeTruthy();
+  });
+});
