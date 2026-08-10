@@ -243,7 +243,7 @@ describe('buildPickerTree', () => {
 
       const lang = getSection(p, 'languages');
       expect('label' in lang.items[0] && lang.items[0].label).toBe('English');
-      expect('value' in lang.items[0] && lang.items[0].value).toBe('Native / Bilingual');
+      expect('value' in lang.items[0] && lang.items[0].value).toBe('Native');
     });
 
     it('skips an entry with no language', () => {

@@ -195,6 +195,21 @@ describe('mapField — Layer 2: Dictionary exact match', () => {
     expect(result.value).toBe('Janey');
   });
 
+  it('matches "language" label signal → the unindexed languages.language marker', () => {
+    // Left unindexed here — adjustLanguageMatches (languageResolution.ts)
+    // assigns the real languages.N.language path once every field on the
+    // page is scanned; mapField() alone has no page-wide visibility.
+    const result = mapField(sig({ label: 'Language' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('languages.language');
+  });
+
+  it('matches "proficiency" label signal → the unindexed languages.proficiency marker', () => {
+    const result = mapField(sig({ label: 'Proficiency' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('languages.proficiency');
+  });
+
   it('matches "city" placeholder signal → address.city', () => {
     const result = mapField(sig({ placeholder: 'City' }), PROFILE, NO_MAPPINGS, DOMAIN);
     expect(result.matchLayer).toBe('dictionary_exact');
