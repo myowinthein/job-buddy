@@ -273,3 +273,25 @@ describe('LearnedMappingsSection — search filter', () => {
     expect(screen.queryByLabelText('Search sites')).toBeNull();
   });
 });
+
+describe('LearnedMappingsSection — load and save failures', () => {
+  it('shows a toast when the initial load rejects, without leaving the page stuck loading', async () => {
+    vi.mocked(getLearnedMappings).mockRejectedValue(new Error('storage unavailable'));
+    renderSection();
+    expect(await screen.findByText('Failed to load learned inputs.')).toBeTruthy();
+  });
+
+  it('shows a toast when persisting a deletion fails', async () => {
+    vi.mocked(getLearnedMappings).mockResolvedValue({
+      'acme.com': { sig1: { path: 'personal.firstName', count: 2 } },
+    });
+    vi.mocked(saveLearnedMappings).mockRejectedValueOnce(new Error('quota exceeded'));
+    renderSection();
+
+    await screen.findByText('acme.com');
+    fireEvent.click(screen.getByTitle('Remove entry'));
+    fireEvent.click(screen.getByText('Delete'));
+
+    expect(await screen.findByText('Failed to save. Please try again.')).toBeTruthy();
+  });
+});
