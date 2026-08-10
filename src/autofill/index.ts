@@ -6,6 +6,7 @@ import { extractSignals, bestLabel } from './signals';
 import type { FieldSignals } from './signals';
 import { mapField } from './mapper';
 import type { FieldMatch } from './mapper';
+import { adjustPhoneMatches } from './phoneResolution';
 import { fillField, fillFileField, clearFieldValue } from './filler';
 import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
 import { resolveProfileValue, flattenProfileValues } from './resolver';
@@ -333,11 +334,23 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
   // one per field.
   let learnedLabelsDirty = false;
 
-  fields.forEach((element, i) => {
+  const scanned = fields.map((element, i) => {
     const signals = extractSignals(element);
-    const match   = mapField(signals, profile, learnedMappings, domain);
+    return {
+      element,
+      signals,
+      match:        mapField(signals, profile, learnedMappings, domain),
+      debugFieldId: `field_${String(i + 1).padStart(3, '0')}`,
+    };
+  });
+
+  // Sibling-aware adjustment for phone.number vs phone.full — needs every
+  // field's match already computed, since it depends on whether ANY field
+  // on the page resolved to the calling-code path (see phoneResolution.ts).
+  adjustPhoneMatches(scanned.map((s) => s.match), profile);
+
+  scanned.forEach(({ element, signals, match, debugFieldId }) => {
     const hasExistingValue = getFieldValue(element) !== '';
-    const debugFieldId = `field_${String(i + 1).padStart(3, '0')}`;
 
     if (match.confidence >= CONF_FILL && match.value) {
       totalMatched++;
