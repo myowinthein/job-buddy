@@ -223,6 +223,18 @@ describe('buildPickerTree', () => {
       expect(sectionIds(p)).toContain('work-history');
     });
 
+    it('includes Available Date and Notice Period as separate top-level entries', () => {
+      const p = emptyProfile();
+      p.professional = { noticePeriod: { immediate: false, value: 2, unit: 'week' } };
+
+      const wh = getSection(p, 'work-history');
+      const availableDateRow = wh.items.find((i) => 'label' in i && i.label === 'Available Date');
+      const noticePeriodRow = wh.items.find((i) => 'label' in i && i.label === 'Notice Period');
+      expect(availableDateRow && 'fieldPath' in availableDateRow && availableDateRow.fieldPath).toBe('professional.noticePeriod.availableDate');
+      expect(noticePeriodRow && 'fieldPath' in noticePeriodRow && noticePeriodRow.fieldPath).toBe('professional.noticePeriod.formatted');
+      expect(noticePeriodRow && 'value' in noticePeriodRow && noticePeriodRow.value).toBe('2 Weeks');
+    });
+
     it('skips an entry with neither company nor title', () => {
       const p = emptyProfile();
       p.workHistory = [{ startDate: '2020-01', isCurrent: false } as Profile['workHistory'][0]];
