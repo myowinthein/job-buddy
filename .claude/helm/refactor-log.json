@@ -3705,11 +3705,11 @@
         "src/autofill/profileFieldTree.ts"
       ],
       "description": "documents.coverLetter is a real, validated profile field with live UI, but has no FIELD_DEFS entry in parser.ts. generateDiff/applyChanges (shared by Resume Import, Import Profile, and Drive Connect) only ever write fields present in FIELD_DEFS, so an imported JSON export or Drive backup containing a coverLetter is silently dropped even under Accept All. Real data-loss risk.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "e6afaf5",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0231",
@@ -3724,11 +3724,11 @@
         "src/resume-ai/parser.ts"
       ],
       "description": "Same root cause as f-0230: buildPickerTree()'s Documents section only emits a row for documents.cv.url. documents.coverLetter has no row, so a user with a saved cover letter can never select it as a Learned Mapping target.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "e6afaf5",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0232",
@@ -3746,11 +3746,11 @@
         "src/resume-ai/parser.test.ts"
       ],
       "description": "Zero test coverage of the Documents section for coverLetter in either buildPickerTree() or FIELD_DEFS setValue — add cases once f-0230/f-0231 are fixed.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "e6afaf5",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0233",
