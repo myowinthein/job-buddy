@@ -133,6 +133,46 @@ describe('scanAutofill', () => {
     expect(refreshLearnedLabels).toHaveBeenCalledTimes(3);
     expect(saveLearnedMappings).toHaveBeenCalledTimes(1);
   });
+
+  it('resolves a label-matched phone field to the full number when no calling-code sibling is present', async () => {
+    const phoneEl = makeInput();
+    vi.mocked(scanFields).mockReturnValue([phoneEl]);
+    vi.mocked(mapField).mockReturnValueOnce({
+      confidence: 0.85, value: '812345678', fieldPath: 'personal.phone.number', matchLayer: 'dictionary_exact',
+    });
+    vi.mocked(resolveProfileValue).mockReturnValueOnce('+66 812345678');
+
+    await scanAutofill();
+    await executeAutofill('overwrite');
+    expect(fillField).toHaveBeenCalledWith(phoneEl, '+66 812345678');
+  });
+
+  it('resolves a label-matched phone field to the local number when a calling-code sibling is present', async () => {
+    const phoneEl = makeInput();
+    const codeEl  = makeInput();
+    vi.mocked(scanFields).mockReturnValue([phoneEl, codeEl]);
+    vi.mocked(mapField)
+      .mockReturnValueOnce({ confidence: 0.85, value: '+66 812345678', fieldPath: 'personal.phone.full', matchLayer: 'dictionary_exact' })
+      .mockReturnValueOnce({ confidence: 0.85, value: '+66', fieldPath: 'personal.phone.callingCode', matchLayer: 'dictionary_exact' });
+    vi.mocked(resolveProfileValue).mockReturnValueOnce('812345678');
+
+    await scanAutofill();
+    await executeAutofill('overwrite');
+    expect(fillField).toHaveBeenCalledWith(phoneEl, '812345678');
+  });
+
+  it('does not override an autocomplete-matched phone field even with a calling-code sibling present', async () => {
+    const phoneEl = makeInput();
+    const codeEl  = makeInput();
+    vi.mocked(scanFields).mockReturnValue([phoneEl, codeEl]);
+    vi.mocked(mapField)
+      .mockReturnValueOnce({ confidence: 0.95, value: '+66 812345678', fieldPath: 'personal.phone.full', matchLayer: 'autocomplete' })
+      .mockReturnValueOnce({ confidence: 0.85, value: '+66', fieldPath: 'personal.phone.callingCode', matchLayer: 'dictionary_exact' });
+
+    await scanAutofill();
+    await executeAutofill('overwrite');
+    expect(fillField).toHaveBeenCalledWith(phoneEl, '+66 812345678');
+  });
 });
 
 describe('executeAutofill', () => {
