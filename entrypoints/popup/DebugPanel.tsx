@@ -92,11 +92,11 @@ export function DebugPanel({
             {session.mapping.length === 0 ? (
               <p className="text-gray-400 dark:text-gray-500 italic">No mapping data.</p>
             ) : (
-              <ul className="space-y-1.5">
+              <ul className="divide-y divide-gray-100 dark:divide-gray-800">
                 {session.mapping.map((m) => {
                   const scanned = scannerByFieldId.get(m.fieldId);
                   return (
-                    <li key={m.fieldId} className="px-2 py-1.5 bg-gray-50 dark:bg-gray-800 rounded">
+                    <li key={m.fieldId} className="py-1.5">
                       <div className="flex items-baseline gap-1.5">
                         <span className="font-mono text-[10px] text-gray-400">{m.fieldId}</span>
                         <span className="font-medium truncate">{scanned?.label || '(no label)'}</span>
@@ -128,9 +128,9 @@ export function DebugPanel({
             ) : session.ai.length === 0 ? (
               <p className="text-gray-400 dark:text-gray-500 italic">No fields sent to AI.</p>
             ) : (
-              <ul className="space-y-1.5">
+              <ul className="divide-y divide-gray-100 dark:divide-gray-800">
                 {Array.from(aiByFieldId.values()).map((a) => (
-                  <li key={a.fieldId} className="px-2 py-1.5 bg-gray-50 dark:bg-gray-800 rounded">
+                  <li key={a.fieldId} className="py-1.5">
                     <div className="flex items-baseline gap-1.5">
                       <span className="font-mono text-[10px] text-gray-400">{a.fieldId}</span>
                       <span className="font-medium truncate">{a.label || '(no label)'}</span>
