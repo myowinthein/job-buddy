@@ -39,4 +39,23 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   // resolveDictionaryHit() redirects to documents.cv.url for a non-file
   // element, so this entry doesn't need duplicate aliases of its own.
   'documents.cv.file':             ['resume', 'cv', 'curriculumvitae', 'resumeupload', 'uploadresume', 'attachresume', 'document', 'attachment', 'uploadcv', 'myresume'],
+  // Unindexed markers, same pattern as languages.language/proficiency above —
+  // adjustEducationMatches() in educationResolution.ts rewrites these to a
+  // concrete education.N.* path (single field on the page → the applicant's
+  // most recent entry; repeated fields → sequential index per occurrence).
+  'education.institution':         ['institution', 'school', 'university', 'college', 'schoolname', 'universityname', 'institutionname', 'collegename'],
+  'education.degree':              ['degree', 'degreetype', 'qualification', 'degreeearned', 'levelofeducation', 'educationlevel'],
+  'education.fieldOfStudy':        ['fieldofstudy', 'major', 'areaofstudy', 'concentration', 'specialization', 'majorfield', 'course', 'discipline'],
+  // 'startdate'/'enddate' are common bare labels within an Education fieldset
+  // but are inherently ambiguous against any other section using the same
+  // wording (e.g. a future workHistory dictionary) — there is no section-aware
+  // disambiguation today, so this is a known, accepted collision risk.
+  'education.startDate.formatted': ['educationstartdate', 'startdate', 'yearstarted', 'schoolstartdate', 'enrollmentdate'],
+  'education.endDate.formatted':   ['educationenddate', 'enddate', 'yearcompleted', 'schoolenddate', 'graduationdate'],
+  // For a select/radio/text "currently enrolled" field — safe via the normal
+  // fill mechanics (only ever sets a value among the page's own options).
+  // The separate checkbox case is intentionally NOT here — see
+  // educationResolution.ts's matchCurrentEducationCheckboxes for why a
+  // checkbox needs its own narrower, exact-match-only path.
+  'education.isCurrent':           ['currentlyenrolled', 'currentlystudying', 'currentstudent', 'isstillenrolled', 'presentlyenrolled'],
 };

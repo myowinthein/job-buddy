@@ -10,6 +10,7 @@ vi.mock('../utils/storage', () => ({
 vi.mock('./scanner', () => ({
   scanFields: vi.fn().mockReturnValue([]),
   scanAriaFields: vi.fn().mockReturnValue([]),
+  scanCheckboxGroups: vi.fn().mockReturnValue([]),
 }));
 vi.mock('./signals', () => ({
   extractSignals: vi.fn().mockReturnValue({ label: '', ariaLabel: '', placeholder: '', name: 'field', id: '', type: 'text' }),
@@ -19,6 +20,7 @@ vi.mock('./mapper', () => ({ mapField: vi.fn() }));
 vi.mock('./filler', () => ({
   fillField: vi.fn().mockResolvedValue(undefined),
   fillFileField: vi.fn().mockResolvedValue(true),
+  fillCheckboxInput: vi.fn(),
   clearFieldValue: vi.fn(),
 }));
 vi.mock('./highlighter', () => ({
@@ -41,9 +43,9 @@ vi.mock('./ai', () => ({ runAIAutofill: vi.fn().mockResolvedValue(false) }));
 
 import { scanAutofill, executeAutofill, undoAutofill, getLastResult, EMPTY_AUTOFILL_RESULT } from './index';
 import { getProfile, saveLearnedMappings } from '../utils/storage';
-import { scanFields, scanAriaFields } from './scanner';
+import { scanFields, scanAriaFields, scanCheckboxGroups } from './scanner';
 import { mapField } from './mapper';
-import { clearFieldValue, fillField } from './filler';
+import { clearFieldValue, fillField, fillCheckboxInput } from './filler';
 import { clearElementHighlight, clearHighlights, applyHighlight } from './highlighter';
 import { resolveProfileValue } from './resolver';
 import { refreshLearnedLabels, saveElementMappings } from './mappings';
@@ -733,5 +735,57 @@ describe('silent re-fill on visibilitychange', () => {
     await Promise.resolve();
 
     expect(fillField).not.toHaveBeenCalled();
+  });
+});
+
+describe('scanAutofill + executeAutofill — currently-studying checkbox', () => {
+  it('checks a matched checkbox when the resolved education entry is current', async () => {
+    const checkboxEl = document.createElement('input');
+    checkboxEl.type = 'checkbox';
+
+    vi.mocked(getProfile).mockResolvedValue({
+      ...makeProfile(),
+      education: [{ institution: 'MIT', degree: 'MSc', fieldOfStudy: 'CS', startDate: '2023-09', isCurrent: true }],
+    } as unknown as Profile);
+    vi.mocked(scanCheckboxGroups).mockReturnValue([
+      { name: 'current', groupLabel: '', isConsent: false, options: [{ element: checkboxEl, label: 'Currently studying here', value: 'on' }] },
+    ]);
+
+    await scanAutofill();
+    await executeAutofill('overwrite');
+
+    expect(fillCheckboxInput).toHaveBeenCalledWith(checkboxEl);
+  });
+
+  it('does not check a checkbox whose resolved education entry is not current', async () => {
+    const checkboxEl = document.createElement('input');
+    checkboxEl.type = 'checkbox';
+
+    vi.mocked(getProfile).mockResolvedValue({
+      ...makeProfile(),
+      education: [{ institution: 'MIT', degree: 'MSc', fieldOfStudy: 'CS', startDate: '2018-09', endDate: '2022-05' }],
+    } as unknown as Profile);
+    vi.mocked(scanCheckboxGroups).mockReturnValue([
+      { name: 'current', groupLabel: '', isConsent: false, options: [{ element: checkboxEl, label: 'Currently studying here', value: 'on' }] },
+    ]);
+
+    await scanAutofill();
+    await executeAutofill('overwrite');
+
+    expect(fillCheckboxInput).not.toHaveBeenCalled();
+  });
+
+  it('never checks an unrelated (e.g. consent) checkbox', async () => {
+    const checkboxEl = document.createElement('input');
+    checkboxEl.type = 'checkbox';
+
+    vi.mocked(scanCheckboxGroups).mockReturnValue([
+      { name: 'consent', groupLabel: '', isConsent: true, options: [{ element: checkboxEl, label: 'I agree to the Terms of Service', value: 'on' }] },
+    ]);
+
+    await scanAutofill();
+    await executeAutofill('overwrite');
+
+    expect(fillCheckboxInput).not.toHaveBeenCalled();
   });
 });

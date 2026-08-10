@@ -9,6 +9,7 @@ const LAYER_LABEL: Record<string, string> = {
   dictionary_exact: 'Dictionary',
   fuzzy:            'Fuzzy',
   custom_link:      'Custom Link',
+  checkbox_status:  'Checkbox',
   context:          'Context',
   none:             'No match',
 };
