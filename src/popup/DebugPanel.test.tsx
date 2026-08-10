@@ -84,13 +84,57 @@ describe('DebugPanel — AI entries', () => {
     expect(screen.getByText('personal.summary')).toBeTruthy();
   });
 
-  it('shows "ai conf=null" when aiConfidence is null', () => {
+  it('condenses an unchanged entry to a single muted line, not the full detail block', () => {
     const session = emptySession({
       ai: [{ fieldId: 'f2', label: 'x', type: 'text', aiResult: null, aiConfidence: null, finalState: 'unchanged' }],
     });
     render(<DebugPanel session={session} onClose={vi.fn()} />);
     fireEvent.click(screen.getByText('AI Mapping'));
-    expect(screen.getByText('ai conf=null')).toBeTruthy();
+
+    expect(screen.getByText('1 reviewed, no change')).toBeTruthy();
+    expect(screen.getByText('x')).toBeTruthy();
+    expect(screen.queryByText(/ai conf=/)).toBeNull();
+  });
+
+  it('shows changed entries in full detail and unchanged entries condensed in the same session', () => {
+    const session = emptySession({
+      ai: [
+        { fieldId: 'f1', label: 'Cover Letter', type: 'text', aiResult: 'personal.summary', aiConfidence: 'high', finalState: 'yellow' },
+        { fieldId: 'f2', label: 'Newsletter Opt-In', type: 'checkbox', aiResult: null, aiConfidence: null, finalState: 'unchanged' },
+      ],
+    });
+    render(<DebugPanel session={session} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByText('AI Mapping'));
+
+    expect(screen.getByText('personal.summary')).toBeTruthy();
+    expect(screen.getByText('ai conf=high')).toBeTruthy();
+    expect(screen.getByText('1 reviewed, no change')).toBeTruthy();
+    expect(screen.getByText('Newsletter Opt-In')).toBeTruthy();
+  });
+});
+
+describe('DebugPanel — summary bar', () => {
+  it('shows the total field count and a count for each non-zero state', () => {
+    const session = emptySession({ summary: { green: 2, yellow: 1, red: 0, gray: 3 } });
+    render(<DebugPanel session={session} onClose={vi.fn()} />);
+
+    expect(screen.getByText('6 fields scanned')).toBeTruthy();
+    expect(screen.getByText('2')).toBeTruthy();
+    expect(screen.getByText('1')).toBeTruthy();
+    expect(screen.getByText('3')).toBeTruthy();
+  });
+
+  it('uses singular "field" when the total is exactly 1', () => {
+    const session = emptySession({ summary: { green: 1, yellow: 0, red: 0, gray: 0 } });
+    render(<DebugPanel session={session} onClose={vi.fn()} />);
+    expect(screen.getByText('1 field scanned')).toBeTruthy();
+  });
+
+  it('omits zero-count states from the summary bar', () => {
+    const session = emptySession({ summary: { green: 0, yellow: 0, red: 5, gray: 0 } });
+    render(<DebugPanel session={session} onClose={vi.fn()} />);
+    expect(screen.getByText('5 fields scanned')).toBeTruthy();
+    expect(screen.queryByText('0')).toBeNull();
   });
 });
 
