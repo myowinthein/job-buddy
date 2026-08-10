@@ -589,6 +589,17 @@ describe('mapField — Layer 3.5: Custom link labels', () => {
     expect(result.matchLayer).toBe('dictionary_exact');
     expect(result.fieldPath).toBe('personal.firstName');
   });
+
+  it('applies the WEAK multiplier when the custom-link fuzzy score is between CONF_FILL and the strong threshold', () => {
+    // "beharse" vs "behance" → similarity 5/7 ≈ 0.7143 (>= CONF_FILL, < CONF_FUZZY_THRESHOLD).
+    const result = mapField(sig({ label: 'Beharse' }), withCustomLinks, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('custom_link');
+    expect(result.fieldPath).toBe('links.custom.1.url');
+    const score = 5 / 7;
+    expect(score).toBeGreaterThanOrEqual(0.60);
+    expect(score).toBeLessThan(0.75);
+    expect(result.confidence).toBeCloseTo(score * CONF_FUZZY_WEAK_MULT, 6);
+  });
 });
 
 describe('mapField — Layer 4: Context (nearbyText)', () => {
@@ -596,6 +607,16 @@ describe('mapField — Layer 4: Context (nearbyText)', () => {
     const result = mapField(sig({ name: 'field1', nearbyText: 'city' }), PROFILE, NO_MAPPINGS, DOMAIN);
     expect(result.matchLayer).toBe('context');
     expect(result.fieldPath).toBe('address.city');
+    expect(result.confidence).toBe(0.70);
+  });
+
+  it('fuzzy-matches nearbyText when it does not exactly match a dictionary term', () => {
+    // "citty" vs "city" → similarity 4/5 = 0.8 (>= CONF_FUZZY_THRESHOLD),
+    // so this exercises the fuzzy branch, not the exact one above.
+    const result = mapField(sig({ name: 'field1', nearbyText: 'citty' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('context');
+    expect(result.fieldPath).toBe('address.city');
+    // Layer 4 always reports CONF_CONTEXT regardless of exact vs fuzzy match.
     expect(result.confidence).toBe(0.70);
   });
 });
