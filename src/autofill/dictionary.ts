@@ -4,7 +4,7 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   'personal.email':                ['email', 'emailaddress', 'workemail', 'contactemail'],
   'personal.phone.full':           ['phone'],
   'personal.phone.number':         ['phonenumber', 'mobile', 'cellphone', 'telephone', 'mobilenumber', 'localnumber'],
-  'personal.phone.callingCode':    ['countrycode', 'callingcode', 'dialingcode', 'dialcode', 'phonecode', 'phoneextension'],
+  'personal.phone.callingCode':    ['countrycode', 'callingcode', 'dialingcode', 'dialcode', 'phonecode'],
   'personal.gender':               ['gender', 'sex'],
   'personal.ethnicity':            ['ethnicity', 'race', 'raceethnicity'],
   'personal.veteranStatus':        ['veteranstatus', 'veteran'],
