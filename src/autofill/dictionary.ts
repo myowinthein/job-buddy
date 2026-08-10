@@ -1,6 +1,7 @@
 export const FIELD_DICTIONARY: Record<string, string[]> = {
   'personal.firstName':            ['firstname', 'fname', 'givenname', 'forename', 'firstnm'],
   'personal.lastName':             ['lastname', 'lname', 'familyname', 'surname', 'lastnm'],
+  'personal.nickname':             ['nickname', 'preferredname', 'goesby', 'knownas'],
   'personal.email':                ['email', 'emailaddress', 'workemail', 'contactemail'],
   'personal.phone.full':           ['phone'],
   'personal.phone.number':         ['phonenumber', 'mobile', 'cellphone', 'telephone', 'mobilenumber', 'localnumber'],
