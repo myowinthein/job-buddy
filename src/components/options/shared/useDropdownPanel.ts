@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useDropdownOpenState } from './useDropdownOpenState';
 
 interface UseDropdownPanelOptions {
   // Called when the panel is about to open, before `search` is cleared —
@@ -6,16 +6,12 @@ interface UseDropdownPanelOptions {
   onOpen?: () => void;
 }
 
-// Open/search/outside-click/focus-on-open plumbing shared by dropdown panels
-// whose item rendering is too structurally different from the flat filtered
-// list useSearchableDropdown assumes (e.g. SearchableProfileFieldSelect's
-// grouped section/cluster/subgroup tree) to compose from that hook directly.
+// Thin wrapper around useDropdownOpenState for dropdown panels whose item
+// rendering is too structurally different from the flat filtered list
+// useSearchableDropdown assumes (e.g. SearchableProfileFieldSelect's grouped
+// section/cluster/subgroup tree) to compose from that hook directly.
 export function useDropdownPanel({ onOpen }: UseDropdownPanelOptions = {}) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
+  const { open, setOpen, search, setSearch, containerRef, searchRef } = useDropdownOpenState();
 
   const close = () => {
     setOpen(false);
@@ -29,19 +25,6 @@ export function useDropdownPanel({ onOpen }: UseDropdownPanelOptions = {}) {
     }
     setOpen((o) => !o);
   };
-
-  useEffect(() => {
-    if (open) searchRef.current?.focus();
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) close();
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
 
   return { open, search, setSearch, containerRef, searchRef, toggle, close };
 }
