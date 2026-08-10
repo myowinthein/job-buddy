@@ -57,9 +57,13 @@ export function DebugPanel({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-3"
       onClick={onClose}
     >
+      {/* items-start (not items-center) so the accordion sections below can
+          expand/collapse — changing this dialog's height — without the
+          whole dialog re-centering and visibly jumping on screen. Only the
+          bottom edge moves as content grows/shrinks. */}
       <div
         className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-md flex flex-col max-h-[90vh] text-gray-900 dark:text-gray-100"
         onClick={(e) => e.stopPropagation()}
