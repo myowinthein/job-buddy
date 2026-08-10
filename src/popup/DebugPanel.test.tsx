@@ -26,11 +26,13 @@ describe('DebugPanel — empty states', () => {
 
   it('shows "AI layer skipped…" when aiSkipped is true, even with ai entries present', () => {
     render(<DebugPanel session={emptySession({ aiSkipped: true })} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByText('AI Mapping'));
     expect(screen.getByText('AI layer skipped — no API key configured.')).toBeTruthy();
   });
 
   it('shows "No fields sent to AI." when aiSkipped is false and ai is empty', () => {
     render(<DebugPanel session={emptySession({ aiSkipped: false, ai: [] })} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByText('AI Mapping'));
     expect(screen.getByText('No fields sent to AI.')).toBeTruthy();
   });
 });
@@ -73,6 +75,7 @@ describe('DebugPanel — AI entries', () => {
       ai: [{ fieldId: 'f2', label: 'Cover Letter', type: 'text', aiResult: 'personal.summary', aiConfidence: 'high', finalState: 'yellow' }],
     });
     render(<DebugPanel session={session} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByText('AI Mapping'));
 
     expect(screen.getByText('Cover Letter')).toBeTruthy();
     expect(screen.getByText('[text]')).toBeTruthy();
@@ -86,7 +89,45 @@ describe('DebugPanel — AI entries', () => {
       ai: [{ fieldId: 'f2', label: 'x', type: 'text', aiResult: null, aiConfidence: null, finalState: 'unchanged' }],
     });
     render(<DebugPanel session={session} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByText('AI Mapping'));
     expect(screen.getByText('ai conf=null')).toBeTruthy();
+  });
+});
+
+describe('DebugPanel — accordion sections', () => {
+  it('starts with Manual Mapping expanded and AI Mapping collapsed', () => {
+    const session = emptySession({
+      mapping: [{ fieldId: 'f1', matchLayer: 'dictionary_exact', confidence: 0.85, profilePath: 'personal.firstName', finalState: 'green' }],
+      ai: [{ fieldId: 'f2', label: 'Cover Letter', type: 'text', aiResult: null, aiConfidence: 'low', finalState: 'yellow' }],
+    });
+    render(<DebugPanel session={session} onClose={vi.fn()} />);
+
+    expect(screen.getByText('personal.firstName')).toBeTruthy(); // Manual Mapping content visible
+    expect(screen.queryByText('Cover Letter')).toBeNull(); // AI Mapping content hidden until expanded
+  });
+
+  it('expands AI Mapping on click, revealing its content', () => {
+    const session = emptySession({
+      ai: [{ fieldId: 'f2', label: 'Cover Letter', type: 'text', aiResult: null, aiConfidence: 'low', finalState: 'yellow' }],
+    });
+    render(<DebugPanel session={session} onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByText('AI Mapping'));
+    expect(screen.getByText('Cover Letter')).toBeTruthy();
+  });
+
+  it('shows the field count as each section\'s subtitle', () => {
+    const session = emptySession({
+      mapping: [
+        { fieldId: 'f1', matchLayer: 'dictionary_exact', confidence: 0.85, profilePath: 'personal.firstName', finalState: 'green' },
+        { fieldId: 'f2', matchLayer: 'none', confidence: 0, profilePath: null, finalState: 'red' },
+      ],
+      ai: [{ fieldId: 'f3', label: 'x', type: 'text', aiResult: null, aiConfidence: null, finalState: 'unchanged' }],
+    });
+    render(<DebugPanel session={session} onClose={vi.fn()} />);
+
+    expect(screen.getByText('2 fields')).toBeTruthy();
+    expect(screen.getByText('1 field')).toBeTruthy();
   });
 });
 
