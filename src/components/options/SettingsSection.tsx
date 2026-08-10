@@ -546,7 +546,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         const localMappings = await getLearnedMappings();
         await saveLearnedMappings(mergeLearnedMappings(localMappings, driveRestoreData.learnedMappings));
       }
-      void syncProfileToDrive(applied as Profile);
+      // saveProfile() above already triggers the debounced background sync
+      // (see entrypoints/background.ts) — an explicit call here would upload twice.
       showToast('success', 'Profile updated from Drive backup');
       onImportComplete();
       closeRestoreDialog();
