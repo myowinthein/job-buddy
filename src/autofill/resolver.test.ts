@@ -232,6 +232,19 @@ describe('resolveProfileValue', () => {
     expect(result).toContain('Bangkok');
   });
 
+  it('resolves workHistory.0.location.city to just the city', () => {
+    expect(resolveProfileValue(PROFILE, 'workHistory.0.location.city')).toBe('Bangkok');
+  });
+
+  it('resolves workHistory.0.location.countryName to the resolved country name', () => {
+    expect(resolveProfileValue(PROFILE, 'workHistory.0.location.countryName')).toBe('Thailand');
+  });
+
+  it('returns empty for workHistory.location.countryName when no location is set', () => {
+    const p = { ...PROFILE, workHistory: [{ ...PROFILE.workHistory[0], location: undefined }] };
+    expect(resolveProfileValue(p, 'workHistory.0.location.countryName')).toBe('');
+  });
+
   it('resolves workHistory.0.title via generic fallthrough', () => {
     expect(resolveProfileValue(PROFILE, 'workHistory.0.title')).toBe('Senior Engineer');
   });
