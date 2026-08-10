@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { DebugSession } from '@/src/autofill/debug';
+import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 
 const LAYER_LABEL: Record<string, string> = {
   learned:          'Learned',
@@ -50,6 +51,8 @@ export function DebugPanel({
     () => new Map(session.scanner.map((s) => [s.fieldId, s])),
     [session.scanner],
   );
+
+  useEscapeToClose(onClose);
 
   return (
     <div

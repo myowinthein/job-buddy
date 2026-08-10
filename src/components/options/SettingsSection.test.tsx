@@ -183,6 +183,36 @@ describe('SettingsSection — Reset All Data confirmation gate', () => {
     expect(vi.mocked(saveThemePreference)).toHaveBeenCalledWith('system');
     expect(vi.mocked(applyTheme)).toHaveBeenCalledWith('system');
   });
+
+  it('closes on Escape before confirming', async () => {
+    vi.mocked(getProfile).mockResolvedValue(makeProfile());
+
+    renderSection();
+    fireEvent.click(await screen.findByText('Reset Now'));
+    await screen.findByText('This cannot be undone.');
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByText('This cannot be undone.')).toBeNull();
+  });
+
+  it('ignores Escape while a reset is actually in flight', async () => {
+    vi.mocked(getProfile).mockResolvedValue(makeProfile());
+    let resolveClear!: () => void;
+    vi.mocked(clearAllStorage).mockReturnValueOnce(new Promise((resolve) => { resolveClear = () => resolve(undefined); }));
+
+    renderSection();
+    fireEvent.click(await screen.findByText('Reset Now'));
+    await screen.findByText('This cannot be undone.');
+    fireEvent.change(screen.getByPlaceholderText('DELETE'), { target: { value: 'DELETE' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Reset All Data' }));
+
+    await screen.findByText('Resetting…');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByText('Resetting…')).toBeTruthy(); // dialog is still up, mid-reset
+
+    resolveClear();
+    await waitFor(() => expect(screen.queryByText('This cannot be undone.')).toBeNull());
+  });
 });
 
 describe('SettingsSection — fmtDriveTimestamp (via the connected Drive state display)', () => {
@@ -272,6 +302,53 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     fireEvent.click(await screen.findByText('Connect Google Drive'));
 
     expect(await screen.findByText('Could not connect to Google Drive. Please try again.')).toBeTruthy();
+  });
+
+  it('closes the restore dialog on Escape', async () => {
+    vi.mocked(getProfile).mockResolvedValue(null);
+    vi.mocked(connectDrive).mockResolvedValue({
+      token: 't', fileId: 'f1',
+      backup: { profile: makeProfile(), lastModified: '2026-01-01T00:00:00.000Z' },
+    });
+
+    renderSection();
+    fireEvent.click(await screen.findByText('Connect Google Drive'));
+    await screen.findByText('Profile found in Google Drive. Restore it?');
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByText('Profile found in Google Drive. Restore it?')).toBeNull();
+  });
+
+  it('ignores Escape on the restore dialog while a restore is actually in flight', async () => {
+    vi.mocked(getProfile).mockResolvedValue(null);
+    vi.mocked(connectDrive).mockResolvedValue({
+      token: 't', fileId: 'f1',
+      backup: { profile: makeProfile(), lastModified: '2026-01-01T00:00:00.000Z' },
+    });
+    let resolveSave!: () => void;
+    vi.mocked(saveProfile).mockReturnValueOnce(new Promise((resolve) => { resolveSave = () => resolve(undefined); }));
+
+    renderSection();
+    fireEvent.click(await screen.findByText('Connect Google Drive'));
+    fireEvent.click(await screen.findByText('Restore'));
+
+    await screen.findByText('Restoring…');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByText('Restoring…')).toBeTruthy(); // dialog is still up, mid-restore
+
+    resolveSave();
+    await waitFor(() => expect(screen.queryByText('Profile found in Google Drive. Restore it?')).toBeNull());
+  });
+
+  it('closes the disconnect dialog on Escape', async () => {
+    vi.mocked(getFullDriveState).mockResolvedValue({ connected: true, lastSynced: null, pendingSync: false, error: null });
+
+    renderSection();
+    fireEvent.click(await screen.findByText('Disconnect'));
+    await screen.findByText('What to do with your Drive backup?');
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByText('What to do with your Drive backup?')).toBeNull();
   });
 });
 

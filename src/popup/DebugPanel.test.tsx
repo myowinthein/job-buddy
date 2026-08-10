@@ -111,4 +111,11 @@ describe('DebugPanel — close interactions', () => {
     fireEvent.click(screen.getByText('×'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('calls onClose on Escape', () => {
+    const onClose = vi.fn();
+    render(<DebugPanel session={emptySession()} onClose={onClose} />);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

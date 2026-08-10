@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FieldChange } from '@/src/resume-ai/types';
+import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 
 // FieldRow only ever renders 'new' or 'conflict' rows — every caller
 // pre-filters out 'unchanged' fields before reaching it.
@@ -49,6 +50,10 @@ export default function ImportReviewScreen({
     setChanges((prev) => prev.map((c) => (c.id === id ? { ...c, accepted: useSuggested } : c)));
 
   const handleSave = () => { void onSave(changes); };
+
+  // Same guard as the backdrop click below — no dismissal while a save is
+  // in flight, since the write isn't meaningfully cancelable mid-flight.
+  useEscapeToClose(isSaving ? undefined : onBack);
 
   // Single pass bucketing reviewable (non-'unchanged') fields by section,
   // instead of re-filtering the full `changes` array once per SECTION_ORDER entry.
