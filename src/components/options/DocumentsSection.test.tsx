@@ -103,6 +103,79 @@ describe('DocumentsSection — file-type restriction (drag-and-drop bypasses the
   });
 });
 
+describe('DocumentsSection — drag-and-drop upload', () => {
+  it('accepts a valid file dropped onto the dropzone', async () => {
+    renderSection({ documents: { cv: {} } });
+    fireEvent.click(screen.getByText('Upload'));
+
+    const file = new File(['fake pdf content'], 'resume.pdf', { type: 'application/pdf' });
+    const dropzone = screen.getByText('Drag & drop a file here, or click to browse').parentElement!;
+    fireEvent.drop(dropzone, { dataTransfer: { files: [file] } });
+
+    expect(await screen.findByText('resume.pdf')).toBeTruthy();
+  });
+
+  it('runs the same type validation for a dropped file as for a browsed one', async () => {
+    renderSection({ documents: { cv: {} } });
+    fireEvent.click(screen.getByText('Upload'));
+
+    const file = new File(['not a document'], 'malware.exe', { type: 'application/octet-stream' });
+    const dropzone = screen.getByText('Drag & drop a file here, or click to browse').parentElement!;
+    fireEvent.drop(dropzone, { dataTransfer: { files: [file] } });
+
+    expect(await screen.findByText('Only PDF and Word documents (.pdf, .doc, .docx) are supported')).toBeTruthy();
+  });
+
+  it('clears dragOver highlighting state via onDrop, not just the file itself', async () => {
+    renderSection({ documents: { cv: {} } });
+    fireEvent.click(screen.getByText('Upload'));
+
+    const dropzone = screen.getByText('Drag & drop a file here, or click to browse').parentElement!;
+    fireEvent.dragOver(dropzone);
+    const file = new File(['fake pdf content'], 'resume.pdf', { type: 'application/pdf' });
+    fireEvent.drop(dropzone, { dataTransfer: { files: [file] } });
+
+    await screen.findByText('resume.pdf');
+    // No lingering drag-highlight background once a file has landed — only
+    // the dragOver-active branch applies bg-blue-50 (the class name also
+    // appears as hover:border-blue-400 regardless of state, so check the
+    // background class instead of the ambiguous border one).
+    expect(dropzone.className).not.toContain('bg-blue-50');
+  });
+});
+
+describe('DocumentsSection — Remove file', () => {
+  it('clears the attached file and reverts the dropzone to its empty state', async () => {
+    renderSection({ documents: { cv: {} } });
+    fireEvent.click(screen.getByText('Upload'));
+
+    const file = new File(['fake pdf content'], 'resume.pdf', { type: 'application/pdf' });
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [file] } });
+    await screen.findByText('resume.pdf');
+
+    fireEvent.click(screen.getByText('Remove file'));
+
+    expect(screen.queryByText('resume.pdf')).toBeNull();
+    expect(screen.getByText('Drag & drop a file here, or click to browse')).toBeTruthy();
+  });
+
+  it('does not also trigger the dropzone click-to-browse handler (event does not bubble to open the file picker)', async () => {
+    renderSection({ documents: { cv: {} } });
+    fireEvent.click(screen.getByText('Upload'));
+
+    const file = new File(['fake pdf content'], 'resume.pdf', { type: 'application/pdf' });
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [file] } });
+    await screen.findByText('resume.pdf');
+
+    const clickSpy = vi.spyOn(fileInput, 'click');
+    fireEvent.click(screen.getByText('Remove file'));
+
+    expect(clickSpy).not.toHaveBeenCalled();
+  });
+});
+
 describe('DocumentsSection — file-size restriction (4 MB cap)', () => {
   it('rejects a file over the 4 MB limit and reports its size', async () => {
     renderSection({ documents: { cv: {} } });
