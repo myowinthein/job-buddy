@@ -108,6 +108,15 @@ export const FIELD_DEFS: FieldDef[] = [
     display: (v) => String(v ?? ''),
   },
   {
+    id: 'personal.nickname',
+    label: 'Nickname',
+    section: 'Personal',
+    getValue: (p) => p.personal?.nickname ?? null,
+    setValue: setNestedField('personal', 'nickname', {} as Profile['personal']),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? ''),
+  },
+  {
     id: 'personal.email',
     label: 'Email',
     section: 'Personal',
