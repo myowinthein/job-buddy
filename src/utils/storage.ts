@@ -254,3 +254,18 @@ export async function getThemePreference(): Promise<'system' | 'light' | 'dark'>
 export async function saveThemePreference(value: 'system' | 'light' | 'dark'): Promise<void> {
   await storageSet({ themePreference: value });
 }
+
+// ── AI-drafted open-ended answers ────────────────────────────────────────────
+// Off by default — a qualitatively different capability from the existing
+// AI matching layer (composes new prose from the job description rather
+// than picking existing profile data), so it's opt-in even for users who
+// already have a Gemini key configured for field matching.
+
+export async function getAiAnswerDraftsEnabled(): Promise<boolean> {
+  const result = await storageGet('aiAnswerDraftsEnabled');
+  return (result.aiAnswerDraftsEnabled as boolean | undefined) ?? false;
+}
+
+export async function saveAiAnswerDraftsEnabled(enabled: boolean): Promise<void> {
+  await storageSet({ aiAnswerDraftsEnabled: enabled });
+}

@@ -17,6 +17,8 @@ vi.mock('@/src/utils/storage', () => ({
   saveGeminiModel: vi.fn().mockResolvedValue(undefined),
   clearGeminiSettings: vi.fn().mockResolvedValue(undefined),
   saveThemePreference: vi.fn().mockResolvedValue(undefined),
+  getAiAnswerDraftsEnabled: vi.fn().mockResolvedValue(false),
+  saveAiAnswerDraftsEnabled: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock('@/src/utils/theme', () => ({
   applyTheme: vi.fn(),
@@ -44,7 +46,7 @@ vi.mock('@/src/utils/profileValidator', () => ({
 
 import { SettingsSection } from './SettingsSection';
 import { ToastProvider } from '@/src/components/ui/Toast';
-import { getProfile, saveProfile, getGeminiApiKey, clearAllStorage, saveLearnedMappings, getLearnedMappings, getApplicationHistory, saveGeminiModel, clearGeminiSettings, saveThemePreference } from '@/src/utils/storage';
+import { getProfile, saveProfile, getGeminiApiKey, clearAllStorage, saveLearnedMappings, getLearnedMappings, getApplicationHistory, saveGeminiModel, clearGeminiSettings, saveThemePreference, getAiAnswerDraftsEnabled, saveAiAnswerDraftsEnabled } from '@/src/utils/storage';
 import { checkApiKey, validateApiKey } from '@/src/resume-ai/gemini';
 import { getFullDriveState, disconnectDrive, connectDrive, syncProfileToDrive } from '@/src/utils/driveSync';
 import { applyTheme } from '@/src/utils/theme';
@@ -78,6 +80,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getProfile).mockResolvedValue(null);
   vi.mocked(getGeminiApiKey).mockResolvedValue(null);
+  vi.mocked(getAiAnswerDraftsEnabled).mockResolvedValue(false);
   vi.mocked(getFullDriveState).mockResolvedValue({ connected: false, lastSynced: null, pendingSync: false, error: null });
   vi.mocked(getLearnedMappings).mockResolvedValue({});
 });
@@ -392,5 +395,54 @@ describe('SettingsSection — Export', () => {
     expect(await screen.findByText('Profile exported successfully')).toBeTruthy();
 
     createElementSpy.mockRestore();
+  });
+});
+
+describe('SettingsSection — AI-Drafted Answers setting', () => {
+  it('is hidden when no Gemini key is configured', async () => {
+    renderSection();
+    await screen.findByText('AI Features');
+    expect(screen.queryByText('AI-Drafted Answers')).toBeNull();
+  });
+
+  it('shows Off selected by default once a valid key is configured', async () => {
+    vi.mocked(getGeminiApiKey).mockResolvedValue('valid-key');
+    renderSection();
+
+    await screen.findByText('AI-Drafted Answers');
+    const [off, on] = screen.getAllByRole('radio', { name: /Off|On/ }) as HTMLInputElement[];
+    expect(off.checked).toBe(true);
+    expect(on.checked).toBe(false);
+  });
+
+  it('reflects a previously-saved "on" preference on load', async () => {
+    vi.mocked(getGeminiApiKey).mockResolvedValue('valid-key');
+    vi.mocked(getAiAnswerDraftsEnabled).mockResolvedValue(true);
+    renderSection();
+
+    await screen.findByText('AI-Drafted Answers');
+    const on = screen.getByRole('radio', { name: 'On' }) as HTMLInputElement;
+    expect(on.checked).toBe(true);
+  });
+
+  it('saves the new value when switched to On', async () => {
+    vi.mocked(getGeminiApiKey).mockResolvedValue('valid-key');
+    renderSection();
+
+    await screen.findByText('AI-Drafted Answers');
+    fireEvent.click(screen.getByRole('radio', { name: 'On' }));
+
+    expect(vi.mocked(saveAiAnswerDraftsEnabled)).toHaveBeenCalledWith(true);
+  });
+
+  it('saves the new value when switched back to Off', async () => {
+    vi.mocked(getGeminiApiKey).mockResolvedValue('valid-key');
+    vi.mocked(getAiAnswerDraftsEnabled).mockResolvedValue(true);
+    renderSection();
+
+    await screen.findByText('AI-Drafted Answers');
+    fireEvent.click(screen.getByRole('radio', { name: 'Off' }));
+
+    expect(vi.mocked(saveAiAnswerDraftsEnabled)).toHaveBeenCalledWith(false);
   });
 });
