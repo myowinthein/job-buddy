@@ -74,3 +74,30 @@ describe('ImportSummaryDialog — isProcessing state', () => {
     expect(screen.queryByText('Accept All')).toBeNull();
   });
 });
+
+describe('ImportSummaryDialog — backdrop and Escape dismissal (parity with ImportReviewScreen)', () => {
+  it('calls onRejectAll when the backdrop is clicked, but not when the dialog body is clicked', () => {
+    const { onAcceptAll, onRejectAll } = renderDialog([change('new')]);
+    fireEvent.click(screen.getByText('Accept All'));
+    expect(onAcceptAll).toHaveBeenCalledTimes(1);
+    expect(onRejectAll).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText('Accept All').closest('.fixed')!);
+    expect(onRejectAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onRejectAll on Escape', () => {
+    const { onRejectAll } = renderDialog([change('new')]);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onRejectAll).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores Escape while isProcessing is true, same as the backdrop click', () => {
+    const { onRejectAll } = renderDialog([change('new')], { isProcessing: true });
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onRejectAll).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText('Saving…').closest('.fixed')!);
+    expect(onRejectAll).not.toHaveBeenCalled();
+  });
+});
