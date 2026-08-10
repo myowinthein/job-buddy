@@ -1,4 +1,5 @@
 import { FileUp, Brain } from 'lucide-react';
+import { LOGO_ICON_SRC } from '@/src/utils/branding';
 
 interface Section {
   id: string;
@@ -82,7 +83,7 @@ export function Sidebar({
       <div className={`flex items-center h-16 px-3 border-b border-gray-200 dark:border-gray-800 ${collapsed ? 'justify-center' : 'justify-between'}`}>
         {!collapsed && (
           <div className="flex items-center gap-2 min-w-0 flex-1 mr-1">
-            <img src="/icon.svg" alt="" className="w-7 h-7 shrink-0" />
+            <img src={LOGO_ICON_SRC} alt="" className="w-7 h-7 shrink-0" />
             <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">Job Buddy</span>
           </div>
         )}
@@ -93,7 +94,7 @@ export function Sidebar({
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {collapsed ? (
-            <img src="/icon.svg" alt="Job Buddy" className="w-5 h-5" />
+            <img src={LOGO_ICON_SRC} alt="Job Buddy" className="w-5 h-5" />
           ) : (
             <MenuIcon />
           )}
