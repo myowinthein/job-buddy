@@ -3821,11 +3821,11 @@
         "src/autofill/resolver.ts"
       ],
       "description": "The 'salary.expected' dictionary marker resolves via resolveDictionaryHit() to the literal path salary.expected, but resolveProfileValue() has no case for that bare path and falls through to generic traversal, which returns '' for any array value. Unlike languages/education/workHistory (each with a dedicated adjustXMatches() sibling-resolution pass rewriting the marker to prefix.N.field), salary never got the same treatment — no salaryResolution.ts exists. Any field exact-matching this dictionary entry always resolves empty and lands in gray/noData, never actually autofilling expected salary.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "67d37ee",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0237",
