@@ -74,6 +74,20 @@ describe('useScrollToNewEntry', () => {
     expect(document.activeElement).toBe(last.querySelector('#real-target'));
   });
 
+  it('cancels the pending animation frame on unmount, never touching a since-removed element', async () => {
+    const last = document.createElement('div');
+    last.innerHTML = '<input type="text" />';
+    container.appendChild(last);
+    const ref: RefObject<HTMLDivElement | null> = { current: container };
+
+    const { rerender, unmount } = renderHook(({ tick }) => useScrollToNewEntry(ref, tick), { initialProps: { tick: 0 } });
+    rerender({ tick: 1 });
+    unmount(); // before the rAF callback has a chance to fire
+    await flushRaf();
+
+    expect(vi.mocked(last.scrollIntoView)).not.toHaveBeenCalled();
+  });
+
   it('focuses a select or an aria-haspopup=listbox button when present instead of skipping to nothing', async () => {
     const last = document.createElement('div');
     last.innerHTML = `<select><option>a</option></select>`;
