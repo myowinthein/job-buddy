@@ -41,6 +41,9 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   'salary.current.amount':         ['currentsalary', 'currentctc', 'currentcompensation', 'currentsalaryexpectation'],
   'salary.expected':               ['expectedsalary', 'desiredcompensation', 'expectedctc', 'desiredsalary', 'salaryexpectation'],
   'professional.noticePeriod.availableDate': ['dateavailable', 'availablefrom', 'availabledate', 'earlieststartdate', 'availabletostart', 'startavailability', 'availabilitydate'],
+  // Distinct from availableDate above — a "Notice Period" duration dropdown
+  // needs "Immediate"/"2 Weeks"/"1 Month", not a computed calendar date.
+  'professional.noticePeriod.formatted': ['noticeperiod', 'periodofnotice', 'noticerequired', 'noticetime'],
   'workAuthorization':             ['workauthorization', 'workpermit', 'authorizedtowork', 'eligibletowork', 'workeligibility'],
   // Also covers a URL/text field sharing the same label wording — mapper.ts's
   // resolveDictionaryHit() redirects to documents.cv.url for a non-file

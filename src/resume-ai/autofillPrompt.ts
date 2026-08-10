@@ -22,6 +22,7 @@ Virtual profilePaths (valid even though they are not direct object keys):
 - personal.phone.callingCode — country calling code only (e.g. "+66"); use for a separate country-code / extension field
 - personal.phone.number — local number only (e.g. "812345678"); use for a separate local-number field
 - professional.noticePeriod.availableDate — YYYY-MM-DD date when the applicant can start, computed from their notice period; use for "Date Available", "Available From", "Earliest Start Date" fields
+- professional.noticePeriod.formatted — the applicant's notice period as a duration string, e.g. "Immediate" or "2 Weeks"; use for a "Notice Period" select/radio field with duration-style options. Never use this for a date field — use professional.noticePeriod.availableDate instead
 - address.countryName — country name resolved from the country code
 - languages.formatted — every language the applicant speaks joined into one string, e.g. "English (Native), Thai (Fluent)"; use for a single free-text/textarea field asking to list all languages spoken. For a per-language dropdown pair (a language field and a separate proficiency field, possibly repeated for multiple languages), use languages.N.language and languages.N.proficiency instead (N = 0, 1, 2... matching the applicant's language entries in order)
 
