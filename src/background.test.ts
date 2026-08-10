@@ -13,18 +13,21 @@ vi.mock('@/src/utils/driveSync', () => ({
 // implementation (wxt/dist/utils/define-background.mjs) is exactly this
 // trivial, side-effect-free wrapper — inlined here rather than dynamically
 // imported, since vi.hoisted's callback must stay synchronous.
-const { onStartupAddListener, storageOnChangedAddListener } = vi.hoisted(() => {
+const { onStartupAddListener, storageOnChangedAddListener, setBadgeText, setBadgeBackgroundColor } = vi.hoisted(() => {
   const onStartupAddListener = vi.fn();
   const storageOnChangedAddListener = vi.fn();
+  const setBadgeText = vi.fn();
+  const setBadgeBackgroundColor = vi.fn();
 
   vi.stubGlobal('chrome', {
     runtime: { onStartup: { addListener: onStartupAddListener } },
     storage: { onChanged: { addListener: storageOnChangedAddListener } },
+    action: { setBadgeText, setBadgeBackgroundColor },
   });
   vi.stubGlobal('defineBackground', (arg: unknown) =>
     (arg == null || typeof arg === 'function') ? { main: arg } : arg);
 
-  return { onStartupAddListener, storageOnChangedAddListener };
+  return { onStartupAddListener, storageOnChangedAddListener, setBadgeText, setBadgeBackgroundColor };
 });
 
 import background from '@/entrypoints/background';
@@ -45,6 +48,13 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+describe('background — dev build badge', () => {
+  it('sets a DEV badge on the toolbar icon (import.meta.env.DEV is true under Vitest)', () => {
+    expect(setBadgeText).toHaveBeenCalledWith({ text: 'DEV' });
+    expect(setBadgeBackgroundColor).toHaveBeenCalledWith({ color: '#dc2626' });
+  });
 });
 
 describe('background — onStartup retries pending Drive sync', () => {
