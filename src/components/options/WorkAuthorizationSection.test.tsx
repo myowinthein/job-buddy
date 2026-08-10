@@ -5,6 +5,10 @@ import { WorkAuthorizationSection } from './WorkAuthorizationSection';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import type { Profile } from '@/src/types/profile';
 
+// jsdom doesn't implement Element.scrollIntoView; SearchableCountryDropdown's
+// keyboard-highlight effect calls it whenever the panel opens.
+Element.prototype.scrollIntoView = vi.fn();
+
 afterEach(cleanup);
 
 function renderSection(profile: Partial<Profile>, onSave = vi.fn().mockResolvedValue(undefined)) {
@@ -68,5 +72,47 @@ describe('WorkAuthorizationSection — validation and entry management', () => {
     const removeButtons = screen.getAllByTitle('Remove');
     fireEvent.click(removeButtons[1]);
     expect(screen.queryByText('Entry 2')).toBeNull();
+  });
+
+  it('editing one entry\'s status by index does not affect a different entry', () => {
+    const { onSave } = renderSection({
+      workAuthorization: [
+        { country: 'SG', status: 'citizen_or_pr' },
+        { country: 'US', status: 'work_visa' },
+      ],
+    });
+
+    const statusSelects = screen.getAllByRole('combobox');
+    fireEvent.change(statusSelects[1], { target: { value: 'requires_sponsorship' } });
+    fireEvent.click(screen.getByText('Save Work Authorization'));
+
+    expect(onSave).toHaveBeenCalledWith({
+      workAuthorization: [
+        { country: 'SG', status: 'citizen_or_pr' },
+        { country: 'US', status: 'requires_sponsorship' },
+      ],
+    });
+  });
+
+  it('editing one entry\'s country via the dropdown does not affect a different entry', () => {
+    const { onSave } = renderSection({
+      workAuthorization: [
+        { country: 'SG', status: 'citizen_or_pr' },
+        { country: 'US', status: 'work_visa' },
+      ],
+    });
+
+    const countryTriggers = document.querySelectorAll('button[aria-haspopup="listbox"]');
+    fireEvent.click(countryTriggers[1]);
+    fireEvent.change(screen.getByPlaceholderText('Search country or code…'), { target: { value: 'Thailand' } });
+    fireEvent.click(screen.getByText('Thailand'));
+    fireEvent.click(screen.getByText('Save Work Authorization'));
+
+    expect(onSave).toHaveBeenCalledWith({
+      workAuthorization: [
+        { country: 'SG', status: 'citizen_or_pr' },
+        { country: 'TH', status: 'work_visa' },
+      ],
+    });
   });
 });
