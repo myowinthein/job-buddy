@@ -74,6 +74,10 @@ function validatePersonal(data: Record<string, unknown>, err: ErrFn): Profile['p
     if (typeof p.lastName === 'string' && p.lastName.length <= 100) sp.lastName = p.lastName;
     else err('personal.lastName', 'expected string, max 100 chars');
   }
+  if (p.nickname !== undefined) {
+    if (typeof p.nickname === 'string' && p.nickname.length <= 100) sp.nickname = p.nickname;
+    else err('personal.nickname', 'expected string, max 100 chars');
+  }
   if (p.email !== undefined) {
     if (typeof p.email === 'string' && RE_EMAIL.test(p.email)) sp.email = p.email;
     else err('personal.email', 'invalid email format');

@@ -177,4 +177,47 @@ describe('PersonalSection — save validation', () => {
       }),
     });
   });
+
+  it('nickname is optional — saves successfully when left blank', async () => {
+    const { onSave } = renderSection({ personal: {} as unknown as Profile['personal'] });
+    fireEvent.change(document.getElementById('field-firstName')!, { target: { value: 'Jane' } });
+    fireEvent.change(document.getElementById('field-lastName')!, { target: { value: 'Doe' } });
+    fireEvent.change(document.getElementById('field-email')!, { target: { value: 'jane@example.com' } });
+    fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
+
+    fireEvent.click(screen.getByText('Save Personal Information'));
+
+    expect(onSave).toHaveBeenCalledWith({
+      personal: expect.objectContaining({ nickname: undefined }),
+    });
+  });
+
+  it('saves a trimmed nickname when provided', async () => {
+    const { onSave } = renderSection({ personal: {} as unknown as Profile['personal'] });
+    fireEvent.change(document.getElementById('field-firstName')!, { target: { value: 'Jane' } });
+    fireEvent.change(document.getElementById('field-lastName')!, { target: { value: 'Doe' } });
+    fireEvent.change(document.getElementById('field-email')!, { target: { value: 'jane@example.com' } });
+    fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
+    fireEvent.change(document.getElementById('field-nickname')!, { target: { value: '  Janey  ' } });
+
+    fireEvent.click(screen.getByText('Save Personal Information'));
+
+    expect(onSave).toHaveBeenCalledWith({
+      personal: expect.objectContaining({ nickname: 'Janey' }),
+    });
+  });
+
+  it('rejects a nickname over 100 characters', () => {
+    const { onSave } = renderSection({ personal: {} as unknown as Profile['personal'] });
+    fireEvent.change(document.getElementById('field-firstName')!, { target: { value: 'Jane' } });
+    fireEvent.change(document.getElementById('field-lastName')!, { target: { value: 'Doe' } });
+    fireEvent.change(document.getElementById('field-email')!, { target: { value: 'jane@example.com' } });
+    fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
+    fireEvent.change(document.getElementById('field-nickname')!, { target: { value: 'a'.repeat(101) } });
+
+    fireEvent.click(screen.getByText('Save Personal Information'));
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText('Nickname must be 100 characters or fewer')).toBeTruthy();
+  });
 });

@@ -108,6 +108,7 @@ export interface Profile {
   personal: {
     firstName: string;
     lastName: string;
+    nickname?: string;
     email: string;
     phone: PhoneNumber;
     dateOfBirth?: string;

@@ -16,6 +16,7 @@ Schema (omit or set null for any field not found in the resume):
   "personal": {
     "firstName": string | null,
     "lastName": string | null,
+    "nickname": string | null,
     "email": string | null,
     "phone": { "countryCode": "ISO-2 e.g. US", "callingCode": "+1", "number": "local digits only" } | null,
     "dateOfBirth": "YYYY-MM-DD" | null,

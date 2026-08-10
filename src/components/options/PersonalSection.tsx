@@ -44,6 +44,7 @@ export function PersonalSection({ profile, onSave }: Props) {
   const [form, setForm] = useState({
     firstName: p?.firstName ?? '',
     lastName: p?.lastName ?? '',
+    nickname: p?.nickname ?? '',
     email: p?.email ?? '',
     phoneCountry: initPh.country,
     phoneCallingCode: initPh.callingCode,
@@ -64,6 +65,7 @@ export function PersonalSection({ profile, onSave }: Props) {
     switch (key) {
       case 'firstName': return !value.trim() ? 'First name is required' : '';
       case 'lastName':  return !value.trim() ? 'Last name is required' : '';
+      case 'nickname':  return value.length > 100 ? 'Nickname must be 100 characters or fewer' : '';
       case 'email':
         if (!value.trim()) return 'Email is required';
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Enter a valid email address';
@@ -118,6 +120,8 @@ export function PersonalSection({ profile, onSave }: Props) {
     if (!form.lastName.trim()) e.lastName = 'Last name is required';
     else if (form.lastName.length > 100) e.lastName = 'Last name must be 100 characters or fewer';
 
+    if (form.nickname.length > 100) e.nickname = 'Nickname must be 100 characters or fewer';
+
     if (!form.email.trim()) e.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Enter a valid email address';
     else if (form.email.length > 254) e.email = 'Email must be 254 characters or fewer';
@@ -151,6 +155,7 @@ export function PersonalSection({ profile, onSave }: Props) {
       personal: {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
+        nickname: form.nickname.trim() || undefined,
         email: form.email.trim(),
         phone: {
           countryCode: form.phoneCountry,
@@ -199,6 +204,18 @@ export function PersonalSection({ profile, onSave }: Props) {
           />
         </FormField>
       </div>
+
+      <FormField label="Nickname" error={errors.nickname}>
+        <input
+          className={cls(errors.nickname)}
+          value={form.nickname}
+          onChange={(e) => set('nickname', e.target.value)}
+          onBlur={() => handleBlur('nickname')}
+          id="field-nickname"
+          placeholder="Johnny"
+          maxLength={100}
+        />
+      </FormField>
 
       {/* Email */}
       <FormField label="Email" required error={errors.email}>
