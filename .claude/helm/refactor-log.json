@@ -3782,11 +3782,11 @@
         "src/components/options/shared/useSearchableDropdown.ts"
       ],
       "description": "useDropdownPanel.ts duplicates open-state/search/outside-click/focus-on-open plumbing already in useSearchableDropdown.ts — nearly identical logic, only the filter/highlight machinery differs. Extract a smaller shared primitive both hooks compose from.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "fbb7b7f",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0235",
