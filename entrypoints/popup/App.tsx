@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CheckCircle } from 'lucide-react';
 import { getProfile, getGeminiApiKey } from '@/src/utils/storage';
+import { LOGO_ICON_SRC } from '@/src/utils/branding';
 import { sessionGet, sessionSet } from '@/src/utils/sessionStorage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import type { DebugSession } from '@/src/autofill/debug';
@@ -272,7 +273,7 @@ function App() {
       {/* Header */}
       <div className="flex items-center gap-2.5 mb-5">
         <img
-          src="/icon.svg"
+          src={LOGO_ICON_SRC}
           alt="Job Buddy"
           className="w-8 h-8 shrink-0"
           role={autofillState === 'success' ? 'button' : undefined}
