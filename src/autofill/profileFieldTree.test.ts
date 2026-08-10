@@ -206,6 +206,23 @@ describe('buildPickerTree', () => {
       expect(collapsedFlags).toEqual([false, true]); // A (isCurrent) stays expanded despite earlier startDate
     });
 
+    it('includes Career Summary as its own top-level entry, not per work-history entry', () => {
+      const p = emptyProfile();
+      p.workHistory = [{ company: 'Acme', title: 'Eng', startDate: '2020-01', isCurrent: true }];
+      p.professional = { summary: 'Backend engineer with 8 years of experience.' };
+
+      const wh = getSection(p, 'work-history');
+      const summaryRow = wh.items.find((i) => 'label' in i && i.label === 'Career Summary');
+      expect(summaryRow).toBeDefined();
+      expect(summaryRow && 'fieldPath' in summaryRow && summaryRow.fieldPath).toBe('professional.summary');
+    });
+
+    it('surfaces the work-history section for Career Summary alone, with no valid entries', () => {
+      const p = emptyProfile();
+      p.professional = { summary: 'Backend engineer with 8 years of experience.' };
+      expect(sectionIds(p)).toContain('work-history');
+    });
+
     it('skips an entry with neither company nor title', () => {
       const p = emptyProfile();
       p.workHistory = [{ startDate: '2020-01', isCurrent: false } as Profile['workHistory'][0]];
