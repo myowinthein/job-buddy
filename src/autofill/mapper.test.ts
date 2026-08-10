@@ -25,6 +25,10 @@ const PROFILE: Profile = {
     lastName: 'Doe',
     email: 'jane@example.com',
     phone: { countryCode: 'TH', callingCode: '+66', number: '812345678' },
+    gender: 'male',
+    ethnicity: 'East Asian',
+    veteranStatus: 'no',
+    disabilityStatus: 'prefer_not_to_say',
   },
   address: { city: 'Bangkok', country: 'TH' },
   professional: {},
@@ -241,6 +245,46 @@ describe('mapField — Layer 2: Dictionary exact match', () => {
     const result = mapField(sig({ label: 'Website / Blog / Portfolio' }), PROFILE, NO_MAPPINGS, DOMAIN);
     expect(result.matchLayer).toBe('dictionary_exact');
     expect(result.fieldPath).toBe('links.portfolio');
+  });
+
+  it('matches "gender" → personal.gender', () => {
+    const result = mapField(sig({ label: 'Gender' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('personal.gender');
+    expect(result.value).toBe('male');
+  });
+
+  it('matches "sex" → personal.gender', () => {
+    const result = mapField(sig({ label: 'Sex' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('personal.gender');
+  });
+
+  it('matches "ethnicity" → personal.ethnicity', () => {
+    const result = mapField(sig({ label: 'Ethnicity' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('personal.ethnicity');
+    expect(result.value).toBe('East Asian');
+  });
+
+  it('matches "race" → personal.ethnicity', () => {
+    const result = mapField(sig({ label: 'Race' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('personal.ethnicity');
+  });
+
+  it('matches "veteranstatus" → personal.veteranStatus', () => {
+    const result = mapField(sig({ label: 'Veteran Status' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('personal.veteranStatus');
+    expect(result.value).toBe('no');
+  });
+
+  it('matches "disabilitystatus" → personal.disabilityStatus', () => {
+    const result = mapField(sig({ label: 'Disability Status' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('personal.disabilityStatus');
+    expect(result.value).toBe('prefer_not_to_say');
   });
 });
 
