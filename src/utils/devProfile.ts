@@ -11,6 +11,7 @@ export const DEV_PROFILE: Profile = {
   personal: {
     firstName:        'Jane',
     lastName:          'Doe',
+    nickname:          'Janey',
     email:             'jane.doe@example.com',
     phone:             { countryCode: 'US', callingCode: '+1', number: '5551234567' },
     dateOfBirth:       '1992-06-15',
