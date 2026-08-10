@@ -276,8 +276,8 @@ describe('popup App — openDebugPanel', () => {
     fireEvent.click(screen.getByAltText('Job Buddy'), { shiftKey: true });
 
     // Frame 5's session (total 3) is chosen over frame 0's (total 1) — its
-    // one mapping entry renders as "Manual Mapping (1)", not frame 0's (0).
-    expect(await screen.findByText('Manual Mapping (1)')).toBeTruthy();
+    // one mapping entry renders as "1 field", not frame 0's "0 fields".
+    expect(await screen.findByText('1 field')).toBeTruthy();
   });
 });
 
