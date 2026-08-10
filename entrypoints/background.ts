@@ -1,6 +1,15 @@
 import { retryPendingDriveSync, syncIfConnected } from '@/src/utils/driveSync';
 
 export default defineBackground(() => {
+  // Marks the dev build's toolbar icon so it's distinguishable at a glance
+  // from a Chrome Web Store install of the same extension. Badge state is
+  // retained by Chrome across service worker sleep/wake, so this only needs
+  // to run once per startup, not on every wake.
+  if (import.meta.env.DEV) {
+    chrome.action.setBadgeText({ text: 'DEV' });
+    chrome.action.setBadgeBackgroundColor({ color: '#dc2626' });
+  }
+
   // On browser startup, retry any deferred Drive upload. Silent — failures
   // are captured in driveBackupState by syncProfileToDrive itself.
   chrome.runtime.onStartup.addListener(() => {
