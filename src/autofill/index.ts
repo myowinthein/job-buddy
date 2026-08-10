@@ -10,6 +10,7 @@ import { adjustPhoneMatches } from './phoneResolution';
 import { adjustLanguageMatches } from './languageResolution';
 import { adjustEducationMatches, matchCurrentEducationCheckboxes } from './educationResolution';
 import { adjustWorkHistoryMatches, matchCurrentWorkHistoryCheckboxes } from './workHistoryResolution';
+import { adjustSalaryMatches } from './salaryResolution';
 import { fillField, fillFileField, fillCheckboxInput, clearFieldValue } from './filler';
 import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
 import { resolveProfileValue, flattenProfileValues } from './resolver';
@@ -363,6 +364,10 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
   // Sibling-aware index assignment for the unindexed workHistory.* markers —
   // see workHistoryResolution.ts.
   adjustWorkHistoryMatches(scanned.map((s) => s.match), profile);
+
+  // Sibling-aware index assignment for the unindexed salary.expected.formatted
+  // marker — see salaryResolution.ts.
+  adjustSalaryMatches(scanned.map((s) => s.match), profile);
 
   // "Currently studying/working here"-style checkboxes: excluded from
   // scanFields() entirely (standalone checkboxes are never scanned by the
