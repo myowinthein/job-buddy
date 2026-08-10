@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { DebugSession } from '@/src/autofill/debug';
 import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
+import { ExpandableCard } from '@/src/components/options/shared/ExpandableCard';
 
 const LAYER_LABEL: Record<string, string> = {
   learned:          'Learned',
@@ -76,13 +77,9 @@ export function DebugPanel({
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-5 text-xs">
+        <div className="flex-1 overflow-y-auto px-4 py-3 text-xs">
 
-          {/* ── Manual Mapping ──────────────────────────────────────────── */}
-          <section>
-            <h4 className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
-              Manual Mapping ({session.mapping.length})
-            </h4>
+          <ExpandableCard summary="Manual Mapping" subtitle={`${session.mapping.length} field${session.mapping.length !== 1 ? 's' : ''}`} defaultExpanded>
             {session.mapping.length === 0 ? (
               <p className="text-gray-400 dark:text-gray-500 italic">No mapping data.</p>
             ) : (
@@ -110,13 +107,9 @@ export function DebugPanel({
                 })}
               </ul>
             )}
-          </section>
+          </ExpandableCard>
 
-          {/* ── AI Mapping ──────────────────────────────────────────────── */}
-          <section>
-            <h4 className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
-              AI Mapping ({session.ai.length})
-            </h4>
+          <ExpandableCard summary="AI Mapping" subtitle={`${session.ai.length} field${session.ai.length !== 1 ? 's' : ''}`}>
             {session.aiSkipped ? (
               <p className="text-gray-400 dark:text-gray-500 italic">AI layer skipped — no API key configured.</p>
             ) : session.ai.length === 0 ? (
@@ -142,7 +135,7 @@ export function DebugPanel({
                 ))}
               </ul>
             )}
-          </section>
+          </ExpandableCard>
 
         </div>
 

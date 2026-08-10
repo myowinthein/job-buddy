@@ -4,7 +4,7 @@ import { RemoveButton } from './RemoveButton';
 interface ExpandableCardProps {
   summary: string;
   subtitle?: string;
-  onDelete: () => void;
+  onDelete?: () => void;
   children: React.ReactNode;
   defaultExpanded?: boolean;
 }
@@ -47,7 +47,7 @@ export function ExpandableCard({
           {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{subtitle}</p>}
         </button>
         <div className="flex items-center gap-2 shrink-0">
-          {confirmDelete ? (
+          {onDelete && (confirmDelete ? (
             <>
               <button
                 type="button"
@@ -66,7 +66,7 @@ export function ExpandableCard({
             </>
           ) : (
             <RemoveButton onClick={() => setConfirmDelete(true)} title="Remove entry" />
-          )}
+          ))}
           <button
             type="button"
             onClick={() => { setExpanded(!expanded); setConfirmDelete(false); }}

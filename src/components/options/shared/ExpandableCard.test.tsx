@@ -56,3 +56,18 @@ describe('ExpandableCard — delete confirmation gate', () => {
     expect(onDelete).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('ExpandableCard — read-only usage (no onDelete)', () => {
+  it('renders with no delete button when onDelete is omitted', () => {
+    render(<ExpandableCard summary="Manual Mapping"><p>x</p></ExpandableCard>);
+    expect(screen.queryByTitle('Remove entry')).toBeNull();
+  });
+
+  it('still expands and collapses normally without onDelete', () => {
+    render(<ExpandableCard summary="Manual Mapping"><p>debug content</p></ExpandableCard>);
+    fireEvent.click(screen.getByText('Manual Mapping'));
+    expect(screen.getByText('debug content')).toBeTruthy();
+    fireEvent.click(screen.getByText('Manual Mapping'));
+    expect(screen.queryByText('debug content')).toBeNull();
+  });
+});
