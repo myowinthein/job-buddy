@@ -11,7 +11,10 @@ Element.prototype.scrollIntoView = vi.fn();
 afterEach(cleanup);
 
 const PROFILE = {
-  personal: { firstName: 'Jane', lastName: 'Doe' },
+  personal: {
+    firstName: 'Jane', lastName: 'Doe',
+    phone: { countryCode: 'US', callingCode: '+1', number: '5551234567' },
+  },
   address: { city: 'Austin', country: 'US' },
   workHistory: [
     { company: 'Old Co', title: 'Analyst', startDate: '2015-01', endDate: '2018-01', isCurrent: false },
@@ -78,6 +81,16 @@ describe('SearchableProfileFieldSelect — search filtering', () => {
     fireEvent.change(screen.getByPlaceholderText('Search profile fields…'), { target: { value: 'Job' } });
     expect(screen.getByText('Analyst')).toBeTruthy();
   });
+
+  it('filters a cluster (Phone) to only its matching row, keyed by row label not cluster heading', () => {
+    renderSelect();
+    fireEvent.click(screen.getByRole('button'));
+    fireEvent.click(screen.getByText('Personal')); // expand the section holding the Phone cluster
+    fireEvent.change(screen.getByPlaceholderText('Search profile fields…'), { target: { value: 'Country Code' } });
+    expect(screen.getByText('Country Code')).toBeTruthy();
+    expect(screen.queryByText('Full Phone')).toBeNull();
+    expect(screen.queryByText('Phone Number')).toBeNull();
+  });
 });
 
 describe('SearchableProfileFieldSelect — selecting a row', () => {
@@ -125,6 +138,30 @@ describe('SearchableProfileFieldSelect — keyboard navigation', () => {
     expect(onChangeB.mock.calls[0][0]).not.toBe(onChangeA.mock.calls[0][0]);
   });
 
+  it('ArrowUp moves the highlight back to the previous visible row', () => {
+    const onChangeBaseline = vi.fn();
+    render(<SearchableProfileFieldSelect profile={PROFILE} value="" onChange={onChangeBaseline} />);
+    fireEvent.click(screen.getByRole('button'));
+    const inputBaseline = screen.getByPlaceholderText('Search profile fields…');
+    fireEvent.change(inputBaseline, { target: { value: 'Name' } });
+    fireEvent.keyDown(inputBaseline, { key: 'Enter' }); // no arrow key — selects the 1st result
+    cleanup();
+
+    const onChangeRoundTrip = vi.fn();
+    render(<SearchableProfileFieldSelect profile={PROFILE} value="" onChange={onChangeRoundTrip} />);
+    fireEvent.click(screen.getByRole('button'));
+    const inputRoundTrip = screen.getByPlaceholderText('Search profile fields…');
+    fireEvent.change(inputRoundTrip, { target: { value: 'Name' } });
+    fireEvent.keyDown(inputRoundTrip, { key: 'ArrowDown' }); // move to the 2nd row
+    fireEvent.keyDown(inputRoundTrip, { key: 'ArrowUp' });   // then back to the 1st
+    fireEvent.keyDown(inputRoundTrip, { key: 'Enter' });
+
+    // ArrowDown-then-Up should land back on the same field a plain Enter
+    // selects — proving Up actually moved the highlight back, not just
+    // no-opped past the top.
+    expect(onChangeRoundTrip.mock.calls[0][0]).toBe(onChangeBaseline.mock.calls[0][0]);
+  });
+
   it('Escape closes the dropdown without selecting a field', () => {
     const { onChange } = renderSelect();
     fireEvent.click(screen.getByRole('button'));
@@ -162,6 +199,20 @@ describe('SearchableProfileFieldSelect — defaultCollapsed subgroups', () => {
     expect(screen.queryByText('Analyst')).toBeNull();
     fireEvent.click(screen.getByText(/Old Co · Analyst/));
     expect(screen.getByText('Analyst')).toBeTruthy();
+  });
+
+  it('re-collapses a subgroup on a second click, hiding its rows again', () => {
+    renderSelect();
+    fireEvent.click(screen.getByRole('button'));
+    fireEvent.click(screen.getByText('Work History'));
+    // "New Co" is the most recent entry, so it starts expanded.
+    expect(screen.getByText('Engineer')).toBeTruthy();
+
+    fireEvent.click(screen.getByText(/New Co · Engineer/));
+    expect(screen.queryByText('Engineer')).toBeNull();
+
+    fireEvent.click(screen.getByText(/New Co · Engineer/));
+    expect(screen.getByText('Engineer')).toBeTruthy();
   });
 
   it('auto-expands the section and subgroup that currently holds the selected value on open', () => {
