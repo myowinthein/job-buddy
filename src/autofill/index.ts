@@ -1,14 +1,15 @@
 import type { Profile } from '../types/profile';
 import { getProfile, getLearnedMappings, saveLearnedMappings } from '../utils/storage';
-import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED, EDIT_LEARN_SIMILARITY_THRESHOLD, EDIT_LEARN_MIN_VALUE_LENGTH } from './constants';
-import { scanFields, scanAriaFields } from './scanner';
+import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED, CONF_DICT_EXACT, EDIT_LEARN_SIMILARITY_THRESHOLD, EDIT_LEARN_MIN_VALUE_LENGTH } from './constants';
+import { scanFields, scanAriaFields, scanCheckboxGroups } from './scanner';
 import { extractSignals, bestLabel } from './signals';
 import type { FieldSignals } from './signals';
 import { mapField } from './mapper';
 import type { FieldMatch } from './mapper';
 import { adjustPhoneMatches } from './phoneResolution';
 import { adjustLanguageMatches } from './languageResolution';
-import { fillField, fillFileField, clearFieldValue } from './filler';
+import { adjustEducationMatches, matchCurrentEducationCheckboxes } from './educationResolution';
+import { fillField, fillFileField, fillCheckboxInput, clearFieldValue } from './filler';
 import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
 import { resolveProfileValue, flattenProfileValues } from './resolver';
 import type { FlatProfileValue } from './resolver';
@@ -354,6 +355,33 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
   // languages.proficiency markers — see languageResolution.ts.
   adjustLanguageMatches(scanned.map((s) => s.match), profile);
 
+  // Sibling-aware index assignment for the unindexed education.* markers —
+  // see educationResolution.ts.
+  adjustEducationMatches(scanned.map((s) => s.match), profile);
+
+  // "Currently studying here"-style checkboxes: excluded from scanFields()
+  // entirely (standalone checkboxes are never scanned by the main pipeline —
+  // see EXCLUDED_TYPES in scanner.ts), and matched through a deliberately
+  // narrow, separate path rather than mapper.ts's normal layers — see
+  // matchCurrentEducationCheckboxes for why. Reuses scanCheckboxGroups(),
+  // the same source ai.ts already scans for checkbox groups.
+  const checkboxCandidates = scanCheckboxGroups()
+    .filter((g) => !g.isConsent)
+    .flatMap((g) => g.options);
+  const checkboxMatches = matchCurrentEducationCheckboxes(checkboxCandidates, profile);
+  const checkboxScanned = checkboxMatches.map(({ element, fieldPath }, i) => ({
+    element,
+    signals: extractSignals(element),
+    match: {
+      fieldPath,
+      confidence: CONF_DICT_EXACT,
+      value:      'Yes',
+      matchLayer: 'checkbox_status' as const,
+    },
+    debugFieldId: `field_${String(fields.length + i + 1).padStart(3, '0')}`,
+  }));
+  scanned.push(...checkboxScanned);
+
   scanned.forEach(({ element, signals, match, debugFieldId }) => {
     const hasExistingValue = getFieldValue(element) !== '';
 
@@ -440,6 +468,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     }
 
     const isFileInput = element instanceof HTMLInputElement && element.type === 'file';
+    const isCheckboxInput = element instanceof HTMLInputElement && element.type === 'checkbox';
     const displayLabel = extractDisplayLabel(signals);
     let finalState: FieldFinalState;
 
@@ -451,6 +480,11 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // Scanner gating means fileData should always be present here, but
         // guard defensively — if reconstruction fails, skip without counting.
         filled = fileData ? await fillFileField(element as HTMLInputElement, fileData) : false;
+      } else if (isCheckboxInput) {
+        // matchCurrentEducationCheckboxes only ever produces a checkbox match
+        // when the underlying entry is current — .value on a checkbox never
+        // affects its checked state, so this needs its own dispatch.
+        fillCheckboxInput(element as HTMLInputElement);
       } else {
         await fillField(element, match.value);
       }
@@ -474,10 +508,11 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         finalState = 'green';
       } else {
         result.needReview++;
-        // File inputs are excluded from edit-watching — file selection is
-        // handled silently by Auto Fill, not manual typing.
-        if (!isFileInput) editableFields.push({ element, state: 'needReview' });
-        if (!isFileInput) {
+        // File/checkbox inputs are excluded from edit-watching — file
+        // selection and checkbox state are handled silently by Auto Fill,
+        // not manual typing.
+        if (!isFileInput && !isCheckboxInput) editableFields.push({ element, state: 'needReview' });
+        if (!isFileInput && !isCheckboxInput) {
           aiTextCandidates.push({ type: 'text', element, signals, originalState: 'needReview', originalFieldPath: match.fieldPath, debugFieldId });
         }
         finalState = 'yellow';
@@ -488,8 +523,8 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       applyHighlight(element, 0);
       sessionElements.push(element);
       result.lowConfidence++;
-      if (!isFileInput) editableFields.push({ element, state: 'lowConfidence' });
-      if (!isFileInput) {
+      if (!isFileInput && !isCheckboxInput) editableFields.push({ element, state: 'lowConfidence' });
+      if (!isFileInput && !isCheckboxInput) {
         aiTextCandidates.push({ type: 'text', element, signals, originalState: 'lowConfidence', originalFieldPath: match.fieldPath, debugFieldId });
       }
       finalState = 'red';
@@ -498,7 +533,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       // confidence >= 0.60 but profile value is empty — nothing to write.
       // No highlight; the user can type the value in directly.
       result.noData++;
-      if (!isFileInput) {
+      if (!isFileInput && !isCheckboxInput) {
         editableFields.push({ element, state: 'noData' });
         // Track in the noData registry so silent re-fill on tab refocus can
         // re-resolve this field's profile path once the user updates it.

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
-import { fillField, clearFieldValue, fillFileField } from './filler';
+import { fillField, clearFieldValue, fillFileField, fillCheckboxInput } from './filler';
 
 beforeEach(() => {
   document.body.innerHTML = '';
@@ -377,6 +377,37 @@ describe('clearFieldValue — text input', () => {
     expect(captured).toBeInstanceOf(InputEvent);
     expect((captured as unknown as InputEvent).inputType).toBe('deleteContentBackward');
     expect(el.value).toBe('');
+  });
+});
+
+describe('fillCheckboxInput', () => {
+  it('checks the box and dispatches change/input events', () => {
+    const el = document.createElement('input');
+    el.type = 'checkbox';
+    document.body.appendChild(el);
+    let changed = false;
+    el.addEventListener('change', () => { changed = true; });
+
+    fillCheckboxInput(el);
+
+    expect(el.checked).toBe(true);
+    expect(changed).toBe(true);
+  });
+});
+
+describe('clearFieldValue — checkbox', () => {
+  it('unchecks the box rather than touching its value attribute', () => {
+    const el = document.createElement('input');
+    el.type = 'checkbox';
+    el.checked = true;
+    document.body.appendChild(el);
+    let changed = false;
+    el.addEventListener('change', () => { changed = true; });
+
+    clearFieldValue(el);
+
+    expect(el.checked).toBe(false);
+    expect(changed).toBe(true);
   });
 });
 

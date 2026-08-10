@@ -7,6 +7,7 @@ export type MatchLayer =
   | 'dictionary_exact'
   | 'fuzzy'
   | 'custom_link'
+  | 'checkbox_status'
   | 'context'
   | 'none';
 

@@ -48,7 +48,7 @@ function countryName(code: string): string {
 }
 
 // Returns the index of the most recent entry (isCurrent first, then latest startDate).
-function mostRecentIdx(entries: Array<{ startDate?: string; isCurrent?: boolean }>): number {
+export function mostRecentIdx(entries: Array<{ startDate?: string; isCurrent?: boolean }>): number {
   if (!entries.length) return 0;
   const currIdx = entries.findIndex(e => e.isCurrent);
   if (currIdx >= 0) return currIdx;
