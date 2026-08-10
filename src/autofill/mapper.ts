@@ -155,6 +155,39 @@ export function mapField(
     }
   }
 
+  // ── Layer 3.5: Custom link labels (dynamic, per-profile) ──────────────────
+  // Unlike FIELD_DICTIONARY, this list is built from the user's own custom
+  // link labels each call — labels are free text the user defines themselves
+  // (e.g. "GitHub", "Behance"), so a static dictionary entry can't cover
+  // them. Runs after the static dictionary layers so well-known fields
+  // (LinkedIn, portfolio) always prefer their dedicated entries.
+  const customLinks = profile.links?.custom ?? [];
+  if (customLinks.length) {
+    let best: { idx: number; score: number } | null = null;
+    customLinks.forEach((link, idx) => {
+      if (!link.label || !link.url) return;
+      const normLabel = normalize(link.label);
+      if (!normLabel) return;
+      for (const n of normed) {
+        const score = n === normLabel ? 1 : similarity(n, normLabel);
+        if (!best || score > best.score) best = { idx, score };
+      }
+    });
+    if (best) {
+      const { idx, score } = best;
+      const fieldPath = `links.custom.${idx}.url`;
+      if (score === 1) {
+        return { fieldPath, confidence: CONF_DICT_EXACT, value: resolve(profile, fieldPath), matchLayer: 'custom_link' };
+      }
+      if (score > CONF_FUZZY_THRESHOLD) {
+        return { fieldPath, confidence: score * CONF_FUZZY_STRONG_MULT, value: resolve(profile, fieldPath), matchLayer: 'custom_link' };
+      }
+      if (score >= CONF_FILL) {
+        return { fieldPath, confidence: score * CONF_FUZZY_WEAK_MULT, value: resolve(profile, fieldPath), matchLayer: 'custom_link' };
+      }
+    }
+  }
+
   // ── Layer 4: Context signals (nearbyText only) ────────────────────────────
   const nearbyNorm = normalize(signals.nearbyText);
   if (nearbyNorm) {

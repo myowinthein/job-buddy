@@ -6,6 +6,7 @@ export type MatchLayer =
   | 'autocomplete'
   | 'dictionary_exact'
   | 'fuzzy'
+  | 'custom_link'
   | 'context'
   | 'none';
 
