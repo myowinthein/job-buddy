@@ -35,5 +35,8 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   'salary.expected':               ['expectedsalary', 'desiredcompensation', 'expectedctc', 'desiredsalary', 'salaryexpectation'],
   'professional.noticePeriod.availableDate': ['dateavailable', 'availablefrom', 'availabledate', 'earlieststartdate', 'availabletostart', 'startavailability', 'availabilitydate'],
   'workAuthorization':             ['workauthorization', 'workpermit', 'authorizedtowork', 'eligibletowork', 'workeligibility'],
+  // Also covers a URL/text field sharing the same label wording — mapper.ts's
+  // resolveDictionaryHit() redirects to documents.cv.url for a non-file
+  // element, so this entry doesn't need duplicate aliases of its own.
   'documents.cv.file':             ['resume', 'cv', 'curriculumvitae', 'resumeupload', 'uploadresume', 'attachresume', 'document', 'attachment', 'uploadcv', 'myresume'],
 };
