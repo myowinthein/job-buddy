@@ -182,6 +182,32 @@ describe('validateImportedProfile', () => {
     expect(result.valid).toBe(false);
   });
 
+  it('accepts valid education entry', () => {
+    const result = validateImportedProfile({
+      education: [{ institution: 'MIT', degree: 'B.Sc.', fieldOfStudy: 'CS', startDate: '2014-09', endDate: '2018-05', isCurrent: false }],
+    });
+    expect(result.valid).toBe(true);
+    expect(result.sanitized.education).toEqual([
+      { institution: 'MIT', degree: 'B.Sc.', fieldOfStudy: 'CS', startDate: '2014-09', endDate: '2018-05', isCurrent: false, grade: undefined, description: undefined },
+    ]);
+  });
+
+  it('accepts a year-only (YYYY) education startDate/endDate, unlike work history which requires a month', () => {
+    const result = validateImportedProfile({
+      education: [{ institution: 'MIT', degree: 'B.Sc.', fieldOfStudy: 'CS', startDate: '2014', endDate: '2018' }],
+    });
+    expect(result.valid).toBe(true);
+    expect(result.sanitized.education?.[0]).toMatchObject({ startDate: '2014', endDate: '2018' });
+  });
+
+  it('drops a malformed endDate silently, without rejecting the whole entry (endDate is optional; startDate is not)', () => {
+    const result = validateImportedProfile({
+      education: [{ institution: 'MIT', degree: 'B.Sc.', fieldOfStudy: 'CS', startDate: '2014-09', endDate: '2018/05' }],
+    });
+    expect(result.valid).toBe(true);
+    expect(result.sanitized.education?.[0]).toMatchObject({ startDate: '2014-09', endDate: undefined });
+  });
+
   it('rejects invalid language proficiency', () => {
     const result = validateImportedProfile({
       languages: [{ language: 'English', proficiency: 'fluent' }],
