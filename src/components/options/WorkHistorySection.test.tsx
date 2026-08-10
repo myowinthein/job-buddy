@@ -209,3 +209,66 @@ describe('WorkHistorySection — Notice Period validation', () => {
     expect(screen.queryByText(/Maximum is/)).toBeNull();
   });
 });
+
+describe('WorkHistorySection — Notice Period save round-trip', () => {
+  const validEntry: WorkHistoryEntry = { company: 'Acme', title: 'Engineer', startDate: '2020-01', isCurrent: true };
+
+  it('saves with a valid Available Later duration — the save is not blocked by a spurious empty-string error', () => {
+    const { onSave } = renderSection({ workHistory: [validEntry] });
+    fireEvent.click(screen.getByText('Available Later'));
+    fireEvent.change(screen.getByPlaceholderText('3'), { target: { value: '2' } });
+
+    fireEvent.click(screen.getByText('Save Work History'));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      professional: expect.objectContaining({
+        noticePeriod: { immediate: false, value: 2, unit: 'week' },
+      }),
+    }));
+  });
+
+  it('blocks save and shows an error for an invalid Available Later duration', () => {
+    const { onSave } = renderSection({ workHistory: [validEntry] });
+    fireEvent.click(screen.getByText('Available Later'));
+    fireEvent.change(screen.getByPlaceholderText('3'), { target: { value: '0' } });
+
+    fireEvent.click(screen.getByText('Save Work History'));
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText('Must be at least 1')).toBeTruthy();
+  });
+
+  it('saves immediate:true with no value/unit when Available Now is selected', () => {
+    const { onSave } = renderSection({
+      workHistory: [validEntry],
+      professional: { noticePeriod: { immediate: false, value: 3, unit: 'month' } },
+    });
+    fireEvent.click(screen.getByText('Available Now'));
+
+    fireEvent.click(screen.getByText('Save Work History'));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      professional: expect.objectContaining({
+        noticePeriod: { immediate: true, value: undefined, unit: undefined },
+      }),
+    }));
+  });
+
+  it('round-trips a previously-saved Available Later value through the initial load', () => {
+    const { onSave } = renderSection({
+      workHistory: [validEntry],
+      professional: { noticePeriod: { immediate: false, value: 6, unit: 'month' } },
+    });
+
+    expect((screen.getByPlaceholderText('3') as HTMLInputElement).value).toBe('6');
+    expect(screen.getByDisplayValue('months')).toBeTruthy();
+
+    fireEvent.click(screen.getByText('Save Work History'));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      professional: expect.objectContaining({
+        noticePeriod: { immediate: false, value: 6, unit: 'month' },
+      }),
+    }));
+  });
+});
