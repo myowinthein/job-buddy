@@ -3684,11 +3684,11 @@
         "src/components/shared/ImportReviewScreen.tsx"
       ],
       "description": "ImportSummaryDialog and ImportReviewScreen are sibling dialogs used back-to-back in the same flows (Resume Import, Drive conflict resolution) but handle dismissal inconsistently: ImportReviewScreen supports Escape and backdrop-click; ImportSummaryDialog supports neither.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "b84b54f",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0230",
