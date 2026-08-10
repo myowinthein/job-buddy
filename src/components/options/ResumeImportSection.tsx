@@ -7,6 +7,7 @@ import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
 import type { FieldChange, ImportProgressStep, ImportErrorCode } from '@/src/resume-ai/types';
 import { toGeminiModel } from '@/src/resume-ai/types';
 import { useToast } from '@/src/components/ui/useToast';
+import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 import ImportSummaryDialog from '@/src/components/shared/ImportSummaryDialog';
 import ImportReviewScreen from '@/src/components/shared/ImportReviewScreen';
 
@@ -129,6 +130,12 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
     if (longWaitTimerRef.current) clearTimeout(longWaitTimerRef.current);
     onClose();
   }, [onClose]);
+
+  // 'progress' has its own Esc handling above (cancels the in-flight
+  // request); 'summary' (ImportSummaryDialog) has no dismiss action at all —
+  // it's a forced choice. 'dialog' and 'done' reuse the same closeSection
+  // their backdrop click / Done button already use.
+  useEscapeToClose(screen === 'dialog' || screen === 'done' ? closeSection : undefined);
 
   const goToSettings = useCallback(() => {
     abortControllerRef.current?.abort();

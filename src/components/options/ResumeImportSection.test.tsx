@@ -137,6 +137,15 @@ describe('ResumeImportSection — cancel/abort during analysis', () => {
   }, 20000);
 });
 
+describe('ResumeImportSection — Escape on the initial dialog', () => {
+  it('closes the section on Escape before any file is selected', async () => {
+    const { onClose } = renderSection();
+    await screen.findByText(/Drop your CV here/);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('ResumeImportSection — rate_limit error branch', () => {
   it('shows the rate-limit-specific message with a Google AI Studio link', async () => {
     vi.mocked(extractFromResume).mockReset().mockRejectedValue(

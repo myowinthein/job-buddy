@@ -23,6 +23,7 @@ import { calculateCompletion } from '@/src/utils/profileCompletion';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
 import type { InvalidField } from '@/src/utils/profileValidator';
 import { useToast } from '@/src/components/ui/useToast';
+import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 import { validateApiKey, checkApiKey } from '@/src/resume-ai/gemini';
 import {
   getFullDriveState,
@@ -470,6 +471,20 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     setDriveConflictScreen('summary');
   };
 
+  // closeRestoreDialog() is also called internally by the async handlers
+  // below on success, before their own `finally` clears driveRestoreBusy —
+  // guarding closeRestoreDialog itself would block those. This wrapper is
+  // for the user-facing dismiss controls (backdrop, ×, Skip) only.
+  const dismissRestoreDialog = () => {
+    if (driveRestoreBusy) return;
+    closeRestoreDialog();
+  };
+
+  const closeDriveDisconnectDialog = () => {
+    setDriveDisconnectDialog(false);
+    setDisconnectDeleteBackup(false);
+  };
+
   const handleRestoreFromDrive = async () => {
     if (!driveRestoreData) return;
     setDriveRestoreBusy(true);
@@ -578,10 +593,23 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   };
 
   const handleResetDialogClose = () => {
+    // No-op while a reset is actually in flight — matches ImportReviewScreen's
+    // isSaving guard. clearAllStorage() etc. aren't meaningfully cancelable
+    // mid-flight, so dismissing here would just hide the dialog while the
+    // reset kept running with no visible UI.
+    if (resetting) return;
     setShowResetDialog(false);
     setResetConfirmText('');
     setResetScope('device');
   };
+
+  // Each reuses the exact same handler its dialog's backdrop click already
+  // uses, guards included — 'conflict'/'summary' (ImportSummaryDialog) has no
+  // dismiss action at all (forced choice), and 'conflict'/'review' is handled
+  // inside ImportReviewScreen itself.
+  useEscapeToClose(showResetDialog ? handleResetDialogClose : undefined);
+  useEscapeToClose(driveDisconnectDialog ? closeDriveDisconnectDialog : undefined);
+  useEscapeToClose(driveRestoreCase === 'empty' ? dismissRestoreDialog : undefined);
 
   return (
     <div>
@@ -1039,7 +1067,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       {driveDisconnectDialog && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={() => { setDriveDisconnectDialog(false); setDisconnectDeleteBackup(false); }}
+          onClick={closeDriveDisconnectDialog}
         >
           <div
             className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-md mx-4"
@@ -1049,7 +1077,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">What to do with your Drive backup?</h3>
               <button
                 type="button"
-                onClick={() => { setDriveDisconnectDialog(false); setDisconnectDeleteBackup(false); }}
+                onClick={closeDriveDisconnectDialog}
                 aria-label="Close"
                 className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
               >
@@ -1091,7 +1119,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <button
                 type="button"
-                onClick={() => { setDriveDisconnectDialog(false); setDisconnectDeleteBackup(false); }}
+                onClick={closeDriveDisconnectDialog}
                 className={btnSecondaryCls}
               >
                 Cancel
@@ -1112,7 +1140,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       {driveRestoreCase === 'empty' && driveRestoreData && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={closeRestoreDialog}
+          onClick={dismissRestoreDialog}
         >
           <div
             className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-md mx-4"
@@ -1122,7 +1150,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Restore from Google Drive</h3>
               <button
                 type="button"
-                onClick={closeRestoreDialog}
+                onClick={dismissRestoreDialog}
                 aria-label="Close"
                 className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
               >
@@ -1140,7 +1168,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               <button
                 type="button"
-                onClick={closeRestoreDialog}
+                onClick={dismissRestoreDialog}
                 disabled={driveRestoreBusy}
                 className={btnSecondaryCls}
               >

@@ -139,4 +139,16 @@ describe('ImportReviewScreen — backdrop and saving state', () => {
     expect(screen.getByText('Saving…')).toBeTruthy();
     expect((screen.getByText('Saving…').closest('button') as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it('calls onBack on Escape', () => {
+    const { onBack } = renderScreen([newField('a', 'A')]);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores Escape while isSaving is true, same as the backdrop click', () => {
+    const { onBack } = renderScreen([newField('a', 'A')], { isSaving: true });
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onBack).not.toHaveBeenCalled();
+  });
 });
