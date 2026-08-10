@@ -138,6 +138,86 @@ describe('LinksSection — custom link silent-drop edge case', () => {
   });
 });
 
+describe('LinksSection — custom link CRUD via UI interaction', () => {
+  it('typing into an existing entry\'s Label and URL updates that entry, not another one', () => {
+    const { onSave } = renderSection({
+      links: {
+        linkedin: 'https://linkedin.com/in/x',
+        custom: [
+          { label: 'My Blog', url: 'https://blog.dev' },
+          { label: 'GitHub', url: 'https://github.com/johnsmith' },
+        ],
+      },
+    });
+
+    const labelInputs = screen.getAllByPlaceholderText('My Blog');
+    const urlInputs = screen.getAllByPlaceholderText('https://blog.johnsmith.dev');
+    fireEvent.change(labelInputs[1], { target: { value: 'GitHub Profile' } });
+    fireEvent.change(urlInputs[1], { target: { value: 'https://github.com/janedoe' } });
+
+    fireEvent.click(screen.getByText('Save Links'));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      links: expect.objectContaining({
+        custom: [
+          { label: 'My Blog', url: 'https://blog.dev' },
+          { label: 'GitHub Profile', url: 'https://github.com/janedoe' },
+        ],
+      }),
+    }));
+  });
+
+  it('+ Add Entry adds a new blank row without disturbing the existing entry', () => {
+    const { onSave } = renderSection({
+      links: { linkedin: 'https://linkedin.com/in/x', custom: [{ label: 'My Blog', url: 'https://blog.dev' }] },
+    });
+
+    fireEvent.click(screen.getByText('+ Add Entry'));
+
+    const labelInputs = screen.getAllByPlaceholderText('My Blog');
+    expect(labelInputs).toHaveLength(2);
+    const urlInputs = screen.getAllByPlaceholderText('https://blog.johnsmith.dev');
+    fireEvent.change(labelInputs[1], { target: { value: 'Portfolio Site' } });
+    fireEvent.change(urlInputs[1], { target: { value: 'https://janedoe.dev' } });
+
+    fireEvent.click(screen.getByText('Save Links'));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      links: expect.objectContaining({
+        custom: [
+          { label: 'My Blog', url: 'https://blog.dev' },
+          { label: 'Portfolio Site', url: 'https://janedoe.dev' },
+        ],
+      }),
+    }));
+  });
+
+  it('Remove deletes the correct entry by index, keeping the others intact', () => {
+    const { onSave } = renderSection({
+      links: {
+        linkedin: 'https://linkedin.com/in/x',
+        custom: [
+          { label: 'First', url: 'https://first.dev' },
+          { label: 'Second', url: 'https://second.dev' },
+          { label: 'Third', url: 'https://third.dev' },
+        ],
+      },
+    });
+
+    fireEvent.click(screen.getAllByLabelText('Remove')[1]); // remove "Second"
+    fireEvent.click(screen.getByText('Save Links'));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      links: expect.objectContaining({
+        custom: [
+          { label: 'First', url: 'https://first.dev' },
+          { label: 'Third', url: 'https://third.dev' },
+        ],
+      }),
+    }));
+  });
+});
+
 describe('LinksSection — preserves unexposed legacy fields', () => {
   it('carries github/twitter/dribbble/behance through unchanged even though the form has no UI for them', () => {
     const { onSave } = renderSection({
