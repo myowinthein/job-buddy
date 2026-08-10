@@ -5,6 +5,10 @@ import { SalarySection } from './SalarySection';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import type { Profile } from '@/src/types/profile';
 
+// jsdom doesn't implement Element.scrollIntoView; SearchableCountryWithCurrencyDropdown's
+// keyboard-highlight effect calls it whenever a panel opens.
+Element.prototype.scrollIntoView = vi.fn();
+
 afterEach(cleanup);
 
 function renderSection(profile: Partial<Profile>, onSave = vi.fn().mockResolvedValue(undefined)) {
@@ -110,6 +114,52 @@ describe('SalarySection — expected-salary rows', () => {
 
     fireEvent.click(screen.getByText('Save Salary'));
     expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('changing the period select of one expected row does not affect a different row', () => {
+    const { onSave } = renderSection({
+      salary: {
+        current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' },
+        expected: [
+          { amount: 6000, currency: 'THB', country: 'TH', period: 'monthly' },
+          { amount: 8000, currency: 'USD', country: 'US', period: 'monthly' },
+        ],
+      },
+    });
+
+    // [0] is the current-salary period select; expected-row periods follow.
+    const periodSelects = screen.getAllByDisplayValue('Monthly');
+    fireEvent.change(periodSelects[2], { target: { value: 'annual' } });
+    fireEvent.click(screen.getByText('Save Salary'));
+
+    expect(onSave).toHaveBeenCalledWith({
+      salary: expect.objectContaining({
+        expected: [
+          expect.objectContaining({ country: 'TH', amount: 6000, period: 'monthly' }),
+          expect.objectContaining({ country: 'US', amount: 8000, period: 'annual' }),
+        ],
+      }),
+    });
+  });
+});
+
+describe('SalarySection — current-salary country drives the saved currency', () => {
+  it('saves the currency mapped from the chosen country, via the searchable dropdown', () => {
+    const { onSave } = renderSection({
+      salary: { current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' }, expected: [] },
+    });
+
+    fireEvent.click(screen.getAllByRole('button')[0]); // the current-salary country trigger
+    fireEvent.change(screen.getByPlaceholderText('Search country, code, or currency…'), { target: { value: 'Singapore' } });
+    fireEvent.click(screen.getByText('Singapore'));
+
+    fireEvent.click(screen.getByText('Save Salary'));
+
+    expect(onSave).toHaveBeenCalledWith({
+      salary: expect.objectContaining({
+        current: expect.objectContaining({ country: 'SG', currency: 'SGD' }),
+      }),
+    });
   });
 });
 
