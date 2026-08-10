@@ -226,6 +226,9 @@ export function buildPickerTree(profile: Profile): Section[] {
       }
     });
 
+    // Not per-entry — grouped under Work History to match profileCompletion.ts.
+    addPath(items, 'Career Summary', 'professional.summary');
+
     if (items.length) sections.push({ id: 'work-history', label: 'Work History', items });
   }
 
