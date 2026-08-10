@@ -63,12 +63,19 @@ export function PersonalSection({ profile, onSave }: Props) {
 
   const fieldError = (key: string, value: string): string => {
     switch (key) {
-      case 'firstName': return !value.trim() ? 'First name is required' : '';
-      case 'lastName':  return !value.trim() ? 'Last name is required' : '';
+      case 'firstName':
+        if (!value.trim()) return 'First name is required';
+        if (value.length > 100) return 'First name must be 100 characters or fewer';
+        return '';
+      case 'lastName':
+        if (!value.trim()) return 'Last name is required';
+        if (value.length > 100) return 'Last name must be 100 characters or fewer';
+        return '';
       case 'nickname':  return value.length > 100 ? 'Nickname must be 100 characters or fewer' : '';
       case 'email':
         if (!value.trim()) return 'Email is required';
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Enter a valid email address';
+        if (value.length > 254) return 'Email must be 254 characters or fewer';
         return '';
       case 'phoneNumber':
         if (!value.trim()) return 'Phone number is required';
@@ -77,6 +84,7 @@ export function PersonalSection({ profile, onSave }: Props) {
       case 'dateOfBirth': {
         if (!value) return '';
         const year = parseInt(value.split('-')[0] ?? '', 10);
+        if (isNaN(year)) return '';
         if (year > CURRENT_YEAR) return `Date of birth cannot be after ${CURRENT_YEAR}`;
         if (year < CURRENT_YEAR - 100) return `Year must be ${CURRENT_YEAR - 100} or later`;
         return '';
@@ -114,30 +122,14 @@ export function PersonalSection({ profile, onSave }: Props) {
   const validate = () => {
     const e: Record<string, string> = {};
 
-    if (!form.firstName.trim()) e.firstName = 'First name is required';
-    else if (form.firstName.length > 100) e.firstName = 'First name must be 100 characters or fewer';
-
-    if (!form.lastName.trim()) e.lastName = 'Last name is required';
-    else if (form.lastName.length > 100) e.lastName = 'Last name must be 100 characters or fewer';
-
-    if (form.nickname.length > 100) e.nickname = 'Nickname must be 100 characters or fewer';
-
-    if (!form.email.trim()) e.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Enter a valid email address';
-    else if (form.email.length > 254) e.email = 'Email must be 254 characters or fewer';
-
-    if (!form.phoneNumber.trim()) {
-      e.phoneNumber = 'Phone number is required';
-    } else if (form.phoneNumber.length < 4) {
-      e.phoneNumber = 'Enter a valid phone number';
+    for (const key of ['firstName', 'lastName', 'nickname', 'email', 'phoneNumber'] as const) {
+      const err = fieldError(key, form[key]);
+      if (err) e[key] = err;
     }
 
     if (form.dateOfBirth) {
-      const year = parseInt(form.dateOfBirth.split('-')[0] ?? '', 10);
-      if (!isNaN(year)) {
-        if (year > CURRENT_YEAR) e.dateOfBirth = `Date of birth cannot be after ${CURRENT_YEAR}`;
-        else if (year < CURRENT_YEAR - 100) e.dateOfBirth = `Year must be ${CURRENT_YEAR - 100} or later`;
-      }
+      const err = fieldError('dateOfBirth', form.dateOfBirth);
+      if (err) e.dateOfBirth = err;
     } else if (dobIsPartial) {
       // Partial DOB: range errors take precedence (set above); only fill in
       // the partial-completion message if nothing more specific applies.

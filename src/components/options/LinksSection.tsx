@@ -34,6 +34,11 @@ export function LinksSection({ profile, onSave }: Props) {
     try { return new URL(withScheme(url)).hostname.includes('.'); } catch { return false; }
   };
 
+  // Shared by updateCustom, handleCustomUrlBlur, and validate() — the one
+  // check every custom-link URL field needs, regardless of when it fires.
+  const customUrlError = (url: string): string =>
+    url.trim() && !isValidUrl(url.trim()) ? 'Enter a valid URL' : '';
+
   const fieldError = (key: string, value: string): string => {
     if (key === 'linkedin') {
       if (!value.trim()) return 'LinkedIn URL is required';
@@ -56,28 +61,23 @@ export function LinksSection({ profile, onSave }: Props) {
   const updateCustom = (idx: number, key: keyof CustomLink, value: string) => {
     setCustom((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     if (key === 'url') {
-      const err = value.trim() && !isValidUrl(value.trim()) ? 'Enter a valid URL' : '';
-      setErrors((e) => ({ ...e, [`custom.${idx}.url`]: err }));
+      setErrors((e) => ({ ...e, [`custom.${idx}.url`]: customUrlError(value) }));
     }
   };
 
   const handleCustomUrlBlur = (idx: number, url: string) => {
-    const err = url.trim() && !isValidUrl(url.trim()) ? 'Enter a valid URL' : '';
-    setErrors((e) => ({ ...e, [`custom.${idx}.url`]: err }));
+    setErrors((e) => ({ ...e, [`custom.${idx}.url`]: customUrlError(url) }));
   };
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!form.linkedin.trim()) {
-      e.linkedin = 'LinkedIn URL is required';
-    } else if (!form.linkedin.includes('linkedin.com')) {
-      e.linkedin = 'Enter a valid LinkedIn URL';
+    for (const key of ['linkedin', 'portfolio'] as const) {
+      const err = fieldError(key, form[key]);
+      if (err) e[key] = err;
     }
-    if (form.portfolio.trim() && !isValidUrl(form.portfolio.trim()))
-      e.portfolio = 'Enter a valid URL';
     custom.forEach((c, idx) => {
-      if (c.url.trim() && !isValidUrl(c.url.trim()))
-        e[`custom.${idx}.url`] = 'Enter a valid URL';
+      const err = customUrlError(c.url);
+      if (err) e[`custom.${idx}.url`] = err;
     });
     setErrors(e);
     return Object.keys(e).length === 0;
