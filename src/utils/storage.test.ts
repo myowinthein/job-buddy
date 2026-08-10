@@ -31,6 +31,7 @@ import {
   getGeminiApiKey, saveGeminiApiKey, clearGeminiSettings,
   getGeminiModel, saveGeminiModel,
   getThemePreference, saveThemePreference,
+  getAiAnswerDraftsEnabled, saveAiAnswerDraftsEnabled,
   getDriveToken, saveDriveToken, clearDriveToken,
   clearAllStorage,
 } from './storage';
@@ -321,6 +322,23 @@ describe('theme preference', () => {
   it('saves and retrieves "light"', async () => {
     await saveThemePreference('light');
     expect(await getThemePreference()).toBe('light');
+  });
+});
+
+describe('AI-drafted open-ended answers setting', () => {
+  it('defaults to false (off) when nothing is stored', async () => {
+    expect(await getAiAnswerDraftsEnabled()).toBe(false);
+  });
+
+  it('saves and retrieves true', async () => {
+    await saveAiAnswerDraftsEnabled(true);
+    expect(await getAiAnswerDraftsEnabled()).toBe(true);
+  });
+
+  it('saves and retrieves false after being true', async () => {
+    await saveAiAnswerDraftsEnabled(true);
+    await saveAiAnswerDraftsEnabled(false);
+    expect(await getAiAnswerDraftsEnabled()).toBe(false);
   });
 });
 

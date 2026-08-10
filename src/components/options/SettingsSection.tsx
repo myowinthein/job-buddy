@@ -16,6 +16,8 @@ import {
   saveGeminiModel,
   clearGeminiSettings,
   saveThemePreference,
+  getAiAnswerDraftsEnabled,
+  saveAiAnswerDraftsEnabled,
 } from '@/src/utils/storage';
 import { applyTheme, getCurrentTheme } from '@/src/utils/theme';
 import type { ThemePreference } from '@/src/utils/theme';
@@ -184,6 +186,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const [driveConflictChanges,  setDriveConflictChanges]  = useState<FieldChange[]>([]);
   const [driveConflictScreen,   setDriveConflictScreen]   = useState<'summary' | 'review'>('summary');
   const [resetScope,            setResetScope]            = useState<'device' | 'everywhere'>('device');
+  const [aiAnswerDrafts,        setAiAnswerDrafts]        = useState(false);
 
   useEffect(() => {
     Promise.all([getGeminiApiKey(), getGeminiModel()]).then(([key]) => {
@@ -192,7 +195,13 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         setGeminiKeyStatus('valid');
       }
     });
+    void getAiAnswerDraftsEnabled().then(setAiAnswerDrafts);
   }, []);
+
+  const handleAiAnswerDraftsChange = (enabled: boolean) => {
+    setAiAnswerDrafts(enabled);
+    void saveAiAnswerDraftsEnabled(enabled);
+  };
 
   // ── Cloud Backup — load state and listen for cross-component updates ────────
   useEffect(() => {
@@ -702,6 +711,39 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             <li>Copy the key listed under "API Key" and paste it here</li>
           </ol>
         </details>
+
+        {geminiKeyStatus === 'valid' && (
+          <div className="mt-5 pt-5 border-t border-gray-200 dark:border-gray-700 max-w-md">
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">AI-Drafted Answers</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              For open-ended questions like "Why do you want to apply?" — drafted from your profile
+              and the job description. Always filled as a draft for you to review before submitting,
+              never auto-trusted.
+            </p>
+            <div className="space-y-2">
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="aiAnswerDrafts"
+                  checked={!aiAnswerDrafts}
+                  onChange={() => handleAiAnswerDraftsChange(false)}
+                  className="mt-0.5 text-blue-600"
+                />
+                <span className="text-sm text-gray-900 dark:text-gray-100">Off</span>
+              </label>
+              <label className="flex items-start gap-2.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="aiAnswerDrafts"
+                  checked={aiAnswerDrafts}
+                  onChange={() => handleAiAnswerDraftsChange(true)}
+                  className="mt-0.5 text-blue-600"
+                />
+                <span className="text-sm text-gray-900 dark:text-gray-100">On</span>
+              </label>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* ── Export ────────────────────────────────────────────────────────────── */}
