@@ -1,4 +1,5 @@
 import type { FieldChange } from '@/src/resume-ai/types';
+import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 
 export interface ImportSummaryDialogProps {
   changes:      FieldChange[];
@@ -22,8 +23,17 @@ export default function ImportSummaryDialog({
   const unchangedCount = changes.filter((c) => c.status === 'unchanged').length;
   const hasActionable  = newCount > 0 || conflictCount > 0;
 
+  // Escape/backdrop dismiss maps to "Keep Current" (onRejectAll) — the same
+  // non-destructive, nothing-applied outcome ImportReviewScreen's onBack
+  // gives via its own Escape/backdrop handling. No dismissal while a
+  // save/accept is in flight, matching that same guard.
+  useEscapeToClose(isProcessing ? undefined : onRejectAll);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onClick={isProcessing ? undefined : onRejectAll}
+    >
       <div
         className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-sm mx-4"
         onClick={(e) => e.stopPropagation()}
