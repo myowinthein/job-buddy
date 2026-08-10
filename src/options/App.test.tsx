@@ -191,3 +191,19 @@ describe('options App — focus routing', () => {
     await waitFor(() => expect(document.activeElement?.id).toBe('field-city'));
   });
 });
+
+describe('options App — initial profile load failure', () => {
+  it('degrades to an empty profile and finishes loading rather than hanging, on a getProfile rejection', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(getProfile).mockReset().mockRejectedValue(new Error('storage unavailable'));
+
+    renderApp();
+
+    // The app still renders past the loading state, with the section stub's
+    // fallback ("(empty)") — a rejected load must not leave the page stuck.
+    await waitFor(() => expect(screen.getByText('personal-section:(empty)')).toBeTruthy());
+    expect(consoleError).toHaveBeenCalledWith('[Job Buddy] Failed to initialize profile:', expect.any(Error));
+
+    consoleError.mockRestore();
+  });
+});
