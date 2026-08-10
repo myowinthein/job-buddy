@@ -207,6 +207,34 @@ describe('ResumeImportSection — retry after failure does not re-extract links'
   });
 });
 
+describe('ResumeImportSection — pre-AI-call failure', () => {
+  it('shows an error when link extraction throws, without ever reaching the AI call', async () => {
+    // Distinct from the extractFromResume-failure tests above — this fires
+    // in handleExtract's own try block, before runExtractCore (and thus
+    // extractFromResume) is ever invoked.
+    vi.mocked(extractLinks).mockRejectedValueOnce(new Error('failed to parse PDF links'));
+
+    renderSection();
+    await screen.findByText(/Drop your CV here/);
+    await selectFile(pdfFile());
+    fireEvent.click(screen.getByText('Analyze CV'));
+
+    expect(await screen.findByText('failed to parse PDF links')).toBeTruthy();
+    expect(vi.mocked(extractFromResume)).not.toHaveBeenCalled();
+  });
+
+  it('falls back to a generic message when the thrown error has no message', async () => {
+    vi.mocked(extractLinks).mockRejectedValueOnce({});
+
+    renderSection();
+    await screen.findByText(/Drop your CV here/);
+    await selectFile(pdfFile());
+    fireEvent.click(screen.getByText('Analyze CV'));
+
+    expect(await screen.findByText('Something went wrong. Try again.')).toBeTruthy();
+  });
+});
+
 describe('ResumeImportSection — CV invariant on save', () => {
   it('adds the resume file without dropping an existing documents.cv.url', async () => {
     vi.mocked(extractFromResume).mockReset().mockResolvedValue({});
@@ -223,5 +251,22 @@ describe('ResumeImportSection — CV invariant on save', () => {
     const saved = onSave.mock.calls[0][0];
     expect(saved.documents.cv.url).toBe('https://example.com/old-cv.pdf');
     expect(saved.documents.cv.file).toEqual(expect.objectContaining({ name: 'resume.pdf' }));
+  }, 20000);
+
+  it('shows a toast and stays on the review screen when onSave rejects', async () => {
+    vi.mocked(extractFromResume).mockReset().mockResolvedValue({});
+    const onSave = vi.fn().mockRejectedValue(new Error('quota exceeded'));
+    renderSection({}, onSave);
+
+    await screen.findByText(/Drop your CV here/);
+    await selectFile(pdfFile());
+    fireEvent.click(screen.getByText('Analyze CV'));
+
+    await screen.findByText('Review Suggestions', {}, { timeout: 12000 });
+    fireEvent.click(screen.getByText('Accept All'));
+
+    expect(await screen.findByText('Save failed. Please try again.')).toBeTruthy();
+    // Never reached the 'done' screen — save failure keeps the user on review.
+    expect(screen.getByText('Review Suggestions')).toBeTruthy();
   }, 20000);
 });
