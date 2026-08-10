@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, type KeyboardEvent } from 'react';
+import { useDropdownOpenState } from './useDropdownOpenState';
 
 interface UseSearchableDropdownOptions<T> {
   // Filters the full option list for a given search string. The hook memoizes
@@ -23,20 +24,12 @@ interface UseSearchableDropdownOptions<T> {
  * rendering and supplies its own filter + item type via generics.
  */
 export function useSearchableDropdown<T>({ filter, onSelect, findOpenIndex }: UseSearchableDropdownOptions<T>) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState('');
   const [hlIdx, setHlIdx] = useState(0);
+  const { open, setOpen, search, setSearch, containerRef, searchRef } = useDropdownOpenState(() => setHlIdx(0));
 
   const filtered = useMemo(() => filter(search), [filter, search]);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
-
-  // On open: focus the search input.
-  useEffect(() => {
-    if (open) searchRef.current?.focus();
-  }, [open]);
 
   // Keep the highlighted row scrolled into view during keyboard navigation.
   useEffect(() => {
@@ -44,20 +37,6 @@ export function useSearchableDropdown<T>({ filter, onSelect, findOpenIndex }: Us
     const el = listRef.current?.children[hlIdx] as HTMLElement | undefined;
     el?.scrollIntoView({ block: 'nearest' });
   }, [hlIdx, open]);
-
-  // Close when the user clicks outside the component.
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) {
-        setOpen(false);
-        setSearch('');
-        setHlIdx(0);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
 
   const select = (item: T) => {
     onSelect(item);
