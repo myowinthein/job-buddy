@@ -36,6 +36,7 @@ export const FIELD_FOCUS_IDS: Record<string, string> = {
   // 'At least one language' has no single target field; navigation goes to the section
   'LinkedIn URL':            'field-linkedin',
   // Optional
+  'Nickname':                'field-nickname',
   'Date of Birth':           'field-dateOfBirth',
   'Gender':                  'field-gender',
   'Ethnicity':               'field-ethnicity',
@@ -147,6 +148,7 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
   const optGroups: CompletionGroup[] = [];
   const optCheck = makeChecker(optGroups);
 
+  optCheck(!!profile.personal?.nickname?.trim(),       'personal',    'Personal Information', 'Nickname');
   optCheck(!!profile.personal?.dateOfBirth?.trim(),    'personal',    'Personal Information', 'Date of Birth');
   optCheck(!!profile.personal?.gender?.trim(),         'personal',    'Personal Information', 'Gender');
   optCheck(!!profile.personal?.ethnicity?.trim(),      'personal',    'Personal Information', 'Ethnicity');

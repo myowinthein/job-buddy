@@ -180,7 +180,7 @@ export function PersonalSection({ profile, onSave }: Props) {
       </div>
 
       {/* Name */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <FormField label="First Name" required error={errors.firstName}>
           <input
             className={cls(errors.firstName)}
@@ -203,19 +203,18 @@ export function PersonalSection({ profile, onSave }: Props) {
             maxLength={100}
           />
         </FormField>
+        <FormField label="Nickname" error={errors.nickname}>
+          <input
+            className={cls(errors.nickname)}
+            value={form.nickname}
+            onChange={(e) => set('nickname', e.target.value)}
+            onBlur={() => handleBlur('nickname')}
+            id="field-nickname"
+            placeholder="Johnny"
+            maxLength={100}
+          />
+        </FormField>
       </div>
-
-      <FormField label="Nickname" error={errors.nickname}>
-        <input
-          className={cls(errors.nickname)}
-          value={form.nickname}
-          onChange={(e) => set('nickname', e.target.value)}
-          onBlur={() => handleBlur('nickname')}
-          id="field-nickname"
-          placeholder="Johnny"
-          maxLength={100}
-        />
-      </FormField>
 
       {/* Email */}
       <FormField label="Email" required error={errors.email}>
