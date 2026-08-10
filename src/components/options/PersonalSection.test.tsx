@@ -6,6 +6,10 @@ import { PersonalSection } from './PersonalSection';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import type { Profile } from '@/src/types/profile';
 
+// jsdom doesn't implement Element.scrollIntoView; SearchableCallingCodeSelect's
+// keyboard-highlight effect calls it whenever the panel opens.
+Element.prototype.scrollIntoView = vi.fn();
+
 afterEach(cleanup);
 
 function renderSection(profile: Partial<Profile>, onSave = vi.fn().mockResolvedValue(undefined)) {
@@ -219,5 +223,67 @@ describe('PersonalSection — save validation', () => {
 
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('Nickname must be 100 characters or fewer')).toBeTruthy();
+  });
+});
+
+describe('PersonalSection — handleCountryChange (phone calling code)', () => {
+  it('updates the calling code sent on save when a different country is chosen', () => {
+    const { onSave } = renderSection({ personal: { phone: { countryCode: 'US', callingCode: '+1', number: '5551234567' } } as unknown as Profile['personal'] });
+    fireEvent.change(document.getElementById('field-firstName')!, { target: { value: 'Jane' } });
+    fireEvent.change(document.getElementById('field-lastName')!, { target: { value: 'Doe' } });
+    fireEvent.change(document.getElementById('field-email')!, { target: { value: 'jane@example.com' } });
+
+    fireEvent.click(screen.getByLabelText('Select country calling code'));
+    fireEvent.change(screen.getByPlaceholderText('Search country or code…'), { target: { value: 'Thailand' } });
+    fireEvent.click(screen.getByText('Thailand'));
+
+    fireEvent.click(screen.getByText('Save Personal Information'));
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      personal: expect.objectContaining({
+        phone: expect.objectContaining({ countryCode: 'TH', callingCode: '+66' }),
+      }),
+    }));
+  });
+
+  it('clears an existing "required" phone error as soon as a country is picked, before typing a number', () => {
+    const { onSave } = renderSection({ personal: {} as unknown as Profile['personal'] });
+    fireEvent.click(screen.getByText('Save Personal Information')); // triggers "Phone number is required"
+    expect(screen.getByText('Phone number is required')).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText('Select country calling code'));
+    fireEvent.change(screen.getByPlaceholderText('Search country or code…'), { target: { value: 'Thailand' } });
+    fireEvent.click(screen.getByText('Thailand'));
+
+    expect(screen.queryByText('Phone number is required')).toBeNull();
+    expect(onSave).not.toHaveBeenCalled(); // country alone doesn't satisfy the phone number requirement
+  });
+});
+
+describe('PersonalSection — Date of Birth partial entry blocks save', () => {
+  it('blocks save and re-shows the partial-completion error when only Day is filled in', () => {
+    const { onSave } = renderSection({ personal: {} as unknown as Profile['personal'] });
+    fireEvent.change(document.getElementById('field-firstName')!, { target: { value: 'Jane' } });
+    fireEvent.change(document.getElementById('field-lastName')!, { target: { value: 'Doe' } });
+    fireEvent.change(document.getElementById('field-email')!, { target: { value: 'jane@example.com' } });
+    fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
+    fireEvent.change(screen.getByLabelText('Day'), { target: { value: '15' } });
+
+    fireEvent.click(screen.getByText('Save Personal Information'));
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText('Complete day, month, and year, or leave blank')).toBeTruthy();
+  });
+
+  it('saves successfully when Date of Birth is left entirely blank', () => {
+    const { onSave } = renderSection({ personal: {} as unknown as Profile['personal'] });
+    fireEvent.change(document.getElementById('field-firstName')!, { target: { value: 'Jane' } });
+    fireEvent.change(document.getElementById('field-lastName')!, { target: { value: 'Doe' } });
+    fireEvent.change(document.getElementById('field-email')!, { target: { value: 'jane@example.com' } });
+    fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
+
+    fireEvent.click(screen.getByText('Save Personal Information'));
+
+    expect(onSave).toHaveBeenCalled();
   });
 });
