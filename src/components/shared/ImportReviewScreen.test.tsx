@@ -47,6 +47,27 @@ function renderScreen(changes: FieldChange[], overrides: Partial<{ isSaving: boo
   return { onSave, onBack };
 }
 
+describe('ImportReviewScreen — multiline value rendering', () => {
+  it('renders a multi-line suggested value as a bulleted list, not a single paragraph', () => {
+    const field = newField('summary', 'Career Summary');
+    field.displaySuggested = 'Led the platform team.\nShipped three major releases.\nMentored junior engineers.';
+    renderScreen([field]);
+
+    expect(screen.getByText('Led the platform team.')).toBeTruthy();
+    expect(screen.getByText('Shipped three major releases.')).toBeTruthy();
+    expect(screen.getByText('Mentored junior engineers.')).toBeTruthy();
+    // Full joined text is not rendered anywhere as one block.
+    expect(screen.queryByText(field.displaySuggested)).toBeNull();
+  });
+
+  it('renders a single-line value as a plain paragraph, not a one-item list', () => {
+    const field = newField('summary', 'Career Summary');
+    field.displaySuggested = 'A one-line summary.';
+    renderScreen([field]);
+    expect(screen.getByText('A one-line summary.').tagName).toBe('P');
+  });
+});
+
 describe('ImportReviewScreen — accept-all new fields', () => {
   it('accepts every "new" field without touching conflicts', () => {
     const { onSave } = renderScreen([
