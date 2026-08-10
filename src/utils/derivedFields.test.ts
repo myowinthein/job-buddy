@@ -101,4 +101,9 @@ describe('calculateDerivedFields', () => {
     const p = { ...BASE, personal: { ...BASE.personal, dateOfBirth: 'not-a-date' } };
     expect(calculateDerivedFields(p).age).toBeUndefined();
   });
+
+  it('omits age when dateOfBirth does not split into exactly 3 parts (e.g. YYYY-MM only)', () => {
+    const p = { ...BASE, personal: { ...BASE.personal, dateOfBirth: '1990-03' } };
+    expect(calculateDerivedFields(p).age).toBeUndefined();
+  });
 });

@@ -78,6 +78,18 @@ describe('applyTheme("system")', () => {
     applyTheme('system');
     expect(document.documentElement.classList.contains('dark')).toBe(false);
   });
+
+  it('reacts live to an OS color-scheme change while "system" is active', () => {
+    stubMatchMedia(false);
+    applyTheme('system');
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
+
+    const mq = vi.mocked(window.matchMedia).mock.results[0].value;
+    const listener = vi.mocked(mq.addEventListener).mock.calls[0][1];
+    listener({ matches: true } as MediaQueryListEvent);
+
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+  });
 });
 
 describe('initTheme', () => {
