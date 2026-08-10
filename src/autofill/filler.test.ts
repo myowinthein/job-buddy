@@ -205,6 +205,31 @@ describe('fillField — select: change event', () => {
     void fillField(sel, 'Germany');
     await expect(changed).resolves.toBeUndefined();
   });
+
+  it('focuses the select before filling and dispatches a real FocusEvent blur after', async () => {
+    const sel = makeSelect([
+      { text: 'Thailand', value: 'TH' },
+      { text: 'Germany',  value: 'DE' },
+    ]);
+    let captured: Event | null = null;
+    sel.addEventListener('blur', (e) => { captured = e; });
+
+    await fillField(sel, 'Germany');
+
+    expect(document.activeElement).toBe(sel);
+    expect(captured).toBeInstanceOf(FocusEvent);
+  });
+
+  it('does not focus or blur the select when no option matches', async () => {
+    const sel = makeSelect([{ text: 'Thailand', value: 'TH' }]);
+    let blurred = false;
+    sel.addEventListener('blur', () => { blurred = true; });
+
+    await fillField(sel, 'Unrelated Value');
+
+    expect(document.activeElement).not.toBe(sel);
+    expect(blurred).toBe(false);
+  });
 });
 
 // ── fillField: date reformatting ──────────────────────────────────────────────
@@ -360,6 +385,40 @@ describe('fillField — text input (regression)', () => {
     expect(captured).toBeInstanceOf(InputEvent);
     expect((captured as unknown as InputEvent).inputType).toBe('insertText');
     expect((captured as unknown as InputEvent).data).toBe('A longer message');
+  });
+
+  // Some form libraries only mark a field "touched" — and clear its
+  // required-field validation error — once a genuine focus → blur cycle
+  // happens, not merely on value change. Without this, a field can look
+  // filled on screen while the form's own validation state still marks it
+  // missing at submit time.
+  it('focuses the element before filling, like a real click would', async () => {
+    const el = document.createElement('input');
+    el.type = 'text';
+    document.body.appendChild(el);
+
+    await fillField(el, 'Jane Doe');
+
+    expect(document.activeElement).toBe(el);
+  });
+
+  it('dispatches a real FocusEvent (not a plain Event) for blur', async () => {
+    const el = document.createElement('input');
+    el.type = 'text';
+    document.body.appendChild(el);
+    let captured: Event | null = null;
+    el.addEventListener('blur', (e) => { captured = e; });
+
+    await fillField(el, 'Jane Doe');
+
+    expect(captured).toBeInstanceOf(FocusEvent);
+  });
+
+  it('focuses a <textarea> before filling too', async () => {
+    const el = document.createElement('textarea');
+    document.body.appendChild(el);
+    await fillField(el, 'A longer message');
+    expect(document.activeElement).toBe(el);
   });
 });
 
@@ -552,6 +611,30 @@ describe('fillField — role="textbox"', () => {
     document.body.appendChild(el);
     await fillField(el, '');
     expect(el.textContent).toBe('existing');
+  });
+
+  it('dispatches a real FocusEvent (not a plain Event) for blur', async () => {
+    const el = document.createElement('div');
+    el.setAttribute('role', 'textbox');
+    el.tabIndex = 0;
+    document.body.appendChild(el);
+    let captured: Event | null = null;
+    el.addEventListener('blur', (e) => { captured = e; });
+
+    await fillField(el, 'Jane Doe');
+
+    expect(captured).toBeInstanceOf(FocusEvent);
+  });
+
+  it('focuses the element before filling, like a real click would', async () => {
+    const el = document.createElement('div');
+    el.setAttribute('role', 'textbox');
+    el.tabIndex = 0;
+    document.body.appendChild(el);
+
+    await fillField(el, 'Jane Doe');
+
+    expect(document.activeElement).toBe(el);
   });
 });
 

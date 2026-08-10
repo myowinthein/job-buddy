@@ -30,6 +30,15 @@ function reformatDateForInput(value: string, element: HTMLInputElement): string 
   return value; // no recognisable format hint — keep YYYY-MM-DD
 }
 
+// Focuses an element the way a real click would, without the side effect of
+// scrolling the page — autofill can touch dozens of fields in one run, and
+// each one stealing scroll position would be jarring. Never throws: some
+// elements (already removed from the DOM between scan and fill, or a type
+// browsers refuse to focus) can reject focus() outright.
+function focusElement(element: HTMLElement): void {
+  try { element.focus({ preventScroll: true }); } catch { /* ignore */ }
+}
+
 // Dispatches a real InputEvent (not a plain Event) for 'input', matching
 // what fillAriaTextbox already does and what a genuine keystroke produces.
 // Some stricter form/validation libraries (React Hook Form + Zod schemas,
@@ -39,6 +48,13 @@ function reformatDateForInput(value: string, element: HTMLInputElement): string 
 // can't fix isTrusted (browsers force that false for any JS-dispatched
 // event, regardless of constructor), but it closes the gap for libraries
 // checking event class/inputType instead.
+//
+// blur is dispatched as a real FocusEvent, not a plain Event, for the same
+// reason — a native blur is always a FocusEvent, and libraries that key
+// "touched" state off `event instanceof FocusEvent` (React Hook Form's
+// mode: 'onBlur'/'onTouched' among them) silently no-op on a plain Event.
+// Without a genuine touched flag, the field can look filled on screen while
+// the form's own validation state still marks it missing at submit time.
 function dispatchEvents(
   element: HTMLElement,
   inputType: 'insertText' | 'deleteContentBackward' = 'insertText',
@@ -46,7 +62,7 @@ function dispatchEvents(
 ): void {
   element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType, data }));
   element.dispatchEvent(new Event('change', { bubbles: true }));
-  element.dispatchEvent(new Event('blur',   { bubbles: true }));
+  element.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
 }
 
 
@@ -93,8 +109,13 @@ function fillSelect(select: HTMLSelectElement, value: string): void {
   const eligible = options.filter((opt) => !isSkippableOption(opt));
   const match = findBestMatch(eligible, value, (o) => o.value, (o) => o.text.trim());
   if (match) {
+    focusElement(select);
     select.selectedIndex = options.indexOf(match);
     select.dispatchEvent(new Event('change', { bubbles: true }));
+    // A "required" select's validation error commonly clears only once the
+    // field is touched (focus+blur), not merely on change — see the
+    // dispatchEvents comment above for the same reasoning applied here.
+    select.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
   }
 }
 
@@ -103,10 +124,11 @@ function fillSelect(select: HTMLSelectElement, value: string): void {
 // Fill a contenteditable or role="textbox" element by setting textContent and
 // dispatching the InputEvent that React/Vue listen for.
 function fillAriaTextbox(element: HTMLElement, value: string): void {
+  focusElement(element);
   element.textContent = value;
   element.dispatchEvent(new InputEvent('input', { bubbles: true, data: value, inputType: 'insertText' }));
   element.dispatchEvent(new Event('change', { bubbles: true }));
-  element.dispatchEvent(new Event('blur',   { bubbles: true }));
+  element.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
 }
 
 // Returns true if an aria option element should be skipped (disabled or placeholder).
@@ -246,6 +268,7 @@ export async function fillField(element: HTMLElement, value: string): Promise<vo
   }
 
   if (element instanceof HTMLTextAreaElement) {
+    focusElement(element);
     if (nativeTextareaSetter) nativeTextareaSetter.call(element, value);
     else (element as HTMLTextAreaElement).value = value;
     dispatchEvents(element, 'insertText', value);
@@ -253,6 +276,7 @@ export async function fillField(element: HTMLElement, value: string): Promise<vo
   }
 
   if (element instanceof HTMLInputElement) {
+    focusElement(element);
     const fillValue = reformatDateForInput(value, element);
     if (nativeInputSetter) nativeInputSetter.call(element, fillValue);
     else element.value = fillValue;
