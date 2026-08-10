@@ -1,3 +1,5 @@
+import type { LanguageProficiency } from '../types/profile';
+
 export interface Language {
   code: string;     // ISO 639-1 alpha-2 where available
   name: string;     // English display name
@@ -108,3 +110,18 @@ export function findLanguage(codeOrName: string): Language | undefined {
     LANGUAGES.find((l) => l.name.toLowerCase() === lower)
   );
 }
+
+export function languageName(codeOrName: string): string {
+  return findLanguage(codeOrName)?.name ?? codeOrName;
+}
+
+// Short, one-word tiers — used both for display (picker tree, formatted
+// join) and are distinct from LanguageProficiency's own longer CEFR-derived
+// values, which stay descriptive for the profile editor's own dropdown.
+export const LANGUAGE_PROFICIENCY_LABELS: Record<LanguageProficiency, string> = {
+  native_bilingual:     'Native',
+  full_professional:    'Fluent',
+  professional_working: 'Advanced',
+  limited_working:      'Intermediate',
+  elementary:           'Basic',
+};

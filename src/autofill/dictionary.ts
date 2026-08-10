@@ -23,6 +23,14 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   'links.linkedin':                ['linkedin', 'linkedinurl', 'linkedinprofile', 'linkedinlink'],
   'links.portfolio':               ['portfolio', 'portfoliourl', 'personalwebsite', 'website', 'portfoliowebsite', 'portfoliolink', 'personalwebsiteurl', 'portfoliowebsiteurl', 'websiteorportfolio', 'websiteblogportfolio', 'websiteblogorportfolio', 'onlineportfolio', 'blogorwebsite', 'websiteorblog'],
   'professional.summary':          ['summary', 'aboutme', 'bio', 'aboutyourself', 'profilesummary', 'professionalsummary'],
+  'languages.formatted':           ['languages', 'languagesspoken', 'languagesknown', 'spokenlanguages', 'languageskills'],
+  // Unindexed markers for a multi-entry language+proficiency dropdown pair —
+  // never resolve directly (there is no bare 'languages.language' data).
+  // adjustLanguageMatches() in languageResolution.ts rewrites these to a
+  // concrete languages.N.* path after every field on the page is scanned,
+  // the same pattern phoneResolution.ts uses for ambiguous phone fields.
+  'languages.language':            ['language', 'languagespoken', 'languagename'],
+  'languages.proficiency':         ['proficiency', 'fluency', 'languageproficiency', 'languagelevel', 'proficiencylevel'],
   'salary.current.amount':         ['currentsalary', 'currentctc', 'currentcompensation', 'currentsalaryexpectation'],
   'salary.expected':               ['expectedsalary', 'desiredcompensation', 'expectedctc', 'desiredsalary', 'salaryexpectation'],
   'professional.noticePeriod.availableDate': ['dateavailable', 'availablefrom', 'availabledate', 'earlieststartdate', 'availabletostart', 'startavailability', 'availabilitydate'],

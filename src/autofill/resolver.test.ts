@@ -55,7 +55,10 @@ const PROFILE: Profile = {
       isCurrent: true,
     },
   ],
-  languages: [{ language: 'English', proficiency: 'native_bilingual' }],
+  languages: [
+    { language: 'English', proficiency: 'native_bilingual' },
+    { language: 'th', proficiency: 'full_professional' },
+  ],
   links: { linkedin: 'https://linkedin.com/in/jane', portfolio: 'https://jane.dev' },
   documents: {
     cv: { url: 'https://example.com/cv.pdf', file: { name: 'jane-cv.pdf', size: 1024, base64: 'abc' } },
@@ -272,6 +275,28 @@ describe('resolveProfileValue', () => {
       education: [{ ...PROFILE.education[0], description: 'Graduated with honors.' }],
     };
     expect(resolveProfileValue(p, 'education.0.description')).toBe('Graduated with honors.');
+  });
+
+  // Languages
+  it('resolves languages.formatted joining every entry with short proficiency labels', () => {
+    expect(resolveProfileValue(PROFILE, 'languages.formatted')).toBe('English (Native), Thai (Fluent)');
+  });
+
+  it('returns empty for languages.formatted when there are no languages', () => {
+    const p = { ...PROFILE, languages: [] };
+    expect(resolveProfileValue(p, 'languages.formatted')).toBe('');
+  });
+
+  it('resolves languages.0.language to a display name from a stored code', () => {
+    expect(resolveProfileValue(PROFILE, 'languages.1.language')).toBe('Thai');
+  });
+
+  it('resolves languages.0.proficiency to its short label', () => {
+    expect(resolveProfileValue(PROFILE, 'languages.0.proficiency')).toBe('Native');
+  });
+
+  it('returns empty for out-of-bounds language index', () => {
+    expect(resolveProfileValue(PROFILE, 'languages.5.language')).toBe('');
   });
 
   // Notice period — available date (date-independent assertions)

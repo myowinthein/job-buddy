@@ -7,6 +7,7 @@ import type { FieldSignals } from './signals';
 import { mapField } from './mapper';
 import type { FieldMatch } from './mapper';
 import { adjustPhoneMatches } from './phoneResolution';
+import { adjustLanguageMatches } from './languageResolution';
 import { fillField, fillFileField, clearFieldValue } from './filler';
 import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
 import { resolveProfileValue, flattenProfileValues } from './resolver';
@@ -348,6 +349,10 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
   // field's match already computed, since it depends on whether ANY field
   // on the page resolved to the calling-code path (see phoneResolution.ts).
   adjustPhoneMatches(scanned.map((s) => s.match), profile);
+
+  // Sibling-aware index assignment for the unindexed languages.language /
+  // languages.proficiency markers — see languageResolution.ts.
+  adjustLanguageMatches(scanned.map((s) => s.match), profile);
 
   scanned.forEach(({ element, signals, match, debugFieldId }) => {
     const hasExistingValue = getFieldValue(element) !== '';

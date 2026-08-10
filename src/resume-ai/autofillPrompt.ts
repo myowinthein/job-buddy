@@ -23,6 +23,7 @@ Virtual profilePaths (valid even though they are not direct object keys):
 - personal.phone.number — local number only (e.g. "812345678"); use for a separate local-number field
 - professional.noticePeriod.availableDate — YYYY-MM-DD date when the applicant can start, computed from their notice period; use for "Date Available", "Available From", "Earliest Start Date" fields
 - address.countryName — country name resolved from the country code
+- languages.formatted — every language the applicant speaks joined into one string, e.g. "English (Native), Thai (Fluent)"; use for a single free-text/textarea field asking to list all languages spoken. For a per-language dropdown pair (a language field and a separate proficiency field, possibly repeated for multiple languages), use languages.N.language and languages.N.proficiency instead (N = 0, 1, 2... matching the applicant's language entries in order)
 
 Link field priorities:
 - Use links.portfolio for any field mentioning portfolio, blog, personal website, or online portfolio — including "Website, Blog or Portfolio", "Website / Blog / Portfolio", "Online Portfolio", "Portfolio Website", "Personal Website"

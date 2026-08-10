@@ -1,6 +1,7 @@
 import type { Profile } from '../types/profile';
 import { COUNTRIES } from '../data/countries';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
+import { languageName, LANGUAGE_PROFICIENCY_LABELS } from '../data/languages';
 import { fmtYearMonth, fmtAmount, formatISODate } from '../utils/dateFormat';
 
 export function resolveProfileValue(profile: Profile, fieldPath: string): string {
@@ -49,6 +50,14 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
       const cur = profile.salary?.current;
       if (!cur?.amount) return '';
       return cur.currency ? `${fmtAmount(cur.amount)} ${cur.currency}` : fmtAmount(cur.amount);
+    }
+
+    case 'languages.formatted': {
+      const langs = profile.languages ?? [];
+      return langs
+        .filter(l => l.language)
+        .map(l => `${languageName(l.language)} (${LANGUAGE_PROFICIENCY_LABELS[l.proficiency] ?? l.proficiency})`)
+        .join(', ');
     }
 
     case 'derived.totalExperience.years': {
@@ -136,6 +145,20 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
       case 'isCurrent':           return entry.isCurrent ? 'Yes' : '';
       case 'startDate.formatted': return fmtYearMonth(entry.startDate ?? '');
       case 'endDate.formatted':   return entry.isCurrent ? 'Present' : fmtYearMonth(entry.endDate ?? '');
+    }
+    // Other sub-fields fall through to generic traversal.
+  }
+
+  // Handle languages.N.* — language is stored as an ISO code, proficiency as
+  // a CEFR-derived key; both need display-name resolution rather than the
+  // raw stored value the generic traversal below would return.
+  const langMatch = fieldPath.match(/^languages\.(\d+)\.(.+)$/);
+  if (langMatch) {
+    const entry = profile.languages?.[parseInt(langMatch[1], 10)];
+    if (!entry) return '';
+    switch (langMatch[2]) {
+      case 'language':    return entry.language ? languageName(entry.language) : '';
+      case 'proficiency': return entry.proficiency ? (LANGUAGE_PROFICIENCY_LABELS[entry.proficiency] ?? entry.proficiency) : '';
     }
     // Other sub-fields fall through to generic traversal.
   }
