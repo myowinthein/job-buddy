@@ -204,3 +204,72 @@ describe('LearnedMappingsSection — syncing with background storage writes', ()
     expect(vi.mocked(chrome.storage.onChanged.removeListener)).toHaveBeenCalledWith(handler);
   });
 });
+
+describe('LearnedMappingsSection — sorted by most learned inputs first', () => {
+  it('lists the domain with the most learned inputs before ones with fewer', async () => {
+    const mappings: LearnedMappings = {
+      'few.com':  { sig1: { path: 'personal.firstName', count: 2 } },
+      'many.com': {
+        sig1: { path: 'personal.firstName', count: 2 },
+        sig2: { path: 'personal.lastName',  count: 2 },
+        sig3: { path: 'address.city',       count: 2 },
+      },
+    };
+    vi.mocked(getLearnedMappings).mockResolvedValue(mappings);
+    renderSection();
+
+    await screen.findByText('few.com');
+    const summaries = screen.getAllByText(/\.com$/).map((el) => el.textContent);
+    expect(summaries.indexOf('many.com')).toBeLessThan(summaries.indexOf('few.com'));
+  });
+
+  it('breaks a tied input count alphabetically', async () => {
+    const mappings: LearnedMappings = {
+      'zeta.com':  { sig1: { path: 'personal.firstName', count: 2 } },
+      'alpha.com': { sig1: { path: 'personal.firstName', count: 2 } },
+    };
+    vi.mocked(getLearnedMappings).mockResolvedValue(mappings);
+    renderSection();
+
+    await screen.findByText('alpha.com');
+    const summaries = screen.getAllByText(/\.com$/).map((el) => el.textContent);
+    expect(summaries.indexOf('alpha.com')).toBeLessThan(summaries.indexOf('zeta.com'));
+  });
+});
+
+describe('LearnedMappingsSection — search filter', () => {
+  it('filters domains by a case-insensitive substring match', async () => {
+    const mappings: LearnedMappings = {
+      'indeed.com':  { sig1: { path: 'personal.firstName', count: 2 } },
+      'linkedin.com': { sig1: { path: 'personal.firstName', count: 2 } },
+    };
+    vi.mocked(getLearnedMappings).mockResolvedValue(mappings);
+    renderSection();
+
+    await screen.findByText('indeed.com');
+    fireEvent.change(screen.getByLabelText('Search sites'), { target: { value: 'LINKED' } });
+
+    expect(screen.getByText('linkedin.com')).toBeTruthy();
+    expect(screen.queryByText('indeed.com')).toBeNull();
+  });
+
+  it('shows a no-matches message distinct from the empty-state message', async () => {
+    vi.mocked(getLearnedMappings).mockResolvedValue({
+      'indeed.com': { sig1: { path: 'personal.firstName', count: 2 } },
+    });
+    renderSection();
+
+    await screen.findByText('indeed.com');
+    fireEvent.change(screen.getByLabelText('Search sites'), { target: { value: 'zzz' } });
+
+    expect(await screen.findByText('No sites match "zzz".')).toBeTruthy();
+    expect(screen.queryByText('Nothing learned yet. Entries will appear here as you fill out job applications.')).toBeNull();
+  });
+
+  it('does not render the search input when there is nothing learned yet', async () => {
+    vi.mocked(getLearnedMappings).mockResolvedValue({});
+    renderSection();
+    await screen.findByText('Nothing learned yet. Entries will appear here as you fill out job applications.');
+    expect(screen.queryByLabelText('Search sites')).toBeNull();
+  });
+});
