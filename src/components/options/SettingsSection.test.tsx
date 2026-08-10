@@ -46,10 +46,12 @@ import { SettingsSection } from './SettingsSection';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import { getProfile, saveProfile, getGeminiApiKey, clearAllStorage, saveLearnedMappings, getLearnedMappings, getApplicationHistory, saveGeminiModel, clearGeminiSettings, saveThemePreference } from '@/src/utils/storage';
 import { checkApiKey, validateApiKey } from '@/src/resume-ai/gemini';
-import { getFullDriveState, disconnectDrive, connectDrive, syncProfileToDrive } from '@/src/utils/driveSync';
+import { getFullDriveState, disconnectDrive, connectDrive, syncProfileToDrive, overwriteDriveWithLocal } from '@/src/utils/driveSync';
+import { validateImportedProfile } from '@/src/utils/profileValidator';
 import { applyTheme } from '@/src/utils/theme';
+import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
 import type { Profile } from '@/src/types/profile';
-import type { KeyValidationResult } from '@/src/resume-ai/types';
+import type { KeyValidationResult, FieldChange } from '@/src/resume-ai/types';
 
 function renderSection(onImportComplete = vi.fn(), onResetComplete = vi.fn()) {
   render(
@@ -132,6 +134,92 @@ describe('SettingsSection — profile import merges learned mappings, never over
     expect(vi.mocked(saveLearnedMappings)).toHaveBeenCalledWith(
       expect.objectContaining({ 'existing.com': expect.anything(), 'new.com': expect.anything() }),
     );
+  });
+});
+
+function makeFieldChange(overrides: Partial<FieldChange> = {}): FieldChange {
+  return {
+    id: 'personal.firstName', label: 'First Name', section: 'Personal',
+    currentValue: 'Jane', suggestedValue: 'Janet',
+    displayCurrent: 'Jane', displaySuggested: 'Janet',
+    status: 'conflict', accepted: true,
+    ...overrides,
+  };
+}
+
+describe('SettingsSection — importing into an existing (non-empty) profile', () => {
+  it('shows the diff summary dialog instead of importing immediately', async () => {
+    vi.mocked(getProfile).mockResolvedValue(makeProfile());
+    vi.mocked(generateDiff).mockReturnValueOnce([makeFieldChange()]);
+
+    renderSection();
+
+    const file = new File([JSON.stringify({ profile: makeProfile() })], 'export.json', { type: 'application/json' });
+    const fileInput = document.querySelector('input[type="file"][accept=".json"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    await screen.findByText('Import Profile');
+    expect(screen.getByText('1 conflict')).toBeTruthy();
+    expect(vi.mocked(saveProfile)).not.toHaveBeenCalled();
+  });
+
+  it('Accept All applies every diffed change and saves the merged profile', async () => {
+    const existing = makeProfile();
+    vi.mocked(getProfile).mockResolvedValue(existing);
+    const changes = [makeFieldChange()];
+    vi.mocked(generateDiff).mockReturnValueOnce(changes);
+    const merged = { ...existing, personal: { ...existing.personal, firstName: 'Janet' } };
+    vi.mocked(applyChanges).mockReturnValueOnce(merged);
+
+    const { onImportComplete } = renderSection();
+
+    const file = new File([JSON.stringify({ profile: makeProfile() })], 'export.json', { type: 'application/json' });
+    const fileInput = document.querySelector('input[type="file"][accept=".json"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    fireEvent.click(await screen.findByText('Accept All'));
+
+    await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
+    expect(vi.mocked(applyChanges)).toHaveBeenCalledWith(existing, changes);
+    expect(vi.mocked(saveProfile)).toHaveBeenCalledWith(merged);
+  });
+
+  it('Keep Current (reject all) closes the dialog without saving anything', async () => {
+    vi.mocked(getProfile).mockResolvedValue(makeProfile());
+    vi.mocked(generateDiff).mockReturnValueOnce([makeFieldChange()]);
+
+    renderSection();
+
+    const file = new File([JSON.stringify({ profile: makeProfile() })], 'export.json', { type: 'application/json' });
+    const fileInput = document.querySelector('input[type="file"][accept=".json"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    fireEvent.click(await screen.findByText('Keep Current'));
+
+    await waitFor(() => expect(screen.queryByText('1 conflict')).toBeNull());
+    expect(vi.mocked(saveProfile)).not.toHaveBeenCalled();
+    expect(vi.mocked(applyChanges)).not.toHaveBeenCalled();
+  });
+
+  it('Review → Import Selected saves only the changes the review screen passes through', async () => {
+    const existing = makeProfile();
+    vi.mocked(getProfile).mockResolvedValue(existing);
+    vi.mocked(generateDiff).mockReturnValueOnce([makeFieldChange()]);
+    const merged = { ...existing, personal: { ...existing.personal, firstName: 'Janet' } };
+    vi.mocked(applyChanges).mockReturnValueOnce(merged);
+
+    const { onImportComplete } = renderSection();
+
+    const file = new File([JSON.stringify({ profile: makeProfile() })], 'export.json', { type: 'application/json' });
+    const fileInput = document.querySelector('input[type="file"][accept=".json"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [file] } });
+
+    fireEvent.click(await screen.findByText('Review →'));
+    await screen.findByText('Review Import');
+    fireEvent.click(screen.getByText('Import Selected'));
+
+    await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
+    expect(vi.mocked(saveProfile)).toHaveBeenCalledWith(merged);
   });
 });
 
@@ -349,6 +437,109 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByText('What to do with your Drive backup?')).toBeNull();
+  });
+
+  it('Keep Current on a conflict pushes the local profile to Drive instead of restoring the backup', async () => {
+    const localProfile = makeProfile();
+    vi.mocked(getProfile).mockResolvedValue(localProfile);
+    vi.mocked(connectDrive).mockResolvedValue({
+      token: 't', fileId: 'f1',
+      backup: { profile: makeProfile({ personal: { firstName: 'Other', lastName: 'Person' } } as Partial<Profile>), lastModified: '2026-01-01T00:00:00.000Z' },
+    });
+
+    renderSection();
+    fireEvent.click(await screen.findByText('Connect Google Drive'));
+    await screen.findByText('Profile Conflict');
+    fireEvent.click(screen.getByText('Keep Current'));
+
+    await waitFor(() => expect(vi.mocked(overwriteDriveWithLocal)).toHaveBeenCalledWith(localProfile));
+    expect(vi.mocked(saveProfile)).not.toHaveBeenCalled(); // local wins — nothing pulled from the Drive backup
+    expect(screen.queryByText('Profile Conflict')).toBeNull();
+  });
+
+  it('Review → Apply Selected on a conflict saves only the reviewed changes, not the raw Drive backup', async () => {
+    const localProfile = makeProfile();
+    vi.mocked(getProfile).mockResolvedValue(localProfile);
+    vi.mocked(connectDrive).mockResolvedValue({
+      token: 't', fileId: 'f1',
+      backup: { profile: makeProfile({ personal: { firstName: 'Other', lastName: 'Person' } } as Partial<Profile>), lastModified: '2026-01-01T00:00:00.000Z' },
+    });
+    vi.mocked(generateDiff).mockReturnValueOnce([makeFieldChange()]);
+    const merged = { ...localProfile, personal: { ...localProfile.personal, firstName: 'Other' } };
+    vi.mocked(applyChanges).mockReturnValueOnce(merged);
+
+    const { onImportComplete } = renderSection();
+    fireEvent.click(await screen.findByText('Connect Google Drive'));
+    await screen.findByText('Profile Conflict');
+    fireEvent.click(screen.getByText('Review →'));
+    await screen.findByText('Review Drive Backup');
+    fireEvent.click(screen.getByText('Apply Selected'));
+
+    await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
+    expect(vi.mocked(applyChanges)).toHaveBeenCalledWith(localProfile, [makeFieldChange()]);
+    expect(vi.mocked(saveProfile)).toHaveBeenCalledWith(merged);
+  });
+
+  it('rejects an invalid Drive backup instead of saving an empty sanitized profile', async () => {
+    vi.mocked(getProfile).mockResolvedValue(null); // empty local → takes the direct restore path, not conflict
+    vi.mocked(connectDrive).mockResolvedValue({
+      token: 't', fileId: 'f1',
+      backup: { profile: { not: 'a real profile shape' } as unknown as Profile, lastModified: '2026-01-01T00:00:00.000Z' },
+    });
+    vi.mocked(validateImportedProfile).mockReturnValueOnce({
+      valid: false, sanitized: {},
+      invalidFields: [{ path: 'personal', reason: 'missing' }, { path: 'address', reason: 'missing' }],
+    });
+
+    renderSection();
+    fireEvent.click(await screen.findByText('Connect Google Drive'));
+    fireEvent.click(await screen.findByText('Restore'));
+
+    expect(await screen.findByText('Drive backup contains invalid profile data.')).toBeTruthy();
+    expect(vi.mocked(saveProfile)).not.toHaveBeenCalled();
+    expect(screen.queryByText('Profile found in Google Drive. Restore it?')).toBeNull();
+  });
+
+  it('shows the storage-full error state and its "Manage storage" link, not a retry button', async () => {
+    vi.mocked(getFullDriveState).mockResolvedValue({ connected: true, lastSynced: null, pendingSync: false, error: 'storage_full' });
+
+    renderSection();
+    expect(await screen.findByText('Google Drive storage full. Sync paused.')).toBeTruthy();
+    expect(screen.getByText('Manage storage →')).toBeTruthy();
+  });
+
+  it('Retry on a sync_error state calls syncProfileToDrive again', async () => {
+    vi.mocked(getFullDriveState).mockResolvedValue({ connected: true, lastSynced: null, pendingSync: false, error: 'sync_error' });
+    vi.mocked(getProfile).mockResolvedValue(makeProfile());
+    vi.mocked(syncProfileToDrive).mockResolvedValueOnce({ success: true, errorCode: null });
+
+    renderSection();
+    fireEvent.click(await screen.findByText('Retry'));
+
+    await waitFor(() => expect(vi.mocked(syncProfileToDrive)).toHaveBeenCalled());
+    expect(await screen.findByText('Synced to Google Drive')).toBeTruthy();
+  });
+
+  it('Sync Now shows a storage-full toast when the retry itself hits the quota', async () => {
+    vi.mocked(getFullDriveState).mockResolvedValue({ connected: true, lastSynced: null, pendingSync: false, error: null });
+    vi.mocked(getProfile).mockResolvedValue(makeProfile());
+    vi.mocked(syncProfileToDrive).mockResolvedValueOnce({ success: false, errorCode: 'storage_full' });
+
+    renderSection();
+    fireEvent.click(await screen.findByText('Sync Now'));
+
+    expect(await screen.findByText('Google Drive storage full. Sync paused.')).toBeTruthy();
+  });
+
+  it('Sync Now shows a reconnect-prompt toast when the token has expired', async () => {
+    vi.mocked(getFullDriveState).mockResolvedValue({ connected: true, lastSynced: null, pendingSync: false, error: null });
+    vi.mocked(getProfile).mockResolvedValue(makeProfile());
+    vi.mocked(syncProfileToDrive).mockResolvedValueOnce({ success: false, errorCode: 'token_expired' });
+
+    renderSection();
+    fireEvent.click(await screen.findByText('Sync Now'));
+
+    expect(await screen.findByText('Drive disconnected. Reconnect to resume syncing.')).toBeTruthy();
   });
 });
 
