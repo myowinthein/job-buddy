@@ -81,9 +81,14 @@ export function DebugPanel({
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 text-xs">
+        <div className="flex-1 overflow-y-auto px-3 py-2 text-xs">
 
-          <ExpandableCard summary="Manual Mapping" subtitle={`${session.mapping.length} field${session.mapping.length !== 1 ? 's' : ''}`} defaultExpanded>
+          <ExpandableCard
+            summary="Manual Mapping"
+            subtitle={`${session.mapping.length} field${session.mapping.length !== 1 ? 's' : ''}`}
+            defaultExpanded
+            contentClassName="p-2"
+          >
             {session.mapping.length === 0 ? (
               <p className="text-gray-400 dark:text-gray-500 italic">No mapping data.</p>
             ) : (
@@ -113,7 +118,11 @@ export function DebugPanel({
             )}
           </ExpandableCard>
 
-          <ExpandableCard summary="AI Mapping" subtitle={`${session.ai.length} field${session.ai.length !== 1 ? 's' : ''}`}>
+          <ExpandableCard
+            summary="AI Mapping"
+            subtitle={`${session.ai.length} field${session.ai.length !== 1 ? 's' : ''}`}
+            contentClassName="p-2"
+          >
             {session.aiSkipped ? (
               <p className="text-gray-400 dark:text-gray-500 italic">AI layer skipped — no API key configured.</p>
             ) : session.ai.length === 0 ? (
