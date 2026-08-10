@@ -240,6 +240,23 @@ describe('popup App — handleAutofill scan orchestration', () => {
     fireEvent.click(await screen.findByText('Fill Form ✨'));
     expect(await screen.findByText(/Could not connect to page/)).toBeTruthy();
   });
+
+  it('shows an error state when every frame\'s fill response is invalid, distinct from the no-tab case', async () => {
+    // A tab is found and the scan succeeds, but AUTOFILL_FILL comes back
+    // shaped wrong in every frame — mergeAutofillResults filters all of them
+    // out and returns null, taking the else-branch setAutofillState('error')
+    // in dispatchFill rather than a thrown/caught error.
+    sendMessageMock.mockImplementation((_tabId, message) => {
+      if (message.action === 'GET_STATUS') return Promise.reject(new Error('no listener'));
+      if (message.action === 'AUTOFILL_SCAN') return Promise.resolve({ preFilledCount: 0 });
+      if (message.action === 'AUTOFILL_FILL') return Promise.resolve({ malformed: true }); // no totalScanned
+      return Promise.reject(new Error('n/a'));
+    });
+
+    renderApp();
+    fireEvent.click(await screen.findByText('Fill Form ✨'));
+    expect(await screen.findByText(/Could not connect to page/)).toBeTruthy();
+  });
 });
 
 describe('popup App — openDebugPanel', () => {
