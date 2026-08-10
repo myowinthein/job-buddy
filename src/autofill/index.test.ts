@@ -45,7 +45,7 @@ import { scanAutofill, executeAutofill, undoAutofill, getLastResult, EMPTY_AUTOF
 import { getProfile, saveLearnedMappings } from '../utils/storage';
 import { scanFields, scanAriaFields, scanCheckboxGroups } from './scanner';
 import { mapField } from './mapper';
-import { clearFieldValue, fillField, fillCheckboxInput } from './filler';
+import { clearFieldValue, fillField, fillCheckboxInput, fillFileField } from './filler';
 import { clearElementHighlight, clearHighlights, applyHighlight } from './highlighter';
 import { resolveProfileValue } from './resolver';
 import { refreshLearnedLabels, saveElementMappings } from './mappings';
@@ -736,6 +736,36 @@ describe('silent re-fill on visibilitychange', () => {
 
     expect(fillField).not.toHaveBeenCalled();
   });
+
+  it('does not silently re-fill a noData field AI already resolved to green', async () => {
+    // A field that starts noData (confidence >= CONF_FILL, but the rule
+    // pipeline's profile value is empty) and is then AI-green-filled must be
+    // purged from the noData registry — otherwise a later tab refocus would
+    // silently overwrite AI's answer with whatever the profile value has
+    // become in the meantime, even though AI's decision was meant to be final.
+    const el = makeInput('');
+    document.body.appendChild(el);
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.7, value: null, fieldPath: 'personal.email', matchLayer: 'context' });
+    vi.mocked(runAIAutofill).mockImplementation(async (_c, _p, _r, _s, _d, _dbg, aiGreenFilled) => {
+      aiGreenFilled?.add(el);
+      return true;
+    });
+
+    await scanAutofill();
+    await executeAutofill('merge');
+
+    vi.mocked(resolveProfileValue).mockReturnValue('jane@example.com');
+    vi.mocked(fillField).mockClear();
+
+    document.dispatchEvent(new Event('visibilitychange'));
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(fillField).not.toHaveBeenCalled();
+
+    el.remove();
+  });
 });
 
 describe('scanAutofill + executeAutofill — currently-studying checkbox', () => {
@@ -849,5 +879,31 @@ describe('scanAutofill + executeAutofill — currently-working checkbox', () => 
     expect(fillCheckboxInput).toHaveBeenCalledWith(eduCheckbox);
     expect(fillCheckboxInput).toHaveBeenCalledWith(workCheckbox);
     expect(fillCheckboxInput).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('executeAutofill — file input reconstruction failure', () => {
+  it('skips the field without counting it as filled when file reconstruction fails', async () => {
+    const el = document.createElement('input');
+    el.type = 'file';
+    vi.mocked(scanFields).mockReturnValue([el]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.85, value: 'resume.pdf', fieldPath: 'documents.cv.file', matchLayer: 'dictionary_exact' });
+    vi.mocked(getProfile).mockResolvedValue({
+      ...makeProfile(),
+      documents: { cv: { file: { name: 'resume.pdf', size: 1024, base64: 'corrupt' } } },
+    } as unknown as Profile);
+    vi.mocked(fillFileField).mockResolvedValueOnce(false); // reconstruction failure (corrupt base64, etc.)
+
+    await scanAutofill();
+    const result = await executeAutofill('overwrite');
+
+    // Neither counted as a successful fill (noReview/needReview) nor left
+    // pending for manual resolution (lowConfidence/noData) — the field is
+    // simply skipped, since fillFileField's own log already covers this case.
+    expect(result.noReview).toBe(0);
+    expect(result.needReview).toBe(0);
+    expect(result.lowConfidence).toBe(0);
+    expect(result.noData).toBe(0);
+    expect(applyHighlight).not.toHaveBeenCalled();
   });
 });
