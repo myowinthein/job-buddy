@@ -789,3 +789,65 @@ describe('scanAutofill + executeAutofill — currently-studying checkbox', () =>
     expect(fillCheckboxInput).not.toHaveBeenCalled();
   });
 });
+
+describe('scanAutofill + executeAutofill — currently-working checkbox', () => {
+  it('checks a matched checkbox when the resolved work history entry is current', async () => {
+    const checkboxEl = document.createElement('input');
+    checkboxEl.type = 'checkbox';
+
+    vi.mocked(getProfile).mockResolvedValue({
+      ...makeProfile(),
+      workHistory: [{ company: 'Acme', title: 'Senior Engineer', startDate: '2020-01', isCurrent: true }],
+    } as unknown as Profile);
+    vi.mocked(scanCheckboxGroups).mockReturnValue([
+      { name: 'current', groupLabel: '', isConsent: false, options: [{ element: checkboxEl, label: 'Currently working here', value: 'on' }] },
+    ]);
+
+    await scanAutofill();
+    await executeAutofill('overwrite');
+
+    expect(fillCheckboxInput).toHaveBeenCalledWith(checkboxEl);
+  });
+
+  it('does not check a checkbox whose resolved work history entry is not current', async () => {
+    const checkboxEl = document.createElement('input');
+    checkboxEl.type = 'checkbox';
+
+    vi.mocked(getProfile).mockResolvedValue({
+      ...makeProfile(),
+      workHistory: [{ company: 'Beta Corp', title: 'Junior Dev', startDate: '2018-06', endDate: '2019-12', isCurrent: false }],
+    } as unknown as Profile);
+    vi.mocked(scanCheckboxGroups).mockReturnValue([
+      { name: 'current', groupLabel: '', isConsent: false, options: [{ element: checkboxEl, label: 'Currently working here', value: 'on' }] },
+    ]);
+
+    await scanAutofill();
+    await executeAutofill('overwrite');
+
+    expect(fillCheckboxInput).not.toHaveBeenCalled();
+  });
+
+  it('checks both an education and a work-history checkbox on the same page independently', async () => {
+    const eduCheckbox = document.createElement('input');
+    eduCheckbox.type = 'checkbox';
+    const workCheckbox = document.createElement('input');
+    workCheckbox.type = 'checkbox';
+
+    vi.mocked(getProfile).mockResolvedValue({
+      ...makeProfile(),
+      education: [{ institution: 'MIT', degree: 'MSc', fieldOfStudy: 'CS', startDate: '2023-09', isCurrent: true }],
+      workHistory: [{ company: 'Acme', title: 'Senior Engineer', startDate: '2020-01', isCurrent: true }],
+    } as unknown as Profile);
+    vi.mocked(scanCheckboxGroups).mockReturnValue([
+      { name: 'edu-current', groupLabel: '', isConsent: false, options: [{ element: eduCheckbox, label: 'Currently studying here', value: 'on' }] },
+      { name: 'work-current', groupLabel: '', isConsent: false, options: [{ element: workCheckbox, label: 'Currently working here', value: 'on' }] },
+    ]);
+
+    await scanAutofill();
+    await executeAutofill('overwrite');
+
+    expect(fillCheckboxInput).toHaveBeenCalledWith(eduCheckbox);
+    expect(fillCheckboxInput).toHaveBeenCalledWith(workCheckbox);
+    expect(fillCheckboxInput).toHaveBeenCalledTimes(2);
+  });
+});

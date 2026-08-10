@@ -16,8 +16,15 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   'address.state':                 ['state', 'province', 'region', 'stateorprovince'],
   'address.postalCode':            ['postalcode', 'zipcode', 'zip', 'postcode'],
   'derived.fullName':              ['fullname', 'name', 'yourname', 'applicantname'],
-  'derived.currentTitle':          ['jobtitle', 'currenttitle', 'position', 'currentposition', 'role', 'currentrole'],
-  'derived.currentCompany':        ['company', 'employer', 'currentcompany', 'currentemployer', 'organization', 'organisation'],
+  // Scoped to explicitly "current"-qualified labels only — these correctly
+  // resolve to empty when the applicant has no active job (calculateDerivedFields
+  // only considers isCurrent entries), which is the right behavior for a field
+  // that specifically asks about *current* employment. Generic, unqualified
+  // labels ("Company", "Job Title") go through workHistory.company/title
+  // instead (see workHistoryResolution.ts) so they still resolve to the most
+  // recent past job when nothing is currently active.
+  'derived.currentTitle':          ['currenttitle', 'currentposition', 'currentrole'],
+  'derived.currentCompany':        ['currentcompany', 'currentemployer'],
   'derived.totalExperience.years': ['yearsofexperience', 'experience', 'totalexperience', 'yearofexperience'],
   'derived.age':                   ['age', 'currentage', 'yourage'],
   'links.linkedin':                ['linkedin', 'linkedinurl', 'linkedinprofile', 'linkedinlink'],
@@ -46,16 +53,32 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   'education.institution':         ['institution', 'school', 'university', 'college', 'schoolname', 'universityname', 'institutionname', 'collegename'],
   'education.degree':              ['degree', 'degreetype', 'qualification', 'degreeearned', 'levelofeducation', 'educationlevel'],
   'education.fieldOfStudy':        ['fieldofstudy', 'major', 'areaofstudy', 'concentration', 'specialization', 'majorfield', 'course', 'discipline'],
-  // 'startdate'/'enddate' are common bare labels within an Education fieldset
-  // but are inherently ambiguous against any other section using the same
-  // wording (e.g. a future workHistory dictionary) — there is no section-aware
-  // disambiguation today, so this is a known, accepted collision risk.
-  'education.startDate.formatted': ['educationstartdate', 'startdate', 'yearstarted', 'schoolstartdate', 'enrollmentdate'],
-  'education.endDate.formatted':   ['educationenddate', 'enddate', 'yearcompleted', 'schoolenddate', 'graduationdate'],
+  // Deliberately NOT bare 'startdate'/'enddate' — those collide with the
+  // identical bare wording work history sections commonly use (see
+  // workHistory.startDate.formatted below), and the dictionary has no
+  // section-aware way to tell them apart. Only qualified, unambiguous-by-
+  // construction phrasings are registered; a bare "Start Date" field falls
+  // back to AI, which does get section context (nearbyText) this dictionary
+  // layer doesn't have.
+  'education.startDate.formatted': ['educationstartdate', 'schoolstartdate', 'enrollmentdate', 'yearstarted'],
+  'education.endDate.formatted':   ['educationenddate', 'schoolenddate', 'graduationdate', 'yearcompleted', 'yeargraduated'],
   // For a select/radio/text "currently enrolled" field — safe via the normal
   // fill mechanics (only ever sets a value among the page's own options).
   // The separate checkbox case is intentionally NOT here — see
   // educationResolution.ts's matchCurrentEducationCheckboxes for why a
   // checkbox needs its own narrower, exact-match-only path.
   'education.isCurrent':           ['currentlyenrolled', 'currentlystudying', 'currentstudent', 'isstillenrolled', 'presentlyenrolled'],
+  // Same unindexed-marker pattern, resolved by adjustWorkHistoryMatches() in
+  // workHistoryResolution.ts.
+  'workHistory.company':           ['company', 'employer', 'organization', 'organisation', 'companyname', 'employername'],
+  'workHistory.title':             ['jobtitle', 'position', 'role', 'jobposition', 'jobrole'],
+  'workHistory.location':          ['worklocation', 'joblocation', 'officelocation', 'employmentlocation'],
+  'workHistory.location.city':     ['workcity', 'jobcity', 'officecity', 'employmentcity'],
+  'workHistory.location.countryName': ['workcountry', 'jobcountry', 'officecountry', 'countryofemployment'],
+  // See the education date comment above for why these are qualified, not bare.
+  'workHistory.startDate.formatted': ['employmentstartdate', 'jobstartdate', 'workstartdate', 'startdateofemployment', 'datestarted'],
+  'workHistory.endDate.formatted':   ['employmentenddate', 'jobenddate', 'workenddate', 'enddateofemployment', 'lastdayofwork', 'dateended'],
+  'workHistory.isCurrent':         ['currentlyworking', 'currentlyemployed', 'currentjob', 'isthisyourcurrentjob', 'presentlyemployed'],
+  'workHistory.description':       ['jobdescription', 'responsibilities', 'roledescription', 'workdescription', 'dutiesandresponsibilities'],
+  'workHistory.arrangement':       ['workarrangement', 'employmenttype', 'workmode', 'worktype', 'remoteoronsite'],
 };

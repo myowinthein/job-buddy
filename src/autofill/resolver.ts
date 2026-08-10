@@ -132,6 +132,14 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
         if (entry.location?.countryCode) parts.push(COUNTRIES.find(c => c.code === entry.location!.countryCode)?.name ?? entry.location.countryCode);
         return parts.join(', ');
       }
+      // Separate city/country sub-fields — for a form that splits location
+      // into its own City and Country inputs rather than one combined field.
+      case 'location.city': return entry.location?.city ?? '';
+      case 'location.countryName': {
+        const code = entry.location?.countryCode;
+        if (!code) return '';
+        return COUNTRIES.find(c => c.code === code)?.name ?? code;
+      }
     }
     // Other sub-fields fall through to generic traversal.
   }

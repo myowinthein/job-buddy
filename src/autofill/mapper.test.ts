@@ -228,19 +228,75 @@ describe('mapField — Layer 2: Dictionary exact match', () => {
     expect(result.fieldPath).toBe('education.fieldOfStudy');
   });
 
-  it('matches "start date" label signal → the unindexed education.startDate.formatted marker', () => {
-    const result = mapField(sig({ label: 'Start Date' }), PROFILE, NO_MAPPINGS, DOMAIN);
+  it('matches "school start date" label signal → the unindexed education.startDate.formatted marker', () => {
+    // Deliberately not a bare "Start Date" — that's ambiguous with work
+    // history's identical wording and isn't given a deterministic exact-match
+    // outcome by design; see the dictionary.ts comment on both date entries.
+    const result = mapField(sig({ label: 'School Start Date' }), PROFILE, NO_MAPPINGS, DOMAIN);
     expect(result.fieldPath).toBe('education.startDate.formatted');
   });
 
-  it('matches "end date" label signal → the unindexed education.endDate.formatted marker', () => {
-    const result = mapField(sig({ label: 'End Date' }), PROFILE, NO_MAPPINGS, DOMAIN);
+  it('matches "graduation date" label signal → the unindexed education.endDate.formatted marker', () => {
+    const result = mapField(sig({ label: 'Graduation Date' }), PROFILE, NO_MAPPINGS, DOMAIN);
     expect(result.fieldPath).toBe('education.endDate.formatted');
   });
 
   it('matches "currently enrolled" label signal → the unindexed education.isCurrent marker', () => {
     const result = mapField(sig({ label: 'Currently Enrolled' }), PROFILE, NO_MAPPINGS, DOMAIN);
     expect(result.fieldPath).toBe('education.isCurrent');
+  });
+
+  it('matches "job title" label signal → the unindexed workHistory.title marker', () => {
+    // Left unindexed here too — adjustWorkHistoryMatches
+    // (workHistoryResolution.ts) assigns the real workHistory.N.title path.
+    const result = mapField(sig({ label: 'Job Title' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('workHistory.title');
+  });
+
+  it('matches "employer" label signal → the unindexed workHistory.company marker', () => {
+    const result = mapField(sig({ label: 'Employer' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('workHistory.company');
+  });
+
+  it('matches "work city" label signal → the unindexed workHistory.location.city marker', () => {
+    const result = mapField(sig({ label: 'Work City' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('workHistory.location.city');
+  });
+
+  it('matches "work country" label signal → the unindexed workHistory.location.countryName marker', () => {
+    const result = mapField(sig({ label: 'Work Country' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('workHistory.location.countryName');
+  });
+
+  it('matches "job start date" label signal → the unindexed workHistory.startDate.formatted marker', () => {
+    const result = mapField(sig({ label: 'Job Start Date' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('workHistory.startDate.formatted');
+  });
+
+  it('matches "last day of work" label signal → the unindexed workHistory.endDate.formatted marker', () => {
+    const result = mapField(sig({ label: 'Last Day of Work' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('workHistory.endDate.formatted');
+  });
+
+  it('matches "currently employed" label signal → the unindexed workHistory.isCurrent marker', () => {
+    const result = mapField(sig({ label: 'Currently Employed' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('workHistory.isCurrent');
+  });
+
+  it('matches "job description" label signal → the unindexed workHistory.description marker', () => {
+    const result = mapField(sig({ label: 'Job Description' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('workHistory.description');
+  });
+
+  it('matches "work arrangement" label signal → the unindexed workHistory.arrangement marker', () => {
+    const result = mapField(sig({ label: 'Work Arrangement' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('workHistory.arrangement');
+  });
+
+  it('lets an explicitly "current"-qualified label keep the strict derived.currentCompany semantics', () => {
+    const result = mapField(sig({ label: 'Current Employer' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('derived.currentCompany');
   });
 
   it('matches "city" placeholder signal → address.city', () => {
@@ -459,7 +515,7 @@ describe('mapField — Layer 3: Fuzzy match', () => {
     // (>= CONF_FILL and <= CONF_FUZZY_THRESHOLD → weak tier).
     const result = mapField(sig({ name: 'compayn' }), PROFILE, NO_MAPPINGS, DOMAIN);
     expect(result.matchLayer).toBe('fuzzy');
-    expect(result.fieldPath).toBe('derived.currentCompany');
+    expect(result.fieldPath).toBe('workHistory.company');
     const score = 5 / 7; // 1 - levenshtein(2) / maxLen(7)
     expect(score).toBeGreaterThanOrEqual(0.60);           // CONF_FILL
     expect(score).toBeLessThanOrEqual(CONF_FUZZY_THRESHOLD);
