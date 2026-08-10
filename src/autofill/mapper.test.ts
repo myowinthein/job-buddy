@@ -402,6 +402,67 @@ describe('mapField — Layer 3: Fuzzy match', () => {
   });
 });
 
+describe('mapField — Layer 3.5: Custom link labels', () => {
+  const withCustomLinks = {
+    ...PROFILE,
+    links: {
+      ...PROFILE.links,
+      custom: [
+        { label: 'GitHub', url: 'https://github.com/janedoe' },
+        { label: 'Behance', url: 'https://behance.net/janedoe' },
+      ],
+    },
+  };
+
+  it('matches an exact label signal at CONF_DICT_EXACT', () => {
+    const result = mapField(sig({ label: 'GitHub' }), withCustomLinks, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('custom_link');
+    expect(result.fieldPath).toBe('links.custom.0.url');
+    expect(result.confidence).toBe(0.85);
+    expect(result.value).toBe('https://github.com/janedoe');
+  });
+
+  it('matches the correct entry among multiple custom links', () => {
+    const result = mapField(sig({ label: 'Behance' }), withCustomLinks, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('links.custom.1.url');
+    expect(result.value).toBe('https://behance.net/janedoe');
+  });
+
+  it('fuzzy-matches a close-but-not-exact label at a lower confidence', () => {
+    // "guthub" vs "github" → similarity 5/6 ≈ 0.833 (single-char typo).
+    const result = mapField(sig({ label: 'Guthub' }), withCustomLinks, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('custom_link');
+    expect(result.fieldPath).toBe('links.custom.0.url');
+    expect(result.confidence).toBeGreaterThan(0);
+    expect(result.confidence).toBeLessThan(0.85);
+  });
+
+  it('lets the static dictionary win over a same-named custom link', () => {
+    const p = {
+      ...PROFILE,
+      links: { ...PROFILE.links, custom: [{ label: 'Portfolio', url: 'https://custom-portfolio.example' }] },
+    };
+    const result = mapField(sig({ label: 'Portfolio' }), p, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('links.portfolio');
+  });
+
+  it('ignores a custom link entry with a blank label or url', () => {
+    const p = {
+      ...PROFILE,
+      links: { ...PROFILE.links, custom: [{ label: '', url: 'https://x.example' }, { label: 'Medium', url: '' }] },
+    };
+    const result = mapField(sig({ label: 'Medium' }), p, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).not.toBe('custom_link');
+  });
+
+  it('does not affect fields unrelated to any custom link', () => {
+    const result = mapField(sig({ name: 'firstname' }), withCustomLinks, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('personal.firstName');
+  });
+});
+
 describe('mapField — Layer 4: Context (nearbyText)', () => {
   it('matches via nearbyText when primary signals produce no match', () => {
     const result = mapField(sig({ name: 'field1', nearbyText: 'city' }), PROFILE, NO_MAPPINGS, DOMAIN);

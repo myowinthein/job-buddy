@@ -8,6 +8,7 @@ const LAYER_LABEL: Record<string, string> = {
   autocomplete:     'Autocomplete',
   dictionary_exact: 'Dictionary',
   fuzzy:            'Fuzzy',
+  custom_link:      'Custom Link',
   context:          'Context',
   none:             'No match',
 };
