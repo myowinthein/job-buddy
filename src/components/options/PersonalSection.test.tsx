@@ -224,6 +224,30 @@ describe('PersonalSection — save validation', () => {
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('Nickname must be 100 characters or fewer')).toBeTruthy();
   });
+
+  it('shows a live max-length error on blur for a first name over 100 characters, not just at save time', () => {
+    renderSection({ personal: {} as unknown as Profile['personal'] });
+    const firstName = document.getElementById('field-firstName')!;
+    fireEvent.change(firstName, { target: { value: 'a'.repeat(101) } });
+    fireEvent.blur(firstName);
+    expect(screen.getByText('First name must be 100 characters or fewer')).toBeTruthy();
+  });
+
+  it('shows a live max-length error on blur for a last name over 100 characters, not just at save time', () => {
+    renderSection({ personal: {} as unknown as Profile['personal'] });
+    const lastName = document.getElementById('field-lastName')!;
+    fireEvent.change(lastName, { target: { value: 'a'.repeat(101) } });
+    fireEvent.blur(lastName);
+    expect(screen.getByText('Last name must be 100 characters or fewer')).toBeTruthy();
+  });
+
+  it('shows a live max-length error on blur for an email over 254 characters, not just at save time', () => {
+    renderSection({ personal: {} as unknown as Profile['personal'] });
+    const email = document.getElementById('field-email')!;
+    fireEvent.change(email, { target: { value: `${'a'.repeat(250)}@b.co` } });
+    fireEvent.blur(email);
+    expect(screen.getByText('Email must be 254 characters or fewer')).toBeTruthy();
+  });
 });
 
 describe('PersonalSection — handleCountryChange (phone calling code)', () => {

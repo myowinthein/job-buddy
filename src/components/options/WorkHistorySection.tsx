@@ -127,15 +127,19 @@ export function WorkHistorySection({ profile, onSave }: Props) {
     [experienceKey],
   );
 
+  // Shared by handleEntryBlur, updateEntry, and validate() — the one check
+  // each required text field needs, regardless of when it fires.
+  const textFieldError = (key: 'company' | 'title', value: string): string => {
+    if (key === 'company' && !value.trim()) return 'Company name is required';
+    if (key === 'title' && !value.trim()) return 'Job title is required';
+    return '';
+  };
+
   // Blur handler for text inputs — validates the current stored value so
   // focusing then leaving a blank required field shows an error.
   const handleEntryBlur = (idx: number, key: 'company' | 'title') => {
-    const value = String(entries[idx][key]);
     const ek = `${idx}.${key}`;
-    let err = '';
-    if (key === 'company' && !value.trim()) err = 'Company name is required';
-    else if (key === 'title' && !value.trim()) err = 'Job title is required';
-    setErrors((e) => ({ ...e, [ek]: err }));
+    setErrors((e) => ({ ...e, [ek]: textFieldError(key, String(entries[idx][key])) }));
   };
 
   // Work history dates require a month for both start and end (no
@@ -149,8 +153,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     const ek = `${idx}.${key}`;
     let err = '';
-    if (key === 'company' && !String(value).trim()) err = 'Company name is required';
-    else if (key === 'title' && !String(value).trim()) err = 'Job title is required';
+    if (key === 'company' || key === 'title') err = textFieldError(key, String(value));
     else if (key === 'isCurrent' && value === true) {
       // Marking as ongoing clears any existing end-date error
       setErrors((e) => ({ ...e, [`${idx}.endDate`]: '' }));
@@ -167,8 +170,10 @@ export function WorkHistorySection({ profile, onSave }: Props) {
 
     if (entries.length === 0) e.general = 'At least one work history entry is required';
     entries.forEach((row, idx) => {
-      if (!row.company.trim()) e[`${idx}.company`] = 'Company name is required';
-      if (!row.title.trim()) e[`${idx}.title`] = 'Job title is required';
+      for (const key of ['company', 'title'] as const) {
+        const err = textFieldError(key, row[key]);
+        if (err) e[`${idx}.${key}`] = err;
+      }
       if (!row.startDate.trim()) {
         e[`${idx}.startDate`] = 'Start date is required';
       } else {
