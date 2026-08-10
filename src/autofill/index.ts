@@ -9,6 +9,7 @@ import type { FieldMatch } from './mapper';
 import { adjustPhoneMatches } from './phoneResolution';
 import { adjustLanguageMatches } from './languageResolution';
 import { adjustEducationMatches, matchCurrentEducationCheckboxes } from './educationResolution';
+import { adjustWorkHistoryMatches, matchCurrentWorkHistoryCheckboxes } from './workHistoryResolution';
 import { fillField, fillFileField, fillCheckboxInput, clearFieldValue } from './filler';
 import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
 import { resolveProfileValue, flattenProfileValues } from './resolver';
@@ -359,16 +360,23 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
   // see educationResolution.ts.
   adjustEducationMatches(scanned.map((s) => s.match), profile);
 
-  // "Currently studying here"-style checkboxes: excluded from scanFields()
-  // entirely (standalone checkboxes are never scanned by the main pipeline —
-  // see EXCLUDED_TYPES in scanner.ts), and matched through a deliberately
-  // narrow, separate path rather than mapper.ts's normal layers — see
-  // matchCurrentEducationCheckboxes for why. Reuses scanCheckboxGroups(),
+  // Sibling-aware index assignment for the unindexed workHistory.* markers —
+  // see workHistoryResolution.ts.
+  adjustWorkHistoryMatches(scanned.map((s) => s.match), profile);
+
+  // "Currently studying/working here"-style checkboxes: excluded from
+  // scanFields() entirely (standalone checkboxes are never scanned by the
+  // main pipeline — see EXCLUDED_TYPES in scanner.ts), and matched through a
+  // deliberately narrow, separate path rather than mapper.ts's normal layers
+  // — see matchCurrentEducationCheckboxes for why. Reuses scanCheckboxGroups(),
   // the same source ai.ts already scans for checkbox groups.
   const checkboxCandidates = scanCheckboxGroups()
     .filter((g) => !g.isConsent)
     .flatMap((g) => g.options);
-  const checkboxMatches = matchCurrentEducationCheckboxes(checkboxCandidates, profile);
+  const checkboxMatches = [
+    ...matchCurrentEducationCheckboxes(checkboxCandidates, profile),
+    ...matchCurrentWorkHistoryCheckboxes(checkboxCandidates, profile),
+  ];
   const checkboxScanned = checkboxMatches.map(({ element, fieldPath }, i) => ({
     element,
     signals: extractSignals(element),
