@@ -451,4 +451,16 @@ describe('FIELD_DEFS setValue via applyChanges', () => {
     expect(result.documents?.cv?.file?.name).toBe('new.pdf');
     expect(result.documents?.cv?.url).toBe('https://drive.example/old.pdf');
   });
+
+  it('sets salary.current without disturbing an existing salary.expected array', () => {
+    const base: Partial<Profile> = {
+      salary: { current: { amount: 1000, currency: 'USD', period: 'monthly' }, expected: [{ amount: 2000, currency: 'USD', period: 'monthly', country: 'US' }] },
+    };
+    const diff = generateDiff(base, {
+      salary: { current: { amount: 6000, currency: 'THB', period: 'monthly' } } as Partial<Profile>['salary'],
+    });
+    const result = applyChanges(base, diff);
+    expect(result.salary?.current).toEqual({ amount: 6000, currency: 'THB', period: 'monthly' });
+    expect(result.salary?.expected).toEqual([{ amount: 2000, currency: 'USD', period: 'monthly', country: 'US' }]);
+  });
 });
