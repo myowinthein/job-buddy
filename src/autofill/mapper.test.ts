@@ -318,6 +318,39 @@ describe('mapField — Layer 2: Dictionary exact match', () => {
   });
 });
 
+describe('mapField — documents.cv.file vs documents.cv.url disambiguation', () => {
+  const withUrl = {
+    ...PROFILE,
+    documents: { cv: { url: 'https://drive.google.com/jane-cv', file: { name: 'jane-cv.pdf', size: 1024, base64: 'abc' } } },
+  };
+
+  it('keeps documents.cv.file for an actual file input', () => {
+    const result = mapField(sig({ label: 'Resume', type: 'file' }), withUrl, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('documents.cv.file');
+    expect(result.value).toBe('jane-cv.pdf');
+  });
+
+  it('redirects to documents.cv.url for a text input sharing the same label', () => {
+    const result = mapField(sig({ label: 'Resume', type: 'text' }), withUrl, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('documents.cv.url');
+    expect(result.value).toBe('https://drive.google.com/jane-cv');
+  });
+
+  it('redirects for a url-type input too', () => {
+    const result = mapField(sig({ label: 'CV', type: 'url' }), withUrl, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('documents.cv.url');
+  });
+
+  it('never fills a text field with the raw filename, even with no url stored', () => {
+    const fileOnly = { ...PROFILE, documents: { cv: { file: { name: 'jane-cv.pdf', size: 1024, base64: 'abc' } } } };
+    const result = mapField(sig({ label: 'Resume', type: 'text' }), fileOnly, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('documents.cv.url');
+    expect(result.value).toBeNull();
+  });
+});
+
 describe('mapField — signal priority: label beats name/id', () => {
   it('prefers label over name when they point to different fields', () => {
     // Real-world case: name="linkedin" on a "Website, Blog or Portfolio" field

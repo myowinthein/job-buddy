@@ -89,6 +89,29 @@ function resolve(profile: Profile, fieldPath: string): string | null {
   return v || null;
 }
 
+// Layers 2-4 all resolve dictionary hits through the same static reverse
+// index (see EXACT_TERM_TO_PATH), so a text/url field sharing a resume/cv
+// label with the file-upload dictionary entry (documents.cv.file) would
+// otherwise resolve to the file's name rather than a URL — there's no
+// 'documents.cv.url' dictionary entry, since giving it the same alias terms
+// would just re-create the same collision. The disambiguating signal (is
+// this element actually a file input) only mapField() has — FieldMatch
+// itself carries no element info — so this can't be a page-wide
+// sibling-detection pass like phoneResolution.ts; it has to happen here.
+function resolveDictionaryHit(
+  profile: Profile,
+  fieldPath: string,
+  signals: FieldSignals,
+): { fieldPath: string; value: string | null } {
+  if (fieldPath === 'documents.cv.file' && signals.type !== 'file') {
+    // Redirect unconditionally, even if no url is stored — resolve() then
+    // correctly returns null (gray/noData tier) rather than falling back to
+    // filling the file's name into a text field, which is never right.
+    return { fieldPath: 'documents.cv.url', value: resolve(profile, 'documents.cv.url') };
+  }
+  return { fieldPath, value: resolve(profile, fieldPath) };
+}
+
 export function mapField(
   signals: FieldSignals,
   profile: Profile,
@@ -136,7 +159,10 @@ export function mapField(
   // ── Layer 2: Dictionary exact match ───────────────────────────────────────
   for (const n of normed) {
     const hit = dictionaryExact(n);
-    if (hit) return { fieldPath: hit, confidence: CONF_DICT_EXACT, value: resolve(profile, hit), matchLayer: 'dictionary_exact' };
+    if (hit) {
+      const resolved = resolveDictionaryHit(profile, hit, signals);
+      return { fieldPath: resolved.fieldPath, confidence: CONF_DICT_EXACT, value: resolved.value, matchLayer: 'dictionary_exact' };
+    }
   }
 
   // ── Layer 3: Fuzzy matching on primary signals ────────────────────────────
@@ -147,11 +173,12 @@ export function mapField(
   }
   if (bestFuzzy) {
     const { fieldPath, score } = bestFuzzy;
+    const resolved = resolveDictionaryHit(profile, fieldPath, signals);
     if (score > CONF_FUZZY_THRESHOLD) {
-      return { fieldPath, confidence: score * CONF_FUZZY_STRONG_MULT, value: resolve(profile, fieldPath), matchLayer: 'fuzzy' };
+      return { fieldPath: resolved.fieldPath, confidence: score * CONF_FUZZY_STRONG_MULT, value: resolved.value, matchLayer: 'fuzzy' };
     }
     if (score >= CONF_FILL) {
-      return { fieldPath, confidence: score * CONF_FUZZY_WEAK_MULT, value: resolve(profile, fieldPath), matchLayer: 'fuzzy' };
+      return { fieldPath: resolved.fieldPath, confidence: score * CONF_FUZZY_WEAK_MULT, value: resolved.value, matchLayer: 'fuzzy' };
     }
   }
 
@@ -193,11 +220,13 @@ export function mapField(
   if (nearbyNorm) {
     const exactHit = dictionaryExact(nearbyNorm);
     if (exactHit) {
-      return { fieldPath: exactHit, confidence: CONF_CONTEXT, value: resolve(profile, exactHit), matchLayer: 'context' };
+      const resolved = resolveDictionaryHit(profile, exactHit, signals);
+      return { fieldPath: resolved.fieldPath, confidence: CONF_CONTEXT, value: resolved.value, matchLayer: 'context' };
     }
     const fuzzyHit = dictionaryFuzzy(nearbyNorm);
     if (fuzzyHit && fuzzyHit.score >= CONF_FUZZY_THRESHOLD) {
-      return { fieldPath: fuzzyHit.fieldPath, confidence: CONF_CONTEXT, value: resolve(profile, fuzzyHit.fieldPath), matchLayer: 'context' };
+      const resolved = resolveDictionaryHit(profile, fuzzyHit.fieldPath, signals);
+      return { fieldPath: resolved.fieldPath, confidence: CONF_CONTEXT, value: resolved.value, matchLayer: 'context' };
     }
   }
 
