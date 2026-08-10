@@ -5,6 +5,7 @@ import { CONF_FUZZY_THRESHOLD } from './constants';
 // Capture native setters before any framework can shadow them on instances
 const nativeInputSetter    = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,    'value')?.set;
 const nativeTextareaSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
+const nativeCheckedSetter  = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,    'checked')?.set;
 
 // Matches a YYYY-MM-DD ISO date string (the format the resolver always produces).
 const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -204,6 +205,14 @@ function setEmpty(element: HTMLElement): void {
       element.dispatchEvent(new Event('change', { bubbles: true }));
       return;
     }
+    if (element.type === 'checkbox') {
+      // Setting .value on a checkbox never affects its checked state.
+      if (nativeCheckedSetter) nativeCheckedSetter.call(element, false);
+      else element.checked = false;
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+      element.dispatchEvent(new Event('input',  { bubbles: true }));
+      return;
+    }
     if (nativeInputSetter) nativeInputSetter.call(element, '');
     else element.value = '';
     dispatchEvents(element, 'deleteContentBackward');
@@ -310,8 +319,6 @@ export async function fillFileField(
     return false;
   }
 }
-
-const nativeCheckedSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked')?.set;
 
 function fillCheckedInput(element: HTMLInputElement): void {
   if (nativeCheckedSetter) nativeCheckedSetter.call(element, true);

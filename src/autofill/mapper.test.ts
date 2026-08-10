@@ -210,6 +210,39 @@ describe('mapField — Layer 2: Dictionary exact match', () => {
     expect(result.fieldPath).toBe('languages.proficiency');
   });
 
+  it('matches "institution" label signal → the unindexed education.institution marker', () => {
+    // Left unindexed here too — adjustEducationMatches (educationResolution.ts)
+    // assigns the real education.N.institution path afterward.
+    const result = mapField(sig({ label: 'Institution' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('education.institution');
+  });
+
+  it('matches "degree" label signal → the unindexed education.degree marker', () => {
+    const result = mapField(sig({ label: 'Degree' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('education.degree');
+  });
+
+  it('matches "field of study" label signal → the unindexed education.fieldOfStudy marker', () => {
+    const result = mapField(sig({ label: 'Field of Study' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('education.fieldOfStudy');
+  });
+
+  it('matches "start date" label signal → the unindexed education.startDate.formatted marker', () => {
+    const result = mapField(sig({ label: 'Start Date' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('education.startDate.formatted');
+  });
+
+  it('matches "end date" label signal → the unindexed education.endDate.formatted marker', () => {
+    const result = mapField(sig({ label: 'End Date' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('education.endDate.formatted');
+  });
+
+  it('matches "currently enrolled" label signal → the unindexed education.isCurrent marker', () => {
+    const result = mapField(sig({ label: 'Currently Enrolled' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.fieldPath).toBe('education.isCurrent');
+  });
+
   it('matches "city" placeholder signal → address.city', () => {
     const result = mapField(sig({ placeholder: 'City' }), PROFILE, NO_MAPPINGS, DOMAIN);
     expect(result.matchLayer).toBe('dictionary_exact');
