@@ -569,6 +569,42 @@ describe('fillFileField', () => {
   });
 });
 
+// ── clearFieldValue — file input ────────────────────────────────────────────────
+// Undo must actually clear an attached CV file — silently leaving a stale
+// file attached would misrepresent the field as still user-filled.
+
+describe('clearFieldValue — file input', () => {
+  beforeEach(() => {
+    vi.stubGlobal('DataTransfer', FakeDataTransfer);
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('empties the FileList and dispatches input and change events', async () => {
+    const input = makeFileInput();
+    await fillFileField(input, { name: 'resume.txt', size: 5, base64: 'data:text/plain;base64,aGVsbG8=' });
+    expect(input.files?.length).toBe(1); // sanity: a file is actually attached first
+
+    let inputFired = false;
+    let changeFired = false;
+    input.addEventListener('input',  () => { inputFired = true; });
+    input.addEventListener('change', () => { changeFired = true; });
+
+    clearFieldValue(input);
+
+    expect(input.files?.length).toBe(0);
+    expect(inputFired).toBe(true);
+    expect(changeFired).toBe(true);
+  });
+
+  it('does not throw when DataTransfer is unavailable (older/unsupported environments)', () => {
+    vi.unstubAllGlobals(); // simulate an environment without a DataTransfer constructor
+    const input = makeFileInput();
+    expect(() => clearFieldValue(input)).not.toThrow();
+  });
+});
+
 // ── clearFieldValue — select ──────────────────────────────────────────────────
 
 describe('clearFieldValue — select', () => {
