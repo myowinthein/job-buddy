@@ -147,6 +147,13 @@ describe('normalizeProfile', () => {
     expect(out.links.custom?.[1].url).toBe('https://github.com/janedoe'); // unchanged
   });
 
+  it('leaves a custom link entry with no url alone, without producing "https://"', () => {
+    const p = baseProfile();
+    p.links.custom = [{ label: 'Incomplete', url: '' }];
+    const out = normalizeProfile(p);
+    expect(out.links.custom?.[0].url).toBe('');
+  });
+
   it('leaves an empty portfolio value alone instead of producing "https://"', () => {
     const p = baseProfile();
     p.links.portfolio = '';
