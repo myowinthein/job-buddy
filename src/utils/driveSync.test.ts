@@ -186,6 +186,21 @@ describe('syncProfileToDrive', () => {
     const saved = store['driveBackupState'] as { pendingSync: boolean };
     expect(saved.pendingSync).toBe(true);
   });
+
+  it('treats a 200 OK create response missing "id" as a failure, not a silent success', async () => {
+    // A malformed-but-technically-ok response — resp.ok is true, so the
+    // generic !resp.ok branch never fires; only the explicit !data.id guard
+    // catches this. Without it, fileId would be saved as undefined and every
+    // future sync would silently create a new Drive file instead of patching.
+    store['driveToken'] = 'tok-valid';
+    store['driveBackupState'] = { fileId: null, lastSynced: null, pendingSync: false, error: null };
+    mockFetchSequence([
+      { ok: true, body: { files: [] } }, // findBackupFileId (no existing file)
+      { ok: true, body: {} },            // 200 OK, but no id field
+    ]);
+    const result = await syncProfileToDrive(makeProfile());
+    expect(result).toEqual({ success: false, errorCode: 'sync_error' });
+  });
 });
 
 describe('connectDrive', () => {
