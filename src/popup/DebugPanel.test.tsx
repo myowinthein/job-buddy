@@ -95,14 +95,14 @@ describe('DebugPanel — AI entries', () => {
 });
 
 describe('DebugPanel — accordion sections', () => {
-  it('starts with Manual Mapping expanded and AI Mapping collapsed', () => {
+  it('starts with Rule Mapping expanded and AI Mapping collapsed', () => {
     const session = emptySession({
       mapping: [{ fieldId: 'f1', matchLayer: 'dictionary_exact', confidence: 0.85, profilePath: 'personal.firstName', finalState: 'green' }],
       ai: [{ fieldId: 'f2', label: 'Cover Letter', type: 'text', aiResult: null, aiConfidence: 'low', finalState: 'yellow' }],
     });
     render(<DebugPanel session={session} onClose={vi.fn()} />);
 
-    expect(screen.getByText('personal.firstName')).toBeTruthy(); // Manual Mapping content visible
+    expect(screen.getByText('personal.firstName')).toBeTruthy(); // Rule Mapping content visible
     expect(screen.queryByText('Cover Letter')).toBeNull(); // AI Mapping content hidden until expanded
   });
 

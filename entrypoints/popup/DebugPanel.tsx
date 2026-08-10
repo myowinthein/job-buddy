@@ -84,7 +84,7 @@ export function DebugPanel({
         <div className="flex-1 overflow-y-auto px-3 py-2 text-xs">
 
           <ExpandableCard
-            summary="Manual Mapping"
+            summary="Rule Mapping"
             subtitle={`${session.mapping.length} field${session.mapping.length !== 1 ? 's' : ''}`}
             defaultExpanded
             contentClassName="p-2"
