@@ -27,7 +27,8 @@ Virtual profilePaths (valid even though they are not direct object keys):
 
 Link field priorities:
 - Use links.portfolio for any field mentioning portfolio, blog, personal website, or online portfolio — including "Website, Blog or Portfolio", "Website / Blog / Portfolio", "Online Portfolio", "Portfolio Website", "Personal Website"
-- Use links.linkedin ONLY for fields that specifically and unambiguously refer to LinkedIn (e.g. "LinkedIn URL", "LinkedIn Profile"). Do NOT use links.linkedin for generic website, URL, or blog fields`;
+- Use links.linkedin ONLY for fields that specifically and unambiguously refer to LinkedIn (e.g. "LinkedIn URL", "LinkedIn Profile"). Do NOT use links.linkedin for generic website, URL, or blog fields
+- profile.links.custom is an array of { label, url } the applicant added themselves (e.g. GitHub, Behance, Dribbble, a personal blog). If a field's label matches one of these labels (exactly or closely, e.g. "GitHub Profile" vs a custom link labeled "GitHub"), use links.custom.N.url for that entry (N = its index in the array). Never invent a custom link that isn't in the profile`;
 
 export function buildAutofillPrompt(fields: object, profile: object): string {
   const body = JSON.stringify({ fields, profile }, null, 2);
