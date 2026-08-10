@@ -89,6 +89,18 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
       return formatISODate(target);
     }
 
+    // For a "Notice Period" duration dropdown ("Immediate", "2 Weeks", "1
+    // Month") — distinct from availableDate above, which is a computed date
+    // and can never usefully fuzzy-match a duration-style option label.
+    case 'professional.noticePeriod.formatted': {
+      const np = profile.professional?.noticePeriod;
+      if (!np) return '';
+      if (np.immediate) return 'Immediate';
+      if (!np.value || !np.unit) return '';
+      const unitLabel = np.unit.charAt(0).toUpperCase() + np.unit.slice(1);
+      return `${np.value} ${unitLabel}${np.value !== 1 ? 's' : ''}`;
+    }
+
     case 'documents.cv.file': {
       // Returns the filename for pipeline / mapper purposes only — used to
       // ensure match.value is non-empty so a file input doesn't fall into the

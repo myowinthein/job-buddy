@@ -228,6 +228,8 @@ export function buildPickerTree(profile: Profile): Section[] {
 
     // Not per-entry — grouped under Work History to match profileCompletion.ts.
     addPath(items, 'Career Summary', 'professional.summary');
+    addPath(items, 'Available Date', 'professional.noticePeriod.availableDate');
+    addPath(items, 'Notice Period', 'professional.noticePeriod.formatted');
 
     if (items.length) sections.push({ id: 'work-history', label: 'Work History', items });
   }

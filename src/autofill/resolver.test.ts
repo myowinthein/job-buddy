@@ -333,6 +333,33 @@ describe('resolveProfileValue', () => {
     expect(resolveProfileValue(p, 'professional.noticePeriod.availableDate')).toBe('');
   });
 
+  // Notice period — formatted duration (for a "Notice Period" dropdown, as
+  // opposed to a computed calendar date)
+  it('resolves professional.noticePeriod.formatted to "Immediate" when immediate', () => {
+    const p = { ...PROFILE, professional: { noticePeriod: { immediate: true } } };
+    expect(resolveProfileValue(p, 'professional.noticePeriod.formatted')).toBe('Immediate');
+  });
+
+  it('resolves professional.noticePeriod.formatted with singular unit for value 1', () => {
+    const p = { ...PROFILE, professional: { noticePeriod: { immediate: false, value: 1, unit: 'month' as const } } };
+    expect(resolveProfileValue(p, 'professional.noticePeriod.formatted')).toBe('1 Month');
+  });
+
+  it('resolves professional.noticePeriod.formatted with plural unit for value > 1', () => {
+    const p = { ...PROFILE, professional: { noticePeriod: { immediate: false, value: 2, unit: 'week' as const } } };
+    expect(resolveProfileValue(p, 'professional.noticePeriod.formatted')).toBe('2 Weeks');
+  });
+
+  it('returns empty for professional.noticePeriod.formatted when noticePeriod is absent', () => {
+    const p = { ...PROFILE, professional: {} };
+    expect(resolveProfileValue(p, 'professional.noticePeriod.formatted')).toBe('');
+  });
+
+  it('returns empty for professional.noticePeriod.formatted when value or unit is missing', () => {
+    const p = { ...PROFILE, professional: { noticePeriod: { immediate: false, unit: 'week' as const } } };
+    expect(resolveProfileValue(p, 'professional.noticePeriod.formatted')).toBe('');
+  });
+
   // Documents
   it('resolves documents.cv.file to the filename', () => {
     expect(resolveProfileValue(PROFILE, 'documents.cv.file')).toBe('jane-cv.pdf');

@@ -348,6 +348,12 @@ describe('mapField — Layer 2: Dictionary exact match', () => {
     expect(result.fieldPath).toBe('professional.noticePeriod.availableDate');
   });
 
+  it('matches "notice period" label signal → professional.noticePeriod.formatted, distinct from availableDate', () => {
+    const result = mapField(sig({ label: 'Notice Period' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('professional.noticePeriod.formatted');
+  });
+
   it('matches "portfoliowebsite" → links.portfolio', () => {
     const result = mapField(sig({ label: 'Portfolio Website' }), PROFILE, NO_MAPPINGS, DOMAIN);
     expect(result.matchLayer).toBe('dictionary_exact');
