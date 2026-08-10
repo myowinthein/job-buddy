@@ -191,7 +191,8 @@ export function WorkHistorySection({ profile, onSave }: Props) {
     });
 
     if (!noticeImmediate) {
-      e.noticeValue = validateNoticePeriod(noticeValue, noticeUnit);
+      const noticeErr = validateNoticePeriod(noticeValue, noticeUnit);
+      if (noticeErr) e.noticeValue = noticeErr;
     }
 
     setErrors(e);
