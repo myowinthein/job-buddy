@@ -23,6 +23,7 @@ const PROFILE: Profile = {
   personal: {
     firstName: 'Jane',
     lastName: 'Doe',
+    nickname: 'Janey',
     email: 'jane@example.com',
     phone: { countryCode: 'TH', callingCode: '+66', number: '812345678' },
     gender: 'male',
@@ -128,6 +129,13 @@ describe('mapField — Layer 1: Autocomplete attribute', () => {
     expect(result.fieldPath).toBe('personal.lastName');
   });
 
+  it('maps nickname → personal.nickname', () => {
+    const result = mapField(sig({ autocomplete: 'nickname' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('autocomplete');
+    expect(result.fieldPath).toBe('personal.nickname');
+    expect(result.value).toBe('Janey');
+  });
+
   it('maps email → personal.email', () => {
     const result = mapField(sig({ autocomplete: 'email' }), PROFILE, NO_MAPPINGS, DOMAIN);
     expect(result.matchLayer).toBe('autocomplete');
@@ -178,6 +186,13 @@ describe('mapField — Layer 2: Dictionary exact match', () => {
     const result = mapField(sig({ label: 'Email' }), PROFILE, NO_MAPPINGS, DOMAIN);
     expect(result.matchLayer).toBe('dictionary_exact');
     expect(result.fieldPath).toBe('personal.email');
+  });
+
+  it('matches "preferred name" label signal → personal.nickname', () => {
+    const result = mapField(sig({ label: 'Preferred Name' }), PROFILE, NO_MAPPINGS, DOMAIN);
+    expect(result.matchLayer).toBe('dictionary_exact');
+    expect(result.fieldPath).toBe('personal.nickname');
+    expect(result.value).toBe('Janey');
   });
 
   it('matches "city" placeholder signal → address.city', () => {

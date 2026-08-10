@@ -48,6 +48,16 @@ describe('buildPickerTree', () => {
       expect(labels).toEqual(['First Name', 'Email']);
     });
 
+    it('includes Nickname when present', () => {
+      const p = emptyProfile();
+      p.personal.firstName = 'Jane';
+      p.personal.nickname = 'Janey';
+
+      const personal = getSection(p, 'personal');
+      const labels = personal.items.map((i) => ('label' in i ? i.label : i.heading));
+      expect(labels).toEqual(['First Name', 'Nickname']);
+    });
+
     it('groups phone into a cluster only when callingCode or number is present', () => {
       const p = emptyProfile();
       p.personal.phone = { countryCode: 'TH', callingCode: '+66', number: '812345678' };

@@ -108,6 +108,7 @@ export function buildPickerTree(profile: Profile): Section[] {
     const items: SectionItem[] = [];
     addPath(items, 'First Name',        'personal.firstName');
     addPath(items, 'Last Name',         'personal.lastName');
+    addPath(items, 'Nickname',          'personal.nickname');
     addPath(items, 'Full Name',         'derived.fullName');
     addPath(items, 'Email',             'personal.email');
     addPath(items, 'Age',               'derived.age');

@@ -25,6 +25,7 @@ const LEARNED_MAPPING_THRESHOLD = 2;
 const AUTOCOMPLETE_MAP: Record<string, { path: string; confidence: number }> = {
   'given-name':        { path: 'personal.firstName',        confidence: CONF_AUTOCOMPLETE },
   'family-name':       { path: 'personal.lastName',         confidence: CONF_AUTOCOMPLETE },
+  'nickname':          { path: 'personal.nickname',         confidence: CONF_AUTOCOMPLETE },
   'email':             { path: 'personal.email',            confidence: CONF_AUTOCOMPLETE },
   'tel':               { path: 'personal.phone.full',        confidence: CONF_AUTOCOMPLETE },
   'tel-national':      { path: 'personal.phone.number',      confidence: CONF_AUTOCOMPLETE },
