@@ -3913,11 +3913,11 @@
         "src/components/options/WorkHistorySection.tsx"
       ],
       "description": "Live per-field validation duplicates save-time validate() logic independently in 5 section files, risking drift. Already drifted once: PersonalSection's live fieldError has no max-length check for firstName/lastName even though validate() does (nickname correctly has both). SalarySection's expectedRowErrors() and WorkHistorySection's validateNoticePeriod() already prove the fix pattern elsewhere in this codebase — a single validator called from both the live handler and validate().",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "4e5b121",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0242",
@@ -3964,11 +3964,11 @@
       "line": 58,
       "related_files": [],
       "description": "The identical custom-link URL-validity check is triplicated verbatim in updateCustom, handleCustomUrlBlur, and validate(). Extract one helper.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "4e5b121",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0245",
