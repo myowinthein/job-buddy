@@ -166,6 +166,11 @@ describe('resolveProfileValue', () => {
     expect(resolveProfileValue(PROFILE, 'derived.fullName')).toBe('Jane Doe');
   });
 
+  it('returns empty string when a path resolves to a non-scalar value (object/array), not a crash or [object Object]', () => {
+    expect(resolveProfileValue(PROFILE, 'personal')).toBe('');
+    expect(resolveProfileValue(PROFILE, 'workHistory')).toBe('');
+  });
+
   it('resolves derived.age (number) as a string', () => {
     expect(resolveProfileValue(PROFILE, 'derived.age')).toBe('35');
   });
