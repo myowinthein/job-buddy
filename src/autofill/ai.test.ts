@@ -355,6 +355,86 @@ describe('runAIAutofill — high-confidence text fills', () => {
   });
 });
 
+describe('runAIAutofill — native <select> candidates', () => {
+  function selectCandidate(
+    options: Array<{ text: string; value: string }>,
+    originalState: 'needReview' | 'lowConfidence' | 'noData' = 'lowConfidence',
+  ): AITextCandidate {
+    const element = makeSelect(options);
+    document.body.appendChild(element);
+    return {
+      type: 'text',
+      element,
+      signals: makeSignals({ label: 'Country of Residence', element }),
+      originalState,
+      originalFieldPath: null,
+    };
+  }
+
+  it('sends a native select as type "select" with its extracted options in the payload', async () => {
+    const cand = selectCandidate([{ text: 'Thailand', value: 'TH' }, { text: 'Germany', value: 'DE' }]);
+    mockResponses([{ fieldId: 'field_001', selectedOption: 'Germany', confidence: 'high' }]);
+
+    await runAIAutofill([cand], PROFILE, freshResult(), [], 'example.com');
+
+    expect(resolveFieldsWithAI).toHaveBeenCalledWith(
+      'key-123', expect.any(String),
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'select',
+          options: [{ label: 'Thailand', value: 'TH' }, { label: 'Germany', value: 'DE' }],
+        }),
+      ]),
+      expect.anything(),
+    );
+  });
+
+  it('fills with the AI-selected option label, not a resolved profile path', async () => {
+    const cand = selectCandidate([{ text: 'Thailand', value: 'TH' }, { text: 'Germany', value: 'DE' }]);
+    mockResponses([{ fieldId: 'field_001', selectedOption: 'Germany', confidence: 'high' }]);
+
+    await runAIAutofill([cand], PROFILE, freshResult(), [], 'example.com');
+
+    expect(fillField).toHaveBeenCalledWith(cand.element, 'Germany');
+  });
+
+  it('sends an ARIA combobox as type "select" with no options (unavailable until the dropdown opens)', async () => {
+    const element = document.createElement('div');
+    element.setAttribute('role', 'combobox');
+    document.body.appendChild(element);
+    const cand: AITextCandidate = {
+      type: 'text', element,
+      signals: makeSignals({ label: 'Country', element }),
+      originalState: 'lowConfidence', originalFieldPath: null,
+    };
+    mockResponses([{ fieldId: 'field_001', profilePath: 'personal.email', confidence: null }]);
+
+    await runAIAutofill([cand], PROFILE, freshResult(), [], 'example.com');
+
+    expect(resolveFieldsWithAI).toHaveBeenCalledWith(
+      'key-123', expect.any(String),
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'select', label: 'Country' }),
+      ]),
+      expect.anything(),
+    );
+    const sentPayload = vi.mocked(resolveFieldsWithAI).mock.calls[0][2];
+    expect(sentPayload[0]).not.toHaveProperty('options');
+  });
+
+  it('never fills a select from an unresolvable profile path when no selectedOption is given', async () => {
+    // isSelect only reads value from resp.selectedOption (line ~172) — a
+    // profilePath that resolves to nothing leaves value empty, so this must
+    // fall into the !value guard and never call fillField.
+    const cand = selectCandidate([{ text: 'Thailand', value: 'TH' }]);
+    mockResponses([{ fieldId: 'field_001', profilePath: 'address.country', confidence: 'high' }]);
+
+    await runAIAutofill([cand], PROFILE, freshResult(), [], 'example.com');
+
+    expect(fillField).not.toHaveBeenCalled();
+  });
+});
+
 describe('runAIAutofill — low-confidence text fills', () => {
   it('fills and increments needReview, leaving edit-watching to the caller', async () => {
     const cand = textCandidate('lowConfidence', 'First Name');
