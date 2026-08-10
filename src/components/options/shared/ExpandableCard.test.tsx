@@ -67,6 +67,27 @@ describe('ExpandableCard — delete confirmation gate', () => {
     fireEvent.click(screen.getByText('Delete'));
     expect(onDelete).toHaveBeenCalledTimes(1);
   });
+
+  it('disarms the confirmation on an outside click, so changing your mind by clicking elsewhere is safe', () => {
+    const onDelete = vi.fn();
+    render(<ExpandableCard summary="Acme Inc" onDelete={onDelete}><p>x</p></ExpandableCard>);
+
+    fireEvent.click(screen.getByTitle('Remove entry'));
+    expect(screen.getByText('Delete')).toBeTruthy();
+
+    fireEvent.mouseDown(document.body);
+
+    expect(screen.queryByText('Delete')).toBeNull();
+    expect(screen.getByTitle('Remove entry')).toBeTruthy();
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  it('does not react to an outside click when not armed (no listener leak)', () => {
+    const onDelete = vi.fn();
+    render(<ExpandableCard summary="Acme Inc" onDelete={onDelete}><p>x</p></ExpandableCard>);
+    expect(() => fireEvent.mouseDown(document.body)).not.toThrow();
+    expect(onDelete).not.toHaveBeenCalled();
+  });
 });
 
 describe('ExpandableCard — read-only usage (no onDelete)', () => {
