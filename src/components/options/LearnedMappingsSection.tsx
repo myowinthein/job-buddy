@@ -8,6 +8,7 @@ import { InfoTooltip } from '@/src/components/ui/InfoTooltip';
 import { ExpandableCard } from './shared/ExpandableCard';
 import { RemoveButton } from './shared/RemoveButton';
 import { SearchableProfileFieldSelect } from './shared/SearchableProfileFieldSelect';
+import { fieldCls } from './shared/fieldCls';
 
 function pathOf(value: LearnedMappingValue): string {
   return typeof value === 'string' ? value : value.path;
@@ -233,8 +234,6 @@ export function LearnedMappingsSection() {
     void persist(next, 'Updated learned input');
   };
 
-  const domains = useMemo(() => Object.keys(mappings).sort((a, b) => a.localeCompare(b)), [mappings]);
-
   // Sorted per-domain [signal, value] entries, keyed on `mappings` so the
   // sort doesn't re-run on every render (persist() and every
   // chrome.storage.onChanged event trigger one).
@@ -245,6 +244,23 @@ export function LearnedMappingsSection() {
     }
     return m;
   }, [mappings]);
+
+  // Most-mapped sites first — surfaces what's actually used often without
+  // typing anything, so search below only has to cover the long tail.
+  // Ties broken alphabetically for a stable order.
+  const allDomains = useMemo(
+    () => Object.keys(mappings).sort((a, b) => {
+      const diff = (signalsByDomain.get(b)?.length ?? 0) - (signalsByDomain.get(a)?.length ?? 0);
+      return diff !== 0 ? diff : a.localeCompare(b);
+    }),
+    [mappings, signalsByDomain],
+  );
+
+  const [search, setSearch] = useState('');
+  const domains = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return q ? allDomains.filter((d) => d.toLowerCase().includes(q)) : allDomains;
+  }, [allDomains, search]);
 
   return (
     <div>
@@ -257,15 +273,30 @@ export function LearnedMappingsSection() {
         </p>
       </div>
 
+      {!loading && allDomains.length > 0 && (
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search sites…"
+          aria-label="Search sites"
+          className={`${fieldCls()} mb-4`}
+        />
+      )}
+
       {loading ? (
         <div className="space-y-3">
           {[...Array(3)].map((_, i) => (
             <div key={i} className="h-14 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
           ))}
         </div>
-      ) : domains.length === 0 ? (
+      ) : allDomains.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-gray-400 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           Nothing learned yet. Entries will appear here as you fill out job applications.
+        </p>
+      ) : domains.length === 0 ? (
+        <p className="text-sm text-gray-500 dark:text-gray-400 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          No sites match "{search.trim()}".
         </p>
       ) : (
         domains.map((domain) => {
