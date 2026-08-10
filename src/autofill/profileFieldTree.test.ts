@@ -318,6 +318,27 @@ describe('buildPickerTree', () => {
       p.documents = { cv: { file: { name: 'cv.pdf', size: 10, base64: 'x' } } };
       expect(sectionIds(p)).not.toContain('documents');
     });
+
+    it('includes the Cover Letter URL when present', () => {
+      const p = emptyProfile();
+      p.documents = { cv: {}, coverLetter: { url: 'https://drive.example/letter.pdf' } };
+
+      const docs = getSection(p, 'documents');
+      expect('value' in docs.items[0] && docs.items[0].value).toBe('https://drive.example/letter.pdf');
+    });
+
+    it('includes both CV URL and Cover Letter URL as separate rows when both are present', () => {
+      const p = emptyProfile();
+      p.documents = {
+        cv: { url: 'https://drive.example/cv.pdf' },
+        coverLetter: { url: 'https://drive.example/letter.pdf' },
+      };
+
+      const docs = getSection(p, 'documents');
+      expect(docs.items).toHaveLength(2);
+      expect('value' in docs.items[0] && docs.items[0].value).toBe('https://drive.example/cv.pdf');
+      expect('value' in docs.items[1] && docs.items[1].value).toBe('https://drive.example/letter.pdf');
+    });
   });
 
   it('produces every section in the same fixed order when fully populated', () => {
