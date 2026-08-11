@@ -66,12 +66,14 @@ function dispatchEvents(
 }
 
 
-// Shared matching strategy used by both fillSelect (native <option>, primary =
-// raw value, secondary = trimmed text) and findBestAriaOption (ARIA elements,
-// primary = trimmed textContent, secondary = trimmed aria-label): exact primary
-// match, then exact secondary, then normalized primary, then normalized
-// secondary, then best fuzzy match across both fields (≥ CONF_FUZZY_THRESHOLD).
-function findBestMatch<T>(
+// Shared matching strategy used by fillSelect (native <option>, primary =
+// raw value, secondary = trimmed text), findBestAriaOption (ARIA elements,
+// primary = trimmed textContent, secondary = trimmed aria-label), and ai.ts's
+// findBestOption (AI-selected radio/checkbox options, primary = value,
+// secondary = label): exact primary match, then exact secondary, then
+// normalized primary, then normalized secondary, then best fuzzy match
+// across both fields (≥ CONF_FUZZY_THRESHOLD).
+export function findBestMatch<T>(
   eligible: T[],
   target: string,
   getPrimary: (item: T) => string,
