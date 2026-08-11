@@ -60,11 +60,6 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
         .join(', ');
     }
 
-    case 'derived.totalExperience.years': {
-      const years = profile.derived?.totalExperience?.years;
-      return years != null ? String(years) : '';
-    }
-
     case 'workAuthorization': {
       // Legacy path used by autofill dictionary / learned mappings for the first entry.
       const entry = profile.workAuthorization?.[0];
