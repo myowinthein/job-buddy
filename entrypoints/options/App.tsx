@@ -233,7 +233,13 @@ function App() {
         if (p) void syncProfileToDrive(p);
         afterLoad?.();
       })
-      .catch((err) => console.error('[Job Buddy] Failed to reload profile after import:', err));
+      .catch((err) => {
+        // The write itself already succeeded at this point (import/reset/Drive
+        // restore all complete before calling this) — only the reload failed,
+        // so the wording must not imply the save itself failed.
+        console.error('[Job Buddy] Failed to reload profile after import:', err);
+        showToast('warning', "Saved, but the profile view couldn't refresh — reload the page.");
+      });
   };
 
   const handleSave = async (updates: Partial<Profile>) => {
