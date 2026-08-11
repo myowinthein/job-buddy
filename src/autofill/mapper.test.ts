@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mapField } from './mapper';
+import { mapField, getFuzzyCacheSize } from './mapper';
 import { CONF_FUZZY_THRESHOLD, CONF_FUZZY_STRONG_MULT, CONF_FUZZY_WEAK_MULT } from './constants';
 import type { Profile } from '../types/profile';
 import type { LearnedMappings } from '../types/storage';
@@ -527,6 +527,15 @@ describe('mapField — Layer 3: Fuzzy match', () => {
     expect(score).toBeLessThanOrEqual(CONF_FUZZY_THRESHOLD);
     // confidence === score * CONF_FUZZY_WEAK_MULT
     expect(result.confidence).toBeCloseTo(score * CONF_FUZZY_WEAK_MULT, 6);
+  });
+});
+
+describe('mapField — fuzzy cache is capped, not unbounded', () => {
+  it('never grows past FUZZY_CACHE_MAX_ENTRIES (500) even after many unique fuzzy lookups', () => {
+    for (let i = 0; i < 600; i++) {
+      mapField(sig({ name: `unrecognizable-garbage-field-name-${i}` }), PROFILE, NO_MAPPINGS, DOMAIN);
+    }
+    expect(getFuzzyCacheSize()).toBeLessThanOrEqual(500);
   });
 });
 
