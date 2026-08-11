@@ -192,6 +192,26 @@ describe('options App — focus routing', () => {
   });
 });
 
+describe('options App — reload-after-import failure', () => {
+  it('shows a warning toast when the post-reset reload fails, distinct from a save failure', async () => {
+    sessionStorage.setItem('jb:ui:section', 'settings');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(getProfile)
+      .mockResolvedValueOnce({ personal: { firstName: 'Jane' } } as Profile) // initial load
+      .mockRejectedValueOnce(new Error('storage unavailable')); // reset reload
+
+    renderApp();
+    await screen.findByText('settings-section');
+
+    fireEvent.click(await screen.findByText('trigger-reset'));
+
+    expect(await screen.findByText("Saved, but the profile view couldn't refresh — reload the page.")).toBeTruthy();
+    expect(consoleError).toHaveBeenCalledWith('[Job Buddy] Failed to reload profile after import:', expect.any(Error));
+
+    consoleError.mockRestore();
+  });
+});
+
 describe('options App — initial profile load failure', () => {
   it('degrades to an empty profile and finishes loading rather than hanging, on a getProfile rejection', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
