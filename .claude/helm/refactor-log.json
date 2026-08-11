@@ -4035,11 +4035,11 @@
       "line": 0,
       "related_files": [],
       "description": "withScheme() has no dedicated unit test, only indirectly exercised via migrate.test.ts. Its own doc comment calls out a documented edge case (empty-string input) not directly locked in by a test.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "875a6f1",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0249",
@@ -4069,11 +4069,11 @@
       "line": 17,
       "related_files": [],
       "description": "EXCLUDED_INPUT_TYPES includes 'image' and 'reset', but scanner.test.ts only tests exclusion for hidden/submit/button/checkbox/radio/file. Minor gap, same pattern as the tested ones.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "b8f7d8a",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0251",
@@ -4089,11 +4089,11 @@
         "src/autofill/ai.ts"
       ],
       "description": "isSkippableOption has zero test coverage — normalizer.test.ts only covers normalize/similarity. This function is explicitly shared between filler.ts's fillSelect and ai.ts's extractSelectOptions 'so the two never drift' per its own comment, making it a correctness-critical, cross-file-relied-upon helper with no direct test locking in its behavior.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "f85c27d",
+      "resolved_date": "2026-08-11"
     }
   ]
 }
