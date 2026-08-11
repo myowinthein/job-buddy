@@ -331,21 +331,30 @@ export async function overwriteDriveWithLocal(profile: Profile): Promise<SyncRes
   return syncProfileToDrive(profile);
 }
 
+// Shared by retryPendingDriveSync and syncIfConnected: fetch the token, run
+// an optional extra guard (e.g. "is a sync actually pending"), then fetch and
+// upload the current profile. Always silent — both callers (the startup
+// handler and the background storage-change listener) must never throw.
+async function attemptDriveSync(shouldSync: (token: string) => Promise<boolean>): Promise<void> {
+  try {
+    const token = await getDriveToken();
+    if (!token) return;
+    if (!(await shouldSync(token))) return;
+    const profile = await getProfile();
+    if (!profile) return;
+    await syncProfileToDrive(profile);
+  } catch {
+    /* never throw from caller */
+  }
+}
+
 // Retry a deferred Drive upload — invoked from the background service worker on
 // browser startup. No-op unless a sync is pending, a token exists, and there is
 // a profile to upload. Silent on failure: errors are captured in
 // driveBackupState by syncProfileToDrive itself, and this must never throw from
 // the startup handler.
 export async function retryPendingDriveSync(): Promise<void> {
-  try {
-    const [state, token] = await Promise.all([getDriveBackupState(), getDriveToken()]);
-    if (!state.pendingSync || !token) return;
-    const profile = await getProfile();
-    if (!profile) return;
-    await syncProfileToDrive(profile);
-  } catch {
-    /* never throw from startup handler */
-  }
+  await attemptDriveSync(async () => (await getDriveBackupState()).pendingSync);
 }
 
 // Invoked from the background service worker (debounced) whenever the
@@ -358,15 +367,7 @@ export async function retryPendingDriveSync(): Promise<void> {
 // failure: errors are captured in driveBackupState by syncProfileToDrive
 // itself, and this must never throw from a storage-change listener.
 export async function syncIfConnected(): Promise<void> {
-  try {
-    const token = await getDriveToken();
-    if (!token) return;
-    const profile = await getProfile();
-    if (!profile) return;
-    await syncProfileToDrive(profile);
-  } catch {
-    /* never throw from the background listener */
-  }
+  await attemptDriveSync(async () => true);
 }
 
 // Disconnect: revoke token, optionally delete the Drive file, then clear all
