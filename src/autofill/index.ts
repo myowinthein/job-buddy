@@ -10,6 +10,7 @@ import { adjustPhoneMatches } from './phoneResolution';
 import { adjustLanguageMatches } from './languageResolution';
 import { adjustEducationMatches, matchCurrentEducationCheckboxes } from './educationResolution';
 import { adjustWorkHistoryMatches, matchCurrentWorkHistoryCheckboxes } from './workHistoryResolution';
+import { adjustSalaryMatches } from './salaryResolution';
 import { fillField, fillFileField, fillCheckboxInput, clearFieldValue } from './filler';
 import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
 import { resolveProfileValue, flattenProfileValues } from './resolver';
@@ -347,22 +348,31 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
     };
   });
 
+  // Each adjust*Matches call below mutates the FieldMatch objects in place,
+  // so one shared array of references is equivalent to (and cheaper than) a
+  // fresh scanned.map() per call.
+  const matches = scanned.map((s) => s.match);
+
   // Sibling-aware adjustment for phone.number vs phone.full — needs every
   // field's match already computed, since it depends on whether ANY field
   // on the page resolved to the calling-code path (see phoneResolution.ts).
-  adjustPhoneMatches(scanned.map((s) => s.match), profile);
+  adjustPhoneMatches(matches, profile);
 
   // Sibling-aware index assignment for the unindexed languages.language /
   // languages.proficiency markers — see languageResolution.ts.
-  adjustLanguageMatches(scanned.map((s) => s.match), profile);
+  adjustLanguageMatches(matches, profile);
 
   // Sibling-aware index assignment for the unindexed education.* markers —
   // see educationResolution.ts.
-  adjustEducationMatches(scanned.map((s) => s.match), profile);
+  adjustEducationMatches(matches, profile);
 
   // Sibling-aware index assignment for the unindexed workHistory.* markers —
   // see workHistoryResolution.ts.
-  adjustWorkHistoryMatches(scanned.map((s) => s.match), profile);
+  adjustWorkHistoryMatches(matches, profile);
+
+  // Sibling-aware index assignment for the unindexed salary.expected.formatted
+  // marker — see salaryResolution.ts.
+  adjustSalaryMatches(matches, profile);
 
   // "Currently studying/working here"-style checkboxes: excluded from
   // scanFields() entirely (standalone checkboxes are never scanned by the

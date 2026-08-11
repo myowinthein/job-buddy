@@ -74,6 +74,24 @@ describe('validateImportedProfile', () => {
     expect(result.valid).toBe(false);
   });
 
+  it('accepts a known ETHNICITIES value', () => {
+    const result = validateImportedProfile({ personal: { ethnicity: 'East Asian' } });
+    expect(result.valid).toBe(true);
+    expect(result.sanitized.personal?.ethnicity).toBe('East Asian');
+  });
+
+  it('accepts "prefer_not_to_say" for ethnicity, even though it is not itself in ETHNICITIES', () => {
+    const result = validateImportedProfile({ personal: { ethnicity: 'prefer_not_to_say' } });
+    expect(result.valid).toBe(true);
+    expect(result.sanitized.personal?.ethnicity).toBe('prefer_not_to_say');
+  });
+
+  it('rejects an ethnicity value outside the known list', () => {
+    const result = validateImportedProfile({ personal: { ethnicity: 'Martian' } });
+    expect(result.valid).toBe(false);
+    expect(result.invalidFields.some((f) => f.path === 'personal.ethnicity')).toBe(true);
+  });
+
   it('rejects phone with missing fields', () => {
     const result = validateImportedProfile({ personal: { phone: { countryCode: 'TH' } } });
     expect(result.valid).toBe(false);

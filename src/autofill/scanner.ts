@@ -1,17 +1,35 @@
-// Recursively queries `selector` across the light DOM and any *open* shadow
-// roots nested within it. Some design systems (e.g. SmartRecruiters' SPL
-// components — spl-input, spl-textarea, spl-phone-field, spl-dropzone) render
-// their real native <input>/<textarea>/<select> inside a shadow root, which a
-// plain document.querySelectorAll cannot see at all — the scan would silently
-// return zero fields on such a page. Closed shadow roots have no accessible
-// API from content-script JS; there is no way to reach into them, so a form
-// entirely built from closed-shadow components still can't be detected.
-function queryAllDeep<T extends Element>(selector: string, root: ParentNode = document): T[] {
-  const results: T[] = Array.from(root.querySelectorAll<T>(selector));
+// Recursively discovers the light DOM root plus every *open* shadow root
+// nested within it, in DFS preorder (a root's own subtree before any of its
+// nested shadow roots) — the same order queryAllDeep below has always walked
+// in, extracted so a multi-selector scan can reuse one discovery pass instead
+// of repeating it once per selector. Closed shadow roots have no accessible
+// API from content-script JS, so a form entirely built from closed-shadow
+// components still can't be detected — same limitation as before.
+function collectAllRoots(root: ParentNode = document): ParentNode[] {
+  const roots: ParentNode[] = [root];
   root.querySelectorAll<HTMLElement>('*').forEach((el) => {
-    if (el.shadowRoot) results.push(...queryAllDeep<T>(selector, el.shadowRoot));
+    if (el.shadowRoot) roots.push(...collectAllRoots(el.shadowRoot));
   });
-  return results;
+  return roots;
+}
+
+// Queries every selector in `selectors` across the light DOM and any open
+// shadow roots nested within it, sharing a single shadow-root discovery pass
+// across all of them. Returns one result array per selector, in the same
+// per-selector order collectAllRoots visits roots in (equivalent to calling
+// queryAllDeep separately for each selector, just without repeating the
+// discovery walk). Some design systems (e.g. SmartRecruiters' SPL components
+// — spl-input, spl-textarea, spl-phone-field, spl-dropzone) render their real
+// native <input>/<textarea>/<select> inside a shadow root, which a plain
+// document.querySelectorAll cannot see at all — the scan would silently
+// return zero fields on such a page.
+function queryAllDeepMulti<T extends Element>(selectors: string[], root: ParentNode = document): T[][] {
+  const roots = collectAllRoots(root);
+  return selectors.map((selector) => roots.flatMap((r) => Array.from(r.querySelectorAll<T>(selector))));
+}
+
+function queryAllDeep<T extends Element>(selector: string, root: ParentNode = document): T[] {
+  return queryAllDeepMulti<T>([selector], root)[0];
 }
 
 const EXCLUDED_INPUT_TYPES = new Set([
@@ -239,13 +257,18 @@ export function scanAriaFields(): HTMLElement[] {
     results.push(el);
   }
 
-  // Text-input equivalents
-  queryAllDeep<HTMLElement>('[role="textbox"]').forEach(addIfEligible);
-  queryAllDeep<HTMLElement>('[contenteditable="true"]').forEach(addIfEligible);
-
-  // Select/dropdown equivalents
-  queryAllDeep<HTMLElement>('[aria-haspopup="listbox"]').forEach(addIfEligible);
-  queryAllDeep<HTMLElement>('[role="combobox"]').forEach(addIfEligible);
+  // One shared shadow-root discovery pass for all four selectors below,
+  // instead of each queryAllDeep call repeating it — see queryAllDeepMulti.
+  const [textboxEls, contentEditableEls, listboxEls, comboboxEls] = queryAllDeepMulti<HTMLElement>([
+    '[role="textbox"]',           // Text-input equivalents
+    '[contenteditable="true"]',
+    '[aria-haspopup="listbox"]',  // Select/dropdown equivalents
+    '[role="combobox"]',
+  ]);
+  textboxEls.forEach(addIfEligible);
+  contentEditableEls.forEach(addIfEligible);
+  listboxEls.forEach(addIfEligible);
+  comboboxEls.forEach(addIfEligible);
 
   return results;
 }

@@ -8,7 +8,7 @@ import { buildAutofillPrompt } from './autofillPrompt';
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 function endpoint(model: string, apiKey: string): string {
-  return `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
+  return `${GEMINI_BASE}/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
 }
 
 function extractGeminiText(data: unknown): string | undefined {

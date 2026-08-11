@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { fieldCls } from './fieldCls';
 import { MONTH_NAMES } from './months';
+import { useResyncOnExternalChange } from './useResyncOnExternalChange';
 
 const MONTHS = MONTH_NAMES.map((label, i) => ({ value: String(i + 1).padStart(2, '0'), label }));
 
@@ -49,30 +50,19 @@ export function MonthYearPicker({
   // yearStr tracks what the user has typed (may be partial, e.g. "199")
   const [yearStr, setYearStr] = useState(parsed.year);
 
-  // Resync when `value` changes to a genuinely different, non-empty date on
-  // an already-mounted instance. Without this, deleting a non-last Work
-  // History/Education entry shifts every later row's index — since these
-  // pickers are keyed by index, React reuses the same instance for a
-  // different entry's date, and the useState initializers above (which only
-  // run once, on mount) leave it showing stale month/year until the user
-  // retypes it. Adjusted during render (React's recommended pattern for
-  // this) rather than via useEffect, avoiding an extra commit.
-  //
-  // Deliberately skipped when the incoming value is '': emit() itself
+  // Without this, deleting a non-last Work History/Education entry shifts
+  // every later row's index — since these pickers are keyed by index, React
+  // reuses the same instance for a different entry's date, and the useState
+  // initializers above (which only run once, on mount) would otherwise leave
+  // it showing stale month/year until the user retypes it. emit() itself
   // returns '' the moment the year is only partially typed (the documented
-  // onChange('') trap — see CLAUDE.md's Known Traps), and callers commonly
-  // echo onChange's result straight back as this prop. Resyncing on '' would
-  // wipe the month field's in-progress state on every ordinary edit of an
-  // existing date, not just on an actual external reset — so only a
-  // non-empty external value is treated as one.
-  const [prevValue, setPrevValue] = useState(value);
-  if (value !== prevValue) {
-    setPrevValue(value);
-    if (value) {
-      setMonth(parsed.month);
-      setYearStr(parsed.year);
-    }
-  }
+  // onChange('') trap — see CLAUDE.md's Known Traps), which is why
+  // useResyncOnExternalChange deliberately doesn't treat an empty value as
+  // an external reset.
+  useResyncOnExternalChange(value, () => {
+    setMonth(parsed.month);
+    setYearStr(parsed.year);
+  });
 
   const emit = (m: string, y: string) => {
     if (m && y) onChange(`${y}-${m}`);

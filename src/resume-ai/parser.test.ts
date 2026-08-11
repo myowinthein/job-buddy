@@ -463,4 +463,28 @@ describe('FIELD_DEFS setValue via applyChanges', () => {
     expect(result.salary?.current).toEqual({ amount: 6000, currency: 'THB', period: 'monthly' });
     expect(result.salary?.expected).toEqual([{ amount: 2000, currency: 'USD', period: 'monthly', country: 'US' }]);
   });
+
+  it('sets documents.coverLetter.url without disturbing an existing documents.coverLetter.file', () => {
+    const base: Partial<Profile> = {
+      documents: { cv: {}, coverLetter: { file: { name: 'old-letter.pdf', size: 10, base64: 'xx' } } },
+    };
+    const diff = generateDiff(base, {
+      documents: { coverLetter: { url: 'https://drive.example/letter.pdf' } } as Partial<Profile>['documents'],
+    });
+    const result = applyChanges(base, diff);
+    expect(result.documents?.coverLetter?.url).toBe('https://drive.example/letter.pdf');
+    expect(result.documents?.coverLetter?.file?.name).toBe('old-letter.pdf');
+  });
+
+  it('sets documents.coverLetter.file without disturbing an existing documents.coverLetter.url', () => {
+    const base: Partial<Profile> = {
+      documents: { cv: {}, coverLetter: { url: 'https://drive.example/old-letter.pdf' } },
+    };
+    const diff = generateDiff(base, {
+      documents: { coverLetter: { file: { name: 'new-letter.pdf', size: 20, base64: 'yy' } } } as Partial<Profile>['documents'],
+    });
+    const result = applyChanges(base, diff);
+    expect(result.documents?.coverLetter?.file?.name).toBe('new-letter.pdf');
+    expect(result.documents?.coverLetter?.url).toBe('https://drive.example/old-letter.pdf');
+  });
 });
