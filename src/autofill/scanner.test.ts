@@ -68,6 +68,16 @@ describe('scanFields', () => {
     expect(scanFields()).toHaveLength(0);
   });
 
+  it('excludes image input type', () => {
+    addInput({ type: 'image' });
+    expect(scanFields()).toHaveLength(0);
+  });
+
+  it('excludes reset input type', () => {
+    addInput({ type: 'reset' });
+    expect(scanFields()).toHaveLength(0);
+  });
+
   it('excludes file inputs by default', () => {
     addInput({ type: 'file' });
     expect(scanFields()).toHaveLength(0);
