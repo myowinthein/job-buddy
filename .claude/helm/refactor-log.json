@@ -3648,11 +3648,11 @@
       "line": 37,
       "related_files": [],
       "description": "AUTOFILL_SCAN and AUTOFILL_FILL message handlers catch and silently discard the underlying error before falling back to an empty response, with no console.error — every other error path in the codebase logs before falling back. A real scan/fill crash currently produces zero diagnostic trail.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "b270e10",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0228",
@@ -3763,11 +3763,11 @@
       "line": 10,
       "related_files": [],
       "description": "checkApiKey() calls encodeURIComponent(apiKey) when building its request URL; the shared endpoint() helper used by validateApiKey/extractFromResume/resolveFieldsWithAI does not. Inconsistent treatment of the same value.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "2e2182b",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0234",
@@ -3801,11 +3801,11 @@
         "src/components/options/shared/MonthYearPicker.tsx"
       ],
       "description": "DateOfBirthPicker.tsx and MonthYearPicker.tsx each implement the identical resync-when-value-changes-during-render pattern (~10-line prevValue block). Extract a shared useResyncOnExternalChange(value, onResync) hook.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "5e68719",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0236",
@@ -3857,11 +3857,11 @@
       "line": 63,
       "related_files": [],
       "description": "The 'derived.totalExperience.years' switch case is functionally identical to what the generic dot-notation traversal at the bottom of the same function already produces for any numeric leaf. Dead/redundant special case.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "30fb688",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0239",
@@ -3930,11 +3930,11 @@
       "line": 22,
       "related_files": [],
       "description": "Sidebar.tsx hand-rolls MenuIcon/GearIcon inline SVG components while the same file already imports FileUp/Brain from lucide-react. lucide-react's Menu/Settings icons can likely replace both.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "06c8dea",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0243",
@@ -3947,11 +3947,11 @@
       "line": 105,
       "related_files": [],
       "description": "The Required Fields and Optional Fields dropdown-trigger blocks are near-identical JSX differing only in count/heading/groups/bulletCls. Extract one shared sub-component taking those as props.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "50771dc",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0244",
@@ -4017,11 +4017,11 @@
       "line": 339,
       "related_files": [],
       "description": "retryPendingDriveSync() and syncIfConnected() are ~70% duplicated (fetch token+profile, guard, call syncProfileToDrive, silent catch), differing only in whether they also check state.pendingSync. Could share a helper.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "3a918dc",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0248",
