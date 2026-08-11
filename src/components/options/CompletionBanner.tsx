@@ -47,6 +47,47 @@ function DropdownPanel({ heading, groups, bulletCls, onClose, onNavigate, onFocu
   );
 }
 
+interface DropdownTriggerProps {
+  count:        number;
+  heading:      string;
+  groups:       CompletionGroup[];
+  bulletCls:    string;
+  showDropdown: boolean;
+  onToggle:     () => void;
+  onClose:      () => void;
+  onNavigate:   (sectionId: string) => void;
+  onFocusField: (sectionId: string, field: string) => void;
+}
+
+// Shared by the Required Fields / Optional Fields triggers below — identical
+// shell differing only in count/heading/groups/bulletCls.
+function DropdownTrigger({ count, heading, groups, bulletCls, showDropdown, onToggle, onClose, onNavigate, onFocusField }: DropdownTriggerProps) {
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center gap-1 active:scale-95 transition-colors"
+      >
+        <span className="w-4 h-4 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs flex items-center justify-center font-bold">
+          {count}
+        </span>
+        Missing {showDropdown ? '▲' : '▼'}
+      </button>
+      {showDropdown && (
+        <DropdownPanel
+          heading={heading}
+          groups={groups}
+          bulletCls={bulletCls}
+          onClose={onClose}
+          onNavigate={onNavigate}
+          onFocusField={onFocusField}
+        />
+      )}
+    </div>
+  );
+}
+
 interface CompletionBannerProps {
   percentage:              number;
   isCoreComplete:          boolean;
@@ -103,53 +144,31 @@ export function CompletionBanner({
 
       {/* Dropdown trigger */}
       {!isCoreComplete && totalMissing > 0 && (
-        <div className="relative shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowDropdown((s) => !s)}
-            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center gap-1 active:scale-95 transition-colors"
-          >
-            <span className="w-4 h-4 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs flex items-center justify-center font-bold">
-              {totalMissing}
-            </span>
-            Missing {showDropdown ? '▲' : '▼'}
-          </button>
-          {showDropdown && (
-            <DropdownPanel
-              heading="Required Fields"
-              groups={missingGroups}
-              bulletCls="bg-red-400"
-              onClose={close}
-              onNavigate={onNavigate}
-              onFocusField={onFocusField}
-            />
-          )}
-        </div>
+        <DropdownTrigger
+          count={totalMissing}
+          heading="Required Fields"
+          groups={missingGroups}
+          bulletCls="bg-red-400"
+          showDropdown={showDropdown}
+          onToggle={() => setShowDropdown((s) => !s)}
+          onClose={close}
+          onNavigate={onNavigate}
+          onFocusField={onFocusField}
+        />
       )}
 
       {isCoreComplete && optionalFieldsRemaining > 0 && (
-        <div className="relative shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowDropdown((s) => !s)}
-            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center gap-1 active:scale-95 transition-colors"
-          >
-            <span className="w-4 h-4 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs flex items-center justify-center font-bold">
-              {optionalFieldsRemaining}
-            </span>
-            Missing {showDropdown ? '▲' : '▼'}
-          </button>
-          {showDropdown && (
-            <DropdownPanel
-              heading="Optional Fields"
-              groups={optionalGroups}
-              bulletCls="bg-gray-300"
-              onClose={close}
-              onNavigate={onNavigate}
-              onFocusField={onFocusField}
-            />
-          )}
-        </div>
+        <DropdownTrigger
+          count={optionalFieldsRemaining}
+          heading="Optional Fields"
+          groups={optionalGroups}
+          bulletCls="bg-gray-300"
+          showDropdown={showDropdown}
+          onToggle={() => setShowDropdown((s) => !s)}
+          onClose={close}
+          onNavigate={onNavigate}
+          onFocusField={onFocusField}
+        />
       )}
     </div>
   );
