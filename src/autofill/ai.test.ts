@@ -7,11 +7,18 @@ vi.mock('../utils/storage', () => ({
   getGeminiModel:   vi.fn(),
   saveLearnedMapping: vi.fn(),
 }));
-vi.mock('./filler', () => ({
-  fillField:        vi.fn(),
-  fillRadioInput:   vi.fn(),
-  fillCheckboxInput: vi.fn(),
-}));
+vi.mock('./filler', async (importOriginal) => {
+  // Real findBestMatch (used by ai.ts's findBestOption) — these tests verify
+  // its actual matching behavior, not a stub. Only the DOM-touching fill
+  // functions are mocked.
+  const actual = await importOriginal<typeof import('./filler')>();
+  return {
+    findBestMatch:     actual.findBestMatch,
+    fillField:         vi.fn(),
+    fillRadioInput:    vi.fn(),
+    fillCheckboxInput: vi.fn(),
+  };
+});
 vi.mock('./highlighter', () => ({ applyHighlight: vi.fn() }));
 vi.mock('../resume-ai/gemini', () => ({ resolveFieldsWithAI: vi.fn() }));
 // Control the radio/checkbox candidate lists independently of the DOM.
@@ -549,8 +556,21 @@ describe('runAIAutofill — radio fills', () => {
     expect(result.noReview).toBe(0);
   });
 
-  it('matches via the partial/substring fallback when the AI response is not an exact label match', async () => {
+  it('matches via the fuzzy fallback when the AI response is a close typo, not an exact label match', async () => {
     const { group, el } = radioGroup();
+    vi.mocked(scanRadioGroups).mockReturnValue([group]);
+    const result = freshResult();
+
+    mockResponses([{ fieldId: 'field_001', selectedOption: 'Femal', confidence: 'high' }]);
+
+    await runAIAutofill([], PROFILE, result, [], 'example.com');
+
+    expect(fillRadioInput).toHaveBeenCalledWith(el);
+    expect(result.noReview).toBe(1);
+  });
+
+  it('does not fill when the AI response is too dissimilar to any option (below the fuzzy threshold)', async () => {
+    const { group } = radioGroup();
     vi.mocked(scanRadioGroups).mockReturnValue([group]);
     const result = freshResult();
 
@@ -558,8 +578,9 @@ describe('runAIAutofill — radio fills', () => {
 
     await runAIAutofill([], PROFILE, result, [], 'example.com');
 
-    expect(fillRadioInput).toHaveBeenCalledWith(el);
-    expect(result.noReview).toBe(1);
+    expect(fillRadioInput).not.toHaveBeenCalled();
+    expect(result.noReview).toBe(0);
+    expect(result.needReview).toBe(0);
   });
 });
 
