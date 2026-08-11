@@ -1,5 +1,6 @@
+// @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
-import { normalize, similarity } from './normalizer';
+import { normalize, similarity, isSkippableOption } from './normalizer';
 
 describe('normalize', () => {
   it('lowercases the input', () => {
@@ -62,5 +63,35 @@ describe('similarity', () => {
 
   it('is symmetric', () => {
     expect(similarity('email', 'emails')).toBe(similarity('emails', 'email'));
+  });
+});
+
+describe('isSkippableOption', () => {
+  function option({ value = 'us', text = 'United States', disabled = false }: { value?: string; text?: string; disabled?: boolean } = {}): HTMLOptionElement {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.text = text;
+    opt.disabled = disabled;
+    return opt;
+  }
+
+  it('skips a disabled option', () => {
+    expect(isSkippableOption(option({ disabled: true }))).toBe(true);
+  });
+
+  it('skips an option with an empty value', () => {
+    expect(isSkippableOption(option({ value: '' }))).toBe(true);
+  });
+
+  it('skips a placeholder-labelled option like "Please select"', () => {
+    expect(isSkippableOption(option({ value: 'placeholder', text: 'Please select' }))).toBe(true);
+  });
+
+  it('skips a placeholder-labelled option regardless of case/spacing/punctuation', () => {
+    expect(isSkippableOption(option({ value: 'placeholder', text: '-- Choose One --' }))).toBe(true);
+  });
+
+  it('does not skip a real, enabled, non-placeholder option', () => {
+    expect(isSkippableOption(option())).toBe(false);
   });
 });
