@@ -7,7 +7,7 @@ import type { AIFieldPayload, AIFieldResponse, AIOptionPayload } from '../resume
 import { toGeminiModel } from '../resume-ai/types';
 import { scanRadioGroups, scanCheckboxGroups } from './scanner';
 import type { RadioGroup, CheckboxGroup } from './scanner';
-import { fillField, fillRadioInput, fillCheckboxInput } from './filler';
+import { fillField, fillRadioInput, fillCheckboxInput, findBestMatch } from './filler';
 import { applyHighlight } from './highlighter';
 import { CONF_CONFIRMED, CONF_AI_YELLOW } from './constants';
 import { getGeminiApiKey, getGeminiModel, saveLearnedMapping } from '../utils/storage';
@@ -261,15 +261,11 @@ export async function runAIAutofill(
   return true;
 }
 
+// Reuses filler.ts's shared matching strategy (exact → normalized → fuzzy,
+// threshold-gated) instead of naive substring inclusion, so an AI-selected
+// option gets the same matching rigor as the rule-pipeline's own
+// select/ARIA-listbox matching — a short generic option label could
+// otherwise substring-match an unrelated longer one.
 function findBestOption<T extends { label: string; value: string }>(options: T[], target: string): T | null {
-  const norm = target.toLowerCase().trim();
-  const exact = options.find(
-    (o) => o.label.toLowerCase().trim() === norm || o.value.toLowerCase().trim() === norm,
-  );
-  if (exact) return exact;
-  const partial = options.find(
-    (o) => o.label.toLowerCase().includes(norm) || norm.includes(o.label.toLowerCase().trim())
-      || o.value.toLowerCase().includes(norm) || norm.includes(o.value.toLowerCase().trim()),
-  );
-  return partial ?? null;
+  return findBestMatch(options, target, (o) => o.value, (o) => o.label);
 }
