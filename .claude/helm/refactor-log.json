@@ -3665,11 +3665,11 @@
       "line": 229,
       "related_files": [],
       "description": "handleImportComplete's catch only console.errors, no showToast — unlike handleSave's catch (line 250-253) which does. If getProfile() throws after an import/reset/Drive-restore completes, the user sees no feedback and the UI sits in stale pre-reset state, even though the underlying write already succeeded (only the reload failed).",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "68103b7",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0229",
@@ -3840,11 +3840,11 @@
         "src/autofill/filler.ts"
       ],
       "description": "findBestOption (AI-selected radio/checkbox matching) uses naive case-insensitive substring inclusion with no similarity threshold, meaningfully looser than findBestMatch in filler.ts (Levenshtein similarity, threshold-gated) used for the rule-pipeline's own select/ARIA-listbox matching. A short generic option label could substring-match an unrelated longer one.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "cb8506f",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0238",
@@ -3983,11 +3983,11 @@
         "src/data/ethnicities.ts"
       ],
       "description": "ethnicity field validation is inconsistent with its siblings (gender, veteranStatus, disabilityStatus) — those check against a VALID_* allowlist and report an error on failure; ethnicity only checks typeof === 'string' with no length cap and no error on invalid type. The UI always renders a fixed ETHNICITIES select, but an imported/restored profile could carry a garbage value that silently passes validation.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "2f4b180",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0246",
@@ -4004,7 +4004,8 @@
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
       "resolved_commit": null,
-      "resolved_date": null
+      "resolved_date": null,
+      "note": "Attempted during 2026-08-11 refactor run: a generic get/save/clear factory forced unsafe type casts (driveToken is string|undefined but the API returns string|null; driveBackupState needs a fresh-object-per-call default) that outweighed the benefit for 2-3 short functions. Left as-is rather than force a bad abstraction — reconsider only if a 4th similar accessor pair appears."
     },
     {
       "id": "f-0247",
