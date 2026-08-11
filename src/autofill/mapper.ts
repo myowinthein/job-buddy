@@ -64,8 +64,17 @@ function dictionaryExact(norm: string): string | null {
 // to the same result — memoize per unique signal to avoid re-scanning all
 // ~100+ dictionary terms every time the same signal recurs (Layers 3 and 4
 // can each call this per field, so common signals get looked up repeatedly
-// within and across scans of a page).
+// within and across scans of a page). Content scripts persist across SPA
+// client-side navigation (no full reload), so this is capped rather than
+// left to grow unboundedly for the tab's lifetime — far more than any real
+// page's distinct field labels, just a backstop against unbounded growth.
+const FUZZY_CACHE_MAX_ENTRIES = 500;
 const fuzzyCache = new Map<string, { fieldPath: string; score: number } | null>();
+
+// Exported for testing only.
+export function getFuzzyCacheSize(): number {
+  return fuzzyCache.size;
+}
 
 function dictionaryFuzzy(norm: string): { fieldPath: string; score: number } | null {
   const cached = fuzzyCache.get(norm);
@@ -80,6 +89,12 @@ function dictionaryFuzzy(norm: string): { fieldPath: string; score: number } | n
     }
   }
   const result = bestPath && bestScore >= CONF_FILL ? { fieldPath: bestPath, score: bestScore } : null;
+  if (fuzzyCache.size >= FUZZY_CACHE_MAX_ENTRIES) {
+    // Map preserves insertion order — evict the oldest entry (FIFO, not LRU;
+    // simplicity is fine for a rarely-hit backstop, not a hot-path concern).
+    const oldest = fuzzyCache.keys().next().value;
+    if (oldest !== undefined) fuzzyCache.delete(oldest);
+  }
   fuzzyCache.set(norm, result);
   return result;
 }

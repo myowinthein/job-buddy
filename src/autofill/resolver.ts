@@ -60,11 +60,6 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
         .join(', ');
     }
 
-    case 'derived.totalExperience.years': {
-      const years = profile.derived?.totalExperience?.years;
-      return years != null ? String(years) : '';
-    }
-
     case 'workAuthorization': {
       // Legacy path used by autofill dictionary / learned mappings for the first entry.
       const entry = profile.workAuthorization?.[0];
@@ -207,16 +202,17 @@ export interface FlatProfileValue {
 // every non-empty string/number leaf as a (path, value) pair — used to match
 // a manually-typed value back to whichever profile field it most resembles,
 // independent of any prior field-match guess. Skips 'id' (not a real
-// answerable field) and documents.cv.file (a multi-MB base64 blob — never a
-// meaningful comparison target). Only raw stored values; does not include
-// virtual/computed paths (phone.full, address.countryName, formatted salary,
-// etc.) that resolveProfileValue can produce.
+// answerable field) and documents.cv.file / documents.coverLetter.file (each
+// a multi-MB base64 blob — never a meaningful comparison target). Only raw
+// stored values; does not include virtual/computed paths (phone.full,
+// address.countryName, formatted salary, etc.) that resolveProfileValue can
+// produce.
 export function flattenProfileValues(profile: Profile): FlatProfileValue[] {
   const out: FlatProfileValue[] = [];
 
   function walk(node: unknown, path: string): void {
     if (node == null) return;
-    if (path === 'id' || path === 'documents.cv.file') return;
+    if (path === 'id' || path === 'documents.cv.file' || path === 'documents.coverLetter.file') return;
 
     if (typeof node === 'string') {
       if (node) out.push({ path, value: node });

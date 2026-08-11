@@ -16,7 +16,7 @@ export const DEV_PROFILE: Profile = {
     phone:             { countryCode: 'US', callingCode: '+1', number: '5551234567' },
     dateOfBirth:       '1992-06-15',
     gender:            'female',
-    ethnicity:         'Prefer not to say',
+    ethnicity:         'prefer_not_to_say',
     veteranStatus:     'no',
     disabilityStatus:  'no',
   },

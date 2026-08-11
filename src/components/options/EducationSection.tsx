@@ -63,14 +63,18 @@ export function EducationSection({ profile, onSave }: Props) {
   const entriesContainerRef = useRef<HTMLDivElement>(null);
   useScrollToNewEntry(entriesContainerRef, newEntryTick);
 
+  // Shared by handleEntryBlur, update, and validate() — the one check each
+  // required text field needs, regardless of when it fires.
+  const textFieldError = (key: 'institution' | 'degree' | 'fieldOfStudy', value: string): string => {
+    if (key === 'institution' && !value.trim()) return 'Institution is required';
+    if (key === 'degree' && !value.trim()) return 'Degree is required';
+    if (key === 'fieldOfStudy' && !value.trim()) return 'Field of study is required';
+    return '';
+  };
+
   const handleEntryBlur = (idx: number, key: 'institution' | 'degree' | 'fieldOfStudy') => {
-    const value = String(entries[idx][key]);
     const ek = `${idx}.${key}`;
-    let err = '';
-    if (key === 'institution' && !value.trim()) err = 'Institution is required';
-    else if (key === 'degree' && !value.trim()) err = 'Degree is required';
-    else if (key === 'fieldOfStudy' && !value.trim()) err = 'Field of study is required';
-    setErrors((e) => ({ ...e, [ek]: err }));
+    setErrors((e) => ({ ...e, [ek]: textFieldError(key, String(entries[idx][key])) }));
   };
 
   // Education dates accept either YYYY or YYYY-MM (allowYearOnlyEnd) — unlike
@@ -85,9 +89,7 @@ export function EducationSection({ profile, onSave }: Props) {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     const ek = `${idx}.${key}`;
     let err = '';
-    if (key === 'institution' && !String(value).trim()) err = 'Institution is required';
-    else if (key === 'degree' && !String(value).trim()) err = 'Degree is required';
-    else if (key === 'fieldOfStudy' && !String(value).trim()) err = 'Field of study is required';
+    if (key === 'institution' || key === 'degree' || key === 'fieldOfStudy') err = textFieldError(key, String(value));
     else if (key === 'startDate') {
       if (!String(value).trim()) err = 'Start date is required';
       else {
@@ -109,9 +111,10 @@ export function EducationSection({ profile, onSave }: Props) {
     const e: Record<string, string> = {};
     if (entries.length === 0) e.general = 'At least one education entry is required';
     entries.forEach((row, idx) => {
-      if (!row.institution.trim()) e[`${idx}.institution`] = 'Institution is required';
-      if (!row.degree.trim()) e[`${idx}.degree`] = 'Degree is required';
-      if (!row.fieldOfStudy.trim()) e[`${idx}.fieldOfStudy`] = 'Field of study is required';
+      for (const key of ['institution', 'degree', 'fieldOfStudy'] as const) {
+        const err = textFieldError(key, row[key]);
+        if (err) e[`${idx}.${key}`] = err;
+      }
       if (!row.startDate.trim()) {
         e[`${idx}.startDate`] = 'Start date is required';
       } else {
