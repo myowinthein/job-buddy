@@ -300,6 +300,8 @@ export function buildPickerTree(profile: Profile): Section[] {
     const items: SectionItem[] = [];
     const cvUrl = profile.documents?.cv?.url;
     if (cvUrl) items.push(row('Document URL', 'documents.cv.url', cvUrl));
+    const coverLetterUrl = profile.documents?.coverLetter?.url;
+    if (coverLetterUrl) items.push(row('Cover Letter URL', 'documents.coverLetter.url', coverLetterUrl));
     if (items.length) sections.push({ id: 'documents', label: 'Documents', items });
   }
 

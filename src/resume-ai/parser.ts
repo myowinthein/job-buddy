@@ -424,6 +424,27 @@ export const FIELD_DEFS: FieldDef[] = [
       return (v as { name: string }).name ?? '';
     },
   },
+  {
+    id: 'documents.coverLetter.url',
+    label: 'Cover Letter URL',
+    section: 'Documents',
+    getValue: (p) => p.documents?.coverLetter?.url ?? null,
+    setValue: setDoublyNestedField('documents', 'coverLetter', 'url'),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? ''),
+  },
+  {
+    id: 'documents.coverLetter.file',
+    label: 'Cover Letter File',
+    section: 'Documents',
+    getValue: (p) => p.documents?.coverLetter?.file ?? null,
+    setValue: setDoublyNestedField('documents', 'coverLetter', 'file'),
+    isEmpty: (v) => !v || typeof v !== 'object',
+    display: (v) => {
+      if (!v || typeof v !== 'object') return '';
+      return (v as { name: string }).name ?? '';
+    },
+  },
 ];
 
 // ── Diff generation ──────────────────────────────────────────────────────────

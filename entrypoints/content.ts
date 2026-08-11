@@ -36,7 +36,10 @@ export default defineContentScript({
       if (message.action === 'AUTOFILL_SCAN') {
         scanAutofill()
           .then(sendResponse)
-          .catch(() => sendResponse({ preFilledCount: 0, totalMatched: 0 }));
+          .catch((err) => {
+            console.error('[Job Buddy] AUTOFILL_SCAN failed:', err);
+            sendResponse({ preFilledCount: 0, totalMatched: 0 });
+          });
         return true;
       }
 
@@ -44,7 +47,10 @@ export default defineContentScript({
         const mode: 'merge' | 'overwrite' = message.mode === 'merge' ? 'merge' : 'overwrite';
         executeAutofill(mode)
           .then(sendResponse)
-          .catch(() => sendResponse(EMPTY_AUTOFILL_RESULT));
+          .catch((err) => {
+            console.error('[Job Buddy] AUTOFILL_FILL failed:', err);
+            sendResponse(EMPTY_AUTOFILL_RESULT);
+          });
         return true;
       }
 

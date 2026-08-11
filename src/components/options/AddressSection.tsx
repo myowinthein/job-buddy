@@ -47,8 +47,10 @@ export function AddressSection({ profile, onSave }: Props) {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!form.city.trim()) e.city = 'City is required';
-    if (!form.countryCode) e.countryCode = 'Country is required';
+    for (const key of ['city', 'countryCode'] as const) {
+      const err = fieldError(key, form[key]);
+      if (err) e[key] = err;
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };

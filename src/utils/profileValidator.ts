@@ -1,4 +1,5 @@
 import type { Profile } from '../types/profile';
+import { ETHNICITIES } from '../data/ethnicities';
 
 export interface InvalidField {
   path:   string;
@@ -19,6 +20,9 @@ const RE_CURRENCY = /^[A-Z]{3}$/;
 
 const VALID_GENDERS     = new Set(['male', 'female', 'other', 'prefer_not_to_say']);
 const VALID_YES_NO_PNTS = new Set(['yes', 'no', 'prefer_not_to_say']);
+// PersonalSection.tsx's <select> offers every ETHNICITIES value plus an
+// explicit "Prefer not to say" option not itself in that list.
+const VALID_ETHNICITIES = new Set<string>([...ETHNICITIES, 'prefer_not_to_say']);
 const VALID_AUTH_STATUS = new Set(['citizen_or_pr', 'work_visa', 'requires_sponsorship']);
 const VALID_PROFICIENCY = new Set([
   'native_bilingual', 'full_professional', 'professional_working',
@@ -102,7 +106,10 @@ function validatePersonal(data: Record<string, unknown>, err: ErrFn): Profile['p
     if (typeof p.gender === 'string' && VALID_GENDERS.has(p.gender)) sp.gender = p.gender;
     else err('personal.gender', 'expected male | female | other | prefer_not_to_say');
   }
-  if (p.ethnicity !== undefined && typeof p.ethnicity === 'string') sp.ethnicity = p.ethnicity;
+  if (p.ethnicity !== undefined) {
+    if (typeof p.ethnicity === 'string' && VALID_ETHNICITIES.has(p.ethnicity)) sp.ethnicity = p.ethnicity;
+    else err('personal.ethnicity', 'expected one of the known ETHNICITIES values or prefer_not_to_say');
+  }
   if (p.veteranStatus !== undefined) {
     if (typeof p.veteranStatus === 'string' && VALID_YES_NO_PNTS.has(p.veteranStatus)) sp.veteranStatus = p.veteranStatus;
     else err('personal.veteranStatus', 'expected yes | no | prefer_not_to_say');

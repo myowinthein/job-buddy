@@ -39,7 +39,7 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   'languages.language':            ['language', 'languagespoken', 'languagename'],
   'languages.proficiency':         ['proficiency', 'fluency', 'languageproficiency', 'languagelevel', 'proficiencylevel'],
   'salary.current.amount':         ['currentsalary', 'currentctc', 'currentcompensation', 'currentsalaryexpectation'],
-  'salary.expected':               ['expectedsalary', 'desiredcompensation', 'expectedctc', 'desiredsalary', 'salaryexpectation'],
+  'salary.expected.formatted':     ['expectedsalary', 'desiredcompensation', 'expectedctc', 'desiredsalary', 'salaryexpectation'],
   'professional.noticePeriod.availableDate': ['dateavailable', 'availablefrom', 'availabledate', 'earlieststartdate', 'availabletostart', 'startavailability', 'availabilitydate'],
   // Distinct from availableDate above — a "Notice Period" duration dropdown
   // needs "Immediate"/"2 Weeks"/"1 Month", not a computed calendar date.
