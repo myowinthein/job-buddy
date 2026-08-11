@@ -3874,11 +3874,11 @@
       "line": 353,
       "related_files": [],
       "description": "scanned.map((s) => s.match) is called 4 separate times in a row (once per sibling-resolution pass), each allocating a new array over identical data. Hoist to one const and reuse.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "592a63d",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0240",
@@ -3891,11 +3891,11 @@
       "line": 68,
       "related_files": [],
       "description": "Module-level fuzzyCache Map is never cleared. Content scripts persist across SPA client-side navigation, so on a job site with many route changes this cache grows unboundedly for the tab's lifetime. Likely low real-world impact but worth a decision on capping/clearing.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "e30efc8",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0241",
@@ -4052,11 +4052,11 @@
       "line": 9,
       "related_files": [],
       "description": "queryAllDeep() performs a full querySelectorAll('*') walk of the DOM (recursing into open shadow roots) purely to discover shadow hosts, invoked independently by scanFields, scanRadioGroups, scanCheckboxGroups, and 4 separate selectors inside scanAriaFields — up to 7 full-page traversals per scan cycle redoing the same shadow-root discovery. Consolidating into one shadow-root-aware walk would cut this to one traversal; flagged needs-review since it touches the shared low-level scan primitive.",
-      "status": "open",
+      "status": "fixed",
       "first_found_commit": "da49894",
       "first_found_date": "2026-08-11",
-      "resolved_commit": null,
-      "resolved_date": null
+      "resolved_commit": "c0499fd",
+      "resolved_date": "2026-08-11"
     },
     {
       "id": "f-0250",
