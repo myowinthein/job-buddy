@@ -291,8 +291,8 @@ describe('Gemini settings', () => {
 
   it('falls back to DEFAULT_GEMINI_MODEL when nothing is stored (dev) and persists it', async () => {
     const model = await getGeminiModel();
-    expect(model).toBe('gemini-3.5-flash-lite'); // DEFAULT_GEMINI_MODEL / GEMINI_MODEL_PRIORITY[0]
-    expect(store['geminiModel']).toBe('gemini-3.5-flash-lite');
+    expect(model).toBe('gemini-3.7-flash'); // DEFAULT_GEMINI_MODEL / GEMINI_MODEL_PRIORITY[0]
+    expect(store['geminiModel']).toBe('gemini-3.7-flash');
   });
 
   it('returns null for the model in production when nothing is stored (DEV stubbed false)', async () => {
