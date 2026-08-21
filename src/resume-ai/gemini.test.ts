@@ -118,6 +118,25 @@ describe('parseAutofillResponse (via resolveFieldsWithAI)', () => {
       resolveFieldsWithAI('key', 'gemini-3.7-flash', FIELDS, {}),
     ).rejects.toThrow('Network error during AI autofill');
   });
+
+  it('falls through to the next model on 429, trying the configured model first', async () => {
+    fetchMock
+      .mockResolvedValueOnce(httpResponse(429))
+      .mockResolvedValueOnce(geminiTextResponse(JSON.stringify([{ fieldId: 'f1', confidence: 'high' }])));
+    const result = await resolveFieldsWithAI('key', 'gemini-3.6-flash', FIELDS, {});
+    expect(result).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][0]).toContain('gemini-3.6-flash');
+    expect(fetchMock.mock.calls[1][0]).toContain('gemini-3.5-flash-lite'); // GEMINI_MODEL_PRIORITY[0]
+  });
+
+  it('throws when every model in the fallback list returns 429', async () => {
+    fetchMock.mockResolvedValue(httpResponse(429));
+    await expect(
+      resolveFieldsWithAI('key', 'gemini-3.7-flash', FIELDS, {}),
+    ).rejects.toThrow('AI autofill request failed: all models rate limited');
+    expect(fetchMock).toHaveBeenCalledTimes(3); // GEMINI_MODEL_PRIORITY length
+  });
 });
 
 // ── checkApiKey ───────────────────────────────────────────────────────────────
@@ -156,7 +175,7 @@ describe('validateApiKey', () => {
     fetchMock.mockResolvedValueOnce(httpResponse(200));
     const result = await validateApiKey('key');
     expect(result.valid).toBe(true);
-    expect(result.model).toBe('gemini-3.7-flash'); // GEMINI_MODEL_PRIORITY[0]
+    expect(result.model).toBe('gemini-3.5-flash-lite'); // GEMINI_MODEL_PRIORITY[0]
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -190,7 +209,7 @@ describe('validateApiKey', () => {
       .mockResolvedValueOnce(httpResponse(200));
     const result = await validateApiKey('key');
     expect(result.valid).toBe(true);
-    expect(result.model).toBe('gemini-3.6-flash'); // GEMINI_MODEL_PRIORITY[1]
+    expect(result.model).toBe('gemini-3.7-flash'); // GEMINI_MODEL_PRIORITY[1]
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -204,7 +223,7 @@ describe('validateApiKey', () => {
       .mockResolvedValueOnce(httpResponse(200));
     const result = await validateApiKey('key');
     expect(result.valid).toBe(true);
-    expect(result.model).toBe('gemini-3.6-flash');
+    expect(result.model).toBe('gemini-3.7-flash');
   });
 
   it('skips a 404 model and tries the next', async () => {
@@ -213,7 +232,7 @@ describe('validateApiKey', () => {
       .mockResolvedValueOnce(httpResponse(200));
     const result = await validateApiKey('key');
     expect(result.valid).toBe(true);
-    expect(result.model).toBe('gemini-3.6-flash');
+    expect(result.model).toBe('gemini-3.7-flash');
   });
 
   it('returns keyValidNoModel when every model in the priority list fails non-fatally', async () => {
@@ -264,7 +283,7 @@ describe('extractFromResume', () => {
     await extract('gemini-3.6-flash');
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0][0]).toContain('gemini-3.6-flash');
-    expect(fetchMock.mock.calls[1][0]).toContain('gemini-3.7-flash'); // GEMINI_MODEL_PRIORITY[0]
+    expect(fetchMock.mock.calls[1][0]).toContain('gemini-3.5-flash-lite'); // GEMINI_MODEL_PRIORITY[0]
   });
 
   it('throws rate_limit when every model in the probe list returns 429', async () => {

@@ -34,8 +34,8 @@ import {
   isDriveConfigured,
 } from '@/src/utils/driveSync';
 import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
-import { DEFAULT_GEMINI_MODEL } from '@/src/resume-ai/types';
-import type { FieldChange } from '@/src/resume-ai/types';
+import { DEFAULT_GEMINI_MODEL, GEMINI_MODEL_PRIORITY, MODEL_DISPLAY_NAMES, toGeminiModel } from '@/src/resume-ai/types';
+import type { FieldChange, GeminiModel } from '@/src/resume-ai/types';
 import ImportSummaryDialog from '@/src/components/shared/ImportSummaryDialog';
 import ImportReviewScreen from '@/src/components/shared/ImportReviewScreen';
 
@@ -154,6 +154,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   // ── AI Features state ────────────────────────────────────────────────────────
   const [geminiKey,        setGeminiKey]        = useState('');
   const [geminiKeyStatus,  setGeminiKeyStatus]  = useState<'idle' | 'validating' | 'valid' | 'invalid' | 'no_model'>('idle');
+  const [geminiModel,      setGeminiModelState] = useState<GeminiModel>(DEFAULT_GEMINI_MODEL);
   const geminiDebounceRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const probeIdRef         = useRef(0);
 
@@ -186,10 +187,11 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const [resetScope,            setResetScope]            = useState<'device' | 'everywhere'>('device');
 
   useEffect(() => {
-    Promise.all([getGeminiApiKey(), getGeminiModel()]).then(([key]) => {
+    Promise.all([getGeminiApiKey(), getGeminiModel()]).then(([key, model]) => {
       if (key) {
         setGeminiKey(key);
         setGeminiKeyStatus('valid');
+        setGeminiModelState(toGeminiModel(model));
       }
     });
   }, []);
@@ -242,6 +244,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       await saveGeminiModel(DEFAULT_GEMINI_MODEL);
       if (callId !== probeIdRef.current) return;
       setGeminiKeyStatus('valid');
+      setGeminiModelState(DEFAULT_GEMINI_MODEL);
       showToast('success', 'API key saved.');
 
       // Step 3: background model probe — fully decoupled from key validation
@@ -250,6 +253,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
       if (result.valid && result.model && result.model !== DEFAULT_GEMINI_MODEL) {
         await saveGeminiModel(result.model);
+        setGeminiModelState(result.model);
       } else if (result.keyValidNoModel) {
         setGeminiKeyStatus('no_model');
       } else if (result.keyInvalid) {
@@ -258,6 +262,12 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       }
       // Network error during probe: leave key + default model in storage
     }, 800);
+  };
+
+  const handleGeminiModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value as GeminiModel;
+    setGeminiModelState(value);
+    void saveGeminiModel(value);
   };
 
   // ── Export ──────────────────────────────────────────────────────────────────
@@ -580,6 +590,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       // up too — same pairing already used for the keyInvalid probe case above.
       setGeminiKey('');
       setGeminiKeyStatus('idle');
+      setGeminiModelState(DEFAULT_GEMINI_MODEL);
       setShowResetDialog(false);
       setResetConfirmText('');
       setResetScope('device');
@@ -680,6 +691,27 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           <p className="mt-1.5 text-xs text-red-500 dark:text-red-400">
             Invalid API key. Check your key and try again.
           </p>
+        )}
+
+        {(geminiKeyStatus === 'valid' || geminiKeyStatus === 'no_model') && (
+          <div className="mt-4 max-w-md">
+            <label htmlFor="gemini-model" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              AI Model
+            </label>
+            <select
+              id="gemini-model"
+              value={geminiModel}
+              onChange={handleGeminiModelChange}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {GEMINI_MODEL_PRIORITY.map((m) => (
+                <option key={m} value={m}>{MODEL_DISPLAY_NAMES[m]}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Job Buddy auto-detects a working model for your key. Change this only if you want to use a different one.
+            </p>
+          </div>
         )}
 
         <details className="mt-3 max-w-md">
