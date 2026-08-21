@@ -1,14 +1,14 @@
 export type GeminiModel =
+  | 'gemini-3.5-flash-lite'
   | 'gemini-3.7-flash'
-  | 'gemini-3.6-flash'
-  | 'gemini-3.5-flash';
+  | 'gemini-3.6-flash';
 
 // Models tried in order during the background probe. The first model to respond
 // successfully is selected.
 export const GEMINI_MODEL_PRIORITY: GeminiModel[] = [
+  'gemini-3.5-flash-lite',
   'gemini-3.7-flash',
   'gemini-3.6-flash',
-  'gemini-3.5-flash',
 ];
 
 // The default model applied immediately when a key is validated (Step 2 of the
@@ -17,9 +17,9 @@ export const GEMINI_MODEL_PRIORITY: GeminiModel[] = [
 export const DEFAULT_GEMINI_MODEL: GeminiModel = GEMINI_MODEL_PRIORITY[0];
 
 export const MODEL_DISPLAY_NAMES: Record<GeminiModel, string> = {
+  'gemini-3.5-flash-lite': 'Gemini 3.5 Flash-Lite',
   'gemini-3.7-flash': 'Gemini 3.7 Flash',
   'gemini-3.6-flash': 'Gemini 3.6 Flash',
-  'gemini-3.5-flash': 'Gemini 3.5 Flash',
 };
 
 // Persisted model strings can predate the current GeminiModel union (e.g. an

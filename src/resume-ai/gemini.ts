@@ -158,29 +158,41 @@ export async function resolveFieldsWithAI(
   profile: object,
 ): Promise<AIFieldResponse[]> {
   const prompt = buildAutofillPrompt(fields, profile);
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0 },
+  });
 
-  let resp: Response;
-  try {
-    resp = await fetch(endpoint(model, apiKey), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0 },
-      }),
-    });
-  } catch {
-    throw new Error('Network error during AI autofill');
+  // Start with the configured model, then fall through the priority list on
+  // 429 — mirrors extractFromResume()'s fallback so a manually-picked model
+  // that's rate-limited doesn't silently disable AI autofill (its caller in
+  // src/autofill/ai.ts swallows any thrown error as a silent no-op).
+  const modelsToTry = [model, ...GEMINI_MODEL_PRIORITY.filter(m => m !== model)];
+
+  for (const tryModel of modelsToTry) {
+    let resp: Response;
+    try {
+      resp = await fetch(endpoint(tryModel, apiKey), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
+    } catch {
+      throw new Error('Network error during AI autofill');
+    }
+
+    if (resp.status === 429) continue;
+    if (!resp.ok) throw new Error(`AI autofill request failed: ${resp.status}`);
+
+    let data: unknown;
+    try { data = await resp.json(); } catch { return []; }
+
+    const text = extractGeminiText(data) ?? '';
+    return parseAutofillResponse(text);
   }
 
-  if (!resp.ok) throw new Error(`AI autofill request failed: ${resp.status}`);
-
-  let data: unknown;
-  try { data = await resp.json(); } catch { return []; }
-
-  const text = extractGeminiText(data) ?? '';
-
-  return parseAutofillResponse(text);
+  // All models in the fallback list returned 429
+  throw new Error('AI autofill request failed: all models rate limited');
 }
 
 function parseAutofillResponse(text: string): AIFieldResponse[] {

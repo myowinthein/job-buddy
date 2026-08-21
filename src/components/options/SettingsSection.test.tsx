@@ -111,8 +111,8 @@ describe('SettingsSection — Gemini key validation race guard (probeIdRef)', ()
     expect(vi.mocked(saveGeminiModel)).toHaveBeenCalledWith('gemini-3.6-flash');
 
     // Now let the FIRST (stale) probe resolve — its result must be ignored.
-    await act(async () => { resolveFirstProbe({ valid: true, model: 'gemini-3.5-flash' }); });
-    expect(vi.mocked(saveGeminiModel)).not.toHaveBeenCalledWith('gemini-3.5-flash');
+    await act(async () => { resolveFirstProbe({ valid: true, model: 'gemini-3.7-flash' }); });
+    expect(vi.mocked(saveGeminiModel)).not.toHaveBeenCalledWith('gemini-3.7-flash');
   });
 });
 
