@@ -16,6 +16,7 @@ Rules:
 - For checkbox: return an array of matching option labels or values (may be empty), choosing only from the provided options array
 - confidence "high" = certain; "low" = plausible; null = no match
 - When uncertain, return null / empty rather than guessing
+- If a field's label is not real human-readable text — e.g. it looks like an internal identifier, a UUID, or a generic placeholder such as "value" or "field_1" — treat that as having no usable signal and return null/"null" confidence, even if placeholder/name/nearbyText are also unhelpful. Do not guess a profilePath from a field's positional order or from the shape of the profile JSON alone
 
 Virtual profilePaths (valid even though they are not direct object keys):
 - personal.phone.full — full phone number including calling code (e.g. "+66 812345678"); use for a single combined phone field

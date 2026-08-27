@@ -276,45 +276,11 @@ describe('runAIAutofill — high-confidence text fills', () => {
     expect(result.lowConfidence).toBe(0);
     expect(result.noReview).toBe(1);
     expect(sessionElements).toContain(cand.element);
-    // The candidate's label ("First Name") is passed through so the Learned
-    // Mappings UI can show something readable instead of the normalised key.
-    expect(saveLearnedMapping).toHaveBeenCalledWith(
-      'example.com', expect.any(String), 'personal.firstName', 'First Name',
-    );
+    // AI's own self-reported confidence must never be enough to permanently
+    // teach a learned mapping — only a human confirming a value (the
+    // rule-pipeline's edit-watcher path) is trusted for that.
+    expect(saveLearnedMapping).not.toHaveBeenCalled();
     expect(aiGreenFilled.has(cand.element)).toBe(true);
-  });
-
-  it('saves each signal\'s learned mapping sequentially, never overlapping', async () => {
-    // Regression test: saveLearnedMapping does a read-modify-write against
-    // chrome.storage.local, so firing multiple calls without awaiting each
-    // one first (the previous bug) races and silently loses all but the
-    // last write. Two candidates with two non-empty signals each means four
-    // total saveLearnedMapping calls; none may overlap in-flight.
-    const cand1 = textCandidate('lowConfidence', 'First Name');
-    cand1.signals.name = 'firstName';
-    const cand2 = textCandidate('lowConfidence', 'Last Name');
-    cand2.signals.name = 'lastName';
-
-    let inFlight = 0;
-    let maxConcurrent = 0;
-    vi.mocked(saveLearnedMapping).mockImplementation(async () => {
-      inFlight++;
-      maxConcurrent = Math.max(maxConcurrent, inFlight);
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      inFlight--;
-    });
-
-    mockResponses([
-      { fieldId: 'field_001', profilePath: 'personal.firstName', confidence: 'high' },
-      { fieldId: 'field_002', profilePath: 'personal.lastName',  confidence: 'high' },
-    ]);
-
-    await runAIAutofill(
-      [cand1, cand2], PROFILE, freshResult(), [], 'example.com', undefined, new Set(),
-    );
-
-    expect(saveLearnedMapping).toHaveBeenCalledTimes(4);
-    expect(maxConcurrent).toBe(1);
   });
 
   it('decrements noData (not lowConfidence) for a noData-origin candidate', async () => {

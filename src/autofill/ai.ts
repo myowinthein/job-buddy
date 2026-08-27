@@ -1,6 +1,6 @@
 import type { Profile } from '../types/profile';
 import type { FieldSignals } from './signals';
-import { bestLabel, displayLabel } from './signals';
+import { bestLabel } from './signals';
 import { resolveProfileValue } from './resolver';
 import { resolveFieldsWithAI } from '../resume-ai/gemini';
 import type { AIFieldPayload, AIFieldResponse, AIOptionPayload } from '../resume-ai/types';
@@ -10,8 +10,8 @@ import type { RadioGroup, CheckboxGroup } from './scanner';
 import { fillField, fillRadioInput, fillCheckboxInput, findBestMatch } from './filler';
 import { applyHighlight } from './highlighter';
 import { CONF_CONFIRMED, CONF_AI_YELLOW } from './constants';
-import { getGeminiApiKey, getGeminiModel, saveLearnedMapping } from '../utils/storage';
-import { normalize, isSkippableOption } from './normalizer';
+import { getGeminiApiKey, getGeminiModel } from '../utils/storage';
+import { isSkippableOption } from './normalizer';
 import type { DebugAIField } from './debug';
 import type { AutofillResult } from './index';
 
@@ -197,24 +197,11 @@ export async function runAIAutofill(
       if (isHigh) {
         result.noReview++;
         aiGreenFilled?.add(candidate.element);
-        // Save learned mappings for high-confidence fills so this field maps
-        // straight to green on the next autofill run on this domain. Only when
-        // we have a profile path — selectedOption alone is not a stable signal.
-        if (resp.profilePath) {
-          const sigs = [
-            candidate.signals.name, candidate.signals.id,
-            candidate.signals.placeholder, candidate.signals.ariaLabel, candidate.signals.label,
-          ].filter(Boolean);
-          const label = displayLabel(candidate.signals);
-          // Sequential, not fire-and-forget: saveLearnedMapping does a
-          // read-modify-write against chrome.storage.local, so unawaited
-          // concurrent calls for the same field's signals (or across fields
-          // in this loop) would race and silently lose all but the last write.
-          for (const sig of sigs) {
-            const norm = normalize(sig);
-            if (norm) await saveLearnedMapping(domain, norm, resp.profilePath, label);
-          }
-        }
+        // Deliberately not saved to learned mappings — AI's own self-reported
+        // confidence is not a trustworthy signal to permanently promote a
+        // field to Layer 0 (mapper.ts). Only a human editing the field (the
+        // rule-pipeline's own edit-watcher path) should teach a learned
+        // mapping; see attachEditWatchers in index.ts.
       } else {
         result.needReview++;
       }
