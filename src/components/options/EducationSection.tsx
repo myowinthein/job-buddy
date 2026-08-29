@@ -48,7 +48,7 @@ const emptyRow = (): Row => ({
 
 const entrySummary = (row: Row, idx: number) =>
   row.institution && row.degree
-    ? `${row.institution} — ${row.degree}`
+    ? `${row.institution}: ${row.degree}`
     : `Entry ${idx + 1}`;
 
 export function EducationSection({ profile, onSave }: Props) {

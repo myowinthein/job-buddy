@@ -93,7 +93,7 @@ describe('WorkHistorySection — date validation across the keystroke/blur/save-
     });
     // A populated entry starts collapsed (defaultExpanded={!row.company}) — the
     // error still gets set on save, but expand the card to see it rendered.
-    fireEvent.click(screen.getByText('Acme — Engineer'));
+    fireEvent.click(screen.getByText('Acme: Engineer'));
     fireEvent.click(screen.getByText('Save Work History'));
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('End date cannot be before start date')).toBeTruthy();
@@ -121,7 +121,7 @@ describe('WorkHistorySection — Work Arrangement radio group', () => {
     const { onSave } = renderSection({
       workHistory: [{ company: 'Acme', title: 'Engineer', startDate: '2020-01', isCurrent: true }],
     });
-    fireEvent.click(screen.getByText(/Acme — Engineer/)); // expand the collapsed card
+    fireEvent.click(screen.getByText(/Acme: Engineer/)); // expand the collapsed card
     const remote = screen.getByDisplayValue('remote') as HTMLInputElement;
 
     fireEvent.click(remote);
@@ -140,7 +140,7 @@ describe('WorkHistorySection — Work Arrangement radio group', () => {
     const { onSave } = renderSection({
       workHistory: [{ company: 'Acme', title: 'Engineer', startDate: '2020-01', isCurrent: true }],
     });
-    fireEvent.click(screen.getByText(/Acme — Engineer/));
+    fireEvent.click(screen.getByText(/Acme: Engineer/));
     const remote = screen.getByDisplayValue('remote') as HTMLInputElement;
     const hybrid = screen.getByDisplayValue('hybrid') as HTMLInputElement;
 

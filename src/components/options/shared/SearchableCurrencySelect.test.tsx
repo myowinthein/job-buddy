@@ -22,7 +22,7 @@ describe('SearchableCurrencySelect — trigger display', () => {
 
   it('shows the selected currency\'s code and name', () => {
     renderSelect('THB');
-    expect(screen.getByText('THB — Thai Baht')).toBeTruthy();
+    expect(screen.getByText('THB: Thai Baht')).toBeTruthy();
   });
 });
 

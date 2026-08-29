@@ -62,7 +62,7 @@ export function SearchableCurrencySelect({ value, onChange, error, placeholder =
           {selected ? (
             <>
               <span className="shrink-0">{getFlag(selected.countryCode)}</span>
-              <span className="flex-1 text-gray-900 dark:text-gray-100">{selected.code} — {selected.name}</span>
+              <span className="flex-1 text-gray-900 dark:text-gray-100">{selected.code}: {selected.name}</span>
             </>
           ) : (
             <span className="flex-1 text-gray-400 dark:text-gray-500">{placeholder}</span>

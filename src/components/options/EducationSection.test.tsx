@@ -64,7 +64,7 @@ describe('EducationSection — YYYY vs YYYY-MM dual-format date comparison', () 
     });
     fireEvent.click(screen.getByText('Save Education'));
     expect(onSave).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByText('MIT — BSc')); // expand to see the error
+    fireEvent.click(screen.getByText('MIT: BSc')); // expand to see the error
     expect(screen.getByText('End date cannot be before start date')).toBeTruthy();
   });
 });
@@ -112,7 +112,7 @@ describe('EducationSection — end-date MonthYearPicker wiring', () => {
     const { onSave } = renderSection({
       education: [{ institution: 'MIT', degree: 'BSc', fieldOfStudy: 'CS', startDate: '2014-09', isCurrent: false }],
     });
-    fireEvent.click(screen.getByText('MIT — BSc')); // entries default to collapsed
+    fireEvent.click(screen.getByText('MIT: BSc')); // entries default to collapsed
 
     const yearInputs = screen.getAllByLabelText('Year'); // [0]=start, [1]=end
     const monthSelects = screen.getAllByLabelText('Month');
@@ -130,7 +130,7 @@ describe('EducationSection — end-date MonthYearPicker wiring', () => {
     renderSection({
       education: [{ institution: 'MIT', degree: 'BSc', fieldOfStudy: 'CS', startDate: '2014-09', isCurrent: false }],
     });
-    fireEvent.click(screen.getByText('MIT — BSc'));
+    fireEvent.click(screen.getByText('MIT: BSc'));
 
     const yearInputs = screen.getAllByLabelText('Year');
     fireEvent.change(yearInputs[1], { target: { value: '1800' } });
@@ -141,7 +141,7 @@ describe('EducationSection — end-date MonthYearPicker wiring', () => {
     const { onSave } = renderSection({
       education: [{ institution: 'MIT', degree: 'BSc', fieldOfStudy: 'CS', startDate: '2014-09', isCurrent: false }],
     });
-    fireEvent.click(screen.getByText('MIT — BSc'));
+    fireEvent.click(screen.getByText('MIT: BSc'));
 
     const yearInputs = screen.getAllByLabelText('Year');
     const monthSelects = screen.getAllByLabelText('Month');

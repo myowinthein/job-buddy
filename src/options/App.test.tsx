@@ -142,7 +142,7 @@ describe('options App — handleSave contract', () => {
     fireEvent.click(await screen.findByText('save-personal'));
 
     await waitFor(() => expect(vi.mocked(saveProfile)).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText('Failed to save — storage may be full.')).toBeTruthy();
+    expect(await screen.findByText('Failed to save: storage may be full.')).toBeTruthy();
     // Profile state was never updated with the value that failed to persist.
     expect(screen.getByText('personal-section:Jane')).toBeTruthy();
     expect(vi.mocked(syncProfileToDrive)).not.toHaveBeenCalled();
@@ -205,7 +205,7 @@ describe('options App — reload-after-import failure', () => {
 
     fireEvent.click(await screen.findByText('trigger-reset'));
 
-    expect(await screen.findByText("Saved, but the profile view couldn't refresh — reload the page.")).toBeTruthy();
+    expect(await screen.findByText("Saved, but the profile view couldn't refresh. Reload the page.")).toBeTruthy();
     expect(consoleError).toHaveBeenCalledWith('[Job Buddy] Failed to reload profile after import:', expect.any(Error));
 
     consoleError.mockRestore();

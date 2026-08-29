@@ -89,7 +89,7 @@ function initRow(raw: WorkHistoryEntry): LocalRow {
 
 const cardSummary = (row: LocalRow, idx: number) =>
   row.company && row.title
-    ? `${row.company} — ${row.title}${row.isCurrent ? ' (Active)' : ''}`
+    ? `${row.company}: ${row.title}${row.isCurrent ? ' (Active)' : ''}`
     : `Entry ${idx + 1}`;
 
 export function WorkHistorySection({ profile, onSave }: Props) {

@@ -162,7 +162,7 @@ export function DebugPanel({
             contentClassName="p-2"
           >
             {session.aiSkipped ? (
-              <p className="text-gray-400 dark:text-gray-500 italic">AI layer skipped — no API key configured.</p>
+              <p className="text-gray-400 dark:text-gray-500 italic">AI layer skipped: no API key configured.</p>
             ) : session.ai.length === 0 ? (
               <p className="text-gray-400 dark:text-gray-500 italic">No fields sent to AI.</p>
             ) : (

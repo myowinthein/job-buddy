@@ -2,12 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { CURRENCIES, getCurrencyLabel, findCurrency, currencyForCountry, primaryCountryForCurrency } from './currencies';
 
 describe('getCurrencyLabel', () => {
-  it('includes the currency code, name, and " — " separator', () => {
+  it('includes the currency code, name, and ": " separator', () => {
     const usd = CURRENCIES.find((c) => c.code === 'USD')!;
     const label = getCurrencyLabel(usd);
     expect(label).toContain('USD');
     expect(label).toContain('US Dollar');
-    expect(label).toContain(' — ');
+    expect(label).toContain(': ');
   });
 });
 
