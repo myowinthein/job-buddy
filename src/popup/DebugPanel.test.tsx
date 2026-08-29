@@ -27,7 +27,7 @@ describe('DebugPanel — empty states', () => {
   it('shows "AI layer skipped…" when aiSkipped is true, even with ai entries present', () => {
     render(<DebugPanel session={emptySession({ aiSkipped: true })} onClose={vi.fn()} />);
     fireEvent.click(screen.getByText('AI Mapping'));
-    expect(screen.getByText('AI layer skipped — no API key configured.')).toBeTruthy();
+    expect(screen.getByText('AI layer skipped: no API key configured.')).toBeTruthy();
   });
 
   it('shows "No fields sent to AI." when aiSkipped is false and ai is empty', () => {

@@ -27,7 +27,7 @@ describe('AiSparkIcon — inactive state', () => {
     const onClick = vi.fn();
     render(<AiSparkIcon active={false} onClick={onClick} />);
     const icon = screen.getByRole('button');
-    expect(icon.getAttribute('aria-label')).toBe('AI-assisted autofill is off — click to add your Gemini API key');
+    expect(icon.getAttribute('aria-label')).toBe('AI-assisted autofill is off: click to add your Gemini API key');
     fireEvent.click(icon);
     expect(onClick).toHaveBeenCalledTimes(1);
   });

@@ -319,7 +319,7 @@ export const FIELD_DEFS: FieldDef[] = [
     isEmpty: emptyArr,
     display: (v) => {
       const arr = (v ?? []) as WorkAuthorizationEntry[];
-      return arr.map((e) => `${e.country} — ${e.status.replace(/_/g, ' ')}`).join('\n');
+      return arr.map((e) => `${e.country}: ${e.status.replace(/_/g, ' ')}`).join('\n');
     },
   },
   // ── Work History ─────────────────────────────────────────────────────────────

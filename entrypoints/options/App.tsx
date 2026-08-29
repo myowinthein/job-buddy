@@ -238,7 +238,7 @@ function App() {
         // restore all complete before calling this) — only the reload failed,
         // so the wording must not imply the save itself failed.
         console.error('[Job Buddy] Failed to reload profile after import:', err);
-        showToast('warning', "Saved, but the profile view couldn't refresh — reload the page.");
+        showToast('warning', "Saved, but the profile view couldn't refresh. Reload the page.");
       });
   };
 
@@ -255,7 +255,7 @@ function App() {
       await saveProfile(synced);
     } catch (err) {
       console.error('[Job Buddy] Failed to save profile:', err);
-      showToast('error', 'Failed to save — storage may be full.');
+      showToast('error', 'Failed to save: storage may be full.');
       return;
     }
     setProfile(synced);
