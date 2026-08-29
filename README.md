@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/myowinthein/job-buddy/actions/workflows/ci.yml/badge.svg)](https://github.com/myowinthein/job-buddy/actions/workflows/ci.yml)
 
-Job Buddy is a Chrome extension that reads any job application form, matches each field to your saved profile, and fills what it can — with color-coded confidence on every answer. Set up your profile once; stop retyping the same information across hundreds of applications.
+Job Buddy is a Chrome extension that reads any job application form, matches each field to your saved profile, and fills what it can, with color-coded confidence on every answer. Set up your profile once; stop retyping the same information across hundreds of applications.
 
 All data stays in your browser's local storage. No server, no account, no tracking.
 

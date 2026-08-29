@@ -2,7 +2,7 @@
 
 ## 1. Project Identity
 
-Chrome MV3 browser extension (WXT framework) that auto-fills job application forms from a saved user profile. Aimed at multi-country job seekers. Single user, no server, no database — everything lives in `chrome.storage.local`. The only production surface is the Chrome Web Store.
+Chrome MV3 browser extension (WXT framework) that auto-fills job application forms from a saved user profile. Aimed at multi-country job seekers. Single user, no server, no database: everything lives in `chrome.storage.local`. The only production surface is the Chrome Web Store.
 
 **Stack:** WXT 0.20.26 · React 19.2.4 · TypeScript 5.9.3 · Tailwind CSS v4 (`@tailwindcss/postcss`, not v3 config) · Vitest 4.1.9 · pnpm 11.7.0 · Node 22 (pinned via `.nvmrc`)
 
@@ -12,9 +12,9 @@ Chrome MV3 browser extension (WXT framework) that auto-fills job application for
 
 ## 2. Project Config
 
-- `git-strategy: solo` — commit directly to `main`, no feature branches, no PRs. See `.claude/rules/git.md`.
-- `git-auto-commit: true` — commit automatically after each task without prompting; push still requires confirmation.
-- `readme-style: standard` — README.md follows the Standard Readme spec structure.
+- `git-strategy: solo`. Commit directly to `main`, no feature branches, no PRs. See `.claude/rules/git.md`.
+- `git-auto-commit: true`. Commit automatically after each task without prompting; push still requires confirmation.
+- `readme-style: standard`. README.md follows the Standard Readme spec structure.
 
 ---
 
@@ -24,11 +24,11 @@ Chrome MV3 browser extension (WXT framework) that auto-fills job application for
 pnpm dev           # dev build → .output/chrome-mv3-dev/ (load unpacked in Chrome)
 pnpm build         # production build
 pnpm zip           # production build + zip for CWS upload
-pnpm compile       # TypeScript type-check (no emit) — required before commit
+pnpm compile       # TypeScript type-check (no emit); required before commit
 pnpm lint          # ESLint
 pnpm format        # Prettier
 pnpm test          # Vitest watch mode
-pnpm test:run      # single run — run before committing
+pnpm test:run      # single run; run before committing
 pnpm serve:landing # serve docs/ (GitHub Pages site) at localhost:3000
 pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 ```
@@ -38,79 +38,79 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 ## 4. Architecture Pointers
 
 **Entrypoints** (`entrypoints/`):
-- `background.ts` — service worker; retries pending Drive sync on browser startup and debounces a Drive sync whenever the local `profile` or `learnedMappings` storage key changes
-- `content.ts` — matches `*://*/*`, `allFrames: true` (job forms are often embedded in a cross-origin iframe); routes `AUTOFILL_SCAN/FILL/CLEAR/GET_STATUS/GET_DEBUG_SESSION` to `src/autofill/`
-- `popup/` — action popup; React state lost on close, restored from `GET_STATUS` on mount. Debug panel hidden until Shift+click the logo post-fill. `sendToAllFrames()`/`mergeAutofillResults()` enumerate a tab's frames (`chrome.webNavigation.getAllFrames`) and aggregate results, since `chrome.tabs.sendMessage` only reaches the top frame by default.
-- `options/` — full-page profile editor (9 profile sections + Resume Import + Learned Mappings + Settings)
+- `background.ts`: service worker; retries pending Drive sync on browser startup and debounces a Drive sync whenever the local `profile` or `learnedMappings` storage key changes
+- `content.ts`: matches `*://*/*`, `allFrames: true` (job forms are often embedded in a cross-origin iframe); routes `AUTOFILL_SCAN/FILL/CLEAR/GET_STATUS/GET_DEBUG_SESSION` to `src/autofill/`
+- `popup/`: action popup; React state lost on close, restored from `GET_STATUS` on mount. Debug panel hidden until Shift+click the logo post-fill. `sendToAllFrames()`/`mergeAutofillResults()` enumerate a tab's frames (`chrome.webNavigation.getAllFrames`) and aggregate results, since `chrome.tabs.sendMessage` only reaches the top frame by default.
+- `options/`: full-page profile editor (9 profile sections + Resume Import + Learned Mappings + Settings)
 
 **Key source files:**
-- `src/types/profile.ts` — canonical `Profile` type: `id` plus 10 section keys (`personal`…`documents`) plus computed `derived`
-- `src/utils/storage.ts` — `chrome.storage.local` wrappers built on the shared `wrapStorageArea()` factory (`src/utils/storageArea.ts`); reads always resolve, writes reject on quota. `sessionStorage.ts` uses the same factory but resolves silently on a `set()` failure instead (best-effort, not critical data)
-- `src/autofill/index.ts` — orchestrator: `scanAutofill()`, `executeAutofill()`, `undoAutofill()`
-- `src/autofill/mapper.ts` — per-field match, Layers 0–4: learned (0.97, needs 2 confirmations) → autocomplete (0.95) → dict exact (0.85) → fuzzy (score × 0.85/0.75 by tier) → Layer 3.5 custom-link labels (matches `profile.links.custom[]`, built per-call since labels are free text) → context/nearbyText (0.70). Signal priority is `[label, ariaLabel, placeholder, name, id]` — label first. `resolveDictionaryHit()` redirects a `documents.cv.file` dictionary hit to `documents.cv.url` when the matched element isn't an actual file input — both share alias terms since forms reuse "Resume"/"CV" wording for either a link or an upload
-- `src/autofill/resolver.ts` — dot-notation resolver + virtual paths (`phone.full`, `address.countryName`, `salary.*.formatted`, `languages.formatted`/`languages.N.*`, `education.N.*`, `workHistory.N.*`, `professional.noticePeriod.{availableDate,formatted}`, etc.); also `flattenProfileValues()`, the reverse — every raw (path, value) leaf, for matching typed text back to a profile field
-- `src/autofill/dictionary.ts` — `FIELD_DICTIONARY`; static alias terms per field path, including unindexed multi-entry markers (`languages.language`, `education.institution`, `workHistory.company`, etc. — see Domain Rules for how these get indexed)
-- `src/autofill/phoneResolution.ts` / `languageResolution.ts` / `educationResolution.ts` / `workHistoryResolution.ts` (sharing `repeatingEntryResolution.ts`) — post-pass, page-wide sibling-detection modules that run after every field's `mapField()` call; see Domain Rules for why this can't live inside `mapper.ts`
-- `src/resume-ai/gemini.ts` — `extractFromResume()` + `resolveFieldsWithAI()` via Gemini API
-- `src/resume-ai/autofillPrompt.ts` — `AUTOFILL_SYSTEM_PROMPT`; the AI autofill system prompt for resolving unmatched fields
-- `src/utils/driveSync.ts` — Google Drive backup via `drive.appdata` scope; implicit OAuth token flow; also owns `retryPendingDriveSync()` (background, startup) and `syncIfConnected()` (background, debounced on `profile`/`learnedMappings` storage changes)
-- `src/utils/derivedFields.ts` — computes `fullName`, `currentTitle`, `currentCompany`, `totalExperience`, `age`
-- `src/utils/profileCompletion.ts` — `TOTAL_CHECKS = 15`; drives sidebar checkmarks and completion %
-- `src/utils/profileValidator.ts` — `validateImportedProfile()` delegates to one function per profile section; add new sections there, not inline
-- `src/autofill/constants.ts` — named confidence thresholds. Always use these, never bare numbers.
-- `src/autofill/mappings.ts` — `saveElementMappings()`; call this when saving learned mappings from an element's signals — do not re-inline the loop
-- `src/autofill/scanner.ts` — `scanFields()` (native inputs) + `scanAriaFields()` (ARIA comboboxes, contenteditable) + `scanCheckboxGroups()`/`scanRadioGroups()`. All route through `queryAllDeep()`, which recurses into *open* shadow roots (some ATS design systems render native inputs inside one) — closed shadow roots are unreachable, a known gap.
-- `src/autofill/signals.ts` — `extractSignals()` + `bestLabel(signals)` helper (`label || ariaLabel || placeholder || name`). Use `bestLabel`, don't re-inline.
-- `src/autofill/filler.ts` — type-aware fill: native, ARIA listbox, React-Select, contenteditable, checkbox, date reformat (ISO → MM/DD/YYYY or DD/MM/YYYY from placeholder hint). Focuses the element before filling and dispatches real `InputEvent`/`FocusEvent` instances, not plain `Event` (see Known Traps)
-- `src/components/options/shared/saveSection.ts` — every section's save flow goes through this. Error string lives only here.
-- `src/components/options/shared/fieldCls.ts` — shared Tailwind class string for form inputs (error vs non-error variants). Don't inline these strings elsewhere.
-- `src/components/options/shared/useSearchableDropdown.ts` — keyboard nav + filter hook powering all 5 searchable dropdown components; memoises filter output per keystroke.
-- `src/components/options/shared/useScrollToNewEntry.ts` — scrolls and focuses a newly added card into view; used by all multi-entry sections.
-- `src/utils/migrate.ts` — `normalizeProfile()` defaults missing salary period to `'monthly'`; called by both `getProfile()` and `saveProfile()`. New on-load migrations belong here.
-- `src/resume-ai/normalize.ts` — `normalizeBullets()` + `normalizeSummaryLineWraps()`. Bullet pass fires only when bullet structure is detected — preserves plain context paragraphs.
-- `src/resume-ai/extractLinks.ts` — pulls hyperlinks from PDF annotation layer via `pdfjs-dist`; returns `[]` for non-PDF and on any error.
-- `src/utils/theme.ts` — `ThemePreference` (`system | light | dark`); sets `.dark` on `document.documentElement`.
-- `src/utils/devProfile.ts` — `DEV_PROFILE`, a fully-filled dummy profile `getProfile()` falls back to when nothing is saved yet and `import.meta.env.DEV` is true. Never persisted, never present in a production build.
-- `src/autofill/profileFieldTree.ts` — `buildPickerTree()`; despite the name, no picker exists anymore. It now powers the grouped, searchable field dropdown in the Learned Mappings edit UI (`SearchableProfileFieldSelect`). Also exports `mostRecentIdx()`, reused by the sibling-detection modules above.
+- `src/types/profile.ts`. Canonical `Profile` type: `id` plus 10 section keys (`personal`…`documents`) plus computed `derived`
+- `src/utils/storage.ts`: `chrome.storage.local` wrappers built on the shared `wrapStorageArea()` factory (`src/utils/storageArea.ts`); reads always resolve, writes reject on quota. `sessionStorage.ts` uses the same factory but resolves silently on a `set()` failure instead (best-effort, not critical data)
+- `src/autofill/index.ts`. Orchestrator: `scanAutofill()`, `executeAutofill()`, `undoAutofill()`
+- `src/autofill/mapper.ts`. Per-field match, Layers 0–4: learned (0.97, needs 2 confirmations) → autocomplete (0.95) → dict exact (0.85) → fuzzy (score × 0.85/0.75 by tier) → Layer 3.5 custom-link labels (matches `profile.links.custom[]`, built per-call since labels are free text) → context/nearbyText (0.70). Signal priority is `[label, ariaLabel, placeholder, name, id]`, label first. `resolveDictionaryHit()` redirects a `documents.cv.file` dictionary hit to `documents.cv.url` when the matched element isn't an actual file input; both share alias terms since forms reuse "Resume"/"CV" wording for either a link or an upload
+- `src/autofill/resolver.ts`: dot-notation resolver + virtual paths (`phone.full`, `address.countryName`, `salary.*.formatted`, `languages.formatted`/`languages.N.*`, `education.N.*`, `workHistory.N.*`, `professional.noticePeriod.{availableDate,formatted}`, etc.); also `flattenProfileValues()`, the reverse: every raw (path, value) leaf, for matching typed text back to a profile field
+- `src/autofill/dictionary.ts`: `FIELD_DICTIONARY`; static alias terms per field path, including unindexed multi-entry markers (`languages.language`, `education.institution`, `workHistory.company`, etc.; see Domain Rules for how these get indexed)
+- `src/autofill/phoneResolution.ts` / `languageResolution.ts` / `educationResolution.ts` / `workHistoryResolution.ts` (sharing `repeatingEntryResolution.ts`): post-pass, page-wide sibling-detection modules that run after every field's `mapField()` call; see Domain Rules for why this can't live inside `mapper.ts`
+- `src/resume-ai/gemini.ts`: `extractFromResume()` + `resolveFieldsWithAI()` via Gemini API
+- `src/resume-ai/autofillPrompt.ts`: `AUTOFILL_SYSTEM_PROMPT`; the AI autofill system prompt for resolving unmatched fields
+- `src/utils/driveSync.ts`: Google Drive backup via `drive.appdata` scope; implicit OAuth token flow; also owns `retryPendingDriveSync()` (background, startup) and `syncIfConnected()` (background, debounced on `profile`/`learnedMappings` storage changes)
+- `src/utils/derivedFields.ts`: computes `fullName`, `currentTitle`, `currentCompany`, `totalExperience`, `age`
+- `src/utils/profileCompletion.ts`: `TOTAL_CHECKS = 15`; drives sidebar checkmarks and completion %
+- `src/utils/profileValidator.ts`: `validateImportedProfile()` delegates to one function per profile section; add new sections there, not inline
+- `src/autofill/constants.ts`: named confidence thresholds. Always use these, never bare numbers.
+- `src/autofill/mappings.ts`: `saveElementMappings()`; call this when saving learned mappings from an element's signals; do not re-inline the loop
+- `src/autofill/scanner.ts`: `scanFields()` (native inputs) + `scanAriaFields()` (ARIA comboboxes, contenteditable) + `scanCheckboxGroups()`/`scanRadioGroups()`. All route through `queryAllDeep()`, which recurses into *open* shadow roots (some ATS design systems render native inputs inside one); closed shadow roots are unreachable, a known gap.
+- `src/autofill/signals.ts`: `extractSignals()` + `bestLabel(signals)` helper (`label || ariaLabel || placeholder || name`). Use `bestLabel`, don't re-inline.
+- `src/autofill/filler.ts`. Type-aware fill: native, ARIA listbox, React-Select, contenteditable, checkbox, date reformat (ISO → MM/DD/YYYY or DD/MM/YYYY from placeholder hint). Focuses the element before filling and dispatches real `InputEvent`/`FocusEvent` instances, not plain `Event` (see Known Traps)
+- `src/components/options/shared/saveSection.ts`: every section's save flow goes through this. Error string lives only here.
+- `src/components/options/shared/fieldCls.ts`: shared Tailwind class string for form inputs (error vs non-error variants). Don't inline these strings elsewhere.
+- `src/components/options/shared/useSearchableDropdown.ts`: keyboard nav + filter hook powering all 5 searchable dropdown components; memoises filter output per keystroke.
+- `src/components/options/shared/useScrollToNewEntry.ts`: scrolls and focuses a newly added card into view; used by all multi-entry sections.
+- `src/utils/migrate.ts`: `normalizeProfile()` defaults missing salary period to `'monthly'`; called by both `getProfile()` and `saveProfile()`. New on-load migrations belong here.
+- `src/resume-ai/normalize.ts`: `normalizeBullets()` + `normalizeSummaryLineWraps()`. Bullet pass fires only when bullet structure is detected, preserving plain context paragraphs.
+- `src/resume-ai/extractLinks.ts`: pulls hyperlinks from PDF annotation layer via `pdfjs-dist`; returns `[]` for non-PDF and on any error.
+- `src/utils/theme.ts`: `ThemePreference` (`system | light | dark`); sets `.dark` on `document.documentElement`.
+- `src/utils/devProfile.ts`: `DEV_PROFILE`, a fully-filled dummy profile `getProfile()` falls back to when nothing is saved yet and `import.meta.env.DEV` is true. Never persisted, never present in a production build.
+- `src/autofill/profileFieldTree.ts`: `buildPickerTree()`; despite the name, no picker exists anymore. It now powers the grouped, searchable field dropdown in the Learned Mappings edit UI (`SearchableProfileFieldSelect`). Also exports `mostRecentIdx()`, reused by the sibling-detection modules above.
 
 **Site (`docs/`):**
-- `docs/index.html` — GitHub Pages landing page (no build step; Tailwind via CDN)
-- `docs/project-site/` — project overview mini-site
-- `docs/legal/privacy/`, `docs/legal/terms/`, `docs/legal/eula/`, `docs/legal/disclaimer/` — legal pages as standalone HTML; regenerate with `/legal`
+- `docs/index.html`: GitHub Pages landing page (no build step; Tailwind via CDN)
+- `docs/project-site/`: project overview mini-site
+- `docs/legal/privacy/`, `docs/legal/terms/`, `docs/legal/eula/`, `docs/legal/disclaimer/`: legal pages as standalone HTML; regenerate with `/legal`
 
 ---
 
 ## 5. Domain Rules
 
-**Autofill confidence tiers:** ≥0.85 → green (fill) · 0.60–0.84 → yellow (fill) · <0.60 → red (no fill) · ≥0.60 but profile value empty → gray/noData (no highlight). Yellow, red, and gray fields are left for the user to type into directly — no picker overlay. AI-resolved fields that reach ≥0.85 are treated as green.
+**Autofill confidence tiers:** ≥0.85 → green (fill) · 0.60–0.84 → yellow (fill) · <0.60 → red (no fill) · ≥0.60 but profile value empty → gray/noData (no highlight). Yellow, red, and gray fields are left for the user to type into directly: no picker overlay. AI-resolved fields that reach ≥0.85 are treated as green.
 
-**Two-phase fill:** `AUTOFILL_SCAN` maps fields into `pendingMatches` (no fill). `AUTOFILL_FILL { mode }` executes — merge skips pre-filled fields, overwrite replaces all. Never re-run scan between the two phases.
+**Two-phase fill:** `AUTOFILL_SCAN` maps fields into `pendingMatches` (no fill). `AUTOFILL_FILL { mode }` executes: merge skips pre-filled fields, overwrite replaces all. Never re-run scan between the two phases.
 
-**`mapField()` only ever sees one field at a time**, so anything requiring page-wide awareness runs as a post-pass over the full scanned array, after every field's match is already computed: ambiguous phone number vs. full number (`phoneResolution.ts`, based on whether a calling-code sibling exists), and indexing multi-entry unindexed markers for languages/education/work history (`languageResolution.ts`/`educationResolution.ts`/`workHistoryResolution.ts`, sharing `repeatingEntryResolution.ts`). A marker appearing once on the page resolves to the applicant's most relevant entry (`mostRecentIdx()` — prefers `isCurrent`, else latest `startDate`); appearing multiple times, sequential index assignment matches an "Add entry" repeat button.
+**`mapField()` only ever sees one field at a time**, so anything requiring page-wide awareness runs as a post-pass over the full scanned array, after every field's match is already computed: ambiguous phone number vs. full number (`phoneResolution.ts`, based on whether a calling-code sibling exists), and indexing multi-entry unindexed markers for languages/education/work history (`languageResolution.ts`/`educationResolution.ts`/`workHistoryResolution.ts`, sharing `repeatingEntryResolution.ts`). A marker appearing once on the page resolves to the applicant's most relevant entry (`mostRecentIdx()`: prefers `isCurrent`, else latest `startDate`); appearing multiple times, sequential index assignment matches an "Add entry" repeat button.
 
-**"Currently studying/working here" checkboxes are matched by an exact-term allowlist only** — never fuzzy or dictionary matching — since wrongly checking a box is worse than leaving it blank. Standalone checkboxes are otherwise excluded from the scanner entirely (`EXCLUDED_TYPES`); this exact-match path is the only way they get filled.
+**"Currently studying/working here" checkboxes are matched by an exact-term allowlist only** (never fuzzy or dictionary matching), since wrongly checking a box is worse than leaving it blank. Standalone checkboxes are otherwise excluded from the scanner entirely (`EXCLUDED_TYPES`); this exact-match path is the only way they get filled.
 
 **Notice period has two separate virtual paths, never conflate them:** `professional.noticePeriod.availableDate` is a computed calendar date (for a date input); `professional.noticePeriod.formatted` is a duration string like `"2 Weeks"` (for a duration dropdown/radio).
 
-**Derived fields contract:** Every `handleSave` in `options/App.tsx` does two writes — raw profile first, then profile + `calculateDerivedFields()`. Second write is try/catch so a derivation bug never blocks the user's save. Section components must never write `profile.derived` directly.
+**Derived fields contract:** Every `handleSave` in `options/App.tsx` does two writes: raw profile first, then profile + `calculateDerivedFields()`. Second write is try/catch so a derivation bug never blocks the user's save. Section components must never write `profile.derived` directly.
 
 **Storage privacy boundary:** `geminiApiKey`, `geminiModel`, `driveToken`, `driveBackupState` are never included in profile export bundles. Exports wrap only `{ profile, learnedMappings, applicationHistory }`.
 
-**AI is purely additive:** The extension works fully without a Gemini key. AI autofill runs after the rule pipeline; all failures must be silent — never surface network errors from the AI layer. All three non-green tiers (needReview, lowConfidence, noData) get an AI pass, not just red/gray. A high-confidence AI response can overwrite a yellow field's rule-pipeline value.
+**AI is purely additive:** The extension works fully without a Gemini key. AI autofill runs after the rule pipeline; all failures must be silent: never surface network errors from the AI layer. All three non-green tiers (needReview, lowConfidence, noData) get an AI pass, not just red/gray. A high-confidence AI response can overwrite a yellow field's rule-pipeline value.
 
-**Multi-frame autofill:** job forms are frequently embedded in a cross-origin iframe rather than the top-level page, so `content.ts` injects into every frame. The popup's messaging is frame-aware — every `AUTOFILL_*`/`GET_STATUS`/`GET_DEBUG_SESSION` message goes to every frame via `sendToAllFrames()`, with scan/fill/status counts summed across frames and the debug panel showing whichever frame actually scanned fields.
+**Multi-frame autofill:** job forms are frequently embedded in a cross-origin iframe rather than the top-level page, so `content.ts` injects into every frame. The popup's messaging is frame-aware: every `AUTOFILL_*`/`GET_STATUS`/`GET_DEBUG_SESSION` message goes to every frame via `sendToAllFrames()`, with scan/fill/status counts summed across frames and the debug panel showing whichever frame actually scanned fields.
 
-**Stale learned mappings are flagged, never auto-corrected or auto-removed.** If a mapping's path no longer resolves (e.g. it pointed to a deleted work-history row), the Learned Mappings page shows an "Empty right now" badge (computed live via `resolveProfileValue()` against the current profile) — storage itself is untouched until the user acts.
+**Stale learned mappings are flagged, never auto-corrected or auto-removed.** If a mapping's path no longer resolves (e.g. it pointed to a deleted work-history row), the Learned Mappings page shows an "Empty right now" badge (computed live via `resolveProfileValue()` against the current profile); storage itself is untouched until the user acts.
 
 **Profile schema fan-out:** Any field added or renamed on `Profile` must be reflected in four places: `src/types/profile.ts`, `src/resume-ai/prompt.ts` schema, `src/resume-ai/parser.ts` FIELD_DEFS, and `src/utils/profileValidator.ts` (add a validator to the relevant per-section function).
 
 **Profile date formats are NOT unified:** work history dates require month (`YYYY-MM`); education dates accept either `YYYY` or `YYYY-MM`. Keep the validator regexes separate.
 
-**Learned mapping confidence:** `LearnedMappings` values are `string | { path: string; count: number }`. New mappings start at `count: 1` and are not promoted to Layer 0 until count reaches 2, and are matched only against `label/ariaLabel/placeholder/name/id` — never `nearbyText`. `saveLearnedMapping()` in `src/utils/storage.ts` is the source of truth.
+**Learned mapping confidence:** `LearnedMappings` values are `string | { path: string; count: number }`. New mappings start at `count: 1` and are not promoted to Layer 0 until count reaches 2, and are matched only against `label/ariaLabel/placeholder/name/id`, never `nearbyText`. `saveLearnedMapping()` in `src/utils/storage.ts` is the source of truth.
 
-**Manual edits feed learned mappings by content, not by the mapper's guess.** `attachEditWatchers()` in `src/autofill/index.ts` saves a mapping on blur (any tier — yellow/red/gray) only when the edited value is long enough (`EDIT_LEARN_MIN_VALUE_LENGTH`) and closely resembles some value already in the profile (`flattenProfileValues()` + `similarity()` ≥ `EDIT_LEARN_SIMILARITY_THRESHOLD`). The saved path is whichever profile value scored best — not necessarily the mapper's original `fieldPath` guess, which may be wrong or absent. A wildly different edit (a genuine custom-question answer) simply finds no match and is left unlearned.
+**Manual edits feed learned mappings by content, not by the mapper's guess.** `attachEditWatchers()` in `src/autofill/index.ts` saves a mapping on blur (any tier: yellow/red/gray) only when the edited value is long enough (`EDIT_LEARN_MIN_VALUE_LENGTH`) and closely resembles some value already in the profile (`flattenProfileValues()` + `similarity()` ≥ `EDIT_LEARN_SIMILARITY_THRESHOLD`). The saved path is whichever profile value scored best, not necessarily the mapper's original `fieldPath` guess, which may be wrong or absent. A wildly different edit (a genuine custom-question answer) simply finds no match and is left unlearned.
 
-**Drive backup payload fan-out:** Adding a field to `DriveBackupFile` requires updating both `syncProfileToDrive()` (upload) and two restore paths in `SettingsSection` — `handleRestoreFromDrive` and `handleDriveReviewSave`.
+**Drive backup payload fan-out:** Adding a field to `DriveBackupFile` requires updating both `syncProfileToDrive()` (upload) and two restore paths in `SettingsSection`: `handleRestoreFromDrive` and `handleDriveReviewSave`.
 
 ---
 
@@ -118,16 +118,16 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 
 **Toast system:** `useToast()` from `src/components/ui/Toast.tsx`. Never add inline "✓ Saved" labels to section components.
 
-**Test environment:** Vitest with per-file `// @vitest-environment jsdom` for DOM-dependent tests — no global jsdom switch. `@testing-library/react` is not installed; React component tests require adding it first.
+**Test environment:** Vitest with per-file `// @vitest-environment jsdom` for DOM-dependent tests: no global jsdom switch. `@testing-library/react` is not installed; React component tests require adding it first.
 
-**Autofill-matching changes get a live verification pass**, not just unit tests: build the extension, load it in a Playwright-driven Chromium against a throwaway test HTML page, and confirm the real fill result — unit tests alone don't catch DOM/event-dispatch issues (e.g. a form library's own touched/validation state).
+**Autofill-matching changes get a live verification pass**, not just unit tests: build the extension, load it in a Playwright-driven Chromium against a throwaway test HTML page, and confirm the real fill result; unit tests alone don't catch DOM/event-dispatch issues (e.g. a form library's own touched/validation state).
 
 ---
 
 ## 7. Hard Safety Rules
 
 - **Never push a `v*.*.*` tag without explicit user instruction.** Tag annotation `"release"` submits to CWS immediately; `"release:draft"` uploads as a draft. No CLI rollback either way.
-- **Never read or print `.env.development` / `.env.production`** — they contain real OAuth client IDs.
+- **Never read or print `.env.development` / `.env.production`**: they contain real OAuth client IDs.
 - **ESLint must stay on v9.x.** `eslint-plugin-react@7.x` calls `context.getFilename()` removed in ESLint v10.
 - **Always run `pnpm compile` before committing.** CI enforces type-check; failing commits are noisy on main.
 
@@ -149,19 +149,19 @@ pnpm serve:demo    # serve demo-apply-form/ at localhost:8000
 
 - **Drive OAuth uses implicit grant via `chrome.identity.launchWebAuthFlow`.** Google Cloud app type must be "Web Application" (not "Chrome Extension"). Needs separate client IDs for dev and prod.
 
-- **Mapper signal priority is label-first** (`[label, ariaLabel, placeholder, name, id]`). The order is deliberate — tests in `mapper.test.ts` enforce it. Don't reorder.
+- **Mapper signal priority is label-first** (`[label, ariaLabel, placeholder, name, id]`). The order is deliberate: tests in `mapper.test.ts` enforce it. Don't reorder.
 
 - **`autocomplete="url"` is intentionally absent** from `AUTOCOMPLETE_MAP`. It was previously hardwired to `links.linkedin` and overrode portfolio matches via Layer 1. Don't re-add it.
 
 - **Date filler reads the placeholder.** `reformatDateForInput()` in `src/autofill/filler.ts` parses `input.placeholder` for `mm/dd/yyyy` / `dd/mm/yyyy` and reformats ISO output before writing. Changing what the resolver outputs for date paths breaks this contract.
 
-- **Fill events must be real `InputEvent`/`FocusEvent` instances, not plain `Event`.** Several form libraries (React Hook Form's `onBlur`/`onTouched` mode among them) check `event instanceof InputEvent`/`FocusEvent` to decide whether a change is "real" before marking a field touched/valid — a plain synthetic `Event` is silently ignored, leaving a visually-filled field flagged missing at submit. `filler.ts` also calls `element.focus({ preventScroll: true })` before filling.
+- **Fill events must be real `InputEvent`/`FocusEvent` instances, not plain `Event`.** Several form libraries (React Hook Form's `onBlur`/`onTouched` mode among them) check `event instanceof InputEvent`/`FocusEvent` to decide whether a change is "real" before marking a field touched/valid; a plain synthetic `Event` is silently ignored, leaving a visually-filled field flagged missing at submit. `filler.ts` also calls `element.focus({ preventScroll: true })` before filling.
 
-- **`education.*`/`workHistory.*` dictionary entries deliberately avoid bare `startdate`/`enddate` terms** — both sections use identical bare wording with no section-aware way to disambiguate. Only qualified phrasings are registered (`"School Start Date"` vs. `"Job Start Date"`); a genuinely bare "Start Date" field falls back to AI, which has `nearbyText` context the dictionary layer lacks. Keep this in mind before adding a new bare alias to either.
+- **`education.*`/`workHistory.*` dictionary entries deliberately avoid bare `startdate`/`enddate` terms**: both sections use identical bare wording with no section-aware way to disambiguate. Only qualified phrasings are registered (`"School Start Date"` vs. `"Job Start Date"`); a genuinely bare "Start Date" field falls back to AI, which has `nearbyText` context the dictionary layer lacks. Keep this in mind before adding a new bare alias to either.
 
 - **Dev builds get a separate amber icon set**, not just an in-app marker. `wxt.config.ts` conditionally points `icons` at `icon-dev/*.png` when `mode === 'development'`; production omits the override and falls back to WXT's normal `public/icon/*.png` discovery. If the toolbar icon looks "wrong," check which build you loaded.
 
-- **WXT entrypoint collision.** Every file under `entrypoints/` is treated as a browser entrypoint — placing test files there causes `Multiple entrypoints with the same name` build errors. Keep all test files under `src/` or alongside their source file, never in `entrypoints/`.
+- **WXT entrypoint collision.** Every file under `entrypoints/` is treated as a browser entrypoint: placing test files there causes `Multiple entrypoints with the same name` build errors. Keep all test files under `src/` or alongside their source file, never in `entrypoints/`.
 
 - **Content scripts and the background service worker don't see custom `.env` vars in dev builds.** They're pre-bundled statically even under `pnpm dev` (Chrome can't load a service worker or content script from the live Vite dev server the way it loads popup/options), so `import.meta.env.VITE_*` custom vars resolve `undefined` there, even though Vite's built-in `import.meta.env.DEV` flag correctly resolves the same everywhere. A dev-only fallback that needs to reach the content script must persist to `chrome.storage.local` on first resolution (see `getGeminiApiKey()`/`getGeminiModel()` in `storage.ts`) rather than relying on the env var being visible where it's used.
 

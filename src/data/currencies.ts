@@ -118,7 +118,7 @@ export const CURRENCIES: Currency[] = [
 ];
 
 export function getCurrencyLabel(c: Currency): string {
-  return `${getFlag(c.countryCode)} ${c.code} — ${c.name}`;
+  return `${getFlag(c.countryCode)} ${c.code}: ${c.name}`;
 }
 
 export function findCurrency(code: string): Currency | undefined {

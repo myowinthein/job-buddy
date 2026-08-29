@@ -373,7 +373,7 @@ describe('FIELD_DEFS display functions', () => {
         display('workAuthorization', [
           { country: 'US', status: 'authorized_no_sponsorship' },
         ]),
-      ).toBe('US — authorized no sponsorship');
+      ).toBe('US: authorized no sponsorship');
     });
     it('joins multiple entries on separate lines', () => {
       expect(
@@ -381,7 +381,7 @@ describe('FIELD_DEFS display functions', () => {
           { country: 'US', status: 'citizen' },
           { country: 'TH', status: 'requires_sponsorship' },
         ]),
-      ).toBe('US — citizen\nTH — requires sponsorship');
+      ).toBe('US: citizen\nTH: requires sponsorship');
     });
     it('returns "" for an empty array', () => {
       expect(display('workAuthorization', [])).toBe('');
