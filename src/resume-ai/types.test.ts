@@ -3,7 +3,7 @@ import { toGeminiModel, DEFAULT_GEMINI_MODEL } from './types';
 
 describe('toGeminiModel', () => {
   it('returns the stored value when it is a valid GeminiModel', () => {
-    expect(toGeminiModel('gemini-3.6-flash')).toBe('gemini-3.6-flash');
+    expect(toGeminiModel('gemini-3.8-flash')).toBe('gemini-3.8-flash');
   });
 
   it('falls back to the default for a stale/unknown model id', () => {
