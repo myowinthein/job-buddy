@@ -303,8 +303,8 @@ describe('Gemini settings', () => {
   });
 
   it('saves and retrieves a Gemini model, taking priority over the dev default', async () => {
-    await saveGeminiModel('gemini-3.6-flash');
-    expect(await getGeminiModel()).toBe('gemini-3.6-flash');
+    await saveGeminiModel('gemini-3.8-flash');
+    expect(await getGeminiModel()).toBe('gemini-3.8-flash');
   });
 });
 

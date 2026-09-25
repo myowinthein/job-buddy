@@ -38,7 +38,7 @@ describe('parseAutofillResponse (via resolveFieldsWithAI)', () => {
 
   async function resolveWithText(text: string) {
     fetchMock.mockResolvedValueOnce(geminiTextResponse(text));
-    return resolveFieldsWithAI('key', 'gemini-3.7-flash', FIELDS, {});
+    return resolveFieldsWithAI('key', 'gemini-3.8-flash', FIELDS, {});
   }
 
   it('returns [] when the model output is not JSON', async () => {
@@ -101,21 +101,21 @@ describe('parseAutofillResponse (via resolveFieldsWithAI)', () => {
       status: 200,
       json: () => Promise.reject(new Error('bad body')),
     });
-    const result = await resolveFieldsWithAI('key', 'gemini-3.7-flash', FIELDS, {});
+    const result = await resolveFieldsWithAI('key', 'gemini-3.8-flash', FIELDS, {});
     expect(result).toEqual([]);
   });
 
   it('throws on a non-ok HTTP status', async () => {
     fetchMock.mockResolvedValueOnce(httpResponse(500));
     await expect(
-      resolveFieldsWithAI('key', 'gemini-3.7-flash', FIELDS, {}),
+      resolveFieldsWithAI('key', 'gemini-3.8-flash', FIELDS, {}),
     ).rejects.toThrow('AI autofill request failed: 500');
   });
 
   it('throws a network error when fetch rejects', async () => {
     fetchMock.mockRejectedValueOnce(new Error('offline'));
     await expect(
-      resolveFieldsWithAI('key', 'gemini-3.7-flash', FIELDS, {}),
+      resolveFieldsWithAI('key', 'gemini-3.8-flash', FIELDS, {}),
     ).rejects.toThrow('Network error during AI autofill');
   });
 
@@ -123,19 +123,19 @@ describe('parseAutofillResponse (via resolveFieldsWithAI)', () => {
     fetchMock
       .mockResolvedValueOnce(httpResponse(429))
       .mockResolvedValueOnce(geminiTextResponse(JSON.stringify([{ fieldId: 'f1', confidence: 'high' }])));
-    const result = await resolveFieldsWithAI('key', 'gemini-3.6-flash', FIELDS, {});
+    const result = await resolveFieldsWithAI('key', 'gemini-3.8-flash', FIELDS, {});
     expect(result).toHaveLength(1);
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[0][0]).toContain('gemini-3.6-flash');
+    expect(fetchMock.mock.calls[0][0]).toContain('gemini-3.8-flash');
     expect(fetchMock.mock.calls[1][0]).toContain('gemini-3.5-flash-lite'); // GEMINI_MODEL_PRIORITY[0]
   });
 
   it('throws when every model in the fallback list returns 429', async () => {
     fetchMock.mockResolvedValue(httpResponse(429));
     await expect(
-      resolveFieldsWithAI('key', 'gemini-3.7-flash', FIELDS, {}),
+      resolveFieldsWithAI('key', 'gemini-3.8-flash', FIELDS, {}),
     ).rejects.toThrow('AI autofill request failed: all models rate limited');
-    expect(fetchMock).toHaveBeenCalledTimes(3); // GEMINI_MODEL_PRIORITY length
+    expect(fetchMock).toHaveBeenCalledTimes(2); // GEMINI_MODEL_PRIORITY length
   });
 });
 
@@ -209,7 +209,7 @@ describe('validateApiKey', () => {
       .mockResolvedValueOnce(httpResponse(200));
     const result = await validateApiKey('key');
     expect(result.valid).toBe(true);
-    expect(result.model).toBe('gemini-3.7-flash'); // GEMINI_MODEL_PRIORITY[1]
+    expect(result.model).toBe('gemini-3.8-flash'); // GEMINI_MODEL_PRIORITY[1]
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -223,7 +223,7 @@ describe('validateApiKey', () => {
       .mockResolvedValueOnce(httpResponse(200));
     const result = await validateApiKey('key');
     expect(result.valid).toBe(true);
-    expect(result.model).toBe('gemini-3.7-flash');
+    expect(result.model).toBe('gemini-3.8-flash');
   });
 
   it('skips a 404 model and tries the next', async () => {
@@ -232,7 +232,7 @@ describe('validateApiKey', () => {
       .mockResolvedValueOnce(httpResponse(200));
     const result = await validateApiKey('key');
     expect(result.valid).toBe(true);
-    expect(result.model).toBe('gemini-3.7-flash');
+    expect(result.model).toBe('gemini-3.8-flash');
   });
 
   it('returns keyValidNoModel when every model in the priority list fails non-fatally', async () => {
@@ -243,7 +243,7 @@ describe('validateApiKey', () => {
       error: 'No supported model available for this key',
       keyValidNoModel: true,
     });
-    expect(fetchMock).toHaveBeenCalledTimes(3); // GEMINI_MODEL_PRIORITY length
+    expect(fetchMock).toHaveBeenCalledTimes(2); // GEMINI_MODEL_PRIORITY length
   });
 
   it('returns a network error when fetch rejects', async () => {
@@ -258,7 +258,7 @@ describe('validateApiKey', () => {
 describe('extractFromResume', () => {
   const PROFILE_STUB = { personal: { firstName: 'Jane' } } as Partial<Profile>;
 
-  function extract(model: GeminiModel = 'gemini-3.7-flash') {
+  function extract(model: GeminiModel = 'gemini-3.8-flash') {
     return extractFromResume('key', model, 'base64data', 'application/pdf', PROFILE_STUB);
   }
 
@@ -280,16 +280,16 @@ describe('extractFromResume', () => {
     fetchMock
       .mockResolvedValueOnce(httpResponse(429))
       .mockResolvedValueOnce(geminiTextResponse(JSON.stringify({ personal: {} })));
-    await extract('gemini-3.6-flash');
+    await extract('gemini-3.8-flash');
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[0][0]).toContain('gemini-3.6-flash');
+    expect(fetchMock.mock.calls[0][0]).toContain('gemini-3.8-flash');
     expect(fetchMock.mock.calls[1][0]).toContain('gemini-3.5-flash-lite'); // GEMINI_MODEL_PRIORITY[0]
   });
 
   it('throws rate_limit when every model in the probe list returns 429', async () => {
     fetchMock.mockResolvedValue(httpResponse(429));
     await expect(extract()).rejects.toMatchObject({ code: 'rate_limit' });
-    expect(fetchMock).toHaveBeenCalledTimes(3); // GEMINI_MODEL_PRIORITY length, deduped against the configured model
+    expect(fetchMock).toHaveBeenCalledTimes(2); // GEMINI_MODEL_PRIORITY length, deduped against the configured model
   });
 
   it('rethrows AbortError as-is, not wrapped as a network error', async () => {

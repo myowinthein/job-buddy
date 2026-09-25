@@ -96,7 +96,7 @@ describe('SettingsSection — Gemini key validation race guard (probeIdRef)', ()
     vi.mocked(checkApiKey).mockResolvedValue('valid');
     vi.mocked(validateApiKey)
       .mockImplementationOnce(() => new Promise((resolve) => { resolveFirstProbe = resolve; }))
-      .mockResolvedValueOnce({ valid: true, model: 'gemini-3.6-flash' });
+      .mockResolvedValueOnce({ valid: true, model: 'gemini-3.8-flash' });
 
     renderSection();
     const input = screen.getByLabelText('Gemini API Key') as HTMLInputElement;
@@ -108,11 +108,12 @@ describe('SettingsSection — Gemini key validation race guard (probeIdRef)', ()
     await act(async () => { await vi.advanceTimersByTimeAsync(800); }); // fire debounce -> checkApiKey + second validateApiKey (resolves immediately)
 
     // The second (current) probe's result should already be applied.
-    expect(vi.mocked(saveGeminiModel)).toHaveBeenCalledWith('gemini-3.6-flash');
+    expect(vi.mocked(saveGeminiModel)).toHaveBeenCalledWith('gemini-3.8-flash');
+    const callsAfterCurrentProbe = vi.mocked(saveGeminiModel).mock.calls.length;
 
-    // Now let the FIRST (stale) probe resolve — its result must be ignored.
-    await act(async () => { resolveFirstProbe({ valid: true, model: 'gemini-3.7-flash' }); });
-    expect(vi.mocked(saveGeminiModel)).not.toHaveBeenCalledWith('gemini-3.7-flash');
+    // Now let the FIRST (stale) probe resolve — its result must be ignored, not saved again.
+    await act(async () => { resolveFirstProbe({ valid: true, model: 'gemini-3.8-flash' }); });
+    expect(vi.mocked(saveGeminiModel)).toHaveBeenCalledTimes(callsAfterCurrentProbe);
   });
 });
 
