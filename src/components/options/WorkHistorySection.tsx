@@ -240,7 +240,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       </div>
 
       {/* ── Career Summary ──────────────────────────────────────────────────── */}
-      <FormField label="Career Summary">
+      <FormField label="Career Summary" hint={`${summary.length} / 2000`}>
         <textarea
           id="field-summary"
           className={`${cls()} min-h-[100px] resize-y`}
@@ -376,13 +376,13 @@ export function WorkHistorySection({ profile, onSave }: Props) {
             <span className="text-sm text-gray-700 dark:text-gray-300">Currently active</span>
           </label>
 
-          <FormField label="Description">
+          <FormField label="Description" hint={`${row.description.length} / 3000`}>
             <textarea
               className={`${cls()} min-h-[100px] resize-y`}
               value={row.description}
               onChange={(e) => updateEntry(idx, 'description', e.target.value)}
               placeholder="Key responsibilities and achievements..."
-              maxLength={1000}
+              maxLength={3000}
             />
           </FormField>
         </ExpandableCard>
