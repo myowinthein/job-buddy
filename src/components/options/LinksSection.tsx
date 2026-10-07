@@ -123,7 +123,7 @@ export function LinksSection({ profile, onSave }: Props) {
             onChange={(e) => set(key, e.target.value)}
             onBlur={() => handleBlur(key)}
             placeholder={placeholder}
-            maxLength={255}
+            maxLength={2048}
           />
         </FormField>
       ))}
@@ -162,7 +162,7 @@ export function LinksSection({ profile, onSave }: Props) {
                     onChange={(e) => updateCustom(idx, 'url', e.target.value)}
                     onBlur={(e) => handleCustomUrlBlur(idx, e.target.value)}
                     placeholder="https://blog.johnsmith.dev"
-                    maxLength={255}
+                    maxLength={2048}
                   />
                 </FormField>
               </div>

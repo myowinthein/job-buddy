@@ -157,7 +157,7 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
             onChange={(e) => onChange({ url: e.target.value, urlError: '', requiredError: '' })}
             onBlur={(e) => onChange({ urlError: validateDocUrlFormat(e.target.value) })}
             placeholder="https://drive.google.com/file/..."
-            maxLength={255}
+            maxLength={2048}
           />
         </FormField>
       ) : (
