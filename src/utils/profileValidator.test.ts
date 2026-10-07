@@ -342,9 +342,9 @@ describe('validateImportedProfile', () => {
     expect(result.invalidFields.some((f) => f.path === 'documents.coverLetter.file')).toBe(true);
   });
 
-  it('rejects documents.coverLetter.url over 255 chars', () => {
+  it('rejects documents.coverLetter.url over 2048 chars', () => {
     const result = validateImportedProfile({
-      documents: { coverLetter: { url: 'x'.repeat(256) } },
+      documents: { coverLetter: { url: 'x'.repeat(2049) } },
     });
     expect(result.valid).toBe(false);
     expect(result.invalidFields.some((f) => f.path === 'documents.coverLetter.url')).toBe(true);

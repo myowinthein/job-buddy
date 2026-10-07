@@ -46,8 +46,8 @@ function validateDocumentEntry(fieldPrefix: string, value: Record<string, unknow
   const entry: Profile['documents']['cv'] = {};
 
   if (value.url !== undefined) {
-    if (typeof value.url === 'string' && value.url.length <= 255) entry.url = value.url;
-    else err(`${fieldPrefix}.url`, 'expected string, max 255 chars');
+    if (typeof value.url === 'string' && value.url.length <= 2048) entry.url = value.url;
+    else err(`${fieldPrefix}.url`, 'expected string, max 2048 chars');
   }
   if (value.file !== undefined && typeof value.file === 'object' && value.file !== null) {
     const f = value.file as Record<string, unknown>;
