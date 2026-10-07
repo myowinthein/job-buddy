@@ -73,7 +73,9 @@ export function calculateExperience(
     }
   }
 
-  const totalMonths = merged.reduce((sum, [s, e]) => sum + (e - s), 0);
+  // Both s and e are inclusive calendar months, so a span needs +1 to count
+  // the start month itself (e.g. Jan-May inclusive is 5 months, not 4).
+  const totalMonths = merged.reduce((sum, [s, e]) => sum + (e - s + 1), 0);
   const years = Math.floor(totalMonths / 12);
   const months = totalMonths % 12;
 
