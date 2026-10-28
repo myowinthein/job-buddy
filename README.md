@@ -81,16 +81,15 @@ See [Project Setup](.github/SETUP.md) for integration configuration.
 
 The extension uses WXT, React, TypeScript, and Tailwind CSS v4, with Vitest for tests.
 
-| Command              | Purpose                                                             |
-| -------------------- | ------------------------------------------------------------------- |
-| `pnpm dev`           | Start Chrome extension development.                                 |
-| `pnpm compile`       | Check TypeScript without emitting files.                            |
-| `pnpm lint`          | Run ESLint.                                                         |
-| `pnpm test:run`      | Run the test suite once.                                            |
-| `pnpm build`         | Build the production Chrome extension.                              |
-| `pnpm zip`           | Build and package a Chrome Web Store archive.                       |
-| `pnpm serve:landing` | Serve the static website at `http://localhost:3000`.                |
-| `pnpm serve:demo`    | Serve the demo form at `http://localhost:8000` (requires Python 3). |
+| Command              | Purpose                                              |
+| -------------------- | ---------------------------------------------------- |
+| `pnpm dev`           | Start Chrome extension development.                  |
+| `pnpm compile`       | Check TypeScript without emitting files.             |
+| `pnpm lint`          | Run ESLint.                                          |
+| `pnpm test:run`      | Run the test suite once.                             |
+| `pnpm build`         | Build the production Chrome extension.               |
+| `pnpm zip`           | Build and package a Chrome Web Store archive.        |
+| `pnpm serve:landing` | Serve the static website at `http://localhost:3000`. |
 
 Chrome builds are under `.output/`. Firefox development, build, and packaging
 scripts are also available in [package.json](package.json); production distribution
@@ -100,7 +99,6 @@ targets Chrome.
 
 - [Project Setup](.github/SETUP.md): Gemini, Drive OAuth, and release configuration.
 - [Website](docs/index.html) and [project overview](docs/project-site/index.html).
-- [Demo application form](demo-apply-form/README.md): fictional form for local testing.
 
 ## Contributing
 

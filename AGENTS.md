@@ -22,7 +22,7 @@ Use Node 22 (`.nvmrc`) and pnpm 11.7.0 (`package.json`).
 - `pnpm build`: production build; `pnpm zip`: build plus Chrome Web Store archive.
 - `pnpm build:firefox`: Firefox build; production release workflow targets Chrome.
 - `pnpm format`: Prettier writes; scope formatting to the task.
-- `pnpm serve:landing`: serve `docs/`; `pnpm serve:demo`: serve demo on port 8000.
+- `pnpm serve:landing`: serve `docs/`.
 - Integration setup is documented in `.github/SETUP.md`; env template is `.env.example`.
 
 CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a separate workflow with compile, lint, tests, zip, Chrome Web Store upload, and GitHub release creation.
@@ -39,7 +39,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 - `src/resume-ai/gemini.ts` owns extraction/autofill requests; `types.ts` centralizes model priorities/defaults; `prompt.ts` and `autofillPrompt.ts` hold separate prompts. `parser.ts` also powers JSON and Drive import review.
 - `src/utils/storageArea.ts` backs local/session wrappers. Low-level gets/removes resolve on failure; local sets reject, session sets are best-effort. `getProfile()` can reject when persisting a migration.
 - `src/utils/driveSync.ts` owns Drive OAuth, appdata backup, and retry state. Both restore paths are in `SettingsSection.tsx`.
-- `docs/index.html` is a static Tailwind-CDN landing page; `docs/project-site/` is a static overview. `demo-apply-form/` is a fictional local test/screenshot form.
+- `docs/index.html` is a static Tailwind-CDN landing page; `docs/project-site/` is a static overview.
 
 ## Domain Rules
 
@@ -94,7 +94,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 - Drive uses implicit-token OAuth with `drive.appdata`. Development setup requires Web Application OAuth clients with separate dev/prod redirect IDs; see `.github/SETUP.md`.
 - Documents UI/import validation cap files at 4 MB, but Resume Import accepts 10 MB and can persist that file. This is an unresolved discrepancy; do not assume a universal 4 MB cap.
 - Popup confidence tooltips and parts of `docs/project-site/` still mention a removed picker. A Settings restore comment incorrectly says mappings do not sync independently; background does debounce mapping changes.
-- Static site brand colors are duplicated across landing, overview, and demo; update relevant copies together.
+- Static site brand colors are duplicated across landing and overview; update both copies together.
 
 ## Rules
 
