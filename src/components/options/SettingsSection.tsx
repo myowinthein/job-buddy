@@ -916,24 +916,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           : 'Your profile data stays on this device and is never sent anywhere.'
         }{' '}
         <a
-          href="https://myowinthein.github.io/job-buddy/legal/privacy/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline font-medium"
-        >
-          Privacy Policy
-        </a>
-        {' · '}
-        <a
-          href="https://myowinthein.github.io/job-buddy/legal/terms/"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline font-medium"
-        >
-          Terms of Service
-        </a>
-        {' · '}
-        <a
           href="https://ko-fi.com/myowinthein"
           target="_blank"
           rel="noopener noreferrer"

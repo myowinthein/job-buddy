@@ -425,12 +425,8 @@
   <section class="section" id="data">
     <div class="section-label">Data and privacy</div>
     <h2>What's stored and where</h2>
-    <p class="section-subtitle">
-      Source of truth: the privacy policy under <code>docs/legal/privacy/</code>.
-    </p>
-
     <p>
-      According to the privacy policy, Job Buddy stores all profile data locally in the browser's
+      Job Buddy stores all profile data locally in the browser's
       own storage. The extension has no servers and no user accounts. Data only leaves the user's
       device through three opt-in features (Google Drive backup, AI resume import, AI autofill
       assist), and only when the user explicitly enables each one.
@@ -448,7 +444,7 @@
     </ul>
 
     <div class="callout">
-      <strong>According to the privacy policy:</strong> the extension does not make network requests
+      The extension does not make network requests
       by default, does not sell or share data, and does not use Chrome account sync. Data only
       reaches third-party APIs (Google Drive, Google Gemini) through opt-in features the user
       activates.
@@ -456,10 +452,8 @@
 
     <h3>EEO fields</h3>
     <p>
-      Optional gender, ethnicity, veteran status, and disability status fields are categorised as
-      special category data under GDPR Article 9. The privacy policy states they are processed only
-      on the basis of the user's explicit consent (which they provide by voluntarily entering
-      values), are stored only on-device, and can be deleted from the options page at any time.
+      Optional gender, ethnicity, veteran status, and disability status values are stored in the
+      local profile and can be edited or removed in Options.
     </p>
 
     <div class="tech-only">
@@ -717,7 +711,6 @@
       <li>Published on the Chrome Web Store (referenced in <code>README.md</code> and <code>wxt.config.ts</code>)</li>
       <li>Continuous Integration is configured (<code>.github/workflows/ci.yml</code>) and runs on every push and pull request</li>
       <li>Automated release workflow (<code>.github/workflows/release.yml</code>) for Chrome Web Store uploads</li>
-      <li>Comprehensive legal documents under <code>docs/</code> (privacy, terms, EULA, disclaimer)</li>
       <li>Documented developer setup (<code>.github/SETUP.md</code>) covering Google Cloud, GitHub secrets, and OAuth client configuration</li>
       <li>Active commit history with feature work, bug fixes, and refactors</li>
     </ul>
@@ -755,22 +748,6 @@
         <span class="link-card-icon">🌐</span>
         <span class="link-card-label">Landing page</span>
       </a>
-      <a class="link-card" href="../legal/privacy/" target="_blank">
-        <span class="link-card-icon">🔒</span>
-        <span class="link-card-label">Privacy policy</span>
-      </a>
-      <a class="link-card" href="../legal/terms/" target="_blank">
-        <span class="link-card-icon">📄</span>
-        <span class="link-card-label">Terms of service</span>
-      </a>
-      <a class="link-card" href="../legal/eula/" target="_blank">
-        <span class="link-card-icon">📜</span>
-        <span class="link-card-label">EULA</span>
-      </a>
-      <a class="link-card" href="../legal/disclaimer/" target="_blank">
-        <span class="link-card-icon">⚠️</span>
-        <span class="link-card-label">Disclaimer</span>
-      </a>
       <a class="link-card" href="https://github.com/myowinthein/job-buddy/issues" target="_blank">
         <span class="link-card-icon">💬</span>
         <span class="link-card-label">Issues / support</span>
@@ -783,7 +760,6 @@
         <ul>
           <li><strong>GitHub repo:</strong> referenced in <code>README.md</code></li>
           <li><strong>Landing page:</strong> <code>docs/index.html</code> (served via GitHub Pages)</li>
-          <li><strong>Privacy / Terms / EULA / Disclaimer:</strong> <code>docs/legal/privacy/</code>, <code>docs/legal/terms/</code>, <code>docs/legal/eula/</code>, <code>docs/legal/disclaimer/</code></li>
           <li><strong>Issues:</strong> referenced in <code>README.md</code> and the in-extension Settings page</li>
         </ul>
       </div>
