@@ -24,7 +24,7 @@ extension. No further configuration is needed on your end.
 ## 2. CI/CD (Chrome Web Store Automated Releases)
 
 Pushing a `v*.*.*` tag triggers the Release workflow, which builds the
-extension and uploads it to the Chrome Web Store. The workflow needs four
+extension and uploads it to the Chrome Web Store. The workflow needs five
 secrets stored in a GitHub **environment** named `production`.
 
 ### 2a. Enable the Chrome Web Store API
@@ -83,6 +83,21 @@ The refresh token does not expire unless you revoke it from
 | `CHROME_CLIENT_ID`     | From step 2b                       |
 | `CHROME_CLIENT_SECRET` | From step 2b                       |
 | `CHROME_REFRESH_TOKEN` | From step 2d                       |
+| `ENV_PRODUCTION`       | Production env-file text; see below |
+
+For `ENV_PRODUCTION`, paste the full **key=value** line for Drive backup:
+
+```dotenv
+VITE_GOOGLE_DRIVE_CLIENT_ID=<PRODUCTION_DRIVE_OAUTH_CLIENT_ID>
+```
+
+Get the Client ID from **Google Cloud Console > Google Auth Platform > Clients**,
+using the production **Web application** client from step 3c. Use its Client ID,
+not its Client Secret.
+
+The release workflow writes this secret's text to `.env.production` before
+building. This supplies the production Drive configuration even though the local
+file is ignored by Git.
 
 Once these are in place, use `/ship` in Claude Code to cut a release. It runs
 tests, proposes a version bump, waits for confirmation, then commits, tags, and
