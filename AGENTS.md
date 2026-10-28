@@ -102,9 +102,8 @@ This project follows the rules shipped in agent-helm:
 
 - .claude/rules/git.md
 - .claude/rules/safety.md
+- .claude/rules/writing.md
 
-At the start of every session, check whether the paths above exist on this machine.
-If either is missing, inform the user: "helm rules are referenced in CLAUDE.md but the
-plugin is not installed on this machine. Install it with: /plugin install agent-helm"
+At the start of every session, read the rule files at the paths above and follow them.
 
 <!-- last-reviewed: 966a41209b5ab03cb3942cd61e0b364d258fe625 -->
