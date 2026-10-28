@@ -6,6 +6,7 @@ import { extractLinks } from '@/src/resume-ai/extractLinks';
 import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
 import type { FieldChange, ImportProgressStep, ImportErrorCode } from '@/src/resume-ai/types';
 import { toGeminiModel } from '@/src/resume-ai/types';
+import { DOCUMENT_FILE_SIZE_LABEL, documentFileSizeError } from '@/src/utils/documentLimits';
 import { useToast } from '@/src/components/ui/useToast';
 import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 import ImportSummaryDialog from '@/src/components/shared/ImportSummaryDialog';
@@ -13,7 +14,6 @@ import ImportReviewScreen from '@/src/components/shared/ImportReviewScreen';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
 const LONG_WAIT_MS   = 8_000;
 const FILE_CHANGE_ID = '__cv_file__';
 
@@ -148,8 +148,9 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
       setErrorMsg('Only PDF and DOCX files are supported.');
       return;
     }
-    if (file.size > MAX_FILE_BYTES) {
-      setErrorMsg('CV file is too large to process. Maximum size is 10 MB.');
+    const sizeError = documentFileSizeError(file.size);
+    if (sizeError) {
+      setErrorMsg(sizeError);
       return;
     }
     setErrorMsg(null);
@@ -251,6 +252,12 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
     let updated = applyChanges(profile, aiChanges);
 
     if (fileChange?.accepted && selectedFile && fileDataUri) {
+      const sizeError = documentFileSizeError(selectedFile.size);
+      if (sizeError) {
+        showToast('error', sizeError);
+        return;
+      }
+
       const documentFile: DocumentFile = {
         name:   selectedFile.name,
         size:   selectedFile.size,
@@ -367,7 +374,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
                           Drop your CV here or{' '}
                           <span className="text-blue-600 dark:text-blue-400">browse</span>
                         </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">PDF or DOCX · max 10 MB</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">PDF or DOCX · max {DOCUMENT_FILE_SIZE_LABEL}</p>
                       </>
                     )}
                   </div>

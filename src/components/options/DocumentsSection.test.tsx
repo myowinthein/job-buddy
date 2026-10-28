@@ -177,6 +177,14 @@ describe('DocumentsSection — Remove file', () => {
 });
 
 describe('DocumentsSection — file-size restriction (4 MB cap)', () => {
+  it('preserves an existing file above the new upload limit when saving', async () => {
+    const file = { name: 'existing.pdf', size: 6 * 1024 * 1024, base64: 'existing-data' };
+    const { onSave } = renderSection({ documents: { cv: { file } } });
+    fireEvent.click(screen.getByText('Save Documents'));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][0].documents.cv.file).toEqual(file);
+  });
+
   it('rejects a file over the 4 MB limit and reports its size', async () => {
     renderSection({ documents: { cv: {} } });
     fireEvent.click(screen.getByText('Upload'));

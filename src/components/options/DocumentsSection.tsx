@@ -1,3 +1,4 @@
+import { DOCUMENT_FILE_SIZE_LABEL, documentFileSizeError } from '@/src/utils/documentLimits';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef, DragEvent } from 'react';
 import type { Profile, DocumentEntry, DocumentFile } from '@/src/types/profile';
@@ -10,8 +11,6 @@ interface Props {
   profile: Partial<Profile>;
   onSave: (updates: Partial<Profile>) => Promise<void>;
 }
-
-const MAX_FILE_SIZE = 4 * 1024 * 1024;
 
 type InputMode = 'url' | 'file';
 
@@ -97,8 +96,9 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
       onChange({ typeError: 'Only PDF and Word documents (.pdf, .doc, .docx) are supported' });
       return;
     }
-    if (file.size > MAX_FILE_SIZE) {
-      onChange({ sizeError: `File exceeds 4 MB limit (${formatBytes(file.size)})`, typeError: '' });
+    const sizeError = documentFileSizeError(file.size);
+    if (sizeError) {
+      onChange({ sizeError, typeError: '' });
       return;
     }
     const base64 = await fileToBase64(file);
@@ -188,7 +188,7 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
             ) : (
               <>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Drag & drop a file here, or click to browse</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">PDF, DOCX · max 4 MB</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">PDF, DOCX · max {DOCUMENT_FILE_SIZE_LABEL}</p>
               </>
             )}
           </div>
@@ -248,7 +248,7 @@ export function DocumentsSection({ profile, onSave }: Props) {
     <div>
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Documents</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Upload or link your CV / Résumé · max 4 MB</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Upload or link your CV / Résumé · max {DOCUMENT_FILE_SIZE_LABEL}</p>
       </div>
 
       <DocUploader label="CV / Résumé" required state={cv} onChange={(u) => setCv((s) => ({ ...s, ...u }))} />
