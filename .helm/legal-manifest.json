@@ -1,4 +1,15 @@
 {
   "schema_version": 1,
-  "documents": []
+  "documents": [
+    {
+      "file": "docs/legal/privacy/index.html",
+      "generated_at": "2026-10-28",
+      "generated_at_commit": "dae02e8a5ee584be6e823529ee255647c602f333"
+    },
+    {
+      "file": "docs/legal/disclaimer/index.html",
+      "generated_at": "2026-10-28",
+      "generated_at_commit": "dae02e8a5ee584be6e823529ee255647c602f333"
+    }
+  ]
 }
