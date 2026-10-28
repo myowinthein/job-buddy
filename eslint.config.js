@@ -13,13 +13,10 @@ export default [
 
   js.configs.recommended,
 
-  // docs/ and demo-apply-form/ are static marketing/demo assets with no
-  // TypeScript config of their own — most of each directory (HTML, CSS,
-  // images) isn't matched by any `files` pattern below and so is never
-  // linted, but their plain .js files get basic recommended-JS checks
-  // (no-undef, syntax errors, etc.) instead of zero static analysis.
+  // The static docs site has no TypeScript config. Its plain .js files
+  // get recommended-JS checks and browser globals.
   {
-    files: ['docs/**/*.js', 'demo-apply-form/**/*.js'],
+    files: ['docs/**/*.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'script',
