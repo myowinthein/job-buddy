@@ -1,4 +1,4 @@
-<!-- helm-rule: agent-helm@v2.22.3 -->
+<!-- helm-rule: agent-helm@v3.2.1 -->
 # Git Rules
 
 ---
@@ -11,7 +11,7 @@ Applies without a loaded plugin. Resolve configuration before dependent mutation
 - Follow actual bridges (`@AGENTS.md` or explicit read directives), resolving paths from the referring file, not examples. Track visited files; cycles/missing targets block branching/writes. For a readable root CLAUDE.md/AGENTS.md cycle only, log may read each file once, resolve settings before mutations and propose removing the reverse bridge. The log cycle exception covers no other/external cycle or missing target. Never edit imports outside the consumer project.
 - If the host entry is absent, read the other entry. `{memory_file}` owns actual Helm settings/project knowledge; a wrapper is not that owner. With neither file, propose root AGENTS.md without creating it just to resolve settings. Shared setup uses AGENTS.md plus CLAUDE.md importing `@AGENTS.md` and any Claude-only additions; shared settings/Rules stay only in AGENTS.md.
 - Independent roots: if only one declares recognized settings, it owns memory/configuration; read/preserve the setting-free entry too. Identical declarations supply agreed values, but ambiguous knowledge ownership still blocks a memory write. If neither declares settings, preserve the current host's knowledge owner unless a bridge selects another. Defaults never override another file's explicit values.
-- Recognize standalone `## Project Config` declarations and Compass-style fenced `text` introduced as project configuration, regardless of heading scheme. Active keys: `ship-method` (`direct`/`pr`), `git-auto-commit` (`true`/`false`), `git-merge-strategy` (`squash`/`rebase`/`merge`), `readme-style` (`standard`/`custom`). Ignore quoted examples/narrative, not actual declarations. Retired `git-strategy` and `environment-promotion` select no behavior; do not infer an active value from them. If ship-method is absent but git-strategy is declared, block dependent shipping with upgrade guidance rather than silently changing its publication preference.
+- Recognize declarations under `## Project Config` as plain `key: value` lines or Markdown bullets (`- key: value`), and Compass-style fenced `text` introduced as project configuration, regardless of heading scheme. The bullet marker changes presentation only; resolve the same keys, values and conflicts in every supported format. Prefer one bullet per setting in new Project Config sections; preserve an existing block's format unless the user explicitly requests a format change. Active keys: `ship-method` (`direct`/`pr`), `git-auto-commit` (`true`/`false`), `git-merge-strategy` (`squash`/`rebase`/`merge`), `readme-style` (`standard`/`custom`). Ignore quoted examples/narrative, not actual declarations. Retired `git-strategy` and `environment-promotion` select no behavior; do not infer an active value from them. If ship-method is absent but git-strategy is declared, block dependent shipping with upgrade guidance rather than silently changing its publication preference.
 - Apply host precedence first: an active AGENTS.override.md replaces same-directory AGENTS.md, not a competing owner. Compare applicable roots/targets; conflicting declarations (including duplicate keys within one recognized block), invalid relevant active values or ambiguous ownership block dependent actions. Invalid publication-only settings block dependent ship actions, not independent local edits. Preserve identical duplicates and overrides; do not normalize them or generate over host-specific policy. Host/heading differences never silently change policy.
 - Use the defaults below only for genuinely absent settings. Save an authorized setting change in the owner's existing configuration block, preserving its layout; never duplicate it in a bridge. Resolving ownership does not authorize a full-file rewrite.
 - Only log migrates/reconciles existing layouts, preserving confirmed values; others preserve existing owners and recommend log for migration. Log may resolve absent settings through explicit pre-mutation choices and freeze local commit policy; unanswered keys use defaults. Changes to existing settings apply next run. Reuse pending approved overlays only after destination declarations/ownership/overrides match preflight; never switch policy mid-run.
@@ -26,7 +26,7 @@ Labelled local reads may inspect dirty/staged/untracked, detached/no-HEAD/no-rep
 
 ## Local work and ship method
 
-Team size and branch topology do not select a Git mode. Ordinary coding and Helm editing commands work locally on their current permitted branch. Log/manifest/legal/adopt require the actual main/master base for Git-backed writes, retaining their documented read-only/bootstrap exceptions. Env/test also permit established current feature branches and confirmed current environment branches; test additionally permits established current maintenance branches. Confirm non-base roles from actual project/deployment evidence or developer classification, not name prefixes alone; unresolved or unsupported roles block dependent writes. Branch eligibility proves neither ownership nor safe runtime targets; existing script/hook/service effect checks remain required. Stronger project policy still applies. Commands requiring base block elsewhere with a reason; never auto-checkout/update base, create a workflow branch, merge, push, open a PR, promote environments or clean up branches to finish them. Preserve each command's own scope, clean-state, review, verification and checkpoint requirements. `refactor` may record/apply on base, an established existing current feature branch or an existing current `refactor/*` branch, with confirmed non-base environments Audit/Plan only even if their names match that prefix. Establish non-base roles from project/deployment evidence or developer classification, never names alone; no branch creation/selection follows. `normalize` may coordinate explicitly approved rewrites of affected existing local branches. `archive` prepares locally on its confirmed source branch, showing its HEAD/exclusions and obtaining Proceed/Cancel before normal pending phases. Read-only archive Audit/Plan and proven prepared/completed report-only exits need no new branch confirmation. Invoke ship separately when publication is wanted.
+Team size and branch topology do not select a Git mode. Ordinary coding and Helm editing commands work locally on their current permitted branch. Log/manifest/legal/adopt require the actual main/master base for Git-backed writes, retaining their documented read-only/bootstrap exceptions. Env/test also permit established current feature branches and confirmed current environment branches; test additionally permits established current maintenance branches. Confirm non-base roles from actual project/deployment evidence or developer classification, not name prefixes alone; unresolved or unsupported roles block dependent writes. Branch eligibility proves neither ownership nor safe runtime targets; existing script/hook/service effect checks remain required. Stronger project policy still applies. Commands requiring base block elsewhere with a reason; never auto-checkout/update base, create a workflow branch, merge, push, open a PR, promote environments or clean up branches to finish them. Preserve each command's own scope, clean-state, review, verification and checkpoint requirements. `refactor` may record/apply on base, an established existing current feature branch or an existing current `refactor/*` branch, with confirmed non-base environments source-inspection/report only even if their names match that prefix. Establish non-base roles from project/deployment evidence or developer classification, never names alone; no branch creation/selection follows. `normalize` may coordinate explicitly approved rewrites of affected existing local branches. `archive` prepares locally on its confirmed source branch, showing its HEAD/exclusions and obtaining Proceed/Cancel before normal pending phases. Proven prepared/completed report-only archive exits need no new branch confirmation. Invoke ship separately when publication is wanted.
 
 Configure ordinary shipping in the resolved owner's existing Project Config section or recognized fenced block:
 
@@ -36,7 +36,7 @@ ship-method: direct
 ship-method: pr
 ```
 
-- **direct:** ordinary ship first pushes/verifies the reviewed current branch, then offers explicitly selected independent source-to-target integrations and pushes. Main may select environments; features may select main/environments; environments may select main/other environments except themselves. No selection means source publication only. Explicit ship release alone prepares version/tag publication on integrated main/master. Actual project/provider requirements can block an action; never bypass them or silently change the method.
+- **direct:** ordinary ship first pushes/verifies the reviewed current branch, then offers explicitly selected independent source-to-target integrations and pushes. Main may select environments; features may select main/environments; environments may select main/other environments except themselves. No target selection skips integration; release assessment remains separate. Ship offers version/tag publication only on ready integrated main/master under concrete release approval. Actual project/provider requirements can block an action; never bypass them or silently change the method.
 - **pr:** ordinary ship publishes/verifies its source, then creates/reuses and reads back matching PR/MR handoffs. A feature is its own source and selects main/environment PR targets optionally, with no self-PR or mandatory main target. Main/environment work uses one established ship/* helper into its own hosted branch and the same helper into every selected optional target; never a same-ref self-PR or helper per target. Reuse/prove existing helper/request identity before creation or fast-forward update; names alone are insufficient. Reviews are independent and an environment may accept pending changes before main. Source pushes update all open requests sharing that ref, while merged requests need a new selected request for later changes. No auto-merge, future review/CI wait, source deletion or automatic release follows. Explicit release metadata may need its own PR; only verified integrated main/master is tagged.
 
 Resolve ordinary ship method from a valid explicit `ship-method`; genuinely absent settings default to `pr`. An invalid explicit value blocks dependent shipping without fallback. Unsupported retired-key leftovers follow the stop guard above; no compatibility mapping or automatic configuration cleanup occurs.
@@ -47,7 +47,7 @@ Only an explicitly approved settings edit changes publication preferences in the
 
 State the relevant invocation policy once and revalidate it before dependent actions. A base-dependent action resolves `{base_branch}` to the actual main/master from instructions, default branch and refs; ambiguity blocks that action, never guesses/creates/renames a base. Read-only work can report unresolved facts. Ordinary local tasks need not resolve a publication destination or contact a provider to finish.
 
-Rewritten-history publication and private archive backup publication are ship's separately approved specialist routes, not third `ship-method` values. A PR cannot replace published commit IDs. With the package loaded follow ship's verified rewrite/backup procedures; copied rules alone grant neither state access nor a reconstruction of those protocols.
+Rewritten-history publication and private archive backup publication are ship's separately approved specialist routes, not third `ship-method` values. A PR cannot replace published commit IDs. With the package loaded, normalize registers private per-run recovery locators in the actual Git common directory before an approved rewrite; ship discovers them across sessions under its bounded handoff procedure, retaining full proof, fixed leases and publication approval. Explicit paths remain the fallback for unavailable/ambiguous evidence or another clone. Log/manifest have a separate packaged read-only review-anchor recovery procedure, not publication authority. Copied rules alone grant no locator/state access or reconstruction of these protocols.
 
 ---
 
@@ -63,7 +63,7 @@ Absence defaults to off — ask for confirmation before committing.
 When active:
 - Commit a completed coherent unit without another question when authorized by this setting. Read-only work, no-ops and an explicit commit deferral create no commit; incomplete/gated work stays pending.
 - Inspect the entire index and exact intended diff before staging. Use literal, exact approved paths, e.g. `git --literal-pathspecs add -- {approved_paths}`; never blindly add directories or use `git add -A`. Preserve unrelated staged/unstaged/untracked files and user hunks, including in shared files. If separation cannot be done without disturbing them, leave the affected commit pending rather than absorbing, resetting or stashing user work.
-- Review the staged result, follow scoped Conventional Commits and verify the commit contains only the intended change. A logical unit is one coherent, independently reviewable change, not every small edit.
+- Read the full changed content and staged diff; filenames/diffstat alone are not content review. Check the exact outgoing subject against resolved project/user policy, using scoped Conventional Commits as Helm's default. After committing, verify the actual subject and paths through Git. A logical unit is one coherent, independently reviewable change, not every small edit.
 - Commit approval or auto-commit never approves publication; apply the Publication contract below.
 
 **Exception:** safety.md's bounded commits, including generated legal documents and their integration commits, always require concrete content/commit approval. Reuse that known approval for the same action; auto-commit alone cannot supply it.
@@ -84,7 +84,7 @@ These apply independently of ship method.
 
 **Workflow boundaries**
 - Ordinary Helm commands finish locally without asking to publish or integrate. No automatic branch creation, switching or cleanup follows.
-- Ordinary ship publishes current work and optionally handles explicitly selected same-source targets. Ship release alone performs main/master version/tag/hosted-release work, without automatic fan-out; explicit promote, normalize and archive publication keep their own gates and terminal boundaries. No ordinary push, target integration or PR completion implicitly releases.
+- Ship assesses current/unfinished work, publishes approved source and independent selected targets, then offers a release on ready integrated main/master even when no source push is needed. Existing release candidates continue the same version; first releases and target-only work remain eligible. Normalization publication needs verified private evidence and fixed leases; rewritten IDs alone are not release work, and mapped prior-release boundaries must be proven. Archive discovery is metadata-only until explicit inspection selection; its private payload/receipt publication finishes without ordinary targets or tags. Publication/PR handoff never supplies release approval, and incomplete/unknown selected work blocks dependent actions.
 - Archive may create explicitly reviewed local payload commits on its approved source branch. Only ship's archive route may publish the payload, perform separately selected post-backup cleanup and create/publish the completion receipt. Preserve exact payload/receipt ancestry; no ordinary PR/squash may fabricate a seal.
 
 **Commits**
@@ -102,14 +102,27 @@ These apply independently of ship method.
 
 ## Conventional Commits
 
-All commits must follow this format:
-  type(scope): description
+Based on [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/), with the following specification baseline and Helm conventions.
 
-  [optional body]
+**Specification baseline:**
 
-  [optional footer]
+- **Header:** a noun type, optional parenthesized noun scope identifying a codebase section, optional `!`, then a required colon and space before a short description of the changes. Use `feat` for new features and `fix` for bug fixes; other types are allowed.
+- **Body:** optional and free-form, including multiple paragraphs; begin it one blank line after the description.
+- **Footers:** optional, one or more, after a blank line following the body or header. Each uses a word token in `Token: value` or `Token #value`. Hyphenate token whitespace, except in `BREAKING CHANGE`. Values may contain spaces and newlines; the next valid token/separator pair starts another footer.
+- **Breaking changes:** any type may use `!` immediately before `:`, a `BREAKING CHANGE: description` footer, or both. `BREAKING-CHANGE` is a synonymous footer token. With `!`, the header description must explain the break; the breaking footer is optional.
+- **Case:** interpret message fields case-insensitively, except that breaking footer tokens must be uppercase.
 
-**Types:** `feat` (feature), `fix` (bug), `refactor` (neither feature nor fix), `revert`, `test`, `docs`, `chore` (maintenance/dependencies/tooling), `style` (format only), `perf`, `ci`, `build`.
+**Helm conventions:** Explicit project or user commit policy takes precedence over these defaults. Helm commits use the scoped format below; `[!]` means an optional `!`, not literal brackets:
+
+```text
+type(scope)[!]: description
+
+[optional body]
+
+[optional footer(s)]
+```
+
+**Types:** Helm's default type set is `feat` (feature), `fix` (bug), `refactor` (neither feature nor fix), `revert`, `test`, `docs`, `chore` (maintenance/dependencies/tooling), `style` (format only), `perf`, `ci`, `build`. This is Helm policy, not an exhaustive specification list.
 
 **Scope:** Required by Helm policy (optional in the external specification). Use the module/folder/domain, e.g. `fix(payment): resolve stripe timeout`. Historical/upstream unscoped commits may be specification-valid but Helm-noncompliant. Loading rules never authorizes history edits; normalization needs its own reviewed task.
 
@@ -117,12 +130,16 @@ All commits must follow this format:
 
 **Scope inference:** use the actual changed module/folder/domain, never a workflow's report category or priority (e.g. `architecture`, `high-priority`). Apply the dominant/multi/cross-cutting choices above; lowercase, one word or hyphenated per scope.
 
-**Breaking changes:**
-  feat(auth)!: replace session with JWT
+**Examples:** `fix(payment): handle expired cards` needs no body or footer. `feat(auth)!: replace sessions with JWT` flags a break in the header. A footer can flag a break without `!` or a body:
 
-  BREAKING CHANGE: all existing sessions invalidated
+```text
+refactor(auth): replace the session store
 
-The explicit /helm:ship release mode reads full messages: `!` on any type/optional scope or an uppercase `BREAKING CHANGE:` / `BREAKING-CHANGE:` footer is a breaking candidate, proposing major for stable versions and explicitly resolving the project's 0.x policy. Nonbreaking feat proposes minor, fix/perf patch. Other types have no automatic bump, but may receive an explicitly chosen release; mixed history and reverts need contextual review. Empty ranges do not create another release. Scoped types and Conventional Commits case rules apply; do not rewrite history to calculate a version.
+BREAKING CHANGE: existing sessions must be renewed
+Refs #123
+```
+
+**Helm release policy:** The approved release stage reads full messages. A breaking candidate on any type proposes major for stable versions and explicitly resolves the project's 0.x policy. Nonbreaking feat proposes minor, fix/perf patch; `perf`'s patch mapping is a Helm choice. Other types have no automatic bump, but may receive an explicitly chosen release; mixed history and reverts need contextual review. Empty ranges do not create another release. Do not rewrite history to calculate a version.
 
 ---
 
@@ -149,7 +166,7 @@ Independent of ship method and team size.
 Determine deployment triggers and targets from repository configuration and applicable provider settings. Do not assume a pipeline or deployment exists because a branch/tag exists or these rules are loaded. Unavailable evidence leaves deployment behavior unknown, not absent or safe.
 
 - A configured push trigger may deploy updates to `{base_branch}` or other explicitly configured branches.
-- A configured tag trigger may deploy a matching SemVer tag, including one created through /helm:ship.
+- A configured tag trigger may deploy a matching SemVer tag, including one created through `ship`.
 - Both may be configured (for example, push → staging and tag → production), or neither. Report only verified behavior and preserve project-specific deployment approvals.
 
 ---
@@ -170,6 +187,6 @@ Independent of ship method. Names such as staging/stage/uat/preprod/production/p
 
 PR heads remain moving refs: pushing fixes updates all open PRs sharing the feature/helper, and later commits do not automatically reach an already merged target. Verify observed head identity and do not promise an immutable snapshot. Reuse matching open requests, preserve partial successes and retain branches. Main/env helpers need proven association and safe fast-forward updates, never prefix-only guessing, force or a new helper every run.
 
-Explicit ship promote remains an existing published base/release→selected-env operation, separate from current-branch shipping. It never publishes current env/feature work or silently widens an older exact snapshot to newer main. Ship release has no automatic promotion stage. Ordinary optional merges/PRs create no version/tag/release, even when integrating into main. Retired environment-promotion declarations remain preserved/inert; no chain order is restored.
+An existing published base/release selected in conversation can supply environment targets without publishing unrelated current feature/env work. Verify its exact published identity; never silently widen an older snapshot to newer main. Release creates no automatic promotion, and optional merges/PRs create no tag by themselves. Retired environment-promotion declarations remain inert; no chain order is restored.
 
-Env and test permit approved local work on confirmed environment branches under their own scope, clean-state and runtime-safety gates. Refactor keeps confirmed non-base environments Audit/Plan only. A local fix never synchronizes branches automatically; shared fixes may need deliberate upstream application, and ignored env inputs remain worktree-local. Flexible ship targets do not bypass command or project policy. Other local Helm commands never publish or promote.
+Env and test permit approved local work on confirmed environment branches under their own scope, clean-state and runtime-safety gates. Refactor keeps confirmed non-base environments source-inspection/report only. A local fix never synchronizes branches automatically; shared fixes may need deliberate upstream application, and ignored env inputs remain worktree-local. Flexible ship targets do not bypass command or project policy. Other local Helm commands never publish or promote.
