@@ -279,6 +279,22 @@ describe('validateImportedProfile', () => {
     expect(result.invalidFields.some((f) => f.path === 'documents.cv.file')).toBe(true);
   });
 
+  it.each(['cv', 'coverLetter'])('rejects oversized %s metadata even with a short payload', (field) => {
+    const result = validateImportedProfile({
+      documents: { [field]: { file: { name: 'document.pdf', size: 4 * 1024 * 1024 + 1, base64: 'abc' } } },
+    });
+    expect(result.valid).toBe(false);
+    expect(result.invalidFields.some((f) => f.path === `documents.${field}.file`)).toBe(true);
+  });
+
+  it('accepts a file at the 4 MB boundary with a data URI prefix', () => {
+    const size = 4 * 1024 * 1024;
+    const result = validateImportedProfile({
+      documents: { cv: { file: { name: 'cv.pdf', size, base64: 'data:application/pdf;base64,' + 'a'.repeat(Math.ceil(size / 3) * 4) } } },
+    });
+    expect(result.valid).toBe(true);
+  });
+
   it('rejects a cv.file whose base64 payload exceeds the 4 MB cap', () => {
     // Well past the ~5.6M-char base64 bound for a 4 MB raw file.
     const result = validateImportedProfile({

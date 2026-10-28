@@ -92,7 +92,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 - Dev content/background bundles cannot rely on custom `VITE_*` variables like live popup/options code can. Gemini development fallbacks persist through `storage.ts`.
 - Dev builds use amber icons (`wxt.config.ts` and `branding.ts`); production uses blue. Theme initializes before React and follows system/light/dark through the root `.dark` class.
 - Drive uses implicit-token OAuth with `drive.appdata`. Development setup requires Web Application OAuth clients with separate dev/prod redirect IDs; see `.github/SETUP.md`.
-- Documents UI/import validation cap files at 4 MB, but Resume Import accepts 10 MB and can persist that file. This is an unresolved discrepancy; do not assume a universal 4 MB cap.
+- Document uploads, Resume Import, and JSON/Drive import validation share the 4 MB file limit in `src/utils/documentLimits.ts`. Existing stored files are preserved; the per-file cap does not guarantee the whole profile fits local storage.
 - Popup confidence tooltips and parts of `docs/project-site/` still mention a removed picker. A Settings restore comment incorrectly says mappings do not sync independently; background does debounce mapping changes.
 - Static site brand colors are duplicated across landing and overview; update both copies together.
 

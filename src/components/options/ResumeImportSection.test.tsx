@@ -37,7 +37,7 @@ function renderSection(profile: Partial<Profile> = {}, onSave = vi.fn().mockReso
 
 function pdfFile(name = 'resume.pdf', sizeBytes = 1024) {
   const file = new File(['%PDF-1.4 fake'], name, { type: 'application/pdf' });
-  Object.defineProperty(file, 'size', { value: sizeBytes });
+  Object.defineProperty(file, 'size', { value: sizeBytes, configurable: true });
   return file;
 }
 
@@ -61,11 +61,19 @@ describe('ResumeImportSection — file validation', () => {
     expect(await screen.findByText('Only PDF and DOCX files are supported.')).toBeTruthy();
   });
 
-  it('rejects a file over 10 MB', async () => {
+  it('rejects a file just over 4 MB', async () => {
     renderSection();
     await screen.findByText(/Drop your CV here/);
-    await selectFile(pdfFile('big.pdf', 11 * 1024 * 1024));
-    expect(await screen.findByText('CV file is too large to process. Maximum size is 10 MB.')).toBeTruthy();
+    await selectFile(pdfFile('big.pdf', 4 * 1024 * 1024 + 1));
+    expect(await screen.findByText('File exceeds 4 MB limit (4.0 MB)')).toBeTruthy();
+  });
+
+  it('accepts a PDF exactly at the 4 MB limit', async () => {
+    renderSection();
+    await screen.findByText(/Drop your CV here/);
+    await selectFile(pdfFile('boundary.pdf', 4 * 1024 * 1024));
+    expect(screen.getByText('boundary.pdf')).toBeTruthy();
+    expect(screen.queryByText(/File exceeds/)).toBeNull();
   });
 
   it('accepts a valid PDF and clears a prior error', async () => {
@@ -252,6 +260,26 @@ describe('ResumeImportSection — CV invariant on save', () => {
     expect(saved.documents.cv.url).toBe('https://example.com/old-cv.pdf');
     expect(saved.documents.cv.file).toEqual(expect.objectContaining({ name: 'resume.pdf' }));
   }, 20000);
+
+  it('checks the selected file size again before saving', async () => {
+    vi.mocked(extractFromResume).mockReset().mockResolvedValue({});
+    const { onSave } = renderSection();
+    const file = pdfFile();
+    let size = 1024;
+    Object.defineProperty(file, 'size', { get: () => size });
+
+    await screen.findByText(/Drop your CV here/);
+    await selectFile(file);
+    fireEvent.click(screen.getByText('Analyze CV'));
+    await screen.findByText('Review Suggestions');
+
+    size = 5 * 1024 * 1024;
+    fireEvent.click(screen.getByText('Accept All'));
+
+    expect(await screen.findByText('File exceeds 4 MB limit (5.0 MB)')).toBeTruthy();
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText('Review Suggestions')).toBeTruthy();
+  });
 
   it('shows a toast and stays on the review screen when onSave rejects', async () => {
     vi.mocked(extractFromResume).mockReset().mockResolvedValue({});
