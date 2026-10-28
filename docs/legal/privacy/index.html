@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Buddy Privacy Policy</title>
+  <link rel="icon" type="image/svg+xml" href="../../assets/icons/icon.svg">
+  <link rel="stylesheet" href="../../project-site/assets/style.css">
+</head>
+<body>
+<header class="site-header">
+  <a class="header-logo" href="../../">Job Buddy</a>
+</header>
+<main class="page-wrap">
+<section class="section">
+  <h1>Privacy Policy</h1>
+  <p class="section-subtitle">Last updated: <time datetime="2026-10-28">28 October 2026</time></p>
+
+  <h2>Who provides Job Buddy</h2>
+  <p>Job Buddy is an open-source browser extension developed by Myo Win Thein. It helps you fill job application forms using a profile you control. It has no Job Buddy account system, application server, or developer-operated profile database. This notice covers the extension and the project's website.</p>
+  <p>For privacy questions or requests, email <a href="mailto:mwt.creative@gmail.com">mwt.creative@gmail.com</a>. Please do not send API keys, access tokens, or a full profile or résumé when a description of the issue will do.</p>
+
+  <h2>Information stored in your browser</h2>
+  <ul>
+    <li><strong>Your profile:</strong> contact details, date of birth, address, work and education history, languages, salary information, work authorization, professional links, summaries, availability, and documents you choose to save. Calculated information includes age and work experience.</li>
+    <li><strong>Optional self-identification:</strong> gender, ethnicity, veteran status, and disability status. These fields can be left blank or removed. If present, they are part of the profile used by the optional features below.</li>
+    <li><strong>Form-matching information:</strong> site domains, form-field identifiers or labels, matching profile paths, and confirmation counts used to learn field mappings. This is not a recording of your entire browsing history.</li>
+    <li><strong>Backup and settings data:</strong> a local profile identifier, imported application-history records, theme preference, and, if configured, your Gemini API key and model, Google Drive access token, and sync status.</li>
+  </ul>
+  <p>Persistent extension data is stored in the current browser profile. Temporary state supports the interface and the current autofill session. The extension does not use Chrome account sync to copy your profile between devices.</p>
+
+  <h2>Reading and filling application pages</h2>
+  <p>When you start autofill, Job Buddy examines form controls and surrounding information, including labels, placeholders, available choices, and nearby text. It may inspect embedded frames and accessible shadow-root controls. This information helps match the page's questions to your profile.</p>
+  <p>Filling places your information, including a selected document where supported, into the current website. That website's scripts can read or transmit filled values before you submit the application. The employer or application platform handles that information under its own privacy practices. Review the website and the filled information before proceeding.</p>
+
+  <h2>Optional Gemini features</h2>
+  <p>Rule-based autofill works without a Gemini key. Saving a key and model enables AI assistance for fields the rule pipeline cannot confidently resolve. Job Buddy also contacts Google to check a key and find a working model.</p>
+  <ul>
+    <li><strong>AI autofill:</strong> the request includes the full saved profile and relevant form labels, nearby text, and available choices. It is not limited to a single matched profile field. Saved document content and optional self-identification information can therefore be included.</li>
+    <li><strong>Résumé import:</strong> the selected PDF or DOCX, the current profile for comparison, and any hyperlinks extracted from the PDF are sent to Google for extraction. You review proposed profile changes before saving them.</li>
+  </ul>
+  <p>Requests go directly from the extension to Google's Gemini API using your key. Google's treatment of prompts and responses depends on its current terms, account configuration, and region. Unpaid services can use submissions for product or model improvement and human review; Google's terms prohibit submitting personal, sensitive, or confidential information to those unpaid services. Paid-service terms provide different protections, but abuse monitoring and retention can still apply.</p>
+  <p>Use an API configuration whose terms permit the information you send. Google also imposes age, region, and permitted-use requirements. Job Buddy does not verify your billing status or eligibility. Read the <a href="https://ai.google.dev/gemini-api/terms">Gemini API terms</a> and <a href="https://ai.google.dev/gemini-api/docs/usage-policies">abuse-monitoring policy</a> before enabling these features. Remove the key in Settings to stop future AI requests; this does not delete requests Google has already received.</p>
+
+  <h2>Optional Google Drive backup</h2>
+  <p>Connecting Drive opens Google's authorization flow. Job Buddy receives an access token, not your Google password, and requests the app-data-folder scope rather than access to your ordinary Drive files.</p>
+  <p>The backup contains your profile, including saved documents and optional self-identification fields, learned mappings, and a modification timestamp. It does not include application history, Gemini settings, or the Drive token and sync state. After connection, profile and mapping changes can sync automatically, and pending uploads can be retried on browser startup.</p>
+  <p>Backups are stored in the app-specific data folder of the Google account you connect and are handled by Google under its privacy practices. Disconnecting can keep or request deletion of the backup. Deletion and token revocation depend on successful network requests and can fail; if needed, manage Job Buddy's stored app data and access through your Google account. See <a href="https://developers.google.com/workspace/drive/api/guides/appdata">Google's app-data-folder documentation</a>.</p>
+
+  <h2>Purposes and limited use</h2>
+  <p>Job Buddy uses profile and form information to fill forms, learn mappings, calculate profile values, import information you review, and provide the optional AI and backup features described here. The extension contains no advertising, data-sale, analytics, or telemetry feature, and it does not send your profile to the developer during ordinary use.</p>
+  <p>Job Buddy's use of information received from Google APIs will adhere to the <a href="https://developer.chrome.com/docs/webstore/program-policies/limited-use">Chrome Web Store User Data Policy, including its Limited Use requirements</a>. User information is for the disclosed application features, not advertising, resale, or unrelated profiling. This does not override Google's separate service terms or make an otherwise prohibited AI submission permissible.</p>
+
+  <h2>Storage, security, and deletion</h2>
+  <p>Local profile data and settings have no scheduled expiration in the extension. You can edit your profile, remove mappings or documents, and remove the Gemini key in Options. Reset All Data removes the local profile, mappings, imported history, and AI settings and returns the theme to its default. Its device-only option can leave a Drive backup in place; the broader option also requests removal of that backup.</p>
+  <p>Job Buddy does not add its own encryption to local profile data, saved files, keys, or tokens. Files stored as base64 and JSON export files are not encrypted by Job Buddy. Protect your device, browser profile, exported files, and connected Google account. Google API requests use HTTPS.</p>
+  <p>A local reset cannot erase information already received by an employer, Google, or someone you shared an export with. Google's API retention, security logging, and any account-level logging or data-sharing settings are governed by its policies. For example, Google's current Gemini abuse-monitoring policy describes a 55-day retention period for prompts, context, and outputs; that is not a promise that every category of Google-held information is erased after 55 days.</p>
+  <p>Export Profile downloads your profile, learned mappings, application history, and backup metadata to a JSON file. Gemini credentials and settings and Drive credentials and sync state are excluded. You control where you store or share that file. The developer cannot remotely inspect or erase data held only in your browser or Google account.</p>
+
+  <h2>Project website and external services</h2>
+  <p>The website stores theme and, on the project overview, display preferences in browser local storage until you clear site data. The demo form has no application-submission backend. These website preferences are separate from the extension's profile data.</p>
+  <p>When the site is served through GitHub Pages, GitHub receives hosting requests and logs visitor IP addresses for security, as described in <a href="https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#data-collection">GitHub's Pages documentation</a>. The landing and demo pages request Google Fonts; the landing page also requests the Tailwind CDN script. Those providers receive the network information needed for the requests, such as IP address and browser headers, and may receive referrer information. Their processing and retention are outside the extension's local reset controls.</p>
+  <p>Following links to Google, GitHub, the Chrome Web Store, or Ko-fi takes you to services governed by their own policies. Information sent to a provider can be processed outside your country. This notice does not promise a particular processing region or transfer safeguard for your account.</p>
+
+  <h2>Contact and changes</h2>
+  <p>You can use the controls above to access, correct, export, or remove information you hold in the extension. For other privacy questions or requests that apply to you, contact <a href="mailto:mwt.creative@gmail.com">mwt.creative@gmail.com</a>. If you email, the developer receives your address and message, and the email provider processes the correspondence. These messages are separate from extension storage and are not erased by resetting the extension. Please keep personal details out of public GitHub issues.</p>
+  <p>The date at the top identifies this version of the notice. Check it when reviewing changes to Job Buddy's data practices.</p>
+  <p><a href="../disclaimer/">Autofill and AI disclaimer</a> · <a href="../../">Back to Job Buddy</a></p>
+</section>
+</main>
+</body>
+</html>
