@@ -138,3 +138,18 @@ describe('calculateExperience', () => {
     expect(result.totalMonths).toBe(0);
   });
 });
+
+
+describe('calculateExperience — order independence', () => {
+  it.each([[0, 1, 2], [2, 1, 0], [1, 2, 0]])('merges overlapping intervals in order %j without mutating them', (...order) => {
+    const roles = [
+      { company: 'A', title: 'Dev', startDate: '2020-01', endDate: '2020-12', isCurrent: false },
+      { company: 'B', title: 'Dev', startDate: '2020-03', endDate: '2020-06', isCurrent: false },
+      { company: 'C', title: 'Dev', startDate: '2020-09', endDate: '2021-03', isCurrent: false },
+    ];
+    const input = order.map((i) => roles[i]);
+    const before = structuredClone(input);
+    expect(calculateExperience(input)).toEqual({ totalMonths: 15, years: 1, months: 3, label: '1 year 3 months' });
+    expect(input).toEqual(before);
+  });
+});
