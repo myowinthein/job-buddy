@@ -175,3 +175,24 @@ describe('getSectionCompletion', () => {
     expect(result.workHistory).toBe(false);
   });
 });
+
+
+describe('optional completion calculation', () => {
+  it('ignores placeholder roles and reports missing optional role fields once each', () => {
+    const profile = structuredClone(COMPLETE);
+    profile.workHistory = [
+      { company: '', title: '', startDate: '', isCurrent: false },
+      { company: 'A', title: 'Dev', startDate: '2020-01', isCurrent: true, location: { countryCode: 'TH' } },
+      { company: 'B', title: 'Dev', startDate: '2021-01', isCurrent: true },
+    ];
+    const result = calculateCompletion(profile);
+    const fields = result.optionalGroups.find((g) => g.sectionId === 'workHistory')!.fields;
+    expect(fields).toEqual(['Career Summary', 'Location', 'Work Arrangement', 'Description']);
+    expect(result.optionalFieldsRemaining).toBe(result.optionalGroups.reduce((n, g) => n + g.fields.length, 0));
+    profile.workHistory = [profile.workHistory[1]];
+    expect(calculateCompletion(profile).optionalGroups.find((g) => g.sectionId === 'workHistory')!.fields).not.toContain('Location');
+    expect(calculateCompletion(profile).isCoreComplete).toBe(true);
+    profile.workHistory = [{ company: '', title: '', startDate: '', isCurrent: false }];
+    expect(calculateCompletion(profile).optionalGroups.find((g) => g.sectionId === 'workHistory')!.fields).toEqual(['Career Summary']);
+  });
+});
