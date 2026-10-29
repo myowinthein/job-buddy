@@ -15,11 +15,6 @@ function matchesSearch(label: string, q: string): boolean {
   return label.toLowerCase().includes(q);
 }
 
-// A cluster (Phone, Date of Birth) is shown if any of its rows match.
-function clusterMatches(rows: OptionRow[], q: string): boolean {
-  return rows.some((r) => matchesSearch(r.label, q));
-}
-
 function findSectionIdFor(sections: Section[], fieldPath: string): string | null {
   for (const section of sections) {
     for (const item of section.items) {
@@ -113,6 +108,27 @@ export function SearchableProfileFieldSelect({ profile, value, onChange, placeho
     });
   };
 
+  // One projection owns search and expansion for both DOM and keyboard order.
+  type VisibleItem = SectionItem & { expanded?: boolean };
+  const visibleSections = sections.map((section) => {
+    const items: VisibleItem[] = [];
+    for (const item of section.items) {
+      if (item.kind === 'option') {
+        if (!q || matchesSearch(item.label, q)) items.push(item);
+      } else {
+        const rows = q ? item.rows.filter((row) => matchesSearch(row.label, q)) : item.rows;
+        if (q && rows.length === 0) continue;
+        items.push({ ...item, rows, expanded: item.kind === 'cluster' || !!q || !collapsedSubGroups.has(item.heading) });
+      }
+    }
+    return { ...section, items, expanded: !!q || expandedSections.has(section.id) };
+  }).filter((section) => !q || section.items.length > 0);
+  const visibleRowPaths = visibleSections.flatMap((section) =>
+    !section.expanded ? [] : section.items.flatMap((item) =>
+      item.kind === 'option' ? [item.fieldPath] : item.expanded ? item.rows.map((row) => row.fieldPath) : [],
+    ),
+  );
+
   const renderRow = (row: OptionRow, indent: boolean) => {
     const isSelected = row.fieldPath === value;
     const isHighlighted = row.fieldPath === highlightedPath;
@@ -139,14 +155,12 @@ export function SearchableProfileFieldSelect({ profile, value, onChange, placeho
     );
   };
 
-  const renderItem = (item: SectionItem) => {
+  const renderItem = (item: VisibleItem) => {
     if (item.kind === 'option') {
-      if (q && !matchesSearch(item.label, q)) return null;
       return renderRow(item, false);
     }
     if (item.kind === 'cluster') {
-      if (q && !clusterMatches(item.rows, q)) return null;
-      const rows = q ? item.rows.filter((r) => matchesSearch(r.label, q)) : item.rows;
+      const rows = item.rows;
       return (
         <div key={item.heading}>
           <p className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-700">
@@ -157,10 +171,8 @@ export function SearchableProfileFieldSelect({ profile, value, onChange, placeho
       );
     }
     // subgroup
-    const hasMatch = !q || clusterMatches(item.rows, q);
-    if (!hasMatch) return null;
-    const expanded = q ? true : !collapsedSubGroups.has(item.heading);
-    const rows = q ? item.rows.filter((r) => matchesSearch(r.label, q)) : item.rows;
+    const expanded = item.expanded;
+    const rows = item.rows;
     return (
       <div key={item.heading}>
         <button
@@ -177,42 +189,6 @@ export function SearchableProfileFieldSelect({ profile, value, onChange, placeho
     );
   };
 
-  const visibleSections = sections.filter((section) => {
-    if (!q) return true;
-    return section.items.some((item) => {
-      if (item.kind === 'option') return matchesSearch(item.label, q);
-      return clusterMatches(item.rows, q);
-    });
-  });
-
-  // Flattened, in-DOM-order list of currently visible row field paths —
-  // mirrors renderItem's own visibility rules (search filter, section
-  // expand/collapse, subgroup expand/collapse) so arrow-key navigation moves
-  // through exactly what's on screen. Recomputed on every render, same as
-  // visibleSections above — cheap, and there's no stable memoized input to
-  // key off since visibleSections itself isn't memoized.
-  const visibleRowPaths: string[] = [];
-  for (const section of visibleSections) {
-    const isExpanded = q ? true : expandedSections.has(section.id);
-    if (!isExpanded) continue;
-    for (const item of section.items) {
-      if (item.kind === 'option') {
-        if (q && !matchesSearch(item.label, q)) continue;
-        visibleRowPaths.push(item.fieldPath);
-      } else if (item.kind === 'cluster') {
-        if (q && !clusterMatches(item.rows, q)) continue;
-        const rows = q ? item.rows.filter((r) => matchesSearch(r.label, q)) : item.rows;
-        for (const r of rows) visibleRowPaths.push(r.fieldPath);
-      } else {
-        const hasMatch = !q || clusterMatches(item.rows, q);
-        if (!hasMatch) continue;
-        const expanded = q ? true : !collapsedSubGroups.has(item.heading);
-        if (!expanded) continue;
-        const rows = q ? item.rows.filter((r) => matchesSearch(r.label, q)) : item.rows;
-        for (const r of rows) visibleRowPaths.push(r.fieldPath);
-      }
-    }
-  }
   // Clamp for display/selection purposes only — the underlying hlIdx state
   // corrects itself on the next arrow-key press regardless (Math.min/max
   // against the current list length), so no effect is needed to write it back.
@@ -288,7 +264,7 @@ export function SearchableProfileFieldSelect({ profile, value, onChange, placeho
               </p>
             ) : (
               visibleSections.map((section) => {
-                const isExpanded = q ? true : expandedSections.has(section.id);
+                const isExpanded = section.expanded;
                 return (
                   <div key={section.id}>
                     <button
