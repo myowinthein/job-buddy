@@ -272,3 +272,25 @@ describe('WorkHistorySection — Notice Period save round-trip', () => {
     }));
   });
 });
+
+
+describe('WorkHistorySection — row identity', () => {
+  it('deleting a populated row preserves the blank successor and its partial date input', () => {
+    renderSection({ workHistory: [{ company: 'Old', title: 'Role', startDate: '2020-03', endDate: '2021-05', isCurrent: false }] });
+    fireEvent.click(screen.getByText('Old: Role'));
+    fireEvent.click(screen.getByText('+ Add Entry'));
+    const months = screen.getAllByLabelText('Month') as HTMLSelectElement[];
+    const years = screen.getAllByLabelText('Year') as HTMLInputElement[];
+    fireEvent.change(months[2], { target: { value: '06' } });
+    fireEvent.change(years[2], { target: { value: '20' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Remove entry' })[0]);
+    fireEvent.click(screen.getByText('Delete'));
+    expect((screen.getAllByLabelText('Month')[0] as HTMLSelectElement).value).toBe('06');
+    expect((screen.getAllByLabelText('Year')[0] as HTMLInputElement).value).toBe('20');
+    expect((screen.getAllByLabelText('Month')[1] as HTMLSelectElement).value).toBe('');
+    expect((screen.getAllByLabelText('Year')[1] as HTMLInputElement).value).toBe('');
+    fireEvent.click(screen.getByText('+ Add Entry'));
+    expect((screen.getAllByLabelText('Month')[2] as HTMLSelectElement).value).toBe('');
+    expect((screen.getAllByLabelText('Year')[2] as HTMLInputElement).value).toBe('');
+  });
+});

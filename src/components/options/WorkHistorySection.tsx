@@ -39,6 +39,7 @@ function validateNoticePeriod(raw: string, unit: NoticePeriodUnit): string {
 // Flat UI state for each work entry — location is split into country/city,
 // arrangement is kept as a string to allow the empty placeholder state.
 type LocalRow = {
+  rowId: string;
   company: string;
   title: string;
   startDate: string;
@@ -51,6 +52,7 @@ type LocalRow = {
 };
 
 const emptyRow = (): LocalRow => ({
+  rowId: crypto.randomUUID(),
   company: '',
   title: '',
   startDate: '',
@@ -75,6 +77,7 @@ function initRow(raw: WorkHistoryEntry): LocalRow {
     locationCity = loc.city ?? '';
   }
   return {
+    rowId: crypto.randomUUID(),
     company: raw.company,
     title: raw.title,
     startDate: raw.startDate,
@@ -94,7 +97,7 @@ const cardSummary = (row: LocalRow, idx: number) =>
 
 export function WorkHistorySection({ profile, onSave }: Props) {
   // ── Work entries ────────────────────────────────────────────────────────────
-  const [entries, setEntries] = useState<LocalRow[]>(
+  const [entries, setEntries] = useState<LocalRow[]>(() =>
     profile.workHistory?.length ? profile.workHistory.map(initRow) : [emptyRow()],
   );
 
@@ -256,7 +259,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
         <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Work Experience</p>
         <AddEntryButton
           variant="pill"
-          onClick={() => { setEntries((rows) => [...rows, emptyRow()]); setNewEntryTick((t) => t + 1); }}
+          onClick={() => { const row = emptyRow(); setEntries((rows) => [...rows, row]); setNewEntryTick((t) => t + 1); }}
           label="+ Add Entry"
         />
       </div>
@@ -268,7 +271,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       <div ref={entriesContainerRef}>
       {entries.map((row, idx) => (
         <ExpandableCard
-          key={idx}
+          key={row.rowId}
           summary={cardSummary(row, idx)}
           onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
           defaultExpanded={!row.company}
