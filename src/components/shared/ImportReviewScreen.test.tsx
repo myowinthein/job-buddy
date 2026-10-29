@@ -173,3 +173,21 @@ describe('ImportReviewScreen — backdrop and saving state', () => {
     expect(onBack).not.toHaveBeenCalled();
   });
 });
+
+
+describe('ImportReviewScreen — save isolation', () => {
+  it('blocks header close and freezes choices while saving, then allows dismissal afterward', () => {
+    const onBack = vi.fn();
+    const onSave = vi.fn();
+    const changes = [newField('a', 'A'), conflictField('b')];
+    const view = render(<ImportReviewScreen changes={changes} onSave={onSave} onBack={onBack} isSaving />);
+    fireEvent.click(screen.getByText('×'));
+    expect(onBack).not.toHaveBeenCalled();
+    expect((screen.getByRole('checkbox') as HTMLInputElement).disabled).toBe(true);
+    for (const radio of screen.getAllByRole('radio')) expect((radio as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByText('Accept All New Fields') as HTMLButtonElement).disabled).toBe(true);
+    view.rerender(<ImportReviewScreen changes={changes} onSave={onSave} onBack={onBack} isSaving={false} />);
+    fireEvent.click(screen.getByText('×'));
+    expect(onBack).toHaveBeenCalledTimes(1);
+  });
+});

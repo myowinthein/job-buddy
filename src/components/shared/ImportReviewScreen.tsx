@@ -95,7 +95,7 @@ export default function ImportReviewScreen({
             {newFields.length > 0 && (
               <button
                 type="button"
-                onClick={acceptAllNew}
+                onClick={acceptAllNew} disabled={isSaving}
                 className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
               >
                 Accept All New Fields
@@ -103,7 +103,7 @@ export default function ImportReviewScreen({
             )}
             <button
               type="button"
-              onClick={onBack}
+              onClick={isSaving ? undefined : onBack} disabled={isSaving}
               className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
             >
               ×
@@ -127,6 +127,7 @@ export default function ImportReviewScreen({
                       <FieldRow
                         key={change.id}
                         change={change}
+                        isSaving={isSaving}
                         onToggle={toggleAccepted}
                         onConflictChoice={setConflictChoice}
                       />
@@ -148,7 +149,7 @@ export default function ImportReviewScreen({
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
           <button
             type="button"
-            onClick={onBack}
+            onClick={isSaving ? undefined : onBack}
             disabled={isSaving}
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 active:scale-95 transition-colors"
           >
@@ -187,10 +188,12 @@ function MultilineValue({ value, className }: { value: string; className?: strin
 
 function FieldRow({
   change,
+  isSaving,
   onToggle,
   onConflictChoice,
 }: {
   change:           ReviewableChange;
+  isSaving:         boolean;
   onToggle:         (id: string) => void;
   onConflictChoice: (id: string, useSuggested: boolean) => void;
 }) {
@@ -198,7 +201,7 @@ function FieldRow({
     return (
       <label className="flex items-start gap-3 p-2.5 bg-green-50 dark:bg-green-900/15 border border-green-200 dark:border-green-800 rounded-lg cursor-pointer">
         <input
-          type="checkbox"
+          type="checkbox" disabled={isSaving}
           checked={change.accepted}
           onChange={() => onToggle(change.id)}
           className="mt-0.5 shrink-0 accent-green-600"
@@ -217,7 +220,7 @@ function FieldRow({
       <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{change.label}</p>
       <label className="flex items-start gap-2 mb-2 cursor-pointer">
         <input
-          type="radio"
+          type="radio" disabled={isSaving}
           name={change.id}
           checked={!change.accepted}
           onChange={() => onConflictChoice(change.id, false)}
@@ -230,7 +233,7 @@ function FieldRow({
       </label>
       <label className="flex items-start gap-2 cursor-pointer">
         <input
-          type="radio"
+          type="radio" disabled={isSaving}
           name={change.id}
           checked={change.accepted}
           onChange={() => onConflictChoice(change.id, true)}
