@@ -289,7 +289,8 @@ export function buildPickerTree(profile: Profile): Section[] {
     const items: SectionItem[] = [];
     if (profile.links?.linkedin)  items.push(row('LinkedIn',  'links.linkedin',  profile.links.linkedin));
     if (profile.links?.portfolio) items.push(row('Portfolio', 'links.portfolio', profile.links.portfolio));
-    (profile.links?.custom ?? []).filter(l => l.label && l.url).forEach((link, idx) => {
+    (profile.links?.custom ?? []).forEach((link, idx) => {
+      if (!link.label || !link.url) return;
       items.push(row(link.label, `links.custom.${idx}.url`, link.url));
     });
     if (items.length) sections.push({ id: 'links', label: 'Links', items });

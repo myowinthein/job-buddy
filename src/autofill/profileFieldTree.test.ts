@@ -1,3 +1,4 @@
+import { resolveProfileValue } from './resolver';
 import { describe, it, expect } from 'vitest';
 import type { Profile } from '../types/profile';
 import { buildPickerTree } from './profileFieldTree';
@@ -357,5 +358,18 @@ describe('buildPickerTree', () => {
       'personal', 'address', 'salary', 'work-authorization',
       'work-history', 'education', 'languages', 'links', 'documents',
     ]);
+  });
+});
+
+
+describe('custom link original indices', () => {
+  it('retains array indices when incomplete rows precede a valid link', () => {
+    const profile = emptyProfile();
+    profile.links.custom = [{ label: '', url: 'https://wrong.test' }, { label: 'GitHub', url: 'https://github.com/example' }];
+    const section = getSection(profile, 'links');
+    const row = section.items.find((item) => item.kind === 'option' && item.label === 'GitHub');
+    expect(row).toMatchObject({ fieldPath: 'links.custom.1.url', value: 'https://github.com/example' });
+    if (!row || row.kind !== 'option') throw new Error('Expected custom link option');
+    expect(resolveProfileValue(profile, row.fieldPath)).toBe('https://github.com/example');
   });
 });
