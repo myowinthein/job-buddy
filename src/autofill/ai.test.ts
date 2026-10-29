@@ -261,14 +261,14 @@ describe('runAIAutofill — high-confidence text fills', () => {
     const cand = textCandidate('lowConfidence', 'First Name');
     const result = { ...freshResult(), lowConfidence: 1 };
     const sessionElements: HTMLElement[] = [];
-    const aiGreenFilled = new Set<HTMLElement>();
+    const onTextFilled = vi.fn();
 
     mockResponses([
       { fieldId: 'field_001', profilePath: 'personal.firstName', confidence: 'high' },
     ]);
 
     const ran = await runAIAutofill(
-      [cand], PROFILE, result, sessionElements, 'example.com', undefined, aiGreenFilled,
+      [cand], PROFILE, result, sessionElements, 'example.com', undefined, { onTextFilled },
     );
 
     expect(ran).toBe(true);
@@ -280,41 +280,41 @@ describe('runAIAutofill — high-confidence text fills', () => {
     // teach a learned mapping — only a human confirming a value (the
     // rule-pipeline's edit-watcher path) is trusted for that.
     expect(saveLearnedMapping).not.toHaveBeenCalled();
-    expect(aiGreenFilled.has(cand.element)).toBe(true);
+    expect(onTextFilled).toHaveBeenCalledWith(cand.element, 'green');
   });
 
   it('decrements noData (not lowConfidence) for a noData-origin candidate', async () => {
     const cand = textCandidate('noData', 'Email');
     const result = { ...freshResult(), noData: 1 };
-    const aiGreenFilled = new Set<HTMLElement>();
+    const onTextFilled = vi.fn();
 
     mockResponses([
       { fieldId: 'field_001', profilePath: 'personal.email', confidence: 'high' },
     ]);
 
-    await runAIAutofill([cand], PROFILE, result, [], 'example.com', undefined, aiGreenFilled);
+    await runAIAutofill([cand], PROFILE, result, [], 'example.com', undefined, { onTextFilled });
 
     expect(result.noData).toBe(0);
     expect(result.noReview).toBe(1);
-    expect(aiGreenFilled.has(cand.element)).toBe(true);
+    expect(onTextFilled).toHaveBeenCalledWith(cand.element, 'green');
   });
 
   it('decrements needReview (not lowConfidence or noData) for a needReview-origin candidate, overwriting its rule-pipeline value', async () => {
     const cand = textCandidate('needReview', 'LinkedIn URL');
     (cand.element as HTMLInputElement).value = 'https://old-value.example'; // already filled by the rule pipeline
     const result = { ...freshResult(), needReview: 1 };
-    const aiGreenFilled = new Set<HTMLElement>();
+    const onTextFilled = vi.fn();
 
     mockResponses([
       { fieldId: 'field_001', profilePath: 'links.linkedin', confidence: 'high' },
     ]);
 
-    await runAIAutofill([cand], PROFILE, result, [], 'example.com', undefined, aiGreenFilled);
+    await runAIAutofill([cand], PROFILE, result, [], 'example.com', undefined, { onTextFilled });
 
     expect(fillField).toHaveBeenCalledWith(cand.element, 'https://linkedin.com/in/jane', expect.any(Function));
     expect(result.needReview).toBe(0);
     expect(result.noReview).toBe(1);
-    expect(aiGreenFilled.has(cand.element)).toBe(true);
+    expect(onTextFilled).toHaveBeenCalledWith(cand.element, 'green');
   });
 
   it('does not underflow counters below zero', async () => {
@@ -412,36 +412,36 @@ describe('runAIAutofill — low-confidence text fills', () => {
   it('fills and increments needReview, leaving edit-watching to the caller', async () => {
     const cand = textCandidate('lowConfidence', 'First Name');
     const result = { ...freshResult(), lowConfidence: 1 };
-    const aiGreenFilled = new Set<HTMLElement>();
+    const onTextFilled = vi.fn();
 
     mockResponses([
       { fieldId: 'field_001', profilePath: 'personal.firstName', confidence: 'low' },
     ]);
 
-    await runAIAutofill([cand], PROFILE, result, [], 'example.com', undefined, aiGreenFilled);
+    await runAIAutofill([cand], PROFILE, result, [], 'example.com', undefined, { onTextFilled });
 
     expect(fillField).toHaveBeenCalledWith(cand.element, 'Jane', expect.any(Function));
     expect(result.lowConfidence).toBe(0);
     expect(result.needReview).toBe(1);
     expect(result.noReview).toBe(0);
     // Low confidence is NOT a green fill.
-    expect(aiGreenFilled.has(cand.element)).toBe(false);
+    expect(onTextFilled).toHaveBeenCalledWith(cand.element, 'yellow');
   });
 
   it('leaves a needReview-origin candidate at needReview (net no count change) on a low-confidence AI response', async () => {
     const cand = textCandidate('needReview', 'LinkedIn URL');
     const result = { ...freshResult(), needReview: 1 };
-    const aiGreenFilled = new Set<HTMLElement>();
+    const onTextFilled = vi.fn();
 
     mockResponses([
       { fieldId: 'field_001', profilePath: 'links.linkedin', confidence: 'low' },
     ]);
 
-    await runAIAutofill([cand], PROFILE, result, [], 'example.com', undefined, aiGreenFilled);
+    await runAIAutofill([cand], PROFILE, result, [], 'example.com', undefined, { onTextFilled });
 
     expect(result.needReview).toBe(1);
     expect(result.noReview).toBe(0);
-    expect(aiGreenFilled.has(cand.element)).toBe(false);
+    expect(onTextFilled).toHaveBeenCalledWith(cand.element, 'yellow');
   });
 
   it('does not fill or count when the resolved profile value is empty', async () => {
@@ -658,7 +658,7 @@ describe('AI candidate ownership and debug identity', () => {
     vi.mocked(scanRadioGroups).mockReturnValue([{ name: 'authorization', groupLabel: 'Work authorization', options: [{ element: yes, label: 'Yes', value: 'yes' }, { element: no, label: 'No', value: 'no' }] }]);
     let finish!: (responses: AIFieldResponse[]) => void;
     vi.mocked(resolveFieldsWithAI).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
-    const work = runAIAutofill([], PROFILE, freshResult(), [], 'example.test', undefined, undefined, { mode: 'merge' });
+    const work = runAIAutofill([], PROFILE, freshResult(), [], 'example.test', undefined, { mode: 'merge' });
     await vi.waitFor(() => expect(resolveFieldsWithAI).toHaveBeenCalled());
     no.checked = true;
     finish([{ fieldId: 'field_001', confidence: 'high', selectedOption: 'Yes' }]);
