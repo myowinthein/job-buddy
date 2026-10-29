@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 import { DocumentsSection } from './DocumentsSection';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import type { Profile } from '@/src/types/profile';
@@ -224,5 +224,59 @@ describe('DocumentsSection — cover letter preservation', () => {
     expect(onSave).toHaveBeenCalledWith({
       documents: expect.objectContaining({ coverLetter: { url: 'https://example.com/cover.pdf' } }),
     });
+  });
+});
+
+
+describe('DocumentsSection — file read lifecycle', () => {
+  function pendingReads() {
+    const readers: FileReader[] = [];
+    const read = vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementation(function (this: FileReader) { readers.push(this); });
+    const finish = async (index: number, result: string) => {
+      Object.defineProperty(readers[index], 'result', { value: result });
+      await act(async () => { readers[index].dispatchEvent(new Event('load')); });
+    };
+    return { readers, read, finish };
+  }
+
+  it('saves the latest selection when an older read finishes last', async () => {
+    const { read, finish } = pendingReads();
+    try {
+      const { onSave } = renderSection({ documents: { cv: {} } });
+      fireEvent.click(screen.getByText('Upload'));
+      const input = document.querySelector('input[type="file"]')!;
+      fireEvent.change(input, { target: { files: [new File(['a'], 'a.pdf')] } });
+      fireEvent.change(input, { target: { files: [new File(['b'], 'b.pdf')] } });
+      await finish(1, 'data:application/pdf;base64,Yg==');
+      await screen.findByText('b.pdf');
+      await finish(0, 'data:application/pdf;base64,YQ==');
+      await waitFor(() => expect(screen.queryByText('a.pdf')).toBeNull());
+      fireEvent.click(screen.getByText('Save Documents'));
+      expect(onSave.mock.calls[0][0].documents.cv.file.name).toBe('b.pdf');
+    } finally { read.mockRestore(); }
+  });
+
+  it('retains the existing attachment and reports a replacement read failure', async () => {
+    const { read, readers } = pendingReads();
+    try {
+      const original = { name: 'old.pdf', size: 10, base64: 'old-data' };
+      const { onSave } = renderSection({ documents: { cv: { file: original } } });
+      fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [new File(['x'], 'new.pdf')] } });
+      readers[0].dispatchEvent(new Event('error'));
+      await screen.findByText('Could not read file. Please try again.');
+      fireEvent.click(screen.getByText('Save Documents'));
+      expect(onSave.mock.calls[0][0].documents.cv.file).toEqual(original);
+    } finally { read.mockRestore(); }
+  });
+
+  it('does not resurrect a removed file when a pending replacement finishes', async () => {
+    const { read, finish } = pendingReads();
+    try {
+      renderSection({ documents: { cv: { file: { name: 'old.pdf', size: 10, base64: 'old' } } } });
+      fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [new File(['x'], 'new.pdf')] } });
+      fireEvent.click(screen.getByText('Remove file'));
+      await finish(0, 'data:application/pdf;base64,eA==');
+      await waitFor(() => expect(screen.queryByText('new.pdf')).toBeNull());
+    } finally { read.mockRestore(); }
   });
 });
