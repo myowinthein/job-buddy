@@ -414,15 +414,24 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       const localProfile = await getProfile();
       setDriveLocalProfile(localProfile);
       if (backup) {
+        const validation = validateImportedProfile(backup.profile);
+        if (Object.keys(validation.sanitized).length === 0) {
+          showToast('error', 'Drive backup contains invalid profile data.');
+          return;
+        }
+        const validatedBackup = { ...backup, profile: validation.sanitized as Profile };
+        if (validation.invalidFields.length > 0) {
+          showToast('warning', `${validation.invalidFields.length} invalid backup field(s) skipped.`);
+        }
         if (isProfileEmpty(localProfile)) {
           setDriveRestoreCase('empty');
-          setDriveRestoreData(backup);
+          setDriveRestoreData(validatedBackup);
         } else {
-          const diff = generateDiff(localProfile ?? {}, backup.profile);
+          const diff = generateDiff(localProfile ?? {}, validatedBackup.profile);
           setDriveConflictChanges(diff);
           setDriveConflictScreen('summary');
           setDriveRestoreCase('conflict');
-          setDriveRestoreData(backup);
+          setDriveRestoreData(validatedBackup);
         }
       } else if (localProfile) {
         // No Drive backup yet — push the local profile up as the initial snapshot.

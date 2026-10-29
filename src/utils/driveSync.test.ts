@@ -492,3 +492,24 @@ describe('syncProfileToDrive — local persistence failure', () => {
     } finally { write.mockRestore(); runtime.lastError = null; }
   });
 });
+
+
+describe('Drive backup serialized contract', () => {
+  it.each([false, true])('uploads only permitted data (existing file: %s)', async (existing) => {
+    const profile = makeProfile();
+    const mappings = { 'example.test': { email: { path: 'personal.email', count: 2 } } };
+    Object.assign(store, { driveToken: 'token-sentinel', geminiApiKey: 'key-sentinel', geminiModel: 'model-sentinel', applicationHistory: ['history-sentinel'], learnedMappings: mappings });
+    if (existing) store.driveBackupState = { fileId: 'f1', lastSynced: null, pendingSync: false, error: null };
+    mockFetchSequence(existing ? [{ ok: true }] : [{ ok: true, body: { files: [] } }, { ok: true, body: { id: 'created' } }]);
+    const result = await syncProfileToDrive(profile);
+    expect(result.success).toBe(true);
+    const request = fetchMock.mock.calls.find(([, options]) => options?.method === (existing ? 'PATCH' : 'POST'))!;
+    const body = request[1].body as string;
+    const payload = existing ? JSON.parse(body) : JSON.parse(body.split('Content-Type: application/json\r\n\r\n')[1].split('\r\n--')[0]);
+    expect(Object.keys(payload).sort()).toEqual(['lastModified', 'learnedMappings', 'profile']);
+    expect(payload.profile).toEqual(profile);
+    expect(payload.learnedMappings).toEqual(mappings);
+    expect(payload.lastModified).toBe((store.driveBackupState as { lastSynced: string }).lastSynced);
+    for (const excluded of ['token-sentinel', 'key-sentinel', 'model-sentinel', 'history-sentinel']) expect(body).not.toContain(excluded);
+  });
+});

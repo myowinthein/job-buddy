@@ -295,13 +295,14 @@ describe('validateImportedProfile', () => {
     expect(result.valid).toBe(true);
   });
 
-  it('rejects a cv.file whose base64 payload exceeds the 4 MB cap', () => {
+  it.each(['cv', 'coverLetter'] as const)('rejects oversized %s base64 independently of raw size', (field) => {
     // Well past the ~5.6M-char base64 bound for a 4 MB raw file.
     const result = validateImportedProfile({
-      documents: { cv: { file: { name: 'cv.pdf', size: 10 * 1024 * 1024, base64: 'a'.repeat(7 * 1024 * 1024) } } },
+      documents: { [field]: { file: { name: 'cv.pdf', size: 1024, base64: 'a'.repeat(7 * 1024 * 1024) } } },
     });
     expect(result.valid).toBe(false);
-    expect(result.invalidFields.some((f) => f.path === 'documents.cv.file')).toBe(true);
+    expect(result.invalidFields).toContainEqual({ path: `documents.${field}.file`, reason: 'File exceeds 4 MB limit' });
+    expect(result.sanitized.documents?.[field]?.file).toBeUndefined();
   });
 
   it('passes through professional.summary and noticePeriod (object)', () => {
