@@ -223,3 +223,32 @@ describe('SearchableProfileFieldSelect — defaultCollapsed subgroups', () => {
     expect(screen.getByText('Old Co')).toBeTruthy();
   });
 });
+
+it('keyboard navigation skips collapsed entry rows and selects the first visible entry', () => {
+  const { onChange } = renderSelect();
+  fireEvent.click(screen.getByRole('button'));
+  fireEvent.click(screen.getByText('Work History'));
+  expect(screen.queryByText('Analyst')).toBeNull();
+  const search = screen.getByRole('combobox');
+  expect(search.getAttribute('aria-activedescendant')).toBe('spfs-option-workHistory.1.company');
+  fireEvent.keyDown(search, { key: 'Enter' });
+  expect(onChange).toHaveBeenCalledWith('workHistory.1.company');
+});
+
+it('keyboard selection follows filtered clusters and search-expanded entry rows', () => {
+  const { onChange } = renderSelect();
+  fireEvent.click(screen.getByRole('button'));
+  let search = screen.getByRole('combobox');
+  fireEvent.change(search, { target: { value: 'Country Code' } });
+  fireEvent.keyDown(search, { key: 'Enter' });
+  expect(onChange).toHaveBeenLastCalledWith('personal.phone.callingCode');
+  fireEvent.click(screen.getByRole('button'));
+  search = screen.getByRole('combobox');
+  fireEvent.change(search, { target: { value: 'Job' } });
+  expect(screen.getAllByRole('option').map((row) => row.id)).toEqual([
+    'spfs-option-workHistory.0.title', 'spfs-option-workHistory.1.title',
+  ]);
+  fireEvent.keyDown(search, { key: 'ArrowDown' });
+  fireEvent.keyDown(search, { key: 'Enter' });
+  expect(onChange).toHaveBeenLastCalledWith('workHistory.1.title');
+});
