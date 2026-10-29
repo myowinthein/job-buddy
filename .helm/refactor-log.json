@@ -30,8 +30,40 @@
         ],
         "invariant": "Preserve counters, callback timing, debug records, ownership, AI confidence never learning mappings, yellow edit promotion and green watcher exclusion; all AI fills stay excluded from silent refill."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "f1c2690010051bd4c2f62694b4a2089e9c8b1a80",
+        "date": "2026-10-29",
+        "method": "runtime",
+        "evidence": [
+          "The callback Map is the sole AI text-outcome report; equivalent green/yellow assertions and lifecycle cases pass."
+        ],
+        "checks": [
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm exec vitest run src/autofill/ai.test.ts src/autofill/index.test.ts",
+            "scope": "AI outcomes and session lifecycle",
+            "outcome": "101 tests passed"
+          },
+          {
+            "command": "pnpm test:browser",
+            "scope": "production extension with synthetic Chromium forms",
+            "outcome": "build and 3 scenarios passed"
+          },
+          {
+            "command": "pnpm exec eslint src/autofill/ai.ts src/autofill/index.ts src/autofill/ai.test.ts src/autofill/index.test.ts",
+            "scope": "R1 files",
+            "outcome": "passed"
+          }
+        ]
+      }
     },
     {
       "id": "r-4ce10c97-f746-498f-82b3-b5cd2e1cbf7e",
