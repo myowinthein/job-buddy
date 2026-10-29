@@ -8,6 +8,7 @@ vi.mock('../utils/storage', () => ({
   saveLearnedMappings: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock('./scanner', () => ({
+  scanRadioGroups: vi.fn().mockReturnValue([]),
   scanFields: vi.fn().mockReturnValue([]),
   scanAriaFields: vi.fn().mockReturnValue([]),
   scanCheckboxGroups: vi.fn().mockReturnValue([]),
@@ -18,7 +19,7 @@ vi.mock('./signals', () => ({
 }));
 vi.mock('./mapper', () => ({ mapField: vi.fn() }));
 vi.mock('./filler', () => ({
-  fillField: vi.fn().mockResolvedValue(undefined),
+  fillField: vi.fn().mockResolvedValue(true),
   fillFileField: vi.fn().mockResolvedValue(true),
   fillCheckboxInput: vi.fn(),
   clearFieldValue: vi.fn(),
@@ -146,7 +147,7 @@ describe('scanAutofill', () => {
 
     await scanAutofill();
     await executeAutofill('overwrite');
-    expect(fillField).toHaveBeenCalledWith(phoneEl, '+66 812345678');
+    expect(fillField).toHaveBeenCalledWith(phoneEl, '+66 812345678', expect.any(Function));
   });
 
   it('resolves a label-matched phone field to the local number when a calling-code sibling is present', async () => {
@@ -160,7 +161,7 @@ describe('scanAutofill', () => {
 
     await scanAutofill();
     await executeAutofill('overwrite');
-    expect(fillField).toHaveBeenCalledWith(phoneEl, '812345678');
+    expect(fillField).toHaveBeenCalledWith(phoneEl, '812345678', expect.any(Function));
   });
 
   it('does not override an autocomplete-matched phone field even with a calling-code sibling present', async () => {
@@ -173,7 +174,7 @@ describe('scanAutofill', () => {
 
     await scanAutofill();
     await executeAutofill('overwrite');
-    expect(fillField).toHaveBeenCalledWith(phoneEl, '+66 812345678');
+    expect(fillField).toHaveBeenCalledWith(phoneEl, '+66 812345678', expect.any(Function));
   });
 });
 
@@ -219,7 +220,7 @@ describe('executeAutofill', () => {
       expect.arrayContaining([
         expect.objectContaining({ element: el, originalState: 'needReview', originalFieldPath: 'personal.firstName' }),
       ]),
-      expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(),
+      expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(),
     );
   });
 
@@ -391,7 +392,7 @@ describe('edit-watcher promotion (blur)', () => {
     vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.3, value: null, fieldPath: 'a.b', matchLayer: 'fuzzy' });
 
     await scanAutofill();
-    await executeAutofill('merge');
+    await executeAutofill('overwrite');
     vi.mocked(applyHighlight).mockClear();
 
     el.dispatchEvent(new Event('blur'));
@@ -651,7 +652,7 @@ describe('all three tiers reach the AI layer', () => {
         expect.objectContaining({ element: elRed, originalState: 'lowConfidence' }),
         expect.objectContaining({ element: elGray, originalState: 'noData' }),
       ]),
-      expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(),
+      expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(),
     );
   });
 });
@@ -677,7 +678,7 @@ describe('silent re-fill on visibilitychange', () => {
     vi.mocked(fillField).mockClear();
 
     document.dispatchEvent(new Event('visibilitychange'));
-    await vi.waitFor(() => expect(fillField).toHaveBeenCalledWith(el, 'jane@example.com'));
+    await vi.waitFor(() => expect(fillField).toHaveBeenCalledWith(el, 'jane@example.com', expect.any(Function)));
 
     expect(applyHighlight).toHaveBeenCalledWith(el, CONF_CONFIRMED);
     const live = getLastResult();
@@ -906,4 +907,113 @@ describe('executeAutofill — file input reconstruction failure', () => {
     expect(result.noData).toBe(0);
     expect(applyHighlight).not.toHaveBeenCalled();
   });
+});
+
+
+describe('session ownership and asynchronous lifecycle', () => {
+  beforeEach(() => {
+    vi.mocked(runAIAutofill).mockReset().mockResolvedValue(false);
+    vi.mocked(fillField).mockReset().mockResolvedValue(true);
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+  });
+
+  it('preserves prefilled red, gray and editable ARIA answers through merge and Undo', async () => {
+    const red = makeInput('Existing red'); const gray = makeInput('Existing gray');
+    const aria = document.createElement('div'); aria.setAttribute('role', 'textbox'); aria.textContent = 'Existing custom';
+    vi.mocked(scanFields).mockReturnValue([red, gray]); vi.mocked(scanAriaFields).mockReturnValue([aria]);
+    vi.mocked(mapField)
+      .mockReturnValueOnce({ confidence: 0.2, value: null, fieldPath: null, matchLayer: 'none' })
+      .mockReturnValueOnce({ confidence: 0.9, value: null, fieldPath: 'personal.email', matchLayer: 'dictionary_exact' })
+      .mockReturnValueOnce({ confidence: 0.9, value: 'Jane', fieldPath: 'personal.firstName', matchLayer: 'dictionary_exact' });
+    expect((await scanAutofill()).preFilledCount).toBe(3);
+    await executeAutofill('merge');
+    expect(fillField).not.toHaveBeenCalled();
+    undoAutofill();
+    expect(clearFieldValue).not.toHaveBeenCalled();
+    expect([red.value, gray.value, aria.textContent]).toEqual(['Existing red', 'Existing gray', 'Existing custom']);
+  });
+
+  it('does not treat highlighting an unmatched existing answer as ownership to clear it', async () => {
+    const input = makeInput('Keep me');
+    vi.mocked(scanFields).mockReturnValue([input]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.2, value: null, fieldPath: null, matchLayer: 'none' });
+    await scanAutofill(); await executeAutofill('overwrite'); undoAutofill();
+    expect(clearFieldValue).not.toHaveBeenCalledWith(input);
+    expect(input.value).toBe('Keep me');
+  });
+
+  it('consumes one scanned snapshot once without scanning again, even with concurrent fill requests', async () => {
+    const input = makeInput(); vi.mocked(scanFields).mockReturnValue([input]);
+    await scanAutofill();
+    vi.mocked(scanFields).mockReturnValue([input, makeInput()]);
+    const results = await Promise.all([executeAutofill('overwrite'), executeAutofill('overwrite')]);
+    expect(scanFields).toHaveBeenCalledTimes(1); expect(mapField).toHaveBeenCalledTimes(1);
+    expect(fillField).toHaveBeenCalledTimes(1);
+    expect(results.map((r) => r.totalScanned).sort()).toEqual([0, 1]);
+  });
+
+  it('refills a connected shadow field only once across overlapping visibility events', async () => {
+    const host = document.createElement('div'); const root = host.attachShadow({ mode: 'open' });
+    const input = makeInput(); root.appendChild(input); document.body.appendChild(host);
+    vi.mocked(scanFields).mockReturnValue([input]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.9, value: null, fieldPath: 'personal.email', matchLayer: 'dictionary_exact' });
+    await scanAutofill(); await executeAutofill('merge');
+    vi.mocked(resolveProfileValue).mockReturnValue('new@example.test');
+    let finish!: () => void;
+    vi.mocked(fillField).mockImplementationOnce(() => new Promise<boolean>((resolve) => { finish = () => resolve(true); }));
+    document.dispatchEvent(new Event('visibilitychange'));
+    document.dispatchEvent(new Event('visibilitychange'));
+    await vi.waitFor(() => expect(fillField).toHaveBeenCalledTimes(1));
+    finish(); await vi.waitFor(() => expect(getLastResult()?.noReview).toBe(1));
+    expect(getLastResult()?.noData).toBe(0); host.remove();
+  });
+
+  it('does not refill or restore counts when Undo happens during a profile read', async () => {
+    const input = makeInput(); document.body.appendChild(input);
+    vi.mocked(scanFields).mockReturnValue([input]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.9, value: null, fieldPath: 'personal.email', matchLayer: 'dictionary_exact' });
+    await scanAutofill(); await executeAutofill('merge');
+    let finish!: (p: Profile) => void;
+    vi.mocked(getProfile).mockImplementationOnce(() => new Promise<Profile>((resolve) => { finish = resolve; }));
+    vi.mocked(resolveProfileValue).mockReturnValue('new@example.test');
+    document.dispatchEvent(new Event('visibilitychange'));
+    undoAutofill(); finish(makeProfile());
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    expect(fillField).not.toHaveBeenCalled(); expect(getLastResult()).toBeNull(); input.remove();
+  });
+
+  it.each(['lowConfidence', 'noData'] as const)('tracks AI-yellow %s as yellow until the user edits it once', async (origin) => {
+    const input = makeInput(); document.body.appendChild(input);
+    vi.mocked(scanFields).mockReturnValue([input]);
+    vi.mocked(mapField).mockReturnValueOnce({ confidence: origin === 'noData' ? 0.9 : 0.2, value: null, fieldPath: 'personal.email', matchLayer: 'dictionary_exact' });
+    vi.mocked(runAIAutofill).mockImplementationOnce(async (_c, _p, result, owned, _d, _dbg, _green, options) => {
+      result[origin]--; result.needReview++;
+      input.value = 'AI answer'; owned.push(input); options?.onTextFilled?.(input, 'yellow');
+      return true;
+    });
+    await scanAutofill(); await executeAutofill('overwrite');
+    input.value = 'Human answer'; input.dispatchEvent(new Event('blur'));
+    expect(getLastResult()).toMatchObject({ noReview: 1, needReview: 0, noData: 0, lowConfidence: 0 });
+    input.dispatchEvent(new Event('blur'));
+    expect(getLastResult()?.noReview).toBe(1); input.remove();
+  });
+});
+
+it('does not double-count a manual resolution during an asynchronous refill', async () => {
+  vi.mocked(runAIAutofill).mockReset().mockResolvedValue(false);
+  vi.mocked(fillField).mockReset().mockResolvedValue(true);
+  Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+  const input = makeInput(); document.body.appendChild(input);
+  vi.mocked(scanFields).mockReturnValue([input]);
+  vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.9, value: null, fieldPath: 'personal.email', matchLayer: 'dictionary_exact' });
+  await scanAutofill(); await executeAutofill('merge');
+  vi.mocked(resolveProfileValue).mockReturnValue('profile@example.test');
+  vi.mocked(fillField).mockImplementationOnce(async () => {
+    input.value = 'human@example.test'; input.dispatchEvent(new Event('blur'));
+    return false;
+  });
+  document.dispatchEvent(new Event('visibilitychange'));
+  await vi.waitFor(() => expect(fillField).toHaveBeenCalled());
+  expect(getLastResult()).toMatchObject({ noReview: 1, noData: 0 });
+  expect(input.value).toBe('human@example.test'); input.remove();
 });

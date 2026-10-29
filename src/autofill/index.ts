@@ -1,7 +1,8 @@
+import { readFieldValue as getFieldValue } from './fieldValue';
 import type { Profile } from '../types/profile';
 import { getProfile, getLearnedMappings, saveLearnedMappings } from '../utils/storage';
 import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED, CONF_DICT_EXACT, EDIT_LEARN_SIMILARITY_THRESHOLD, EDIT_LEARN_MIN_VALUE_LENGTH } from './constants';
-import { scanFields, scanAriaFields, scanCheckboxGroups } from './scanner';
+import { scanFields, scanAriaFields, scanCheckboxGroups, scanRadioGroups } from './scanner';
 import { extractSignals, bestLabel } from './signals';
 import type { FieldSignals } from './signals';
 import { mapField } from './mapper';
@@ -49,10 +50,12 @@ export interface AutofillScanResult {
 }
 
 // Every element that should be cleared by undoAutofill(). Populated on each
-// scan/fill cycle: initially noReview + needReview + lowConfidence (all get a
-// highlight). noData fields are added here only if the user fills them in
-// manually during the same session.
+// scan/fill cycle: only actual rule/AI fills and subsequent manual edits
+// belong to Undo. Highlighting an unfilled field never grants ownership.
 let sessionElements: HTMLElement[] = [];
+let sessionGeneration = 0;
+let refillInFlight: Promise<void> | null = null;
+let pendingReady = false;
 
 // Tracks the noData fields from the most recent executeAutofill run.
 // Used by the visibilitychange listener to silently re-fill fields whose
@@ -166,8 +169,8 @@ function attachEditWatchers(fields: EditableField[], result: AutofillResult, dom
       // User has handled this field — promote to No Review (green).
       applyHighlight(element, CONF_CONFIRMED);
 
-      // noData fields were not yet in sessionElements; register now so Undo covers them.
-      if (state === 'noData') sessionElements.push(element);
+      // Register a real manual edit; unfilled red/gray fields were not owned yet.
+      if (!sessionElements.includes(element)) sessionElements.push(element);
 
       result.noReview++;
       if (state === 'lowConfidence') result.lowConfidence = Math.max(0, result.lowConfidence - 1);
@@ -226,16 +229,6 @@ interface PendingMatch {
 }
 let pendingMatches: PendingMatch[] = [];
 
-function getFieldValue(element: HTMLElement): string {
-  if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
-    return element.value;
-  }
-  if (element instanceof HTMLSelectElement) {
-    return element.value;
-  }
-  return '';
-}
-
 // Re-resolves every tracked noData field's profile path against a freshly-read
 // profile. Fields whose value is now non-empty get filled silently (green
 // highlight, no popup notification) and removed from the noData registry.
@@ -245,52 +238,61 @@ function getFieldValue(element: HTMLElement): string {
 // scoring. It only re-resolves already-matched profile paths. Fields outside
 // the noData registry (noReview / needReview / lowConfidence / manually-edited)
 // are never touched, even if their underlying profile value changed.
-async function runSilentRefill(): Promise<void> {
-  if (!lastResult) return;
-  if (noDataFields.length === 0) return;
-
-  const profile = await getProfile();
-  if (!profile) return;
-
-  const result = lastResult; // capture for closure-safety inside the loop
-  const remaining: NoDataEntry[] = [];
-
-  for (const entry of noDataFields) {
-    const { element, fieldPath } = entry;
-
-    // The element may have been removed from the DOM (e.g. SPA navigation
-    // within the same tab). Drop the entry silently — no fill, no count change.
-    if (!document.contains(element)) continue;
-
-    const value = resolveProfileValue(profile, fieldPath);
-    if (!value) {
-      // Profile still missing this value — keep watching for next refocus.
-      remaining.push(entry);
-      continue;
+function runSilentRefill(): Promise<void> {
+  if (refillInFlight) return refillInFlight;
+  const result = lastResult;
+  const generation = sessionGeneration;
+  if (!result || noDataFields.length === 0) return Promise.resolve();
+  const entries = [...noDataFields];
+  const isActive = () => generation === sessionGeneration && result === lastResult;
+  const task = (async () => {
+    try {
+      const profile = await getProfile();
+      if (!profile || !isActive()) return;
+      for (const entry of entries) {
+        if (!isActive()) return;
+        if (!noDataFields.includes(entry)) continue;
+        const { element, fieldPath } = entry;
+        if (!element.isConnected || getFieldValue(element).trim()) {
+          noDataFields = noDataFields.filter((item) => item !== entry);
+          continue;
+        }
+        const value = resolveProfileValue(profile, fieldPath);
+        if (!value) continue;
+        if (!sessionElements.includes(element)) sessionElements.push(element);
+        const filled = await fillField(element, value, () => isActive() && !getFieldValue(element).trim());
+        if (!isActive()) return;
+        if (!noDataFields.includes(entry)) continue; // a manual blur resolved it while awaiting
+        if (filled === false) {
+          const index = sessionElements.indexOf(element);
+          if (index >= 0) sessionElements.splice(index, 1);
+          continue;
+        }
+        applyHighlight(element, CONF_CONFIRMED);
+        result.noData = Math.max(0, result.noData - 1);
+        result.noReview++;
+        noDataFields = noDataFields.filter((item) => item !== entry);
+        const watcher = editWatchers.get(element);
+        if (watcher) {
+          element.removeEventListener('blur', watcher);
+          editWatchers.delete(element);
+        }
+      }
+      if (noDataFields.length === 0) teardownVisibilityListener();
+    } catch {
+      // Keep unresolved entries for the next visibility event.
     }
-
-    // Value is now available — fill silently and promote to noReview.
-    await fillField(element, value);
-    applyHighlight(element, CONF_CONFIRMED); // green
-    sessionElements.push(element);
-
-    result.noData    = Math.max(0, result.noData - 1);
-    result.noReview += 1;
-
-    // Tear down any blur watcher — the field is now resolved, so an existing
-    // blur watcher would erroneously re-promote it on blur.
-    const watcher = editWatchers.get(element);
-    if (watcher) {
-      element.removeEventListener('blur', watcher);
-      editWatchers.delete(element);
-    }
-  }
-
-  noDataFields = remaining;
-  if (noDataFields.length === 0) teardownVisibilityListener();
+  })();
+  refillInFlight = task;
+  void task.finally(() => { if (refillInFlight === task) refillInFlight = null; });
+  return task;
 }
 
 export function undoAutofill(): void {
+  sessionGeneration++;
+  refillInFlight = null;
+  pendingReady = false;
+  pendingMatches = [];
   for (const element of sessionElements) {
     clearFieldValue(element);
     clearElementHighlight(element);
@@ -310,18 +312,25 @@ export function undoAutofill(): void {
 // Phase 1: scan and map all fields; detect which matched fields already have values.
 // Results are held in pendingMatches for executeAutofill().
 export async function scanAutofill(): Promise<AutofillScanResult> {
+  const generation = ++sessionGeneration;
+  refillInFlight = null;
+  pendingReady = false;
+  noDataFields = [];
+  teardownVisibilityListener();
   pendingMatches  = [];
   sessionElements = [];
   lastResult      = null;
   debugSession    = null;
 
   const profile = await getProfile();
+  if (generation !== sessionGeneration) return { preFilledCount: 0, totalMatched: 0 };
   if (!profile) {
     console.warn('[Job Buddy] Profile not found — skipping autofill');
     return { preFilledCount: 0, totalMatched: 0 };
   }
 
   const learnedMappings = await getLearnedMappings();
+  if (generation !== sessionGeneration) return { preFilledCount: 0, totalMatched: 0 };
   const domain = window.location.hostname;
 
   // File inputs are only relevant when the user actually has a CV file to
@@ -380,7 +389,8 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
   // deliberately narrow, separate path rather than mapper.ts's normal layers
   // — see matchCurrentEducationCheckboxes for why. Reuses scanCheckboxGroups(),
   // the same source ai.ts already scans for checkbox groups.
-  const checkboxCandidates = scanCheckboxGroups()
+  const checkboxGroups = scanCheckboxGroups();
+  const checkboxCandidates = checkboxGroups
     .filter((g) => !g.isConsent)
     .flatMap((g) => g.options);
   const checkboxMatches = [
@@ -400,12 +410,16 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
   }));
   scanned.push(...checkboxScanned);
 
+  const prefilledElements = new Set<HTMLElement>();
+  for (const group of [...scanRadioGroups(), ...checkboxGroups]) {
+    if (!group.isConsent) for (const option of group.options) if (option.element.checked) prefilledElements.add(option.element);
+  }
   scanned.forEach(({ element, signals, match, debugFieldId }) => {
-    const hasExistingValue = getFieldValue(element) !== '';
+    const hasExistingValue = getFieldValue(element).trim() !== '';
+    if (hasExistingValue) prefilledElements.add(element);
 
     if (match.confidence >= CONF_FILL && match.value) {
       totalMatched++;
-      if (hasExistingValue) preFilledCount++;
     }
 
     if (refreshLearnedLabels(domain, signals, learnedMappings)) learnedLabelsDirty = true;
@@ -433,6 +447,8 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
     aiSkipped: false,
   };
 
+  preFilledCount = prefilledElements.size;
+  pendingReady = true;
   return { preFilledCount, totalMatched };
 }
 
@@ -446,23 +462,30 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
 //   lowConfidence confidence < 0.60 (any value) → no fill, red highlight
 //   noData        confidence >= 0.60, value empty → no fill, no highlight
 //
-// sessionElements tracks every highlighted element (noReview + needReview + lowConfidence)
-// so undoAutofill can clear them all. noData fields are added to sessionElements only
-// when the user fills them in manually.
+// sessionElements tracks values actually filled during this session. Unfilled
+// red/gray fields become owned only after a real manual edit.
 //
 // All three non-green tiers (needReview, lowConfidence, noData) get a follow-up
 // AI pass below (runAIAutofill) when a Gemini key is configured — including
 // needReview, which AI can overwrite with a different value if it disagrees
 // with the rule pipeline's fill.
 export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<AutofillResult> {
+  if (!pendingReady) return { ...EMPTY_AUTOFILL_RESULT };
+  pendingReady = false;
+  const matchesToFill = pendingMatches;
+  pendingMatches = [];
+  const ownedElements = sessionElements;
+  const generation = sessionGeneration;
+  const isActive = () => generation === sessionGeneration;
   const profile = await getProfile();
+  if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
   if (!profile) return { noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0 };
 
   const domain = window.location.hostname;
 
   const result: AutofillResult = {
     noReview: 0, needReview: 0, lowConfidence: 0, noData: 0,
-    totalScanned: pendingMatches.length,
+    totalScanned: matchesToFill.length,
   };
   const editableFields: EditableField[] = [];
   const aiTextCandidates: AITextCandidate[] = [];
@@ -472,15 +495,15 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   // fields from this fresh run, not stale ones from a previous session.
   noDataFields = [];
 
-  for (const { element, signals, match, hasExistingValue, debugFieldId } of pendingMatches) {
+  for (const { element, signals, match, hasExistingValue, debugFieldId } of matchesToFill) {
+    if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
     // Merge mode: skip pre-filled fields that would otherwise be overwritten.
-    // Only relevant when confidence >= 0.60 AND the profile has a value to fill.
-    if (mode === 'merge' && hasExistingValue && match.confidence >= CONF_FILL && match.value) {
+    if (mode === 'merge' && (hasExistingValue || getFieldValue(element).trim() !== '')) {
       // For debug: pre-filled merge skip is reported as the would-have-been state.
       debugMapping.push({
         fieldId: debugFieldId, matchLayer: match.matchLayer, confidence: match.confidence,
         profilePath: match.fieldPath,
-        finalState: match.confidence >= CONF_GREEN ? 'green' : 'yellow',
+        finalState: match.confidence < CONF_FILL ? 'red' : !match.value ? 'gray' : match.confidence >= CONF_GREEN ? 'green' : 'yellow',
       });
       continue;
     }
@@ -493,6 +516,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     if (match.confidence >= CONF_FILL && match.value) {
       // Confident match with profile data → fill and highlight.
       let filled = true;
+      if (!ownedElements.includes(element)) ownedElements.push(element);
       if (isFileInput) {
         const fileData = profile.documents?.cv?.file;
         // Scanner gating means fileData should always be present here, but
@@ -504,10 +528,13 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // affects its checked state, so this needs its own dispatch.
         fillCheckboxInput(element as HTMLInputElement);
       } else {
-        await fillField(element, match.value);
+        const beforeFill = getFieldValue(element);
+        filled = (await fillField(element, match.value, () => isActive() && (mode !== 'merge' || getFieldValue(element) === beforeFill))) !== false;
       }
 
+      if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
       if (!filled) {
+        ownedElements.splice(ownedElements.indexOf(element), 1);
         // Reconstruction failed (corrupt base64, etc.). Log already emitted by
         // fillFileField; silently skip this element so the rest of the run
         // continues uninterrupted.
@@ -519,7 +546,6 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       }
 
       applyHighlight(element, match.confidence); // green >=CONF_GREEN, yellow CONF_FILL–0.84
-      sessionElements.push(element);
 
       if (match.confidence >= CONF_GREEN) {
         result.noReview++;
@@ -539,7 +565,6 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     } else if (match.confidence < CONF_FILL) {
       // Low or no confidence — red highlight; left for manual resolution.
       applyHighlight(element, 0);
-      sessionElements.push(element);
       result.lowConfidence++;
       if (!isFileInput && !isCheckboxInput) editableFields.push({ element, state: 'lowConfidence' });
       if (!isFileInput && !isCheckboxInput) {
@@ -581,7 +606,16 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
 
   const debugAI: DebugAIField[] = [];
   const aiGreenFilled = new Set<HTMLElement>();
-  const aiRan = await runAIAutofill(aiTextCandidates, profile, result, sessionElements, domain, debugAI, aiGreenFilled);
+  const aiStates = new Map<HTMLElement, 'green' | 'yellow'>();
+  const aiRan = await runAIAutofill(aiTextCandidates, profile, result, ownedElements, domain, debugAI, aiGreenFilled, {
+    mode, isActive, onTextFilled: (element, state) => aiStates.set(element, state),
+  });
+  if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
+  for (const field of editableFields) {
+    if (aiStates.get(field.element) === 'yellow') field.state = 'needReview';
+  }
+  noDataFields = noDataFields.filter((entry) => !aiStates.has(entry.element));
+  if (noDataFields.length === 0) teardownVisibilityListener();
   result.aiAvailable = aiRan;
 
   // Strip pre-AI entries for elements AI confirmed green. Without this, an
