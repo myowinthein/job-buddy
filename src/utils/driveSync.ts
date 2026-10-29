@@ -267,6 +267,7 @@ function withDriveLock<T>(operation: () => Promise<T>): Promise<T> {
 
 export const DRIVE_RETRY_ALARM = 'jb:drive-backup-retry';
 export const DRIVE_AUTH_ALARM = 'jb:drive-authorization-renewal';
+const UPLOAD_ACTIVITY_MS = 30_000;
 async function updateState(state: DriveBackupState): Promise<void> {
   await saveDriveBackupState(state);
   if (chrome.alarms) {
@@ -291,6 +292,7 @@ async function recordFailure(state: DriveBackupState, error: unknown): Promise<S
     await updateState({
       ...state,
       pendingSync: true,
+      uploadingUntil: undefined,
       error: code,
       reviewRequired:
         state.reviewRequired || code === 'review_required' || code === 'invalid_backup',
@@ -395,6 +397,7 @@ export interface FullDriveState {
   reviewRequired?: boolean;
   tokenExpiresAt?: number;
   accountEmail?: string;
+  uploadingUntil?: number;
 }
 export async function getFullDriveState(): Promise<FullDriveState> {
   const [token, state] = await Promise.all([getDriveToken(), getDriveBackupState()]);
@@ -406,6 +409,9 @@ export async function getFullDriveState(): Promise<FullDriveState> {
     ...(state.reviewRequired ? { reviewRequired: true } : {}),
     ...(state.accountEmail ? { accountEmail: state.accountEmail } : {}),
     ...(state.tokenExpiresAt !== undefined ? { tokenExpiresAt: state.tokenExpiresAt } : {}),
+    ...(token && state.uploadingUntil && state.uploadingUntil > Date.now()
+      ? { uploadingUntil: state.uploadingUntil }
+      : {}),
   };
 }
 export function dispatchDriveStateChanged(): void {
@@ -427,7 +433,14 @@ async function inspectUnlocked(token: string, state: DriveBackupState): Promise<
   // Persist the pause before lookup: errors and migration writes cannot upload
   // over an unseen backup, including from another extension context.
   const reviewId = crypto.randomUUID();
-  let paused = { ...state, reviewRequired: true, reviewId, pendingSync: false, retryAt: undefined };
+  let paused = {
+    ...state,
+    reviewRequired: true,
+    reviewId,
+    pendingSync: false,
+    retryAt: undefined,
+    uploadingUntil: undefined,
+  };
   await updateState(paused);
   try {
     const fileId = await findBackupFileId(token);
@@ -569,6 +582,7 @@ async function uploadUnlocked(
           lastSynced: timestamp(downloaded.backup),
           reviewRequired: false,
           pendingSync: false,
+          uploadingUntil: undefined,
           error: null,
           retryAt: undefined,
           retryCount: 0,
@@ -581,17 +595,20 @@ async function uploadUnlocked(
           fileId,
           reviewRequired: true,
           pendingSync: true,
+          uploadingUntil: undefined,
           error: 'review_required',
           retryAt: undefined,
         });
         return { success: false, errorCode: 'review_required' };
       }
     }
-    state = { ...state, fileId };
+    state = { ...state, fileId, uploadingUntil: Date.now() + UPLOAD_ACTIVITY_MS, error: null };
+    await updateState(state);
     const newFileId = await uploadToDrive(token, payload, fileId, downloaded?.etag);
     await updateState({
       ...state,
       fileId: newFileId,
+      uploadingUntil: undefined,
       remoteHash: await fingerprint(payload),
       lastSynced: payload.lastModified,
       pendingSync: false,

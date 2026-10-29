@@ -52,6 +52,8 @@ export interface DriveBackupState {
   oauthClientId?: string;
   retryCount?: number;
   retryAt?: number;
+  /** Short-lived activity marker; expires if the uploading context stops. */
+  uploadingUntil?: number;
 }
 
 export interface DriveBackupFile {

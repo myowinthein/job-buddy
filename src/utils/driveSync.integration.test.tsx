@@ -38,6 +38,7 @@ import {
   overwriteDriveWithLocal,
   refreshDriveConnection,
   completeDriveRestore,
+  markDriveBackupPending,
 } from './driveSync';
 
 let remote: DriveBackupFile | null;
@@ -297,6 +298,60 @@ it('a background echo of a successful save does not upload the same data twice',
   await syncProfileToDrive();
   await syncIfConnected();
   expect(writes()).toHaveLength(1);
+});
+it.each([false, true])(
+  'shows real background upload activity and clears it after completion (conflict: %s)',
+  async (conflict) => {
+    await connected();
+    await edit('Background Change');
+    mount();
+    await screen.findByText('Connected');
+    holdUploads = true;
+    let upload: Promise<void>;
+    await act(async () => {
+      upload = syncIfConnected();
+      await waitFor(() => expect(pendingUploads).toHaveLength(1));
+    });
+    expect((await getFullDriveState()).uploadingUntil).toBeGreaterThan(Date.now());
+    expect(screen.getByText('Backing up…', { selector: '[role="status"]' })).toBeTruthy();
+    if (conflict) remoteVersion++;
+    await act(async () => {
+      pendingUploads[0]();
+      await upload;
+    });
+    expect((await getFullDriveState()).uploadingUntil).toBeUndefined();
+    expect(screen.getByText(conflict ? 'Backup paused' : 'Connected')).toBeTruthy();
+    expect(remote!.profile.personal.firstName).toBe(conflict ? 'Alex' : 'Background Change');
+  },
+);
+it('keeps queued backups pending without claiming an upload is running', async () => {
+  await connected();
+  await markDriveBackupPending();
+  mount();
+  await screen.findByText('Backup pending');
+  expect(screen.queryByText('Backing up…')).toBeNull();
+  expect((await getFullDriveState()).uploadingUntil).toBeUndefined();
+  expect(writes()).toHaveLength(0);
+});
+it('expires abandoned upload activity instead of leaving a stuck spinner', async () => {
+  await connected();
+  await saveDriveBackupState({ ...(await getDriveBackupState()), uploadingUntil: Date.now() - 1 });
+  expect((await getFullDriveState()).uploadingUntil).toBeUndefined();
+  mount();
+  await screen.findByText('Connected');
+  expect(screen.queryByText('Backing up…')).toBeNull();
+});
+it('clears interrupted activity in an open Settings view even after authorization expires', async () => {
+  await connected();
+  await saveDriveBackupState({
+    ...(await getDriveBackupState()),
+    tokenExpiresAt: Date.now() - 1,
+    uploadingUntil: Date.now() + 500,
+  });
+  mount();
+  await screen.findByText('Backing up…', { selector: '[role="status"]' });
+  await screen.findByText('Reconnect needed');
+  expect(screen.queryByText('Backing up…')).toBeNull();
 });
 it('disconnect waits for an in-flight upload and leaves no resurrected connection state', async () => {
   await connected();

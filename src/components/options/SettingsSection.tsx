@@ -174,6 +174,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const [driveState, setDriveState] = useState<FullDriveState>({ connected: false, lastSynced: null, pendingSync: false, error: null });
   const [driveConnecting,       setDriveConnecting]       = useState(false);
   const [driveSyncing,          setDriveSyncing]          = useState(false);
+  const driveBackupBusy = driveSyncing || !!driveState.uploadingUntil;
   const [driveDisconnectDialog,   setDriveDisconnectDialog]   = useState(false);
   const [driveDisconnectBusy, setDriveDisconnectBusy] = useState(false);
   const [disconnectDeleteBackup,  setDisconnectDeleteBackup]  = useState(false);
@@ -224,6 +225,14 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     }, Math.min(delay + 1, 2_147_483_647));
     return () => window.clearTimeout(timer);
   }, [driveState.tokenExpiresAt]);
+  useEffect(() => {
+    if (!driveState.uploadingUntil) return;
+    const delay = Math.max(0, driveState.uploadingUntil - Date.now());
+    const timer = window.setTimeout(() => {
+      void getFullDriveState().then(setDriveState).catch(() => {});
+    }, Math.min(delay + 1, 2_147_483_647));
+    return () => window.clearTimeout(timer);
+  }, [driveState.uploadingUntil]);
 
   const handleGeminiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const key = e.target.value;
@@ -827,9 +836,11 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                   <p className="text-sm font-medium text-gray-800 dark:text-gray-200 break-all">
                     {driveState.accountEmail || 'Google Drive'}
                   </p>
-                  <span role="status" className={`inline-flex items-center gap-1.5 text-xs ${driveState.error || driveState.reviewRequired || driveState.pendingSync ? 'text-amber-700 dark:text-amber-400' : 'text-green-700 dark:text-green-400'}`}>
-                    <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
-                    {driveState.error === 'token_expired' ? 'Reconnect needed'
+                  <span role="status" className={`inline-flex items-center gap-1.5 text-xs ${driveBackupBusy ? 'text-blue-600 dark:text-blue-400' : driveState.error || driveState.reviewRequired || driveState.pendingSync ? 'text-amber-700 dark:text-amber-400' : 'text-green-700 dark:text-green-400'}`}>
+                    {driveBackupBusy
+                      ? <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-full border-2 border-current border-r-transparent animate-spin motion-reduce:animate-none" />
+                      : <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />}
+                    {driveBackupBusy ? 'Backing up…' : driveState.error === 'token_expired' ? 'Reconnect needed'
                       : driveState.error === 'sync_error' ? 'Backup pending'
                       : driveState.error || driveState.reviewRequired ? 'Backup paused'
                       : driveState.pendingSync ? 'Backup pending' : 'Connected'}
@@ -839,18 +850,18 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                   {driveState.lastSynced && Number.isFinite(Date.parse(driveState.lastSynced)) ? `Last backed up: ${fmtDriveTimestamp(driveState.lastSynced)}` : 'No backup yet'}
                 </p>
               </div>
-              {driveState.error && <p role="status" className="text-sm text-amber-700 dark:text-amber-400">{driveFailureText(driveState.error)}</p>}
+              {driveState.error && !driveBackupBusy && <p role="status" className="text-sm text-amber-700 dark:text-amber-400">{driveFailureText(driveState.error)}</p>}
               <div className="flex flex-wrap items-center gap-2">
                 <button type="button"
                   onClick={driveState.error === 'token_expired' ? handleDriveConnect
                     : driveState.reviewRequired ? handleDriveCheck : handleDriveSyncNow}
-                  disabled={driveSyncing || driveDisconnectBusy || driveRestoreBusy}
+                  disabled={driveBackupBusy || driveDisconnectBusy || driveRestoreBusy}
                   className={btnPrimaryCls}>
-                  {driveSyncing ? 'Backing up…' : driveState.error === 'token_expired' ? 'Reconnect'
+                  {driveBackupBusy ? 'Backing up…' : driveState.error === 'token_expired' ? 'Reconnect'
                     : driveState.reviewRequired ? 'Review Backup' : driveState.error ? 'Retry Backup' : 'Back Up Now'}
                 </button>
                 <button type="button" onClick={() => setDriveDisconnectDialog(true)}
-                  disabled={driveSyncing || driveDisconnectBusy || driveRestoreBusy}
+                  disabled={driveBackupBusy || driveDisconnectBusy || driveRestoreBusy}
                   className={btnSecondaryCls}>Disconnect</button>
                 {driveState.error === 'storage_full' && <a href="https://one.google.com/storage" target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 dark:text-blue-400 underline">Manage Storage</a>}
               </div>
