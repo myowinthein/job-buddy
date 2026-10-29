@@ -10,7 +10,7 @@ import { AddEntryButton } from './shared/AddEntryButton';
 import { fieldCls as cls } from './shared/fieldCls';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 import { withScheme } from '@/src/utils/url';
-import { isLinkedInUrl } from '@/src/utils/profileInputValidation';
+import { isLinkedInUrl, isValidProfileUrl } from '@/src/utils/profileInputValidation';
 
 interface Props {
   profile: Partial<Profile>;
@@ -32,9 +32,7 @@ export function LinksSection({ profile, onSave }: Props) {
   const customContainerRef = useRef<HTMLDivElement>(null);
   useScrollToNewEntry(customContainerRef, newEntryTick);
 
-  const isValidUrl = (url: string): boolean => {
-    try { return new URL(withScheme(url)).hostname.includes('.'); } catch { return false; }
-  };
+  const isValidUrl = isValidProfileUrl;
 
   // Shared by updateCustom, handleCustomUrlBlur, and validate() — the one
   // check every custom-link URL field needs, regardless of when it fires.
@@ -86,6 +84,7 @@ export function LinksSection({ profile, onSave }: Props) {
       const err = customUrlError(c.url, c.label);
       if (err) e[`custom.${idx}.url`] = err;
       if (c.url.trim() && !c.label.trim()) e[`custom.${idx}.label`] = 'Label is required';
+      else if (c.label.length > 100) e[`custom.${idx}.label`] = 'Use 100 characters or fewer';
     });
     setErrors(e);
     return Object.keys(e).length === 0;

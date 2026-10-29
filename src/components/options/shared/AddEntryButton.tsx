@@ -1,4 +1,5 @@
 interface Props {
+  id?: string;
   onClick: () => void;
   label: string;
   variant?: 'dashed' | 'pill';
@@ -9,9 +10,9 @@ const VARIANT_CLS = {
   pill: 'text-xs px-3 py-1.5 border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-colors',
 };
 
-export function AddEntryButton({ onClick, label, variant = 'dashed' }: Props) {
+export function AddEntryButton({ id, onClick, label, variant = 'dashed' }: Props) {
   return (
-    <button type="button" onClick={onClick} className={VARIANT_CLS[variant]}>
+    <button id={id} type="button" onClick={onClick} className={VARIANT_CLS[variant]}>
       {label}
     </button>
   );

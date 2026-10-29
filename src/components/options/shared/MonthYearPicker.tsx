@@ -7,6 +7,7 @@ import { useDraftFlag } from './draftStatus';
 const MONTHS = MONTH_NAMES.map((label, i) => ({ value: String(i + 1).padStart(2, '0'), label }));
 
 interface Props {
+  id?: string;
   value: string;      // "YYYY", "YYYY-MM", or ""
   onChange: (value: string) => void;
   // Fires with the raw 4-digit year string whenever the year input changes,
@@ -38,6 +39,7 @@ function parseValue(v: string): { month: string; year: string } {
 }
 
 export function MonthYearPicker({
+  id,
   value,
   onChange,
   onYearChange,
@@ -99,6 +101,7 @@ export function MonthYearPicker({
     <div className="flex gap-2" onBlur={handleGroupBlur}>
       <div className="flex-1 min-w-0">
         <select
+          id={!monthOptional ? id : undefined}
           className={inputCls}
           value={month}
           disabled={disabled}
@@ -113,8 +116,9 @@ export function MonthYearPicker({
           ))}
         </select>
       </div>
-      <div className="w-20 shrink-0">
+      <div className="w-18 sm:w-20 shrink-0">
         <input
+          id={monthOptional ? id : undefined}
           type="text"
           inputMode="numeric"
           pattern="\d{4}"

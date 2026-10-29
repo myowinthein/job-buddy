@@ -6,6 +6,10 @@ import { sessionGet, sessionRemove, sessionSet } from '@/src/utils/sessionStorag
 afterEach(() => vi.unstubAllGlobals());
 
 describe('preview storage isolation', () => {
+  it('can start empty without the development profile fallback', async () => {
+    vi.stubGlobal('chrome', createPreviewChrome({ id: 'preview-empty' }));
+    expect(await getProfile()).toEqual({ id: 'preview-empty' });
+  });
   it('uses real profile save/load logic, without mutating the seed or another preview', async () => {
     const preview = createPreviewChrome();
     vi.stubGlobal('chrome', preview);

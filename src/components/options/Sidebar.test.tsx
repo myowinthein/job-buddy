@@ -51,7 +51,7 @@ describe('Sidebar — collapsed state', () => {
     renderSidebar({ collapsed: true });
     expect(screen.queryByText('Job Buddy')).toBeNull();
     expect(screen.queryByText('Address')).toBeNull();
-    expect(screen.getByTitle('Address')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Address' })).toBeTruthy();
     expect(screen.getByTitle('Expand sidebar')).toBeTruthy();
   });
 });
@@ -60,20 +60,46 @@ describe('Sidebar — completion badges', () => {
   it('shows the full green checkmark badge for a fully complete section', () => {
     renderSidebar({ sectionCompletion: { address: true }, sectionFullCompletion: { address: true } });
     const addressButton = screen.getByText('Address').closest('button')!;
-    expect(addressButton.querySelector('[title="Fully complete"]')).toBeTruthy();
+    expect(addressButton.querySelector('[title="All tracked details complete"]')).toBeTruthy();
   });
 
   it('shows a plain checkmark (not the full badge) for mandatory-only completion', () => {
     renderSidebar({ sectionCompletion: { address: true }, sectionFullCompletion: { address: false } });
     const addressButton = screen.getByText('Address').closest('button')!;
-    expect(addressButton.querySelector('[title="Fully complete"]')).toBeNull();
-    expect(addressButton.querySelector('[title="Complete"]')).toBeTruthy();
+    expect(addressButton.querySelector('[title="All tracked details complete"]')).toBeNull();
+    expect(addressButton.querySelector('[title="Required details complete"]')).toBeTruthy();
   });
 
   it('shows no badge at all when the section has no completion yet', () => {
     renderSidebar({ sectionCompletion: { address: false }, sectionFullCompletion: { address: false } });
     const addressButton = screen.getByText('Address').closest('button')!;
-    expect(addressButton.querySelector('[title="Fully complete"]')).toBeNull();
-    expect(addressButton.querySelector('[title="Complete"]')).toBeNull();
+    expect(addressButton.querySelector('[title="All tracked details complete"]')).toBeNull();
+    expect(addressButton.querySelector('[title="Required details complete"]')).toBeNull();
   });
+});
+
+it.each([false, true])('explains both completion icons when collapsed=%s', (collapsed) => {
+  render(
+    <Sidebar
+      activeSection="personal"
+      onSelect={vi.fn()}
+      collapsed={collapsed}
+      onToggle={vi.fn()}
+      sectionCompletion={{ personal: true, address: true }}
+      sectionFullCompletion={{ address: true }}
+    />,
+  );
+  const personal = screen.getByRole('button', { name: 'Personal' });
+  const address = screen.getByRole('button', { name: 'Address' });
+  const salary = screen.getByRole('button', { name: 'Salary' });
+  expect(document.getElementById(personal.getAttribute('aria-describedby')!)?.textContent).toBe(
+    'Required details complete; optional details remaining',
+  );
+  expect(document.getElementById(address.getAttribute('aria-describedby')!)?.textContent).toBe(
+    'All tracked details complete',
+  );
+  expect(document.getElementById(salary.getAttribute('aria-describedby')!)?.textContent).toBe(
+    'Required details remaining',
+  );
+  expect(personal.title).toContain('optional details remaining');
 });

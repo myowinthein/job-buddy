@@ -5,6 +5,7 @@ import { useSearchableDropdown } from './useSearchableDropdown';
 import { SearchableDropdown } from './SearchableDropdown';
 
 interface Props {
+  id?: string;
   value: string;                   // ISO 639-1 code, e.g. "en"
   onChange: (code: string) => void;
   error?: string;
@@ -17,7 +18,7 @@ function filterLanguages(search: string): Language[] {
   return LANGUAGES.filter((l) => l.name.toLowerCase().includes(q));
 }
 
-export function SearchableLanguageSelect({ value, onChange, error, placeholder = 'Select language…' }: Props) {
+export function SearchableLanguageSelect({ id, value, onChange, error, placeholder = 'Select language…' }: Props) {
   const selected = value ? findLanguage(value) : undefined;
   // Display the name from the list, or the raw value if it's a legacy free-text entry
   const displayName = selected?.name ?? (value || '');
@@ -36,7 +37,7 @@ export function SearchableLanguageSelect({ value, onChange, error, placeholder =
   return (
     <SearchableDropdown
       dropdown={dropdown}
-      panelClassName="w-full min-w-[220px]"
+      panelClassName="w-full min-w-[min(220px,calc(100vw-6rem))]"
       searchPlaceholder="Search language…"
       emptyText="No languages found."
       getKey={(l) => l.code}
@@ -49,6 +50,7 @@ export function SearchableLanguageSelect({ value, onChange, error, placeholder =
       )}
       trigger={
         <button
+          id={id}
           type="button"
           onClick={dropdown.toggle}
           className={`w-full px-3 py-2 border ${borderCls} rounded-lg text-sm text-left bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 flex items-center gap-2 min-h-[38px]`}

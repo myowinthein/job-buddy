@@ -1,3 +1,4 @@
+import { profileDateRangeErrors } from '@/src/utils/profileInputValidation';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef } from 'react';
@@ -72,6 +73,7 @@ export function EducationSection({ profile, onSave }: Props) {
     if (key === 'institution' && !value.trim()) return 'Institution is required';
     if (key === 'degree' && !value.trim()) return 'Degree is required';
     if (key === 'fieldOfStudy' && !value.trim()) return 'Field of study is required';
+    if (value.length > 150) return 'Use 150 characters or fewer';
     return '';
   };
 
@@ -118,28 +120,7 @@ export function EducationSection({ profile, onSave }: Props) {
         const err = textFieldError(key, row[key]);
         if (err) e[`${idx}.${key}`] = err;
       }
-      if (!row.startDate.trim()) {
-        e[`${idx}.startDate`] = 'Start date is required';
-      } else {
-        const sy = parseInt(row.startDate.split('-')[0] ?? '', 10);
-        if (sy > EDU_MAX_YEAR || sy < EDU_MIN_YEAR)
-          e[`${idx}.startDate`] = `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}`;
-      }
-      if (!row.isCurrent) {
-        if (!row.endDate?.trim()) {
-          e[`${idx}.endDate`] = 'End date is required';
-        } else {
-          const ey = parseInt(row.endDate.split('-')[0] ?? '', 10);
-          if (ey > EDU_MAX_YEAR || ey < EDU_MIN_YEAR)
-            e[`${idx}.endDate`] = `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}`;
-          else if (row.startDate.trim()) {
-            const endNorm   = row.endDate.length === 7   ? row.endDate   : `${row.endDate}-12`;
-            const startNorm = row.startDate.length === 7 ? row.startDate : `${row.startDate}-01`;
-            if (endNorm < startNorm)
-              e[`${idx}.endDate`] = 'End date cannot be before start date';
-          }
-        }
-      }
+      for (const [key, error] of Object.entries(profileDateRangeErrors(row, true))) e[`${idx}.${key}`] = error;
     });
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -181,6 +162,7 @@ export function EducationSection({ profile, onSave }: Props) {
       <div ref={entriesContainerRef}>
       {entries.map((row, idx) => (
         <ExpandableCard
+          id={`entry-education-${idx}`}
           key={row.rowId}
           summary={entrySummary(row, idx)}
           subtitle={row.fieldOfStudy || undefined}
@@ -191,6 +173,7 @@ export function EducationSection({ profile, onSave }: Props) {
           <FormField label="Institution" required error={errors[`${idx}.institution`]}>
             <input
               className={cls(errors[`${idx}.institution`])}
+              id={`field-education-${idx}-institution`}
               value={row.institution}
               onChange={(e) => update(idx, 'institution', e.target.value)}
               onBlur={() => handleEntryBlur(idx, 'institution')}
@@ -203,6 +186,7 @@ export function EducationSection({ profile, onSave }: Props) {
             <FormField label="Degree" required error={errors[`${idx}.degree`]}>
               <input
                 className={cls(errors[`${idx}.degree`])}
+                id={`field-education-${idx}-degree`}
                 value={row.degree}
                 onChange={(e) => update(idx, 'degree', e.target.value)}
                 onBlur={() => handleEntryBlur(idx, 'degree')}
@@ -213,6 +197,7 @@ export function EducationSection({ profile, onSave }: Props) {
             <FormField label="Field of Study" required error={errors[`${idx}.fieldOfStudy`]}>
               <input
                 className={cls(errors[`${idx}.fieldOfStudy`])}
+                id={`field-education-${idx}-fieldOfStudy`}
                 value={row.fieldOfStudy}
                 onChange={(e) => update(idx, 'fieldOfStudy', e.target.value)}
                 onBlur={() => handleEntryBlur(idx, 'fieldOfStudy')}
@@ -225,6 +210,7 @@ export function EducationSection({ profile, onSave }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Start Date" required error={errors[`${idx}.startDate`]}>
               <MonthYearPicker
+                id={`field-education-${idx}-startDate`}
                 value={row.startDate}
                 onChange={(v) => update(idx, 'startDate', v)}
                 onYearChange={(y) => handleYearChange(idx, 'startDate', y)}
@@ -235,6 +221,7 @@ export function EducationSection({ profile, onSave }: Props) {
             </FormField>
             <FormField label="End Date" required={!row.isCurrent} error={errors[`${idx}.endDate`]}>
               <MonthYearPicker
+                id={`field-education-${idx}-endDate`}
                 value={row.endDate ?? ''}
                 onChange={(v) => update(idx, 'endDate', v)}
                 onYearChange={(y) => handleYearChange(idx, 'endDate', y)}
@@ -260,6 +247,7 @@ export function EducationSection({ profile, onSave }: Props) {
       </div>{/* entriesContainerRef */}
 
       <AddEntryButton
+        id="add-education"
         onClick={() => { const row = emptyRow(); setEntries((rows) => [...rows, row]); setNewEntryTick((t) => t + 1); }}
         label="+ Add Education"
       />

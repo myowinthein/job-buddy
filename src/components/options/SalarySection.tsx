@@ -1,3 +1,4 @@
+import { isValidAmount } from '@/src/utils/profileInputValidation';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef } from 'react';
@@ -101,7 +102,7 @@ export function SalarySection({ profile, onSave }: Props) {
     const hasAmount  = row.amount.trim() !== '';
     if (hasCountry && !hasAmount) e[`expected.${idx}.amount`] = 'Amount is required';
     if (!hasCountry && hasAmount) e[`expected.${idx}.countryCode`] = 'Country is required';
-    if (hasAmount && (isNaN(Number(row.amount)) || Number(row.amount) < 0))
+    if (hasAmount && !isValidAmount(row.amount))
       e[`expected.${idx}.amount`] = 'Enter a valid amount';
     return e;
   };
@@ -130,9 +131,10 @@ export function SalarySection({ profile, onSave }: Props) {
   const validate = () => {
     const e: Record<string, string> = {};
     if (currentAmount.trim() === '') e.currentAmount = 'Current salary amount is required';
-    else if (isNaN(Number(currentAmount)) || Number(currentAmount) < 0)
+    else if (!isValidAmount(currentAmount))
       e.currentAmount = 'Enter a valid amount';
     if (!currentCountry) e.currentCountry = 'Country is required';
+    else if (!COUNTRY_TO_CURRENCY[currentCountry]) e.currentCountry = 'Select a country with a currency';
     expected.forEach((row, idx) => Object.assign(e, expectedRowErrors(row, idx)));
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -195,6 +197,7 @@ export function SalarySection({ profile, onSave }: Props) {
                 id="field-currentAmount"
                 type="number"
                 min={0}
+                step="any"
                 className={cls(errors.currentAmount)}
                 value={currentAmount}
                 onChange={(e) => {
@@ -202,7 +205,7 @@ export function SalarySection({ profile, onSave }: Props) {
                   setCurrentAmount(raw);
                   let amtErr = '';
                   if (raw.trim() === '') amtErr = 'Current salary amount is required';
-                  else if (isNaN(Number(raw)) || Number(raw) < 0) amtErr = 'Enter a valid amount';
+                  else if (!isValidAmount(raw)) amtErr = 'Enter a valid amount';
                   setErrors((err) => ({ ...err, currentAmount: amtErr }));
                 }}
                 placeholder="80000"
@@ -227,6 +230,7 @@ export function SalarySection({ profile, onSave }: Props) {
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Expected Salary</h3>
           <AddEntryButton
+            id="add-expected"
             variant="pill"
             onClick={() => { setExpected((r) => [...r, emptyExpected()]); setNewEntryTick((t) => t + 1); }}
             label="+ Add Entry"
@@ -245,15 +249,19 @@ export function SalarySection({ profile, onSave }: Props) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <FormField label="Country" error={errors[`expected.${idx}.countryCode`]}>
                 <SearchableCountryWithCurrencyDropdown
+                  id={`field-expected-${idx}-country`}
                   value={row.countryCode}
                   onChange={(code) => setExpectedField(idx, 'countryCode', code)}
+                  error={errors[`expected.${idx}.countryCode`]}
                 />
               </FormField>
               <FormField label="Amount" error={errors[`expected.${idx}.amount`]}>
                 <input
                   type="number"
                   min={0}
+                  step="any"
                   className={cls(errors[`expected.${idx}.amount`])}
+                  id={`field-expected-${idx}-amount`}
                   value={row.amount}
                   onChange={(e) => setExpectedField(idx, 'amount', e.target.value)}
                   onBlur={() => recheckExpectedRow(idx, row)}

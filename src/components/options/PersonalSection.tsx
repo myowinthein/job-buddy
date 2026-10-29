@@ -10,14 +10,12 @@ import { saveSection } from './shared/saveSection';
 import { SaveButton } from './shared/SaveButton';
 import { DateOfBirthPicker } from './shared/DateOfBirthPicker';
 import { fieldCls as cls } from './shared/fieldCls';
-import { isValidProfileEmail } from '@/src/utils/profileInputValidation';
+import { isValidProfileEmail, isValidProfilePhone, birthDateError, isValidPersonalOption } from '@/src/utils/profileInputValidation';
 
 interface Props {
   profile: Partial<Profile>;
   onSave: (updates: Partial<Profile>) => Promise<void>;
 }
-
-const CURRENT_YEAR = new Date().getFullYear();
 
 // ── Backward-compat phone initialiser ──────────────────────────────────────
 // Existing stored profiles may have phone as a plain string. Gracefully
@@ -81,17 +79,10 @@ export function PersonalSection({ profile, onSave }: Props) {
         return '';
       case 'phoneNumber':
         if (!value.trim()) return 'Phone number is required';
-        if (value.length < 4) return 'Enter a valid phone number';
+        if (!isValidProfilePhone(value)) return 'Enter 4 to 15 digits';
         return '';
-      case 'dateOfBirth': {
-        if (!value) return '';
-        const year = parseInt(value.split('-')[0] ?? '', 10);
-        if (isNaN(year)) return '';
-        if (year > CURRENT_YEAR) return `Date of birth cannot be after ${CURRENT_YEAR}`;
-        if (year < CURRENT_YEAR - 100) return `Year must be ${CURRENT_YEAR - 100} or later`;
-        return '';
-      }
-      default: return '';
+      case 'dateOfBirth': return birthDateError(value);
+      default: return isValidPersonalOption(key, value) ? '' : 'Select a valid option';
     }
   };
 
@@ -107,7 +98,6 @@ export function PersonalSection({ profile, onSave }: Props) {
       phoneCountry: country.code,
       phoneCallingCode: country.callingCode,
     }));
-    if (errors.phoneNumber) setErrors((e) => ({ ...e, phoneNumber: '' }));
   };
 
   const handlePhoneNumberChange = (value: string) => {
@@ -124,7 +114,7 @@ export function PersonalSection({ profile, onSave }: Props) {
   const validate = () => {
     const e: Record<string, string> = {};
 
-    for (const key of ['firstName', 'lastName', 'nickname', 'email', 'phoneNumber'] as const) {
+    for (const key of ['firstName', 'lastName', 'nickname', 'email', 'phoneNumber', 'gender', 'ethnicity', 'veteranStatus', 'disabilityStatus'] as const) {
       const err = fieldError(key, form[key]);
       if (err) e[key] = err;
     }
@@ -132,9 +122,9 @@ export function PersonalSection({ profile, onSave }: Props) {
     if (form.dateOfBirth) {
       const err = fieldError('dateOfBirth', form.dateOfBirth);
       if (err) e.dateOfBirth = err;
-    } else if (dobIsPartial) {
-      // Partial DOB: range errors take precedence (set above); only fill in
-      // the partial-completion message if nothing more specific applies.
+    }
+    if (dobIsPartial) {
+      // The picker also reports fully typed but invalid components as incomplete.
       e.dateOfBirth = 'Complete day, month, and year, or leave blank';
     }
 
@@ -286,10 +276,10 @@ export function PersonalSection({ profile, onSave }: Props) {
 
       {/* Gender & Ethnicity */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <FormField label="Gender">
+        <FormField label="Gender" error={errors.gender}>
           <select
             id="field-gender"
-            className={cls()}
+            className={cls(errors.gender)}
             value={form.gender}
             onChange={(e) => set('gender', e.target.value)}
           >
@@ -301,10 +291,10 @@ export function PersonalSection({ profile, onSave }: Props) {
           </select>
         </FormField>
 
-        <FormField label="Ethnicity">
+        <FormField label="Ethnicity" error={errors.ethnicity}>
           <select
             id="field-ethnicity"
-            className={cls()}
+            className={cls(errors.ethnicity)}
             value={form.ethnicity}
             onChange={(e) => set('ethnicity', e.target.value)}
           >
@@ -321,10 +311,10 @@ export function PersonalSection({ profile, onSave }: Props) {
 
       {/* Veteran & Disability */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <FormField label="Veteran Status">
+        <FormField label="Veteran Status" error={errors.veteranStatus}>
           <select
             id="field-veteranStatus"
-            className={cls()}
+            className={cls(errors.veteranStatus)}
             value={form.veteranStatus}
             onChange={(e) => set('veteranStatus', e.target.value)}
           >
@@ -334,10 +324,10 @@ export function PersonalSection({ profile, onSave }: Props) {
             <option value="prefer_not_to_say">Prefer not to say</option>
           </select>
         </FormField>
-        <FormField label="Disability Status">
+        <FormField label="Disability Status" error={errors.disabilityStatus}>
           <select
             id="field-disabilityStatus"
-            className={cls()}
+            className={cls(errors.disabilityStatus)}
             value={form.disabilityStatus}
             onChange={(e) => set('disabilityStatus', e.target.value)}
           >

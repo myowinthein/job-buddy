@@ -93,3 +93,11 @@ describe('LanguagesSection — validation and entry management', () => {
     expect(screen.queryByText('Entry 2')).toBeNull();
   });
 });
+
+it('requires at least one language after removing every row', () => {
+  const { onSave } = renderSection({ languages: [] });
+  fireEvent.click(screen.getByTitle('Remove'));
+  fireEvent.click(screen.getByText('Save Languages'));
+  expect(screen.getByText('At least one language is required')).toBeTruthy();
+  expect(onSave).not.toHaveBeenCalled();
+});

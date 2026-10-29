@@ -55,8 +55,8 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     const ek = `${idx}.${key}`;
     let err = '';
-    if (key === 'country' && !value) err = 'Country is required';
-    else if (key === 'status' && !value) err = 'Status is required';
+    if (key === 'country' && !findCountryByNameOrCode(value)) err = 'Select a valid country';
+    else if (key === 'status' && !WORK_AUTH_STATUS_OPTIONS.some((opt) => opt.value === value)) err = 'Select a valid status';
     setErrors((e) => ({ ...e, [ek]: err }));
   };
 
@@ -65,7 +65,9 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
     if (entries.length === 0) e.general = 'At least one work authorization entry is required';
     entries.forEach((row, idx) => {
       if (!row.country) e[`${idx}.country`] = 'Country is required';
+      else if (!findCountryByNameOrCode(row.country)) e[`${idx}.country`] = 'Select a valid country';
       if (!row.status) e[`${idx}.status`] = 'Status is required';
+      else if (!WORK_AUTH_STATUS_OPTIONS.some((opt) => opt.value === row.status)) e[`${idx}.status`] = 'Select a valid status';
     });
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -111,6 +113,7 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Country" required error={errors[`${idx}.country`]}>
               <SearchableCountryDropdown
+                id={`field-workAuthorization-${idx}-country`}
                 value={row.country}
                 onChange={(code) => update(idx, 'country', code)}
                 error={errors[`${idx}.country`]}
@@ -118,6 +121,7 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
             </FormField>
             <FormField label="Authorization Status" required error={errors[`${idx}.status`]}>
               <select
+                id={`field-workAuthorization-${idx}-status`}
                 className={cls(errors[`${idx}.status`])}
                 value={row.status}
                 onChange={(e) => update(idx, 'status', e.target.value)}
@@ -134,6 +138,7 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
       </div>{/* entriesContainerRef */}
 
       <AddEntryButton
+        id="add-workAuthorization"
         onClick={() => { setEntries((rows) => [...rows, emptyRow()]); setNewEntryTick((t) => t + 1); }}
         label="+ Add Entry"
       />

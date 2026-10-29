@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Profile } from '@/src/types/profile';
 import { getProfile, saveProfile } from '@/src/utils/storage';
 import { sessionGet, sessionRemove } from '@/src/utils/sessionStorage';
-import { calculateCompletion, getSectionCompletion, FIELD_FOCUS_IDS } from '@/src/utils/profileCompletion';
+import { calculateCompletion, getSectionCompletion, getCompletionTarget } from '@/src/utils/profileCompletion';
 import { calculateDerivedFields } from '@/src/utils/derivedFields';
 import { Sidebar } from '@/src/components/options/Sidebar';
 import { CompletionBanner } from '@/src/components/options/CompletionBanner';
@@ -21,6 +21,7 @@ import { LearnedMappingsSection } from '@/src/components/options/LearnedMappings
 import { syncProfileToDrive } from '@/src/utils/driveSync';
 import { ReportedSaveError } from '@/src/components/options/shared/saveSection';
 import { useToast } from '@/src/components/ui/useToast';
+import type { CompletionTarget } from '@/src/utils/profileCompletion';
 import { DraftStatusContext } from '@/src/components/options/shared/draftStatus';
 
 type SectionId =
@@ -77,7 +78,7 @@ function App() {
   const [activeSection, setActiveSection] = useState<SectionId>(readSection);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(readSidebar);
   const [loading, setLoading] = useState(true);
-  const [focusTarget, setFocusTarget] = useState<string | null>(null);
+  const [focusTarget, setFocusTarget] = useState<CompletionTarget | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   // Incremented on reset so all profile-editing sections remount and show cleared inputs.
   const [sectionSeq, setSectionSeq] = useState(0);
@@ -125,11 +126,11 @@ function App() {
   // Skips the "autofocus first empty input" effect that would otherwise fire
   // on the section switch below, then focuses the specific target field once
   // it renders (via the focusTarget effect).
-  const navigateAndFocus = useCallback((section: SectionId, fieldId?: string) => {
+  const navigateAndFocus = useCallback((section: SectionId, field?: string | CompletionTarget) => {
     if (!navigateSection(section)) return;
-    skipAutoFocusRef.current = true;
-    if (fieldId) setFocusTarget(fieldId);
-  }, [navigateSection]);
+    if (section !== activeSection) skipAutoFocusRef.current = true;
+    if (field) setFocusTarget(typeof field === 'string' ? { id: field } : field);
+  }, [navigateSection, activeSection]);
 
   // ── Cross-context focus request (popup → Options) ──────────────────────────
   const focusGeminiKey = useCallback(() => {
@@ -239,15 +240,19 @@ function App() {
   // ── Scroll/focus a specific field from the banner ───────────────────────────
   useEffect(() => {
     if (!focusTarget) return;
+    let focusRaf = 0;
     const raf = requestAnimationFrame(() => {
-      const el = document.getElementById(focusTarget);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        (el as HTMLElement).focus?.({ preventScroll: true });
-      }
-      setFocusTarget(null);
+      if (focusTarget.revealId) document.getElementById(focusTarget.revealId)?.click();
+      const card = focusTarget.cardId ? document.getElementById(focusTarget.cardId) : null;
+      card?.querySelector<HTMLButtonElement>('button[aria-expanded="false"]')?.click();
+      focusRaf = requestAnimationFrame(() => {
+        const el = document.getElementById(focusTarget.id) ?? (focusTarget.fallbackId ? document.getElementById(focusTarget.fallbackId) : null);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el?.focus({ preventScroll: true });
+        setFocusTarget(null);
+      });
     });
-    return () => cancelAnimationFrame(raf);
+    return () => { cancelAnimationFrame(raf); cancelAnimationFrame(focusRaf); };
   }, [focusTarget]);
 
   // Pass `afterLoad` when the caller needs to remount section components only
@@ -298,7 +303,7 @@ function App() {
   };
 
   const handleFocusField = (sectionId: string, fieldLabel: string) => {
-    navigateAndFocus(sectionId as SectionId, FIELD_FOCUS_IDS[fieldLabel]);
+    navigateAndFocus(sectionId as SectionId, getCompletionTarget(profile, sectionId, fieldLabel));
   };
 
   const handleGoToApiKey = focusGeminiKey;

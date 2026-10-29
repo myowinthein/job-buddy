@@ -38,12 +38,12 @@ describe('AddressSection — initCountryCode backward-compat loader', () => {
     });
   });
 
-  it('preserves an unrecognized raw value as-is rather than dropping it', () => {
+  it('keeps an unrecognized country visible and asks for a valid selection', () => {
     const { onSave } = renderSection({ address: { city: '', country: 'Atlantis' } });
     fillCityAndSave();
-    expect(onSave).toHaveBeenCalledWith({
-      address: expect.objectContaining({ country: 'Atlantis' }),
-    });
+    expect(screen.getByText('Atlantis')).toBeTruthy();
+    expect(screen.getByText('Select a valid country')).toBeTruthy();
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it('treats an empty stored country as unset (blocks save, shows required error)', () => {

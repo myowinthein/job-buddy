@@ -70,43 +70,35 @@ export function Sidebar({
           const isActive          = activeSection === section.id;
           const isMandatoryComplete = sectionCompletion[section.id];
           const isFullyComplete   = sectionFullCompletion[section.id];
+          const status = isFullyComplete ? 'All tracked details complete' : isMandatoryComplete ? 'Required details complete; optional details remaining' : 'Required details remaining';
 
           return (
             <button
               key={section.id}
               type="button"
               onClick={() => onSelect(section.id)}
-              title={section.label}
+              title={`${section.label}: ${status}`}
               aria-label={section.label}
+              aria-describedby={`status-${section.id}`}
               aria-current={isActive ? 'page' : undefined}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+              className={`relative w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
                 isActive
                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
               <span className="w-5 text-center shrink-0 leading-none">{section.icon}</span>
-              {!collapsed && (
-                <>
-                  <span className="hidden sm:block text-sm font-medium flex-1 truncate">{section.label}</span>
-                  {isFullyComplete ? (
-                    <span
-                      className="hidden sm:flex w-[17px] h-[17px] rounded-full bg-green-500 dark:bg-green-600 items-center justify-center shrink-0"
-                      title="Fully complete"
-                    >
-                      <span className="text-white text-[10px] leading-none font-bold">✓</span>
-                    </span>
-                  ) : isMandatoryComplete ? (
-                    <span className="hidden sm:inline text-green-500 dark:text-green-400 text-xs shrink-0" title="Complete">✓</span>
-                  ) : null}
-                </>
-              )}
-              {collapsed && isMandatoryComplete && (
-                <span className="absolute ml-6 text-green-500 dark:text-green-400 text-xs leading-none">·</span>
+              {!collapsed && <span className="hidden sm:block text-sm font-medium flex-1 truncate">{section.label}</span>}
+              <span id={`status-${section.id}`} className="sr-only">{status}</span>
+              {isMandatoryComplete && (
+                <span title={isFullyComplete ? 'All tracked details complete' : 'Required details complete'} aria-hidden="true" className={`${collapsed ? 'absolute right-1 top-1' : 'absolute right-1 top-1 sm:static sm:ml-auto'} w-[17px] h-[17px] rounded-full flex items-center justify-center shrink-0 ${isFullyComplete ? 'bg-green-500 dark:bg-green-600 text-white' : 'text-green-600 dark:text-green-400'}`}>
+                  <span className="text-[10px] leading-none font-bold">✓</span>
+                </span>
               )}
             </button>
           );
         })}
+        {!collapsed && <p className="hidden sm:block px-3 pt-3 text-[11px] text-gray-500 dark:text-gray-400 leading-5"><span className="text-green-600">✓</span> Required complete<br /><span className="inline-flex w-3 h-3 rounded-full bg-green-500 text-white items-center justify-center text-[9px]">✓</span> All tracked details complete</p>}
       </nav>
 
       {/* Resume AI + Settings — separated by a divider */}

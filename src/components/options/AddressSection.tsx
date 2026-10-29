@@ -36,8 +36,10 @@ export function AddressSection({ profile, onSave }: Props) {
   const [saving, setSaving] = useState(false);
 
   const fieldError = (key: string, value: string): string => {
-    if (key === 'city') return !value.trim() ? 'City is required' : '';
-    if (key === 'countryCode') return !value ? 'Country is required' : '';
+    if (key === 'city' && !value.trim()) return 'City is required';
+    const max = ({ city: 100, state: 100, street: 255, postalCode: 20 } as Record<string, number>)[key];
+    if (max && value.length > max) return `Use ${max} characters or fewer`;
+    if (key === 'countryCode') return !value ? 'Country is required' : !findCountryByNameOrCode(value) ? 'Select a valid country' : '';
     return '';
   };
 
@@ -48,7 +50,7 @@ export function AddressSection({ profile, onSave }: Props) {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    for (const key of ['city', 'countryCode'] as const) {
+    for (const key of ['city', 'countryCode', 'street', 'state', 'postalCode'] as const) {
       const err = fieldError(key, form[key]);
       if (err) e[key] = err;
     }
@@ -80,9 +82,9 @@ export function AddressSection({ profile, onSave }: Props) {
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Your current residential address</p>
       </div>
 
-      <FormField label="Street Address">
+      <FormField label="Street Address" error={errors.street}>
         <input
-          className={cls()}
+          className={cls(errors.street)}
           id="field-street"
           value={form.street}
           onChange={(e) => set('street', e.target.value)}
@@ -102,9 +104,9 @@ export function AddressSection({ profile, onSave }: Props) {
             maxLength={100}
           />
         </FormField>
-        <FormField label="State / Province">
+        <FormField label="State / Province" error={errors.state}>
           <input
-            className={cls()}
+            className={cls(errors.state)}
             id="field-state"
             value={form.state}
             onChange={(e) => set('state', e.target.value)}
@@ -123,9 +125,9 @@ export function AddressSection({ profile, onSave }: Props) {
             error={errors.countryCode}
           />
         </FormField>
-        <FormField label="Postal Code">
+        <FormField label="Postal Code" error={errors.postalCode}>
           <input
-            className={cls()}
+            className={cls(errors.postalCode)}
             id="field-postalCode"
             value={form.postalCode}
             onChange={(e) => set('postalCode', e.target.value)}

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { Profile } from '@/src/types/profile';
 import App from '@/entrypoints/options/App';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import { createPreviewChrome } from '@/src/preview/chrome';
@@ -31,8 +32,11 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
+  await act(async () => {
+    await Promise.resolve();
+  });
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -131,4 +135,104 @@ it('retains the unsaved guard when local persistence fails', async () => {
   await screen.findByText('Failed to save: storage may be full.');
   expect(screen.getByText('Unsaved changes')).toBeTruthy();
   expect((await getProfile())?.personal.firstName).toBe('Jane');
+});
+
+it.each([
+  [
+    'Email',
+    'field-email',
+    (p: Profile) => {
+      p.personal.email = 'invalid';
+    },
+  ],
+  [
+    'Current Salary Currency',
+    'field-currentCountry',
+    (p: Profile) => {
+      p.salary.current.currency = '';
+      delete p.salary.current.country;
+    },
+  ],
+  [
+    'At least one valid entry',
+    'field-workAuthorization-0-status',
+    (p: Profile) => {
+      p.workAuthorization[0].status = '' as Profile['workAuthorization'][0]['status'];
+    },
+  ],
+  [
+    'At least one complete entry',
+    'field-workHistory-0-endDate',
+    (p: Profile) => {
+      p.workHistory[0].isCurrent = false;
+      delete p.workHistory[0].endDate;
+    },
+  ],
+  [
+    'At least one complete entry',
+    'field-education-0-endDate',
+    (p: Profile) => {
+      p.education[0].isCurrent = false;
+      delete p.education[0].endDate;
+    },
+  ],
+  [
+    'At least one language',
+    'field-languages-0-language',
+    (p: Profile) => {
+      p.languages = [];
+    },
+  ],
+  [
+    'Notice Period',
+    'field-noticePeriod',
+    (p: Profile) => {
+      delete p.professional.noticePeriod;
+    },
+  ],
+  [
+    'CV / Résumé',
+    'field-cv',
+    (p: Profile) => {
+      p.documents.cv = {};
+    },
+  ],
+] as const)('takes the required checklist item %s to input %s', async (label, id, change) => {
+  const profile = (await getProfile())!;
+  change(profile);
+  await saveProfile(profile);
+  await openPersonal();
+  const progress = screen.getByRole('progressbar');
+  expect(progress.getAttribute('aria-valuenow')).toBe('93');
+  fireEvent.click(screen.getByRole('button', { name: /required remaining/ }));
+  fireEvent.click(screen.getByRole('button', { name: label }));
+  await waitFor(() => expect(document.activeElement?.id).toBe(id));
+  expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('93');
+});
+
+it('reveals and focuses an optional field in a later collapsed entry', async () => {
+  const profile = (await getProfile())!;
+  profile.workHistory = [
+    profile.workHistory[0],
+    { ...profile.workHistory[0], location: undefined },
+  ];
+  await saveProfile(profile);
+  await openPersonal();
+  fireEvent.click(screen.getByRole('button', { name: /optional details/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Location' }));
+  await waitFor(() => expect(document.activeElement?.id).toBe('field-workHistory-1-location'));
+});
+
+it('updates required progress only after a successful section save', async () => {
+  const profile = (await getProfile())!;
+  profile.personal.firstName = '';
+  await saveProfile(profile);
+  const name = await openPersonal();
+  fireEvent.change(name, { target: { value: 'Jane' } });
+  expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('93');
+  fireEvent.click(screen.getByText('Save Personal Information'));
+  await waitFor(() =>
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('100'),
+  );
+  expect(screen.queryByRole('button', { name: /required remaining/ })).toBeNull();
 });

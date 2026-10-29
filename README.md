@@ -43,6 +43,8 @@ Complete Your Profile → Fill Form → Review answers → Submit on the applica
    Save your personal details, work history, education, and other relevant sections.
    Add a CV in **Documents** to attach it to supported upload fields.
    Unsaved edits show a warning before you leave a section or close the profile page.
+   The top bar tracks 15 required checks after saving; select a remaining detail
+   to go to its input. Optional details do not affect the percentage.
 2. Visit a job application page and click **Fill Form** in the popup.
 3. If the form already contains values, choose **Merge** to fill only empty fields
    or **Overwrite** to replace matched fields, then click **Continue**.
@@ -100,7 +102,8 @@ use `pnpm exec playwright test --headed` to see the browser while debugging.
 Normal edits do not start browser tests.
 
 The localhost profile preview uses the existing Options UI with in-memory sample
-data. Saves last until you refresh the page. It does not access your installed
+data. Use **Sample profile** or **Empty profile** to review completion states.
+Saves last until you refresh the page. It does not access your installed
 extension's data, load environment files, or connect to Gemini or Google Drive.
 Use it to review profile forms and layout; extension autofill and real integrations
 still require an unpacked extension.

@@ -49,14 +49,14 @@ describe('WorkAuthorizationSection — initRow country backward-compat loader', 
     });
   });
 
-  it('preserves an unrecognized raw country value as-is rather than dropping it', () => {
+  it('keeps an unrecognized country visible and asks for a valid selection', () => {
     const { onSave } = renderSection({
       workAuthorization: [{ country: 'Atlantis', status: 'requires_sponsorship' }],
     });
     fireEvent.click(screen.getByText('Save Work Authorization'));
-    expect(onSave).toHaveBeenCalledWith({
-      workAuthorization: [{ country: 'Atlantis', status: 'requires_sponsorship' }],
-    });
+    expect(screen.getByText('Atlantis')).toBeTruthy();
+    expect(screen.getByText('Select a valid country')).toBeTruthy();
+    expect(onSave).not.toHaveBeenCalled();
   });
 });
 

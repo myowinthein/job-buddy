@@ -1,4 +1,4 @@
-import { COUNTRIES, getFlag, findCountry } from '@/src/data/countries';
+import { COUNTRIES, getFlag, findCountryByNameOrCode } from '@/src/data/countries';
 import type { Country } from '@/src/data/countries';
 import { useSearchableDropdown } from './useSearchableDropdown';
 import { SearchableDropdown } from './SearchableDropdown';
@@ -22,7 +22,7 @@ function filterCountries(search: string): Country[] {
 }
 
 export function SearchableCountryDropdown({ value, onChange, error, placeholder = 'Select country…', id }: Props) {
-  const selected = value ? findCountry(value) : undefined;
+  const selected = value ? findCountryByNameOrCode(value) : undefined;
 
   const dropdown = useSearchableDropdown<Country>({
     filter: filterCountries,
@@ -64,7 +64,7 @@ export function SearchableCountryDropdown({ value, onChange, error, placeholder 
               <span className="flex-1 text-gray-900 dark:text-gray-100">{selected.name}</span>
             </>
           ) : (
-            <span className="flex-1 text-gray-400 dark:text-gray-500">{placeholder}</span>
+            <span className="flex-1 text-gray-400 dark:text-gray-500">{value || placeholder}</span>
           )}
           <span className="text-gray-400 dark:text-gray-500 text-xs shrink-0">▾</span>
         </button>

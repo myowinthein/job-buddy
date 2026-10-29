@@ -1,3 +1,4 @@
+import type { Profile } from '@/src/types/profile';
 import { DEV_PROFILE } from '@/src/utils/devProfile';
 
 type ChangeListener = (
@@ -6,7 +7,7 @@ type ChangeListener = (
 ) => void;
 
 /** Only the storage surface used by Options; no connection to extension APIs. */
-export function createPreviewChrome() {
+export function createPreviewChrome(seed: Partial<Profile> = DEV_PROFILE) {
   const listeners = new Set<ChangeListener>();
 
   function area(areaName: string, seed: Record<string, unknown> = {}) {
@@ -46,7 +47,7 @@ export function createPreviewChrome() {
   return {
     runtime: { lastError: undefined },
     storage: {
-      local: area('local', { profile: DEV_PROFILE }),
+      local: area('local', { profile: seed }),
       session: area('session'),
       onChanged: {
         addListener: (listener: ChangeListener) => {

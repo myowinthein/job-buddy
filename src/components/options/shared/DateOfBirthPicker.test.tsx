@@ -151,3 +151,16 @@ describe('DateOfBirthPicker — onChange and onPartialChange wiring', () => {
     expect(onPartialChange).toHaveBeenLastCalledWith(false);
   });
 });
+
+it('recovers an invalid February day when the user changes to March', () => {
+  const onChange = vi.fn();
+  const onPartialChange = vi.fn();
+  render(<DateOfBirthPicker value="2001-02-01" onChange={onChange} onPartialChange={onPartialChange} />);
+  fireEvent.change(screen.getByLabelText('Day'), { target: { value: '31' } });
+  expect(onChange).toHaveBeenLastCalledWith('');
+  expect(onPartialChange).toHaveBeenLastCalledWith(true);
+  fireEvent.change(screen.getByLabelText('Month'), { target: { value: '3' } });
+  expect(onChange).toHaveBeenLastCalledWith('2001-03-31');
+  expect(onPartialChange).toHaveBeenLastCalledWith(false);
+  expect(screen.queryByText('Day must be between 1 and 28')).toBeNull();
+});

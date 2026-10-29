@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { RemoveButton } from './RemoveButton';
 
 interface ExpandableCardProps {
+  id?: string;
   summary: string;
   subtitle?: string;
   onDelete?: () => void;
@@ -16,6 +17,7 @@ interface ExpandableCardProps {
 }
 
 export function ExpandableCard({
+  id,
   summary,
   subtitle,
   onDelete,
@@ -50,7 +52,7 @@ export function ExpandableCard({
   }, [confirmDelete]);
 
   return (
-    <div ref={cardRef} className="border border-gray-200 dark:border-gray-700 rounded-lg mb-3 overflow-hidden">
+    <div id={id} ref={cardRef} className="border border-gray-200 dark:border-gray-700 rounded-lg mb-3 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800">
         <button
           type="button"

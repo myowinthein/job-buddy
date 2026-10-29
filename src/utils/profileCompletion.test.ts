@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateCompletion, getSectionCompletion } from './profileCompletion';
+import { calculateCompletion, getSectionCompletion, getCompletionTarget } from './profileCompletion';
 import type { Profile } from '../types/profile';
 
 const COMPLETE: Profile = {
@@ -17,7 +17,7 @@ const COMPLETE: Profile = {
   salary: { current: { amount: 60000, currency: 'THB', period: 'monthly' }, expected: [] },
   workAuthorization: [{ country: 'TH', status: 'citizen_or_pr' }],
   workHistory: [{ company: 'Acme', title: 'Engineer', startDate: '2020-01', isCurrent: true }],
-  education: [{ institution: 'MIT', degree: 'B.Sc.', fieldOfStudy: 'CS', startDate: '2015-09' }],
+  education: [{ institution: 'MIT', degree: 'B.Sc.', fieldOfStudy: 'CS', startDate: '2015-09', endDate: '2019-06' }],
   languages: [{ language: 'English', proficiency: 'native_bilingual' }],
   links: { linkedin: 'https://linkedin.com/in/jane' },
   documents: { cv: { url: 'https://example.com/cv.pdf' } },
@@ -194,5 +194,36 @@ describe('optional completion calculation', () => {
     expect(calculateCompletion(profile).isCoreComplete).toBe(true);
     profile.workHistory = [{ company: '', title: '', startDate: '', isCurrent: false }];
     expect(calculateCompletion(profile).optionalGroups.find((g) => g.sectionId === 'workHistory')!.fields).toEqual(['Career Summary']);
+  });
+});
+
+describe('saved progress validates the required values', () => {
+  it.each([
+    ['Email', { personal: { ...COMPLETE.personal, email: 'invalid' } }],
+    ['Phone', { personal: { ...COMPLETE.personal, phone: { ...COMPLETE.personal.phone, number: '12' } } }],
+    ['Current Salary Amount', { salary: { ...COMPLETE.salary, current: { ...COMPLETE.salary.current, amount: Infinity } } }],
+    ['Current Salary Currency', { salary: { ...COMPLETE.salary, current: { ...COMPLETE.salary.current, currency: 'USD' } } }],
+    ['At least one complete entry', { workHistory: [{ ...COMPLETE.workHistory[0], isCurrent: false }] }],
+    ['At least one complete entry', { education: [{ ...COMPLETE.education[0], endDate: '2000-01' }] }],
+    ['At least one language', { languages: [{ language: '', proficiency: 'native_bilingual' }] }],
+    ['Notice Period', { professional: { noticePeriod: { immediate: false, value: 1.5, unit: 'week' } } }],
+    ['LinkedIn URL', { links: { linkedin: 'https://example.com/linkedin.com' } }],
+    ['CV / Résumé', { documents: { cv: { url: 'invalid' } } }],
+  ] as [string, Partial<Profile>][] )('keeps %s incomplete for invalid saved data', (field, patch) => {
+    const result = calculateCompletion({ ...COMPLETE, ...patch });
+    expect(result.missingFields).toContain(field);
+    expect(result.isCoreComplete).toBe(false);
+    expect(result.percentage).toBe(93);
+  });
+
+  it('focuses the invalid field in a later collapsed work entry', () => {
+    const profile = { ...COMPLETE, workHistory: [COMPLETE.workHistory[0], { ...COMPLETE.workHistory[0], isCurrent: false }] };
+    expect(getCompletionTarget(profile, 'workHistory', 'At least one complete entry')).toEqual({ id: 'field-workHistory-1-endDate', cardId: 'entry-workHistory-1', fallbackId: 'add-workHistory' });
+  });
+
+  it('keeps optional details separate from the 15 required checks', () => {
+    const result = calculateCompletion(COMPLETE);
+    expect(result.percentage).toBe(100);
+    expect(result.optionalFieldsRemaining).toBeGreaterThan(0);
   });
 });

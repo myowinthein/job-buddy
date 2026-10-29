@@ -81,6 +81,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
 
   const validate = () => {
     const e: Record<string, string> = {};
+    if (!entries.length) e.general = 'At least one language is required';
     entries.forEach((row, idx) => {
       if (!row.language.trim()) e[`${idx}.language`] = 'Language is required';
       if (!row.proficiency) e[`${idx}.proficiency`] = 'Proficiency is required';
@@ -110,6 +111,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Add the languages you can use professionally.</p>
       </div>
 
+      {errors.general && <p role="alert" className="text-sm text-red-500 mb-4">{errors.general}</p>}
       <div className="mb-4" ref={entriesContainerRef}>
         {entries.map((row, idx) => (
           <div key={idx} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3">
@@ -120,6 +122,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FormField label="Language" required error={errors[`${idx}.language`]}>
                 <SearchableLanguageSelect
+                  id={`field-languages-${idx}-language`}
                   value={row.language}
                   onChange={(code) => update(idx, 'language', code)}
                   error={errors[`${idx}.language`]}
@@ -127,6 +130,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
               </FormField>
               <FormField label="Proficiency" required error={errors[`${idx}.proficiency`]}>
                 <select
+                  id={`field-languages-${idx}-proficiency`}
                   className={cls(errors[`${idx}.proficiency`])}
                   value={row.proficiency}
                   onChange={(e) => update(idx, 'proficiency', e.target.value)}
@@ -143,7 +147,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
         ))}
       </div>
 
-      <AddEntryButton onClick={addEntry} label="+ Add Language" />
+      <AddEntryButton id="add-languages" onClick={addEntry} label="+ Add Language" />
 
       <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
         <SaveButton onClick={handleSave} saving={saving} label="Save Languages" />

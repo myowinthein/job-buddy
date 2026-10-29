@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { fieldCls } from './fieldCls';
-import { daysInMonth, parseDOB, buildDOB, computePartial } from './dateOfBirthMath';
+import { daysInMonth, parseDOB, buildDOB } from './dateOfBirthMath';
 import { MONTH_NAMES } from './months';
 import { useResyncOnExternalChange } from './useResyncOnExternalChange';
 
@@ -12,8 +12,8 @@ const MIN_YEAR = CURRENT_YEAR - 100;
 interface Props {
   value: string;      // "YYYY-MM-DD" or ""
   onChange: (value: string) => void;
-  // Fires when partial-state changes. true = some but not all of day/month/year
-  // have content; false = either all three filled or all three empty. Lets the
+  // Reports incomplete or invalid typed components; false when valid or empty.
+  // This lets the
   // parent show a "must complete if started" error without making DOB required.
   onPartialChange?: (isPartial: boolean) => void;
   error?: string;
@@ -23,7 +23,6 @@ interface Props {
 export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id }: Props) {
   const parsed = parseDOB(value);
   const [month, setMonth] = useState(parsed.month);
-  const [day,   setDay]   = useState(parsed.day);
   const [year,  setYear]  = useState(parsed.year);
 
   const [dayStr,  setDayStr]  = useState(parsed.day  ? String(parsed.day)  : '');
@@ -36,7 +35,6 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
   // treated as an external reset.
   useResyncOnExternalChange(value, () => {
     setMonth(parsed.month);
-    setDay(parsed.day);
     setYear(parsed.year);
     setDayStr(parsed.day  ? String(parsed.day)  : '');
     setYearStr(parsed.year ? String(parsed.year) : '');
@@ -49,26 +47,38 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
   const hasAnyError = !!error || !!dayError || !!yearError;
   const inputCls = fieldCls(hasAnyError ? 'error' : undefined);
 
+  const emit = (m: number, d: number, y: number, dayText: string, yearText: string) => {
+    const value = buildDOB(m, d, y);
+    onChange(value);
+    onPartialChange?.(!!(dayText || m || yearText) && !value);
+  };
+
+  // Revalidate raw day text when changing month/year, including a previously invalid day.
+  const resyncDay = (m: number, y: number) => {
+    const rawDay = Number(dayStr);
+    const max = daysInMonth(m, y);
+    const d = rawDay >= 1 && rawDay <= 31 ? Math.min(rawDay, max) : 0;
+    const text = d ? String(d) : dayStr;
+    setDayStr(text);
+    setDayError(dayStr && !d ? `Day must be between 1 and ${max}` : '');
+    return { d, text };
+  };
+
   const handleDayInput = (raw: string) => {
     const cleaned = raw.replace(/\D/g, '').slice(0, 2);
     setDayStr(cleaned);
     const n = parseInt(cleaned, 10);
-    const inRange = cleaned.length > 0 && !isNaN(n) && n >= 1 && n <= 31;
+    const max = daysInMonth(month, year);
+    const inRange = cleaned.length > 0 && !isNaN(n) && n >= 1 && n <= max;
     const d = inRange ? n : 0;
-    setDay(d);
-    setDayError(cleaned.length > 0 && !inRange ? 'Day must be between 1 and 31' : '');
-    onChange(buildDOB(month, d, year));
-    onPartialChange?.(computePartial(cleaned, month, yearStr));
+    setDayError(cleaned.length > 0 && !inRange ? `Day must be between 1 and ${max}` : '');
+    emit(month, d, year, cleaned, yearStr);
   };
 
   const handleMonth = (m: number) => {
     setMonth(m);
-    const max = daysInMonth(m, year);
-    const d = day > max ? max : day;
-    const nextDayStr = d !== day ? (d ? String(d) : '') : dayStr;
-    if (d !== day) { setDay(d); setDayStr(nextDayStr); }
-    onChange(buildDOB(m, d, year));
-    onPartialChange?.(computePartial(nextDayStr, m, yearStr));
+    const { d, text } = resyncDay(m, year);
+    emit(m, d, year, text, yearStr);
   };
 
   const handleYearInput = (raw: string) => {
@@ -83,12 +93,8 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
         ? `Year must be between ${MIN_YEAR} and ${CURRENT_YEAR}`
         : '',
     );
-    const max = daysInMonth(month, y);
-    const d = day > max ? max : day;
-    const nextDayStr = d !== day ? (d ? String(d) : '') : dayStr;
-    if (d !== day) { setDay(d); setDayStr(nextDayStr); }
-    onChange(buildDOB(month, d, y));
-    onPartialChange?.(computePartial(nextDayStr, month, cleaned));
+    const { d, text } = resyncDay(month, y);
+    emit(month, d, y, text, cleaned);
   };
 
   // Show the first active error; the outer FormField may also supply one
@@ -98,7 +104,7 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
     <div>
       <div className="flex gap-2">
         {/* Day — text input, digits only, 1–31 */}
-        <div className="w-16">
+        <div className="w-12 sm:w-16 shrink-0">
           <input
             type="text"
             inputMode="numeric"
@@ -130,7 +136,7 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
           </div>
 
           {/* Year — text input restricted to 4 digits */}
-          <div className="w-20 shrink-0">
+          <div className="w-18 sm:w-20 shrink-0">
             <input
               type="text"
               inputMode="numeric"

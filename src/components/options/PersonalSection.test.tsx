@@ -270,7 +270,7 @@ describe('PersonalSection — handleCountryChange (phone calling code)', () => {
     }));
   });
 
-  it('clears an existing "required" phone error as soon as a country is picked, before typing a number', () => {
+  it('keeps the required phone error until a number is entered', () => {
     const { onSave } = renderSection({ personal: {} as unknown as Profile['personal'] });
     fireEvent.click(screen.getByText('Save Personal Information')); // triggers "Phone number is required"
     expect(screen.getByText('Phone number is required')).toBeTruthy();
@@ -279,7 +279,7 @@ describe('PersonalSection — handleCountryChange (phone calling code)', () => {
     fireEvent.change(screen.getByPlaceholderText('Search country or code…'), { target: { value: 'Thailand' } });
     fireEvent.click(screen.getByText('Thailand'));
 
-    expect(screen.queryByText('Phone number is required')).toBeNull();
+    expect(screen.getByText('Phone number is required')).toBeTruthy();
     expect(onSave).not.toHaveBeenCalled(); // country alone doesn't satisfy the phone number requirement
   });
 });
@@ -310,4 +310,14 @@ describe('PersonalSection — Date of Birth partial entry blocks save', () => {
 
     expect(onSave).toHaveBeenCalled();
   });
+});
+
+it('blocks an impossible day entered after choosing the month and year', () => {
+  const { onSave } = renderSection({ personal: { firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', phone: { countryCode: 'TH', callingCode: '+66', number: '812345678' } } });
+  fireEvent.change(screen.getByLabelText('Month'), { target: { value: '2' } });
+  fireEvent.change(screen.getByLabelText('Year'), { target: { value: '2001' } });
+  fireEvent.change(screen.getByLabelText('Day'), { target: { value: '31' } });
+  fireEvent.click(screen.getByText('Save Personal Information'));
+  expect(onSave).not.toHaveBeenCalled();
+  expect(screen.getByText('Day must be between 1 and 28')).toBeTruthy();
 });

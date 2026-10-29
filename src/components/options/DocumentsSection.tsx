@@ -7,6 +7,7 @@ import { FormField } from './shared/FormField';
 import { saveSection } from './shared/saveSection';
 import { fieldCls } from './shared/fieldCls';
 import { SaveButton } from './shared/SaveButton';
+import { isValidProfileUrl } from '@/src/utils/profileInputValidation';
 import { withScheme } from '@/src/utils/url';
 
 interface Props {
@@ -30,7 +31,7 @@ interface DocState {
 
 function initDocState(entry?: DocumentEntry): DocState {
   return {
-    mode: entry?.file ? 'file' : 'url',
+    mode: entry?.file && (!entry.url || isValidProfileUrl(entry.url)) ? 'file' : 'url',
     url: entry?.url ?? '',
     file: entry?.file ?? null,
     dragOver: false,
@@ -56,9 +57,7 @@ function isAcceptedDocumentFile(file: File): boolean {
 // "At least one of URL or upload" is enforced separately in handleSave.
 function validateDocUrlFormat(url: string): string {
   if (!url.trim()) return '';
-  const normalized = /^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`;
-  try { return new URL(normalized).hostname.includes('.') ? '' : 'Enter a valid URL'; }
-  catch { return 'Enter a valid URL'; }
+  return isValidProfileUrl(url) ? '' : 'Enter a valid URL';
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -140,6 +139,7 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
         <div className="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden text-xs">
           <button
             type="button"
+            id="show-cv-url"
             onClick={() => { readGeneration.current++; onChange({ mode: 'url', requiredError: '', readError: '' }); }}
             className={`px-3 py-1.5 active:scale-95 ${state.mode === 'url' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors`}
           >
@@ -147,6 +147,7 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
           </button>
           <button
             type="button"
+            id={state.mode === 'file' ? 'field-cv' : undefined}
             onClick={() => onChange({ mode: 'file', requiredError: '' })}
             className={`px-3 py-1.5 active:scale-95 ${state.mode === 'file' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors`}
           >
@@ -162,6 +163,7 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
       {state.mode === 'url' ? (
         <FormField label="Document URL" error={state.urlError}>
           <input
+            id="field-cv"
             type="url"
             className={urlCls}
             value={state.url}

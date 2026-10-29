@@ -1,3 +1,4 @@
+import { NOTICE_MAX, noticeDurationError as validateNoticePeriod, profileDateRangeErrors } from '@/src/utils/profileInputValidation';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef, useMemo } from 'react';
@@ -21,21 +22,6 @@ interface Props {
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MIN_YEAR = CURRENT_YEAR - 100;
-
-const NOTICE_MAX: Record<NoticePeriodUnit, number> = {
-  day: 365,
-  week: 52,
-  month: 24,
-};
-
-function validateNoticePeriod(raw: string, unit: NoticePeriodUnit): string {
-  const val = Number(raw);
-  const max = NOTICE_MAX[unit];
-  if (!raw.trim() || isNaN(val)) return 'Enter a duration';
-  if (val < 1) return 'Must be at least 1';
-  if (val > max) return `Maximum is ${max} ${unit}${max !== 1 ? 's' : ''}`;
-  return '';
-}
 
 // Flat UI state for each work entry — location is split into country/city,
 // arrangement is kept as a string to allow the empty placeholder state.
@@ -107,7 +93,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
 
   // ── Notice period ────────────────────────────────────────────────────────────
   const np = profile.professional?.noticePeriod;
-  const [noticeImmediate, setNoticeImmediate] = useState<boolean | null>(np?.immediate ?? null);
+  const [noticeImmediate, setNoticeImmediate] = useState<boolean | null>(typeof np?.immediate === 'boolean' ? np.immediate : null);
   const [noticeValue, setNoticeValue] = useState(np?.value?.toString() ?? '');
   const [noticeUnit, setNoticeUnit] = useState<NoticePeriodUnit>(np?.unit ?? 'week');
 
@@ -136,6 +122,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   const textFieldError = (key: 'company' | 'title', value: string): string => {
     if (key === 'company' && !value.trim()) return 'Company name is required';
     if (key === 'title' && !value.trim()) return 'Job title is required';
+    if (value.length > 150) return 'Use 150 characters or fewer';
     return '';
   };
 
@@ -172,31 +159,16 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   const validate = () => {
     const e: Record<string, string> = {};
 
+    if (summary.length > 2000) e.summary = 'Use 2000 characters or fewer';
     if (entries.length === 0) e.general = 'At least one work history entry is required';
     entries.forEach((row, idx) => {
       for (const key of ['company', 'title'] as const) {
         const err = textFieldError(key, row[key]);
         if (err) e[`${idx}.${key}`] = err;
       }
-      if (!row.startDate.trim()) {
-        e[`${idx}.startDate`] = 'Start date is required';
-      } else {
-        const sy = parseInt(row.startDate.split('-')[0] ?? '', 10);
-        if (sy > CURRENT_YEAR || sy < MIN_YEAR)
-          e[`${idx}.startDate`] = `Year must be between ${MIN_YEAR} and ${CURRENT_YEAR}`;
-      }
-      if (!row.isCurrent) {
-        if (!row.endDate.trim()) {
-          e[`${idx}.endDate`] = 'End date is required';
-        } else {
-          const ey = parseInt(row.endDate.split('-')[0] ?? '', 10);
-          if (ey > CURRENT_YEAR || ey < MIN_YEAR)
-            e[`${idx}.endDate`] = `Year must be between ${MIN_YEAR} and ${CURRENT_YEAR}`;
-          else if (row.startDate.trim() && row.endDate < row.startDate) {
-            e[`${idx}.endDate`] = 'End date cannot be before start date';
-          }
-        }
-      }
+      if (row.locationCity.length > 100) e[`${idx}.locationCity`] = 'Use 100 characters or fewer';
+      if (row.description.length > 3000) e[`${idx}.description`] = 'Use 3000 characters or fewer';
+      for (const [key, error] of Object.entries(profileDateRangeErrors(row))) e[`${idx}.${key}`] = error;
     });
 
     if (noticeImmediate === null) e.noticePeriod = 'Select your availability';
@@ -247,7 +219,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       </div>
 
       {/* ── Career Summary ──────────────────────────────────────────────────── */}
-      <FormField label="Career Summary" hint={`${summary.length} / 2000`}>
+      <FormField error={errors.summary} label="Career Summary" hint={`${summary.length} / 2000`}>
         <textarea
           id="field-summary"
           className={`${cls()} min-h-[100px] resize-y`}
@@ -262,6 +234,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       <div className="flex items-center justify-between mb-3 mt-2">
         <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Work Experience</p>
         <AddEntryButton
+          id="add-workHistory"
           variant="pill"
           onClick={() => { const row = emptyRow(); setEntries((rows) => [...rows, row]); setNewEntryTick((t) => t + 1); }}
           label="+ Add Entry"
@@ -275,6 +248,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       <div ref={entriesContainerRef}>
       {entries.map((row, idx) => (
         <ExpandableCard
+          id={`entry-workHistory-${idx}`}
           key={row.rowId}
           summary={cardSummary(row, idx)}
           onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
@@ -285,6 +259,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
             <FormField label="Company" required error={errors[`${idx}.company`]}>
               <input
                 className={cls(errors[`${idx}.company`])}
+                id={`field-workHistory-${idx}-company`}
                 value={row.company}
                 onChange={(e) => updateEntry(idx, 'company', e.target.value)}
                 onBlur={() => handleEntryBlur(idx, 'company')}
@@ -295,6 +270,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
             <FormField label="Job Title" required error={errors[`${idx}.title`]}>
               <input
                 className={cls(errors[`${idx}.title`])}
+                id={`field-workHistory-${idx}-title`}
                 value={row.title}
                 onChange={(e) => updateEntry(idx, 'title', e.target.value)}
                 onBlur={() => handleEntryBlur(idx, 'title')}
@@ -307,11 +283,12 @@ export function WorkHistorySection({ profile, onSave }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Country">
               <SearchableCountryDropdown
+                id={`field-workHistory-${idx}-location`}
                 value={row.locationCountry}
                 onChange={(code) => updateEntry(idx, 'locationCountry', code)}
               />
             </FormField>
-            <FormField label="City">
+            <FormField label="City" error={errors[`${idx}.locationCity`]}>
               <input
                 className={cls()}
                 value={row.locationCity}
@@ -326,11 +303,12 @@ export function WorkHistorySection({ profile, onSave }: Props) {
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Work Arrangement
             </p>
-            <div className="flex gap-6">
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
               {(['onsite', 'remote', 'hybrid'] as const).map((opt) => (
                 <label key={opt} className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"
+                    id={opt === 'onsite' ? `field-workHistory-${idx}-arrangement` : undefined}
                     name={`arrangement-${idx}`}
                     value={opt}
                     checked={row.arrangement === opt}
@@ -355,6 +333,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Start Date" required error={errors[`${idx}.startDate`]}>
               <MonthYearPicker
+                id={`field-workHistory-${idx}-startDate`}
                 value={row.startDate}
                 onChange={(v) => updateEntry(idx, 'startDate', v)}
                 onYearChange={(y) => handleYearChange(idx, 'startDate', y)}
@@ -364,6 +343,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
             </FormField>
             <FormField label="End Date" required={!row.isCurrent} error={errors[`${idx}.endDate`]}>
               <MonthYearPicker
+                id={`field-workHistory-${idx}-endDate`}
                 value={row.endDate}
                 onChange={(v) => updateEntry(idx, 'endDate', v)}
                 onYearChange={(y) => handleYearChange(idx, 'endDate', y)}
@@ -384,9 +364,10 @@ export function WorkHistorySection({ profile, onSave }: Props) {
             <span className="text-sm text-gray-700 dark:text-gray-300">Currently active</span>
           </label>
 
-          <FormField label="Description" hint={`${row.description.length} / 3000`}>
+          <FormField label="Description" error={errors[`${idx}.description`]} hint={`${row.description.length} / 3000`}>
             <textarea
               className={`${cls()} min-h-[100px] resize-y`}
+              id={`field-workHistory-${idx}-description`}
               value={row.description}
               onChange={(e) => updateEntry(idx, 'description', e.target.value)}
               placeholder="Key responsibilities and achievements..."
@@ -408,10 +389,11 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       {/* ── Notice Period ────────────────────────────────────────────────────── */}
       <div className="pt-4 mb-4" data-field-error={!!errors.noticePeriod}>
         <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notice Period<span className="text-red-500 ml-0.5">*</span></p>
-        <div className="flex gap-4 mb-3">
+        <div className="flex flex-wrap gap-4 mb-3">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="radio"
+              id="field-noticePeriod"
               name="notice"
               checked={noticeImmediate === true}
               onChange={() => { setNoticeImmediate(true); setErrors((e) => ({ ...e, noticePeriod: '' })); }}
@@ -437,7 +419,9 @@ export function WorkHistorySection({ profile, onSave }: Props) {
             <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">Available after</span>
             <div className="w-20">
               <input
+                id="field-noticeValue"
                 type="number"
+                step={1}
                 min={1}
                 max={NOTICE_MAX[noticeUnit]}
                 className={cls(errors.noticeValue)}

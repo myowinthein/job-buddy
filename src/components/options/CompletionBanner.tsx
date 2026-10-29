@@ -1,100 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { CompletionGroup } from '@/src/utils/profileCompletion';
 
-interface DropdownPanelProps {
-  heading:      string;
-  groups:       CompletionGroup[];
-  bulletCls:    string;
-  onClose:      () => void;
-  onNavigate:   (sectionId: string) => void;
-  onFocusField: (sectionId: string, field: string) => void;
-}
-
-function DropdownPanel({ heading, groups, bulletCls, onClose, onNavigate, onFocusField }: DropdownPanelProps) {
-  return (
-    <div className="absolute right-0 top-full mt-1 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-black/40 border border-gray-200 dark:border-gray-700 z-50 py-2">
-      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 px-3 pb-1.5 border-b border-gray-100 dark:border-gray-700">
-        {heading}
-      </p>
-      <ul className="max-h-64 overflow-y-auto py-1">
-        {groups.map((group) => (
-          <li key={group.sectionId}>
-            <button
-              type="button"
-              onClick={() => { onNavigate(group.sectionId); onClose(); }}
-              className="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-colors"
-            >
-              {group.sectionLabel} →
-            </button>
-            <ul>
-              {group.fields.map((field) => (
-                <li key={field}>
-                  <button
-                    type="button"
-                    onClick={() => { onFocusField(group.sectionId, field); onClose(); }}
-                    className="w-full text-left flex items-center gap-2 px-5 py-1 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-95 transition-colors rounded"
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full ${bulletCls} shrink-0`} />
-                    {field}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-interface DropdownTriggerProps {
-  count:        number;
-  heading:      string;
-  groups:       CompletionGroup[];
-  bulletCls:    string;
-  showDropdown: boolean;
-  onToggle:     () => void;
-  onClose:      () => void;
-  onNavigate:   (sectionId: string) => void;
-  onFocusField: (sectionId: string, field: string) => void;
-}
-
-// Shared by the Required Fields / Optional Fields triggers below — identical
-// shell differing only in count/heading/groups/bulletCls.
-function DropdownTrigger({ count, heading, groups, bulletCls, showDropdown, onToggle, onClose, onNavigate, onFocusField }: DropdownTriggerProps) {
-  return (
-    <div className="relative shrink-0">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center gap-1 active:scale-95 transition-colors"
-      >
-        <span className="w-4 h-4 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs flex items-center justify-center font-bold">
-          {count}
-        </span>
-        Missing {showDropdown ? '▲' : '▼'}
-      </button>
-      {showDropdown && (
-        <DropdownPanel
-          heading={heading}
-          groups={groups}
-          bulletCls={bulletCls}
-          onClose={onClose}
-          onNavigate={onNavigate}
-          onFocusField={onFocusField}
-        />
-      )}
-    </div>
-  );
-}
-
 interface CompletionBannerProps {
-  percentage:              number;
-  isCoreComplete:          boolean;
+  percentage: number;
+  isCoreComplete: boolean;
   optionalFieldsRemaining: number;
-  optionalGroups:          CompletionGroup[];
-  missingGroups:           CompletionGroup[];
-  onNavigate:   (sectionId: string) => void;
+  optionalGroups: CompletionGroup[];
+  missingGroups: CompletionGroup[];
+  onNavigate: (sectionId: string) => void;
   onFocusField: (sectionId: string, fieldLabel: string) => void;
 }
 
@@ -107,68 +20,147 @@ export function CompletionBanner({
   onNavigate,
   onFocusField,
 }: CompletionBannerProps) {
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const panelId = useId();
+  const count = isCoreComplete
+    ? optionalFieldsRemaining
+    : missingGroups.reduce((sum, g) => sum + g.fields.length, 0);
+  const groups = isCoreComplete ? optionalGroups : missingGroups;
+  const heading = isCoreComplete ? 'Optional details' : 'Required details to complete or correct';
 
-  const totalMissing = missingGroups.reduce((sum, g) => sum + g.fields.length, 0);
-  const barColor     = percentage >= 80 ? 'bg-green-500' : percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500';
-  const textColor    = percentage >= 80
-    ? 'text-green-700 dark:text-green-400'
-    : percentage >= 50
-    ? 'text-yellow-700 dark:text-yellow-400'
-    : 'text-red-700 dark:text-red-400';
-
-  const close = () => setShowDropdown(false);
+  useEffect(() => {
+    if (!open) return;
+    const outside = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener('mousedown', outside);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('mousedown', outside);
+      document.removeEventListener('keydown', escape);
+    };
+  }, [open]);
 
   return (
-    <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 min-h-16 py-3 flex flex-wrap items-center gap-2 sm:gap-4 shrink-0">
-
-      {/* Label area */}
-      {isCoreComplete ? (
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-sm font-bold text-green-700 dark:text-green-400">✓ Ready to Apply</span>
-        </div>
-      ) : (
-        <div className="flex items-center gap-1 shrink-0">
-          <span className={`text-sm font-bold ${textColor}`}>{percentage}%</span>
-          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Complete</span>
-        </div>
-      )}
-
-      {/* Progress bar */}
-      <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+    <div
+      ref={rootRef}
+      onBlur={(event) => {
+        if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node))
+          setOpen(false);
+      }}
+      className="relative bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 min-h-16 py-3 flex flex-wrap items-center gap-2 sm:gap-4 shrink-0"
+    >
+      <div
+        className="flex items-center gap-2"
+        title="Based on saved profile data. Optional details do not affect this percentage."
+      >
+        <span
+          className={`text-sm font-bold ${isCoreComplete ? 'text-green-700 dark:text-green-400' : 'text-blue-700 dark:text-blue-400'}`}
+        >
+          {percentage}%
+        </span>
+        <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+          {isCoreComplete ? 'Required details complete' : 'Required profile'}
+        </span>
+        <span className="sr-only">Based on saved data</span>
+      </div>
+      <div
+        role="progressbar"
+        aria-label="Saved required profile details"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percentage}
+        className="flex-1 min-w-20 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"
+      >
         <div
-          className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+          className={`h-full rounded-full transition-all duration-500 ${isCoreComplete ? 'bg-green-500' : 'bg-blue-500'}`}
           style={{ width: `${percentage}%` }}
         />
       </div>
-
-      {/* Dropdown trigger */}
-      {!isCoreComplete && totalMissing > 0 && (
-        <DropdownTrigger
-          count={totalMissing}
-          heading="Required Fields"
-          groups={missingGroups}
-          bulletCls="bg-red-400"
-          showDropdown={showDropdown}
-          onToggle={() => setShowDropdown((s) => !s)}
-          onClose={close}
-          onNavigate={onNavigate}
-          onFocusField={onFocusField}
-        />
-      )}
-
-      {isCoreComplete && optionalFieldsRemaining > 0 && (
-        <DropdownTrigger
-          count={optionalFieldsRemaining}
-          heading="Optional Fields"
-          groups={optionalGroups}
-          bulletCls="bg-gray-300"
-          showDropdown={showDropdown}
-          onToggle={() => setShowDropdown((s) => !s)}
-          onClose={close}
-          onNavigate={onNavigate}
-          onFocusField={onFocusField}
-        />
+      {count > 0 && (
+        <div className="sm:relative shrink-0">
+          <button
+            ref={triggerRef}
+            type="button"
+            aria-expanded={open}
+            aria-controls={panelId}
+            onClick={() => setOpen((value) => !value)}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                setOpen(true);
+                requestAnimationFrame(() => panelRef.current?.querySelector('button')?.focus());
+              }
+            }}
+            className="text-xs text-blue-700 dark:text-blue-300 hover:underline flex items-center gap-1"
+          >
+            {count} {isCoreComplete ? 'optional details' : 'required remaining'}{' '}
+            <span aria-hidden="true">{open ? '▲' : '▼'}</span>
+          </button>
+          {open && (
+            <div
+              ref={panelRef}
+              id={panelId}
+              role="region"
+              aria-label={heading}
+              className="absolute left-4 right-4 sm:left-auto sm:right-0 top-full mt-2 w-auto sm:w-80 max-w-[calc(100vw-6rem)] bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-2"
+            >
+              <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 px-3 pb-1.5 border-b border-gray-100 dark:border-gray-700">
+                {heading}
+              </p>
+              <p className="px-3 py-1 text-xs text-gray-500 dark:text-gray-400">
+                {isCoreComplete
+                  ? 'Add only what you want to share. These do not affect your percentage.'
+                  : 'Select a detail to go to its input. Progress updates after saving.'}
+              </p>
+              <ul className="max-h-64 overflow-y-auto py-1">
+                {groups.map((group) => (
+                  <li key={group.sectionId}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onNavigate(group.sectionId);
+                        setOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                    >
+                      {group.sectionLabel} →
+                    </button>
+                    <ul>
+                      {group.fields.map((field) => (
+                        <li key={field}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onFocusField(group.sectionId, field);
+                              setOpen(false);
+                            }}
+                            className="w-full text-left flex items-center gap-2 px-5 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="w-1 h-1 rounded-full bg-current shrink-0"
+                            />
+                            {field}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
