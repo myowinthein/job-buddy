@@ -29,7 +29,7 @@ import {
   getLearnedMappings, saveLearnedMapping, mergeLearnedMappings,
   getApplicationHistory, saveApplicationHistory,
   getGeminiApiKey, saveGeminiApiKey, clearGeminiSettings,
-  getGeminiModel, saveGeminiModel,
+  getGeminiModel, saveGeminiModel, getGeminiSettings, saveGeminiSettings,
   getThemePreference, saveThemePreference,
   getDriveToken, saveDriveToken, clearDriveToken,
   clearAllStorage,
@@ -286,7 +286,8 @@ describe('Gemini settings', () => {
     expect(store['geminiApiKey']).toBeUndefined();
   });
 
-  it('falls back to DEFAULT_GEMINI_MODEL when nothing is stored (dev) and persists it', async () => {
+  it('seeds the development key and model together when explicitly configured', async () => {
+    vi.stubEnv('VITE_GEMINI_API_KEY', 'dev-key-abc');
     const model = await getGeminiModel();
     expect(model).toBe('gemini-3.5-flash-lite'); // DEFAULT_GEMINI_MODEL / GEMINI_MODEL_PRIORITY[0]
     expect(store['geminiModel']).toBe('gemini-3.5-flash-lite');
@@ -421,4 +422,120 @@ describe('clearAllStorage', () => {
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
+});
+
+
+describe('Gemini reset and concurrent updates', () => {
+  it('rejects removal failures rather than reporting a successful reset', async () => {
+    await saveGeminiApiKey('synthetic-key');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(chrome.storage.local, 'remove').mockImplementation((_keys, callback) => {
+      Object.assign(chrome.runtime, { lastError: { message: 'Removal failed' } });
+      callback?.();
+      Object.assign(chrome.runtime, { lastError: null });
+    });
+    await expect(clearGeminiSettings()).rejects.toThrow('Removal failed');
+    expect(store.geminiApiKey).toBe('synthetic-key');
+  });
+  it('keeps the development key and model removed after reset and repeated reads', async () => {
+    vi.stubEnv('DEV', true);
+    vi.stubEnv('VITE_GEMINI_API_KEY', 'dev-key-abc');
+    await getGeminiSettings();
+    await clearGeminiSettings();
+    await clearAllStorage();
+    expect(await getGeminiApiKey()).toBeNull();
+    expect(await getGeminiModel()).toBeNull();
+    expect(await getGeminiApiKey()).toBeNull();
+  });
+  it('rejects a stale verified snapshot after another tab clears settings', async () => {
+    const original = await getGeminiSettings();
+    await clearGeminiSettings();
+    expect(
+      await saveGeminiSettings('old-key', 'gemini-3.8-flash', 'auto', original.revision),
+    ).toBeNull();
+    expect(await getGeminiApiKey()).toBeNull();
+  });
+  it('writes key, model and preference in a single atomic set', async () => {
+    const original = await getGeminiSettings();
+    const set = vi.spyOn(chrome.storage.local, 'set');
+    const saved = await saveGeminiSettings(
+      'verified-key',
+      'gemini-3.8-flash',
+      'auto',
+      original.revision,
+    );
+    expect(saved?.apiKey).toBe('verified-key');
+    expect(set).toHaveBeenCalledTimes(1);
+    expect(set.mock.calls[0][0]).toMatchObject({
+      geminiApiKey: 'verified-key',
+      geminiModel: 'gemini-3.8-flash',
+      geminiSettingsMeta: { preference: 'auto' },
+    });
+  });
+  it('does not save when a check has been cancelled while waiting for storage', async () => {
+    const original = await getGeminiSettings();
+    expect(
+      await saveGeminiSettings(
+        'cancelled-key',
+        'gemini-3.8-flash',
+        'auto',
+        original.revision,
+        () => false,
+      ),
+    ).toBeNull();
+    expect(store.geminiApiKey).toBeUndefined();
+  });
+  it('does not seed a development key after a failed read', async () => {
+    vi.stubEnv('DEV', true);
+    vi.stubEnv('VITE_GEMINI_API_KEY', 'dev-key-abc');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(chrome.storage.local, 'get').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+    await expect(getGeminiSettings()).rejects.toThrow('Storage unavailable');
+    expect(store.geminiApiKey).toBeUndefined();
+  });
+});
+
+it('restores the prior credential if a save is cancelled during the Chrome write', async () => {
+  await saveGeminiApiKey('previous-key');
+  const original = await getGeminiSettings();
+  let completeWrite!: () => void;
+  const originalSet = chrome.storage.local.set;
+  vi.spyOn(chrome.storage.local, 'set')
+    .mockImplementationOnce((items, callback) => {
+      completeWrite = () => {
+        Object.assign(store, items);
+        callback?.();
+      };
+    })
+    .mockImplementation(originalSet);
+  let active = true;
+  const pending = saveGeminiSettings(
+    'cancelled-key',
+    'gemini-3.8-flash',
+    'auto',
+    original.revision,
+    () => active,
+  );
+  await vi.waitFor(() => expect(completeWrite).toBeDefined());
+  active = false;
+  completeWrite();
+  expect(await pending).toBeNull();
+  expect(await getGeminiApiKey()).toBe('previous-key');
+});
+
+
+it('serializes reset after a pending key write so credentials cannot return', async () => {
+  const original = await getGeminiSettings();
+  let finishWrite!: () => void;
+  const originalSet = chrome.storage.local.set;
+  vi.spyOn(chrome.storage.local, 'set').mockImplementationOnce((items, callback) => {
+    finishWrite = () => { Object.assign(store, items); callback?.(); };
+  }).mockImplementation(originalSet);
+  const save = saveGeminiSettings('pending-key', 'gemini-3.8-flash', 'auto', original.revision);
+  await vi.waitFor(() => expect(finishWrite).toBeDefined());
+  const reset = clearGeminiSettings(); finishWrite();
+  await Promise.all([save, reset]);
+  expect(await getGeminiApiKey()).toBeNull(); expect(await getGeminiModel()).toBeNull();
 });

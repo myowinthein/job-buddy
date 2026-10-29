@@ -298,3 +298,11 @@ describe('ResumeImportSection — CV invariant on save', () => {
     expect(screen.getByText('Review Suggestions')).toBeTruthy();
   }, 20000);
 });
+
+
+it('shows the Settings route when the key cannot be loaded instead of remaining blank', async () => {
+  vi.mocked(getGeminiApiKey).mockRejectedValueOnce(new Error('Storage unavailable'));
+  renderSection();
+  expect(await screen.findByText('You need a Gemini API key to use this feature.')).toBeTruthy();
+  expect(screen.getByRole('button', { name: /Go to Settings/ })).toBeTruthy();
+});

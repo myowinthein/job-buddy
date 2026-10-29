@@ -522,3 +522,28 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
 });
+
+
+it('filters unknown nested profile properties at the Drive serialization boundary', async () => {
+  const profile = {
+    ...makeProfile(),
+    professional: {
+      noticePeriod: {
+        immediate: false,
+        value: 1,
+        unit: 'month',
+        geminiApiKey: 'nested-key-sentinel',
+      },
+    },
+  } as Profile;
+  store.driveToken = 'synthetic-token';
+  mockFetchSequence([
+    { ok: true, body: { files: [] } },
+    { ok: true, body: { id: 'created' } },
+  ]);
+  expect((await syncProfileToDrive(profile)).success).toBe(true);
+  const body = fetchMock.mock.calls.find(([, options]) => options?.method === 'POST')![1]
+    .body as string;
+  expect(body).not.toContain('nested-key-sentinel');
+  expect(body).toContain('noticePeriod');
+});

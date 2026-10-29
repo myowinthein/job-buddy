@@ -97,11 +97,20 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
 
   // Load API key on mount
   useEffect(() => {
-    Promise.all([getGeminiApiKey(), getGeminiModel()]).then(([key, mdl]) => {
-      setApiKey(key ?? '');
-      setModel(mdl);
-    });
+    let active = true;
+    Promise.all([getGeminiApiKey(), getGeminiModel()])
+      .then(([key, mdl]) => {
+        if (!active) return;
+        setApiKey(key ?? '');
+        setModel(mdl);
+      })
+      .catch(() => {
+        if (!active) return;
+        setApiKey('');
+        setErrorMsg('Could not load AI settings. Open Settings and try again.');
+      });
     return () => {
+      active = false;
       abortControllerRef.current?.abort();
       if (longWaitTimerRef.current) clearTimeout(longWaitTimerRef.current);
     };

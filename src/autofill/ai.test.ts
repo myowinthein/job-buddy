@@ -681,3 +681,12 @@ it('does not restore a rule-yellow value the user cleared while AI was pending',
   expect((candidate.element as HTMLInputElement).value).toBe('');
   expect(result).toEqual({ noReview: 0, needReview: 1, noData: 0, lowConfidence: 0 });
 });
+
+
+it('retains rule-based results when AI settings cannot be read', async () => {
+  vi.mocked(getGeminiApiKey).mockRejectedValueOnce(new Error('Storage unavailable'));
+  const result = { noReview: 3, needReview: 0, lowConfidence: 0, noData: 0 };
+  expect(await runAIAutofill([], PROFILE, result, [])).toBe(false);
+  expect(result.noReview).toBe(3);
+  expect(resolveFieldsWithAI).not.toHaveBeenCalled();
+});

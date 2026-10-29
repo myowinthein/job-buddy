@@ -1,14 +1,39 @@
+import { KEY_ERROR_MESSAGES } from './keyErrors';
+export { KEY_ERROR_MESSAGES } from './keyErrors';
 import type { Profile } from '@/src/types/profile';
-import type { GeminiModel, KeyValidationResult, ImportError, AIFieldPayload, AIFieldResponse } from './types';
+import type { GeminiModel, KeyValidationResult, ImportError, AIFieldPayload, AIFieldResponse, KeyCheckStatus } from './types';
 import { GEMINI_MODEL_PRIORITY } from './types';
 import { buildPrompt } from './prompt';
 import { normalizeExtractedProfile, stripMarkdown } from './normalize';
 import { buildAutofillPrompt } from './autofillPrompt';
+import { autofillProfilePayload } from './profilePayload';
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-function endpoint(model: string, apiKey: string): string {
-  return `${GEMINI_BASE}/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+function endpoint(model: string): string {
+  return `${GEMINI_BASE}/${model}:generateContent`;
+}
+
+export const GEMINI_REQUEST_TIMEOUT_MS = 15_000;
+async function geminiFetch(url: string, apiKey: string, init: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  const abort = () => controller.abort(init.signal?.reason);
+  if (init.signal?.aborted) abort();
+  else init.signal?.addEventListener('abort', abort, { once: true });
+  const timer = setTimeout(
+    () => controller.abort(new DOMException('Request timed out', 'TimeoutError')),
+    GEMINI_REQUEST_TIMEOUT_MS,
+  );
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: controller.signal,
+      headers: { ...init.headers, 'x-goog-api-key': apiKey },
+    });
+  } finally {
+    clearTimeout(timer);
+    init.signal?.removeEventListener('abort', abort);
+  }
 }
 
 function extractGeminiText(data: unknown): string | undefined {
@@ -16,66 +41,60 @@ function extractGeminiText(data: unknown): string | undefined {
     ?.candidates?.[0]?.content?.parts?.[0]?.text;
 }
 
-// ── Key validation (decoupled from model selection) ───────────────────────────
-
-export async function checkApiKey(apiKey: string): Promise<'valid' | 'invalid' | 'network_error'> {
-  try {
-    const resp = await fetch(
-      `${GEMINI_BASE}?key=${encodeURIComponent(apiKey)}&pageSize=1`,
-      { method: 'GET' },
-    );
-    if (resp.ok) return 'valid';
-    if (resp.status === 401 || resp.status === 403) return 'invalid';
-    return 'network_error';
-  } catch {
-    return 'network_error';
-  }
+async function responseError(resp: Response): Promise<Exclude<KeyCheckStatus, 'valid'> | 'no_model'> {
+  let error: { message?: string; details?: { reason?: string }[] } = {};
+  try { error = (await resp.json())?.error ?? {}; } catch { /* A non-JSON error carries no credential evidence. */ }
+  const reasons = error.details?.map(detail => detail.reason).join(' ') ?? '';
+  const message = error.message ?? '';
+  if (resp.status === 401 || /API_KEY_(INVALID|EXPIRED)/i.test(reasons) ||
+    /api[ _]key (?:is )?(?:not valid|invalid|expired)|invalid api[ _]key/i.test(message)) return 'invalid';
+  if (resp.status === 403) return 'permission_denied';
+  if (resp.status === 429) return 'rate_limit';
+  if (resp.status === 404 || (resp.status === 400 && /model.*(?:not found|not supported|unavailable)/i.test(message))) return 'no_model';
+  return 'service_error';
+}
+function requestError(error: unknown, signal?: AbortSignal): Exclude<KeyCheckStatus, 'valid'> {
+  if (signal?.aborted) return 'cancelled';
+  if ((error as { name?: string })?.name === 'TimeoutError') return 'timeout';
+  return 'network_error';
 }
 
+export async function checkApiKey(apiKey: string, signal?: AbortSignal): Promise<KeyCheckStatus> {
+  try {
+    const resp = await geminiFetch(`${GEMINI_BASE}?pageSize=1`, apiKey, { method: 'GET', signal });
+    if (resp.ok) return 'valid';
+    const status = await responseError(resp);
+    return status === 'no_model' ? 'service_error' : status;
+  } catch (error) { return requestError(error, signal); }
+}
 function importError(code: ImportError['code'], message: string): ImportError {
   return { code, message };
 }
 
-export async function validateApiKey(apiKey: string): Promise<KeyValidationResult> {
-  for (const model of GEMINI_MODEL_PRIORITY) {
+export async function validateApiKey(
+  apiKey: string, signal?: AbortSignal, preferred?: GeminiModel,
+): Promise<KeyValidationResult> {
+  let failure: Exclude<KeyCheckStatus, 'valid'> | 'no_model' = 'no_model';
+  for (const model of preferred ? [preferred] : GEMINI_MODEL_PRIORITY) {
     let resp: Response;
     try {
-      resp = await fetch(endpoint(model, apiKey), {
-        method: 'POST',
+      resp = await geminiFetch(endpoint(model), apiKey, {
+        method: 'POST', signal,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: 'Hi' }] }],
-          generationConfig: { maxOutputTokens: 1 },
-        }),
+        body: JSON.stringify({ contents: [{ parts: [{ text: 'Hi' }] }], generationConfig: { maxOutputTokens: 1 } }),
       });
-    } catch {
-      return { valid: false, error: 'Network error while validating key' };
+    } catch (error) {
+      const errorCode = requestError(error, signal);
+      return { valid: false, errorCode, error: KEY_ERROR_MESSAGES[errorCode] };
     }
-
-    if (resp.ok) return { valid: true, model: model as GeminiModel };
-
-    // 401/403 = authentication failure; key is definitively rejected
-    if (resp.status === 401 || resp.status === 403) {
-      return { valid: false, error: 'API key invalid', keyInvalid: true };
+    if (resp.ok) return { valid: true, model };
+    const errorCode = await responseError(resp);
+    if (errorCode === 'invalid' || errorCode === 'permission_denied') {
+      return { valid: false, errorCode, error: KEY_ERROR_MESSAGES[errorCode], keyInvalid: errorCode === 'invalid' };
     }
-
-    // 400 is ambiguous: could be "API key not valid" OR "model not found / bad request".
-    // Read the body to decide; if we can't parse it, assume model-specific and try next.
-    if (resp.status === 400) {
-      let body: { error?: { message?: string } } | null = null;
-      try { body = await resp.json(); } catch { /* non-JSON body, treat as model error */ }
-      const msg = (body?.error?.message ?? '').toLowerCase();
-      if (msg.includes('api key') || msg.includes('api_key')) {
-        return { valid: false, error: 'API key invalid', keyInvalid: true };
-      }
-      continue; // model-specific 400 (e.g. "Model not found"); try next
-    }
-
-    // 404 = model unavailable for this account; try next
-    if (resp.status === 404) continue;
-    // any other non-200 = temporary or model-specific failure; try next
+    if (errorCode !== 'no_model') failure = errorCode;
   }
-  return { valid: false, error: 'No supported model available for this key', keyValidNoModel: true };
+  return { valid: false, errorCode: failure, error: KEY_ERROR_MESSAGES[failure], ...(failure === 'no_model' && { keyValidNoModel: true }) };
 }
 
 export async function extractFromResume(
@@ -83,11 +102,12 @@ export async function extractFromResume(
   model: GeminiModel,
   fileBase64: string,
   mimeType: string,
-  currentProfile: Partial<Profile>,
+  _currentProfile: Partial<Profile>,
   signal?: AbortSignal,
   links: string[] = [],
 ): Promise<Partial<Profile>> {
-  const prompt = buildPrompt(JSON.stringify(currentProfile, null, 2), links);
+  // Review compares against the current profile locally; extraction needs only the selected file.
+  const prompt = buildPrompt('{}', links);
   const body = JSON.stringify({
     contents: [{
       parts: [
@@ -104,7 +124,7 @@ export async function extractFromResume(
   for (const tryModel of modelsToTry) {
     let resp: Response;
     try {
-      resp = await fetch(endpoint(tryModel, apiKey), {
+      resp = await geminiFetch(endpoint(tryModel), apiKey, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body,
@@ -157,7 +177,7 @@ export async function resolveFieldsWithAI(
   fields: AIFieldPayload[],
   profile: object,
 ): Promise<AIFieldResponse[]> {
-  const prompt = buildAutofillPrompt(fields, profile);
+  const prompt = buildAutofillPrompt(fields, autofillProfilePayload(profile, fields));
   const body = JSON.stringify({
     contents: [{ parts: [{ text: prompt }] }],
     generationConfig: { temperature: 0 },
@@ -172,7 +192,7 @@ export async function resolveFieldsWithAI(
   for (const tryModel of modelsToTry) {
     let resp: Response;
     try {
-      resp = await fetch(endpoint(tryModel, apiKey), {
+      resp = await geminiFetch(endpoint(tryModel), apiKey, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body,

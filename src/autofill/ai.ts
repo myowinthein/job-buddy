@@ -60,20 +60,26 @@ export async function runAIAutofill(
   debug?: DebugAIField[],
   options: AIAutofillOptions = {},
 ): Promise<boolean> {
-  const [apiKey, storedModel] = await Promise.all([getGeminiApiKey(), getGeminiModel()]);
+  let apiKey: string | null, storedModel: string | null;
+  try {
+    [apiKey, storedModel] = await Promise.all([getGeminiApiKey(), getGeminiModel()]);
+  } catch {
+    return false;
+  } // Storage failures must leave rule-based fills intact.
   const isActive = options.isActive ?? (() => true);
   if (!isActive() || !apiKey || !storedModel) return false;
   const model = toGeminiModel(storedModel);
 
   const eligible = (group: RadioGroup | CheckboxGroup) =>
-    !group.isConsent && !isConsentGroup(group) &&
+    !group.isConsent &&
+    !isConsentGroup(group) &&
     !(options.mode === 'merge' && group.options.some((option) => option.element.checked));
   const radioGroups = scanRadioGroups().filter(eligible);
   const checkboxGroups = scanCheckboxGroups().filter(eligible);
 
   type Candidate =
     | AITextCandidate
-    | { type: 'radio';    group: RadioGroup }
+    | { type: 'radio'; group: RadioGroup }
     | { type: 'checkbox'; group: CheckboxGroup };
 
   const candidates: Candidate[] = [
@@ -94,10 +100,10 @@ export async function runAIAutofill(
       const baseLabel = bestLabel(s);
       const base = {
         fieldId,
-        label:        baseLabel,
+        label: baseLabel,
         ...(s.placeholder && { placeholder: s.placeholder }),
-        ...(s.name       && { name:        s.name }),
-        ...(s.nearbyText && { nearbyText:  s.nearbyText }),
+        ...(s.name && { name: s.name }),
+        ...(s.nearbyText && { nearbyText: s.nearbyText }),
       };
       if (c.element instanceof HTMLSelectElement) {
         const options = extractSelectOptions(c.element);
@@ -106,7 +112,7 @@ export async function runAIAutofill(
       // ARIA combobox/listbox: options are not available at scan time (dropdown
       // is closed). Send as 'select' so Gemini returns a profilePath; the fill
       // phase resolves the value and uses click-based option matching.
-      const ariaRole  = c.element.getAttribute('role');
+      const ariaRole = c.element.getAttribute('role');
       const ariaPopup = c.element.getAttribute('aria-haspopup');
       if (ariaRole === 'combobox' || ariaPopup === 'listbox') {
         return { ...base, type: 'select' as const };
@@ -115,13 +121,15 @@ export async function runAIAutofill(
     }
     return {
       fieldId,
-      type:    c.type,
-      label:   c.group.groupLabel,
+      type: c.type,
+      label: c.group.groupLabel,
       options: c.group.options.map((o) => ({ label: o.label, value: o.value })),
     };
   });
 
-  const valuesAtRequest = new Map(textCandidates.map((candidate) => [candidate.element, readFieldValue(candidate.element)]));
+  const valuesAtRequest = new Map(
+    textCandidates.map((candidate) => [candidate.element, readFieldValue(candidate.element)]),
+  );
   let responses: AIFieldResponse[];
   try {
     responses = await resolveFieldsWithAI(apiKey, model, payload, profile as object);
@@ -138,11 +146,20 @@ export async function runAIAutofill(
     finalState: 'green' | 'yellow' | 'unchanged',
   ) => {
     if (!debug) return;
-    const label = candidate.type === 'text'
-      ? bestLabel(candidate.signals)
-      : candidate.group.groupLabel;
-    const debugId = candidate.type === 'text' ? candidate.debugFieldId ?? fieldId : `ai_${candidate.type}_${fieldId}`;
-    debug.push({ fieldId: debugId, label, type: candidate.type, aiResult, aiConfidence, finalState });
+    const label =
+      candidate.type === 'text' ? bestLabel(candidate.signals) : candidate.group.groupLabel;
+    const debugId =
+      candidate.type === 'text'
+        ? (candidate.debugFieldId ?? fieldId)
+        : `ai_${candidate.type}_${fieldId}`;
+    debug.push({
+      fieldId: debugId,
+      label,
+      type: candidate.type,
+      aiResult,
+      aiConfidence,
+      finalState,
+    });
   };
 
   const handled = new Set<string>();
@@ -160,7 +177,7 @@ export async function runAIAutofill(
       continue;
     }
 
-    const isHigh    = resp.confidence === 'high';
+    const isHigh = resp.confidence === 'high';
     const confScore = isHigh ? CONF_CONFIRMED : CONF_AI_YELLOW;
 
     if (candidate.type === 'text') {
@@ -180,7 +197,8 @@ export async function runAIAutofill(
         value = resolveProfileValue(profile, resp.profilePath);
       }
 
-      const aiResult = isSelect && resp.selectedOption ? resp.selectedOption : (resp.profilePath ?? null);
+      const aiResult =
+        isSelect && resp.selectedOption ? resp.selectedOption : (resp.profilePath ?? null);
 
       if (!value) {
         recordDebug(candidate, fieldId, aiResult, resp.confidence, 'unchanged');
@@ -189,10 +207,15 @@ export async function runAIAutofill(
 
       const liveValue = readFieldValue(candidate.element);
       if (liveValue !== valuesAtRequest.get(candidate.element)) continue;
-      if (options.mode === 'merge' && candidate.originalState !== 'needReview' && liveValue.trim()) continue;
+      if (options.mode === 'merge' && candidate.originalState !== 'needReview' && liveValue.trim())
+        continue;
       const alreadyOwned = sessionElements.includes(candidate.element);
       if (!alreadyOwned) sessionElements.push(candidate.element);
-      const filled = await fillField(candidate.element, value, () => isActive() && readFieldValue(candidate.element) === liveValue);
+      const filled = await fillField(
+        candidate.element,
+        value,
+        () => isActive() && readFieldValue(candidate.element) === liveValue,
+      );
       if (!isActive()) break;
       if (filled === false) {
         if (!alreadyOwned) sessionElements.splice(sessionElements.indexOf(candidate.element), 1);
@@ -221,9 +244,8 @@ export async function runAIAutofill(
       }
       options.onTextFilled?.(candidate.element, isHigh ? 'green' : 'yellow');
       recordDebug(candidate, fieldId, aiResult, resp.confidence, isHigh ? 'green' : 'yellow');
-
     } else if (candidate.type === 'radio' && resp.selectedOption) {
-      const group  = candidate.group as RadioGroup;
+      const group = candidate.group as RadioGroup;
       const option = findBestOption(group.options, resp.selectedOption);
       if (!option) {
         recordDebug(candidate, fieldId, resp.selectedOption, resp.confidence, 'unchanged');
@@ -234,12 +256,17 @@ export async function runAIAutofill(
       applyHighlight(option.element, confScore);
       sessionElements.push(option.element);
       if (isHigh) result.noReview++;
-      else        result.needReview++;
-      recordDebug(candidate, fieldId, resp.selectedOption, resp.confidence, isHigh ? 'green' : 'yellow');
-
+      else result.needReview++;
+      recordDebug(
+        candidate,
+        fieldId,
+        resp.selectedOption,
+        resp.confidence,
+        isHigh ? 'green' : 'yellow',
+      );
     } else if (candidate.type === 'checkbox' && Array.isArray(resp.selectedOptions)) {
-      const group    = candidate.group as CheckboxGroup;
-      let anyFilled  = false;
+      const group = candidate.group as CheckboxGroup;
+      let anyFilled = false;
       for (const label of resp.selectedOptions) {
         const option = findBestOption(group.options, label);
         if (!option) continue;
@@ -250,10 +277,15 @@ export async function runAIAutofill(
       }
       if (anyFilled) {
         if (isHigh) result.noReview++;
-        else        result.needReview++;
+        else result.needReview++;
       }
-      recordDebug(candidate, fieldId, resp.selectedOptions.join(', '), resp.confidence, anyFilled ? (isHigh ? 'green' : 'yellow') : 'unchanged');
-
+      recordDebug(
+        candidate,
+        fieldId,
+        resp.selectedOptions.join(', '),
+        resp.confidence,
+        anyFilled ? (isHigh ? 'green' : 'yellow') : 'unchanged',
+      );
     } else {
       // No actionable response shape (e.g. text without profilePath)
       recordDebug(candidate, fieldId, null, resp.confidence, 'unchanged');

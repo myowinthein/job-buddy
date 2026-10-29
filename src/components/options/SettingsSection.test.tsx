@@ -11,6 +11,8 @@ vi.mock('@/src/utils/storage', () => ({
   mergeLearnedMappings: vi.fn((local: object, remote: object) => ({ ...local, ...remote })),
   saveApplicationHistory: vi.fn().mockResolvedValue(undefined),
   clearAllStorage: vi.fn().mockResolvedValue(undefined),
+  getGeminiSettings: vi.fn().mockResolvedValue({ apiKey: null, model: null, preference: 'auto', revision: null, verifiedAt: null }),
+  saveGeminiSettings: vi.fn(async (apiKey, model, preference) => ({ apiKey, model, preference, revision: 'saved-revision', verifiedAt: 1 })),
   getGeminiApiKey: vi.fn().mockResolvedValue(null),
   saveGeminiApiKey: vi.fn().mockResolvedValue(undefined),
   getGeminiModel: vi.fn().mockResolvedValue(null),
@@ -49,7 +51,7 @@ vi.mock('@/src/utils/profileValidator', () => ({
 import { SettingsSection } from './SettingsSection';
 import { calculateDerivedFields } from '@/src/utils/derivedFields';
 import { ToastProvider } from '@/src/components/ui/Toast';
-import { getProfile, saveProfile, getGeminiApiKey, clearAllStorage, saveLearnedMappings, getLearnedMappings, getApplicationHistory, saveGeminiModel, clearGeminiSettings, saveThemePreference } from '@/src/utils/storage';
+import { getProfile, saveProfile, getGeminiApiKey, getGeminiSettings, saveGeminiSettings, clearAllStorage, saveLearnedMappings, getLearnedMappings, getApplicationHistory, clearGeminiSettings, saveThemePreference } from '@/src/utils/storage';
 import { checkApiKey, validateApiKey } from '@/src/resume-ai/gemini';
 import { getFullDriveState, disconnectDrive, connectDrive, syncProfileToDrive, overwriteDriveWithLocal } from '@/src/utils/driveSync';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
@@ -85,6 +87,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getProfile).mockResolvedValue(null);
   vi.mocked(getGeminiApiKey).mockResolvedValue(null);
+  vi.mocked(getGeminiSettings).mockResolvedValue({ apiKey: null, model: null, preference: 'auto', revision: null, verifiedAt: null });
   vi.mocked(getFullDriveState).mockResolvedValue({ connected: false, lastSynced: null, pendingSync: false, error: null });
   vi.mocked(getLearnedMappings).mockResolvedValue({});
 });
@@ -94,31 +97,27 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('SettingsSection — Gemini key validation race guard (probeIdRef)', () => {
-  it('discards a stale background probe result when the key changes again before it resolves', async () => {
-    vi.useFakeTimers();
+describe('SettingsSection — explicit Gemini saves', () => {
+  it('discards a cancelled probe when another key is checked and saved', async () => {
+    vi.mocked(getGeminiSettings).mockResolvedValue({ apiKey: 'existing-key', model: 'gemini-3.5-flash-lite', preference: 'auto', revision: 'original', verifiedAt: null });
     let resolveFirstProbe!: (v: KeyValidationResult) => void;
     vi.mocked(checkApiKey).mockResolvedValue('valid');
     vi.mocked(validateApiKey)
-      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirstProbe = resolve; }))
+      .mockImplementationOnce(() => new Promise(resolve => { resolveFirstProbe = resolve; }))
       .mockResolvedValueOnce({ valid: true, model: 'gemini-3.8-flash' });
-
     renderSection();
-    const input = screen.getByLabelText('Gemini API Key') as HTMLInputElement;
-
-    fireEvent.change(input, { target: { value: 'first-key' } });
-    await act(async () => { await vi.advanceTimersByTimeAsync(800); }); // fire debounce -> checkApiKey + first validateApiKey (pending)
-
-    fireEvent.change(input, { target: { value: 'second-key' } });
-    await act(async () => { await vi.advanceTimersByTimeAsync(800); }); // fire debounce -> checkApiKey + second validateApiKey (resolves immediately)
-
-    // The second (current) probe's result should already be applied.
-    expect(vi.mocked(saveGeminiModel)).toHaveBeenCalledWith('gemini-3.8-flash');
-    const callsAfterCurrentProbe = vi.mocked(saveGeminiModel).mock.calls.length;
-
-    // Now let the FIRST (stale) probe resolve — its result must be ignored, not saved again.
+    fireEvent.click(await screen.findByText('Replace Key'));
+    fireEvent.change(screen.getByLabelText('Gemini API Key'), { target: { value: 'first-key' } });
+    fireEvent.click(screen.getByText('Save Key'));
+    await waitFor(() => expect(validateApiKey).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(screen.getByText('Replace Key'));
+    fireEvent.change(screen.getByLabelText('Gemini API Key'), { target: { value: 'second-key' } });
+    fireEvent.click(screen.getByText('Save Key'));
+    await waitFor(() => expect(saveGeminiSettings).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(saveGeminiSettings).mock.calls[0].slice(0, 4)).toEqual(['second-key', 'gemini-3.8-flash', 'auto', 'original']);
     await act(async () => { resolveFirstProbe({ valid: true, model: 'gemini-3.8-flash' }); });
-    expect(vi.mocked(saveGeminiModel)).toHaveBeenCalledTimes(callsAfterCurrentProbe);
+    expect(saveGeminiSettings).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -633,4 +632,30 @@ describe('SettingsSection — Export', () => {
 
     createElementSpy.mockRestore();
   });
+});
+
+
+it('retains the profile and reports failure if reset cannot remove the Gemini credential', async () => {
+  vi.mocked(clearGeminiSettings).mockRejectedValueOnce(new Error('Removal failed'));
+  renderSection();
+  fireEvent.click(await screen.findByText('Reset Now'));
+  fireEvent.change(screen.getByPlaceholderText('DELETE'), { target: { value: 'DELETE' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Reset All Data' }));
+  expect(await screen.findByText('Reset failed. Please try again.')).toBeTruthy();
+  expect(clearAllStorage).not.toHaveBeenCalled();
+  expect(screen.queryByText('All data has been reset.')).toBeNull();
+});
+
+it('excludes credentials hidden in a stored profile from downloaded JSON', async () => {
+  const profile = makeProfile();
+  profile.professional.noticePeriod = { immediate: false, value: 1, unit: 'month' };
+  Object.assign(profile.professional.noticePeriod, { geminiApiKey: 'nested-key-sentinel' });
+  vi.mocked(getProfile).mockResolvedValue(profile);
+  const create = vi.fn((_blob: Blob) => 'blob:synthetic');
+  URL.createObjectURL = create;
+  URL.revokeObjectURL = vi.fn();
+  renderSection();
+  fireEvent.click(await screen.findByText('Download File'));
+  await waitFor(() => expect(create).toHaveBeenCalled());
+  expect(await create.mock.calls[0][0].text()).not.toContain('nested-key-sentinel');
 });

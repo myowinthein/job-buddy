@@ -16,12 +16,16 @@ export function wrapStorageArea(
   label: string,
   { rejectOnSetError = false }: WrapStorageAreaOptions = {},
 ) {
-  function get(key: string): Promise<Record<string, unknown>> {
-    return new Promise((resolve) => {
+  function get(key: string, { rejectOnError = false } = {}): Promise<Record<string, unknown>> {
+    return new Promise((resolve, reject) => {
       try {
         getArea().get(key, (result: Record<string, unknown>) => {
           if (chrome.runtime.lastError) {
             console.error(`[Job Buddy] ${label}.get error:`, chrome.runtime.lastError.message);
+            if (rejectOnError) {
+              reject(new Error(chrome.runtime.lastError.message ?? `${label}.get failed`));
+              return;
+            }
             resolve({});
             return;
           }
@@ -29,7 +33,8 @@ export function wrapStorageArea(
         });
       } catch (err) {
         console.error(`[Job Buddy] ${label}.get threw:`, err);
-        resolve({});
+        if (rejectOnError) reject(err);
+        else resolve({});
       }
     });
   }

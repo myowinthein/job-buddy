@@ -11,6 +11,8 @@ vi.mock('@/src/utils/storage', () => ({
   mergeLearnedMappings: vi.fn((local: object, remote: object) => ({ ...local, ...remote })),
   saveApplicationHistory: vi.fn().mockResolvedValue(undefined),
   clearAllStorage: vi.fn().mockResolvedValue(undefined),
+  getGeminiSettings: vi.fn().mockResolvedValue({ apiKey: null, model: null, preference: 'auto', revision: null, verifiedAt: null }),
+  saveGeminiSettings: vi.fn(async (apiKey, model, preference) => ({ apiKey, model, preference, revision: 'saved-revision', verifiedAt: 1 })),
   getGeminiApiKey: vi.fn().mockResolvedValue(null),
   saveGeminiApiKey: vi.fn().mockResolvedValue(undefined),
   getGeminiModel: vi.fn().mockResolvedValue(null),
@@ -205,4 +207,36 @@ it.each([false, true])('preserves direct Drive persistence ordering with mapping
     expect(saveLearnedMappings).not.toHaveBeenCalled();
   }
   expect(saveApplicationHistory).not.toHaveBeenCalled();
+});
+
+
+it('reports credential settings as skipped rather than importing them from JSON', async () => {
+  renderSection();
+  const file = new File(
+    [
+      JSON.stringify({
+        profile: { personal: { firstName: 'Imported' }, geminiApiKey: 'synthetic-key' },
+        geminiApiKey: 'synthetic-key',
+      }),
+    ],
+    'backup.json',
+    { type: 'application/json' },
+  );
+  fireEvent.change(document.querySelector('input[accept=".json"]')!, { target: { files: [file] } });
+  expect(await screen.findByText(/API keys and connection settings are not imported/)).toBeTruthy();
+  expect(saveProfile).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText('Import All'));
+  await waitFor(() => expect(saveProfile).toHaveBeenCalled());
+  expect(JSON.stringify(vi.mocked(saveProfile).mock.calls[0][0])).not.toContain('synthetic-key');
+});
+
+it('rejects an oversized JSON backup before parsing any data', async () => {
+  renderSection();
+  const file = new File(['{}'], 'large.json', { type: 'application/json' });
+  Object.defineProperty(file, 'size', { value: 4 * 1024 * 1024 + 1 });
+  const read = vi.spyOn(file, 'text');
+  fireEvent.change(document.querySelector('input[accept=".json"]')!, { target: { files: [file] } });
+  expect(await screen.findByText(/File exceeds 4 MB limit/)).toBeTruthy();
+  expect(read).not.toHaveBeenCalled();
+  expect(saveProfile).not.toHaveBeenCalled();
 });

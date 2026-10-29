@@ -9,9 +9,7 @@ export const GEMINI_MODEL_PRIORITY: GeminiModel[] = [
   'gemini-3.8-flash',
 ];
 
-// The default model applied immediately when a key is validated (Step 2 of the
-// debounce flow). The background probe (Step 3) may upgrade this to a higher
-// priority model. Must equal GEMINI_MODEL_PRIORITY[0].
+// First candidate for automatic model selection.
 export const DEFAULT_GEMINI_MODEL: GeminiModel = GEMINI_MODEL_PRIORITY[0];
 
 export const MODEL_DISPLAY_NAMES: Record<GeminiModel, string> = {
@@ -82,12 +80,23 @@ export interface AIFieldResponse {
   confidence:       'high' | 'low' | null;
 }
 
+export type KeyCheckStatus =
+  | 'valid'
+  | 'invalid'
+  | 'permission_denied'
+  | 'rate_limit'
+  | 'service_error'
+  | 'network_error'
+  | 'timeout'
+  | 'cancelled';
+
 export interface KeyValidationResult {
+  errorCode?: Exclude<KeyCheckStatus, 'valid'> | 'no_model';
   valid: boolean;
   model?: GeminiModel;
   error?: string;
   /** true when the key authenticated successfully but no model in the priority list was accessible */
   keyValidNoModel?: boolean;
-  /** true when the API responded with 400/401/403 — key is definitively rejected */
+  /** true only when the response identifies an invalid or expired credential */
   keyInvalid?: boolean;
 }

@@ -2,7 +2,8 @@ import type { Profile } from '../types/profile';
 import type { LearnedMappings, LearnedMappingValue, ApplicationEntry, DriveBackupState } from '../types/storage';
 import { normalizeProfile } from './migrate';
 import { DEV_PROFILE } from './devProfile';
-import { DEFAULT_GEMINI_MODEL } from '../resume-ai/types';
+import { DEFAULT_GEMINI_MODEL, toGeminiModel } from '../resume-ai/types';
+import type { GeminiModel } from '../resume-ai/types';
 import { wrapStorageArea } from './storageArea';
 
 // Rejects on a set() failure (e.g. quota exceeded) so callers can surface an
@@ -115,10 +116,6 @@ export async function saveApplicationHistory(history: ApplicationEntry[]): Promi
   await storageSet({ applicationHistory: history });
 }
 
-function storageRemove(keys: string[]): Promise<void> {
-  return local.remove(keys);
-}
-
 export async function clearAllStorage(): Promise<void> {
   // An explicit reset must not immediately resurrect the development fixture.
   if (import.meta.env.DEV) await storageSet({ devProfileDisabled: true });
@@ -126,54 +123,115 @@ export async function clearAllStorage(): Promise<void> {
 }
 
 // ── Gemini AI settings ──────────────────────────────────────────────────────
-// Stored in chrome.storage.local only; never exported in profile bundles.
-
-// Falls back to VITE_GEMINI_API_KEY in dev builds only (gated on import.meta.env.DEV,
-// never true in a production/zip build) so `pnpm dev` doesn't require re-pasting a key
-// into Settings every time chrome.storage.local starts fresh.
+// Credentials and connection metadata are local only, never profile data.
+export type GeminiModelPreference = 'auto' | GeminiModel;
+export interface GeminiSettings {
+  apiKey: string | null;
+  model: GeminiModel | null;
+  preference: GeminiModelPreference;
+  revision: string | null;
+  verifiedAt: number | null;
+}
+interface GeminiSettingsMeta {
+  revision: string;
+  preference?: GeminiModelPreference;
+  verifiedAt?: number;
+}
+let geminiQueue: Promise<unknown> = Promise.resolve();
+async function withGeminiLock<T>(action: () => Promise<T>): Promise<T> {
+  if (typeof navigator !== 'undefined' && navigator.locks?.request)
+    return await navigator.locks.request('job-buddy-gemini-settings', action);
+  const result = geminiQueue.then(action, action);
+  geminiQueue = result.catch(() => {});
+  return result;
+}
+async function readGeminiSettings(): Promise<GeminiSettings> {
+  const [key, model, metadata] = await Promise.all([
+    local.get('geminiApiKey', { rejectOnError: true }),
+    local.get('geminiModel', { rejectOnError: true }),
+    local.get('geminiSettingsMeta', { rejectOnError: true }),
+  ]);
+  const meta = metadata.geminiSettingsMeta as GeminiSettingsMeta | undefined;
+  return {
+    apiKey: typeof key.geminiApiKey === 'string' && key.geminiApiKey ? key.geminiApiKey : null,
+    model: typeof model.geminiModel === 'string' && model.geminiModel ? toGeminiModel(model.geminiModel) : null,
+    preference: meta?.preference && meta.preference !== 'auto' ? toGeminiModel(meta.preference) : 'auto',
+    revision: meta?.revision ?? null,
+    verifiedAt: meta?.verifiedAt ?? null,
+  };
+}
+export async function getGeminiSettings(): Promise<GeminiSettings> {
+  return withGeminiLock(async () => {
+    const settings = await readGeminiSettings();
+    if (!settings.apiKey && import.meta.env.DEV) {
+      const flags = await local.get('geminiDevDisabled', { rejectOnError: true });
+      const devKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
+      if (!flags.geminiDevDisabled && devKey) {
+        const revision = crypto.randomUUID();
+        await storageSet({ geminiApiKey: devKey, geminiModel: DEFAULT_GEMINI_MODEL,
+          geminiSettingsMeta: { revision, preference: 'auto' } });
+        return { apiKey: devKey, model: DEFAULT_GEMINI_MODEL, preference: 'auto', revision, verifiedAt: null };
+      }
+    }
+    return settings;
+  });
+}
 export async function getGeminiApiKey(): Promise<string | null> {
-  const result = await storageGet('geminiApiKey');
-  const stored = (result.geminiApiKey as string | undefined) ?? null;
-  if (stored) return stored;
-  if (import.meta.env.DEV) {
-    const devKey = (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) ?? null;
-    // Persist so contexts WXT pre-bundles statically even in dev mode
-    // (content scripts, background — Chrome can't load a service worker or
-    // content script from the live Vite dev server the way popup/options
-    // do, so those bundles never see .env.development's custom VITE_* vars)
-    // still pick this up via the normal storage read above, rather than the
-    // dev key only ever working when getGeminiApiKey() happens to be called
-    // from the popup/options.
-    if (devKey) void storageSet({ geminiApiKey: devKey });
-    return devKey;
-  }
-  return null;
+  return (await getGeminiSettings()).apiKey;
 }
-
-export async function saveGeminiApiKey(key: string): Promise<void> {
-  await storageSet({ geminiApiKey: key });
-}
-
 export async function getGeminiModel(): Promise<string | null> {
-  const result = await storageGet('geminiModel');
-  const stored = (result.geminiModel as string) ?? null;
-  if (stored) return stored;
-  if (import.meta.env.DEV) {
-    // Same reasoning as getGeminiApiKey's dev fallback above — without a
-    // stored model, runAIAutofill's `!apiKey || !storedModel` check would
-    // still block AI even once the dev API key itself is picked up.
-    void storageSet({ geminiModel: DEFAULT_GEMINI_MODEL });
-    return DEFAULT_GEMINI_MODEL;
-  }
-  return null;
+  return (await getGeminiSettings()).model;
 }
 
+/** Commit one verified snapshot, unless removal/reset/another tab won the race. */
+export async function saveGeminiSettings(
+  apiKey: string, model: GeminiModel, preference: GeminiModelPreference,
+  expectedRevision: string | null, isCurrent: () => boolean = () => true,
+): Promise<GeminiSettings | null> {
+  return withGeminiLock(async () => {
+    const current = await readGeminiSettings();
+    if (current.revision !== expectedRevision || !isCurrent()) return null;
+    const revision = crypto.randomUUID();
+    const verifiedAt = Date.now();
+    await storageSet({ geminiApiKey: apiKey, geminiModel: model, geminiDevDisabled: true,
+      geminiSettingsMeta: { revision, preference, verifiedAt } });
+    if (!isCurrent()) {
+      // A Chrome write already in flight cannot be aborted. Restore the prior
+      // snapshot before releasing the lock; a queued reset/removal runs next.
+      await storageSet({ geminiApiKey: current.apiKey, geminiModel: current.model,
+        geminiSettingsMeta: { revision: crypto.randomUUID(), preference: current.preference,
+          verifiedAt: current.verifiedAt } });
+      return null;
+    }
+    return { apiKey, model, preference, revision, verifiedAt };
+  });
+}
+
+// Compatibility helpers for callers that explicitly seed local settings.
+// The UI uses saveGeminiSettings so the key/model are committed together.
+export async function saveGeminiApiKey(key: string): Promise<void> {
+  await withGeminiLock(async () => {
+    const current = await readGeminiSettings();
+    await storageSet({ geminiApiKey: key, geminiModel: current.model ?? DEFAULT_GEMINI_MODEL,
+      geminiSettingsMeta: { revision: crypto.randomUUID(), preference: current.preference },
+      geminiDevDisabled: true });
+  });
+}
 export async function saveGeminiModel(model: string): Promise<void> {
-  await storageSet({ geminiModel: model });
+  await withGeminiLock(async () => {
+    await storageSet({ geminiModel: toGeminiModel(model), geminiSettingsMeta: {
+      revision: crypto.randomUUID(), preference: toGeminiModel(model),
+    } });
+  });
 }
-
 export async function clearGeminiSettings(): Promise<void> {
-  await storageRemove(['geminiApiKey', 'geminiModel']);
+  await withGeminiLock(async () => {
+    // Advance the revision before removal, invalidating even pending checks in
+    // another Options tab. Keep this tombstone to suppress development seeding.
+    await storageSet({ geminiDevDisabled: true,
+      geminiSettingsMeta: { revision: crypto.randomUUID(), preference: 'auto' } });
+    await local.remove(['geminiApiKey', 'geminiModel'], { rejectOnError: true });
+  });
 }
 
 export async function saveLearnedMapping(

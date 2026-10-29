@@ -77,6 +77,8 @@ test('AI fills authorization radios, excludes consent radios, and Undo preserves
   const payloads: string[] = [];
   await context.route('https://generativelanguage.googleapis.com/**', async (route) => {
     requests++;
+    expect(route.request().url()).not.toContain('synthetic-key');
+    expect(route.request().headers()['x-goog-api-key']).toBe('synthetic-key');
     payloads.push(route.request().postData() ?? '');
     await route.fulfill({
       contentType: 'application/json',
@@ -108,7 +110,11 @@ test('AI fills authorization radios, excludes consent radios, and Undo preserves
   await expect(page.locator('#consent-yes')).not.toBeChecked();
   await expect(page.locator('#consent-no')).not.toBeChecked();
   expect(requests).toBeGreaterThan(0);
-  for (const payload of payloads) expect(payload).not.toContain('Privacy consent');
+  for (const payload of payloads) {
+    expect(payload).not.toContain('Privacy consent');
+    expect(payload).not.toContain('synthetic.pdf');
+    expect(payload).not.toContain('c3ludGhldGljIHBkZg==');
+  }
   await extension.send('CLEAR');
   await expect(page.locator('#work-yes')).not.toBeChecked();
   await expect(page.locator('#work-yes')).toHaveValue('yes');

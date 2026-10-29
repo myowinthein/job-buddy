@@ -68,7 +68,10 @@ check every answer and uploaded document before submitting.
 ## Optional features
 
 - **Gemini:** add your own API key in **Settings → AI Features** for AI autofill
-  assistance and PDF/DOCX resume import. Review imported suggestions before saving.
+  assistance and PDF/DOCX resume import. Select **Save Key** to verify and save it.
+  Keys remain in this browser and are excluded from JSON and Drive backups.
+  Use **Replace Key** or **Remove Key** to manage access. Review imported suggestions
+  before saving.
 - **Google Drive:** connect in **Settings** to back up your profile and learned
   mappings. Saved changes update the backup automatically. Use **Back Up Now**
   to check and update it manually. Different Drive data requires review before
@@ -86,7 +89,10 @@ new and changed details before importing all or selected updates. Missing values
 keep your current data; importing a list replaces that list. Mappings are merged,
 and application history adds missing IDs while keeping existing applications.
 
-AI sends profile and form or resume information to Google's Gemini API. Drive
+AI autofill sends profile details and form fields to Google's Gemini API, excluding
+stored document files. Personal background details are included only when a field
+asks for them. Resume import sends the selected file and extracted hyperlinks; the
+current profile stays local for review. Drive
 backup uploads your profile and learned mappings to Google. Read the
 [privacy policy](docs/legal/privacy/index.html) and
 [autofill and AI disclaimer](docs/legal/disclaimer/index.html) before using these features.

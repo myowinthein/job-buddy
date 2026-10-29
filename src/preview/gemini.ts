@@ -1,3 +1,4 @@
+export { KEY_ERROR_MESSAGES } from '../resume-ai/keyErrors';
 import type * as Gemini from '@/src/resume-ai/gemini';
 
 const message = 'Gemini is disabled in the sample-data preview.';

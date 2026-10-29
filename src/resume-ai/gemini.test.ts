@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const fetchMock = vi.fn();
 vi.stubGlobal('fetch', fetchMock);
 
-import { checkApiKey, validateApiKey, resolveFieldsWithAI, extractFromResume } from './gemini';
+import { checkApiKey, validateApiKey, resolveFieldsWithAI, extractFromResume, KEY_ERROR_MESSAGES, GEMINI_REQUEST_TIMEOUT_MS } from './gemini';
 import type { AIFieldPayload, GeminiModel } from './types';
 import type { Profile } from '@/src/types/profile';
 
@@ -152,14 +152,14 @@ describe('checkApiKey', () => {
     expect(await checkApiKey('key')).toBe('invalid');
   });
 
-  it('returns "invalid" on 403', async () => {
+  it('distinguishes denied permissions from an invalid key on 403', async () => {
     fetchMock.mockResolvedValueOnce(httpResponse(403));
-    expect(await checkApiKey('key')).toBe('invalid');
+    expect(await checkApiKey('key')).toBe('permission_denied');
   });
 
-  it('returns "network_error" on other non-ok statuses', async () => {
+  it('reports a server error separately from a network failure', async () => {
     fetchMock.mockResolvedValueOnce(httpResponse(500));
-    expect(await checkApiKey('key')).toBe('network_error');
+    expect(await checkApiKey('key')).toBe('service_error');
   });
 
   it('returns "network_error" when fetch throws', async () => {
@@ -182,14 +182,15 @@ describe('validateApiKey', () => {
   it('flags an auth failure (401) as keyInvalid without trying more models', async () => {
     fetchMock.mockResolvedValueOnce(httpResponse(401));
     const result = await validateApiKey('key');
-    expect(result).toEqual({ valid: false, error: 'API key invalid', keyInvalid: true });
+    expect(result).toEqual({ valid: false, errorCode: 'invalid', error: KEY_ERROR_MESSAGES.invalid, keyInvalid: true });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('flags a 403 as keyInvalid', async () => {
+  it('reports a 403 as a permission failure without invalidating the key', async () => {
     fetchMock.mockResolvedValueOnce(httpResponse(403));
     const result = await validateApiKey('key');
-    expect(result.keyInvalid).toBe(true);
+    expect(result.keyInvalid).toBe(false);
+    expect(result.errorCode).toBe('permission_denied');
     expect(result.valid).toBe(false);
   });
 
@@ -198,7 +199,7 @@ describe('validateApiKey', () => {
       httpResponse(400, { error: { message: 'API key not valid. Please pass a valid API key.' } }),
     );
     const result = await validateApiKey('key');
-    expect(result).toEqual({ valid: false, error: 'API key invalid', keyInvalid: true });
+    expect(result).toEqual({ valid: false, errorCode: 'invalid', error: KEY_ERROR_MESSAGES.invalid, keyInvalid: true });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -240,7 +241,8 @@ describe('validateApiKey', () => {
     const result = await validateApiKey('key');
     expect(result).toEqual({
       valid: false,
-      error: 'No supported model available for this key',
+      error: KEY_ERROR_MESSAGES.no_model,
+      errorCode: 'no_model',
       keyValidNoModel: true,
     });
     expect(fetchMock).toHaveBeenCalledTimes(2); // GEMINI_MODEL_PRIORITY length
@@ -249,7 +251,7 @@ describe('validateApiKey', () => {
   it('returns a network error when fetch rejects', async () => {
     fetchMock.mockRejectedValueOnce(new Error('offline'));
     const result = await validateApiKey('key');
-    expect(result).toEqual({ valid: false, error: 'Network error while validating key' });
+    expect(result).toEqual({ valid: false, errorCode: 'network_error', error: KEY_ERROR_MESSAGES.network_error });
   });
 });
 
@@ -331,5 +333,75 @@ describe('extractFromResume', () => {
   it('throws a parse ImportError when the candidate text is not valid JSON', async () => {
     fetchMock.mockResolvedValueOnce(geminiTextResponse('this is not json'));
     await expect(extract()).rejects.toMatchObject({ code: 'parse' });
+  });
+});
+
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe('Gemini credential transport and validation failures', () => {
+  it('uses a header, never a request URL, for every Gemini operation', async () => {
+    fetchMock.mockResolvedValue(
+      httpResponse(200, { candidates: [{ content: { parts: [{ text: '{}' }] } }] }),
+    );
+    await checkApiKey('synthetic-private-key');
+    await validateApiKey('synthetic-private-key');
+    await extractFromResume(
+      'synthetic-private-key',
+      'gemini-3.8-flash',
+      'synthetic-file',
+      'application/pdf',
+      {},
+    );
+    await resolveFieldsWithAI('synthetic-private-key', 'gemini-3.8-flash', [], {});
+    for (const [url, init] of fetchMock.mock.calls) {
+      expect(url).not.toContain('synthetic-private-key');
+      expect(url).not.toContain('key=');
+      expect(init.headers['x-goog-api-key']).toBe('synthetic-private-key');
+    }
+  });
+  it('recognizes an explicit API_KEY_INVALID 400 response', async () => {
+    fetchMock.mockResolvedValue(
+      httpResponse(400, { error: { details: [{ reason: 'API_KEY_INVALID' }] } }),
+    );
+    expect(await checkApiKey('bad-key')).toBe('invalid');
+  });
+  it.each([429, 500, 503])('does not misreport HTTP %s as missing models', async (status) => {
+    fetchMock.mockResolvedValue(httpResponse(status));
+    const result = await validateApiKey('key');
+    expect(result.keyValidNoModel).not.toBe(true);
+    expect(result.errorCode).toBe(status === 429 ? 'rate_limit' : 'service_error');
+  });
+  it('times out a stalled validation request', async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementation(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init.signal.addEventListener('abort', () => reject(init.signal.reason));
+        }),
+    );
+    const pending = checkApiKey('key');
+    await vi.advanceTimersByTimeAsync(GEMINI_REQUEST_TIMEOUT_MS);
+    expect(await pending).toBe('timeout');
+  });
+  it('cancels a validation request without labeling the key invalid', async () => {
+    fetchMock.mockImplementation(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init.signal.addEventListener('abort', () => reject(init.signal.reason));
+        }),
+    );
+    const controller = new AbortController();
+    const pending = checkApiKey('key', controller.signal);
+    controller.abort();
+    expect(await pending).toBe('cancelled');
+  });
+  it('checks only the chosen model for an explicit model preference', async () => {
+    fetchMock.mockResolvedValue(httpResponse(404));
+    await validateApiKey('key', undefined, 'gemini-3.8-flash');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toContain('gemini-3.8-flash');
   });
 });

@@ -1,3 +1,4 @@
+import { profileData } from './profileData';
 import type { Profile } from '../types/profile';
 import { findCountryByNameOrCode } from '../data/countries';
 import { findLanguage } from '../data/languages';
@@ -624,5 +625,5 @@ export function validateImportedProfile(raw: unknown): ValidationResult {
   const documents = validateDocuments(data, err);
   if (documents) s.documents = documents;
 
-  return { valid: errors.length === 0, invalidFields: errors, sanitized: s };
+  return { valid: errors.length === 0, invalidFields: errors, sanitized: profileData(s) };
 }
