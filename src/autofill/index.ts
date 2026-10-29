@@ -605,9 +605,8 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   if (noDataFields.length > 0) ensureVisibilityListener();
 
   const debugAI: DebugAIField[] = [];
-  const aiGreenFilled = new Set<HTMLElement>();
   const aiStates = new Map<HTMLElement, 'green' | 'yellow'>();
-  const aiRan = await runAIAutofill(aiTextCandidates, profile, result, ownedElements, domain, debugAI, aiGreenFilled, {
+  const aiRan = await runAIAutofill(aiTextCandidates, profile, result, ownedElements, domain, debugAI, {
     mode, isActive, onTextFilled: (element, state) => aiStates.set(element, state),
   });
   if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
@@ -623,13 +622,10 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   // pre-AI state (yellow/red/gray), causing incorrect count updates if the
   // user edits it further. AI's high-confidence decision is final; the field
   // should behave like any rule-pipeline green.
-  if (aiGreenFilled.size > 0) {
-    const filteredEditableFields = editableFields.filter((ef) => !aiGreenFilled.has(ef.element));
+  if ([...aiStates.values()].includes('green')) {
+    const filteredEditableFields = editableFields.filter((ef) => aiStates.get(ef.element) !== 'green');
     editableFields.length = 0;
     editableFields.push(...filteredEditableFields);
-    // Also drop these from the noData registry so silent re-fill doesn't try
-    // to overwrite AI's value when the user updates the related profile field.
-    noDataFields = noDataFields.filter((nd) => !aiGreenFilled.has(nd.element));
   }
 
   // Finalise debug session — scanner was seeded in scanAutofill; fill in the rest.

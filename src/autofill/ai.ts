@@ -51,15 +51,7 @@ export interface AIAutofillOptions {
 // Returns true if the AI layer ran (key was available), false if skipped (no key).
 // Mutates `result` and `sessionElements` in-place.
 //
-// `aiGreenFilled` is an optional output set. When AI fills a field at
-// high confidence (green), the element is added to this set so the caller
-// can strip it from the editable-fields list before edit watchers are
-// attached. Without this, a green-filled element would still get a blur
-// watcher for its stale pre-AI state — wrong UX.
-//
-// Text candidates come from all three non-green tiers (needReview, lowConfidence,
-// noData) — a needReview field is already filled from the rule pipeline, so a
-// high-confidence AI response overwrites that value, not just an empty field.
+// All non-green candidates are eligible, including rule-filled yellow fields.
 // Actual AI outcomes are reported so the caller can update edit/refill state.
 export async function runAIAutofill(
   textCandidates: AITextCandidate[],
@@ -68,7 +60,6 @@ export async function runAIAutofill(
   sessionElements: HTMLElement[],
   domain: string,
   debug?: DebugAIField[],
-  aiGreenFilled?: Set<HTMLElement>,
   options: AIAutofillOptions = {},
 ): Promise<boolean> {
   const [apiKey, storedModel] = await Promise.all([getGeminiApiKey(), getGeminiModel()]);
@@ -222,7 +213,6 @@ export async function runAIAutofill(
 
       if (isHigh) {
         result.noReview++;
-        aiGreenFilled?.add(candidate.element);
         // Deliberately not saved to learned mappings — AI's own self-reported
         // confidence is not a trustworthy signal to permanently promote a
         // field to Layer 0 (mapper.ts). Only a human editing the field (the
