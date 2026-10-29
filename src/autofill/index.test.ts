@@ -1017,3 +1017,41 @@ it('does not double-count a manual resolution during an asynchronous refill', as
   expect(getLastResult()).toMatchObject({ noReview: 1, noData: 0 });
   expect(input.value).toBe('human@example.test'); input.remove();
 });
+
+it('does not let an older scan replace the snapshot of a newer scan', async () => {
+  vi.mocked(runAIAutofill).mockReset().mockResolvedValue(false);
+  vi.mocked(fillField).mockReset().mockResolvedValue(true);
+  let finishOld!: (profile: Profile) => void;
+  vi.mocked(getProfile).mockImplementationOnce(() => new Promise<Profile>((resolve) => { finishOld = resolve; }));
+  const olderScan = scanAutofill();
+  const currentInput = makeInput();
+  vi.mocked(scanFields).mockReturnValue([currentInput]);
+  await scanAutofill();
+  finishOld(makeProfile()); await olderScan;
+  expect(mapField).toHaveBeenCalledTimes(1);
+  const result = await executeAutofill('overwrite');
+  expect(result.totalScanned).toBe(1);
+  expect(fillField).toHaveBeenCalledTimes(1);
+  expect(fillField).toHaveBeenCalledWith(currentInput, 'Jane', expect.any(Function));
+});
+
+it('removes AI-yellow former gray fields from visibility refill without overwriting the answer', async () => {
+  vi.mocked(runAIAutofill).mockReset().mockResolvedValue(false);
+  vi.mocked(fillField).mockReset().mockResolvedValue(true);
+  Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+  const input = makeInput(); document.body.appendChild(input);
+  vi.mocked(scanFields).mockReturnValue([input]);
+  vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.9, value: null, fieldPath: 'personal.email', matchLayer: 'dictionary_exact' });
+  vi.mocked(runAIAutofill).mockImplementationOnce(async (_c, _p, result, owned, _d, _dbg, _green, options) => {
+    input.value = 'ai@example.test'; owned.push(input); result.noData--; result.needReview++;
+    options?.onTextFilled?.(input, 'yellow'); return true;
+  });
+  await scanAutofill(); await executeAutofill('overwrite');
+  vi.mocked(getProfile).mockClear();
+  document.dispatchEvent(new Event('visibilitychange'));
+  await Promise.resolve();
+  expect(getProfile).not.toHaveBeenCalled(); expect(fillField).not.toHaveBeenCalled();
+  expect(input.value).toBe('ai@example.test');
+  expect(getLastResult()).toMatchObject({ noData: 0, needReview: 1, noReview: 0 });
+  input.remove();
+});
