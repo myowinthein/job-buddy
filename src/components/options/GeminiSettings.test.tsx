@@ -116,7 +116,8 @@ describe('Gemini explicit key setup', () => {
       null,
       expect.any(Function),
     );
-    expect((screen.getByLabelText('Gemini API Key') as HTMLInputElement).readOnly).toBe(true);
+    expect(screen.queryByLabelText('Gemini API Key')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Replace Key' }).id).toBe('gemini-api-key');
   });
   it.each([
     'invalid',
@@ -158,7 +159,7 @@ describe('Gemini explicit key setup', () => {
     expect(await screen.findByText('Key saved')).toBeTruthy();
     expect(screen.queryByText('Ready')).toBeNull();
     expect(checkApiKey).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByText('Check Key'));
+    fireEvent.click(screen.getByRole('button', { name: 'Check Key' }));
     expect(await screen.findByText('Ready')).toBeTruthy();
     expect(validateApiKey).toHaveBeenCalledWith(
       'saved-key',
@@ -176,7 +177,8 @@ describe('Gemini explicit key setup', () => {
     expect(clearGeminiSettings).not.toHaveBeenCalled();
     expect(saveGeminiSettings).not.toHaveBeenCalled();
     fireEvent.click(screen.getByText('Cancel'));
-    expect((screen.getByLabelText('Gemini API Key') as HTMLInputElement).value).toBe('saved-key');
+    expect(screen.queryByLabelText('Gemini API Key')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Replace Key' }));
   });
   it('reports removal failure and retains the configured controls', async () => {
     vi.mocked(getGeminiSettings).mockResolvedValue(existing);
@@ -236,7 +238,7 @@ describe('Gemini explicit key setup', () => {
     vi.mocked(validateApiKey).mockResolvedValue({ valid: true, model: 'gemini-3.8-flash' });
     renderSettings();
     await screen.findByText('Replace Key');
-    fireEvent.click(screen.getByText('Advanced settings'));
+    fireEvent.click(screen.getByText('Options & help'));
     fireEvent.change(screen.getByLabelText('AI Model'), { target: { value: 'gemini-3.8-flash' } });
     expect(await screen.findByText('Ready')).toBeTruthy();
     expect(saveGeminiSettings).toHaveBeenCalledWith(

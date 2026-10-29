@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Circle, LoaderCircle } from 'lucide-react';
+import { Check, Circle, LoaderCircle, RefreshCw } from 'lucide-react';
 import { checkApiKey, validateApiKey, KEY_ERROR_MESSAGES } from '@/src/resume-ai/gemini';
 import { MODEL_DISPLAY_NAMES, GEMINI_MODEL_PRIORITY } from '@/src/resume-ai/types';
 import {
@@ -33,6 +33,8 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
   const writing = useRef(0);
   const mounted = useRef(true);
   const keyInput = useRef<HTMLInputElement>(null);
+  const keyAction = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef(false);
   const configured = !!saved?.apiKey;
   const busy = status === 'checking' || status === 'loading' || resetInProgress;
   const replacing = editing || !configured;
@@ -81,9 +83,14 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
   }, [resetInProgress]);
   useEffect(() => {
     if (editing) keyInput.current?.focus();
+    else if (returnFocus.current) {
+      keyAction.current?.focus();
+      returnFocus.current = false;
+    }
   }, [editing]);
 
   function cancelEdit() {
+    returnFocus.current = true;
     sequence.current++;
     request.current?.abort();
     setDraft('');
@@ -231,24 +238,24 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
             : configured
               ? 'Key saved'
               : 'Not configured';
+  const statusIndicator = (
+    <span
+      role="status"
+      className={`inline-flex items-center gap-1.5 text-xs ${status === 'ready' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}
+    >
+      {status === 'checking' || status === 'loading' ? (
+        <LoaderCircle aria-hidden="true" className="w-3 h-3 motion-safe:animate-spin" />
+      ) : status === 'ready' ? (
+        <Check aria-hidden="true" className="w-3 h-3" />
+      ) : (
+        <Circle aria-hidden="true" className="w-2 h-2" />
+      )}
+      {statusText}
+    </span>
+  );
   return (
     <section className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-1">
-        <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200">AI Features</h3>
-        <span
-          role="status"
-          className={`inline-flex items-center gap-1 text-xs ${status === 'ready' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}
-        >
-          {status === 'checking' || status === 'loading' ? (
-            <LoaderCircle aria-hidden="true" className="w-3 h-3 motion-safe:animate-spin" />
-          ) : status === 'ready' ? (
-            <Check aria-hidden="true" className="w-3 h-3" />
-          ) : (
-            <Circle aria-hidden="true" className="w-2 h-2" />
-          )}
-          {statusText}
-        </span>
-      </div>
+      <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">AI Features</h3>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
         Enable AI-powered features using your own API key.
       </p>
@@ -259,37 +266,63 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
           if (!busy) void verify(replacing ? draft : (saved?.apiKey ?? ''), preference, replacing);
         }}
       >
-        <label
-          htmlFor="gemini-api-key"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-        >
-          Gemini API Key
-        </label>
-        <input
-          ref={keyInput}
-          id="gemini-api-key"
-          type="password"
-          value={replacing ? draft : (saved?.apiKey ?? '')}
-          onChange={(e) => {
-            sequence.current++;
-            request.current?.abort();
-            setDraft(e.target.value);
-            setError('');
-            setKeyInvalid(false);
-            setStatus(configured ? 'saved' : 'empty');
-          }}
-          readOnly={!replacing}
-          disabled={busy || !saved}
-          placeholder="Paste your API key"
-          autoComplete="off"
-          spellCheck={false}
-          aria-invalid={keyInvalid || undefined}
-          aria-describedby={`gemini-key-privacy${error ? ' gemini-key-error' : ''}`}
-          className={fieldCls(keyInvalid ? error : undefined, busy || !saved)}
-        />
-        <p id="gemini-key-privacy" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          Stored in this browser. Excluded from profile backups.
-        </p>
+        {configured && !replacing ? (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+              {saved?.model ? MODEL_DISPLAY_NAMES[saved.model] : 'Gemini API key'}
+            </span>
+            <span aria-hidden="true" className="text-gray-300 dark:text-gray-600">
+              ·
+            </span>
+            {statusIndicator}
+            <button
+              type="button"
+              onClick={() => void verify(saved?.apiKey ?? '', preference, false)}
+              disabled={busy}
+              aria-label={status === 'error' ? 'Try Again' : 'Check Key'}
+              title={status === 'error' ? 'Try Again' : 'Check Key'}
+              className="inline-flex items-center justify-center rounded-md p-1.5 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50"
+            >
+              <RefreshCw aria-hidden="true" className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+              <label
+                htmlFor="gemini-api-key"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
+                Gemini API Key
+              </label>
+              {statusIndicator}
+            </div>
+            <input
+              ref={keyInput}
+              id="gemini-api-key"
+              type="password"
+              value={draft}
+              onChange={(e) => {
+                sequence.current++;
+                request.current?.abort();
+                setDraft(e.target.value);
+                setError('');
+                setKeyInvalid(false);
+                setStatus(configured ? 'saved' : 'empty');
+              }}
+              disabled={busy || !saved}
+              placeholder="Paste your API key"
+              autoComplete="off"
+              spellCheck={false}
+              aria-invalid={keyInvalid || undefined}
+              aria-describedby={`gemini-key-privacy${error ? ' gemini-key-error' : ''}`}
+              className={fieldCls(keyInvalid ? error : undefined, busy || !saved)}
+            />
+            <p id="gemini-key-privacy" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Stored in this browser. Excluded from profile backups.
+            </p>
+          </>
+        )}
         {error && (
           <div
             id="gemini-key-error"
@@ -332,7 +365,10 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
             </>
           ) : (
             <>
+              {/* Keep the popup's focus target available when the editor is closed. */}
               <button
+                ref={keyAction}
+                id="gemini-api-key"
                 type="button"
                 disabled={busy}
                 className={primary}
@@ -356,23 +392,16 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
             </>
           )}
         </div>
-        {configured && !replacing && (
-          <button
-            type="submit"
-            disabled={busy}
-            className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
-          >
-            {status === 'error' ? 'Try Again' : 'Check Key'}
-          </button>
-        )}
+      </form>
+      <details className="mt-3 max-w-md">
+        <summary className="text-xs text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
+          Options &amp; help
+        </summary>
         {configured && (
-          <details className="mt-3">
-            <summary className="text-xs text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
-              Advanced settings
-            </summary>
+          <div className="mt-3">
             <label
               htmlFor="gemini-model"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mt-3 mb-1"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
             >
               AI Model
             </label>
@@ -394,42 +423,26 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {saved?.model
-                ? `Using ${MODEL_DISPLAY_NAMES[saved.model]}.`
-                : 'Job Buddy checks for a working model before saving.'}
-            </p>
-          </details>
+          </div>
         )}
-      </form>
-      <details className="mt-3 max-w-md">
-        <summary className="text-xs text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
-          How to get a key
-        </summary>
-        <ol className="mt-2 ml-4 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-decimal">
-          <li>
-            Open{' '}
-            <a
-              href="https://aistudio.google.com/api-keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 dark:text-blue-400 underline"
-            >
-              Google AI Studio
-            </a>{' '}
-            and sign in.
-          </li>
-          <li>Create an API key, then copy it and paste it here.</li>
-          <li>Select Save Key to check and enable AI features.</li>
-        </ol>
-      </details>
-      <details className="mt-2 max-w-md">
-        <summary className="text-xs text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
-          How data is used
-        </summary>
+        <p className="mt-3 text-xs text-gray-600 dark:text-gray-400">
+          Create a key in{' '}
+          <a
+            href="https://aistudio.google.com/api-keys"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 dark:text-blue-400 underline"
+          >
+            Google AI Studio
+          </a>
+          , then paste it here and select Save Key.
+        </p>
         <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-          Your key authenticates requests to Google. AI autofill shares profile details and form
-          fields, excluding stored document files. Personal background details are included only
+          Your key is stored in this browser and excluded from profile backups. It authenticates
+          requests sent directly to Google.
+        </p>
+        <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+          AI autofill excludes stored document files and only includes personal background details
           when a field asks for them. Resume import sends the selected file.
         </p>
       </details>
