@@ -689,7 +689,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       <section className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
         <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">AI Features</h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Enable AI-powered features using your own API key. Resume import and AI autofill send data to Gemini.
+          Enable AI-powered features using your own API key.
         </p>
 
         <label htmlFor="gemini-api-key" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -738,7 +738,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               ))}
             </select>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Job Buddy auto-detects a working model for your key. Change this only if you want to use a different one.
+              Job Buddy selects a working model for your key. Change it if needed.
             </p>
           </div>
         )}
@@ -770,8 +770,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       <section className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
         <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">Export Profile</h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Save your profile data as a JSON file. Use this to back up your data or transfer it to
-          another browser or device.
+          Back up your profile as JSON or transfer it to another browser or device.
         </p>
         <button
           type="button"
