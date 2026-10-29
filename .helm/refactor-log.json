@@ -261,8 +261,35 @@
         ],
         "invariant": "Preserve currently accepted/rejected values, diagnostics, validation order, sanitized shapes and legacy handling; leave distinct UI labels unchanged."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "7efe266d082a7d7d42e09f8504780f007e4aa057",
+        "date": "2026-10-29",
+        "method": "runtime",
+        "evidence": [
+          "Both enum membership Sets now derive from existing exhaustive maps with unchanged validation and import behavior."
+        ],
+        "checks": [
+          {
+            "command": "pnpm compile",
+            "scope": "project",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm exec vitest run src/utils/profileValidator.test.ts src/data/workAuthorization.test.ts src/data/languages.test.ts src/components/options/SettingsSection.integration.test.tsx src/components/options/ResumeImportSection.integration.test.tsx",
+            "scope": "validator, domain data and imports",
+            "outcome": "69 tests passed"
+          },
+          {
+            "command": "pnpm exec eslint src/utils/profileValidator.ts",
+            "scope": "R5 file",
+            "outcome": "passed"
+          }
+        ]
+      }
     },
     {
       "id": "r-7aa5f763-d7df-41b0-870d-317067df16c4",
