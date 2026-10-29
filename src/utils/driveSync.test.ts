@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 // In-memory chrome.storage.local
 const store: Record<string, unknown> = {};
@@ -208,7 +208,6 @@ describe('connectDrive', () => {
     const mod = await importConfiguredDriveSync();
     mockAuthFlow({ fail: true });
     await expect(mod.connectDrive()).rejects.toThrow('user cancelled');
-    vi.unstubAllEnvs();
   });
 
   it('OAuth succeeds but file lookup fails → stores token, writes pendingSync:true', async () => {
@@ -224,7 +223,6 @@ describe('connectDrive', () => {
     const state = store['driveBackupState'] as { pendingSync: boolean; error: string | null };
     expect(state.pendingSync).toBe(true);
     expect(state.error).toBe('sync_error');
-    vi.unstubAllEnvs();
   });
 
   it('full success: stores token, finds file, downloads backup, clears pending', async () => {
@@ -245,7 +243,6 @@ describe('connectDrive', () => {
     expect(state.pendingSync).toBe(false);
     expect(state.error).toBeNull();
     expect(state.fileId).toBe('file-1');
-    vi.unstubAllEnvs();
   });
 
   it('file found but body is not an object → treated as no backup, not a sync error', async () => {
@@ -262,7 +259,6 @@ describe('connectDrive', () => {
     const state = store['driveBackupState'] as { pendingSync: boolean; error: string | null };
     expect(state.pendingSync).toBe(false);
     expect(state.error).toBeNull();
-    vi.unstubAllEnvs();
   });
 
   it('file found but body is missing .profile → treated as no backup, not a sync error', async () => {
@@ -276,7 +272,6 @@ describe('connectDrive', () => {
     const result = await mod.connectDrive();
 
     expect(result).toEqual({ token: 'tok-ok', backup: null, fileId: 'file-1' });
-    vi.unstubAllEnvs();
   });
 
   it('file found but response body fails to parse as JSON → treated as no backup, not a sync error', async () => {
@@ -304,7 +299,6 @@ describe('connectDrive', () => {
     const result = await mod.connectDrive();
 
     expect(result).toEqual({ token: 'tok-ok', backup: null, fileId: 'file-1' });
-    vi.unstubAllEnvs();
   });
 });
 
@@ -404,7 +398,6 @@ describe('retryPendingDriveSync', () => {
     // genuinely-empty profile here — stub it off to assert the real path.
     vi.stubEnv('DEV', false);
     await retryPendingDriveSync();
-    vi.unstubAllEnvs();
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -446,7 +439,6 @@ describe('syncIfConnected', () => {
     // genuinely-empty profile here — stub it off to assert the real path.
     vi.stubEnv('DEV', false);
     await syncIfConnected();
-    vi.unstubAllEnvs();
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -512,4 +504,9 @@ describe('Drive backup serialized contract', () => {
     expect(payload.lastModified).toBe((store.driveBackupState as { lastSynced: string }).lastSynced);
     for (const excluded of ['token-sentinel', 'key-sentinel', 'model-sentinel', 'history-sentinel']) expect(body).not.toContain(excluded);
   });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
 });

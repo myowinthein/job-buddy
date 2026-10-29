@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { calculateDerivedFields } from './derivedFields';
 import type { Profile } from '../types/profile';
 
@@ -82,7 +82,6 @@ describe('calculateDerivedFields', () => {
     vi.setSystemTime(new Date('2024-06-15'));
     const p = { ...BASE, personal: { ...BASE.personal, dateOfBirth: '1990-03-10' } };
     expect(calculateDerivedFields(p).age).toBe(34);
-    vi.useRealTimers();
   });
 
   it('computes age correctly before birthday in the current year', () => {
@@ -90,7 +89,6 @@ describe('calculateDerivedFields', () => {
     vi.setSystemTime(new Date('2024-02-01'));
     const p = { ...BASE, personal: { ...BASE.personal, dateOfBirth: '1990-03-10' } };
     expect(calculateDerivedFields(p).age).toBe(33);
-    vi.useRealTimers();
   });
 
   it('omits age when dateOfBirth is absent', () => {
@@ -106,4 +104,8 @@ describe('calculateDerivedFields', () => {
     const p = { ...BASE, personal: { ...BASE.personal, dateOfBirth: '1990-03' } };
     expect(calculateDerivedFields(p).age).toBeUndefined();
   });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });

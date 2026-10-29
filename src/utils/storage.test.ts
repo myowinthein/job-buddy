@@ -1,4 +1,4 @@
-import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 
 // Mock chrome.storage.local before importing the module under test.
 // We use a simple in-memory store so all helpers work together correctly.
@@ -65,7 +65,6 @@ describe('profile storage', () => {
   it('returns null when no profile is stored (production — DEV fallback does not apply)', async () => {
     vi.stubEnv('DEV', false);
     expect(await getProfile()).toBeNull();
-    vi.unstubAllEnvs();
   });
 
   it('returns the dev fallback profile when no profile is stored and DEV is true', async () => {
@@ -278,7 +277,6 @@ describe('Gemini settings', () => {
     // Persisted so other contexts (content scripts/background, which never
     // see this env var directly) pick it up via the normal storage read.
     expect(store['geminiApiKey']).toBe('dev-key-abc');
-    vi.unstubAllEnvs();
   });
 
   it('does not fall back to the dev key in production (DEV stubbed false)', async () => {
@@ -286,7 +284,6 @@ describe('Gemini settings', () => {
     vi.stubEnv('VITE_GEMINI_API_KEY', 'dev-key-abc');
     expect(await getGeminiApiKey()).toBeNull();
     expect(store['geminiApiKey']).toBeUndefined();
-    vi.unstubAllEnvs();
   });
 
   it('falls back to DEFAULT_GEMINI_MODEL when nothing is stored (dev) and persists it', async () => {
@@ -299,7 +296,6 @@ describe('Gemini settings', () => {
     vi.stubEnv('DEV', false);
     expect(await getGeminiModel()).toBeNull();
     expect(store['geminiModel']).toBeUndefined();
-    vi.unstubAllEnvs();
   });
 
   it('saves and retrieves a Gemini model, taking priority over the dev default', async () => {
@@ -369,25 +365,18 @@ describe('storageGet/storageSet/storageRemove — synchronous throw from chrome.
   // is why callers need to know a save failed.
   it('storageGet (via getProfile) resolves to null when chrome.storage.local.get throws synchronously', async () => {
     vi.stubEnv('DEV', false);
-    const original = chrome.storage.local.get;
-    chrome.storage.local.get = () => { throw new Error('storage API unavailable'); };
+    vi.spyOn(chrome.storage.local, 'get').mockImplementation(() => { throw new Error('storage API unavailable'); });
     await expect(getProfile()).resolves.toBeNull();
-    chrome.storage.local.get = original;
-    vi.unstubAllEnvs();
   });
 
   it('storageSet (via saveProfile) rejects when chrome.storage.local.set throws synchronously', async () => {
-    const original = chrome.storage.local.set;
-    chrome.storage.local.set = () => { throw new Error('storage API unavailable'); };
+    vi.spyOn(chrome.storage.local, 'set').mockImplementation(() => { throw new Error('storage API unavailable'); });
     await expect(saveProfile(MINIMAL_PROFILE)).rejects.toThrow('storage API unavailable');
-    chrome.storage.local.set = original;
   });
 
   it('storageRemove (via clearAllStorage) resolves when chrome.storage.local.remove throws synchronously', async () => {
-    const original = chrome.storage.local.remove;
-    chrome.storage.local.remove = () => { throw new Error('storage API unavailable'); };
+    vi.spyOn(chrome.storage.local, 'remove').mockImplementation(() => { throw new Error('storage API unavailable'); });
     await expect(clearAllStorage()).resolves.toBeUndefined();
-    chrome.storage.local.remove = original;
   });
 });
 
@@ -412,10 +401,14 @@ describe('clearAllStorage', () => {
     // being empty here — stub it off to assert the real cleared state.
     vi.stubEnv('DEV', false);
     expect(await getProfile()).toBeNull();
-    vi.unstubAllEnvs();
     expect(await getLearnedMappings()).toEqual({});
     expect(await getApplicationHistory()).toEqual([]);
 
     removeSpy.mockRestore();
   });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
 });
