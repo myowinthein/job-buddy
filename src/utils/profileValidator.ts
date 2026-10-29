@@ -1,5 +1,7 @@
 import type { Profile } from '../types/profile';
 import { ETHNICITIES } from '../data/ethnicities';
+import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
+import { LANGUAGE_PROFICIENCY_LABELS } from '../data/languages';
 import { MAX_DOCUMENT_FILE_BYTES, MAX_DOCUMENT_BASE64_LENGTH, DOCUMENT_FILE_SIZE_ERROR } from './documentLimits';
 
 export interface InvalidField {
@@ -24,11 +26,8 @@ const VALID_YES_NO_PNTS = new Set(['yes', 'no', 'prefer_not_to_say']);
 // PersonalSection.tsx's <select> offers every ETHNICITIES value plus an
 // explicit "Prefer not to say" option not itself in that list.
 const VALID_ETHNICITIES = new Set<string>([...ETHNICITIES, 'prefer_not_to_say']);
-const VALID_AUTH_STATUS = new Set(['citizen_or_pr', 'work_visa', 'requires_sponsorship']);
-const VALID_PROFICIENCY = new Set([
-  'native_bilingual', 'full_professional', 'professional_working',
-  'limited_working', 'elementary',
-]);
+const VALID_AUTH_STATUS = new Set(Object.keys(WORK_AUTH_STATUS_LABELS));
+const VALID_PROFICIENCY = new Set(Object.keys(LANGUAGE_PROFICIENCY_LABELS));
 
 type ErrFn = (path: string, reason: string) => void;
 
