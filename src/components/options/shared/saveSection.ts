@@ -1,7 +1,10 @@
 import type { Profile } from '@/src/types/profile';
 import type { ToastMessage } from '@/src/components/ui/Toast';
 
-// Shared error copy across every section's save flow — keep one source of truth.
+// The parent already showed this failure; children must preserve rejection without a second toast.
+export class ReportedSaveError extends Error {}
+
+// Shared error copy across every section's save flow.
 const SAVE_FAILED_MESSAGE = 'Failed to save. Please try again.';
 
 type ToastFn = (type: ToastMessage['type'], message: string, duration?: number) => void;
@@ -20,6 +23,8 @@ export function saveSection(
 ): Promise<void> {
   return save(patch).then(
     () => showToast('success', successMessage),
-    () => showToast('error', SAVE_FAILED_MESSAGE),
+    (error: unknown) => {
+      if (!(error instanceof ReportedSaveError)) showToast('error', SAVE_FAILED_MESSAGE);
+    },
   );
 }

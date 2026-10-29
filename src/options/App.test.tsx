@@ -32,11 +32,12 @@ vi.mock('@/src/components/options/CompletionBanner', () => ({
     </div>
   ),
 }));
+const { saveOutcome } = vi.hoisted(() => ({ saveOutcome: vi.fn() }));
 vi.mock('@/src/components/options/PersonalSection', () => ({
-  PersonalSection: (props: { profile: { personal?: { firstName?: string } }; onSave: (u: object) => void }) => (
+  PersonalSection: (props: { profile: { personal?: { firstName?: string } }; onSave: (u: object) => Promise<void> }) => (
     <div>
       <span>personal-section:{props.profile.personal?.firstName ?? '(empty)'}</span>
-      <button onClick={() => props.onSave({ personal: { firstName: 'Updated' } })}>save-personal</button>
+      <button onClick={() => { void props.onSave({ personal: { firstName: 'Updated' } }).then(() => saveOutcome('success'), () => saveOutcome('failure')); }}>save-personal</button>
     </div>
   ),
 }));
@@ -146,6 +147,8 @@ describe('options App — handleSave contract', () => {
     // Profile state was never updated with the value that failed to persist.
     expect(screen.getByText('personal-section:Jane')).toBeTruthy();
     expect(vi.mocked(syncProfileToDrive)).not.toHaveBeenCalled();
+    expect(saveOutcome).toHaveBeenCalledWith('failure');
+    expect(saveOutcome).not.toHaveBeenCalledWith('success');
   });
 });
 

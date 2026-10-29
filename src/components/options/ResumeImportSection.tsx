@@ -7,6 +7,7 @@ import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
 import type { FieldChange, ImportProgressStep, ImportErrorCode } from '@/src/resume-ai/types';
 import { toGeminiModel } from '@/src/resume-ai/types';
 import { DOCUMENT_FILE_SIZE_LABEL, documentFileSizeError } from '@/src/utils/documentLimits';
+import { ReportedSaveError } from './shared/saveSection';
 import { useToast } from '@/src/components/ui/useToast';
 import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 import ImportSummaryDialog from '@/src/components/shared/ImportSummaryDialog';
@@ -280,8 +281,8 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
       await onSave(updated);
       setSummary({ updated: newAccepted, conflicts: conflictAccepted, skipped });
       setScreen('done');
-    } catch {
-      showToast('error', 'Save failed. Please try again.');
+    } catch (error) {
+      if (!(error instanceof ReportedSaveError)) showToast('error', 'Save failed. Please try again.');
     } finally {
       setSaving(false);
     }
