@@ -106,7 +106,7 @@ export function findBestMatch<T>(
   return bestScore >= CONF_FUZZY_THRESHOLD ? best : null;
 }
 
-function fillSelect(select: HTMLSelectElement, value: string): void {
+function fillSelect(select: HTMLSelectElement, value: string): boolean {
   const options  = Array.from(select.options);
   const eligible = options.filter((opt) => !isSkippableOption(opt));
   const match = findBestMatch(eligible, value, (o) => o.value, (o) => o.text.trim());
@@ -118,7 +118,9 @@ function fillSelect(select: HTMLSelectElement, value: string): void {
     // field is touched (focus+blur), not merely on change — see the
     // dispatchEvents comment above for the same reasoning applied here.
     select.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+    return true;
   }
+  return false;
 }
 
 // ── ARIA / custom-component filling ──────────────────────────────────────────
@@ -163,6 +165,7 @@ async function waitForListboxOptions(
   trigger: HTMLElement,
   maxMs = 500,
   pollMs = 50,
+  isActive: () => boolean = () => true,
 ): Promise<HTMLElement[]> {
   const findOptions = (): HTMLElement[] => {
     const ctrlId = trigger.getAttribute('aria-controls') ?? trigger.getAttribute('aria-owns');
@@ -181,27 +184,28 @@ async function waitForListboxOptions(
   };
 
   const deadline = Date.now() + maxMs;
-  while (true) {
+  while (isActive()) {
     const opts = findOptions();
     if (opts.length > 0) return opts;
     if (Date.now() >= deadline) return [];
     await new Promise<void>((resolve) => setTimeout(resolve, pollMs));
   }
+  return [];
 }
 
 // Opens a custom listbox/combobox, waits for options, then clicks the best match.
 // Returns true when an option was successfully selected, false otherwise.
 // Never throws — graceful no-op on any failure.
-async function fillAriaListbox(element: HTMLElement, value: string): Promise<boolean> {
+async function fillAriaListbox(element: HTMLElement, value: string, isActive: () => boolean): Promise<boolean> {
   try {
     element.click();
     element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
 
-    const options = await waitForListboxOptions(element);
+    const options = await waitForListboxOptions(element, 500, 50, isActive);
     if (options.length === 0) return false;
 
     const best = findBestAriaOption(options, value);
-    if (!best) return false;
+    if (!best || !isActive()) return false;
 
     best.click();
     best.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
@@ -229,7 +233,7 @@ function setEmpty(element: HTMLElement): void {
       element.dispatchEvent(new Event('change', { bubbles: true }));
       return;
     }
-    if (element.type === 'checkbox') {
+    if (element.type === 'checkbox' || element.type === 'radio') {
       // Setting .value on a checkbox never affects its checked state.
       if (nativeCheckedSetter) nativeCheckedSetter.call(element, false);
       else element.checked = false;
@@ -261,41 +265,33 @@ export function clearFieldValue(element: HTMLElement): void {
   queueMicrotask(() => setEmpty(element));
 }
 
-export async function fillField(element: HTMLElement, value: string): Promise<void> {
-  if (!value) return;
-
-  if (element instanceof HTMLSelectElement) {
-    fillSelect(element, value);
-    return;
-  }
-
+export async function fillField(element: HTMLElement, value: string, isActive: () => boolean = () => true): Promise<boolean> {
+  if (!value || !isActive()) return false;
+  // Native selects may also expose role="combobox". Their native options win.
+  if (element instanceof HTMLSelectElement) return fillSelect(element, value);
+  const role = element.getAttribute('role');
+  const popup = element.getAttribute('aria-haspopup');
+  if (role === 'combobox' || popup === 'listbox') return fillAriaListbox(element, value, isActive);
   if (element instanceof HTMLTextAreaElement) {
     focusElement(element);
     if (nativeTextareaSetter) nativeTextareaSetter.call(element, value);
-    else (element as HTMLTextAreaElement).value = value;
+    else element.value = value;
     dispatchEvents(element, 'insertText', value);
-    return;
+    return true;
   }
-
   if (element instanceof HTMLInputElement) {
     focusElement(element);
     const fillValue = reformatDateForInput(value, element);
     if (nativeInputSetter) nativeInputSetter.call(element, fillValue);
     else element.value = fillValue;
     dispatchEvents(element, 'insertText', fillValue);
-    return;
+    return true;
   }
-
-  // ARIA custom components
-  const role  = element.getAttribute('role');
-  const popup = element.getAttribute('aria-haspopup');
   if (role === 'textbox' || element.getAttribute('contenteditable') === 'true') {
     fillAriaTextbox(element, value);
-    return;
+    return true;
   }
-  if (role === 'combobox' || popup === 'listbox') {
-    await fillAriaListbox(element, value);
-  }
+  return false;
 }
 
 // Reconstructs a real File from the stored {name, size, base64-data-URL}

@@ -842,7 +842,7 @@ describe('fillField — aria-haspopup="listbox" (custom dropdown)', () => {
     // No aria-controls, no click handler that adds a listbox
     document.body.appendChild(trigger);
     // Must not throw; should resolve silently
-    await expect(fillField(trigger, 'Thailand')).resolves.toBeUndefined();
+    await expect(fillField(trigger, 'Thailand')).resolves.toBe(false);
   });
 
   it('does not select anything when no option matches', async () => {
@@ -867,4 +867,75 @@ describe('fillField — aria-haspopup="listbox" (custom dropdown)', () => {
     await fillField(trigger, 'zzz_no_match_possible_here');
     expect(optionClicked).toBe(''); // score below threshold
   });
+});
+
+
+describe('fill and clear ownership regressions', () => {
+  it('unchecks a radio without changing its submission value, including the reconciliation microtask', async () => {
+    const radio = document.createElement('input');
+    radio.type = 'radio'; radio.name = 'authorization'; radio.value = 'yes'; radio.checked = true;
+    document.body.appendChild(radio);
+    clearFieldValue(radio);
+    await Promise.resolve();
+    expect(radio.checked).toBe(false);
+    expect(radio.value).toBe('yes');
+  });
+
+  it('selects an option for an input-button listbox trigger instead of rewriting its label', async () => {
+    const trigger = document.createElement('input');
+    trigger.type = 'button'; trigger.value = 'Choose country';
+    trigger.setAttribute('aria-haspopup', 'listbox'); trigger.setAttribute('aria-controls', 'native-button-list');
+    const list = document.createElement('div'); list.id = 'native-button-list'; list.setAttribute('role', 'listbox');
+    const option = document.createElement('div'); option.setAttribute('role', 'option'); option.textContent = 'Thailand';
+    option.addEventListener('click', () => { trigger.dataset.selected = 'TH'; });
+    list.appendChild(option); document.body.append(trigger, list);
+    await fillField(trigger, 'Thailand');
+    expect(trigger.dataset.selected).toBe('TH');
+    expect(trigger.value).toBe('Choose country');
+  });
+
+  it('preserves files and emits no fill events when base64 decoding fails', async () => {
+    const input = document.createElement('input'); input.type = 'file';
+    const files = input.files;
+    const inputEvent = vi.fn(); const change = vi.fn();
+    input.addEventListener('input', inputEvent); input.addEventListener('change', change);
+    expect(await fillFileField(input, { name: 'bad.pdf', size: 3, base64: 'data:application/pdf;base64,%%%' })).toBe(false);
+    expect(input.files).toBe(files); expect(inputEvent).not.toHaveBeenCalled(); expect(change).not.toHaveBeenCalled();
+  });
+
+  it('preserves existing files when FileList assignment is rejected', async () => {
+    const input = document.createElement('input'); input.type = 'file';
+    const files = input.files;
+    const attempted = vi.fn(() => { throw new Error('synthetic assignment rejection'); });
+    Object.defineProperty(input, 'files', { get: () => files, set: attempted });
+    const changed = vi.fn(); input.addEventListener('change', changed);
+    vi.stubGlobal('DataTransfer', FakeDataTransfer);
+    try {
+      expect(await fillFileField(input, { name: 'valid.pdf', size: 1, base64: 'data:application/pdf;base64,eA==' })).toBe(false);
+      expect(attempted).toHaveBeenCalledTimes(1);
+      expect(input.files).toBe(files); expect(changed).not.toHaveBeenCalled();
+    } finally { vi.unstubAllGlobals(); }
+  });
+});
+
+it('does not click a delayed dropdown option after its fill session is cancelled', async () => {
+  const trigger = document.createElement('button'); trigger.setAttribute('aria-haspopup', 'listbox'); trigger.setAttribute('aria-controls', 'delayed-list');
+  document.body.appendChild(trigger);
+  let active = true;
+  const pending = fillField(trigger, 'Thailand', () => active);
+  active = false;
+  const list = document.createElement('div'); list.id = 'delayed-list'; list.setAttribute('role', 'listbox');
+  const option = document.createElement('div'); option.setAttribute('role', 'option'); option.textContent = 'Thailand';
+  const clicked = vi.fn(); option.addEventListener('click', clicked);
+  list.appendChild(option); document.body.appendChild(list);
+  await pending;
+  expect(clicked).not.toHaveBeenCalled();
+});
+
+it('keeps native selection semantics when a select declares role=combobox', async () => {
+  const select = document.createElement('select'); select.setAttribute('role', 'combobox');
+  select.innerHTML = '<option value="">Choose</option><option value="TH">Thailand</option>';
+  document.body.appendChild(select);
+  await fillField(select, 'TH');
+  expect(select.value).toBe('TH');
 });
