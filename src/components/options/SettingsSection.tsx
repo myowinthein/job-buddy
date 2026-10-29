@@ -55,7 +55,6 @@ interface ExportData {
 }
 
 interface ParsedImport {
-  sanitized:     Partial<Profile>;
   invalidFields: InvalidField[];
   exportData:    ExportData;
 }
@@ -126,7 +125,6 @@ async function saveImportedData(
 export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const { showToast } = useToast();
   const [importing,     setImporting]     = useState(false);
-  const [importError,   setImportError]   = useState<string | null>(null);
   const [showResetDialog,    setShowResetDialog]    = useState(false);
   const [resetConfirmText,   setResetConfirmText]   = useState('');
   const [resetting,          setResetting]          = useState(false);
@@ -317,8 +315,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     e.target.value = '';
     if (!file) return;
 
-    setImportError(null);
-
     let parsed: unknown;
     try {
       const text = await file.text();
@@ -364,7 +360,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     const diff = generateDiff(currentProfile ?? {}, validation.sanitized);
     setImportBaseProfile(currentProfile ?? {});
     setImportChanges(diff);
-    setParsedImport({ sanitized: validation.sanitized, invalidFields: validation.invalidFields, exportData });
+    setParsedImport({ invalidFields: validation.invalidFields, exportData });
     setImportScreen('summary');
   };
 
@@ -769,9 +765,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         >
           Choose File
         </button>
-        {importError && (
-          <p className="mt-2 text-sm text-red-500 dark:text-red-400">{importError}</p>
-        )}
       </section>
 
       {/* ── Cloud Backup ──────────────────────────────────────────────────────── */}
