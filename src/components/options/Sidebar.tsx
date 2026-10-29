@@ -1,4 +1,4 @@
-import { FileUp, Brain, Menu, Settings, Check, Minus } from 'lucide-react';
+import { FileUp, Brain, Menu, Settings, Check, Minus, Sparkles } from 'lucide-react';
 import { LOGO_ICON_SRC } from '@/src/utils/branding';
 
 import { PROFILE_SECTIONS } from './shared/profileSections';
@@ -60,6 +60,7 @@ export function Sidebar({
           </p>
         )}
         {SECTIONS.map((section) => {
+          const Icon = section.icon;
           const isActive = activeSection === section.id;
           const isMandatoryComplete = sectionCompletion[section.id];
           const optionalSection = section.id === 'salary' || section.id === 'links';
@@ -86,7 +87,7 @@ export function Sidebar({
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
-              <span className="w-5 text-center shrink-0 leading-none">{section.icon}</span>
+              <Icon aria-hidden="true" className="w-5 h-5 shrink-0" />
               {!collapsed && (
                 <span className="hidden sm:block text-sm font-medium flex-1 truncate">
                   {section.label}
@@ -125,8 +126,9 @@ export function Sidebar({
         <button
           type="button"
           onClick={() => onSelect('resume')}
-          title="Import Resume"
+          title="Import Resume · AI-assisted"
           aria-label="Import Resume"
+          aria-describedby="resume-ai-description"
           aria-current={activeSection === 'resume' ? 'page' : undefined}
           className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center sm:justify-start'} ${
             activeSection === 'resume'
@@ -135,13 +137,20 @@ export function Sidebar({
           }`}
         >
           <span className="shrink-0">
-            <FileUp className="w-5 h-5" />
+            <FileUp aria-hidden="true" className="w-5 h-5" />
           </span>
           {!collapsed && (
-            <span className="hidden sm:block text-sm font-medium flex-1 truncate">
-              Import Resume ✨
+            <span className="hidden sm:flex min-w-0 flex-1 items-center gap-1.5 text-sm font-medium">
+              <span className="truncate">Import Resume</span>
+              <Sparkles
+                aria-hidden="true"
+                className="w-3.5 h-3.5 shrink-0 text-blue-500 dark:text-blue-400"
+              />
             </span>
           )}
+          <span id="resume-ai-description" className="sr-only">
+            AI-assisted resume import
+          </span>
         </button>
         <button
           type="button"
@@ -156,7 +165,7 @@ export function Sidebar({
           }`}
         >
           <span className="shrink-0">
-            <Brain className="w-5 h-5" />
+            <Brain aria-hidden="true" className="w-5 h-5" />
           </span>
           {!collapsed && (
             <span className="hidden sm:block text-sm font-medium truncate">Learned Mappings</span>
@@ -175,7 +184,7 @@ export function Sidebar({
           }`}
         >
           <span className="shrink-0">
-            <Settings className="w-5 h-5" />
+            <Settings aria-hidden="true" className="w-5 h-5" />
           </span>
           {!collapsed && (
             <span className="hidden sm:block text-sm font-medium truncate">Settings</span>

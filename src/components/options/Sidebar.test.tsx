@@ -30,7 +30,7 @@ describe('Sidebar — section navigation', () => {
 
   it('calls onSelect for the Resume, Learned Mappings, and Settings buttons', () => {
     const { onSelect } = renderSidebar();
-    fireEvent.click(screen.getByText('Import Resume ✨'));
+    fireEvent.click(screen.getByRole('button', { name: 'Import Resume' }));
     expect(onSelect).toHaveBeenCalledWith('resume');
     fireEvent.click(screen.getByText('Learned Mappings'));
     expect(onSelect).toHaveBeenCalledWith('learnedMappings');
@@ -67,8 +67,9 @@ describe('Sidebar — completion badges', () => {
   it('shows a dot when required details remain', () => {
     renderSidebar({ sectionCompletion: { address: false } });
     const addressButton = screen.getByText('Address').closest('button')!;
-    expect(addressButton.querySelector('[title="Required details remaining"]')).toBeTruthy();
-    expect(addressButton.querySelector('svg')).toBeNull();
+    const indicator = addressButton.querySelector('[title="Required details remaining"]');
+    expect(indicator).toBeTruthy();
+    expect(indicator!.querySelector('svg')).toBeNull();
   });
 });
 
