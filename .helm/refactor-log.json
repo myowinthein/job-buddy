@@ -1,0 +1,304 @@
+{
+  "schema_version": 2,
+  "assessed_commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+  "full_scan_commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+  "findings": [
+    {
+      "id": "r-5bd45a4c-b50a-4438-85c3-28d2faa8d1a3",
+      "category": "Consistency",
+      "summary": "Unify duplicate AI text-fill outcome reporting",
+      "paths": [
+        "src/autofill/ai.ts",
+        "src/autofill/index.ts",
+        "src/autofill/ai.test.ts",
+        "src/autofill/index.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "AI outcome changes require coordinating a green output Set, callback Map, editable states and refill exclusions.",
+        "evidence": [
+          "ai.ts reports green fills through aiGreenFilled and onTextFilled; index.ts consumes both and filters noData twice. Use the existing callback and Map as the sole text-outcome channel."
+        ],
+        "invariant": "Preserve counters, callback timing, debug records, ownership, AI confidence never learning mappings, yellow edit promotion and green watcher exclusion; all AI fills stay excluded from silent refill."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-4ce10c97-f746-498f-82b3-b5cd2e1cbf7e",
+      "category": "Consistency",
+      "summary": "Reuse canonical formatted values in the Learned Mappings tree",
+      "paths": [
+        "src/autofill/profileFieldTree.ts",
+        "src/autofill/resolver.ts",
+        "src/autofill/profileFieldTree.test.ts",
+        "src/components/options/shared/SearchableProfileFieldSelect.test.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "Work and education formatted-value changes require separate edits to the autofill resolver and preview tree.",
+        "evidence": [
+          "profileFieldTree duplicates location joining, arrangement capitalization and formatted dates/current-to-Present rules already in resolver. Reuse addPath only for these equivalent rows."
+        ],
+        "invariant": "Preserve row eligibility, labels, paths, order, headings, grouping and collapse defaults; retain intentional salary-zero and language-preview differences."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-d60c1401-45f6-4712-b1b0-80ecb67c0296",
+      "category": "Consistency",
+      "summary": "Derive one visible profile-field tree for rendering and keyboard navigation",
+      "paths": [
+        "src/components/options/shared/SearchableProfileFieldSelect.tsx",
+        "src/components/options/shared/SearchableProfileFieldSelect.test.tsx",
+        "src/components/options/LearnedMappingsSection.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "Visibility changes require coordinated edits in renderItem, section filtering and keyboard-path flattening.",
+        "evidence": [
+          "SearchableProfileFieldSelect independently repeats label-search and section/cluster/subgroup expansion rules in renderItem, visibleSections and visibleRowPaths. Derive a shared visible projection."
+        ],
+        "invariant": "Preserve DOM order, label-only case-insensitive search, collapsed headings, search expansion, selected-path opening, highlight clamping, scrolling, ARIA IDs and selection callbacks."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-b2eff42f-995c-462e-a594-8a3860b16042",
+      "category": "Consistency",
+      "summary": "Share imported-profile persistence across JSON and Drive restore paths",
+      "paths": [
+        "src/components/options/SettingsSection.tsx",
+        "src/components/options/SettingsSection.test.tsx",
+        "src/components/options/SettingsSection.integration.test.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "Changing import persistence order or mapping preservation requires coordinating three supported paths.",
+        "evidence": [
+          "saveImportedData, handleRestoreFromDrive and handleDriveReviewSave repeat saveProfile then fresh getLearnedMappings then mergeLearnedMappings then saveLearnedMappings. Reuse a bounded helper."
+        ],
+        "invariant": "Preserve sequential and partial-failure semantics, optional-map/history truthiness, JSON-only history, fresh local mapping reads, validation/review/toast/refresh/close ordering, existing legacy local documents and no added explicit Drive sync."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-788fc973-e6be-47e9-a650-0a08d1d81c88",
+      "category": "Consistency",
+      "summary": "Derive import enum membership from exhaustive domain maps",
+      "paths": [
+        "src/utils/profileValidator.ts",
+        "src/data/workAuthorization.ts",
+        "src/data/languages.ts",
+        "src/utils/profileValidator.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "A supported union change requires updating compile-checked domain maps and separate unchecked validator lists.",
+        "evidence": [
+          "VALID_AUTH_STATUS and VALID_PROFICIENCY duplicate exactly the keys of WORK_AUTH_STATUS_LABELS and LANGUAGE_PROFICIENCY_LABELS. Derive the two Sets from those existing keys."
+        ],
+        "invariant": "Preserve currently accepted/rejected values, diagnostics, validation order, sanitized shapes and legacy handling; leave distinct UI labels unchanged."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-7aa5f763-d7df-41b0-870d-317067df16c4",
+      "category": "Tests",
+      "summary": "Make test resource cleanup run after failed assertions",
+      "paths": [
+        "src/utils/storage.test.ts",
+        "src/utils/sessionStorage.test.ts",
+        "src/utils/driveSync.test.ts",
+        "src/utils/derivedFields.test.ts",
+        "src/utils/experience.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29",
+        "priority": "medium",
+        "risk": "safe",
+        "reason": "An actual regression can leave altered Chrome APIs, environment or fake clocks in later cases, obscuring the initial failure.",
+        "evidence": [
+          "Storage/session tests directly assign Chrome methods and restore after assertions; storage/Drive tests unstub environments at test endings; derived/experience tests restore clocks after assertions. Use scoped afterEach cleanup and restorable spies."
+        ],
+        "invariant": "Preserve every scenario, input, assertion, test environment and in-case configuration; retain Drive quota-case runtime.lastError cleanup and synthetic fixtures."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-5ea0bad7-2cd0-43b7-87bd-eb4265494635",
+      "category": "Code Quality",
+      "summary": "Remove unused autofill arguments and stored metadata",
+      "paths": [
+        "src/autofill/ai.ts",
+        "src/autofill/index.ts",
+        "src/autofill/ai.test.ts",
+        "src/autofill/index.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29",
+        "priority": "low",
+        "risk": "safe",
+        "reason": "Unused internal fields and arguments imply obligations that runtime consumers do not use.",
+        "evidence": [
+          "AITextCandidate.originalFieldPath is constructed but never read; runAIAutofill domain is unused; NoDataEntry.label and extractDisplayLabel have no runtime consumer. Full source/reference review found only constructors, call sites and fixtures."
+        ],
+        "invariant": "Preserve actual scanner/debug/learned labels, originalState, debugFieldId, mapping domain use elsewhere, call ordering and refill behavior."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-a8cdd7d9-495b-42a6-acdf-395fd919a801",
+      "category": "Architecture",
+      "summary": "Move entry-recency selection out of the presentation tree module",
+      "paths": [
+        "src/autofill/profileFieldTree.ts",
+        "src/autofill/repeatingEntryResolution.ts",
+        "src/autofill/profileFieldTree.test.ts",
+        "src/autofill/educationResolution.test.ts",
+        "src/autofill/workHistoryResolution.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29",
+        "priority": "low",
+        "risk": "safe",
+        "reason": "Discovering the shared entry-selection policy requires traversing a module that owns the Learned Mappings UI tree.",
+        "evidence": [
+          "repeatingEntryResolution imports mostRecentIdx from profileFieldTree, which also builds presentation rows and imports resolver/data/formatting. Move the selector unchanged to a small shared domain utility and adapt its consumers."
+        ],
+        "invariant": "Preserve empty-to-zero, first current entry, latest lexicographic startDate and first-entry ties; repeated assignment order and salary index-zero policy remain unchanged."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-7c2c286b-3d26-4f41-a17a-703795d9b344",
+      "category": "Code Quality",
+      "summary": "Share salary review display formatting within the parser",
+      "paths": [
+        "src/resume-ai/parser.ts",
+        "src/resume-ai/parser.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29",
+        "priority": "low",
+        "risk": "safe",
+        "reason": "Current and expected salary display formatting require maintaining the same local algorithm twice.",
+        "evidence": [
+          "FIELD_DEFS salary.current and salary.expected duplicate amount, currency, parenthesized period and parenthesized country joining. Extract one private helper, retaining null and array handling at callers."
+        ],
+        "invariant": "Preserve exact strings, spacing, zero amounts, omitted missing parts, expected-row newline order, field setters and accepted-change semantics."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-b7791d5e-9b19-4bd6-b029-63ece0133663",
+      "category": "Code Quality",
+      "summary": "Remove dormant Settings JSON-import state",
+      "paths": [
+        "src/components/options/SettingsSection.tsx",
+        "src/components/options/SettingsSection.test.tsx",
+        "src/components/options/SettingsSection.integration.test.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+        "date": "2026-10-29",
+        "priority": "low",
+        "risk": "safe",
+        "reason": "Unreachable error rendering and an unused import snapshot obscure which state actually controls review and persistence.",
+        "evidence": [
+          "importError starts null and its only setter writes null, so its render branch never appears. ParsedImport.sanitized is assigned but never read; sanitized data already feeds generateDiff and saving applies accepted changes."
+        ],
+        "invariant": "Preserve validation, real error toasts, export metadata, accepted changes, review selection and asynchronous save behavior."
+      },
+      "state": "open",
+      "depends_on": []
+    }
+  ]
+}
