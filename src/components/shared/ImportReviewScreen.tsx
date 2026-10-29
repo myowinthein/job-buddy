@@ -186,7 +186,7 @@ export default function ImportReviewScreen({
                     id={panelId}
                     role="region"
                     aria-labelledby={headingId}
-                    className="px-4 pb-4 space-y-3"
+                    className="px-4 pb-2 divide-y divide-gray-200 dark:divide-gray-700"
                   >
                     {fields.map((change) => (
                       <FieldRow
@@ -247,13 +247,11 @@ function FieldRow({
   onSelect: (id: string, accepted: boolean) => void;
 }) {
   const labelId = useId();
-  const choiceCls = (selected: boolean) =>
-    `flex items-start gap-2 cursor-pointer p-3 rounded-lg border ${selected ? 'border-blue-400 dark:border-blue-500 bg-blue-50/50 dark:bg-blue-950/20' : 'border-gray-200 dark:border-gray-700'}`;
   return (
     <div
       role="group"
       aria-labelledby={labelId}
-      className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
+      className="py-4"
     >
       <div className="flex items-center gap-2 mb-2">
         <p id={labelId} className="text-sm font-medium text-gray-800 dark:text-gray-200">
@@ -282,7 +280,7 @@ function FieldRow({
         </label>
       ) : (
         <div className="space-y-2">
-          <label className={choiceCls(change.accepted)}>
+          <label className="flex items-start gap-2 cursor-pointer py-2">
             <input
               type="radio"
               name={change.id}
@@ -298,7 +296,7 @@ function FieldRow({
               <Value value={change.displaySuggested} />
             </div>
           </label>
-          <label className={choiceCls(!change.accepted)}>
+          <label className="flex items-start gap-2 cursor-pointer py-2">
             <input
               type="radio"
               name={change.id}
