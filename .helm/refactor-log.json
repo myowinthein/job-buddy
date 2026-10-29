@@ -499,8 +499,35 @@
         ],
         "invariant": "Preserve exact strings, spacing, zero amounts, omitted missing parts, expected-row newline order, field setters and accepted-change semantics."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "0d3cade3cb5b4bc11d7a8e261d3f6eaa314f44b6",
+        "date": "2026-10-29",
+        "method": "runtime",
+        "evidence": [
+          "Both salary descriptors use a private local helper; null callers, zeros, blank expected rows, spacing and newlines retained and guarded."
+        ],
+        "checks": [
+          {
+            "command": "pnpm compile",
+            "scope": "project",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm exec vitest run src/resume-ai/parser.test.ts src/components/options/SettingsSection.integration.test.tsx src/components/options/ResumeImportSection.integration.test.tsx",
+            "scope": "parser and imports",
+            "outcome": "70 tests passed"
+          },
+          {
+            "command": "pnpm exec eslint src/resume-ai/parser.ts src/resume-ai/parser.test.ts",
+            "scope": "R9 files",
+            "outcome": "passed"
+          }
+        ]
+      }
     },
     {
       "id": "r-b7791d5e-9b19-4bd6-b029-63ece0133663",
