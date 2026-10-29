@@ -1,6 +1,6 @@
 import { DOCUMENT_FILE_SIZE_LABEL, documentFileSizeError } from '@/src/utils/documentLimits';
 import { useToast } from '@/src/components/ui/useToast';
-import { useState, useRef, DragEvent } from 'react';
+import { useState, useRef, useEffect, DragEvent } from 'react';
 import type { Profile, DocumentEntry, DocumentFile } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
 import { saveSection } from './shared/saveSection';
@@ -21,6 +21,7 @@ interface DocState {
   dragOver: boolean;
   sizeError: string;
   typeError: string;
+  readError: string;
   urlError: string;
   requiredError: string;
 }
@@ -33,6 +34,7 @@ function initDocState(entry?: DocumentEntry): DocState {
     dragOver: false,
     sizeError: '',
     typeError: '',
+    readError: '',
     urlError: '',
     requiredError: '',
   };
@@ -90,8 +92,12 @@ interface DocUploaderProps {
 
 function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const readGeneration = useRef(0);
+  useEffect(() => () => { readGeneration.current++; }, []);
 
   const handleFile = async (file: File) => {
+    const generation = ++readGeneration.current;
+    onChange({ readError: '' });
     if (!isAcceptedDocumentFile(file)) {
       onChange({ typeError: 'Only PDF and Word documents (.pdf, .doc, .docx) are supported' });
       return;
@@ -101,13 +107,16 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
       onChange({ sizeError, typeError: '' });
       return;
     }
-    const base64 = await fileToBase64(file);
-    onChange({
-      file: { name: file.name, size: file.size, base64 },
-      sizeError: '',
-      typeError: '',
-      requiredError: '',
-    });
+    try {
+      const base64 = await fileToBase64(file);
+      if (generation !== readGeneration.current) return;
+      onChange({
+        file: { name: file.name, size: file.size, base64 },
+        sizeError: '', typeError: '', readError: '', requiredError: '',
+      });
+    } catch {
+      if (generation === readGeneration.current) onChange({ readError: 'Could not read file. Please try again.' });
+    }
   };
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
@@ -129,7 +138,7 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
         <div className="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden text-xs">
           <button
             type="button"
-            onClick={() => onChange({ mode: 'url', requiredError: '' })}
+            onClick={() => { readGeneration.current++; onChange({ mode: 'url', requiredError: '', readError: '' }); }}
             className={`px-3 py-1.5 active:scale-95 ${state.mode === 'url' ? 'bg-blue-600 text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'} transition-colors`}
           >
             URL
@@ -179,7 +188,7 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatBytes(state.file.size)}</p>
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); onChange({ file: null }); }}
+                  onClick={(e) => { e.stopPropagation(); readGeneration.current++; onChange({ file: null, readError: '' }); }}
                   className="text-xs text-red-500 dark:text-red-400 mt-2 hover:underline active:scale-95"
                 >
                   Remove file
@@ -197,11 +206,12 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
             type="file"
             accept=".pdf,.doc,.docx"
             className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void handleFile(f); }}
           />
           {state.sizeError && (
             <p className="text-xs text-red-500 dark:text-red-400 mt-1">{state.sizeError}</p>
           )}
+          {state.readError && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{state.readError}</p>}
           {state.typeError && (
             <p className="text-xs text-red-500 dark:text-red-400 mt-1">{state.typeError}</p>
           )}
