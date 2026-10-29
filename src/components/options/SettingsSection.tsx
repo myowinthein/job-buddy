@@ -839,18 +839,18 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                   {driveState.lastSynced && Number.isFinite(Date.parse(driveState.lastSynced)) ? `Last backed up: ${fmtDriveTimestamp(driveState.lastSynced)}` : 'No backup yet'}
                 </p>
               </div>
-              <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2">
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <button type="button"
                   onClick={driveState.error === 'token_expired' ? handleDriveConnect
                     : driveState.reviewRequired ? handleDriveCheck : handleDriveSyncNow}
                   disabled={driveSyncing || driveDisconnectBusy || driveRestoreBusy}
-                  className={driveState.error || driveState.reviewRequired ? btnPrimaryCls : btnSecondaryCls}>
+                  className={btnPrimaryCls}>
                   {driveSyncing ? 'Backing up…' : driveState.error === 'token_expired' ? 'Reconnect'
                     : driveState.reviewRequired ? 'Review Backup' : driveState.error ? 'Retry Backup' : 'Back Up Now'}
                 </button>
                 <button type="button" onClick={() => setDriveDisconnectDialog(true)}
                   disabled={driveSyncing || driveDisconnectBusy || driveRestoreBusy}
-                  className={`${footerLinkCls} py-2 text-sm text-gray-500 dark:text-gray-400 disabled:opacity-50`}>Disconnect</button>
+                  className={btnSecondaryCls}>Disconnect</button>
                 {driveState.error === 'storage_full' && <a href="https://one.google.com/storage" target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 dark:text-blue-400 underline">Manage Storage</a>}
               </div>
             </div>
