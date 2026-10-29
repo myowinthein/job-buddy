@@ -39,6 +39,7 @@ afterEach(async () => {
   });
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 async function openPersonal() {
@@ -75,7 +76,10 @@ it('protects partial date inputs even when the section value is still empty', as
   await openPersonal();
   fireEvent.click(screen.getByRole('button', { name: 'Work History' }));
   const month = screen.getAllByLabelText('Month')[0];
+  act(() => month.focus());
   fireEvent.change(month, { target: { value: '06' } });
+  expect(screen.queryByText('Unsaved changes')).toBeNull();
+  fireEvent.blur(month);
   expect(screen.getByText('Unsaved changes')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Address' }));
   expect(confirm).toHaveBeenCalledTimes(1);
@@ -87,9 +91,12 @@ it('protects partial date inputs even when the section value is still empty', as
 it('protects a draft on navigation and closing, then clears the guard after saving', async () => {
   const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
   const name = await openPersonal();
+  act(() => name.focus());
   fireEvent.change(name, { target: { value: 'Draft Jane' } });
-  expect(screen.getByText('Unsaved changes')).toBeTruthy();
-  expect(screen.getByText('Unsaved changes').closest('main')).toBeNull();
+  expect(screen.queryByText('Unsaved changes')).toBeNull();
+  expect(
+    (screen.getByRole('button', { name: 'Save Personal' }) as HTMLButtonElement).disabled,
+  ).toBe(false);
   const closing = new Event('beforeunload', { cancelable: true });
   window.dispatchEvent(closing);
   expect(closing.defaultPrevented).toBe(true);
@@ -97,9 +104,15 @@ it('protects a draft on navigation and closing, then clears the guard after savi
   expect(confirm).toHaveBeenCalledTimes(1);
   expect((name as HTMLInputElement).value).toBe('Draft Jane');
   expect(screen.getByRole('heading', { name: 'Personal' })).toBeTruthy();
+  fireEvent.blur(name);
+  expect(screen.getByText('Unsaved changes').closest('main')).not.toBeNull();
+  expect(
+    screen.getByText('Unsaved changes').parentElement?.contains(screen.getByText('Save Personal')),
+  ).toBe(true);
 
   fireEvent.click(screen.getByText('Save Personal'));
-  await waitFor(() => expect(screen.queryByText('Unsaved changes')).toBeNull());
+  await screen.findByText('Saved');
+  expect(screen.queryByText('Unsaved changes')).toBeNull();
   expect((await getProfile())?.personal.firstName).toBe('Draft Jane');
   const savedClosing = new Event('beforeunload', { cancelable: true });
   window.dispatchEvent(savedClosing);
@@ -107,6 +120,37 @@ it('protects a draft on navigation and closing, then clears the guard after savi
   fireEvent.click(screen.getByRole('button', { name: 'Address' }));
   expect(screen.getByRole('heading', { name: 'Address' })).toBeTruthy();
   expect(confirm).toHaveBeenCalledTimes(1);
+});
+
+it('keeps save feedback quiet during editing and clears the saved message after a short time', async () => {
+  const name = await openPersonal();
+  act(() => name.focus());
+  fireEvent.blur(name);
+  expect(screen.queryByText('Unsaved changes')).toBeNull();
+  vi.useFakeTimers();
+  fireEvent.change(name, { target: { value: 'Saved Jane' } });
+  fireEvent.click(screen.getByText('Save Personal'));
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(screen.getByText('Saved')).toBeTruthy();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(2000);
+  });
+  expect(screen.queryByText('Saved')).toBeNull();
+});
+
+it('hides saved feedback as soon as another edit begins and waits for blur again', async () => {
+  const name = await openPersonal();
+  fireEvent.change(name, { target: { value: 'First edit' } });
+  fireEvent.click(screen.getByText('Save Personal'));
+  await screen.findByText('Saved');
+  act(() => name.focus());
+  fireEvent.change(name, { target: { value: 'Second edit' } });
+  expect(screen.queryByText('Saved')).toBeNull();
+  expect(screen.queryByText('Unsaved changes')).toBeNull();
+  fireEvent.blur(name);
+  expect(screen.getByText('Unsaved changes')).toBeTruthy();
 });
 
 it('discards a draft only after the user confirms leaving', async () => {
@@ -136,7 +180,7 @@ it('merges a section save with newer stored changes from another Options tab', a
   await saveProfile({ ...stored, address: { ...stored.address, city: 'Updated elsewhere' } });
   fireEvent.change(name, { target: { value: 'Local Jane' } });
   fireEvent.click(screen.getByText('Save Personal'));
-  await waitFor(() => expect(screen.queryByText('Unsaved changes')).toBeNull());
+  await screen.findByText('Saved');
   expect((await getProfile())?.address.city).toBe('Updated elsewhere');
   expect((await getProfile())?.personal.firstName).toBe('Local Jane');
 });
@@ -149,10 +193,13 @@ it('retains the unsaved guard when local persistence fails', async () => {
   });
   vi.spyOn(console, 'error').mockImplementation(() => {});
   const name = await openPersonal();
+  act(() => name.focus());
   fireEvent.change(name, { target: { value: 'Cannot save' } });
+  fireEvent.blur(name);
   fireEvent.click(screen.getByText('Save Personal'));
   await screen.findByText('Failed to save: storage may be full.');
   expect(screen.getByText('Unsaved changes')).toBeTruthy();
+  expect(screen.queryByText('Saved')).toBeNull();
   expect((await getProfile())?.personal.firstName).toBe('Jane');
 });
 

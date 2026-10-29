@@ -1,4 +1,3 @@
-import { PencilLine } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Profile } from '@/src/types/profile';
 import { getProfile, saveProfile } from '@/src/utils/storage';
@@ -23,7 +22,7 @@ import { syncProfileToDrive } from '@/src/utils/driveSync';
 import { ReportedSaveError } from '@/src/components/options/shared/saveSection';
 import { useToast } from '@/src/components/ui/useToast';
 import type { CompletionTarget } from '@/src/utils/profileCompletion';
-import { DraftStatusContext } from '@/src/components/options/shared/draftStatus';
+import { DraftStatusContext, SectionSaveStatusContext } from '@/src/components/options/shared/draftStatus';
 
 type SectionId =
   | 'personal'
@@ -81,6 +80,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [focusTarget, setFocusTarget] = useState<CompletionTarget | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [unsavedStatusVisible, setUnsavedStatusVisible] = useState(false);
+  const [savedFeedbackAt, setSavedFeedbackAt] = useState<number | null>(null);
   // Incremented on reset so all profile-editing sections remount and show cleared inputs.
   const [sectionSeq, setSectionSeq] = useState(0);
 
@@ -95,6 +96,7 @@ function App() {
     if (dirty) dirtyInputsRef.current.add(id);
     else dirtyInputsRef.current.delete(id);
     setHasUnsavedChanges(dirtyInputsRef.current.size > 0);
+    if (dirtyInputsRef.current.size === 0) setUnsavedStatusVisible(false);
   }, []);
 
   const navigateSection = useCallback((section: SectionId) => {
@@ -102,9 +104,17 @@ function App() {
     if (hasUnsavedChanges && !window.confirm('You have unsaved changes. Leave this section and discard them?')) return false;
     dirtyInputsRef.current.clear();
     setHasUnsavedChanges(false);
+    setUnsavedStatusVisible(false);
+    setSavedFeedbackAt(null);
     setActiveSection(section);
     return true;
   }, [activeSection, hasUnsavedChanges]);
+
+  useEffect(() => {
+    if (savedFeedbackAt === null) return;
+    const timer = window.setTimeout(() => setSavedFeedbackAt(null), 2000);
+    return () => window.clearTimeout(timer);
+  }, [savedFeedbackAt]);
 
   useEffect(() => {
     if (!hasUnsavedChanges) return;
@@ -295,6 +305,7 @@ function App() {
       throw new ReportedSaveError('Failed to save: storage may be full.');
     }
     setProfile(synced);
+    setSavedFeedbackAt(Date.now());
     // Fire-and-forget Drive sync. Never blocks the local save flow.
     void syncProfileToDrive(synced).then((res) => {
       if (!res.success && res.errorCode) {
@@ -373,18 +384,18 @@ function App() {
           onNavigate={(sectionId) => { navigateSection(sectionId as SectionId); }}
           onFocusField={handleFocusField}
         />
-        {hasUnsavedChanges && (
-          <div role="status" className="flex shrink-0 items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200 sm:px-6">
-            <PencilLine aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-            <span className="font-semibold">Unsaved changes</span>
-            <span className="hidden text-amber-800/80 dark:text-amber-200/70 sm:inline">Save this section to keep your edits</span>
-          </div>
-        )}
         <main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-8">
           {/* Settings uses max-w-none so long subtitles can flow to one line */}
-          <div data-profile-section={activeSection} className={activeSection === 'settings' ? 'max-w-none' : 'max-w-2xl'}>
+          <div data-profile-section={activeSection} className={activeSection === 'settings' ? 'max-w-none' : 'max-w-2xl'}
+            onBlurCapture={() => {
+              if (dirtyInputsRef.current.size > 0) setUnsavedStatusVisible(true);
+            }}>
             <DraftStatusContext.Provider value={reportDraftStatus}>
-              {renderSection()}
+              <SectionSaveStatusContext.Provider value={hasUnsavedChanges
+                ? unsavedStatusVisible ? 'unsaved' : 'idle'
+                : savedFeedbackAt !== null ? 'saved' : 'idle'}>
+                {renderSection()}
+              </SectionSaveStatusContext.Provider>
             </DraftStatusContext.Provider>
           </div>
         </main>
