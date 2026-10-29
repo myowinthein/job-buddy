@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Synthetic application</title>
+  </head>
+  <body>
+    <form id="application">
+      <label>First name <input name="firstName" autocomplete="given-name" required /></label>
+      <label
+        >Last name
+        <input name="lastName" autocomplete="family-name" value="Existing answer" required
+      /></label>
+      <label>Email <input type="email" name="email" autocomplete="email" required /></label>
+      <label>CV <input type="file" name="resume" required /></label>
+      <button type="submit">Validate</button>
+      <label for="country-trigger">Country</label>
+      <input
+        id="country-trigger"
+        type="button"
+        value="Choose country"
+        aria-haspopup="listbox"
+        aria-controls="country-options"
+      />
+      <div id="country-options" role="listbox" hidden>
+        <div role="option" id="country-us" aria-label="US">United States</div>
+      </div>
+      <fieldset>
+        <legend>Work authorization</legend>
+        <label>Yes<input id="work-yes" type="radio" name="authorization" value="yes" /></label
+        ><label>No<input type="radio" name="authorization" value="no" /></label>
+      </fieldset>
+      <fieldset>
+        <legend>Privacy consent</legend>
+        <label>Yes<input id="consent-yes" type="radio" name="consent" value="yes" /></label
+        ><label>No<input id="consent-no" type="radio" name="consent" value="no" /></label>
+      </fieldset>
+    </form>
+    <span id="shadow-label">Wrong outer label</span>
+    <div id="shadow-host"></div>
+    <iframe
+      id="application-frame"
+      srcdoc='<label>Email<input name="email" type="email" autocomplete="email" required></label>'
+    ></iframe>
+    <script>
+      const trigger = document.querySelector('#country-trigger');
+      const list = document.querySelector('#country-options');
+      trigger.addEventListener('click', () => {
+        list.hidden = false;
+      });
+      document.querySelector('#country-us').addEventListener('click', () => {
+        trigger.dataset.selected = 'US';
+        list.hidden = true;
+      });
+      const root = document.querySelector('#shadow-host').attachShadow({ mode: 'open' });
+      root.innerHTML =
+        '<span id="shadow-label">First name</span><input aria-labelledby="shadow-label" required>';
+      window.events = [];
+      for (const type of ['input', 'change', 'blur']) {
+        document.addEventListener(
+          type,
+          (event) => {
+            window.events.push({
+              name: event.target.name,
+              type,
+              inputEvent: event instanceof InputEvent,
+              focusEvent: event instanceof FocusEvent,
+            });
+          },
+          true,
+        );
+      }
+      document.querySelector('form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        window.submitted = Object.fromEntries(new FormData(event.target));
+      });
+    </script>
+  </body>
+</html>

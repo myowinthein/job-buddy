@@ -91,6 +91,12 @@ The extension uses WXT, React, TypeScript, and Tailwind CSS v4, with Vitest for 
 | `pnpm zip`           | Build and package a Chrome Web Store archive.        |
 | `pnpm serve:landing` | Serve the static website at `http://localhost:3000`. |
 
+Browser tests use Playwright with an isolated Chromium profile and synthetic local forms.
+Install the browser once with `pnpm exec playwright install chromium`, then run
+`pnpm test:browser`. This builds the extension and runs headless tests. After a build,
+use `pnpm exec playwright test --headed` to see the browser while debugging.
+Normal edits do not start browser tests.
+
 Chrome builds are under `.output/`. Firefox development, build, and packaging
 scripts are also available in [package.json](package.json); production distribution
 targets Chrome.
