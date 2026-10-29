@@ -821,7 +821,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         {driveConnecting && <p className="text-sm text-gray-500 dark:text-gray-400" role="status">Checking Drive backup…</p>}
         {driveState.connected && !driveConnecting && (
           <div className="space-y-2">
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6">
+            <div className="space-y-3">
               <div className="min-w-0 space-y-1">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <p className="text-sm font-medium text-gray-800 dark:text-gray-200 break-all">
@@ -839,7 +839,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                   {driveState.lastSynced && Number.isFinite(Date.parse(driveState.lastSynced)) ? `Last backed up: ${fmtDriveTimestamp(driveState.lastSynced)}` : 'No backup yet'}
                 </p>
               </div>
-              <div className="flex shrink-0 flex-wrap items-center gap-2">
+              {driveState.error && <p role="status" className="text-sm text-amber-700 dark:text-amber-400">{driveFailureText(driveState.error)}</p>}
+              <div className="flex flex-wrap items-center gap-2">
                 <button type="button"
                   onClick={driveState.error === 'token_expired' ? handleDriveConnect
                     : driveState.reviewRequired ? handleDriveCheck : handleDriveSyncNow}
@@ -854,7 +855,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                 {driveState.error === 'storage_full' && <a href="https://one.google.com/storage" target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 dark:text-blue-400 underline">Manage Storage</a>}
               </div>
             </div>
-            {driveState.error && <p role="status" className="text-sm text-amber-700 dark:text-amber-400">{driveFailureText(driveState.error)}</p>}
           </div>
         )}
       </section>
