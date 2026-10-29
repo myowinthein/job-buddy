@@ -233,22 +233,21 @@ describe('Gemini explicit key setup', () => {
     expect(saveGeminiSettings).not.toHaveBeenCalled();
     expect(validateApiKey).not.toHaveBeenCalled();
   });
-  it('checks an existing manual model preference without changing it', async () => {
-    vi.mocked(getGeminiSettings).mockResolvedValue({
-      ...existing,
-      model: 'gemini-3.8-flash',
-      preference: 'gemini-3.8-flash',
-    });
+  it('checks and saves a manual model choice with the existing key', async () => {
+    vi.mocked(getGeminiSettings).mockResolvedValue(existing);
     vi.mocked(validateApiKey).mockResolvedValue({ valid: true, model: 'gemini-3.8-flash' });
     renderSettings();
-    fireEvent.click(await screen.findByRole('button', { name: 'Check Key' }));
+    await screen.findByText('Replace Key');
+    fireEvent.click(screen.getByText('Options & help'));
+    fireEvent.change(screen.getByLabelText('AI Model'), { target: { value: 'gemini-3.8-flash' } });
     expect(await screen.findByText('Ready')).toBeTruthy();
-    expect(validateApiKey).toHaveBeenCalledWith(
+    expect(saveGeminiSettings).toHaveBeenCalledWith(
       'saved-key',
-      expect.any(AbortSignal),
       'gemini-3.8-flash',
+      'gemini-3.8-flash',
+      'original',
+      expect.any(Function),
     );
-    expect(saveGeminiSettings).not.toHaveBeenCalled();
   });
   it('does not overwrite settings after another tab removes the key', async () => {
     vi.mocked(saveGeminiSettings).mockResolvedValue(null);
