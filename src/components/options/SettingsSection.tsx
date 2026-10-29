@@ -977,10 +977,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             <h3 id="reset-data-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
               Reset All Data
             </h3>
-            <p id="reset-data-description" className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              {driveState.connected
-                ? 'Permanently delete local Job Buddy data and disconnect Drive.'
-                : 'Permanently delete all Job Buddy data on this device.'}
+            <p id="reset-data-description" className="mt-2 text-pretty text-sm text-gray-500 dark:text-gray-400">
+              This will permanently delete your profile, mappings, history, and settings from this browser.
+              {driveState.connected && ' Drive will also be disconnected.'}
             </p>
 
             {driveState.connected && (
@@ -998,7 +997,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
             <div className="mt-5">
               <label htmlFor="reset-confirmation" className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
-                Type <code className="font-mono font-semibold">DELETE</code> to confirm
+                Type <code className="font-mono font-semibold text-red-600 dark:text-red-400">DELETE</code> to confirm
               </label>
               <input
                 type="text"
