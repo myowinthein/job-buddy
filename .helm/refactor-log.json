@@ -555,8 +555,35 @@
         ],
         "invariant": "Preserve validation, real error toasts, export metadata, accepted changes, review selection and asynchronous save behavior."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "045f599c585e4ebf126a5bbbb9941cb6de579b74",
+        "date": "2026-10-29",
+        "method": "runtime",
+        "evidence": [
+          "Removed null-only importError state/rendering and unread sanitized snapshot; live validation.sanitized, accepted changes and real error toasts preserved."
+        ],
+        "checks": [
+          {
+            "command": "pnpm compile",
+            "scope": "project",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm exec vitest run src/components/options/SettingsSection.test.tsx src/components/options/SettingsSection.integration.test.tsx",
+            "scope": "JSON import and Drive restore UI",
+            "outcome": "35 tests passed"
+          },
+          {
+            "command": "pnpm exec eslint src/components/options/SettingsSection.tsx",
+            "scope": "R10 file",
+            "outcome": "passed"
+          }
+        ]
+      }
     }
   ]
 }
