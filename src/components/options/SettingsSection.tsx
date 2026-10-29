@@ -1019,7 +1019,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
       {driveDisconnectDialog && (
         <SettingsDialog title="Disconnect Google Drive" busy={driveDisconnectBusy} onDismiss={closeDriveDisconnectDialog}>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Your profile stays in this browser. Your last successful backup stays in Drive.</p>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Disconnecting keeps your profile in this browser and your latest backup in Drive.</p>
           <label className="mt-4 flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
             <input type="checkbox" checked={disconnectDeleteBackup} disabled={driveDisconnectBusy}
               onChange={(event) => setDisconnectDeleteBackup(event.target.checked)} className="mt-0.5 accent-red-600"/>
