@@ -157,18 +157,20 @@ describe('EducationSection — end-date MonthYearPicker wiring', () => {
 
 
 describe('EducationSection — row identity', () => {
-  it('deleting a populated row preserves the blank successor and its partial date input', () => {
+  it.each([false, true])('deleting a populated row preserves the successor date (partial: %s)', (partial) => {
     renderSection({ education: [{ institution: 'Old', degree: 'BSc', fieldOfStudy: 'CS', startDate: '2010-03', endDate: '2014-05', isCurrent: false }] });
     fireEvent.click(screen.getByText('Old: BSc'));
     fireEvent.click(screen.getByText('+ Add Education'));
     const months = screen.getAllByLabelText('Month') as HTMLSelectElement[];
     const years = screen.getAllByLabelText('Year') as HTMLInputElement[];
-    fireEvent.change(months[2], { target: { value: '06' } });
-    fireEvent.change(years[2], { target: { value: '20' } });
+    if (partial) {
+      fireEvent.change(months[2], { target: { value: '06' } });
+      fireEvent.change(years[2], { target: { value: '20' } });
+    }
     fireEvent.click(screen.getAllByRole('button', { name: 'Remove entry' })[0]);
     fireEvent.click(screen.getByText('Delete'));
-    expect((screen.getAllByLabelText('Month')[0] as HTMLSelectElement).value).toBe('06');
-    expect((screen.getAllByLabelText('Year')[0] as HTMLInputElement).value).toBe('20');
+    expect((screen.getAllByLabelText('Month')[0] as HTMLSelectElement).value).toBe(partial ? '06' : '');
+    expect((screen.getAllByLabelText('Year')[0] as HTMLInputElement).value).toBe(partial ? '20' : '');
     expect((screen.getAllByLabelText('Month')[1] as HTMLSelectElement).value).toBe('');
     expect((screen.getAllByLabelText('Year')[1] as HTMLInputElement).value).toBe('');
     fireEvent.click(screen.getByText('+ Add Education'));
