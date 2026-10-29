@@ -664,7 +664,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       <section className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
         <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">AI Features</h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Enable AI-powered features using your own API key.
+          Enable AI-powered features using your own API key. Resume import and AI autofill send data to Gemini.
         </p>
 
         <label htmlFor="gemini-api-key" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -908,20 +908,10 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             </div>
           </div>
         )}
+        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          Your profile is saved in this browser.
+        </p>
       </section>
-
-      {/* ── Privacy notice ────────────────────────────────────────────────────── */}
-      <p className="mb-8 text-xs text-gray-500 dark:text-gray-400">
-        Profile data is stored on this device. Optional AI features and cloud backup use the services you enable.{' '}
-        <a
-          href="https://ko-fi.com/myowinthein"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline font-medium"
-        >
-          Support on Ko-fi ☕
-        </a>
-      </p>
 
       {/* ── Reset All Data ───────────────────────────────────────────────────── */}
       <section className="pt-2">
@@ -937,6 +927,17 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           Reset Now
         </button>
       </section>
+
+      <footer className="mt-10 pt-5 border-t border-gray-200 dark:border-gray-700">
+        <a
+          href="https://ko-fi.com/myowinthein"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500 transition-colors"
+        >
+          Support on Ko-fi <span aria-hidden="true">↗</span>
+        </a>
+      </footer>
 
       {/* ── Import Profile — summary / review dialogs ──────────────────────────── */}
       {importScreen === 'summary' && (
