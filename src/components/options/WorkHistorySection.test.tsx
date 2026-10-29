@@ -10,7 +10,7 @@ afterEach(cleanup);
 function renderSection(profile: Partial<Profile>, onSave = vi.fn().mockResolvedValue(undefined)) {
   render(
     <ToastProvider>
-      <WorkHistorySection profile={profile} onSave={onSave} />
+      <WorkHistorySection profile={{ professional: { noticePeriod: { immediate: true } }, ...profile }} onSave={onSave} />
     </ToastProvider>,
   );
   return { onSave };
@@ -91,9 +91,7 @@ describe('WorkHistorySection — date validation across the keystroke/blur/save-
     const { onSave } = renderSection({
       workHistory: [{ company: 'Acme', title: 'Engineer', startDate: '2022-06', isCurrent: false, endDate: '2020-01' }],
     });
-    // A populated entry starts collapsed (defaultExpanded={!row.company}) — the
-    // error still gets set on save, but expand the card to see it rendered.
-    fireEvent.click(screen.getByText('Acme: Engineer'));
+    // Saving must reveal errors even though populated entries start collapsed.
     fireEvent.click(screen.getByText('Save Work History'));
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('End date cannot be before start date')).toBeTruthy();
@@ -157,6 +155,22 @@ describe('WorkHistorySection — Work Arrangement radio group', () => {
 });
 
 describe('WorkHistorySection — Notice Period validation', () => {
+  it('does not invent immediate availability when no notice period was saved', () => {
+    const { onSave } = renderSection({
+      professional: {},
+      workHistory: [{ company: 'Acme', title: 'Engineer', startDate: '2020-01', isCurrent: true }],
+    });
+    expect((screen.getByLabelText('Available Now') as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByLabelText('Available Later') as HTMLInputElement).checked).toBe(false);
+    fireEvent.click(screen.getByText('Save Work History'));
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText('Select your availability')).toBeTruthy();
+    fireEvent.click(screen.getByText('Available Now'));
+    fireEvent.click(screen.getByText('Save Work History'));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      professional: expect.objectContaining({ noticePeriod: expect.objectContaining({ immediate: true }) }),
+    }));
+  });
   it('shows the duration input only after selecting Available Later', () => {
     renderSection({ workHistory: [] });
     expect(screen.queryByPlaceholderText('3')).toBeNull();

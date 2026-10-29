@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import type { useSearchableDropdown } from './useSearchableDropdown';
 
 interface Props<T> {
@@ -22,7 +22,7 @@ export function SearchableDropdown<T>({
   dropdown,
   trigger,
   containerClassName = 'relative w-full',
-  panelClassName = 'w-full min-w-[240px]',
+  panelClassName = 'w-full min-w-[min(240px,calc(100vw-6rem))]',
   searchPlaceholder,
   emptyText,
   getKey,
@@ -30,6 +30,7 @@ export function SearchableDropdown<T>({
   renderRow,
 }: Props<T>) {
   const { open, search, hlIdx, filtered, containerRef, searchRef, listRef, setHlIdx, select, onSearchChange, handleKeyDown } = dropdown;
+  const listId = useId();
 
   return (
     <div ref={containerRef} className={containerClassName}>
@@ -41,6 +42,13 @@ export function SearchableDropdown<T>({
             <input
               ref={searchRef}
               type="text"
+              role="combobox"
+              aria-label={searchPlaceholder}
+              aria-expanded={open}
+              aria-controls={listId}
+              aria-autocomplete="list"
+              aria-activedescendant={filtered[hlIdx] ? `${listId}-${hlIdx}` : undefined}
+              autoComplete="off"
               className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder={searchPlaceholder}
               value={search}
@@ -48,7 +56,7 @@ export function SearchableDropdown<T>({
               onKeyDown={handleKeyDown}
             />
           </div>
-          <ul ref={listRef} role="listbox" className="max-h-56 overflow-y-auto py-1">
+          <ul id={listId} ref={listRef} role="listbox" className="max-h-56 overflow-y-auto py-1">
             {filtered.length === 0 ? (
               <li className="px-3 py-3 text-sm text-gray-400 dark:text-gray-500 text-center select-none">
                 {emptyText}
@@ -57,6 +65,7 @@ export function SearchableDropdown<T>({
               filtered.map((item, idx) => (
                 <li
                   key={getKey(item)}
+                  id={`${listId}-${idx}`}
                   role="option"
                   aria-selected={isSelected(item)}
                   className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer select-none ${

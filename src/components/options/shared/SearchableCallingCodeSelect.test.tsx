@@ -28,6 +28,19 @@ describe('SearchableCallingCodeSelect — trigger display and fallback', () => {
 });
 
 describe('SearchableCallingCodeSelect — search matches name or calling code', () => {
+  it.each(['Enter', 'Escape'])('returns keyboard focus to its trigger after %s', (key) => {
+    const { onChange } = renderSelect('US');
+    const trigger = screen.getByLabelText('Select country calling code');
+    fireEvent.click(trigger);
+    const search = screen.getByRole('combobox');
+    fireEvent.change(search, { target: { value: 'Thailand' } });
+    fireEvent.keyDown(search, { key });
+    expect(document.activeElement).toBe(trigger);
+    expect(screen.queryByRole('combobox')).toBeNull();
+    if (key === 'Enter') expect(onChange).toHaveBeenCalledWith('TH');
+    else expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('finds a country by name', () => {
     const { onChange } = renderSelect('US');
     fireEvent.click(screen.getByLabelText('Select country calling code'));

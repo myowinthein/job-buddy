@@ -120,7 +120,7 @@ export function CompletionBanner({
   const close = () => setShowDropdown(false);
 
   return (
-    <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 h-16 flex items-center gap-4 shrink-0">
+    <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 min-h-16 py-3 flex flex-wrap items-center gap-2 sm:gap-4 shrink-0">
 
       {/* Label area */}
       {isCoreComplete ? (

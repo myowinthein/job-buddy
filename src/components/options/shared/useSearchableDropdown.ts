@@ -43,6 +43,7 @@ export function useSearchableDropdown<T>({ filter, onSelect, findOpenIndex }: Us
     setOpen(false);
     setSearch('');
     setHlIdx(0);
+    containerRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
   };
 
   const toggle = () => {
@@ -56,7 +57,7 @@ export function useSearchableDropdown<T>({ filter, onSelect, findOpenIndex }: Us
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     switch (e.key) {
       case 'ArrowDown':
-        setHlIdx((i) => Math.min(i + 1, filtered.length - 1));
+        setHlIdx((i) => Math.min(i + 1, Math.max(0, filtered.length - 1)));
         e.preventDefault();
         break;
       case 'ArrowUp':
@@ -71,6 +72,7 @@ export function useSearchableDropdown<T>({ filter, onSelect, findOpenIndex }: Us
         setOpen(false);
         setSearch('');
         setHlIdx(0);
+        containerRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
         e.preventDefault();
         break;
     }

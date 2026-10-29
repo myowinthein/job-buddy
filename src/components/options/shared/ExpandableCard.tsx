@@ -7,6 +7,7 @@ interface ExpandableCardProps {
   onDelete?: () => void;
   children: React.ReactNode;
   defaultExpanded?: boolean;
+  invalid?: boolean;
   // Overrides the default p-4 content padding — for denser content (e.g. the
   // debug panel's field lists) where the default spacing compounds awkwardly
   // with padding the content itself already carries. Learned Mappings (the
@@ -20,11 +21,19 @@ export function ExpandableCard({
   onDelete,
   children,
   defaultExpanded = false,
+  invalid = false,
   contentClassName = 'p-4',
 }: ExpandableCardProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
+  const [expanded, setExpanded] = useState(defaultExpanded || invalid);
+  const [previousInvalid, setPreviousInvalid] = useState(invalid);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const isExpanded = expanded || invalid;
+
+  if (invalid !== previousInvalid) {
+    setPreviousInvalid(invalid);
+    if (invalid) setExpanded(true);
+  }
 
   // Reset the armed delete-confirmation state when the user clicks anywhere
   // outside the card, so clicking the remove icon then changing their mind
@@ -47,7 +56,7 @@ export function ExpandableCard({
           type="button"
           className="flex-1 text-left min-w-0 mr-3"
           onClick={() => { setExpanded(!expanded); setConfirmDelete(false); }}
-          aria-expanded={expanded}
+          aria-expanded={isExpanded}
         >
           <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{summary}</p>
           {subtitle && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{subtitle}</p>}
@@ -77,14 +86,14 @@ export function ExpandableCard({
             type="button"
             onClick={() => { setExpanded(!expanded); setConfirmDelete(false); }}
             className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 active:scale-95 transition-colors text-xs w-4 text-center"
-            aria-expanded={expanded}
-            aria-label={expanded ? 'Collapse' : 'Expand'}
+            aria-expanded={isExpanded}
+            aria-label={isExpanded ? 'Collapse' : 'Expand'}
           >
-            {expanded ? '▲' : '▼'}
+            {isExpanded ? '▲' : '▼'}
           </button>
         </div>
       </div>
-      {expanded && <div className={`${contentClassName} border-t border-gray-200 dark:border-gray-700`}>{children}</div>}
+      {isExpanded && <div className={`${contentClassName} border-t border-gray-200 dark:border-gray-700`}>{children}</div>}
     </div>
   );
 }

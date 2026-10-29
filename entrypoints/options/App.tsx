@@ -21,6 +21,7 @@ import { LearnedMappingsSection } from '@/src/components/options/LearnedMappings
 import { syncProfileToDrive } from '@/src/utils/driveSync';
 import { ReportedSaveError } from '@/src/components/options/shared/saveSection';
 import { useToast } from '@/src/components/ui/useToast';
+import { DraftStatusContext } from '@/src/components/options/shared/draftStatus';
 
 type SectionId =
   | 'personal'
@@ -77,6 +78,7 @@ function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(readSidebar);
   const [loading, setLoading] = useState(true);
   const [focusTarget, setFocusTarget] = useState<string | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   // Incremented on reset so all profile-editing sections remount and show cleared inputs.
   const [sectionSeq, setSectionSeq] = useState(0);
 
@@ -86,6 +88,31 @@ function App() {
   const initialLoadDoneRef = useRef(false);
   const activeSectionRef  = useRef(activeSection);
   const mainRef           = useRef<HTMLElement>(null);
+  const dirtyInputsRef = useRef(new Set<string>());
+  const reportDraftStatus = useCallback((id: string, dirty: boolean) => {
+    if (dirty) dirtyInputsRef.current.add(id);
+    else dirtyInputsRef.current.delete(id);
+    setHasUnsavedChanges(dirtyInputsRef.current.size > 0);
+  }, []);
+
+  const navigateSection = useCallback((section: SectionId) => {
+    if (section === activeSection) return true;
+    if (hasUnsavedChanges && !window.confirm('You have unsaved changes. Leave this section and discard them?')) return false;
+    dirtyInputsRef.current.clear();
+    setHasUnsavedChanges(false);
+    setActiveSection(section);
+    return true;
+  }, [activeSection, hasUnsavedChanges]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const warnBeforeClosing = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warnBeforeClosing);
+    return () => window.removeEventListener('beforeunload', warnBeforeClosing);
+  }, [hasUnsavedChanges]);
 
   // ── Load profile ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -99,10 +126,10 @@ function App() {
   // on the section switch below, then focuses the specific target field once
   // it renders (via the focusTarget effect).
   const navigateAndFocus = useCallback((section: SectionId, fieldId?: string) => {
+    if (!navigateSection(section)) return;
     skipAutoFocusRef.current = true;
-    setActiveSection(section);
     if (fieldId) setFocusTarget(fieldId);
-  }, []);
+  }, [navigateSection]);
 
   // ── Cross-context focus request (popup → Options) ──────────────────────────
   const focusGeminiKey = useCallback(() => {
@@ -244,7 +271,9 @@ function App() {
   };
 
   const handleSave = async (updates: Partial<Profile>) => {
-    const merged = { ...profile, ...updates } as Profile;
+    // Keep changes saved by another Options tab in other profile sections.
+    const latest = await getProfile();
+    const merged = { ...(latest ?? profile), ...updates } as Profile;
     let synced: Profile = merged;
     try {
       const derived = calculateDerivedFields(merged);
@@ -279,7 +308,7 @@ function App() {
   };
 
   const handleCloseResumeImport = () => {
-    setActiveSection('personal');
+    navigateSection('personal');
   };
 
   // All completion-derived values are recomputed only when `profile` changes,
@@ -332,26 +361,29 @@ function App() {
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar
         activeSection={activeSection}
-        onSelect={(id) => setActiveSection(id as SectionId)}
+        onSelect={(id) => { navigateSection(id as SectionId); }}
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((c) => !c)}
         sectionCompletion={sectionCompletion}
         sectionFullCompletion={sectionFullCompletion}
       />
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <CompletionBanner
           percentage={completion.percentage}
           isCoreComplete={completion.isCoreComplete}
           optionalFieldsRemaining={completion.optionalFieldsRemaining}
           optionalGroups={completion.optionalGroups}
           missingGroups={completion.missingGroups}
-          onNavigate={(sectionId) => setActiveSection(sectionId as SectionId)}
+          onNavigate={(sectionId) => { navigateSection(sectionId as SectionId); }}
           onFocusField={handleFocusField}
         />
-        <main ref={mainRef} className="flex-1 overflow-y-auto p-8">
+        <main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-8">
           {/* Settings uses max-w-none so long subtitles can flow to one line */}
-          <div className={activeSection === 'settings' ? 'max-w-none' : 'max-w-2xl'}>
-            {renderSection()}
+          <div data-profile-section={activeSection} className={activeSection === 'settings' ? 'max-w-none' : 'max-w-2xl'}>
+            {hasUnsavedChanges && <p role="status" className="mb-3 text-sm text-amber-700 dark:text-amber-300">Unsaved changes</p>}
+            <DraftStatusContext.Provider value={reportDraftStatus}>
+              {renderSection()}
+            </DraftStatusContext.Provider>
           </div>
         </main>
       </div>

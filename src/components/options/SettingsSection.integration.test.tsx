@@ -92,6 +92,55 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+it('reviews imports into optional-only profiles instead of overwriting their existing data', async () => {
+  const local = { id: 'optional-profile', professional: { summary: 'Keep this summary' }, links: { github: 'https://github.com/local' } } as Profile;
+  vi.mocked(getProfile).mockResolvedValue(local);
+  const { onImportComplete } = renderSection();
+  const file = new File([JSON.stringify({ profile: { personal: { firstName: 'Imported' } } })], 'backup.json', { type: 'application/json' });
+  fireEvent.change(document.querySelector('input[accept=".json"]')!, { target: { files: [file] } });
+  fireEvent.click(await screen.findByText('Accept All'));
+  await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
+  expect(vi.mocked(saveProfile).mock.calls[0][0]).toMatchObject({
+    personal: { firstName: 'Imported' },
+    professional: { summary: 'Keep this summary' },
+    links: { github: 'https://github.com/local' },
+    derived: { fullName: 'Imported' },
+  });
+});
+
+it('preserves legacy links and editor-valid emails through a real JSON review', async () => {
+  const local = makeProfile();
+  vi.mocked(getProfile).mockResolvedValue(local);
+  const links = { github: 'https://github.com/imported', twitter: 'https://twitter.com/imported', dribbble: 'https://dribbble.com/imported', behance: 'https://behance.net/imported' };
+  const { onImportComplete } = renderSection();
+  const file = new File([JSON.stringify({ profile: { personal: { email: "o'brien@example.com" }, links } })], 'backup.json', { type: 'application/json' });
+  fireEvent.change(document.querySelector('input[accept=".json"]')!, { target: { files: [file] } });
+  fireEvent.click(await screen.findByText('Accept All'));
+  await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
+  expect(vi.mocked(saveProfile).mock.calls[0][0]).toMatchObject({
+    personal: { email: "o'brien@example.com" },
+    links: { ...local.links, ...links },
+  });
+});
+
+it('keeps local-only fields when accepting all changes from a sparse Drive backup', async () => {
+  const local = { id: 'optional-profile', professional: { summary: 'Local summary' }, links: { github: 'https://github.com/local' } } as Profile;
+  vi.mocked(getProfile).mockResolvedValue(local);
+  vi.mocked(connectDrive).mockResolvedValue({
+    token: 'synthetic', fileId: 'f1',
+    backup: { profile: { personal: { firstName: 'Remote' } } as Profile, lastModified: '2026-01-01T00:00:00Z' },
+  });
+  const { onImportComplete } = renderSection();
+  fireEvent.click(await screen.findByText('Connect Google Drive'));
+  fireEvent.click(await screen.findByText('Accept All'));
+  await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
+  expect(vi.mocked(saveProfile).mock.calls[0][0]).toMatchObject({
+    personal: { firstName: 'Remote' },
+    professional: { summary: 'Local summary' },
+    links: { github: 'https://github.com/local' },
+  });
+});
+
 describe('SettingsSection — real Drive document validation', () => {
   it.each(['cv', 'coverLetter'] as const)(
     'skips an oversized incoming %s in review while retaining local documents',

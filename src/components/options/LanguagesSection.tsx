@@ -1,3 +1,4 @@
+import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef } from 'react';
 import type { Profile, LanguageEntry, LanguageProficiency } from '@/src/types/profile';
@@ -88,10 +89,12 @@ export function LanguagesSection({ profile, onSave }: Props) {
     return Object.keys(e).length === 0;
   };
 
+  const saveDraft = useSectionDraft(entries, onSave);
+
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await saveSection(onSave, {
+    await saveSection(saveDraft, {
       languages: entries.map((r) => ({
         language: r.language,
         proficiency: r.proficiency || 'professional_working',
@@ -114,7 +117,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
               <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Entry {idx + 1}</span>
               <RemoveButton onClick={() => removeEntry(idx)} />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <FormField label="Language" required error={errors[`${idx}.language`]}>
                 <SearchableLanguageSelect
                   value={row.language}

@@ -21,6 +21,14 @@ function renderSection(profile: Partial<Profile>, onSave = vi.fn().mockResolvedV
 }
 
 describe('WorkAuthorizationSection — initRow country backward-compat loader', () => {
+  it('preserves imported visa details when editing another entry and deleting its predecessor', () => {
+    const kept = { country: 'SG', status: 'work_visa' as const, visaType: 'Employment Pass', expiryDate: '2028-06-15' };
+    const { onSave } = renderSection({ workAuthorization: [{ country: 'US', status: 'citizen_or_pr' }, kept] });
+    fireEvent.click(screen.getAllByTitle('Remove')[0]);
+    fireEvent.click(screen.getByText('Save Work Authorization'));
+    expect(onSave).toHaveBeenCalledWith({ workAuthorization: [kept] });
+  });
+
   it('passes an already-ISO country code through unchanged on save', () => {
     const { onSave } = renderSection({
       workAuthorization: [{ country: 'SG', status: 'citizen_or_pr' }],

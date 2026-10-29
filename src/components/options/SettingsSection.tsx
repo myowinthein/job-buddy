@@ -33,7 +33,8 @@ import {
   overwriteDriveWithLocal,
   isDriveConfigured,
 } from '@/src/utils/driveSync';
-import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
+import { generateDiff, applyChanges, FIELD_DEFS } from '@/src/resume-ai/parser';
+import { calculateDerivedFields } from '@/src/utils/derivedFields';
 import { DEFAULT_GEMINI_MODEL, GEMINI_MODEL_PRIORITY, MODEL_DISPLAY_NAMES, toGeminiModel } from '@/src/resume-ai/types';
 import type { FieldChange, GeminiModel } from '@/src/resume-ai/types';
 import ImportSummaryDialog from '@/src/components/shared/ImportSummaryDialog';
@@ -98,11 +99,9 @@ function fmtDriveTimestamp(iso: string | null): string {
   }
 }
 
-// A profile with 0% completion has nothing to conflict with, so both the
-// JSON-import path and the Drive-restore path skip the merge/review dialog
-// and save immediately when this is true.
+// Optional-only profiles also contain user data and must get import review.
 function isProfileEmpty(profile: Partial<Profile> | null): boolean {
-  return calculateCompletion(profile ?? {}).percentage === 0;
+  return !profile || FIELD_DEFS.every((field) => field.isEmpty(field.getValue(profile)));
 }
 
 // Shared by JSON imports and both Drive restore paths. Learned mappings are
@@ -112,7 +111,10 @@ async function saveImportedData(
   learnedMappings: LearnedMappings | undefined,
   applicationHistory: ApplicationEntry[] | undefined,
 ): Promise<void> {
-  await saveProfile(profile);
+  let updated = profile;
+  try { updated = { ...profile, derived: calculateDerivedFields(profile) }; }
+  catch { /* Keep the accepted raw data even when derivation fails. */ }
+  await saveProfile(updated);
   if (learnedMappings) {
     const localMappings = await getLearnedMappings();
     await saveLearnedMappings(mergeLearnedMappings(localMappings, learnedMappings));
@@ -509,7 +511,10 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         closeRestoreDialog();
         return;
       }
-      await saveImportedData(validation.sanitized as Profile, driveRestoreData.learnedMappings, undefined);
+      const restored = driveRestoreCase === 'conflict' && driveLocalProfile
+        ? applyChanges(driveLocalProfile, driveConflictChanges)
+        : validation.sanitized;
+      await saveImportedData(restored as Profile, driveRestoreData.learnedMappings, undefined);
       const fresh = await getFullDriveState();
       setDriveState(fresh);
       showToast('success', 'Profile restored from Google Drive');

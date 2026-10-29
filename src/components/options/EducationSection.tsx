@@ -1,3 +1,4 @@
+import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef } from 'react';
 import type { Profile, EducationEntry } from '@/src/types/profile';
@@ -144,10 +145,12 @@ export function EducationSection({ profile, onSave }: Props) {
     return Object.keys(e).length === 0;
   };
 
+  const saveDraft = useSectionDraft(entries, onSave);
+
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await saveSection(onSave, {
+    await saveSection(saveDraft, {
       education: entries.map((r) => ({
         institution: r.institution.trim(),
         degree: r.degree.trim(),
@@ -183,6 +186,7 @@ export function EducationSection({ profile, onSave }: Props) {
           subtitle={row.fieldOfStudy || undefined}
           onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
           defaultExpanded={!row.institution}
+          invalid={Object.entries(errors).some(([key, value]) => key.startsWith(`${idx}.`) && !!value)}
         >
           <FormField label="Institution" required error={errors[`${idx}.institution`]}>
             <input
@@ -195,7 +199,7 @@ export function EducationSection({ profile, onSave }: Props) {
             />
           </FormField>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Degree" required error={errors[`${idx}.degree`]}>
               <input
                 className={cls(errors[`${idx}.degree`])}
@@ -218,7 +222,7 @@ export function EducationSection({ profile, onSave }: Props) {
             </FormField>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Start Date" required error={errors[`${idx}.startDate`]}>
               <MonthYearPicker
                 value={row.startDate}

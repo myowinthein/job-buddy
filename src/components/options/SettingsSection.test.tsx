@@ -34,7 +34,8 @@ vi.mock('@/src/utils/driveSync', () => ({
   overwriteDriveWithLocal: vi.fn().mockResolvedValue({ success: true, errorCode: null }),
   isDriveConfigured: vi.fn(() => true),
 }));
-vi.mock('@/src/resume-ai/parser', () => ({
+vi.mock('@/src/resume-ai/parser', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/src/resume-ai/parser')>(),
   generateDiff: vi.fn(() => []),
   applyChanges: vi.fn((base: object) => base),
 }));
@@ -43,6 +44,7 @@ vi.mock('@/src/utils/profileValidator', () => ({
 }));
 
 import { SettingsSection } from './SettingsSection';
+import { calculateDerivedFields } from '@/src/utils/derivedFields';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import { getProfile, saveProfile, getGeminiApiKey, clearAllStorage, saveLearnedMappings, getLearnedMappings, getApplicationHistory, saveGeminiModel, clearGeminiSettings, saveThemePreference } from '@/src/utils/storage';
 import { checkApiKey, validateApiKey } from '@/src/resume-ai/gemini';
@@ -182,7 +184,7 @@ describe('SettingsSection — importing into an existing (non-empty) profile', (
 
     await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
     expect(vi.mocked(applyChanges)).toHaveBeenCalledWith(existing, changes);
-    expect(vi.mocked(saveProfile)).toHaveBeenCalledWith(merged);
+    expect(vi.mocked(saveProfile)).toHaveBeenCalledWith({ ...merged, derived: calculateDerivedFields(merged) });
   });
 
   it('Keep Current (reject all) closes the dialog without saving anything', async () => {
@@ -220,7 +222,7 @@ describe('SettingsSection — importing into an existing (non-empty) profile', (
     fireEvent.click(screen.getByText('Import Selected'));
 
     await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
-    expect(vi.mocked(saveProfile)).toHaveBeenCalledWith(merged);
+    expect(vi.mocked(saveProfile)).toHaveBeenCalledWith({ ...merged, derived: calculateDerivedFields(merged) });
   });
 });
 
@@ -352,13 +354,13 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     fireEvent.click(await screen.findByText('Connect Google Drive'));
     fireEvent.click(await screen.findByText('Restore'));
 
-    await waitFor(() => expect(vi.mocked(saveProfile)).toHaveBeenCalledWith(backupProfile));
+    await waitFor(() => expect(vi.mocked(saveProfile)).toHaveBeenCalledWith({ ...backupProfile, derived: calculateDerivedFields(backupProfile) }));
     expect(vi.mocked(saveLearnedMappings)).toHaveBeenCalledWith(
       expect.objectContaining({ 'a.com': expect.anything(), 'b.com': expect.anything() }),
     );
     expect(onImportComplete).toHaveBeenCalled();
-    // The restore dialog closes.
-    expect(screen.queryByText('Profile found in Google Drive. Restore it?')).toBeNull();
+    // Wait for the final state update that closes the restore dialog.
+    await waitFor(() => expect(screen.queryByText('Profile found in Google Drive. Restore it?')).toBeNull());
   });
 
   it('shows a conflict summary dialog when connecting with a non-empty local profile', async () => {
@@ -401,7 +403,8 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     });
 
     renderSection();
-    fireEvent.click(await screen.findByText('Connect Google Drive'));
+    const connectButton = await screen.findByText('Connect Google Drive');
+    await act(async () => { fireEvent.click(connectButton); });
     await screen.findByText('Profile found in Google Drive. Restore it?');
 
     fireEvent.keyDown(window, { key: 'Escape' });
@@ -478,7 +481,7 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
 
     await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
     expect(vi.mocked(applyChanges)).toHaveBeenCalledWith(localProfile, [makeFieldChange()]);
-    expect(vi.mocked(saveProfile)).toHaveBeenCalledWith(merged);
+    expect(vi.mocked(saveProfile)).toHaveBeenCalledWith({ ...merged, derived: calculateDerivedFields(merged) });
   });
 
   it('rejects an invalid Drive backup instead of saving an empty sanitized profile', async () => {

@@ -3,8 +3,20 @@ import { useState } from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { MonthYearPicker } from './MonthYearPicker';
+import { DraftStatusContext } from './draftStatus';
 
 afterEach(cleanup);
+
+it('reports partial dates as unsaved without changing the existing empty-value contract', () => {
+  const report = vi.fn();
+  const onChange = vi.fn();
+  render(<DraftStatusContext.Provider value={report}><MonthYearPicker value="" onChange={onChange} /></DraftStatusContext.Provider>);
+  fireEvent.change(screen.getByLabelText('Month'), { target: { value: '06' } });
+  expect(onChange).toHaveBeenLastCalledWith('');
+  expect(report).toHaveBeenLastCalledWith(expect.any(String), true);
+  fireEvent.change(screen.getByLabelText('Month'), { target: { value: '' } });
+  expect(report).toHaveBeenLastCalledWith(expect.any(String), false);
+});
 
 function renderPicker(props: Partial<React.ComponentProps<typeof MonthYearPicker>> = {}) {
   const onChange = vi.fn();

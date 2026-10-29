@@ -1,3 +1,4 @@
+import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef } from 'react';
 import type { Profile, CustomLink } from '@/src/types/profile';
@@ -9,6 +10,7 @@ import { AddEntryButton } from './shared/AddEntryButton';
 import { fieldCls as cls } from './shared/fieldCls';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 import { withScheme } from '@/src/utils/url';
+import { isLinkedInUrl } from '@/src/utils/profileInputValidation';
 
 interface Props {
   profile: Partial<Profile>;
@@ -36,13 +38,15 @@ export function LinksSection({ profile, onSave }: Props) {
 
   // Shared by updateCustom, handleCustomUrlBlur, and validate() — the one
   // check every custom-link URL field needs, regardless of when it fires.
-  const customUrlError = (url: string): string =>
-    url.trim() && !isValidUrl(url.trim()) ? 'Enter a valid URL' : '';
+  const customUrlError = (url: string, label = ''): string => {
+    if (label.trim() && !url.trim()) return 'URL is required';
+    return url.trim() && !isValidUrl(url.trim()) ? 'Enter a valid URL' : '';
+  };
 
   const fieldError = (key: string, value: string): string => {
     if (key === 'linkedin') {
       if (!value.trim()) return 'LinkedIn URL is required';
-      if (!value.includes('linkedin.com')) return 'Enter a valid LinkedIn URL';
+      if (!isLinkedInUrl(value)) return 'Enter a valid LinkedIn URL';
     }
     if (key === 'portfolio' && value.trim() && !isValidUrl(value.trim()))
       return 'Enter a valid URL';
@@ -60,13 +64,16 @@ export function LinksSection({ profile, onSave }: Props) {
 
   const updateCustom = (idx: number, key: keyof CustomLink, value: string) => {
     setCustom((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
-    if (key === 'url') {
-      setErrors((e) => ({ ...e, [`custom.${idx}.url`]: customUrlError(value) }));
-    }
+    const next = { ...custom[idx], [key]: value };
+    setErrors((e) => ({
+      ...e,
+      [`custom.${idx}.label`]: next.url.trim() && !next.label.trim() ? 'Label is required' : '',
+      [`custom.${idx}.url`]: customUrlError(next.url, next.label),
+    }));
   };
 
   const handleCustomUrlBlur = (idx: number, url: string) => {
-    setErrors((e) => ({ ...e, [`custom.${idx}.url`]: customUrlError(url) }));
+    setErrors((e) => ({ ...e, [`custom.${idx}.url`]: customUrlError(url, custom[idx].label) }));
   };
 
   const validate = () => {
@@ -76,17 +83,20 @@ export function LinksSection({ profile, onSave }: Props) {
       if (err) e[key] = err;
     }
     custom.forEach((c, idx) => {
-      const err = customUrlError(c.url);
+      const err = customUrlError(c.url, c.label);
       if (err) e[`custom.${idx}.url`] = err;
+      if (c.url.trim() && !c.label.trim()) e[`custom.${idx}.label`] = 'Label is required';
     });
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
+  const saveDraft = useSectionDraft({ form, custom }, onSave);
+
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await saveSection(onSave, {
+    await saveSection(saveDraft, {
       links: {
         linkedin:  withScheme(form.linkedin.trim()),
         portfolio: form.portfolio.trim() ? withScheme(form.portfolio.trim()) : undefined,
@@ -144,10 +154,10 @@ export function LinksSection({ profile, onSave }: Props) {
                 <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Entry {idx + 1}</span>
                 <RemoveButton onClick={() => setCustom((rows) => rows.filter((_, i) => i !== idx))} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <FormField label="Label">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FormField label="Label" error={errors[`custom.${idx}.label`]}>
                   <input
-                    className={cls()}
+                    className={cls(errors[`custom.${idx}.label`])}
                     value={c.label}
                     onChange={(e) => updateCustom(idx, 'label', e.target.value)}
                     placeholder="My Blog"

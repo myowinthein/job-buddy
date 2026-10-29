@@ -78,31 +78,29 @@ describe('LinksSection — isValidUrl (via the optional Portfolio field)', () =>
   });
 });
 
-describe('LinksSection — custom link silent-drop edge case', () => {
-  it('silently drops a custom entry with only a label and no URL, without a validation error', () => {
+describe('LinksSection — incomplete custom links', () => {
+  it('requires a URL when a custom label has been entered', () => {
     const { onSave } = renderSection({
       links: { linkedin: 'https://linkedin.com/in/x', custom: [{ label: 'My Blog', url: '' }] },
     });
     fireEvent.click(screen.getByText('Save Links'));
 
-    // No error shown for the incomplete entry — it's a deliberate silent drop.
-    expect(screen.queryByText('Enter a valid URL')).toBeNull();
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-      links: expect.objectContaining({ custom: [] }),
-    }));
+    expect(screen.getByText('URL is required')).toBeTruthy();
+    expect(screen.getByDisplayValue('My Blog')).toBeTruthy();
+    expect(onSave).not.toHaveBeenCalled();
   });
 
-  it('silently drops a custom entry with only a URL and no label', () => {
+  it('requires a label when a custom URL has been entered', () => {
     const { onSave } = renderSection({
       links: { linkedin: 'https://linkedin.com/in/x', custom: [{ label: '', url: 'https://blog.dev' }] },
     });
     fireEvent.click(screen.getByText('Save Links'));
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-      links: expect.objectContaining({ custom: [] }),
-    }));
+    expect(screen.getByText('Label is required')).toBeTruthy();
+    expect(screen.getByDisplayValue('https://blog.dev')).toBeTruthy();
+    expect(onSave).not.toHaveBeenCalled();
   });
 
-  it('keeps a fully-filled custom entry alongside a silently-dropped incomplete one', () => {
+  it('preserves both rows while an incomplete entry is corrected', () => {
     const { onSave } = renderSection({
       links: {
         linkedin: 'https://linkedin.com/in/x',
@@ -113,8 +111,12 @@ describe('LinksSection — custom link silent-drop edge case', () => {
       },
     });
     fireEvent.click(screen.getByText('Save Links'));
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText('URL is required')).toBeTruthy();
+    fireEvent.change(screen.getAllByPlaceholderText('https://blog.johnsmith.dev')[1], { target: { value: 'https://second.dev' } });
+    fireEvent.click(screen.getByText('Save Links'));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-      links: expect.objectContaining({ custom: [{ label: 'My Blog', url: 'https://blog.dev' }] }),
+      links: expect.objectContaining({ custom: [{ label: 'My Blog', url: 'https://blog.dev' }, { label: 'Incomplete', url: 'https://second.dev' }] }),
     }));
   });
 

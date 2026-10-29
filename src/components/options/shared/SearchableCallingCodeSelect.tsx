@@ -35,7 +35,7 @@ export function SearchableCallingCodeSelect({ value, onChange }: Props) {
     <SearchableDropdown
       dropdown={dropdown}
       containerClassName="relative shrink-0"
-      panelClassName="w-72"
+      panelClassName="w-72 max-w-[calc(100vw-6rem)]"
       searchPlaceholder="Search country or code…"
       emptyText="No countries found."
       getKey={(c) => c.code}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { fieldCls } from './fieldCls';
 import { MONTH_NAMES } from './months';
 import { useResyncOnExternalChange } from './useResyncOnExternalChange';
+import { useDraftFlag } from './draftStatus';
 
 const MONTHS = MONTH_NAMES.map((label, i) => ({ value: String(i + 1).padStart(2, '0'), label }));
 
@@ -49,6 +50,7 @@ export function MonthYearPicker({
   const [month, setMonth] = useState(parsed.month);
   // yearStr tracks what the user has typed (may be partial, e.g. "199")
   const [yearStr, setYearStr] = useState(parsed.year);
+  useDraftFlag(!disabled && !!(month || yearStr) && (!isValidYear(yearStr) || (!monthOptional && !month)));
 
   // Without this, deleting a non-last Work History/Education entry shifts
   // every later row's index — since these pickers are keyed by index, React
@@ -95,7 +97,7 @@ export function MonthYearPicker({
 
   return (
     <div className="flex gap-2" onBlur={handleGroupBlur}>
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <select
           className={inputCls}
           value={month}
@@ -111,7 +113,7 @@ export function MonthYearPicker({
           ))}
         </select>
       </div>
-      <div className="w-20">
+      <div className="w-20 shrink-0">
         <input
           type="text"
           inputMode="numeric"

@@ -32,7 +32,7 @@ export const FIELD_FOCUS_IDS: Record<string, string> = {
   'City':                    'field-city',
   'Country':                 'field-country',
   'Current Salary Amount':   'field-currentAmount',
-  'Current Salary Currency': 'field-currentCurrency',
+  'Current Salary Currency': 'field-currentCountry',
   // 'At least one language' has no single target field; navigation goes to the section
   'LinkedIn URL':            'field-linkedin',
   // Optional

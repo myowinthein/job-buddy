@@ -3,6 +3,7 @@ import { ETHNICITIES } from '../data/ethnicities';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
 import { LANGUAGE_PROFICIENCY_LABELS } from '../data/languages';
 import { MAX_DOCUMENT_FILE_BYTES, MAX_DOCUMENT_BASE64_LENGTH, DOCUMENT_FILE_SIZE_ERROR } from './documentLimits';
+import { isLinkedInUrl, isValidProfileEmail } from './profileInputValidation';
 
 export interface InvalidField {
   path:   string;
@@ -15,7 +16,6 @@ export interface ValidationResult {
   sanitized:     Partial<Profile>;
 }
 
-const RE_EMAIL    = /^[\w.+-]+@[\w-]+(\.[\w-]+)*\.[a-zA-Z]{2,}$/;
 const RE_YYYYMM   = /^\d{4}-\d{2}$/;
 const RE_YYYY_OR_YYYYMM = /^\d{4}(-\d{2})?$/;
 const RE_YYYYMMDD = /^\d{4}-\d{2}-\d{2}$/;
@@ -74,7 +74,7 @@ function validatePersonal(data: Record<string, unknown>, err: ErrFn): Profile['p
     else err('personal.nickname', 'expected string, max 100 chars');
   }
   if (p.email !== undefined) {
-    if (typeof p.email === 'string' && RE_EMAIL.test(p.email)) sp.email = p.email;
+    if (typeof p.email === 'string' && isValidProfileEmail(p.email)) sp.email = p.email;
     else err('personal.email', 'invalid email format');
   }
   if (p.phone !== undefined) {
@@ -303,10 +303,10 @@ function validateLinks(data: Record<string, unknown>, err: ErrFn): Profile['link
   const sl: Partial<Profile['links']> = {};
 
   if (lnk.linkedin !== undefined) {
-    if (typeof lnk.linkedin === 'string' && (lnk.linkedin === '' || lnk.linkedin.includes('linkedin.com'))) {
+    if (typeof lnk.linkedin === 'string' && (lnk.linkedin === '' || isLinkedInUrl(lnk.linkedin))) {
       if (lnk.linkedin) sl.linkedin = lnk.linkedin;
     } else if (typeof lnk.linkedin === 'string' && lnk.linkedin !== '') {
-      err('links.linkedin', 'must contain linkedin.com');
+      err('links.linkedin', 'expected a valid LinkedIn URL');
     } else {
       err('links.linkedin', 'expected string');
     }

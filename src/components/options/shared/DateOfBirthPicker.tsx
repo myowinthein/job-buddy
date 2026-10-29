@@ -114,8 +114,8 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
         </div>
 
         {/* Month + Year — same proportions as MonthYearPicker */}
-        <div className="flex-1 flex gap-2">
-          <div className="flex-1">
+        <div className="flex-1 min-w-0 flex gap-2">
+          <div className="flex-1 min-w-0">
             <select
               className={inputCls}
               value={month || ''}
@@ -130,7 +130,7 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
           </div>
 
           {/* Year — text input restricted to 4 digits */}
-          <div className="w-20">
+          <div className="w-20 shrink-0">
             <input
               type="text"
               inputMode="numeric"

@@ -1,3 +1,4 @@
+import { useSectionDraft } from './shared/useSectionDraft';
 import { useState } from 'react';
 import { useToast } from '@/src/components/ui/useToast';
 import type { Profile } from '@/src/types/profile';
@@ -55,10 +56,12 @@ export function AddressSection({ profile, onSave }: Props) {
     return Object.keys(e).length === 0;
   };
 
+  const saveDraft = useSectionDraft(form, onSave);
+
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await saveSection(onSave, {
+    await saveSection(saveDraft, {
       address: {
         city: form.city.trim(),
         country: form.countryCode,           // stores ISO code, e.g. "TH"
@@ -88,7 +91,7 @@ export function AddressSection({ profile, onSave }: Props) {
         />
       </FormField>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="City" required error={errors.city}>
           <input
             className={cls(errors.city)}
@@ -111,7 +114,7 @@ export function AddressSection({ profile, onSave }: Props) {
         </FormField>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Country" required error={errors.countryCode}>
           <SearchableCountryDropdown
             id="field-country"

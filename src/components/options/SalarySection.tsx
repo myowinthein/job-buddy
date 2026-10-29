@@ -1,3 +1,4 @@
+import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef } from 'react';
 import type { Profile, SalaryPeriod } from '@/src/types/profile';
@@ -137,11 +138,13 @@ export function SalarySection({ profile, onSave }: Props) {
     return Object.keys(e).length === 0;
   };
 
+  const saveDraft = useSectionDraft({ currentCountry, currentAmount, currentPeriod, expected }, onSave);
+
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
     const currentCurrency = COUNTRY_TO_CURRENCY[currentCountry] || '';
-    await saveSection(onSave, {
+    await saveSection(saveDraft, {
       salary: {
         current: {
           amount: Number(currentAmount),
@@ -175,9 +178,10 @@ export function SalarySection({ profile, onSave }: Props) {
       <div className="mb-6">
         <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">Current Salary</h3>
         <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <FormField label="Country" required error={errors.currentCountry}>
               <SearchableCountryWithCurrencyDropdown
+                id="field-currentCountry"
                 value={currentCountry}
                 onChange={(code) => {
                   setCurrentCountry(code);
@@ -238,7 +242,7 @@ export function SalarySection({ profile, onSave }: Props) {
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <FormField label="Country" error={errors[`expected.${idx}.countryCode`]}>
                 <SearchableCountryWithCurrencyDropdown
                   value={row.countryCode}

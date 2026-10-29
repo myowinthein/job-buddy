@@ -1,3 +1,4 @@
+import { useSectionDraft } from './shared/useSectionDraft';
 import { useState } from 'react';
 import { useToast } from '@/src/components/ui/useToast';
 import type { Profile, PhoneNumber } from '@/src/types/profile';
@@ -9,6 +10,7 @@ import { saveSection } from './shared/saveSection';
 import { SaveButton } from './shared/SaveButton';
 import { DateOfBirthPicker } from './shared/DateOfBirthPicker';
 import { fieldCls as cls } from './shared/fieldCls';
+import { isValidProfileEmail } from '@/src/utils/profileInputValidation';
 
 interface Props {
   profile: Partial<Profile>;
@@ -74,8 +76,8 @@ export function PersonalSection({ profile, onSave }: Props) {
       case 'nickname':  return value.length > 100 ? 'Nickname must be 100 characters or fewer' : '';
       case 'email':
         if (!value.trim()) return 'Email is required';
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Enter a valid email address';
         if (value.length > 254) return 'Email must be 254 characters or fewer';
+        if (!isValidProfileEmail(value)) return 'Enter a valid email address';
         return '';
       case 'phoneNumber':
         if (!value.trim()) return 'Phone number is required';
@@ -140,10 +142,12 @@ export function PersonalSection({ profile, onSave }: Props) {
     return Object.keys(e).length === 0;
   };
 
+  const saveDraft = useSectionDraft({ form, dobIsPartial }, onSave);
+
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await saveSection(onSave, {
+    await saveSection(saveDraft, {
       personal: {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
@@ -172,7 +176,7 @@ export function PersonalSection({ profile, onSave }: Props) {
       </div>
 
       {/* Name */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <FormField label="First Name" required error={errors.firstName}>
           <input
             className={cls(errors.firstName)}
@@ -240,11 +244,12 @@ export function PersonalSection({ profile, onSave }: Props) {
             inputMode="numeric"
             pattern="[0-9]*"
             maxLength={15}
-            className="rounded-r-lg flex-1 px-3 py-2 text-sm focus:outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            className="rounded-r-lg min-w-0 w-0 flex-1 px-3 py-2 text-sm focus:outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             value={form.phoneNumber}
             onChange={(e) => handlePhoneNumberChange(e.target.value)}
             onBlur={() => handleBlur('phoneNumber')}
             id="field-phone"
+            aria-label="Phone number"
             placeholder="5551234567"
           />
         </div>
@@ -280,7 +285,7 @@ export function PersonalSection({ profile, onSave }: Props) {
       </FormField>
 
       {/* Gender & Ethnicity */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Gender">
           <select
             id="field-gender"
@@ -315,7 +320,7 @@ export function PersonalSection({ profile, onSave }: Props) {
       </div>
 
       {/* Veteran & Disability */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <FormField label="Veteran Status">
           <select
             id="field-veteranStatus"

@@ -42,6 +42,7 @@ Complete Your Profile → Fill Form → Review answers → Submit on the applica
 1. Open the extension popup and choose **Complete Your Profile** or **Edit Profile**.
    Save your personal details, work history, education, and other relevant sections.
    Add a CV in **Documents** to attach it to supported upload fields.
+   Unsaved edits show a warning before you leave a section or close the profile page.
 2. Visit a job application page and click **Fill Form** in the popup.
 3. If the form already contains values, choose **Merge** to fill only empty fields
    or **Overwrite** to replace matched fields, then click **Continue**.

@@ -1,3 +1,4 @@
+import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef } from 'react';
 import type { Profile, WorkAuthorizationEntry, WorkAuthorizationStatus } from '@/src/types/profile';
@@ -18,7 +19,7 @@ interface Props {
 }
 
 // Local row allows empty status while the user hasn't selected yet.
-type LocalRow = { country: string; status: WorkAuthorizationStatus | '' };
+type LocalRow = { country: string; status: WorkAuthorizationStatus | ''; visaType?: string; expiryDate?: string };
 
 
 function emptyRow(): LocalRow {
@@ -30,6 +31,7 @@ function emptyRow(): LocalRow {
 function initRow(raw: WorkAuthorizationEntry): LocalRow {
   const found = findCountryByNameOrCode(raw.country);
   return {
+    ...raw,
     country: found ? found.code : raw.country,
     status: raw.status ?? '',
   };
@@ -69,11 +71,15 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
     return Object.keys(e).length === 0;
   };
 
+  const saveDraft = useSectionDraft(entries, onSave);
+
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await saveSection(onSave, {
+    await saveSection(saveDraft, {
       workAuthorization: entries.map((r) => ({
+        ...(r.visaType !== undefined ? { visaType: r.visaType } : {}),
+        ...(r.expiryDate !== undefined ? { expiryDate: r.expiryDate } : {}),
         country: r.country,
         status: r.status as WorkAuthorizationStatus,
       })),
@@ -102,7 +108,7 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Country" required error={errors[`${idx}.country`]}>
               <SearchableCountryDropdown
                 value={row.country}

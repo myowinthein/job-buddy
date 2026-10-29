@@ -16,6 +16,15 @@ const FULL: Partial<Profile> = {
 };
 
 describe('generateDiff', () => {
+  it('round-trips all legacy social links through review for a non-empty profile', () => {
+    const links = { ...FULL.links!, github: 'https://github.com/jane', twitter: 'https://twitter.com/jane', dribbble: 'https://dribbble.com/jane', behance: 'https://behance.net/jane' };
+    const diff = generateDiff(FULL, { links });
+    expect(diff.filter((change) => change.accepted).map((change) => change.id)).toEqual(expect.arrayContaining(['links.github', 'links.twitter', 'links.dribbble', 'links.behance']));
+    expect(applyChanges(FULL, diff).links).toEqual(links);
+    const rejected = diff.map((change) => ({ ...change, accepted: false }));
+    expect(applyChanges(FULL, rejected).links).toEqual(FULL.links);
+  });
+
   it('marks a field as "new" when current is empty and suggested is not', () => {
     const diff = generateDiff(EMPTY, FULL);
     const change = diff.find((c) => c.id === 'personal.firstName');

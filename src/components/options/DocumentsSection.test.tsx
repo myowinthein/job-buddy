@@ -17,6 +17,16 @@ function renderSection(profile: Partial<Profile>, onSave = vi.fn().mockResolvedV
 }
 
 describe('DocumentsSection — toDocumentEntry: URL and file must never become mutually exclusive', () => {
+  it.each(['https://example.com/cv.pdf', ''])('retains the uploaded file after switching to URL mode (URL: %s)', (url) => {
+    const file = { name: 'cv.pdf', size: 1024, base64: 'abc' };
+    const { onSave } = renderSection({ documents: { cv: { url, file } } });
+    fireEvent.click(screen.getByRole('button', { name: 'URL' }));
+    fireEvent.click(screen.getByText('Save Documents'));
+    expect(onSave).toHaveBeenCalledWith({
+      documents: { cv: { ...(url ? { url } : {}), file }, coverLetter: undefined },
+    });
+  });
+
   it('preserves both an existing URL and an existing file together on save', () => {
     const { onSave } = renderSection({
       documents: { cv: { url: 'https://example.com/cv.pdf', file: { name: 'cv.pdf', size: 1024, base64: 'abc' } } },

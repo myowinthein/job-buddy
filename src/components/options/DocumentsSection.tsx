@@ -1,3 +1,4 @@
+import { useSectionDraft } from './shared/useSectionDraft';
 import { DOCUMENT_FILE_SIZE_LABEL, documentFileSizeError } from '@/src/utils/documentLimits';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef, useEffect, DragEvent } from 'react';
@@ -6,6 +7,7 @@ import { FormField } from './shared/FormField';
 import { saveSection } from './shared/saveSection';
 import { fieldCls } from './shared/fieldCls';
 import { SaveButton } from './shared/SaveButton';
+import { withScheme } from '@/src/utils/url';
 
 interface Props {
   profile: Partial<Profile>;
@@ -77,9 +79,9 @@ function formatBytes(bytes: number) {
 function toDocumentEntry(state: DocState): DocumentEntry {
   const entry: DocumentEntry = {};
   // Always persist the URL if one is set so it survives an upload/remove-file workflow.
-  if (state.url.trim()) entry.url = state.url.trim();
-  // Persist the file only when in file mode and a file is present.
-  if (state.mode === 'file' && state.file) entry.file = state.file;
+  if (state.url.trim()) entry.url = withScheme(state.url.trim());
+  // Switching tabs only changes the visible control; Remove file deletes a file.
+  if (state.file) entry.file = state.file;
   return entry;
 }
 
@@ -129,7 +131,7 @@ function DocUploader({ label, required, state, onChange }: DocUploaderProps) {
   const urlCls = fieldCls(state.urlError);
 
   return (
-    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
+    <div data-field-error={!!(state.requiredError || state.urlError)} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
           {label}
@@ -226,6 +228,8 @@ export function DocumentsSection({ profile, onSave }: Props) {
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
 
+  const saveDraft = useSectionDraft({ url: cv.url, file: cv.file }, onSave);
+
   const handleSave = async () => {
     // Rule: each document must have at least one of URL or uploaded file.
     const hasUrl  = !!cv.url.trim();
@@ -244,7 +248,7 @@ export function DocumentsSection({ profile, onSave }: Props) {
       }
     }
     setSaving(true);
-    await saveSection(onSave, {
+    await saveSection(saveDraft, {
       documents: {
         cv: toDocumentEntry(cv),
         // Preserve any existing cover letter data without showing it in the form

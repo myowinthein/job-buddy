@@ -9,6 +9,7 @@ interface Props {
   onChange: (code: string) => void;
   error?: string;
   placeholder?: string;
+  id?: string;
 }
 
 function currencyFor(code: string): string {
@@ -31,6 +32,7 @@ export function SearchableCountryWithCurrencyDropdown({
   onChange,
   error,
   placeholder = 'Select country…',
+  id,
 }: Props) {
   const selected = value ? findCountry(value) : undefined;
 
@@ -47,7 +49,7 @@ export function SearchableCountryWithCurrencyDropdown({
   return (
     <SearchableDropdown
       dropdown={dropdown}
-      panelClassName="w-full min-w-[280px]"
+      panelClassName="w-full min-w-[min(280px,calc(100vw-6rem))]"
       searchPlaceholder="Search country, code, or currency…"
       emptyText="No countries found."
       getKey={(c) => c.code}
@@ -61,6 +63,7 @@ export function SearchableCountryWithCurrencyDropdown({
       )}
       trigger={
         <button
+          id={id}
           type="button"
           onClick={dropdown.toggle}
           className={`w-full px-3 py-2 border ${borderCls} rounded-lg text-sm text-left bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 flex items-center gap-2 min-h-[38px]`}

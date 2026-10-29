@@ -368,6 +368,15 @@ export const FIELD_DEFS: FieldDef[] = [
     },
   },
   // ── Links ────────────────────────────────────────────────────────────────────
+  ...(['github', 'twitter', 'dribbble', 'behance'] as const).map((key): FieldDef => ({
+    id: `links.${key}`,
+    label: `${({ github: 'GitHub', twitter: 'Twitter', dribbble: 'Dribbble', behance: 'Behance' })[key]} URL`,
+    section: 'Links',
+    getValue: (p) => p.links?.[key] ?? null,
+    setValue: setNestedField('links', key, {} as Profile['links']),
+    isEmpty: emptyStr,
+    display: (v) => String(v ?? ''),
+  })),
   {
     id: 'links.linkedin',
     label: 'LinkedIn URL',

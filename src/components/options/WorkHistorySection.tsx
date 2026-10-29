@@ -1,3 +1,4 @@
+import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef, useMemo } from 'react';
 import type { Profile, WorkHistoryEntry, WorkArrangement, WorkLocation, NoticePeriodUnit } from '@/src/types/profile';
@@ -106,7 +107,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
 
   // ── Notice period ────────────────────────────────────────────────────────────
   const np = profile.professional?.noticePeriod;
-  const [noticeImmediate, setNoticeImmediate] = useState(np?.immediate ?? true);
+  const [noticeImmediate, setNoticeImmediate] = useState<boolean | null>(np?.immediate ?? null);
   const [noticeValue, setNoticeValue] = useState(np?.value?.toString() ?? '');
   const [noticeUnit, setNoticeUnit] = useState<NoticePeriodUnit>(np?.unit ?? 'week');
 
@@ -198,7 +199,8 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       }
     });
 
-    if (!noticeImmediate) {
+    if (noticeImmediate === null) e.noticePeriod = 'Select your availability';
+    if (noticeImmediate === false) {
       const noticeErr = validateNoticePeriod(noticeValue, noticeUnit);
       if (noticeErr) e.noticeValue = noticeErr;
     }
@@ -207,10 +209,12 @@ export function WorkHistorySection({ profile, onSave }: Props) {
     return Object.keys(e).length === 0;
   };
 
+  const saveDraft = useSectionDraft({ entries, summary, noticeImmediate, noticeValue, noticeUnit }, onSave);
+
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await saveSection(onSave, {
+    await saveSection(saveDraft, {
       workHistory: entries.map((r) => ({
         company: r.company.trim(),
         title: r.title.trim(),
@@ -226,7 +230,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       professional: {
         summary: summary.trim() || undefined,
         noticePeriod: {
-          immediate: noticeImmediate,
+          immediate: noticeImmediate === true,
           value: noticeImmediate ? undefined : Number(noticeValue),
           unit: noticeImmediate ? undefined : noticeUnit,
         },
@@ -275,8 +279,9 @@ export function WorkHistorySection({ profile, onSave }: Props) {
           summary={cardSummary(row, idx)}
           onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
           defaultExpanded={!row.company}
+          invalid={Object.entries(errors).some(([key, value]) => key.startsWith(`${idx}.`) && !!value)}
         >
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Company" required error={errors[`${idx}.company`]}>
               <input
                 className={cls(errors[`${idx}.company`])}
@@ -299,7 +304,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
             </FormField>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Country">
               <SearchableCountryDropdown
                 value={row.locationCountry}
@@ -347,7 +352,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Start Date" required error={errors[`${idx}.startDate`]}>
               <MonthYearPicker
                 value={row.startDate}
@@ -401,15 +406,15 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       )}
 
       {/* ── Notice Period ────────────────────────────────────────────────────── */}
-      <div className="pt-4 mb-4">
+      <div className="pt-4 mb-4" data-field-error={!!errors.noticePeriod}>
         <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notice Period<span className="text-red-500 ml-0.5">*</span></p>
         <div className="flex gap-4 mb-3">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="radio"
               name="notice"
-              checked={noticeImmediate}
-              onChange={() => setNoticeImmediate(true)}
+              checked={noticeImmediate === true}
+              onChange={() => { setNoticeImmediate(true); setErrors((e) => ({ ...e, noticePeriod: '' })); }}
               className="text-blue-600"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">Available Now</span>
@@ -418,16 +423,17 @@ export function WorkHistorySection({ profile, onSave }: Props) {
             <input
               type="radio"
               name="notice"
-              checked={!noticeImmediate}
-              onChange={() => setNoticeImmediate(false)}
+              checked={noticeImmediate === false}
+              onChange={() => { setNoticeImmediate(false); setErrors((e) => ({ ...e, noticePeriod: '' })); }}
               className="text-blue-600"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">Available Later</span>
           </label>
         </div>
 
-        {!noticeImmediate && (
-          <div className="flex items-center gap-2 mt-1">
+        {errors.noticePeriod && noticeImmediate === null && <p role="alert" className="text-xs text-red-500 mb-2">{errors.noticePeriod}</p>}
+        {noticeImmediate === false && (
+          <div data-field-error={!!errors.noticeValue} className="flex flex-wrap items-center gap-2 mt-1">
             <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">Available after</span>
             <div className="w-20">
               <input
