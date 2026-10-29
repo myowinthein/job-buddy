@@ -809,7 +809,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       <section className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
         <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">Cloud Backup</h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Back up your profile and learned mappings to Google Drive. Saved changes update your backup automatically.
+          Automatically back up your profile and learned mappings to Google Drive.
         </p>
 
         {!driveState.connected && !driveConnecting && !isDriveConfigured() && (
@@ -820,34 +820,43 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         )}
         {driveConnecting && <p className="text-sm text-gray-500 dark:text-gray-400" role="status">Checking Drive backup…</p>}
         {driveState.connected && !driveConnecting && (
-          <div>
-            {driveState.accountEmail && <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">{driveState.accountEmail}</p>}
-            <p role="status" className={`text-sm mb-2 ${driveState.error ? 'text-amber-700 dark:text-amber-400' : 'text-gray-700 dark:text-gray-300'}`}>
-              {driveState.error ? driveFailureText(driveState.error)
-                : driveState.reviewRequired ? 'Review the Drive backup before continuing.'
-                : driveState.pendingSync ? 'Backup pending. Your profile is saved in this browser.'
-                : 'Connected to Google Drive'}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-              {driveState.lastSynced && Number.isFinite(Date.parse(driveState.lastSynced)) ? `Last backed up: ${fmtDriveTimestamp(driveState.lastSynced)}` : 'No backup yet'}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button type="button"
-                onClick={driveState.error === 'token_expired' ? handleDriveConnect
-                  : driveState.reviewRequired ? handleDriveCheck : handleDriveSyncNow}
-                disabled={driveSyncing || driveDisconnectBusy || driveRestoreBusy} className={btnPrimaryCls}>
-                {driveSyncing ? 'Backing up…' : driveState.error === 'token_expired' ? 'Reconnect'
-                  : driveState.reviewRequired ? 'Review Backup' : driveState.error ? 'Retry Backup' : 'Back Up Now'}
-              </button>
-              <button type="button" onClick={() => setDriveDisconnectDialog(true)}
-                disabled={driveSyncing || driveDisconnectBusy || driveRestoreBusy} className={btnSecondaryCls}>Disconnect</button>
-              {driveState.error === 'storage_full' && <a href="https://one.google.com/storage" target="_blank" rel="noopener noreferrer" className="self-center text-sm text-blue-600 dark:text-blue-400 underline">Manage Storage</a>}
+          <div className="space-y-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6">
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200 break-all">
+                    {driveState.accountEmail || 'Google Drive'}
+                  </p>
+                  <span role="status" className={`inline-flex items-center gap-1.5 text-xs ${driveState.error || driveState.reviewRequired || driveState.pendingSync ? 'text-amber-700 dark:text-amber-400' : 'text-green-700 dark:text-green-400'}`}>
+                    <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+                    {driveState.error === 'token_expired' ? 'Reconnect needed'
+                      : driveState.error === 'sync_error' ? 'Backup pending'
+                      : driveState.error || driveState.reviewRequired ? 'Backup paused'
+                      : driveState.pendingSync ? 'Backup pending' : 'Connected'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {driveState.lastSynced && Number.isFinite(Date.parse(driveState.lastSynced)) ? `Last backed up: ${fmtDriveTimestamp(driveState.lastSynced)}` : 'No backup yet'}
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2">
+                <button type="button"
+                  onClick={driveState.error === 'token_expired' ? handleDriveConnect
+                    : driveState.reviewRequired ? handleDriveCheck : handleDriveSyncNow}
+                  disabled={driveSyncing || driveDisconnectBusy || driveRestoreBusy}
+                  className={driveState.error || driveState.reviewRequired ? btnPrimaryCls : btnSecondaryCls}>
+                  {driveSyncing ? 'Backing up…' : driveState.error === 'token_expired' ? 'Reconnect'
+                    : driveState.reviewRequired ? 'Review Backup' : driveState.error ? 'Retry Backup' : 'Back Up Now'}
+                </button>
+                <button type="button" onClick={() => setDriveDisconnectDialog(true)}
+                  disabled={driveSyncing || driveDisconnectBusy || driveRestoreBusy}
+                  className={`${footerLinkCls} py-2 text-sm text-gray-500 dark:text-gray-400 disabled:opacity-50`}>Disconnect</button>
+                {driveState.error === 'storage_full' && <a href="https://one.google.com/storage" target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 dark:text-blue-400 underline">Manage Storage</a>}
+              </div>
             </div>
+            {driveState.error && <p role="status" className="text-sm text-amber-700 dark:text-amber-400">{driveFailureText(driveState.error)}</p>}
           </div>
         )}
-        <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-          Your profile is saved in this browser.
-        </p>
       </section>
 
       {/* ── Reset All Data ───────────────────────────────────────────────────── */}
