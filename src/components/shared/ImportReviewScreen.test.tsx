@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
 import ImportReviewScreen from './ImportReviewScreen';
 import type { FieldChange } from '@/src/resume-ai/types';
 
@@ -103,14 +103,14 @@ describe('ImportReviewScreen — individual toggle for new fields', () => {
 describe('ImportReviewScreen — conflict resolution radios', () => {
   it('defaults conflict radios to match each field\'s current accepted state', () => {
     renderScreen([conflictField('c', false)]);
-    const [keepCurrent, useSuggested] = screen.getAllByRole('radio') as HTMLInputElement[];
+    const [useSuggested, keepCurrent] = screen.getAllByRole('radio') as HTMLInputElement[];
     expect(keepCurrent.checked).toBe(true);
     expect(useSuggested.checked).toBe(false);
   });
 
   it('choosing "Use suggested" sets accepted true; "Keep current" sets it false', () => {
     const { onSave } = renderScreen([conflictField('c', false)]);
-    const [keepCurrent, useSuggested] = screen.getAllByRole('radio');
+    const [useSuggested, keepCurrent] = screen.getAllByRole('radio');
 
     fireEvent.click(useSuggested);
     fireEvent.click(screen.getByRole('button', {name:/^Import Selected/}));
@@ -196,8 +196,37 @@ it('shows legacy professional fields and any future section instead of hiding se
   const legacy = {...newField('summary','Career Summary'),section:'Professional'};
   const future = {...newField('future','Future detail'),section:'Future Section'};
   renderScreen([legacy,future]);
-  expect(screen.getByRole('heading',{name:'Work History'})).toBeTruthy();
+  expect(screen.getByRole('heading',{name:/^Work History/})).toBeTruthy();
   expect(screen.getByText('Career Summary')).toBeTruthy();
-  expect(screen.getByRole('heading',{name:'Future Section'})).toBeTruthy();
+  expect(screen.getByRole('heading',{name:/^Future Section/})).toBeTruthy();
+  expect(screen.queryByText('Future detail')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Future Section' }));
   expect(screen.getByText('Future detail')).toBeTruthy();
+  expect(screen.queryByText('Career Summary')).toBeNull();
+});
+
+ it('shows one section at a time and preserves choices across sections and bulk actions', () => {
+  const { onSave } = renderScreen([
+    conflictField('name'),
+    {...conflictField('summary'), section: 'Work History'},
+  ]);
+  expect(screen.getByRole('button', {name: 'Personal'}).getAttribute('aria-expanded')).toBe('true');
+  expect(screen.queryByRole('group', {name: 'Field summary'})).toBeNull();
+  fireEvent.click(screen.getByText('Select All'));
+  fireEvent.click(screen.getByRole('button', {name: 'Work History'}));
+  expect(screen.queryByRole('group', {name: 'Field name'})).toBeNull();
+  fireEvent.click(screen.getByRole('radio', {name: /^Keep Current/}));
+  fireEvent.click(screen.getByRole('button', {name: 'Personal'}));
+  expect((screen.getByRole('radio', {name: /^Imported/}) as HTMLInputElement).checked).toBe(true);
+  expect(screen.getByText('1 of 2 selected')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', {name: /^Import Selected/}));
+  expect(onSave.mock.calls[0][0].map((change: FieldChange) => change.accepted)).toEqual([true,false]);
+});
+
+it('shows complete incoming and current values in reading order', () => {
+  renderScreen([conflictField('summary', true)]);
+  const group = screen.getByRole('group', {name: 'Field summary'});
+  const choices = within(group).getAllByRole('radio');
+  expect(choices[0].closest('label')!.textContent).toBe('Importedsuggested-summary');
+  expect(choices[1].closest('label')!.textContent).toBe('Keep Currentcurrent-summary');
 });

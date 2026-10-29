@@ -48,7 +48,6 @@ interface Props {
 
 interface ParsedImport {
   invalidFields: InvalidField[];
-  sourceLabel: string;
 }
 
 
@@ -350,11 +349,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         ...generateDiff(currentProfile ?? {}, validation.sanitized),
         ...metadataChanges,
       ];
-      const exportedAt = typeof raw.exportedAt === 'string' && Number.isFinite(Date.parse(raw.exportedAt))
-        ? ` · Exported ${new Date(raw.exportedAt).toLocaleString()}` : '';
       setImportBaseProfile(currentProfile ?? {});
       setImportChanges(diff);
-      setParsedImport({ invalidFields, sourceLabel: `${file.name}${exportedAt}` });
+      setParsedImport({ invalidFields });
       setImportScreen('summary');
     } catch (err) {
       console.error('[Job Buddy] Import failed:', err);
@@ -965,7 +962,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           changes={importChanges}
           title="Import Profile"
           returnFocusRef={importButtonRef}
-          sourceLabel={parsedImport?.sourceLabel}
           warnings={parsedImport?.invalidFields.map((field) => `${FIELD_DEFS.find((def) => def.id === field.path)?.label ?? field.path}: ${field.reason}`)}
           onDismiss={handleImportRejectAll}
           onAcceptAll={handleImportAcceptAll}
@@ -980,7 +976,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           onChangesChange={setImportChanges}
           returnFocusRef={importButtonRef}
           onDismiss={handleImportRejectAll}
-          sourceLabel={parsedImport?.sourceLabel}
           warnings={parsedImport?.invalidFields.map((field) => `${FIELD_DEFS.find((def) => def.id === field.path)?.label ?? field.path}: ${field.reason}`)}
           onSave={performImportSave}
           onBack={() => setImportScreen('summary')}

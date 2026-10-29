@@ -16,7 +16,6 @@ export interface ImportReviewScreenProps {
   title?: string;
   saveLabel?: string;
   incomingLabel?: string;
-  sourceLabel?: string;
   warnings?: string[];
   returnFocusRef?: RefObject<HTMLElement | null>;
 }
@@ -31,7 +30,6 @@ export default function ImportReviewScreen({
   title = 'Review Import',
   saveLabel = 'Import Selected',
   incomingLabel = 'Imported',
-  sourceLabel,
   warnings,
   returnFocusRef,
 }: ImportReviewScreenProps) {
@@ -64,7 +62,9 @@ export default function ImportReviewScreen({
       'Application History',
       ...grouped.keys(),
     ]),
-  ];
+  ].filter((section) => grouped.has(section));
+  const [expandedSection, setExpandedSection] = useState<string | null>(sections[0] ?? null);
+  const sectionId = useId();
   const titleId = useId();
   const descriptionId = useId();
   const dialogRef = useDialogFocus(returnFocusRef);
@@ -94,16 +94,8 @@ export default function ImportReviewScreen({
                 {title}
               </h3>
               <p id={descriptionId} className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Choose which details to import. Missing values stay unchanged.
+                Review one section at a time. Missing values stay unchanged.
               </p>
-              {sourceLabel && (
-                <p
-                  className="mt-1 truncate text-xs text-gray-500 dark:text-gray-400"
-                  title={sourceLabel}
-                >
-                  {sourceLabel}
-                </p>
-              )}
             </div>
             <button
               type="button"
@@ -138,26 +130,75 @@ export default function ImportReviewScreen({
           </div>
           <ImportWarnings warnings={warnings} />
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
-          {sections.map((section) => {
-            const fields = grouped.get(section);
-            if (!fields?.length) return null;
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-3">
+          {sections.map((section, index) => {
+            const fields = grouped.get(section)!;
+            const expanded = expandedSection === section;
+            const headingId = `${sectionId}-heading-${index}`;
+            const panelId = `${sectionId}-panel-${index}`;
             return (
-              <section key={section}>
-                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  {section}
+              <section
+                key={section}
+                className="border border-gray-200 dark:border-gray-700 rounded-lg"
+              >
+                <h4>
+                  <button
+                    type="button"
+                    id={headingId}
+                    aria-label={section}
+                    aria-describedby={`${headingId}-count`}
+                    aria-expanded={expanded}
+                    aria-controls={expanded ? panelId : undefined}
+                    disabled={isSaving}
+                    onClick={() => setExpandedSection(expanded ? null : section)}
+                    className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/40 focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50"
+                  >
+                    <span className="min-w-0 flex-1 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                      <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                        {section}
+                      </span>
+                      <span
+                        id={`${headingId}-count`}
+                        className="text-xs text-gray-500 dark:text-gray-400"
+                      >
+                        {fields.length} {fields.length === 1 ? 'update' : 'updates'} ·{' '}
+                        {fields.filter((change) => change.accepted).length} selected
+                      </span>
+                    </span>
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      className={`w-4 h-4 shrink-0 text-gray-400 ${expanded ? 'rotate-180' : ''}`}
+                    >
+                      <path
+                        d="m4 6 4 4 4-4"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
                 </h4>
-                <div className="space-y-3">
-                  {fields.map((change) => (
-                    <FieldRow
-                      key={change.id}
-                      change={change}
-                      isSaving={isSaving}
-                      incomingLabel={incomingLabel}
-                      onSelect={select}
-                    />
-                  ))}
-                </div>
+                {expanded && (
+                  <div
+                    id={panelId}
+                    role="region"
+                    aria-labelledby={headingId}
+                    className="px-4 pb-4 space-y-3"
+                  >
+                    {fields.map((change) => (
+                      <FieldRow
+                        key={change.id}
+                        change={change}
+                        isSaving={isSaving}
+                        incomingLabel={incomingLabel}
+                        onSelect={select}
+                      />
+                    ))}
+                  </div>
+                )}
               </section>
             );
           })}
@@ -206,6 +247,8 @@ function FieldRow({
   onSelect: (id: string, accepted: boolean) => void;
 }) {
   const labelId = useId();
+  const choiceCls = (selected: boolean) =>
+    `flex items-start gap-2 cursor-pointer p-3 rounded-lg border ${selected ? 'border-blue-400 dark:border-blue-500 bg-blue-50/50 dark:bg-blue-950/20' : 'border-gray-200 dark:border-gray-700'}`;
   return (
     <div
       role="group"
@@ -238,24 +281,8 @@ function FieldRow({
           <Value value={change.displaySuggested} />
         </label>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="flex items-start gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name={change.id}
-              disabled={isSaving}
-              checked={!change.accepted}
-              onChange={() => onSelect(change.id, false)}
-              className="mt-1 shrink-0 accent-blue-600"
-            />
-            <div className="min-w-0">
-              <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                Keep Current
-              </span>
-              <Value value={change.displayCurrent} muted />
-            </div>
-          </label>
-          <label className="flex items-start gap-2 cursor-pointer">
+        <div className="space-y-2">
+          <label className={choiceCls(change.accepted)}>
             <input
               type="radio"
               name={change.id}
@@ -269,6 +296,22 @@ function FieldRow({
                 {incomingLabel}
               </span>
               <Value value={change.displaySuggested} />
+            </div>
+          </label>
+          <label className={choiceCls(!change.accepted)}>
+            <input
+              type="radio"
+              name={change.id}
+              disabled={isSaving}
+              checked={!change.accepted}
+              onChange={() => onSelect(change.id, false)}
+              className="mt-1 shrink-0 accent-blue-600"
+            />
+            <div className="min-w-0">
+              <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                Keep Current
+              </span>
+              <Value value={change.displayCurrent} muted />
             </div>
           </label>
         </div>

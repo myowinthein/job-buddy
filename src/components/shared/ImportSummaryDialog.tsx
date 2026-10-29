@@ -8,7 +8,6 @@ export interface ImportSummaryDialogProps {
   changes: FieldChange[];
   title?: string;
   description?: string;
-  sourceLabel?: string;
   warnings?: string[];
   returnFocusRef?: RefObject<HTMLElement | null>;
   acceptLabel?: string;
@@ -23,7 +22,6 @@ export default function ImportSummaryDialog({
   changes,
   title = 'Import Profile',
   description = 'Choose which details to import.',
-  sourceLabel,
   warnings,
   returnFocusRef,
   acceptLabel = 'Import All',
@@ -69,11 +67,6 @@ export default function ImportSummaryDialog({
         <p id={descriptionId} className="mt-2 text-pretty text-sm text-gray-500 dark:text-gray-400">
           {hasChanges ? description : 'No new or changed details were found.'}
         </p>
-        {sourceLabel && (
-          <p className="mt-2 truncate text-xs text-gray-500 dark:text-gray-400" title={sourceLabel}>
-            {sourceLabel}
-          </p>
-        )}
         {hasChanges && (
           <p className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium">
             {counts.new > 0 && (

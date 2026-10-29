@@ -82,14 +82,21 @@ const importSelected = () => screen.getByRole('button', { name: /^Import Selecte
 
 it('shows summary and notice period and saves only the one selected detail', async () => {
   await mountBase();
-  upload(incomingProfile());
-  fireEvent.click(await screen.findByText('Review Changes'));
+  upload(incomingProfile(), { exportedAt: '2026-10-29T12:12:23Z' });
+  await screen.findByText('Review Changes');
+  expect(screen.queryByText(/backup.json|Exported/)).toBeNull();
+  fireEvent.click(screen.getByText('Review Changes'));
+  expect(screen.queryByText(/backup.json|Exported/)).toBeNull();
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Work History' }));
   expect(screen.getByRole('group', { name: 'Career Summary' })).toBeTruthy();
   expect(screen.getByRole('group', { name: 'Notice Period' })).toBeTruthy();
   fireEvent.click(screen.getByText('Clear Selection'));
   expect((importSelected() as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Personal' }));
   fireEvent.click(
-    within(screen.getByRole('group', { name: 'First Name' })).getAllByRole('radio')[1],
+    within(screen.getByRole('group', { name: 'First Name' })).getByRole('radio', {
+      name: /^Imported/,
+    }),
   );
   fireEvent.click(importSelected());
   await screen.findByText('Profile imported successfully');
@@ -107,23 +114,26 @@ it('preserves review choices after Back then Review', async () => {
   fireEvent.click(await screen.findByText('Review Changes'));
   fireEvent.click(screen.getByText('Clear Selection'));
   fireEvent.click(
-    within(screen.getByRole('group', { name: 'First Name' })).getAllByRole('radio')[1],
+    within(screen.getByRole('group', { name: 'First Name' })).getByRole('radio', {
+      name: /^Imported/,
+    }),
   );
   fireEvent.click(screen.getByText('Back'));
   fireEvent.click(screen.getByText('Review Changes'));
   expect(screen.getByText('1 of 4 selected')).toBeTruthy();
   expect(
     (
-      within(screen.getByRole('group', { name: 'First Name' })).getAllByRole(
-        'radio',
-      )[1] as HTMLInputElement
+      within(screen.getByRole('group', { name: 'First Name' })).getByRole('radio', {
+        name: /^Imported/,
+      }) as HTMLInputElement
     ).checked,
   ).toBe(true);
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Work History' }));
   expect(
     (
-      within(screen.getByRole('group', { name: 'Notice Period' })).getAllByRole(
-        'radio',
-      )[0] as HTMLInputElement
+      within(screen.getByRole('group', { name: 'Notice Period' })).getByRole('radio', {
+        name: /^Keep Current/,
+      }) as HTMLInputElement
     ).checked,
   ).toBe(true);
 });

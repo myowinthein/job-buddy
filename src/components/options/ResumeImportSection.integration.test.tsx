@@ -109,9 +109,11 @@ describe('ResumeImportSection — real review and parser integration', () => {
       await selectFile(pdfFile());
       fireEvent.click(screen.getByText('Analyze CV'));
       fireEvent.click(await screen.findByText('Review Changes'));
-      fireEvent.click(document.querySelector('input[name="personal.firstName"]')!);
+      fireEvent.click(screen.getByRole('radio', { name: /Keep Current Local/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'Education' }));
       const arrayChoices = document.querySelectorAll('input[name="education"]');
-      fireEvent.click(arrayChoices[acceptArray ? 1 : 0]);
+      fireEvent.click(arrayChoices[acceptArray ? 0 : 1]);
+      fireEvent.click(screen.getByRole('button', { name: 'Documents' }));
       fireEvent.click(screen.getByRole('checkbox', { name: /Resume File/ }));
       fireEvent.click(screen.getByRole('button', {name:/^Import Selected/}));
       await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
