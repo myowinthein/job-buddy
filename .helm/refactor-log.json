@@ -439,8 +439,40 @@
         ],
         "invariant": "Preserve empty-to-zero, first current entry, latest lexicographic startDate and first-entry ties; repeated assignment order and salary index-zero policy remain unchanged."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "9ecdaa8486ed376905db1fb4ed758e32853c9e61",
+        "date": "2026-10-29",
+        "method": "runtime",
+        "evidence": [
+          "Recency algorithm moved unchanged into entryRecency; both consumers import it directly. Guards cover empty/missing dates, first current, ties, lexical ordering and nonmutation."
+        ],
+        "checks": [
+          {
+            "command": "pnpm compile",
+            "scope": "project",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm exec vitest run src/autofill/entryRecency.test.ts src/autofill/profileFieldTree.test.ts src/autofill/educationResolution.test.ts src/autofill/workHistoryResolution.test.ts src/autofill/salaryResolution.test.ts",
+            "scope": "recency and repeating entries",
+            "outcome": "77 tests passed including 8 new recency cases"
+          },
+          {
+            "command": "pnpm test:browser",
+            "scope": "production extension synthetic forms",
+            "outcome": "build and 3 scenarios passed"
+          },
+          {
+            "command": "pnpm exec eslint src/autofill/entryRecency.ts src/autofill/entryRecency.test.ts src/autofill/profileFieldTree.ts src/autofill/repeatingEntryResolution.ts",
+            "scope": "R8 files",
+            "outcome": "passed"
+          }
+        ]
+      }
     },
     {
       "id": "r-7c2c286b-3d26-4f41-a17a-703795d9b344",
