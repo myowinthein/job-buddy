@@ -1,0 +1,465 @@
+{
+  "schema_version": 3,
+  "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+  "full_scan_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+  "cases": [
+    {
+      "id": "g-02307fb8-61e9-4474-959b-2723984499cf",
+      "expected": "Latest document selection wins and read failures preserve the existing attachment",
+      "basis": [
+        "src/components/options/DocumentsSection.tsx: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/components/options/DocumentsSection.test.tsx: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/components/options/DocumentsSection.tsx",
+        "src/components/options/DocumentsSection.test.tsx"
+      ],
+      "priority": "medium",
+      "reason": "Unordered FileReader completion and missing error recovery can save the wrong file.",
+      "action": "add",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-171f3700-b1ea-4b5c-834d-4af3f763e805",
+      "expected": "Real resume review decisions persist accepted scalars and whole arrays while preserving rejected data",
+      "basis": [
+        "src/components/options/ResumeImportSection.tsx: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/components/options/ResumeImportSection.test.tsx: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/components/options/ResumeImportSection.tsx",
+        "src/components/options/ResumeImportSection.test.tsx"
+      ],
+      "priority": "medium",
+      "reason": "Existing component cases mock both diff generation and application.",
+      "action": "improve",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-1934575c-5d9c-4d7f-8996-375ee46c1b6a",
+      "expected": "Every import-review dismissal control is disabled while saving",
+      "basis": [
+        "src/components/shared/ImportReviewScreen.tsx: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/components/shared/ImportReviewScreen.test.tsx: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/components/shared/ImportReviewScreen.tsx",
+        "src/components/shared/ImportReviewScreen.test.tsx"
+      ],
+      "priority": "medium",
+      "reason": "Header close bypasses the explicit save-in-flight dismissal guard.",
+      "action": "add",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-19904596-d4ca-4b02-9fb0-09e6769f7db5",
+      "expected": "Shadow ARIA references resolve only within the owning root",
+      "basis": [
+        "src/autofill/signals.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/autofill/signals.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/autofill/signals.ts",
+        "src/autofill/signals.test.ts"
+      ],
+      "priority": "medium",
+      "reason": "Document lookup can miss or misassociate shadow-local labels.",
+      "action": "add",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-1b8d2220-04da-4ef8-aa9e-856516144c8d",
+      "expected": "Fill consumes scanned pending matches without rescanning or remapping",
+      "basis": [
+        "src/autofill/index.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/autofill/index.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/autofill/index.ts",
+        "src/autofill/index.test.ts"
+      ],
+      "priority": "medium",
+      "reason": "Explicit two-phase domain contract lacks a regression asserting the stage boundary.",
+      "action": "improve",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-40e123fd-2cba-4f1d-a6e4-82baa50bc458",
+      "expected": "Merge and Undo preserve existing answers across text, custom controls and AI",
+      "basis": [
+        "src/autofill/index.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/autofill/index.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/autofill/index.ts",
+        "src/autofill/index.test.ts"
+      ],
+      "priority": "high",
+      "reason": "Existing unmatched answers can be overwritten or cleared in ordinary prefilled forms.",
+      "action": "add",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-58fb42e4-28f3-45c4-bee1-61ec57a42e92",
+      "expected": "Experience totals are invariant under reordered overlapping work histories",
+      "basis": [
+        "src/utils/experience.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/utils/experience.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/utils/experience.ts",
+        "src/utils/experience.test.ts"
+      ],
+      "priority": "medium",
+      "reason": "Chronological fixtures do not protect required sorting before interval merging.",
+      "action": "improve",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-5a48bdc9-5193-439b-959d-c10d9adfdb95",
+      "expected": "Silent refill handles connected open-shadow fields and ignores detached hosts",
+      "basis": [
+        "src/autofill/index.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/autofill/index.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/autofill/index.ts",
+        "src/autofill/index.test.ts"
+      ],
+      "priority": "medium",
+      "reason": "document.contains excludes connected shadow descendants.",
+      "action": "add",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-5c7af1dc-0a1c-4df9-99cf-2646ebfa916e",
+      "expected": "Custom link picker paths retain original indices and resolve intended URLs",
+      "basis": [
+        "src/autofill/profileFieldTree.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/autofill/profileFieldTree.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/autofill/profileFieldTree.ts",
+        "src/autofill/profileFieldTree.test.ts"
+      ],
+      "priority": "medium",
+      "reason": "Filtering before indexing can associate a valid row with another URL.",
+      "action": "add",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-5ccd1526-5ba1-4d32-8183-d1665d8e38e1",
+      "expected": "AI debug records retain original scanner identities",
+      "basis": [
+        "src/autofill/ai.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/autofill/ai.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/autofill/ai.ts",
+        "src/autofill/ai.test.ts"
+      ],
+      "priority": "low",
+      "reason": "Subset-relative IDs misassociate diagnostic records.",
+      "action": "add",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-66a7cd52-950b-4280-bb2c-962e2f224ecd",
+      "expected": "Consent radio groups never reach AI or become automatically selected",
+      "basis": [
+        "src/autofill/ai.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/autofill/ai.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/autofill/ai.ts",
+        "src/autofill/ai.test.ts"
+      ],
+      "priority": "high",
+      "reason": "Consent checkbox exclusion does not extend to radios despite explicit non-consent contract.",
+      "action": "add",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-7fc3b0b2-1764-4384-ac7c-08dd68483929",
+      "expected": "Deleting preceding editor rows cannot transfer date state to blank successors",
+      "basis": [
+        "src/components/options/WorkHistorySection.tsx: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/components/options/WorkHistorySection.test.tsx: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/components/options/WorkHistorySection.tsx",
+        "src/components/options/WorkHistorySection.test.tsx",
+        "src/components/options/EducationSection.tsx",
+        "src/components/options/EducationSection.test.tsx"
+      ],
+      "priority": "medium",
+      "reason": "Index keys reuse partial date state after row deletion; education shares behavior.",
+      "action": "add",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-863f5754-521c-4daf-8e1d-8ca09255f4fe",
+      "expected": "Base64 bounds are tested independently of declared raw file size",
+      "basis": [
+        "src/utils/profileValidator.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/utils/profileValidator.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/utils/profileValidator.ts",
+        "src/utils/profileValidator.test.ts"
+      ],
+      "priority": "medium",
+      "reason": "Current oversized-payload fixture exceeds both guards and masks lost protection.",
+      "action": "improve",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-95de352b-51ab-4a27-916c-797ff4f6a1ce",
+      "expected": "Native input-button dropdown triggers select an actual option",
+      "basis": [
+        "src/autofill/filler.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/autofill/filler.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/autofill/filler.ts",
+        "src/autofill/filler.test.ts"
+      ],
+      "priority": "medium",
+      "reason": "Scanner admits these supported controls but filler writes the trigger label.",
+      "action": "add",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-984c53b8-8aef-4726-b8a0-daad61c27482",
+      "expected": "Optional completion groups filter placeholders and count each missing field once",
+      "basis": [
+        "src/utils/profileCompletion.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/utils/profileCompletion.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/utils/profileCompletion.ts",
+        "src/utils/profileCompletion.test.ts"
+      ],
+      "priority": "low",
+      "reason": "UI tests supply synthetic groups rather than testing calculator output.",
+      "action": "improve",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-9f5d6305-0d7a-4f25-a316-19b2b43d7548",
+      "expected": "Overlapping or stale silent refill cannot corrupt a new or undone session",
+      "basis": [
+        "src/autofill/index.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/autofill/index.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/autofill/index.ts",
+        "src/autofill/index.test.ts"
+      ],
+      "priority": "medium",
+      "reason": "Asynchronous refill has no generation or in-flight isolation.",
+      "action": "add",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-ac0d0cf3-30c7-47f4-ab7f-5a655c470195",
+      "expected": "Drive create and update payloads contain only permitted backup fields",
+      "basis": [
+        "src/utils/driveSync.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/utils/driveSync.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/utils/driveSync.ts",
+        "src/utils/driveSync.test.ts"
+      ],
+      "priority": "medium",
+      "reason": "Existing request tests do not inspect actual serialized privacy boundaries.",
+      "action": "improve",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-c9e10ccf-b0a8-477f-b3d3-d5dd4d6c2ed8",
+      "expected": "Production Chromium integration verifies real filled values, events, validation, Merge and Undo",
+      "basis": [
+        "entrypoints/content.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/content.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "entrypoints/content.ts",
+        "src/content.test.ts"
+      ],
+      "priority": "medium",
+      "reason": "jsdom and Chrome mocks cannot establish actual extension/browser behavior.",
+      "action": "add",
+      "layer": "browser",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-d4338c3a-aea7-4e96-9393-daa8518e83d5",
+      "expected": "Failed persistence is reported to real callers without success or lost review state",
+      "basis": [
+        "entrypoints/options/App.tsx: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/options/App.test.tsx: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "entrypoints/options/App.tsx",
+        "src/options/App.test.tsx"
+      ],
+      "priority": "high",
+      "reason": "Resolved callback currently masks failed storage writes across all editor saves.",
+      "action": "add",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-db0ba1ba-3a82-41a1-beb5-14a4edfa70c7",
+      "expected": "Drive sync returns a failure result even when saving retry state rejects",
+      "basis": [
+        "src/utils/driveSync.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/utils/driveSync.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/utils/driveSync.ts",
+        "src/utils/driveSync.test.ts"
+      ],
+      "priority": "medium",
+      "reason": "Failure-state persistence can escape the documented nonthrowing API.",
+      "action": "add",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-db1a322f-8615-4ab3-8a25-6a86cea407ae",
+      "expected": "Drive review validates incoming documents before applying accepted changes",
+      "basis": [
+        "src/components/options/SettingsSection.tsx: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/components/options/SettingsSection.test.tsx: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/components/options/SettingsSection.tsx",
+        "src/components/options/SettingsSection.test.tsx"
+      ],
+      "priority": "medium",
+      "reason": "Reviewed remote documents bypass the import validator and file limit.",
+      "action": "add",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-e050d28c-6bd7-41fb-8116-d0dad098912f",
+      "expected": "File reconstruction failures preserve files and emit no success events",
+      "basis": [
+        "src/autofill/filler.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/autofill/filler.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/autofill/filler.ts",
+        "src/autofill/filler.test.ts"
+      ],
+      "priority": "medium",
+      "reason": "Existing malformed-prefix cases do not exercise decoding or assignment failures.",
+      "action": "improve",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-ef0d3993-cc52-47fb-a704-3484b06474ce",
+      "expected": "Undo unchecks filled radios without changing their submission values",
+      "basis": [
+        "src/autofill/filler.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/autofill/filler.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/autofill/filler.ts",
+        "src/autofill/filler.test.ts"
+      ],
+      "priority": "medium",
+      "reason": "Radio clearing currently writes value rather than checked state.",
+      "action": "add",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    },
+    {
+      "id": "g-ef98ca80-a682-4e1c-a2c5-ba05d1cf76e2",
+      "expected": "AI-yellow fields have correct edit counters and cannot be silently refilled",
+      "basis": [
+        "src/autofill/index.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+        "src/autofill/index.test.ts: existing protecting assertions reviewed",
+        "AGENTS.md: Domain Rules and Behavior Rules"
+      ],
+      "paths": [
+        "src/autofill/index.ts",
+        "src/autofill/index.test.ts"
+      ],
+      "priority": "medium",
+      "reason": "Only AI-green results synchronize stale edit/refill registries.",
+      "action": "add",
+      "layer": "unit/component/integration",
+      "state": "open",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+    }
+  ]
+}
