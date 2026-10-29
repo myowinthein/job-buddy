@@ -5,6 +5,7 @@
 // whether a set() failure rejects (storage.ts, so callers can surface an
 // error) or resolves silently (sessionStorage.ts, since every current
 // caller already treats session storage as best-effort).
+// Explicit resets opt into remove() rejection so a failed deletion stays visible.
 
 interface WrapStorageAreaOptions {
   rejectOnSetError?: boolean;
@@ -40,7 +41,10 @@ export function wrapStorageArea(
           if (chrome.runtime.lastError) {
             const msg = chrome.runtime.lastError.message ?? `${label}.set failed`;
             console.error(`[Job Buddy] ${label}.set error:`, msg);
-            if (rejectOnSetError) { reject(new Error(msg)); return; }
+            if (rejectOnSetError) {
+              reject(new Error(msg));
+              return;
+            }
             resolve();
             return;
           }
@@ -54,18 +58,23 @@ export function wrapStorageArea(
     });
   }
 
-  function remove(keys: string | string[]): Promise<void> {
-    return new Promise((resolve) => {
+  function remove(keys: string | string[], { rejectOnError = false } = {}): Promise<void> {
+    return new Promise((resolve, reject) => {
       try {
         getArea().remove(keys, () => {
           if (chrome.runtime.lastError) {
             console.error(`[Job Buddy] ${label}.remove error:`, chrome.runtime.lastError.message);
+            if (rejectOnError) {
+              reject(new Error(chrome.runtime.lastError.message ?? `${label}.remove failed`));
+              return;
+            }
           }
           resolve();
         });
       } catch (err) {
         console.error(`[Job Buddy] ${label}.remove threw:`, err);
-        resolve();
+        if (rejectOnError) reject(err);
+        else resolve();
       }
     });
   }

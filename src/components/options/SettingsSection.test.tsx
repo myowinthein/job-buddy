@@ -226,7 +226,36 @@ describe('SettingsSection — importing into an existing (non-empty) profile', (
   });
 });
 
+describe('SettingsSection — Appearance', () => {
+  it('restores the previous selection when saving appearance fails', async () => {
+    vi.mocked(saveThemePreference).mockRejectedValueOnce(new Error('Storage unavailable'));
+    renderSection();
+    fireEvent.click(screen.getByRole('button', { name: 'Dark' }));
+    await screen.findByText('Could not save appearance. Please try again.');
+    expect(screen.getByRole('button', { name: 'System' }).getAttribute('aria-pressed')).toBe('true');
+    expect(applyTheme).toHaveBeenLastCalledWith('system');
+  });
+});
+
 describe('SettingsSection — Reset All Data confirmation gate', () => {
+  it('allows reset when required profile completion is zero', async () => {
+    vi.mocked(getProfile).mockResolvedValue(null);
+    renderSection();
+    fireEvent.click(await screen.findByText('Reset Now'));
+    expect(await screen.findByRole('dialog', { name: 'Reset All Data' })).toBeTruthy();
+  });
+
+  it('keeps the dialog open and does not report completion when profile removal fails', async () => {
+    vi.mocked(clearAllStorage).mockRejectedValueOnce(new Error('Storage unavailable'));
+    const { onResetComplete } = renderSection();
+    fireEvent.click(await screen.findByText('Reset Now'));
+    fireEvent.change(screen.getByPlaceholderText('DELETE'), { target: { value: 'DELETE' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Reset All Data' }));
+    await screen.findByText('Reset failed. Please try again.');
+    expect(screen.getByRole('dialog', { name: 'Reset All Data' })).toBeTruthy();
+    expect(onResetComplete).not.toHaveBeenCalled();
+  });
+
   it('disables the reset button until DELETE is typed, and clears storage once confirmed', async () => {
     vi.mocked(getProfile).mockResolvedValue(makeProfile()); // non-empty, so Reset Now proceeds to the dialog
 

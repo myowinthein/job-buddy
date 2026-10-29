@@ -374,13 +374,25 @@ describe('storageGet/storageSet/storageRemove — synchronous throw from chrome.
     await expect(saveProfile(MINIMAL_PROFILE)).rejects.toThrow('storage API unavailable');
   });
 
-  it('storageRemove (via clearAllStorage) resolves when chrome.storage.local.remove throws synchronously', async () => {
+  it('reset rejects when chrome.storage.local.remove throws synchronously', async () => {
     vi.spyOn(chrome.storage.local, 'remove').mockImplementation(() => { throw new Error('storage API unavailable'); });
-    await expect(clearAllStorage()).resolves.toBeUndefined();
+    await expect(clearAllStorage()).rejects.toThrow('storage API unavailable');
   });
 });
 
 describe('clearAllStorage', () => {
+  it('rejects a Chrome removal error and leaves the stored profile available', async () => {
+    await saveProfile(MINIMAL_PROFILE);
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(chrome.storage.local, 'remove').mockImplementation((_keys, callback) => {
+      Object.assign(chrome.runtime, { lastError: { message: 'Removal failed' } });
+      callback?.();
+      Object.assign(chrome.runtime, { lastError: null });
+    });
+    await expect(clearAllStorage()).rejects.toThrow('Removal failed');
+    expect((await getProfile())?.id).toBe(MINIMAL_PROFILE.id);
+  });
+
   it('removes profile, learnedMappings, and applicationHistory', async () => {
     // Seed all three keys, then confirm every one is removed.
     await saveProfile(MINIMAL_PROFILE);
@@ -397,9 +409,7 @@ describe('clearAllStorage', () => {
       expect.arrayContaining(['profile', 'learnedMappings', 'applicationHistory']),
       expect.any(Function),
     );
-    // DEV's dummy-profile fallback would otherwise mask storage genuinely
-    // being empty here — stub it off to assert the real cleared state.
-    vi.stubEnv('DEV', false);
+    // Reset suppresses the development fallback as well as removing stored data.
     expect(await getProfile()).toBeNull();
     expect(await getLearnedMappings()).toEqual({});
     expect(await getApplicationHistory()).toEqual([]);

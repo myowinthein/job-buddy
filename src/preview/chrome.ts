@@ -7,8 +7,29 @@ type ChangeListener = (
 ) => void;
 
 /** Only the storage surface used by Options; no connection to extension APIs. */
-export function createPreviewChrome(seed: Partial<Profile> = DEV_PROFILE) {
+type ThemeStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+const PREVIEW_THEME_KEY = 'jb:preview:themePreference';
+
+export function createPreviewChrome(
+  seed: Partial<Profile> = DEV_PROFILE,
+  themeStorage?: ThemeStorage,
+) {
   const listeners = new Set<ChangeListener>();
+  let themePreference: string | null = null;
+  try {
+    themePreference = themeStorage?.getItem(PREVIEW_THEME_KEY) ?? null;
+  } catch {
+    /* Memory-only fallback. */
+  }
+
+  function persistTheme(value?: unknown) {
+    try {
+      if (typeof value === 'string') themeStorage?.setItem(PREVIEW_THEME_KEY, value);
+      else themeStorage?.removeItem(PREVIEW_THEME_KEY);
+    } catch {
+      /* Preference persistence is unavailable; sample data stays in memory. */
+    }
+  }
 
   function area(areaName: string, seed: Record<string, unknown> = {}) {
     const data = structuredClone(seed);
@@ -21,6 +42,7 @@ export function createPreviewChrome(seed: Partial<Profile> = DEV_PROFILE) {
         for (const [key, value] of Object.entries(items)) {
           changes[key] = { oldValue: structuredClone(data[key]), newValue: structuredClone(value) };
           data[key] = structuredClone(value);
+          if (areaName === 'local' && key === 'themePreference') persistTheme(value);
         }
         queueMicrotask(() => {
           callback();
@@ -33,6 +55,7 @@ export function createPreviewChrome(seed: Partial<Profile> = DEV_PROFILE) {
           if (!(key in data)) continue;
           changes[key] = { oldValue: structuredClone(data[key]) };
           delete data[key];
+          if (areaName === 'local' && key === 'themePreference') persistTheme();
         }
         queueMicrotask(() => {
           callback();
@@ -47,7 +70,10 @@ export function createPreviewChrome(seed: Partial<Profile> = DEV_PROFILE) {
   return {
     runtime: { lastError: undefined },
     storage: {
-      local: area('local', { profile: seed }),
+      local: area('local', {
+        profile: seed,
+        ...(['system', 'light', 'dark'].includes(themePreference ?? '') ? { themePreference } : {}),
+      }),
       session: area('session'),
       onChanged: {
         addListener: (listener: ChangeListener) => {

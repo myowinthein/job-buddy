@@ -589,6 +589,10 @@ export function validateImportedProfile(raw: unknown): ValidationResult {
   const err: ErrFn = (path, reason) => errors.push({ path, reason });
   const data = raw as Record<string, unknown>;
   const s: Partial<Profile> = {};
+  if (data.id !== undefined) {
+    if (typeof data.id === 'string' && data.id.trim() && data.id.length <= 200) s.id = data.id;
+    else err('id', 'expected a non-empty profile ID, max 200 chars');
+  }
 
   const personal = validatePersonal(data, err);
   if (personal) s.personal = personal;

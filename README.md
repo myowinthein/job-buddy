@@ -103,7 +103,7 @@ Normal edits do not start browser tests.
 
 The localhost profile preview uses the existing Options UI with in-memory sample
 data. Use **Sample profile** or **Empty profile** to review completion states.
-Saves last until you refresh the page. It does not access your installed
+Profile saves last until you refresh the page; Appearance is remembered. It does not access your installed
 extension's data, load environment files, or connect to Gemini or Google Drive.
 Use it to review profile forms and layout; extension autofill and real integrations
 still require an unpacked extension.

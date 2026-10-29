@@ -1,3 +1,4 @@
+import { SectionHeader } from './shared/SectionHeader';
 import { useState, useRef, useEffect } from 'react';
 import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings, ApplicationEntry, DriveBackupFile, DriveError } from '@/src/types/storage';
@@ -19,7 +20,6 @@ import {
 } from '@/src/utils/storage';
 import { applyTheme, getCurrentTheme } from '@/src/utils/theme';
 import type { ThemePreference } from '@/src/utils/theme';
-import { calculateCompletion } from '@/src/utils/profileCompletion';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
 import type { InvalidField } from '@/src/utils/profileValidator';
 import { useToast } from '@/src/components/ui/useToast';
@@ -143,10 +143,16 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   // renders, so the correct preference is already cached in theme.ts.
   const [themePreference, setThemePreference] = useState<ThemePreference>(getCurrentTheme);
 
-  const handleThemeChange = (value: ThemePreference) => {
+  const handleThemeChange = async (value: ThemePreference) => {
+    const previous = getCurrentTheme();
     setThemePreference(value);
     applyTheme(value);
-    void saveThemePreference(value);
+    try { await saveThemePreference(value); }
+    catch {
+      setThemePreference(previous);
+      applyTheme(previous);
+      showToast('error', 'Could not save appearance. Please try again.');
+    }
   };
 
   // ── AI Features state ────────────────────────────────────────────────────────
@@ -575,12 +581,15 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         // 'device' → keep Drive backup file; 'everywhere' → delete it
         await disconnectDrive(resetScope === 'everywhere');
       }
+      if (geminiDebounceRef.current) clearTimeout(geminiDebounceRef.current);
+      probeIdRef.current++;
       await clearAllStorage();
       // clearAllStorage() only covers profile/learnedMappings/applicationHistory —
       // the UI copy promises "all data from this browser", so the Gemini key
       // and theme preference need to go too.
       await clearGeminiSettings();
       await saveThemePreference('system');
+      setThemePreference('system');
       applyTheme('system');
       // SettingsSection stays mounted across a reset (it isn't remounted the
       // way profile sections are), so its own displayed state needs to catch
@@ -622,10 +631,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Settings</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your profile data</p>
-      </div>
+      <SectionHeader sectionId="settings" />
 
       {/* ── Appearance ────────────────────────────────────────────────────────── */}
       <section className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
@@ -638,7 +644,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             <button
               key={opt}
               type="button"
-              onClick={() => handleThemeChange(opt)}
+              onClick={() => void handleThemeChange(opt)}
+              aria-pressed={themePreference === opt}
               className={[
                 'px-4 py-1.5 text-sm font-medium capitalize transition-colors',
                 i < arr.length - 1 ? 'border-r border-gray-300 dark:border-gray-600' : '',
@@ -905,10 +912,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
       {/* ── Privacy notice ────────────────────────────────────────────────────── */}
       <p className="mb-8 text-xs text-gray-500 dark:text-gray-400">
-        {driveState.connected
-          ? 'Your profile data is stored locally and backed up to your Google Drive.'
-          : 'Your profile data stays on this device and is never sent anywhere.'
-        }{' '}
+        Profile data is stored on this device. Optional AI features and cloud backup use the services you enable.{' '}
         <a
           href="https://ko-fi.com/myowinthein"
           target="_blank"
@@ -923,19 +927,11 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       <section className="pt-2">
         <h3 className="text-base font-semibold text-red-700 dark:text-red-400 mb-1">Reset All Data</h3>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Permanently delete your profile, learned autofill mappings, and all data from this browser. This cannot be undone.
+          Delete your profile, mappings, history, and settings from this device.
         </p>
         <button
           type="button"
-          onClick={async () => {
-            const p = await getProfile();
-            const { percentage } = calculateCompletion(p ?? {});
-            if (percentage === 0) {
-              showToast('warning', 'No profile data to reset.');
-              return;
-            }
-            setShowResetDialog(true);
-          }}
+          onClick={() => setShowResetDialog(true)}
           className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 active:scale-95 transition-colors"
         >
           Reset Now
@@ -971,11 +967,14 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           onClick={handleResetDialogClose}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-data-title"
             className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-md mx-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Reset All Data</h3>
+              <h3 id="reset-data-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">Reset All Data</h3>
               <button
                 type="button"
                 onClick={handleResetDialogClose}
@@ -988,13 +987,12 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
             <div className="px-6 py-5">
               <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                This will permanently delete your profile, learned autofill mappings, and all data from this browser.
+                Deletes your profile, mappings, history, and settings from this device.
               </p>
               <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
-                Consider{' '}
                 <button type="button" className="underline hover:text-gray-900 dark:hover:text-gray-100 transition-colors" onClick={handleExport}>
-                  exporting your profile first
-                </button>.
+                  Export a backup first
+                </button>
               </p>
               <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-5">This cannot be undone.</p>
 
@@ -1038,12 +1036,14 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                 </div>
               )}
 
-              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
-                Type <code className="font-mono font-bold text-red-600 dark:text-red-400">DELETE</code> to confirm:
+              <label htmlFor="reset-confirmation" className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
+                Type <code className="font-mono font-bold text-red-600 dark:text-red-400">DELETE</code> to confirm
               </label>
               <input
                 type="text"
+                id="reset-confirmation"
                 value={resetConfirmText}
+                disabled={resetting}
                 onChange={(e) => setResetConfirmText(e.target.value)}
                 placeholder="DELETE"
                 autoComplete="off"

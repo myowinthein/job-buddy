@@ -1,11 +1,38 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createPreviewChrome } from './chrome';
-import { getProfile, saveProfile } from '@/src/utils/storage';
+import {
+  getProfile,
+  saveProfile,
+  getThemePreference,
+  saveThemePreference,
+} from '@/src/utils/storage';
 import { sessionGet, sessionRemove, sessionSet } from '@/src/utils/sessionStorage';
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe('preview storage isolation', () => {
+  it('remembers appearance across refreshes while profile changes stay in memory', async () => {
+    const values = new Map<string, string>();
+    const themeStorage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        values.set(key, value);
+      },
+      removeItem: (key: string) => {
+        values.delete(key);
+      },
+    };
+    vi.stubGlobal('chrome', createPreviewChrome(undefined, themeStorage));
+    await saveThemePreference('dark');
+    const profile = (await getProfile())!;
+    profile.personal.firstName = 'Temporary';
+    await saveProfile(profile);
+    vi.stubGlobal('chrome', createPreviewChrome(undefined, themeStorage));
+    expect(await getThemePreference()).toBe('dark');
+    expect((await getProfile())?.personal.firstName).toBe('Jane');
+    expect(values.size).toBe(1);
+  });
+
   it('can start empty without the development profile fallback', async () => {
     vi.stubGlobal('chrome', createPreviewChrome({ id: 'preview-empty' }));
     expect(await getProfile()).toEqual({ id: 'preview-empty' });

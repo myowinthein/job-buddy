@@ -27,7 +27,10 @@ export async function getProfile(): Promise<Profile | null> {
     // profile data by hand every session. Never persisted — an explicit
     // saveProfile() (e.g. editing a section in Options) still takes over
     // normally on the next read. Never true in a production/zip build.
-    if (import.meta.env.DEV) return normalizeProfile(DEV_PROFILE);
+    if (import.meta.env.DEV) {
+      const flags = await storageGet('devProfileDisabled');
+      if (!flags.devProfileDisabled) return normalizeProfile(DEV_PROFILE);
+    }
     return null;
   }
 
@@ -117,7 +120,9 @@ function storageRemove(keys: string[]): Promise<void> {
 }
 
 export async function clearAllStorage(): Promise<void> {
-  await storageRemove(['profile', 'learnedMappings', 'applicationHistory']);
+  // An explicit reset must not immediately resurrect the development fixture.
+  if (import.meta.env.DEV) await storageSet({ devProfileDisabled: true });
+  await local.remove(['profile', 'learnedMappings', 'applicationHistory'], { rejectOnError: true });
 }
 
 // ── Gemini AI settings ──────────────────────────────────────────────────────

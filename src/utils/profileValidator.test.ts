@@ -2,6 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { validateImportedProfile } from './profileValidator';
 
 describe('validateImportedProfile', () => {
+  it('preserves backup identity and rejects malformed profile IDs', () => {
+    expect(validateImportedProfile({ id: 'backup-profile' }).sanitized.id).toBe('backup-profile');
+    for (const id of ['', ' ', 123, 'x'.repeat(201)]) {
+      const result = validateImportedProfile({ id });
+      expect(result.sanitized.id).toBeUndefined();
+      expect(result.invalidFields.some((field) => field.path === 'id')).toBe(true);
+    }
+  });
+
   it('returns invalid for null input', () => {
     const result = validateImportedProfile(null);
     expect(result.valid).toBe(false);
