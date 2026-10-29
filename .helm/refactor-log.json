@@ -92,8 +92,35 @@
         ],
         "invariant": "Preserve row eligibility, labels, paths, order, headings, grouping and collapse defaults; retain intentional salary-zero and language-preview differences."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "e7ee1892a8353308e592ed81556c98218baf90de",
+        "date": "2026-10-29",
+        "method": "runtime",
+        "evidence": [
+          "Equivalent work/education preview rows use resolver; exact formatted values, order and Present behavior guarded. New fixture expectations corrected to existing full-month formatting and required schema before accepted verification."
+        ],
+        "checks": [
+          {
+            "command": "pnpm compile",
+            "scope": "project",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm exec vitest run src/autofill/profileFieldTree.test.ts src/autofill/resolver.test.ts src/components/options/shared/SearchableProfileFieldSelect.test.tsx",
+            "scope": "tree, resolver and selector",
+            "outcome": "130 tests passed"
+          },
+          {
+            "command": "pnpm exec eslint src/autofill/profileFieldTree.ts src/autofill/profileFieldTree.test.ts",
+            "scope": "R2 files",
+            "outcome": "passed"
+          }
+        ]
+      }
     },
     {
       "id": "r-d60c1401-45f6-4712-b1b0-80ecb67c0296",
