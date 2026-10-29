@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { calculateExperience } from './experience';
 
 describe('calculateExperience', () => {
@@ -106,8 +106,6 @@ describe('calculateExperience', () => {
     ]);
     // 2022-01 to 2024-01 inclusive = 25 months
     expect(result.totalMonths).toBe(25);
-
-    vi.useRealTimers();
   });
 
   it('counts inclusive calendar months across merged and gapped jobs, reference date 2026-10-07', () => {
@@ -127,8 +125,6 @@ describe('calculateExperience', () => {
     // interval, so it merges and contributes no extra months.
     expect(result.totalMonths).toBe(159);
     expect(result.label).toBe('13 years 3 months');
-
-    vi.useRealTimers();
   });
 
   it('skips a current job with a missing endDate that also has no valid start', () => {
@@ -152,4 +148,8 @@ describe('calculateExperience — order independence', () => {
     expect(calculateExperience(input)).toEqual({ totalMonths: 15, years: 1, months: 3, label: '1 year 3 months' });
     expect(input).toEqual(before);
   });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
