@@ -21,13 +21,14 @@ const CURRENT_YEAR = new Date().getFullYear();
 const EDU_MIN_YEAR = CURRENT_YEAR - 100;
 const EDU_MAX_YEAR = CURRENT_YEAR;
 
-type Row = EducationEntry;
+type Row = EducationEntry & { rowId: string };
 
 // Ensure all fields have sensible defaults when loading old profile data that
 // may predate the isCurrent field.
 function initRow(raw: EducationEntry): Row {
   return {
     ...raw,
+    rowId: crypto.randomUUID(),
     isCurrent: raw.isCurrent ?? false,
     endDate: raw.endDate ?? '',
     grade: raw.grade ?? '',
@@ -36,6 +37,7 @@ function initRow(raw: EducationEntry): Row {
 }
 
 const emptyRow = (): Row => ({
+  rowId: crypto.randomUUID(),
   institution: '',
   degree: '',
   fieldOfStudy: '',
@@ -52,7 +54,7 @@ const entrySummary = (row: Row, idx: number) =>
     : `Entry ${idx + 1}`;
 
 export function EducationSection({ profile, onSave }: Props) {
-  const [entries, setEntries] = useState<Row[]>(
+  const [entries, setEntries] = useState<Row[]>(() =>
     profile.education?.length ? profile.education.map(initRow) : [emptyRow()],
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -176,7 +178,7 @@ export function EducationSection({ profile, onSave }: Props) {
       <div ref={entriesContainerRef}>
       {entries.map((row, idx) => (
         <ExpandableCard
-          key={idx}
+          key={row.rowId}
           summary={entrySummary(row, idx)}
           subtitle={row.fieldOfStudy || undefined}
           onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
@@ -254,7 +256,7 @@ export function EducationSection({ profile, onSave }: Props) {
       </div>{/* entriesContainerRef */}
 
       <AddEntryButton
-        onClick={() => { setEntries((rows) => [...rows, emptyRow()]); setNewEntryTick((t) => t + 1); }}
+        onClick={() => { const row = emptyRow(); setEntries((rows) => [...rows, row]); setNewEntryTick((t) => t + 1); }}
         label="+ Add Education"
       />
 
