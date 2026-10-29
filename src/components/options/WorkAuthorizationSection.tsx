@@ -1,3 +1,4 @@
+import { SectionHeader } from './shared/SectionHeader';
 import { isValidCalendarDate } from '@/src/utils/profileInputValidation';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
@@ -109,14 +110,7 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-          Work Authorization
-        </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Your eligibility to work in each country
-        </p>
-      </div>
+      <SectionHeader sectionId="workAuthorization" />
 
       {errors.general && (
         <p className="text-sm text-red-500 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">

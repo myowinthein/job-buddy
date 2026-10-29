@@ -1,3 +1,4 @@
+import { SectionHeader } from './shared/SectionHeader';
 import {
   NOTICE_MAX,
   noticeDurationError as validateNoticePeriod,
@@ -258,18 +259,12 @@ export function WorkHistorySection({ profile, onSave }: Props) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Work History</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Save your summary, experience, and availability independently. Leave experience blank if
-          you have no employment history yet.
-        </p>
-      </div>
+      <SectionHeader sectionId="workHistory" />
 
       {/* ── Career Summary ──────────────────────────────────────────────────── */}
       <FormField
         error={errors.summary}
-        label="Career Summary · optional"
+        label="Career Summary"
         hint={`${summary.length} / 2000`}
       >
         <textarea
@@ -285,7 +280,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       {/* ── Work Entries ────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-3 mt-2">
         <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Experience · optional
+          Experience
         </p>
         <AddEntryButton
           id="add-workHistory"

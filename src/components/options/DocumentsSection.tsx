@@ -1,3 +1,4 @@
+import { SectionHeader } from './shared/SectionHeader';
 import { useState, useRef, useEffect, type DragEvent } from 'react';
 import { DOCUMENT_FILE_SIZE_LABEL, documentFileSizeError } from '@/src/utils/documentLimits';
 import type { Profile, DocumentEntry, DocumentFile } from '@/src/types/profile';
@@ -222,12 +223,7 @@ export function DocumentsSection({ profile, onSave }: Props) {
   };
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Documents</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Add a CV or cover letter as a URL, a file, or both. Each can be removed separately.
-        </p>
-      </div>
+      <SectionHeader sectionId="documents" />
       <DocUploader
         id="cv"
         label="CV / Résumé"
@@ -236,7 +232,7 @@ export function DocumentsSection({ profile, onSave }: Props) {
       />
       <details ref={coverRef} className="mb-4">
         <summary className="cursor-pointer text-sm font-medium text-gray-800 dark:text-gray-200 mb-3">
-          Cover letter · optional
+          Cover letter
           {coverLetter.file || coverLetter.url ? ' · details added' : ''}
         </summary>
         <DocUploader

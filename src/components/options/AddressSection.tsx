@@ -1,3 +1,4 @@
+import { SectionHeader } from './shared/SectionHeader';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useState } from 'react';
 import { useToast } from '@/src/components/ui/useToast';
@@ -89,12 +90,7 @@ export function AddressSection({ profile, onSave }: Props) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Address</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Your current residential address
-        </p>
-      </div>
+      <SectionHeader sectionId="address" />
 
       <FormField label="Country" required error={errors.countryCode}>
         <SearchableCountryDropdown

@@ -48,18 +48,18 @@ describe('CompletionBanner — core-complete vs percentage label', () => {
 describe('CompletionBanner — missing-fields dropdown', () => {
   it('hides the Missing trigger once core complete with no optional fields remaining', () => {
     renderBanner({ isCoreComplete: true, optionalFieldsRemaining: 0 });
-    expect(screen.queryByRole('button', { name: /remaining|optional details/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /remaining|more details/ })).toBeNull();
   });
 
   it('shows the Required Fields dropdown with missing groups, and navigating closes it', () => {
     const { onNavigate } = renderBanner();
     fireEvent.click(screen.getByRole('button', { name: /required remaining/ }));
-    expect(screen.getByText('Required details to complete or correct')).toBeTruthy();
-    expect(screen.getByText('Personal →')).toBeTruthy();
+    expect(screen.getByText('Missing details')).toBeTruthy();
+    expect(screen.getByText('Personal')).toBeTruthy();
 
-    fireEvent.click(screen.getByText('Personal →'));
+    fireEvent.click(screen.getByText('Personal'));
     expect(onNavigate).toHaveBeenCalledWith('personal');
-    expect(screen.queryByText('Required details to complete or correct')).toBeNull();
+    expect(screen.queryByText('Missing details')).toBeNull();
   });
 
   it('clicking a field button calls onFocusField and closes the dropdown', () => {
@@ -67,7 +67,7 @@ describe('CompletionBanner — missing-fields dropdown', () => {
     fireEvent.click(screen.getByRole('button', { name: /required remaining/ }));
     fireEvent.click(screen.getByText('First Name'));
     expect(onFocusField).toHaveBeenCalledWith('personal', 'First Name');
-    expect(screen.queryByText('Required details to complete or correct')).toBeNull();
+    expect(screen.queryByText('Missing details')).toBeNull();
   });
 
   it('shows the Optional Fields dropdown once core complete with optional fields remaining', () => {
@@ -77,9 +77,9 @@ describe('CompletionBanner — missing-fields dropdown', () => {
       optionalGroups: OPTIONAL_GROUPS,
       missingGroups: [],
     });
-    fireEvent.click(screen.getByRole('button', { name: /optional details/ }));
-    expect(screen.getByText('Optional details')).toBeTruthy();
-    expect(screen.getByText('Links →')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /more details/i }));
+    expect(screen.getByRole('region', { name: 'More details' })).toBeTruthy();
+    expect(screen.getByText('Links')).toBeTruthy();
   });
 });
 

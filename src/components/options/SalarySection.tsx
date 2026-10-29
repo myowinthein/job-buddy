@@ -1,11 +1,11 @@
+import { findCountryByNameOrCode } from '@/src/data/countries';
+import { SectionHeader } from './shared/SectionHeader';
 import { useState, useRef } from 'react';
 import type { Profile, SalaryPeriod } from '@/src/types/profile';
 import { useToast } from '@/src/components/ui/useToast';
-import { findCountryByNameOrCode } from '@/src/data/countries';
-import { COUNTRY_TO_CURRENCY, CURRENCIES } from '@/src/data/currencies';
+import { CURRENCIES } from '@/src/data/currencies';
 import { isValidAmount } from '@/src/utils/profileInputValidation';
 import { FormField } from './shared/FormField';
-import { SearchableCountryDropdown } from './shared/SearchableCountryDropdown';
 import { SearchableCurrencySelect } from './shared/SearchableCurrencySelect';
 import { RemoveButton } from './shared/RemoveButton';
 import { saveSection } from './shared/saveSection';
@@ -35,7 +35,7 @@ function initRow(raw?: {
     period: raw.period ?? 'monthly',
   };
 }
-const started = (row: SalaryRow) => !!(row.country || row.currency || row.amount.trim());
+const started = (row: SalaryRow) => !!(row.currency || row.amount.trim());
 function rowErrors(row: SalaryRow): Record<string, string> {
   if (!started(row)) return {};
   const errors: Record<string, string> = {};
@@ -44,8 +44,6 @@ function rowErrors(row: SalaryRow): Record<string, string> {
   if (!row.currency) errors.currency = 'Currency is required';
   else if (!CURRENCIES.some((currency) => currency.code === row.currency))
     errors.currency = 'Select a valid currency';
-  if (row.country && !findCountryByNameOrCode(row.country))
-    errors.country = 'Select a valid country';
   return errors;
 }
 function serialize(row: SalaryRow) {
@@ -73,9 +71,6 @@ export function SalarySection({ profile, onSave }: Props) {
   const update = (row: SalaryRow, key: keyof SalaryRow, value: string): SalaryRow => ({
     ...row,
     [key]: value,
-    ...(key === 'country' && COUNTRY_TO_CURRENCY[value]
-      ? { currency: COUNTRY_TO_CURRENCY[value] }
-      : {}),
   });
   const checkRow = (prefix: string, row: SalaryRow) => {
     const nextErrors = rowErrors(row);
@@ -129,7 +124,7 @@ export function SalarySection({ profile, onSave }: Props) {
   ) => {
     const isCurrent = expectedIndex === undefined;
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4">
         <FormField label="Amount" error={errors[`${prefix}.amount`]}>
           <input
             id={isCurrent ? 'field-currentAmount' : `field-expected-${expectedIndex}-amount`}
@@ -160,48 +155,16 @@ export function SalarySection({ profile, onSave }: Props) {
             <option value="annual">Annual</option>
           </select>
         </FormField>
-        <FormField
-          label="Country"
-          hint="Optional. Selecting a country suggests its currency; you can change it."
-          error={errors[`${prefix}.country`]}
-        >
-          <>
-            <SearchableCountryDropdown
-              id={isCurrent ? 'field-currentCountry' : `field-expected-${expectedIndex}-country`}
-              value={row.country}
-              onChange={(value) => change('country', value)}
-              error={errors[`${prefix}.country`]}
-            />
-            {row.country && (
-              <button
-                type="button"
-                onClick={() => change('country', '')}
-                className="mt-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                Clear country
-              </button>
-            )}
-          </>
-        </FormField>
       </div>
     );
   };
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Salary</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Optional compensation details. Enter gross base pay before tax, excluding bonuses and
-          benefits.
-        </p>
-      </div>
+      <SectionHeader sectionId="salary" />
       <section className="mb-6">
         <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
           Expected Salary
         </h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-          Add expectations independently of current pay. Leave unused entries blank.
-        </p>
         <div ref={entriesContainerRef}>
           {expected.map((row, index) => (
             <div
@@ -234,11 +197,8 @@ export function SalarySection({ profile, onSave }: Props) {
       </section>
       <section className="mb-6">
         <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
-          Current Salary · optional
+          Current Salary
         </h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-          You can leave this blank. It is not needed to save your expected salary.
-        </p>
         {started(current) && (
           <button
             type="button"

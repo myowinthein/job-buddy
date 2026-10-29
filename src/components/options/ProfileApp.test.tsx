@@ -71,15 +71,16 @@ it('protects a draft on navigation and closing, then clears the guard after savi
   const name = await openPersonal();
   fireEvent.change(name, { target: { value: 'Draft Jane' } });
   expect(screen.getByText('Unsaved changes')).toBeTruthy();
+  expect(screen.getByText('Unsaved changes').closest('main')).toBeNull();
   const closing = new Event('beforeunload', { cancelable: true });
   window.dispatchEvent(closing);
   expect(closing.defaultPrevented).toBe(true);
   fireEvent.click(screen.getByRole('button', { name: 'Address' }));
   expect(confirm).toHaveBeenCalledTimes(1);
   expect((name as HTMLInputElement).value).toBe('Draft Jane');
-  expect(screen.getByRole('heading', { name: 'Personal Information' })).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Personal' })).toBeTruthy();
 
-  fireEvent.click(screen.getByText('Save Personal Information'));
+  fireEvent.click(screen.getByText('Save Personal'));
   await waitFor(() => expect(screen.queryByText('Unsaved changes')).toBeNull());
   expect((await getProfile())?.personal.firstName).toBe('Draft Jane');
   const savedClosing = new Event('beforeunload', { cancelable: true });
@@ -104,7 +105,7 @@ it('discards a draft only after the user confirms leaving', async () => {
 it('focuses the first invalid field and associates its error text', async () => {
   const name = await openPersonal();
   fireEvent.change(name, { target: { value: '' } });
-  fireEvent.click(screen.getByText('Save Personal Information'));
+  fireEvent.click(screen.getByText('Save Personal'));
   await waitFor(() => expect(document.activeElement).toBe(name));
   expect(name.getAttribute('aria-invalid')).toBe('true');
   const error = document.getElementById(name.getAttribute('aria-describedby')!);
@@ -116,7 +117,7 @@ it('merges a section save with newer stored changes from another Options tab', a
   const stored = (await getProfile())!;
   await saveProfile({ ...stored, address: { ...stored.address, city: 'Updated elsewhere' } });
   fireEvent.change(name, { target: { value: 'Local Jane' } });
-  fireEvent.click(screen.getByText('Save Personal Information'));
+  fireEvent.click(screen.getByText('Save Personal'));
   await waitFor(() => expect(screen.queryByText('Unsaved changes')).toBeNull());
   expect((await getProfile())?.address.city).toBe('Updated elsewhere');
   expect((await getProfile())?.personal.firstName).toBe('Local Jane');
@@ -131,7 +132,7 @@ it('retains the unsaved guard when local persistence fails', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
   const name = await openPersonal();
   fireEvent.change(name, { target: { value: 'Cannot save' } });
-  fireEvent.click(screen.getByText('Save Personal Information'));
+  fireEvent.click(screen.getByText('Save Personal'));
   await screen.findByText('Failed to save: storage may be full.');
   expect(screen.getByText('Unsaved changes')).toBeTruthy();
   expect((await getProfile())?.personal.firstName).toBe('Jane');
@@ -202,7 +203,7 @@ it('reveals and focuses an optional field in a later collapsed entry', async () 
   ];
   await saveProfile(profile);
   await openPersonal();
-  fireEvent.click(screen.getByRole('button', { name: /optional details/ }));
+  fireEvent.click(screen.getByRole('button', { name: /more details/i }));
   fireEvent.click(screen.getByRole('button', { name: 'Location' }));
   await waitFor(() => expect(document.activeElement?.id).toBe('field-workHistory-1-location'));
 });
@@ -214,7 +215,7 @@ it('updates required progress only after a successful section save', async () =>
   const name = await openPersonal();
   fireEvent.change(name, { target: { value: 'Jane' } });
   expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('90');
-  fireEvent.click(screen.getByText('Save Personal Information'));
+  fireEvent.click(screen.getByText('Save Personal'));
   await waitFor(() =>
     expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('100'),
   );

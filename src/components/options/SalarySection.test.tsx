@@ -166,8 +166,8 @@ describe('SalarySection — expected-salary rows', () => {
   });
 });
 
-describe('SalarySection — current-salary country drives the saved currency', () => {
-  it('saves the currency mapped from the chosen country, via the searchable dropdown', () => {
+describe('SalarySection — currency selection', () => {
+  it('saves a selected currency without requiring a country control', () => {
     const { onSave } = renderSection({
       salary: {
         current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' },
@@ -175,17 +175,16 @@ describe('SalarySection — current-salary country drives the saved currency', (
       },
     });
 
-    fireEvent.click(document.getElementById('field-currentCountry')!); // optional country suggests a default
-    fireEvent.change(screen.getByPlaceholderText('Search country or code…'), {
-      target: { value: 'Singapore' },
-    });
-    fireEvent.click(screen.getByText('Singapore'));
+    expect(screen.queryByText('Country')).toBeNull();
+    fireEvent.click(document.getElementById('field-currentCurrency')!);
+    fireEvent.change(screen.getByPlaceholderText('Search by code or name…'), { target: { value: 'SGD' } });
+    fireEvent.click(screen.getByRole('option', { name: /SGD/ }));
 
     fireEvent.click(screen.getByText('Save Salary'));
 
     expect(onSave).toHaveBeenCalledWith({
       salary: expect.objectContaining({
-        current: expect.objectContaining({ country: 'SG', currency: 'SGD' }),
+        current: expect.objectContaining({ country: 'TH', currency: 'SGD' }),
       }),
     });
   });

@@ -1,3 +1,4 @@
+import { SectionHeader } from './shared/SectionHeader';
 import { profileDateRangeErrors } from '@/src/utils/profileInputValidation';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
@@ -166,12 +167,7 @@ export function EducationSection({ profile, onSave }: Props) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Education</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Your academic qualifications
-        </p>
-      </div>
+      <SectionHeader sectionId="education" />
 
       {errors.general && (
         <p className="text-sm text-red-500 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
@@ -283,7 +279,7 @@ export function EducationSection({ profile, onSave }: Props) {
             </label>
             <details className="mb-4">
               <summary className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300">
-                Optional education details
+                Grade and coursework
               </summary>
               <div className="mt-3">
                 <FormField label="Grade / GPA" error={errors[`${idx}.grade`]}>

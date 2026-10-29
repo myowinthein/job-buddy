@@ -1,3 +1,5 @@
+import { Info } from 'lucide-react';
+import { SectionHeader } from './shared/SectionHeader';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef } from 'react';
@@ -131,12 +133,23 @@ export function LanguagesSection({ profile, onSave }: Props) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Languages</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Add the languages you can use professionally.
-        </p>
-      </div>
+      <SectionHeader sectionId="languages" />
+      <details className="mb-5 rounded-lg border border-gray-200 dark:border-gray-700">
+        <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300">
+          <Info aria-hidden="true" className="h-3.5 w-3.5" />
+          Proficiency guide
+        </summary>
+        <dl className="space-y-3 border-t border-gray-200 px-3 py-3 text-xs dark:border-gray-700">
+          {PROFICIENCY_OPTIONS.map((level) => (
+            <div key={level.value}>
+              <dt className="font-medium text-gray-700 dark:text-gray-200">{level.label}</dt>
+              <dd className="mt-1 text-gray-500 dark:text-gray-400">
+                {PROFICIENCY_HELP[level.value]}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </details>
 
       {errors.general && (
         <p role="alert" className="text-sm text-red-500 mb-4">
@@ -164,12 +177,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
                   error={errors[`${idx}.language`]}
                 />
               </FormField>
-              <FormField
-                label="Proficiency"
-                required
-                error={errors[`${idx}.proficiency`]}
-                hint={PROFICIENCY_HELP[row.proficiency]}
-              >
+              <FormField label="Proficiency" required error={errors[`${idx}.proficiency`]}>
                 <select
                   id={`field-languages-${idx}-proficiency`}
                   className={cls(errors[`${idx}.proficiency`])}

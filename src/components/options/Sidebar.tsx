@@ -1,23 +1,9 @@
-import { FileUp, Brain, Menu, Settings } from 'lucide-react';
+import { FileUp, Brain, Menu, Settings, Check, Minus } from 'lucide-react';
 import { LOGO_ICON_SRC } from '@/src/utils/branding';
 
-interface Section {
-  id: string;
-  label: string;
-  icon: string;
-}
+import { PROFILE_SECTIONS } from './shared/profileSections';
 
-const SECTIONS: Section[] = [
-  { id: 'personal', label: 'Personal', icon: '👤' },
-  { id: 'address', label: 'Address', icon: '📍' },
-  { id: 'workAuthorization', label: 'Work Authorization', icon: '🛂' },
-  { id: 'workHistory', label: 'Work History', icon: '📋' },
-  { id: 'education', label: 'Education', icon: '🎓' },
-  { id: 'languages', label: 'Languages', icon: '🌐' },
-  { id: 'links', label: 'Links', icon: '🔗' },
-  { id: 'documents', label: 'Documents', icon: '📄' },
-  { id: 'salary', label: 'Salary', icon: '💰' },
-];
+const SECTIONS = PROFILE_SECTIONS;
 
 interface SidebarProps {
   activeSection: string;
@@ -25,7 +11,6 @@ interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
   sectionCompletion: Record<string, boolean>;
-  sectionFullCompletion: Record<string, boolean>;
 }
 
 export function Sidebar({
@@ -34,7 +19,6 @@ export function Sidebar({
   collapsed,
   onToggle,
   sectionCompletion,
-  sectionFullCompletion,
 }: SidebarProps) {
   return (
     <aside
@@ -76,18 +60,14 @@ export function Sidebar({
         {SECTIONS.map((section) => {
           const isActive = activeSection === section.id;
           const isMandatoryComplete = sectionCompletion[section.id];
-          const isFullyComplete = sectionFullCompletion[section.id];
           const optionalSection = section.id === 'salary' || section.id === 'links';
-          const status =
-            optionalSection && !isMandatoryComplete
-              ? 'Optional section; no details added'
-              : isFullyComplete
-                ? 'All tracked details complete'
-                : isMandatoryComplete
-                  ? optionalSection
-                    ? 'Details added; more optional details available'
-                    : 'Required details complete; optional details remaining'
-                  : 'Required details remaining';
+          const status = isMandatoryComplete
+            ? optionalSection
+              ? 'Details added'
+              : 'Required details complete'
+            : optionalSection
+              ? 'No details added'
+              : 'Required details remaining';
 
           return (
             <button
@@ -113,30 +93,22 @@ export function Sidebar({
               <span id={`status-${section.id}`} className="sr-only">
                 {status}
               </span>
-              {isMandatoryComplete && (
-                <span
-                  title={
-                    isFullyComplete ? 'All tracked details complete' : 'Required details complete'
-                  }
-                  aria-hidden="true"
-                  className={`${collapsed ? 'absolute right-1 top-1' : 'absolute right-1 top-1 sm:static sm:ml-auto'} w-[17px] h-[17px] rounded-full flex items-center justify-center shrink-0 ${isFullyComplete ? 'bg-green-500 dark:bg-green-600 text-white' : 'text-green-600 dark:text-green-400'}`}
-                >
-                  <span className="text-[10px] leading-none font-bold">✓</span>
-                </span>
-              )}
+              <span
+                title={status}
+                aria-hidden="true"
+                className={`${collapsed ? 'absolute right-1 top-1' : 'absolute right-1 top-1 sm:static sm:ml-auto'} flex h-4 w-4 items-center justify-center shrink-0 ${isMandatoryComplete ? 'text-green-600 dark:text-green-400' : optionalSection ? 'text-gray-400 dark:text-gray-500' : 'text-amber-500 dark:text-amber-400'}`}
+              >
+                {isMandatoryComplete ? (
+                  <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+                ) : optionalSection ? (
+                  <Minus className="h-3 w-3" />
+                ) : (
+                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                )}
+              </span>
             </button>
           );
         })}
-        {!collapsed && (
-          <p className="hidden sm:block px-3 pt-3 text-[11px] text-gray-500 dark:text-gray-400 leading-5">
-            <span className="text-green-600">✓</span> Required complete
-            <br />
-            <span className="inline-flex w-3 h-3 rounded-full bg-green-500 text-white items-center justify-center text-[9px]">
-              ✓
-            </span>{' '}
-            All tracked details complete
-          </p>
-        )}
       </nav>
 
       {/* Tools are separate from profile data. */}

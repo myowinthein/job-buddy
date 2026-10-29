@@ -1,3 +1,4 @@
+import { SectionHeader } from './shared/SectionHeader';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useState, useRef } from 'react';
 import { useToast } from '@/src/components/ui/useToast';
@@ -193,14 +194,7 @@ export function PersonalSection({ profile, onSave }: Props) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-          Personal Information
-        </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Basic personal details used in job applications
-        </p>
-      </div>
+      <SectionHeader sectionId="personal" />
 
       {/* Name */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -215,11 +209,7 @@ export function PersonalSection({ profile, onSave }: Props) {
             maxLength={100}
           />
         </FormField>
-        <FormField
-          label="Last Name"
-          hint="Optional for names without a family name"
-          error={errors.lastName}
-        >
+        <FormField label="Last Name" error={errors.lastName}>
           <input
             className={cls(errors.lastName)}
             value={form.lastName}
@@ -291,106 +281,104 @@ export function PersonalSection({ profile, onSave }: Props) {
         className="mt-5 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
       >
         <summary className="cursor-pointer font-medium text-sm text-gray-800 dark:text-gray-200">
-          Optional personal details
+          Background details
         </summary>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 mb-4">
-          Share only what you want used in applications. These details never affect profile
-          completion.
-        </p>
-        <FormField label="Date of Birth" error={errors.dateOfBirth}>
-          <DateOfBirthPicker
-            id="field-dateOfBirth"
-            value={form.dateOfBirth}
-            onChange={(v) => set('dateOfBirth', v)}
-            onPartialChange={(partial) => {
-              setDobIsPartial(partial);
-              // Live feedback: surface or clear the partial-completion error as
-              // the user types, but don't stomp on more specific range errors.
-              setErrors((e) => {
-                const existing = e.dateOfBirth;
-                if (partial) {
-                  if (!existing)
-                    return { ...e, dateOfBirth: 'Complete day, month, and year, or leave blank' };
+        <div className="mt-4">
+          <FormField label="Date of Birth" error={errors.dateOfBirth}>
+            <DateOfBirthPicker
+              id="field-dateOfBirth"
+              value={form.dateOfBirth}
+              onChange={(v) => set('dateOfBirth', v)}
+              onPartialChange={(partial) => {
+                setDobIsPartial(partial);
+                // Live feedback: surface or clear the partial-completion error as
+                // the user types, but don't stomp on more specific range errors.
+                setErrors((e) => {
+                  const existing = e.dateOfBirth;
+                  if (partial) {
+                    if (!existing)
+                      return { ...e, dateOfBirth: 'Complete day, month, and year, or leave blank' };
+                    return e;
+                  }
+                  if (existing === 'Complete day, month, and year, or leave blank') {
+                    return { ...e, dateOfBirth: '' };
+                  }
                   return e;
-                }
-                if (existing === 'Complete day, month, and year, or leave blank') {
-                  return { ...e, dateOfBirth: '' };
-                }
-                return e;
-              });
-            }}
-            error={errors.dateOfBirth}
-          />
-        </FormField>
-
-        {/* Gender & Ethnicity */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label="Gender" error={errors.gender}>
-            <select
-              id="field-gender"
-              className={cls(errors.gender)}
-              value={form.gender}
-              onChange={(e) => set('gender', e.target.value)}
-            >
-              <option value="">Select gender…</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-              <option value="prefer_not_to_say">Prefer not to say</option>
-            </select>
+                });
+              }}
+              error={errors.dateOfBirth}
+            />
           </FormField>
 
-          <FormField label="Ethnicity" error={errors.ethnicity}>
-            <select
-              id="field-ethnicity"
-              className={cls(errors.ethnicity)}
-              value={form.ethnicity}
-              onChange={(e) => set('ethnicity', e.target.value)}
-            >
-              <option value="">Select ethnicity…</option>
-              {ETHNICITIES.map((eth) => (
-                <option key={eth} value={eth}>
-                  {eth}
-                </option>
-              ))}
-              <option value="prefer_not_to_say">Prefer not to say</option>
-            </select>
-          </FormField>
-        </div>
+          {/* Gender & Ethnicity */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField label="Gender" error={errors.gender}>
+              <select
+                id="field-gender"
+                className={cls(errors.gender)}
+                value={form.gender}
+                onChange={(e) => set('gender', e.target.value)}
+              >
+                <option value="">Select gender…</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+                <option value="prefer_not_to_say">Prefer not to say</option>
+              </select>
+            </FormField>
 
-        {/* Veteran & Disability */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FormField label="Veteran Status" error={errors.veteranStatus}>
-            <select
-              id="field-veteranStatus"
-              className={cls(errors.veteranStatus)}
-              value={form.veteranStatus}
-              onChange={(e) => set('veteranStatus', e.target.value)}
-            >
-              <option value="">Select veteran status…</option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-              <option value="prefer_not_to_say">Prefer not to say</option>
-            </select>
-          </FormField>
-          <FormField label="Disability Status" error={errors.disabilityStatus}>
-            <select
-              id="field-disabilityStatus"
-              className={cls(errors.disabilityStatus)}
-              value={form.disabilityStatus}
-              onChange={(e) => set('disabilityStatus', e.target.value)}
-            >
-              <option value="">Select disability status…</option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
-              <option value="prefer_not_to_say">Prefer not to say</option>
-            </select>
-          </FormField>
+            <FormField label="Ethnicity" error={errors.ethnicity}>
+              <select
+                id="field-ethnicity"
+                className={cls(errors.ethnicity)}
+                value={form.ethnicity}
+                onChange={(e) => set('ethnicity', e.target.value)}
+              >
+                <option value="">Select ethnicity…</option>
+                {ETHNICITIES.map((eth) => (
+                  <option key={eth} value={eth}>
+                    {eth}
+                  </option>
+                ))}
+                <option value="prefer_not_to_say">Prefer not to say</option>
+              </select>
+            </FormField>
+          </div>
+
+          {/* Veteran & Disability */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField label="Veteran Status" error={errors.veteranStatus}>
+              <select
+                id="field-veteranStatus"
+                className={cls(errors.veteranStatus)}
+                value={form.veteranStatus}
+                onChange={(e) => set('veteranStatus', e.target.value)}
+              >
+                <option value="">Select veteran status…</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+                <option value="prefer_not_to_say">Prefer not to say</option>
+              </select>
+            </FormField>
+            <FormField label="Disability Status" error={errors.disabilityStatus}>
+              <select
+                id="field-disabilityStatus"
+                className={cls(errors.disabilityStatus)}
+                value={form.disabilityStatus}
+                onChange={(e) => set('disabilityStatus', e.target.value)}
+              >
+                <option value="">Select disability status…</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+                <option value="prefer_not_to_say">Prefer not to say</option>
+              </select>
+            </FormField>
+          </div>
         </div>
       </details>
 
       <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
-        <SaveButton onClick={handleSave} saving={saving} label="Save Personal Information" />
+        <SaveButton onClick={handleSave} saving={saving} label="Save Personal" />
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { CompletionGroup } from '@/src/utils/profileCompletion';
 
 interface CompletionBannerProps {
@@ -29,7 +30,7 @@ export function CompletionBanner({
     ? optionalFieldsRemaining
     : missingGroups.reduce((sum, g) => sum + g.fields.length, 0);
   const groups = isCoreComplete ? optionalGroups : missingGroups;
-  const heading = isCoreComplete ? 'Optional details' : 'Required details to complete or correct';
+  const heading = isCoreComplete ? 'More details' : 'Missing details';
 
   useEffect(() => {
     if (!open) return;
@@ -59,10 +60,7 @@ export function CompletionBanner({
       }}
       className="relative bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 min-h-16 py-3 flex flex-wrap items-center gap-2 sm:gap-4 shrink-0"
     >
-      <div
-        className="flex items-center gap-2"
-        title="Based on saved profile data. Optional details do not affect this percentage."
-      >
+      <div className="flex items-center gap-2" title="Based on saved required details">
         <span
           className={`text-sm font-bold ${isCoreComplete ? 'text-green-700 dark:text-green-400' : 'text-blue-700 dark:text-blue-400'}`}
         >
@@ -93,6 +91,9 @@ export function CompletionBanner({
             type="button"
             aria-expanded={open}
             aria-controls={panelId}
+            aria-label={
+              isCoreComplete ? `More details (${count} available)` : `${count} required remaining`
+            }
             onClick={() => setOpen((value) => !value)}
             onKeyDown={(event) => {
               if (event.key === 'ArrowDown') {
@@ -101,10 +102,13 @@ export function CompletionBanner({
                 requestAnimationFrame(() => panelRef.current?.querySelector('button')?.focus());
               }
             }}
-            className="text-xs text-blue-700 dark:text-blue-300 hover:underline flex items-center gap-1"
+            className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-900/30"
           >
-            {count} {isCoreComplete ? 'optional details' : 'required remaining'}{' '}
-            <span aria-hidden="true">{open ? '▲' : '▼'}</span>
+            {isCoreComplete ? 'More details' : `${count} remaining`}
+            <ChevronDown
+              aria-hidden="true"
+              className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`}
+            />
           </button>
           {open && (
             <div
@@ -112,17 +116,12 @@ export function CompletionBanner({
               id={panelId}
               role="region"
               aria-label={heading}
-              className="absolute left-4 right-4 sm:left-auto sm:right-0 top-full mt-2 w-auto sm:w-80 max-w-[calc(100vw-6rem)] bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-2"
+              className="absolute left-4 right-4 sm:left-auto sm:right-0 top-full mt-2 w-auto sm:w-72 max-w-[calc(100vw-6rem)] bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 z-50 overflow-hidden"
             >
-              <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 px-3 pb-1.5 border-b border-gray-100 dark:border-gray-700">
+              <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 px-3 py-2.5 border-b border-gray-100 dark:border-gray-700">
                 {heading}
               </p>
-              <p className="px-3 py-1 text-xs text-gray-500 dark:text-gray-400">
-                {isCoreComplete
-                  ? 'Add only what you want to share. These do not affect your percentage.'
-                  : 'Select a detail to go to its input. Progress updates after saving.'}
-              </p>
-              <ul className="max-h-64 overflow-y-auto py-1">
+              <ul className="max-h-52 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
                 {groups.map((group) => (
                   <li key={group.sectionId}>
                     <button
@@ -131,11 +130,12 @@ export function CompletionBanner({
                         onNavigate(group.sectionId);
                         setOpen(false);
                       }}
-                      className="w-full text-left px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                      className="flex w-full items-center justify-between px-3 pt-2.5 pb-1 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
                     >
-                      {group.sectionLabel} →
+                      {group.sectionLabel}
+                      <ChevronRight aria-hidden="true" className="h-3 w-3" />
                     </button>
-                    <ul>
+                    <ul className="flex flex-wrap gap-1 px-3 pb-2.5">
                       {group.fields.map((field) => (
                         <li key={field}>
                           <button
@@ -144,12 +144,8 @@ export function CompletionBanner({
                               onFocusField(group.sectionId, field);
                               setOpen(false);
                             }}
-                            className="w-full text-left flex items-center gap-2 px-5 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-blue-900/30"
+                            className="rounded-md border border-gray-200 px-2 py-1.5 text-left text-xs text-blue-700 hover:bg-blue-50 dark:border-gray-600 dark:text-blue-300 dark:hover:bg-blue-900/30"
                           >
-                            <span
-                              aria-hidden="true"
-                              className="w-1 h-1 rounded-full bg-current shrink-0"
-                            />
                             {field}
                           </button>
                         </li>
@@ -158,6 +154,11 @@ export function CompletionBanner({
                   </li>
                 ))}
               </ul>
+              <p className="border-t border-gray-100 px-3 py-2 text-[11px] text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                {isCoreComplete
+                  ? 'Extra details do not affect progress'
+                  : 'Select a field · Save to update progress'}
+              </p>
             </div>
           )}
         </div>

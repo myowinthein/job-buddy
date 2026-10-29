@@ -1,3 +1,4 @@
+import { SectionHeader } from './shared/SectionHeader';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef } from 'react';
@@ -153,12 +154,7 @@ export function LinksSection({ profile, onSave }: Props) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Links & Profiles</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Online presence used in job applications
-        </p>
-      </div>
+      <SectionHeader sectionId="links" />
 
       {PLATFORMS.map(({ key, label, required, placeholder }) => (
         <FormField key={key} label={label} required={required} error={errors[key]}>

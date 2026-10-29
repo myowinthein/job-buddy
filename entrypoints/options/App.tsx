@@ -1,3 +1,4 @@
+import { PencilLine } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Profile } from '@/src/types/profile';
 import { getProfile, saveProfile } from '@/src/utils/storage';
@@ -320,19 +321,10 @@ function App() {
   // rather than on every render. calculateCompletion traverses the whole
   // profile, and getSectionCompletion calls it internally — so both are kept
   // inside a single memo keyed on profile.
-  const { completion, sectionCompletion, sectionFullCompletion } = useMemo(() => {
+  const { completion, sectionCompletion } = useMemo(() => {
     const completion = calculateCompletion(profile);
     const sectionCompletion = getSectionCompletion(profile);
-    // A section is "fully complete" when its mandatory fields are done AND it
-    // has no remaining optional fields. Derived from already-computed values.
-    const sectionsWithOptionalGaps = new Set(completion.optionalGroups.map((g) => g.sectionId));
-    const sectionFullCompletion: Record<string, boolean> = Object.fromEntries(
-      Object.entries(sectionCompletion).map(([id, mandatoryDone]) => [
-        id,
-        mandatoryDone && !sectionsWithOptionalGaps.has(id),
-      ]),
-    );
-    return { completion, sectionCompletion, sectionFullCompletion };
+    return { completion, sectionCompletion };
   }, [profile]);
   const sectionProps = { profile, onSave: handleSave };
 
@@ -370,7 +362,6 @@ function App() {
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((c) => !c)}
         sectionCompletion={sectionCompletion}
-        sectionFullCompletion={sectionFullCompletion}
       />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <CompletionBanner
@@ -382,10 +373,16 @@ function App() {
           onNavigate={(sectionId) => { navigateSection(sectionId as SectionId); }}
           onFocusField={handleFocusField}
         />
+        {hasUnsavedChanges && (
+          <div role="status" className="flex shrink-0 items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200 sm:px-6">
+            <PencilLine aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+            <span className="font-semibold">Unsaved changes</span>
+            <span className="hidden text-amber-800/80 dark:text-amber-200/70 sm:inline">Save this section to keep your edits</span>
+          </div>
+        )}
         <main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-8">
           {/* Settings uses max-w-none so long subtitles can flow to one line */}
           <div data-profile-section={activeSection} className={activeSection === 'settings' ? 'max-w-none' : 'max-w-2xl'}>
-            {hasUnsavedChanges && <p role="status" className="mb-3 text-sm text-amber-700 dark:text-amber-300">Unsaved changes</p>}
             <DraftStatusContext.Provider value={reportDraftStatus}>
               {renderSection()}
             </DraftStatusContext.Provider>

@@ -15,7 +15,6 @@ function renderSidebar(overrides: Partial<React.ComponentProps<typeof Sidebar>> 
       collapsed={false}
       onToggle={onToggle}
       sectionCompletion={{}}
-      sectionFullCompletion={{}}
       {...overrides}
     />,
   );
@@ -57,28 +56,21 @@ describe('Sidebar — collapsed state', () => {
 });
 
 describe('Sidebar — completion badges', () => {
-  it('shows the full green checkmark badge for a fully complete section', () => {
-    renderSidebar({ sectionCompletion: { address: true }, sectionFullCompletion: { address: true } });
+  it('shows one checkmark when required details are complete', () => {
+    renderSidebar({ sectionCompletion: { address: true } });
     const addressButton = screen.getByText('Address').closest('button')!;
-    expect(addressButton.querySelector('[title="All tracked details complete"]')).toBeTruthy();
-  });
-
-  it('shows a plain checkmark (not the full badge) for mandatory-only completion', () => {
-    renderSidebar({ sectionCompletion: { address: true }, sectionFullCompletion: { address: false } });
-    const addressButton = screen.getByText('Address').closest('button')!;
-    expect(addressButton.querySelector('[title="All tracked details complete"]')).toBeNull();
     expect(addressButton.querySelector('[title="Required details complete"]')).toBeTruthy();
   });
 
-  it('shows no badge at all when the section has no completion yet', () => {
-    renderSidebar({ sectionCompletion: { address: false }, sectionFullCompletion: { address: false } });
+  it('shows a dot when required details remain', () => {
+    renderSidebar({ sectionCompletion: { address: false } });
     const addressButton = screen.getByText('Address').closest('button')!;
-    expect(addressButton.querySelector('[title="All tracked details complete"]')).toBeNull();
-    expect(addressButton.querySelector('[title="Required details complete"]')).toBeNull();
+    expect(addressButton.querySelector('[title="Required details remaining"]')).toBeTruthy();
+    expect(addressButton.querySelector('svg')).toBeNull();
   });
 });
 
-it.each([false, true])('explains both completion icons when collapsed=%s', (collapsed) => {
+it.each([false, true])('explains section status when collapsed=%s', (collapsed) => {
   render(
     <Sidebar
       activeSection="personal"
@@ -86,20 +78,19 @@ it.each([false, true])('explains both completion icons when collapsed=%s', (coll
       collapsed={collapsed}
       onToggle={vi.fn()}
       sectionCompletion={{ personal: true, address: true }}
-      sectionFullCompletion={{ address: true }}
     />,
   );
   const personal = screen.getByRole('button', { name: 'Personal' });
   const address = screen.getByRole('button', { name: 'Address' });
   const salary = screen.getByRole('button', { name: 'Salary' });
   expect(document.getElementById(personal.getAttribute('aria-describedby')!)?.textContent).toBe(
-    'Required details complete; optional details remaining',
+    'Required details complete',
   );
   expect(document.getElementById(address.getAttribute('aria-describedby')!)?.textContent).toBe(
-    'All tracked details complete',
+    'Required details complete',
   );
   expect(document.getElementById(salary.getAttribute('aria-describedby')!)?.textContent).toBe(
-    'Optional section; no details added',
+    'No details added',
   );
-  expect(personal.title).toContain('optional details remaining');
+  expect(personal.title).toContain('Required details complete');
 });

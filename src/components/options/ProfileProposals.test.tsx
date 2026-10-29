@@ -34,7 +34,7 @@ it('saves a mononymous contact and starts optional personal details collapsed', 
   );
   expect((document.querySelector('details') as HTMLDetailsElement).open).toBe(false);
   expect(screen.getByLabelText('Preferred name')).toBeTruthy();
-  fireEvent.click(screen.getByText('Save Personal Information'));
+  fireEvent.click(screen.getByText('Save Personal'));
   expect(onSave).toHaveBeenCalledWith(
     expect.objectContaining({
       personal: expect.objectContaining({ firstName: 'Jane', lastName: '' }),
@@ -209,7 +209,7 @@ it('saves and imports future graduation dates and optional education details', (
     />,
   );
   fireEvent.click(screen.getByText('University: BSc'));
-  fireEvent.click(screen.getByText('Optional education details'));
+  fireEvent.click(screen.getByText('Grade and coursework'));
   fireEvent.change(screen.getByLabelText('Grade / GPA'), { target: { value: '3.9' } });
   fireEvent.change(screen.getByLabelText('Education description'), {
     target: { value: 'Updated thesis' },
@@ -233,7 +233,7 @@ it('saves a cover letter without a CV and removes its URL independently', async 
       onSave={onSave}
     />,
   );
-  fireEvent.click(screen.getByText(/Cover letter · optional/));
+  fireEvent.click(screen.getByText(/Cover letter/, { selector: 'summary' }));
   expect(screen.getByText('cover.pdf')).toBeTruthy();
   fireEvent.click(screen.getByText('Remove URL'));
   fireEvent.click(screen.getByText('Save Documents'));

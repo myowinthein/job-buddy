@@ -162,19 +162,19 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
   check(
     validText(profile.personal?.firstName, 100),
     'personal',
-    'Personal Information',
+    'Personal',
     'First Name',
   );
   check(
     isValidProfileEmail(profile.personal?.email ?? ''),
     'personal',
-    'Personal Information',
+    'Personal',
     'Email',
   );
   check(
     isValidProfilePhone(resolvePhoneNumber(profile.personal?.phone)),
     'personal',
-    'Personal Information',
+    'Personal',
     'Phone',
   );
 
@@ -296,7 +296,7 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
     );
   }
 
-  optCheck(hasProfileLink(profile), 'links', 'Links & Profiles', 'Profile links');
+  optCheck(hasProfileLink(profile), 'links', 'Links', 'Profile links');
   optCheck(validSalary(profile.salary?.current), 'salary', 'Salary', 'Current Salary');
 
   const optionalFieldsRemaining = optGroups.reduce((sum, g) => sum + g.fields.length, 0);
