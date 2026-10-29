@@ -68,7 +68,7 @@ check every answer and uploaded document before submitting.
 ## Optional features
 
 - **Gemini:** add your own API key in **Settings → AI Features** for AI autofill
-  assistance and PDF/DOCX resume import. Select **Save Key** to verify and save it.
+  assistance and PDF/DOCX resume import. Select **Check Key**, then **Save Key** to enable it.
   Keys remain in this browser and are excluded from JSON and Drive backups.
   Use **Replace Key** or **Remove Key** to manage access. Review imported suggestions
   before saving.

@@ -17,7 +17,8 @@ extension to function.
 3. Copy the key.
 
 That key is what users paste into **Settings > AI Features** inside the
-extension. Select **Save Key** to verify the key and choose a working model. Keys
+extension. Select **Check Key** to verify the key and find a working model, then
+select **Save Key** to store the checked settings. Keys
 and model preferences stay in the current browser, outside JSON and Drive backups.
 Removing the key or resetting data also disables development key seeding until a
 key is explicitly saved again. No further configuration is needed on your end.

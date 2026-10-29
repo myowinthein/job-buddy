@@ -108,12 +108,13 @@ describe('SettingsSection — explicit Gemini saves', () => {
     renderSection();
     fireEvent.click(await screen.findByText('Replace Key'));
     fireEvent.change(screen.getByLabelText('Gemini API Key'), { target: { value: 'first-key' } });
-    fireEvent.click(screen.getByText('Save Key'));
+    fireEvent.click(screen.getByRole('button', { name: 'Check Key' }));
     await waitFor(() => expect(validateApiKey).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByText('Cancel'));
     fireEvent.click(screen.getByText('Replace Key'));
     fireEvent.change(screen.getByLabelText('Gemini API Key'), { target: { value: 'second-key' } });
-    fireEvent.click(screen.getByText('Save Key'));
+    fireEvent.click(screen.getByRole('button', { name: 'Check Key' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Save Key' }));
     await waitFor(() => expect(saveGeminiSettings).toHaveBeenCalledTimes(1));
     expect(vi.mocked(saveGeminiSettings).mock.calls[0].slice(0, 4)).toEqual(['second-key', 'gemini-3.8-flash', 'auto', 'original']);
     await act(async () => { resolveFirstProbe({ valid: true, model: 'gemini-3.8-flash' }); });
