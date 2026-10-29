@@ -12,15 +12,29 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
-        "src/components/options/DocumentsSection.tsx",
-        "src/components/options/DocumentsSection.test.tsx"
+        "src/components/options/DocumentsSection.test.tsx",
+        "src/components/options/DocumentsSection.tsx"
       ],
       "priority": "medium",
       "reason": "Unordered FileReader completion and missing error recovery can save the wrong file.",
       "action": "add",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/components/options/DocumentsSection.test.tsx"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/components/options/DocumentsSection.test.tsx"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/components/options/DocumentsSection.test.tsx",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     },
     {
       "id": "g-171f3700-b1ea-4b5c-834d-4af3f763e805",
@@ -31,15 +45,30 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
-        "src/components/options/ResumeImportSection.tsx",
-        "src/components/options/ResumeImportSection.test.tsx"
+        "src/components/options/ResumeImportSection.integration.test.tsx",
+        "src/components/options/ResumeImportSection.test.tsx",
+        "src/components/options/ResumeImportSection.tsx"
       ],
       "priority": "medium",
       "reason": "Existing component cases mock both diff generation and application.",
       "action": "improve",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/components/options/ResumeImportSection.integration.test.tsx"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/components/options/ResumeImportSection.integration.test.tsx"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/components/options/ResumeImportSection.integration.test.tsx",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     },
     {
       "id": "g-1934575c-5d9c-4d7f-8996-375ee46c1b6a",
@@ -50,15 +79,29 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
-        "src/components/shared/ImportReviewScreen.tsx",
-        "src/components/shared/ImportReviewScreen.test.tsx"
+        "src/components/shared/ImportReviewScreen.test.tsx",
+        "src/components/shared/ImportReviewScreen.tsx"
       ],
       "priority": "medium",
       "reason": "Header close bypasses the explicit save-in-flight dismissal guard.",
       "action": "add",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/components/shared/ImportReviewScreen.test.tsx"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/components/shared/ImportReviewScreen.test.tsx"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/components/shared/ImportReviewScreen.test.tsx",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     },
     {
       "id": "g-19904596-d4ca-4b02-9fb0-09e6769f7db5",
@@ -69,15 +112,32 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
+        "src/autofill/signals.test.ts",
         "src/autofill/signals.ts",
-        "src/autofill/signals.test.ts"
+        "src/browser/autofill.pw.ts"
       ],
       "priority": "medium",
       "reason": "Document lookup can miss or misassociate shadow-local labels.",
       "action": "add",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/autofill/signals.test.ts",
+        "src/browser/autofill.pw.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/autofill/signals.test.ts",
+          "src/browser/autofill.pw.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run && pnpm test:browser",
+        "scope": "src/autofill/signals.test.ts; src/browser/autofill.pw.ts",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases. Production Chromium scenarios also passed."
+      }
     },
     {
       "id": "g-1b8d2220-04da-4ef8-aa9e-856516144c8d",
@@ -88,15 +148,29 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
-        "src/autofill/index.ts",
-        "src/autofill/index.test.ts"
+        "src/autofill/index.test.ts",
+        "src/autofill/index.ts"
       ],
       "priority": "medium",
       "reason": "Explicit two-phase domain contract lacks a regression asserting the stage boundary.",
       "action": "improve",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/autofill/index.test.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/autofill/index.test.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/autofill/index.test.ts",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     },
     {
       "id": "g-40e123fd-2cba-4f1d-a6e4-82baa50bc458",
@@ -107,15 +181,35 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
+        "src/autofill/ai.test.ts",
+        "src/autofill/index.test.ts",
         "src/autofill/index.ts",
-        "src/autofill/index.test.ts"
+        "src/browser/autofill.pw.ts"
       ],
       "priority": "high",
       "reason": "Existing unmatched answers can be overwritten or cleared in ordinary prefilled forms.",
       "action": "add",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/autofill/index.test.ts",
+        "src/autofill/ai.test.ts",
+        "src/browser/autofill.pw.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/autofill/index.test.ts",
+          "src/autofill/ai.test.ts",
+          "src/browser/autofill.pw.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run && pnpm test:browser",
+        "scope": "src/autofill/index.test.ts; src/autofill/ai.test.ts; src/browser/autofill.pw.ts",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases. Production Chromium scenarios also passed."
+      }
     },
     {
       "id": "g-58fb42e4-28f3-45c4-bee1-61ec57a42e92",
@@ -126,15 +220,29 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
-        "src/utils/experience.ts",
-        "src/utils/experience.test.ts"
+        "src/utils/experience.test.ts",
+        "src/utils/experience.ts"
       ],
       "priority": "medium",
       "reason": "Chronological fixtures do not protect required sorting before interval merging.",
       "action": "improve",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/utils/experience.test.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/utils/experience.test.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/utils/experience.test.ts",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     },
     {
       "id": "g-5a48bdc9-5193-439b-959d-c10d9adfdb95",
@@ -145,15 +253,29 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
-        "src/autofill/index.ts",
-        "src/autofill/index.test.ts"
+        "src/autofill/index.test.ts",
+        "src/autofill/index.ts"
       ],
       "priority": "medium",
       "reason": "document.contains excludes connected shadow descendants.",
       "action": "add",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/autofill/index.test.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/autofill/index.test.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/autofill/index.test.ts",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     },
     {
       "id": "g-5c7af1dc-0a1c-4df9-99cf-2646ebfa916e",
@@ -164,15 +286,29 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
-        "src/autofill/profileFieldTree.ts",
-        "src/autofill/profileFieldTree.test.ts"
+        "src/autofill/profileFieldTree.test.ts",
+        "src/autofill/profileFieldTree.ts"
       ],
       "priority": "medium",
       "reason": "Filtering before indexing can associate a valid row with another URL.",
       "action": "add",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/autofill/profileFieldTree.test.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/autofill/profileFieldTree.test.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/autofill/profileFieldTree.test.ts",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     },
     {
       "id": "g-5ccd1526-5ba1-4d32-8183-d1665d8e38e1",
@@ -183,15 +319,29 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
-        "src/autofill/ai.ts",
-        "src/autofill/ai.test.ts"
+        "src/autofill/ai.test.ts",
+        "src/autofill/ai.ts"
       ],
       "priority": "low",
       "reason": "Subset-relative IDs misassociate diagnostic records.",
       "action": "add",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/autofill/ai.test.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/autofill/ai.test.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/autofill/ai.test.ts",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     },
     {
       "id": "g-66a7cd52-950b-4280-bb2c-962e2f224ecd",
@@ -202,15 +352,35 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
+        "src/autofill/ai.test.ts",
         "src/autofill/ai.ts",
-        "src/autofill/ai.test.ts"
+        "src/autofill/scanner.test.ts",
+        "src/browser/autofill.pw.ts"
       ],
       "priority": "high",
       "reason": "Consent checkbox exclusion does not extend to radios despite explicit non-consent contract.",
       "action": "add",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/autofill/scanner.test.ts",
+        "src/autofill/ai.test.ts",
+        "src/browser/autofill.pw.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/autofill/scanner.test.ts",
+          "src/autofill/ai.test.ts",
+          "src/browser/autofill.pw.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run && pnpm test:browser",
+        "scope": "src/autofill/scanner.test.ts; src/autofill/ai.test.ts; src/browser/autofill.pw.ts",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases. Production Chromium scenarios also passed."
+      }
     },
     {
       "id": "g-7fc3b0b2-1764-4384-ac7c-08dd68483929",
@@ -221,17 +391,36 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
-        "src/components/options/WorkHistorySection.tsx",
-        "src/components/options/WorkHistorySection.test.tsx",
+        "src/components/options/EducationSection.test.tsx",
         "src/components/options/EducationSection.tsx",
-        "src/components/options/EducationSection.test.tsx"
+        "src/components/options/WorkHistorySection.test.tsx",
+        "src/components/options/WorkHistorySection.tsx",
+        "src/components/options/shared/MonthYearPicker.test.tsx"
       ],
       "priority": "medium",
       "reason": "Index keys reuse partial date state after row deletion; education shares behavior.",
       "action": "add",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/components/options/WorkHistorySection.test.tsx",
+        "src/components/options/EducationSection.test.tsx",
+        "src/components/options/shared/MonthYearPicker.test.tsx"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/components/options/WorkHistorySection.test.tsx",
+          "src/components/options/EducationSection.test.tsx",
+          "src/components/options/shared/MonthYearPicker.test.tsx"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/components/options/WorkHistorySection.test.tsx; src/components/options/EducationSection.test.tsx; src/components/options/shared/MonthYearPicker.test.tsx",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     },
     {
       "id": "g-863f5754-521c-4daf-8e1d-8ca09255f4fe",
@@ -242,15 +431,29 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
-        "src/utils/profileValidator.ts",
-        "src/utils/profileValidator.test.ts"
+        "src/utils/profileValidator.test.ts",
+        "src/utils/profileValidator.ts"
       ],
       "priority": "medium",
       "reason": "Current oversized-payload fixture exceeds both guards and masks lost protection.",
       "action": "improve",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/utils/profileValidator.test.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/utils/profileValidator.test.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/utils/profileValidator.test.ts",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     },
     {
       "id": "g-95de352b-51ab-4a27-916c-797ff4f6a1ce",
@@ -261,15 +464,32 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
+        "src/autofill/filler.test.ts",
         "src/autofill/filler.ts",
-        "src/autofill/filler.test.ts"
+        "src/browser/autofill.pw.ts"
       ],
       "priority": "medium",
       "reason": "Scanner admits these supported controls but filler writes the trigger label.",
       "action": "add",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/autofill/filler.test.ts",
+        "src/browser/autofill.pw.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/autofill/filler.test.ts",
+          "src/browser/autofill.pw.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run && pnpm test:browser",
+        "scope": "src/autofill/filler.test.ts; src/browser/autofill.pw.ts",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases. Production Chromium scenarios also passed."
+      }
     },
     {
       "id": "g-984c53b8-8aef-4726-b8a0-daad61c27482",
@@ -280,15 +500,29 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
-        "src/utils/profileCompletion.ts",
-        "src/utils/profileCompletion.test.ts"
+        "src/utils/profileCompletion.test.ts",
+        "src/utils/profileCompletion.ts"
       ],
       "priority": "low",
       "reason": "UI tests supply synthetic groups rather than testing calculator output.",
       "action": "improve",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/utils/profileCompletion.test.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/utils/profileCompletion.test.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/utils/profileCompletion.test.ts",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     },
     {
       "id": "g-9f5d6305-0d7a-4f25-a316-19b2b43d7548",
@@ -299,15 +533,32 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
-        "src/autofill/index.ts",
-        "src/autofill/index.test.ts"
+        "src/autofill/filler.test.ts",
+        "src/autofill/index.test.ts",
+        "src/autofill/index.ts"
       ],
       "priority": "medium",
       "reason": "Asynchronous refill has no generation or in-flight isolation.",
       "action": "add",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/autofill/index.test.ts",
+        "src/autofill/filler.test.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/autofill/index.test.ts",
+          "src/autofill/filler.test.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/autofill/index.test.ts; src/autofill/filler.test.ts",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     },
     {
       "id": "g-ac0d0cf3-30c7-47f4-ab7f-5a655c470195",
@@ -318,15 +569,29 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
-        "src/utils/driveSync.ts",
-        "src/utils/driveSync.test.ts"
+        "src/utils/driveSync.test.ts",
+        "src/utils/driveSync.ts"
       ],
       "priority": "medium",
       "reason": "Existing request tests do not inspect actual serialized privacy boundaries.",
       "action": "improve",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/utils/driveSync.test.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/utils/driveSync.test.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/utils/driveSync.test.ts",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     },
     {
       "id": "g-c9e10ccf-b0a8-477f-b3d3-d5dd4d6c2ed8",
@@ -338,14 +603,38 @@
       ],
       "paths": [
         "entrypoints/content.ts",
+        "playwright.config.ts",
+        "src/browser/autofill.pw.ts",
+        "src/browser/fixtures.ts",
+        "src/browser/fixtures/application.html",
         "src/content.test.ts"
       ],
       "priority": "medium",
       "reason": "jsdom and Chrome mocks cannot establish actual extension/browser behavior.",
       "action": "add",
       "layer": "browser",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/browser/autofill.pw.ts",
+        "src/browser/fixtures.ts",
+        "src/browser/fixtures/application.html",
+        "playwright.config.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/browser/autofill.pw.ts",
+          "src/browser/fixtures.ts",
+          "src/browser/fixtures/application.html",
+          "playwright.config.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:browser",
+        "scope": "Production Chrome MV3 extension in isolated headless Chromium; synthetic local forms and mocked Gemini",
+        "outcome": "Three Chromium scenarios passed: native values/file/events/validation/Merge/Undo; custom dropdown/shadow/about:blank iframe; non-consent AI radio fill and Undo. No real accounts or live submissions."
+      }
     },
     {
       "id": "g-d4338c3a-aea7-4e96-9393-daa8518e83d5",
@@ -357,14 +646,34 @@
       ],
       "paths": [
         "entrypoints/options/App.tsx",
+        "src/components/options/ResumeImportSection.test.tsx",
+        "src/options/App.integration.test.tsx",
         "src/options/App.test.tsx"
       ],
       "priority": "high",
       "reason": "Resolved callback currently masks failed storage writes across all editor saves.",
       "action": "add",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/options/App.integration.test.tsx",
+        "src/options/App.test.tsx",
+        "src/components/options/ResumeImportSection.test.tsx"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/options/App.integration.test.tsx",
+          "src/options/App.test.tsx",
+          "src/components/options/ResumeImportSection.test.tsx"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/options/App.integration.test.tsx; src/options/App.test.tsx; src/components/options/ResumeImportSection.test.tsx",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     },
     {
       "id": "g-db0ba1ba-3a82-41a1-beb5-14a4edfa70c7",
@@ -375,15 +684,29 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
-        "src/utils/driveSync.ts",
-        "src/utils/driveSync.test.ts"
+        "src/utils/driveSync.test.ts",
+        "src/utils/driveSync.ts"
       ],
       "priority": "medium",
       "reason": "Failure-state persistence can escape the documented nonthrowing API.",
       "action": "add",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/utils/driveSync.test.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/utils/driveSync.test.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/utils/driveSync.test.ts",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     },
     {
       "id": "g-db1a322f-8615-4ab3-8a25-6a86cea407ae",
@@ -394,15 +717,32 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
-        "src/components/options/SettingsSection.tsx",
-        "src/components/options/SettingsSection.test.tsx"
+        "src/components/options/SettingsSection.integration.test.tsx",
+        "src/components/options/SettingsSection.test.tsx",
+        "src/components/options/SettingsSection.tsx"
       ],
       "priority": "medium",
       "reason": "Reviewed remote documents bypass the import validator and file limit.",
       "action": "add",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/components/options/SettingsSection.integration.test.tsx",
+        "src/components/options/SettingsSection.test.tsx"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/components/options/SettingsSection.integration.test.tsx",
+          "src/components/options/SettingsSection.test.tsx"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/components/options/SettingsSection.integration.test.tsx; src/components/options/SettingsSection.test.tsx",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     },
     {
       "id": "g-e050d28c-6bd7-41fb-8116-d0dad098912f",
@@ -413,15 +753,29 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
-        "src/autofill/filler.ts",
-        "src/autofill/filler.test.ts"
+        "src/autofill/filler.test.ts",
+        "src/autofill/filler.ts"
       ],
       "priority": "medium",
       "reason": "Existing malformed-prefix cases do not exercise decoding or assignment failures.",
       "action": "improve",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/autofill/filler.test.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/autofill/filler.test.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/autofill/filler.test.ts",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     },
     {
       "id": "g-ef0d3993-cc52-47fb-a704-3484b06474ce",
@@ -432,15 +786,32 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
+        "src/autofill/filler.test.ts",
         "src/autofill/filler.ts",
-        "src/autofill/filler.test.ts"
+        "src/browser/autofill.pw.ts"
       ],
       "priority": "medium",
       "reason": "Radio clearing currently writes value rather than checked state.",
       "action": "add",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/autofill/filler.test.ts",
+        "src/browser/autofill.pw.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/autofill/filler.test.ts",
+          "src/browser/autofill.pw.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run && pnpm test:browser",
+        "scope": "src/autofill/filler.test.ts; src/browser/autofill.pw.ts",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases. Production Chromium scenarios also passed."
+      }
     },
     {
       "id": "g-ef98ca80-a682-4e1c-a2c5-ba05d1cf76e2",
@@ -451,15 +822,29 @@
         "AGENTS.md: Domain Rules and Behavior Rules"
       ],
       "paths": [
-        "src/autofill/index.ts",
-        "src/autofill/index.test.ts"
+        "src/autofill/index.test.ts",
+        "src/autofill/index.ts"
       ],
       "priority": "medium",
       "reason": "Only AI-green results synchronize stale edit/refill registries.",
       "action": "add",
       "layer": "unit/component/integration",
-      "state": "open",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e"
+      "state": "resolved",
+      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "tests": [
+        "src/autofill/index.test.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/autofill/index.test.ts"
+        ],
+        "method": "runtime",
+        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
+        "command": "pnpm test:run",
+        "scope": "src/autofill/index.test.ts",
+        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+      }
     }
   ]
 }
