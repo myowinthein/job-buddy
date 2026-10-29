@@ -148,8 +148,35 @@
         ],
         "invariant": "Preserve DOM order, label-only case-insensitive search, collapsed headings, search expansion, selected-path opening, highlight clamping, scrolling, ARIA IDs and selection callbacks."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "33469714e82f11ce0862fc1f1595f6806e144deb",
+        "date": "2026-10-29",
+        "method": "runtime",
+        "evidence": [
+          "One projection drives rendered items and keyboard paths; all prior cases retained, plus collapsed-entry and filtered-cluster keyboard guards."
+        ],
+        "checks": [
+          {
+            "command": "pnpm compile",
+            "scope": "project",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm exec vitest run src/components/options/shared/SearchableProfileFieldSelect.test.tsx src/components/options/LearnedMappingsSection.test.tsx",
+            "scope": "selector keyboard and mappings UI",
+            "outcome": "38 tests passed"
+          },
+          {
+            "command": "pnpm exec eslint src/components/options/shared/SearchableProfileFieldSelect.tsx src/components/options/shared/SearchableProfileFieldSelect.test.tsx",
+            "scope": "R3 files",
+            "outcome": "passed"
+          }
+        ]
+      }
     },
     {
       "id": "r-b2eff42f-995c-462e-a594-8a3860b16042",
