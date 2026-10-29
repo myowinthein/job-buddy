@@ -1,3 +1,4 @@
+import { stableDisclosureFocus } from './shared/stableControlFocus';
 import { SectionHeader } from './shared/SectionHeader';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useState, useRef } from 'react';
@@ -280,7 +281,10 @@ export function PersonalSection({ profile, onSave }: Props) {
         ref={optionalDetailsRef}
         className="mt-5 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
       >
-        <summary className="cursor-pointer font-medium text-sm text-gray-800 dark:text-gray-200">
+        <summary
+          {...stableDisclosureFocus}
+          className="cursor-pointer font-medium text-sm text-gray-800 dark:text-gray-200"
+        >
           Background details
         </summary>
         <div className="mt-4">

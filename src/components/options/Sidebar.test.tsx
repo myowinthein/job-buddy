@@ -50,6 +50,8 @@ describe('Sidebar — collapsed state', () => {
     renderSidebar({ collapsed: true });
     expect(screen.queryByText('Job Buddy')).toBeNull();
     expect(screen.queryByText('Address')).toBeNull();
+    expect(screen.queryByText('Profile')).toBeNull();
+    expect(screen.queryByText('Tools')).toBeNull();
     expect(screen.getByRole('button', { name: 'Address' })).toBeTruthy();
     expect(screen.getByTitle('Expand sidebar')).toBeTruthy();
   });

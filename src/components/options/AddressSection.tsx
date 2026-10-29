@@ -92,14 +92,26 @@ export function AddressSection({ profile, onSave }: Props) {
     <div>
       <SectionHeader sectionId="address" />
 
-      <FormField label="Country" required error={errors.countryCode}>
-        <SearchableCountryDropdown
-          id="field-country"
-          value={form.countryCode}
-          onChange={(code) => set('countryCode', code)}
-          error={errors.countryCode}
-        />
-      </FormField>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <FormField label="Country" required error={errors.countryCode}>
+          <SearchableCountryDropdown
+            id="field-country"
+            value={form.countryCode}
+            onChange={(code) => set('countryCode', code)}
+            error={errors.countryCode}
+          />
+        </FormField>
+        <FormField label="Postal Code" error={errors.postalCode}>
+          <input
+            className={cls(errors.postalCode)}
+            id="field-postalCode"
+            value={form.postalCode}
+            onChange={(e) => set('postalCode', e.target.value)}
+            placeholder="94105"
+            maxLength={20}
+          />
+        </FormField>
+      </div>
 
       <FormField label="Street Address" error={errors.street}>
         <input
@@ -131,19 +143,6 @@ export function AddressSection({ profile, onSave }: Props) {
             onChange={(e) => set('state', e.target.value)}
             placeholder="CA"
             maxLength={100}
-          />
-        </FormField>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <FormField label="Postal Code" error={errors.postalCode}>
-          <input
-            className={cls(errors.postalCode)}
-            id="field-postalCode"
-            value={form.postalCode}
-            onChange={(e) => set('postalCode', e.target.value)}
-            placeholder="94105"
-            maxLength={20}
           />
         </FormField>
       </div>

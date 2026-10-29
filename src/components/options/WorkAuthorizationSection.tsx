@@ -11,7 +11,7 @@ import { SearchableCountryDropdown } from './shared/SearchableCountryDropdown';
 import { RemoveButton } from './shared/RemoveButton';
 import { saveSection } from './shared/saveSection';
 import { SaveButton } from './shared/SaveButton';
-import { AddEntryButton } from './shared/AddEntryButton';
+import { EntryListHeader } from './shared/EntryListHeader';
 import { fieldCls as cls } from './shared/fieldCls';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 
@@ -112,6 +112,15 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
     <div>
       <SectionHeader sectionId="workAuthorization" />
 
+      <EntryListHeader
+        id="add-workAuthorization"
+        onAdd={() => {
+          setEntries((rows) => [...rows, emptyRow()]);
+          setNewEntryTick((t) => t + 1);
+        }}
+        label="+ Add Entry"
+      />
+
       {errors.general && (
         <p className="text-sm text-red-500 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
           {errors.general}
@@ -183,15 +192,6 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
         ))}
       </div>
       {/* entriesContainerRef */}
-
-      <AddEntryButton
-        id="add-workAuthorization"
-        onClick={() => {
-          setEntries((rows) => [...rows, emptyRow()]);
-          setNewEntryTick((t) => t + 1);
-        }}
-        label="+ Add Entry"
-      />
 
       <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
         <SaveButton onClick={handleSave} saving={saving} label="Save Work Authorization" />

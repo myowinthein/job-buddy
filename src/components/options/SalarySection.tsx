@@ -10,7 +10,7 @@ import { SearchableCurrencySelect } from './shared/SearchableCurrencySelect';
 import { RemoveButton } from './shared/RemoveButton';
 import { saveSection } from './shared/saveSection';
 import { SaveButton } from './shared/SaveButton';
-import { AddEntryButton } from './shared/AddEntryButton';
+import { EntryListHeader } from './shared/EntryListHeader';
 import { fieldCls } from './shared/fieldCls';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 import { useSectionDraft } from './shared/useSectionDraft';
@@ -162,9 +162,15 @@ export function SalarySection({ profile, onSave }: Props) {
     <div>
       <SectionHeader sectionId="salary" />
       <section className="mb-6">
-        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
-          Expected Salary
-        </h3>
+        <EntryListHeader
+          title="Expected Salary"
+          id="add-expected"
+          onAdd={() => {
+            setExpected((rows) => [...rows, emptyRow()]);
+            setNewEntryTick((value) => value + 1);
+          }}
+          label="+ Add Entry"
+        />
         <div ref={entriesContainerRef}>
           {expected.map((row, index) => (
             <div
@@ -186,14 +192,6 @@ export function SalarySection({ profile, onSave }: Props) {
             </div>
           ))}
         </div>
-        <AddEntryButton
-          id="add-expected"
-          onClick={() => {
-            setExpected((rows) => [...rows, emptyRow()]);
-            setNewEntryTick((value) => value + 1);
-          }}
-          label="+ Add Entry"
-        />
       </section>
       <section className="mb-6">
         <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">

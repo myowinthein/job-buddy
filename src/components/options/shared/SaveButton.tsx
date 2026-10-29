@@ -1,3 +1,5 @@
+import { deferPointerFocus, focusOnClick } from './stableControlFocus';
+
 interface Props {
   onClick: () => void;
   saving: boolean;
@@ -8,7 +10,9 @@ export function SaveButton({ onClick, saving, label }: Props) {
   return (
     <button
       type="button"
+      onMouseDown={deferPointerFocus}
       onClick={(event) => {
+        focusOnClick(event);
         const section =
           event.currentTarget.closest('[data-profile-section]') ??
           event.currentTarget.parentElement?.parentElement;

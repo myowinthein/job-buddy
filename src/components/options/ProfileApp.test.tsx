@@ -50,6 +50,24 @@ async function openPersonal() {
   return await screen.findByRole('textbox', { name: /First Name/ });
 }
 
+it('opens Background details on the first click when phone blur adds a validation error', async () => {
+  const stored = (await getProfile())!;
+  await saveProfile({
+    ...stored,
+    personal: { ...stored.personal, phone: { countryCode: 'US', callingCode: '+1', number: '' } },
+  });
+  await openPersonal();
+  const phone = screen.getByRole('textbox', { name: 'Phone number' });
+  act(() => phone.focus());
+  const summary = screen.getByText('Background details');
+  expect(fireEvent.mouseDown(summary)).toBe(false);
+  expect(document.activeElement).toBe(phone);
+  fireEvent.click(summary);
+  expect(screen.getByText('Phone number is required')).toBeTruthy();
+  expect(summary.closest('details')?.open).toBe(true);
+  expect(document.activeElement).toBe(summary);
+});
+
 it('protects partial date inputs even when the section value is still empty', async () => {
   const stored = (await getProfile())!;
   await saveProfile({ ...stored, workHistory: [] });

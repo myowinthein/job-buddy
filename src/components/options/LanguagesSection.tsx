@@ -1,3 +1,4 @@
+import { stableDisclosureFocus } from './shared/stableControlFocus';
 import { Info } from 'lucide-react';
 import { SectionHeader } from './shared/SectionHeader';
 import { useSectionDraft } from './shared/useSectionDraft';
@@ -9,7 +10,7 @@ import { RemoveButton } from './shared/RemoveButton';
 import { SearchableLanguageSelect } from './shared/SearchableLanguageSelect';
 import { saveSection } from './shared/saveSection';
 import { SaveButton } from './shared/SaveButton';
-import { AddEntryButton } from './shared/AddEntryButton';
+import { EntryListHeader } from './shared/EntryListHeader';
 import { findLanguage } from '@/src/data/languages';
 import { fieldCls as cls } from './shared/fieldCls';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
@@ -135,7 +136,10 @@ export function LanguagesSection({ profile, onSave }: Props) {
     <div>
       <SectionHeader sectionId="languages" />
       <details className="mb-5 rounded-lg border border-gray-200 dark:border-gray-700">
-        <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300">
+        <summary
+          {...stableDisclosureFocus}
+          className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300"
+        >
           <Info aria-hidden="true" className="h-3.5 w-3.5" />
           Proficiency guide
         </summary>
@@ -150,6 +154,8 @@ export function LanguagesSection({ profile, onSave }: Props) {
           ))}
         </dl>
       </details>
+
+      <EntryListHeader id="add-languages" onAdd={addEntry} label="+ Add Language" />
 
       {errors.general && (
         <p role="alert" className="text-sm text-red-500 mb-4">
@@ -197,8 +203,6 @@ export function LanguagesSection({ profile, onSave }: Props) {
           </div>
         ))}
       </div>
-
-      <AddEntryButton id="add-languages" onClick={addEntry} label="+ Add Language" />
 
       <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
         <SaveButton onClick={handleSave} saving={saving} label="Save Languages" />

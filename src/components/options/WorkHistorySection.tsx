@@ -21,7 +21,7 @@ import { MonthYearPicker } from './shared/MonthYearPicker';
 import { SearchableCountryDropdown } from './shared/SearchableCountryDropdown';
 import { saveSection } from './shared/saveSection';
 import { SaveButton } from './shared/SaveButton';
-import { AddEntryButton } from './shared/AddEntryButton';
+import { EntryListHeader } from './shared/EntryListHeader';
 import { fieldCls as cls } from './shared/fieldCls';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 import { useDateRangeValidation } from './shared/useDateRangeValidation';
@@ -262,11 +262,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       <SectionHeader sectionId="workHistory" />
 
       {/* ── Career Summary ──────────────────────────────────────────────────── */}
-      <FormField
-        error={errors.summary}
-        label="Career Summary"
-        hint={`${summary.length} / 2000`}
-      >
+      <FormField error={errors.summary} label="Career Summary" hint={`${summary.length} / 2000`}>
         <textarea
           id="field-summary"
           className={`${cls()} min-h-[100px] resize-y`}
@@ -278,21 +274,16 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       </FormField>
 
       {/* ── Work Entries ────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between mb-3 mt-2">
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Experience
-        </p>
-        <AddEntryButton
-          id="add-workHistory"
-          variant="pill"
-          onClick={() => {
-            const row = emptyRow();
-            setEntries((rows) => [...rows, row]);
-            setNewEntryTick((t) => t + 1);
-          }}
-          label="+ Add Entry"
-        />
-      </div>
+      <EntryListHeader
+        title="Experience"
+        id="add-workHistory"
+        onAdd={() => {
+          const row = emptyRow();
+          setEntries((rows) => [...rows, row]);
+          setNewEntryTick((t) => t + 1);
+        }}
+        label="+ Add Entry"
+      />
 
       {errors.general && (
         <p className="text-sm text-red-500 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">

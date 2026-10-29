@@ -7,7 +7,7 @@ import { FormField } from './shared/FormField';
 import { RemoveButton } from './shared/RemoveButton';
 import { saveSection } from './shared/saveSection';
 import { SaveButton } from './shared/SaveButton';
-import { AddEntryButton } from './shared/AddEntryButton';
+import { EntryListHeader } from './shared/EntryListHeader';
 import { fieldCls as cls } from './shared/fieldCls';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 import { withScheme } from '@/src/utils/url';
@@ -184,17 +184,14 @@ export function LinksSection({ profile, onSave }: Props) {
         ))}
       </datalist>
       <div className="mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Custom Links</p>
-          <AddEntryButton
-            variant="pill"
-            onClick={() => {
-              setCustom((rows) => [...rows, { label: '', url: '' }]);
-              setNewEntryTick((t) => t + 1);
-            }}
-            label="+ Add Entry"
-          />
-        </div>
+        <EntryListHeader
+          title="Custom Links"
+          onAdd={() => {
+            setCustom((rows) => [...rows, { label: '', url: '' }]);
+            setNewEntryTick((t) => t + 1);
+          }}
+          label="+ Add Entry"
+        />
         <div ref={customContainerRef}>
           {custom.map((c, idx) => (
             <div

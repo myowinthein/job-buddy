@@ -157,7 +157,7 @@ export function CompletionBanner({
               <p className="border-t border-gray-100 px-3 py-2 text-[11px] text-gray-500 dark:border-gray-700 dark:text-gray-400">
                 {isCoreComplete
                   ? 'Extra details do not affect progress'
-                  : 'Select a field · Save to update progress'}
+                  : 'Progress updates after saving'}
               </p>
             </div>
           )}

@@ -54,9 +54,11 @@ export function Sidebar({
       </div>
 
       <nav className="flex-1 overflow-y-auto py-2" aria-label="Profile sections">
-        <p className="hidden sm:block px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
-          Profile
-        </p>
+        {!collapsed && (
+          <p className="hidden sm:block px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+            Profile
+          </p>
+        )}
         {SECTIONS.map((section) => {
           const isActive = activeSection === section.id;
           const isMandatoryComplete = sectionCompletion[section.id];
@@ -78,7 +80,7 @@ export function Sidebar({
               aria-label={section.label}
               aria-describedby={`status-${section.id}`}
               aria-current={isActive ? 'page' : undefined}
-              className={`relative w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+              className={`relative w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center sm:justify-start'} ${
                 isActive
                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
@@ -115,16 +117,18 @@ export function Sidebar({
       <div
         className={`border-t border-gray-200 dark:border-gray-800 pt-1 pb-0 ${collapsed ? 'flex flex-col items-center px-2 gap-0' : 'px-0'}`}
       >
-        <p className="hidden sm:block px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
-          Tools
-        </p>
+        {!collapsed && (
+          <p className="hidden sm:block px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+            Tools
+          </p>
+        )}
         <button
           type="button"
           onClick={() => onSelect('resume')}
           title="Import Resume"
           aria-label="Import Resume"
           aria-current={activeSection === 'resume' ? 'page' : undefined}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center sm:justify-start'} ${
             activeSection === 'resume'
               ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
@@ -145,7 +149,7 @@ export function Sidebar({
           title="Learned Mappings"
           aria-label="Learned Mappings"
           aria-current={activeSection === 'learnedMappings' ? 'page' : undefined}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center sm:justify-start'} ${
             activeSection === 'learnedMappings'
               ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
@@ -164,7 +168,7 @@ export function Sidebar({
           title="Settings"
           aria-label="Settings"
           aria-current={activeSection === 'settings' ? 'page' : undefined}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
+          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center sm:justify-start'} ${
             activeSection === 'settings'
               ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'

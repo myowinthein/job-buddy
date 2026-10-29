@@ -1,3 +1,4 @@
+import { stableDisclosureFocus } from './shared/stableControlFocus';
 import { SectionHeader } from './shared/SectionHeader';
 import { useState, useRef, useEffect, type DragEvent } from 'react';
 import { DOCUMENT_FILE_SIZE_LABEL, documentFileSizeError } from '@/src/utils/documentLimits';
@@ -231,7 +232,10 @@ export function DocumentsSection({ profile, onSave }: Props) {
         onChange={(updates) => setCv((value) => ({ ...value, ...updates }))}
       />
       <details ref={coverRef} className="mb-4">
-        <summary className="cursor-pointer text-sm font-medium text-gray-800 dark:text-gray-200 mb-3">
+        <summary
+          {...stableDisclosureFocus}
+          className="cursor-pointer text-sm font-medium text-gray-800 dark:text-gray-200 mb-3"
+        >
           Cover letter
           {coverLetter.file || coverLetter.url ? ' · details added' : ''}
         </summary>

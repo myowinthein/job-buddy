@@ -1,5 +1,6 @@
-import { useId, type ReactNode } from 'react';
+import { cloneElement, isValidElement, useId, type MouseEventHandler, type ReactNode } from 'react';
 import type { useSearchableDropdown } from './useSearchableDropdown';
+import { deferPointerFocus, focusOnClick } from './stableControlFocus';
 
 interface Props<T> {
   // Full hook result from useSearchableDropdown<T> — owns open/search/highlight
@@ -29,15 +30,45 @@ export function SearchableDropdown<T>({
   isSelected,
   renderRow,
 }: Props<T>) {
-  const { open, search, hlIdx, filtered, containerRef, searchRef, listRef, setHlIdx, select, onSearchChange, handleKeyDown } = dropdown;
+  const {
+    open,
+    search,
+    hlIdx,
+    filtered,
+    containerRef,
+    searchRef,
+    listRef,
+    setHlIdx,
+    select,
+    onSearchChange,
+    handleKeyDown,
+  } = dropdown;
   const listId = useId();
+  const button =
+    isValidElement<{
+      onMouseDown?: MouseEventHandler<HTMLButtonElement>;
+      onClick?: MouseEventHandler<HTMLButtonElement>;
+    }>(trigger) && trigger.type === 'button'
+      ? cloneElement(trigger, {
+          onMouseDown: (event) => {
+            deferPointerFocus(event);
+            trigger.props.onMouseDown?.(event);
+          },
+          onClick: (event) => {
+            focusOnClick(event);
+            trigger.props.onClick?.(event);
+          },
+        })
+      : trigger;
 
   return (
     <div ref={containerRef} className={containerClassName}>
-      {trigger}
+      {button}
 
       {open && (
-        <div className={`absolute top-full left-0 mt-1.5 ${panelClassName} bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg dark:shadow-black/40 z-50`}>
+        <div
+          className={`absolute top-full left-0 mt-1.5 ${panelClassName} bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg dark:shadow-black/40 z-50`}
+        >
           <div className="p-2 border-b border-gray-100 dark:border-gray-700">
             <input
               ref={searchRef}

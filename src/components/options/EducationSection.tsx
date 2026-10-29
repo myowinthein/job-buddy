@@ -1,3 +1,4 @@
+import { stableDisclosureFocus } from './shared/stableControlFocus';
 import { SectionHeader } from './shared/SectionHeader';
 import { profileDateRangeErrors } from '@/src/utils/profileInputValidation';
 import { useSectionDraft } from './shared/useSectionDraft';
@@ -9,7 +10,7 @@ import { ExpandableCard } from './shared/ExpandableCard';
 import { MonthYearPicker } from './shared/MonthYearPicker';
 import { saveSection } from './shared/saveSection';
 import { SaveButton } from './shared/SaveButton';
-import { AddEntryButton } from './shared/AddEntryButton';
+import { EntryListHeader } from './shared/EntryListHeader';
 import { fieldCls as cls } from './shared/fieldCls';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 import { useDateRangeValidation } from './shared/useDateRangeValidation';
@@ -169,6 +170,16 @@ export function EducationSection({ profile, onSave }: Props) {
     <div>
       <SectionHeader sectionId="education" />
 
+      <EntryListHeader
+        id="add-education"
+        onAdd={() => {
+          const row = emptyRow();
+          setEntries((rows) => [...rows, row]);
+          setNewEntryTick((t) => t + 1);
+        }}
+        label="+ Add Education"
+      />
+
       {errors.general && (
         <p className="text-sm text-red-500 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
           {errors.general}
@@ -278,7 +289,10 @@ export function EducationSection({ profile, onSave }: Props) {
               </span>
             </label>
             <details className="mb-4">
-              <summary className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300">
+              <summary
+                {...stableDisclosureFocus}
+                className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
                 Grade and coursework
               </summary>
               <div className="mt-3">
@@ -306,16 +320,6 @@ export function EducationSection({ profile, onSave }: Props) {
         ))}
       </div>
       {/* entriesContainerRef */}
-
-      <AddEntryButton
-        id="add-education"
-        onClick={() => {
-          const row = emptyRow();
-          setEntries((rows) => [...rows, row]);
-          setNewEntryTick((t) => t + 1);
-        }}
-        label="+ Add Education"
-      />
 
       <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
         <SaveButton onClick={handleSave} saving={saving} label="Save Education" />
