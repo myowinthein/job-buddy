@@ -2,7 +2,6 @@ import type { Profile, WorkHistoryEntry, EducationEntry } from '../types/profile
 import { COUNTRIES } from '../data/countries';
 import { languageName, LANGUAGE_PROFICIENCY_LABELS } from '../data/languages';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
-import { fmtYearMonth } from '../utils/dateFormat';
 import { resolveProfileValue } from './resolver';
 
 // Builds a human-labeled tree of every profile field that currently has a
@@ -196,23 +195,10 @@ export function buildPickerTree(profile: Profile): Section[] {
       if (entry.company) rows.push(row('Company',   `workHistory.${idx}.company`, entry.company));
       if (entry.title)   rows.push(row('Job Title', `workHistory.${idx}.title`,   entry.title));
 
-      const locParts: string[] = [];
-      if (entry.location?.city)        locParts.push(entry.location.city);
-      if (entry.location?.countryCode) locParts.push(countryName(entry.location.countryCode));
-      const locStr = locParts.join(', ');
-      if (locStr) rows.push(row('Location', `workHistory.${idx}.location`, locStr));
-
-      if (entry.arrangement) {
-        const arrLabel = entry.arrangement.charAt(0).toUpperCase() + entry.arrangement.slice(1);
-        rows.push(row('Work Arrangement', `workHistory.${idx}.arrangement`, arrLabel));
-      }
-
-      const startFmt = entry.startDate ? fmtYearMonth(entry.startDate) : '';
-      if (startFmt) rows.push(row('Start Date', `workHistory.${idx}.startDate.formatted`, startFmt));
-
-      // isCurrent → show "Present" as End Date; do not add a separate "Currently Working" row
-      const endFmt = entry.isCurrent ? 'Present' : (entry.endDate ? fmtYearMonth(entry.endDate) : '');
-      if (endFmt) rows.push(row('End Date', `workHistory.${idx}.endDate.formatted`, endFmt));
+      addPath(rows, 'Location', `workHistory.${idx}.location`);
+      addPath(rows, 'Work Arrangement', `workHistory.${idx}.arrangement`);
+      addPath(rows, 'Start Date', `workHistory.${idx}.startDate.formatted`);
+      addPath(rows, 'End Date', `workHistory.${idx}.endDate.formatted`);
 
       if (entry.description) rows.push(row('Description', `workHistory.${idx}.description`, entry.description));
 
@@ -249,12 +235,8 @@ export function buildPickerTree(profile: Profile): Section[] {
       if (entry.degree)       rows.push(row('Degree',         `education.${idx}.degree`,       entry.degree));
       if (entry.fieldOfStudy) rows.push(row('Field of Study', `education.${idx}.fieldOfStudy`, entry.fieldOfStudy));
 
-      const startFmt = entry.startDate ? fmtYearMonth(entry.startDate) : '';
-      if (startFmt) rows.push(row('Start Date', `education.${idx}.startDate.formatted`, startFmt));
-
-      // isCurrent → show "Present" as End Date; do not add a separate "Currently Studying" row
-      const endFmt = entry.isCurrent ? 'Present' : (entry.endDate ? fmtYearMonth(entry.endDate) : '');
-      if (endFmt) rows.push(row('End Date', `education.${idx}.endDate.formatted`, endFmt));
+      addPath(rows, 'Start Date', `education.${idx}.startDate.formatted`);
+      addPath(rows, 'End Date', `education.${idx}.endDate.formatted`);
 
       if (entry.grade)       rows.push(row('Grade / GPA', `education.${idx}.grade`,       entry.grade));
       if (entry.description) rows.push(row('Description', `education.${idx}.description`, entry.description));

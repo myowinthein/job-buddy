@@ -373,3 +373,19 @@ describe('custom link original indices', () => {
     expect(resolveProfileValue(profile, row.fieldPath)).toBe('https://github.com/example');
   });
 });
+
+it('preserves formatted work and education previews, order, and current end dates', () => {
+  const profile = emptyProfile();
+  profile.workHistory = [{ company: 'Acme', title: 'Dev', location: { city: 'Paris', countryCode: 'FR' }, arrangement: 'remote', startDate: '2022-03', isCurrent: true }];
+  profile.education = [{ institution: 'School', degree: 'BSc', fieldOfStudy: '', startDate: '2015', endDate: '2019-06', isCurrent: false }];
+  const work = getSection(profile, 'work-history').items[0];
+  const education = getSection(profile, 'education').items[0];
+  if (work.kind !== 'subgroup' || education.kind !== 'subgroup') throw new Error('Expected entry groups');
+  expect(work.rows.map(({ label, value }) => [label, value])).toEqual([
+    ['Company', 'Acme'], ['Job Title', 'Dev'], ['Location', 'Paris, France'],
+    ['Work Arrangement', 'Remote'], ['Start Date', 'March 2022'], ['End Date', 'Present'],
+  ]);
+  expect(education.rows.map(({ label, value }) => [label, value])).toEqual([
+    ['Institution', 'School'], ['Degree', 'BSc'], ['Start Date', '2015'], ['End Date', 'June 2019'],
+  ]);
+});
