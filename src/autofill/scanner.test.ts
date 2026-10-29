@@ -484,3 +484,17 @@ describe('scanCheckboxGroups', () => {
     expect(groups[0].groupLabel).toBe('Select your skills');
   });
 });
+
+
+describe('radio consent classification', () => {
+  it.each(['Privacy consent', 'Work authorization'])('classifies a %s group without treating authorization as consent', (legend) => {
+    document.body.innerHTML = `<fieldset><legend>${legend}</legend><label>Yes<input type="radio" name="decision" value="yes"></label><label>No<input type="radio" name="decision" value="no"></label></fieldset>`;
+    const group = scanRadioGroups()[0];
+    expect(group.isConsent).toBe(legend === 'Privacy consent');
+  });
+});
+
+it('recognizes consent named by an ARIA radio group', () => {
+  document.body.innerHTML = '<span id="consent-label">Privacy consent</span><div role="radiogroup" aria-labelledby="consent-label"><label>Yes<input name="privacy" type="radio" value="yes"></label><label>No<input name="privacy" type="radio" value="no"></label></div>';
+  expect(scanRadioGroups()[0].isConsent).toBe(true);
+});

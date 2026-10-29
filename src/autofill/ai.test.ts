@@ -14,7 +14,7 @@ vi.mock('./filler', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./filler')>();
   return {
     findBestMatch:     actual.findBestMatch,
-    fillField:         vi.fn(),
+    fillField:         vi.fn().mockResolvedValue(true),
     fillRadioInput:    vi.fn(),
     fillCheckboxInput: vi.fn(),
   };
@@ -272,7 +272,7 @@ describe('runAIAutofill — high-confidence text fills', () => {
     );
 
     expect(ran).toBe(true);
-    expect(fillField).toHaveBeenCalledWith(cand.element, 'Jane');
+    expect(fillField).toHaveBeenCalledWith(cand.element, 'Jane', expect.any(Function));
     expect(result.lowConfidence).toBe(0);
     expect(result.noReview).toBe(1);
     expect(sessionElements).toContain(cand.element);
@@ -311,7 +311,7 @@ describe('runAIAutofill — high-confidence text fills', () => {
 
     await runAIAutofill([cand], PROFILE, result, [], 'example.com', undefined, aiGreenFilled);
 
-    expect(fillField).toHaveBeenCalledWith(cand.element, 'https://linkedin.com/in/jane');
+    expect(fillField).toHaveBeenCalledWith(cand.element, 'https://linkedin.com/in/jane', expect.any(Function));
     expect(result.needReview).toBe(0);
     expect(result.noReview).toBe(1);
     expect(aiGreenFilled.has(cand.element)).toBe(true);
@@ -368,7 +368,7 @@ describe('runAIAutofill — native <select> candidates', () => {
 
     await runAIAutofill([cand], PROFILE, freshResult(), [], 'example.com');
 
-    expect(fillField).toHaveBeenCalledWith(cand.element, 'Germany');
+    expect(fillField).toHaveBeenCalledWith(cand.element, 'Germany', expect.any(Function));
   });
 
   it('sends an ARIA combobox as type "select" with no options (unavailable until the dropdown opens)', async () => {
@@ -420,7 +420,7 @@ describe('runAIAutofill — low-confidence text fills', () => {
 
     await runAIAutofill([cand], PROFILE, result, [], 'example.com', undefined, aiGreenFilled);
 
-    expect(fillField).toHaveBeenCalledWith(cand.element, 'Jane');
+    expect(fillField).toHaveBeenCalledWith(cand.element, 'Jane', expect.any(Function));
     expect(result.lowConfidence).toBe(0);
     expect(result.needReview).toBe(1);
     expect(result.noReview).toBe(0);
@@ -630,4 +630,56 @@ describe('runAIAutofill — AI failure', () => {
     expect(result.lowConfidence).toBe(1);
     expect(result.noReview).toBe(0);
   });
+});
+
+
+describe('AI candidate ownership and debug identity', () => {
+  it('excludes consent radio groups entirely', async () => {
+    const yes = document.createElement('input'); yes.type = 'radio'; yes.value = 'yes';
+    const no = document.createElement('input'); no.type = 'radio'; no.value = 'no';
+    vi.mocked(scanRadioGroups).mockReturnValue([{ name: 'privacy', groupLabel: 'Privacy consent', options: [{ element: yes, label: 'Yes', value: 'yes' }, { element: no, label: 'No', value: 'no' }] }]);
+    mockResponses([]);
+    await runAIAutofill([], PROFILE, freshResult(), [], 'example.test');
+    expect(resolveFieldsWithAI).not.toHaveBeenCalled();
+    expect(fillRadioInput).not.toHaveBeenCalled();
+  });
+
+  it('joins AI debug output to the original scanner field rather than subset position', async () => {
+    const candidate = textCandidate('lowConfidence', 'Name'); candidate.debugFieldId = 'field_007';
+    mockResponses([{ fieldId: 'field_001', confidence: 'high', profilePath: 'personal.firstName' }]);
+    const debug: import('./debug').DebugAIField[] = [];
+    await runAIAutofill([candidate], PROFILE, freshResult(), [], 'example.test', debug);
+    expect(debug[0].fieldId).toBe('field_007');
+  });
+
+  it('preserves a radio selection made while the AI request is pending in merge mode', async () => {
+    const yes = document.createElement('input'); yes.type = 'radio'; yes.value = 'yes';
+    const no = document.createElement('input'); no.type = 'radio'; no.value = 'no';
+    vi.mocked(scanRadioGroups).mockReturnValue([{ name: 'authorization', groupLabel: 'Work authorization', options: [{ element: yes, label: 'Yes', value: 'yes' }, { element: no, label: 'No', value: 'no' }] }]);
+    let finish!: (responses: AIFieldResponse[]) => void;
+    vi.mocked(resolveFieldsWithAI).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const work = runAIAutofill([], PROFILE, freshResult(), [], 'example.test', undefined, undefined, { mode: 'merge' });
+    await vi.waitFor(() => expect(resolveFieldsWithAI).toHaveBeenCalled());
+    no.checked = true;
+    finish([{ fieldId: 'field_001', confidence: 'high', selectedOption: 'Yes' }]);
+    await work;
+    expect(fillRadioInput).not.toHaveBeenCalled();
+    expect(no.checked).toBe(true);
+  });
+});
+
+it('does not restore a rule-yellow value the user cleared while AI was pending', async () => {
+  const candidate = textCandidate('needReview', 'Name');
+  (candidate.element as HTMLInputElement).value = 'Rule answer';
+  let finish!: (responses: AIFieldResponse[]) => void;
+  vi.mocked(resolveFieldsWithAI).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+  const result = { ...freshResult(), needReview: 1 };
+  const work = runAIAutofill([candidate], PROFILE, result, [candidate.element], 'example.test');
+  await vi.waitFor(() => expect(resolveFieldsWithAI).toHaveBeenCalled());
+  (candidate.element as HTMLInputElement).value = '';
+  finish([{ fieldId: 'field_001', confidence: 'high', profilePath: 'personal.firstName' }]);
+  await work;
+  expect(fillField).not.toHaveBeenCalled();
+  expect((candidate.element as HTMLInputElement).value).toBe('');
+  expect(result).toEqual({ noReview: 0, needReview: 1, noData: 0, lowConfidence: 0 });
 });

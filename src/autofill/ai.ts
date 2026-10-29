@@ -1,3 +1,5 @@
+import { readFieldValue } from './fieldValue';
+import { isConsentGroup } from './consent';
 import type { Profile } from '../types/profile';
 import type { FieldSignals } from './signals';
 import { bestLabel } from './signals';
@@ -40,6 +42,12 @@ export function extractSelectOptions(select: HTMLSelectElement): AIOptionPayload
   return opts;
 }
 
+export interface AIAutofillOptions {
+  mode?: 'merge' | 'overwrite';
+  isActive?: () => boolean;
+  onTextFilled?: (element: HTMLElement, state: 'green' | 'yellow') => void;
+}
+
 // Returns true if the AI layer ran (key was available), false if skipped (no key).
 // Mutates `result` and `sessionElements` in-place.
 //
@@ -52,11 +60,7 @@ export function extractSelectOptions(select: HTMLSelectElement): AIOptionPayload
 // Text candidates come from all three non-green tiers (needReview, lowConfidence,
 // noData) — a needReview field is already filled from the rule pipeline, so a
 // high-confidence AI response overwrites that value, not just an empty field.
-// Any candidate AI doesn't turn green needs no edit-watcher wiring of our own
-// here: it stays in the caller's original editable-fields list (only
-// aiGreenFilled elements get removed from it) with its original state, so the
-// caller's own attachEditWatchers pass — which runs after this function
-// returns — attaches the real listener for it.
+// Actual AI outcomes are reported so the caller can update edit/refill state.
 export async function runAIAutofill(
   textCandidates: AITextCandidate[],
   profile: Profile,
@@ -65,13 +69,18 @@ export async function runAIAutofill(
   domain: string,
   debug?: DebugAIField[],
   aiGreenFilled?: Set<HTMLElement>,
+  options: AIAutofillOptions = {},
 ): Promise<boolean> {
   const [apiKey, storedModel] = await Promise.all([getGeminiApiKey(), getGeminiModel()]);
-  if (!apiKey || !storedModel) return false;
+  const isActive = options.isActive ?? (() => true);
+  if (!isActive() || !apiKey || !storedModel) return false;
   const model = toGeminiModel(storedModel);
 
-  const radioGroups    = scanRadioGroups();
-  const checkboxGroups = scanCheckboxGroups().filter((g) => !g.isConsent);
+  const eligible = (group: RadioGroup | CheckboxGroup) =>
+    !group.isConsent && !isConsentGroup(group) &&
+    !(options.mode === 'merge' && group.options.some((option) => option.element.checked));
+  const radioGroups = scanRadioGroups().filter(eligible);
+  const checkboxGroups = scanCheckboxGroups().filter(eligible);
 
   type Candidate =
     | AITextCandidate
@@ -123,6 +132,7 @@ export async function runAIAutofill(
     };
   });
 
+  const valuesAtRequest = new Map(textCandidates.map((candidate) => [candidate.element, readFieldValue(candidate.element)]));
   let responses: AIFieldResponse[];
   try {
     responses = await resolveFieldsWithAI(apiKey, model, payload, profile as object);
@@ -142,12 +152,18 @@ export async function runAIAutofill(
     const label = candidate.type === 'text'
       ? bestLabel(candidate.signals)
       : candidate.group.groupLabel;
-    debug.push({ fieldId, label, type: candidate.type, aiResult, aiConfidence, finalState });
+    const debugId = candidate.type === 'text' ? candidate.debugFieldId ?? fieldId : `ai_${candidate.type}_${fieldId}`;
+    debug.push({ fieldId: debugId, label, type: candidate.type, aiResult, aiConfidence, finalState });
   };
 
+  const handled = new Set<string>();
   for (const resp of responses) {
+    if (!isActive()) break;
+    if (handled.has(resp.fieldId)) continue;
+    handled.add(resp.fieldId);
     const candidate = candidateMap.get(resp.fieldId);
     if (!candidate) continue;
+    if (candidate.type !== 'text' && !eligible(candidate.group)) continue;
     const fieldId = resp.fieldId;
 
     if (resp.confidence === null) {
@@ -182,9 +198,19 @@ export async function runAIAutofill(
         continue;
       }
 
-      await fillField(candidate.element, value);
+      const liveValue = readFieldValue(candidate.element);
+      if (liveValue !== valuesAtRequest.get(candidate.element)) continue;
+      if (options.mode === 'merge' && candidate.originalState !== 'needReview' && liveValue.trim()) continue;
+      const alreadyOwned = sessionElements.includes(candidate.element);
+      if (!alreadyOwned) sessionElements.push(candidate.element);
+      const filled = await fillField(candidate.element, value, () => isActive() && readFieldValue(candidate.element) === liveValue);
+      if (!isActive()) break;
+      if (filled === false) {
+        if (!alreadyOwned) sessionElements.splice(sessionElements.indexOf(candidate.element), 1);
+        recordDebug(candidate, fieldId, aiResult, resp.confidence, 'unchanged');
+        continue;
+      }
       applyHighlight(candidate.element, confScore);
-      sessionElements.push(candidate.element);
 
       if (candidate.originalState === 'lowConfidence') {
         result.lowConfidence = Math.max(0, result.lowConfidence - 1);
@@ -205,6 +231,7 @@ export async function runAIAutofill(
       } else {
         result.needReview++;
       }
+      options.onTextFilled?.(candidate.element, isHigh ? 'green' : 'yellow');
       recordDebug(candidate, fieldId, aiResult, resp.confidence, isHigh ? 'green' : 'yellow');
 
     } else if (candidate.type === 'radio' && resp.selectedOption) {

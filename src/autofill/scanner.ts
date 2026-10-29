@@ -1,3 +1,5 @@
+import { isConsentGroup } from './consent';
+
 // Recursively discovers the light DOM root plus every *open* shadow root
 // nested within it, in DFS preorder (a root's own subtree before any of its
 // nested shadow roots) — the same order queryAllDeep below has always walked
@@ -137,14 +139,13 @@ function getGroupLegend(el: HTMLElement): string {
     const legend = fieldset.querySelector(':scope > legend');
     if (legend) return legend.textContent?.trim() ?? '';
   }
-  return '';
-}
-
-const CONSENT_TERMS = ['agree', 'terms', 'privacy', 'gdpr', 'consent', 'marketing'];
-
-function isConsentText(text: string): boolean {
-  const lower = text.toLowerCase();
-  return CONSENT_TERMS.some((t) => lower.includes(t));
+  const group = el.closest('[role="radiogroup"], [role="group"]');
+  if (!group) return '';
+  const label = group.getAttribute('aria-label');
+  if (label) return label;
+  const root = group.getRootNode() as Document | ShadowRoot;
+  return (group.getAttribute('aria-labelledby') ?? '').split(/\s+/)
+    .map((id) => root.getElementById?.(id)?.textContent?.trim() ?? '').filter(Boolean).join(' ');
 }
 
 export interface RadioOption {
@@ -154,6 +155,7 @@ export interface RadioOption {
 }
 
 export interface RadioGroup {
+  isConsent?: boolean;
   name:       string;
   groupLabel: string;
   options:    RadioOption[];
@@ -188,7 +190,7 @@ export function scanRadioGroups(): RadioGroup[] {
     if (els.length < 2) continue;
     const options = els.map((el) => ({ element: el, label: getOptionLabel(el), value: el.value }));
     const groupLabel = getGroupLegend(els[0]) || name;
-    groups.push({ name, groupLabel, options });
+    groups.push({ name, groupLabel, options, isConsent: isConsentGroup({ groupLabel, options }) });
   }
   return groups;
 }
@@ -210,7 +212,7 @@ export function scanCheckboxGroups(): CheckboxGroup[] {
   for (const [, els] of byName) {
     const options = els.map((el) => ({ element: el, label: getOptionLabel(el), value: el.value }));
     const groupLabel = getGroupLegend(els[0]) || (els[0].name ?? '');
-    const isConsent = isConsentText(groupLabel) || options.some((o) => isConsentText(o.label));
+    const isConsent = isConsentGroup({ groupLabel, options });
     groups.push({ name: els[0].name ?? '', groupLabel, isConsent, options });
   }
   return groups;
