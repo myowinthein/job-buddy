@@ -421,7 +421,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         }
         const validatedBackup = { ...backup, profile: validation.sanitized as Profile };
         if (validation.invalidFields.length > 0) {
-          showToast('warning', `${validation.invalidFields.length} invalid backup field(s) skipped.`);
+          const count = validation.invalidFields.length;
+          showToast('warning', `${count} invalid backup field${count === 1 ? '' : 's'} skipped.`);
         }
         if (isProfileEmpty(localProfile)) {
           setDriveRestoreCase('empty');
