@@ -66,7 +66,6 @@ let pendingReady = false;
 interface NoDataEntry {
   element:   HTMLElement;
   fieldPath: string;
-  label:     string;
 }
 let noDataFields: NoDataEntry[] = [];
 
@@ -88,12 +87,6 @@ function teardownVisibilityListener(): void {
   if (!visibilityHandler) return;
   document.removeEventListener('visibilitychange', visibilityHandler);
   visibilityHandler = null;
-}
-
-// Picks the most human-readable label from a field's signals for the noData
-// field registry.
-function extractDisplayLabel(signals: FieldSignals): string {
-  return bestLabel(signals) || signals.id || 'this field';
 }
 
 type EditableFieldState = 'lowConfidence' | 'needReview' | 'noData';
@@ -510,7 +503,6 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
 
     const isFileInput = element instanceof HTMLInputElement && element.type === 'file';
     const isCheckboxInput = element instanceof HTMLInputElement && element.type === 'checkbox';
-    const displayLabel = extractDisplayLabel(signals);
     let finalState: FieldFinalState;
 
     if (match.confidence >= CONF_FILL && match.value) {
@@ -557,7 +549,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // not manual typing.
         if (!isFileInput && !isCheckboxInput) editableFields.push({ element, state: 'needReview' });
         if (!isFileInput && !isCheckboxInput) {
-          aiTextCandidates.push({ type: 'text', element, signals, originalState: 'needReview', originalFieldPath: match.fieldPath, debugFieldId });
+          aiTextCandidates.push({ type: 'text', element, signals, originalState: 'needReview', debugFieldId });
         }
         finalState = 'yellow';
       }
@@ -568,7 +560,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       result.lowConfidence++;
       if (!isFileInput && !isCheckboxInput) editableFields.push({ element, state: 'lowConfidence' });
       if (!isFileInput && !isCheckboxInput) {
-        aiTextCandidates.push({ type: 'text', element, signals, originalState: 'lowConfidence', originalFieldPath: match.fieldPath, debugFieldId });
+        aiTextCandidates.push({ type: 'text', element, signals, originalState: 'lowConfidence', debugFieldId });
       }
       finalState = 'red';
 
@@ -584,8 +576,8 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // "no signal matched" branch leaves it null, and that takes the
         // lowConfidence path above), but check explicitly for type safety.
         if (match.fieldPath) {
-          noDataFields.push({ element, fieldPath: match.fieldPath, label: displayLabel });
-          aiTextCandidates.push({ type: 'text', element, signals, originalState: 'noData', originalFieldPath: match.fieldPath, debugFieldId });
+          noDataFields.push({ element, fieldPath: match.fieldPath });
+          aiTextCandidates.push({ type: 'text', element, signals, originalState: 'noData', debugFieldId });
         }
       }
       finalState = 'gray';
@@ -606,7 +598,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
 
   const debugAI: DebugAIField[] = [];
   const aiStates = new Map<HTMLElement, 'green' | 'yellow'>();
-  const aiRan = await runAIAutofill(aiTextCandidates, profile, result, ownedElements, domain, debugAI, {
+  const aiRan = await runAIAutofill(aiTextCandidates, profile, result, ownedElements, debugAI, {
     mode, isActive, onTextFilled: (element, state) => aiStates.set(element, state),
   });
   if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };

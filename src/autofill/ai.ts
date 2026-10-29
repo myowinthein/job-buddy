@@ -25,7 +25,6 @@ export interface AITextCandidate {
   element:          HTMLElement;
   signals:          FieldSignals;
   originalState:    'needReview' | 'lowConfidence' | 'noData';
-  originalFieldPath: string | null;
   /** Debug-only: ID assigned during scanAutofill so the debug panel can join scanner → mapping → AI. */
   debugFieldId?:    string;
 }
@@ -58,7 +57,6 @@ export async function runAIAutofill(
   profile: Profile,
   result: MutableResult,
   sessionElements: HTMLElement[],
-  domain: string,
   debug?: DebugAIField[],
   options: AIAutofillOptions = {},
 ): Promise<boolean> {
