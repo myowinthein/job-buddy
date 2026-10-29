@@ -314,12 +314,16 @@ export async function syncProfileToDrive(profile: Profile): Promise<SyncResult> 
     const body   = err instanceof DriveApiError ? err.body   : '';
     const errorCode = classifyError(status, body);
 
-    await saveDriveBackupState({
-      fileId:      prevState.fileId,
-      lastSynced:  prevState.lastSynced,
-      pendingSync: true,
-      error:       errorCode,
-    });
+    try {
+      await saveDriveBackupState({
+        fileId:      prevState.fileId,
+        lastSynced:  prevState.lastSynced,
+        pendingSync: true,
+        error:       errorCode,
+      });
+    } catch {
+      // Storage may be full too. Reporting a sync failure must still settle.
+    }
     dispatchDriveStateChanged();
     return { success: false, errorCode };
   }
