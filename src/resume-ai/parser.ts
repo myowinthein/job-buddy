@@ -87,6 +87,15 @@ function setDoublyNestedField<
   });
 }
 
+function salaryDisplay(s: Partial<Profile['salary']['current']>): string {
+  const parts: string[] = [];
+  if (s.amount != null) parts.push(String(s.amount));
+  if (s.currency)       parts.push(s.currency);
+  if (s.period)         parts.push(`(${s.period})`);
+  if (s.country)        parts.push(`(${s.country})`);
+  return parts.join(' ');
+}
+
 export const FIELD_DEFS: FieldDef[] = [
   // ── Personal ────────────────────────────────────────────────────────────────
   {
@@ -278,13 +287,7 @@ export const FIELD_DEFS: FieldDef[] = [
     },
     display: (v) => {
       if (!v) return '';
-      const s = v as Partial<Profile['salary']['current']>;
-      const parts: string[] = [];
-      if (s.amount != null) parts.push(String(s.amount));
-      if (s.currency)       parts.push(s.currency);
-      if (s.period)         parts.push(`(${s.period})`);
-      if (s.country)        parts.push(`(${s.country})`);
-      return parts.join(' ');
+      return salaryDisplay(v as Partial<Profile['salary']['current']>);
     },
   },
   {
@@ -299,14 +302,7 @@ export const FIELD_DEFS: FieldDef[] = [
     isEmpty: emptyArr,
     display: (v) => {
       const arr = (v ?? []) as Profile['salary']['expected'];
-      return arr.map((e) => {
-        const parts: string[] = [];
-        if (e.amount != null) parts.push(String(e.amount));
-        if (e.currency)       parts.push(e.currency);
-        if (e.period)         parts.push(`(${e.period})`);
-        if (e.country)        parts.push(`(${e.country})`);
-        return parts.join(' ');
-      }).join('\n');
+      return arr.map(salaryDisplay).join('\n');
     },
   },
   // ── Work Authorization ───────────────────────────────────────────────────────

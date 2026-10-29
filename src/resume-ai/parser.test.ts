@@ -488,3 +488,12 @@ describe('FIELD_DEFS setValue via applyChanges', () => {
     expect(result.documents?.coverLetter?.url).toBe('https://drive.example/old-letter.pdf');
   });
 });
+
+it('keeps salary display zeros, blank rows, and caller null behavior', () => {
+  const current = FIELD_DEFS.find((field) => field.id === 'salary.current')!;
+  const expected = FIELD_DEFS.find((field) => field.id === 'salary.expected')!;
+  expect(current.display({ amount: 0, currency: '', period: '', country: '' })).toBe('0');
+  expect(current.display(undefined)).toBe('');
+  expect(expected.display(undefined)).toBe('');
+  expect(expected.display([{ amount: 0 }, {}, { currency: 'USD' }])).toBe('0\n\nUSD');
+});
