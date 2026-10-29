@@ -376,8 +376,40 @@
         ],
         "invariant": "Preserve actual scanner/debug/learned labels, originalState, debugFieldId, mapping domain use elsewhere, call ordering and refill behavior."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "f3cd72874abfa5d0a122e6f07a8172d134369f13",
+        "date": "2026-10-29",
+        "method": "runtime",
+        "evidence": [
+          "Unused candidate path, domain argument and refill label removed; positional debug/options call sites and mocks adapted, actual labels/domain learning retained."
+        ],
+        "checks": [
+          {
+            "command": "pnpm compile",
+            "scope": "project including test signatures",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm exec vitest run src/autofill/ai.test.ts src/autofill/index.test.ts",
+            "scope": "AI and session lifecycle",
+            "outcome": "101 tests passed"
+          },
+          {
+            "command": "pnpm test:browser",
+            "scope": "production extension synthetic forms",
+            "outcome": "build and 3 scenarios passed"
+          },
+          {
+            "command": "pnpm exec eslint src/autofill/ai.ts src/autofill/index.ts src/autofill/ai.test.ts src/autofill/index.test.ts",
+            "scope": "R7 files",
+            "outcome": "passed"
+          }
+        ]
+      }
     },
     {
       "id": "r-a8cdd7d9-495b-42a6-acdf-395fd919a801",
