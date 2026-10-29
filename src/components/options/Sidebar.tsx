@@ -80,7 +80,7 @@ export function Sidebar({
               aria-label={section.label}
               aria-describedby={`status-${section.id}`}
               aria-current={isActive ? 'page' : undefined}
-              className={`relative w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center sm:justify-start'} ${
+              className={`w-full flex items-center px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center gap-1' : 'justify-center gap-1 sm:justify-start sm:gap-3'} ${
                 isActive
                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
@@ -98,7 +98,7 @@ export function Sidebar({
               <span
                 title={status}
                 aria-hidden="true"
-                className={`${collapsed ? 'absolute right-1 top-1' : 'absolute right-1 top-1 sm:static sm:ml-auto'} flex h-4 w-4 items-center justify-center shrink-0 ${isMandatoryComplete ? 'text-green-600 dark:text-green-400' : optionalSection ? 'text-gray-400 dark:text-gray-500' : 'text-amber-500 dark:text-amber-400'}`}
+                className={`${collapsed ? '' : 'sm:ml-auto'} flex h-4 w-4 items-center justify-center shrink-0 ${isMandatoryComplete ? 'text-green-600 dark:text-green-400' : optionalSection ? 'text-gray-400 dark:text-gray-500' : 'text-amber-500 dark:text-amber-400'}`}
               >
                 {isMandatoryComplete ? (
                   <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
