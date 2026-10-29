@@ -46,8 +46,9 @@ function normalizeSalary(salary: Profile['salary']): Profile['salary'] {
 function normalizeLinks(links: Profile['links']): Profile['links'] {
   if (!links) return links;
 
-  const nextLinkedin  = links.linkedin  ? withScheme(links.linkedin)  : links.linkedin;
-  const nextPortfolio = links.portfolio ? withScheme(links.portfolio) : links.portfolio;
+  const fields = ['linkedin', 'portfolio', 'github', 'twitter', 'dribbble', 'behance'] as const;
+  const normalized = Object.fromEntries(fields.map((key) => [key, links[key] ? withScheme(links[key]!) : links[key]]));
+  const urlsChanged = fields.some((key) => normalized[key] !== links[key]);
 
   let nextCustom = links.custom;
   let customChanged = false;
@@ -62,8 +63,8 @@ function normalizeLinks(links: Profile['links']): Profile['links'] {
     if (customChanged) nextCustom = next;
   }
 
-  if (nextLinkedin === links.linkedin && nextPortfolio === links.portfolio && !customChanged) return links;
-  return { ...links, linkedin: nextLinkedin, portfolio: nextPortfolio, custom: nextCustom };
+  if (!urlsChanged && !customChanged) return links;
+  return { ...links, ...normalized, custom: nextCustom };
 }
 
 /**

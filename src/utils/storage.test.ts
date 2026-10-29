@@ -94,7 +94,7 @@ describe('profile storage', () => {
       },
     };
     const result = await getProfile();
-    expect(result?.salary.current.period).toBe('monthly');
+    expect(result?.salary.current!.period).toBe('monthly');
     // The migrated profile is also written back so subsequent reads are clean
     const stored = store['profile'] as { salary: { current: { period?: string } } };
     expect(stored.salary.current.period).toBe('monthly');

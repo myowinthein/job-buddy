@@ -102,7 +102,7 @@ ${hyperlinksSection}Rules:
 - phone: split calling code from local number; infer country from context if needed
 - language proficiency: infer from context ("mother tongue" → native_bilingual, "fluent" → full_professional, "conversational" → professional_working)
 - salary.expected: always return empty array []
-- salary.current.period: required field, "monthly" or "annual"; if resume says "per month" / "p.m." / "/mo" → monthly, if "per annum" / "p.a." / "/year" → annual; default to "monthly" if unclear
+- salary.current is optional; return null when current pay is not stated. If present, salary.current.period is a required field, "monthly" or "annual"; if resume says "per month" / "p.m." / "/mo" → monthly, if "per annum" / "p.a." / "/year" → annual; default to "monthly" if unclear
 - Do not include: id, derived, documents, coverLetter
 - Return valid JSON only
 - For array fields with no data found, return []

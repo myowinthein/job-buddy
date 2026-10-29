@@ -16,6 +16,8 @@ export function SaveButton({ onClick, saving, label }: Props) {
         // Validation and collapsed-card expansion must commit before focusing.
         window.setTimeout(() => {
           const group = section?.querySelector('[data-field-error="true"]');
+          const details = group?.closest('details');
+          if (details) details.open = true;
           const invalid =
             group?.querySelector<HTMLElement>(
               'input:not(:disabled):not([type="file"]), select:not(:disabled), textarea:not(:disabled)',

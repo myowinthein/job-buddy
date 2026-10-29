@@ -8,6 +8,7 @@ import { SearchableLanguageSelect } from './shared/SearchableLanguageSelect';
 import { saveSection } from './shared/saveSection';
 import { SaveButton } from './shared/SaveButton';
 import { AddEntryButton } from './shared/AddEntryButton';
+import { findLanguage } from '@/src/data/languages';
 import { fieldCls as cls } from './shared/fieldCls';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 
@@ -17,25 +18,38 @@ interface Props {
 }
 
 const PROFICIENCY_OPTIONS: { value: LanguageProficiency; label: string }[] = [
-  { value: 'native_bilingual',    label: 'Native or bilingual proficiency' },
-  { value: 'full_professional',   label: 'Full professional proficiency (C1–C2)' },
-  { value: 'professional_working',label: 'Professional working proficiency (B2–C1)' },
-  { value: 'limited_working',     label: 'Limited working proficiency (B1–B2)' },
-  { value: 'elementary',          label: 'Elementary proficiency (A1–A2)' },
+  { value: 'native_bilingual', label: 'Native or bilingual proficiency' },
+  { value: 'full_professional', label: 'Full professional proficiency (C1–C2)' },
+  { value: 'professional_working', label: 'Professional working proficiency (B2–C1)' },
+  { value: 'limited_working', label: 'Limited working proficiency (B1–B2)' },
+  { value: 'elementary', label: 'Elementary proficiency (A1–A2)' },
 ];
+
+const PROFICIENCY_HELP: Record<string, string> = {
+  native_bilingual: 'You use this language naturally in most situations.',
+  full_professional: 'You can handle complex discussions, negotiation, and detailed writing.',
+  professional_working:
+    'You can work independently and communicate about familiar professional topics.',
+  limited_working:
+    'You can manage routine conversations and tasks, with support for complex topics.',
+  elementary: 'You can introduce yourself and exchange basic information.',
+};
 
 // Back-compat: old profiles used basic/conversational/professional/native.
 const PROFICIENCY_MIGRATION: Record<string, LanguageProficiency> = {
-  basic:         'elementary',
-  conversational:'limited_working',
-  professional:  'professional_working',
-  native:        'native_bilingual',
+  basic: 'elementary',
+  conversational: 'limited_working',
+  professional: 'professional_working',
+  native: 'native_bilingual',
 };
 
 function migrateProficiency(raw: string): LanguageProficiency {
-  return PROFICIENCY_MIGRATION[raw] ?? (PROFICIENCY_OPTIONS.some((o) => o.value === raw)
-    ? (raw as LanguageProficiency)
-    : 'professional_working');
+  return (
+    PROFICIENCY_MIGRATION[raw] ??
+    (PROFICIENCY_OPTIONS.some((o) => o.value === raw)
+      ? (raw as LanguageProficiency)
+      : 'professional_working')
+  );
 }
 
 type Row = { language: string; proficiency: LanguageProficiency | '' };
@@ -74,15 +88,21 @@ export function LanguagesSection({ profile, onSave }: Props) {
     setErrors((e) => ({ ...e, [`${idx}.proficiency`]: err }));
   };
 
-  const addEntry = () => { setEntries((rows) => [...rows, emptyRow()]); setNewEntryTick((t) => t + 1); };
+  const addEntry = () => {
+    setEntries((rows) => [...rows, emptyRow()]);
+    setNewEntryTick((t) => t + 1);
+  };
 
-  const removeEntry = (idx: number) =>
-    setEntries((rows) => rows.filter((_, i) => i !== idx));
+  const removeEntry = (idx: number) => setEntries((rows) => rows.filter((_, i) => i !== idx));
 
   const validate = () => {
     const e: Record<string, string> = {};
     if (!entries.length) e.general = 'At least one language is required';
+    const seen = new Set<string>();
     entries.forEach((row, idx) => {
+      const language = findLanguage(row.language)?.code ?? row.language.trim().toLowerCase();
+      if (seen.has(language)) e[`${idx}.language`] = 'This language is already listed';
+      seen.add(language);
       if (!row.language.trim()) e[`${idx}.language`] = 'Language is required';
       if (!row.proficiency) e[`${idx}.proficiency`] = 'Proficiency is required';
     });
@@ -95,12 +115,17 @@ export function LanguagesSection({ profile, onSave }: Props) {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await saveSection(saveDraft, {
-      languages: entries.map((r) => ({
-        language: r.language,
-        proficiency: r.proficiency || 'professional_working',
-      })),
-    }, showToast, 'Languages saved');
+    await saveSection(
+      saveDraft,
+      {
+        languages: entries.map((r) => ({
+          language: r.language,
+          proficiency: r.proficiency || 'professional_working',
+        })),
+      },
+      showToast,
+      'Languages saved',
+    );
     setSaving(false);
   };
 
@@ -108,15 +133,26 @@ export function LanguagesSection({ profile, onSave }: Props) {
     <div>
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Languages</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Add the languages you can use professionally.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Add the languages you can use professionally.
+        </p>
       </div>
 
-      {errors.general && <p role="alert" className="text-sm text-red-500 mb-4">{errors.general}</p>}
+      {errors.general && (
+        <p role="alert" className="text-sm text-red-500 mb-4">
+          {errors.general}
+        </p>
+      )}
       <div className="mb-4" ref={entriesContainerRef}>
         {entries.map((row, idx) => (
-          <div key={idx} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3">
+          <div
+            key={idx}
+            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3"
+          >
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Entry {idx + 1}</span>
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                Entry {idx + 1}
+              </span>
               <RemoveButton onClick={() => removeEntry(idx)} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -128,7 +164,12 @@ export function LanguagesSection({ profile, onSave }: Props) {
                   error={errors[`${idx}.language`]}
                 />
               </FormField>
-              <FormField label="Proficiency" required error={errors[`${idx}.proficiency`]}>
+              <FormField
+                label="Proficiency"
+                required
+                error={errors[`${idx}.proficiency`]}
+                hint={PROFICIENCY_HELP[row.proficiency]}
+              >
                 <select
                   id={`field-languages-${idx}-proficiency`}
                   className={cls(errors[`${idx}.proficiency`])}
@@ -138,7 +179,9 @@ export function LanguagesSection({ profile, onSave }: Props) {
                 >
                   <option value="">Select proficiency…</option>
                   {PROFICIENCY_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
                   ))}
                 </select>
               </FormField>

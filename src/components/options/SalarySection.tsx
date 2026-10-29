@@ -1,290 +1,261 @@
-import { isValidAmount } from '@/src/utils/profileInputValidation';
-import { useSectionDraft } from './shared/useSectionDraft';
-import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef } from 'react';
 import type { Profile, SalaryPeriod } from '@/src/types/profile';
+import { useToast } from '@/src/components/ui/useToast';
 import { findCountryByNameOrCode } from '@/src/data/countries';
-import { COUNTRY_TO_CURRENCY, primaryCountryForCurrency } from '@/src/data/currencies';
+import { COUNTRY_TO_CURRENCY, CURRENCIES } from '@/src/data/currencies';
+import { isValidAmount } from '@/src/utils/profileInputValidation';
 import { FormField } from './shared/FormField';
-import { SearchableCountryWithCurrencyDropdown } from './shared/SearchableCountryWithCurrencyDropdown';
+import { SearchableCountryDropdown } from './shared/SearchableCountryDropdown';
+import { SearchableCurrencySelect } from './shared/SearchableCurrencySelect';
 import { RemoveButton } from './shared/RemoveButton';
 import { saveSection } from './shared/saveSection';
 import { SaveButton } from './shared/SaveButton';
 import { AddEntryButton } from './shared/AddEntryButton';
-import { fieldCls as cls } from './shared/fieldCls';
+import { fieldCls } from './shared/fieldCls';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
+import { useSectionDraft } from './shared/useSectionDraft';
 
 interface Props {
   profile: Partial<Profile>;
   onSave: (updates: Partial<Profile>) => Promise<void>;
 }
-
-// ── Expected-salary row ───────────────────────────────────────────────────────
-type ExpectedRow = { countryCode: string; amount: string; period: SalaryPeriod };
-
-function emptyExpected(): ExpectedRow {
-  return { countryCode: '', amount: '', period: 'monthly' };
-}
-
-// Migration: old rows stored only `currency` (e.g. "SGD"). New rows store
-// `country` (ISO code). On load:
-//   1. Use `country` directly if present.
-//   2. Fall back to reverse-looking up `currency` — but only if the currency
-//      maps to exactly one country (unambiguous). EUR/USD/XOF etc. are left
-//      empty so the user explicitly picks.
-// `period` defaults to 'monthly' for any row that doesn't have one stored.
-function initExpectedRow(raw: { country?: string; amount?: number; currency?: string; period?: SalaryPeriod }): ExpectedRow {
-  let countryCode = '';
-
-  if (raw.country) {
-    const found = findCountryByNameOrCode(raw.country);
-    countryCode = found ? found.code : '';
-  }
-
-  if (!countryCode && raw.currency) {
-    countryCode = primaryCountryForCurrency(raw.currency) ?? '';
-  }
-
+type SalaryRow = { country: string; currency: string; amount: string; period: SalaryPeriod };
+const emptyRow = (): SalaryRow => ({ country: '', currency: '', amount: '', period: 'monthly' });
+function initRow(raw?: {
+  country?: string;
+  currency?: string;
+  amount?: number;
+  period?: SalaryPeriod;
+}): SalaryRow {
+  if (!raw) return emptyRow();
   return {
-    countryCode,
+    country: findCountryByNameOrCode(raw.country ?? '')?.code ?? '',
+    currency: raw.currency ?? '',
     amount: raw.amount != null ? String(raw.amount) : '',
     period: raw.period ?? 'monthly',
   };
 }
+const started = (row: SalaryRow) => !!(row.country || row.currency || row.amount.trim());
+function rowErrors(row: SalaryRow): Record<string, string> {
+  if (!started(row)) return {};
+  const errors: Record<string, string> = {};
+  if (!row.amount.trim()) errors.amount = 'Amount is required';
+  else if (!isValidAmount(row.amount)) errors.amount = 'Enter a valid amount';
+  if (!row.currency) errors.currency = 'Currency is required';
+  else if (!CURRENCIES.some((currency) => currency.code === row.currency))
+    errors.currency = 'Select a valid currency';
+  if (row.country && !findCountryByNameOrCode(row.country))
+    errors.country = 'Select a valid country';
+  return errors;
+}
+function serialize(row: SalaryRow) {
+  return {
+    amount: Number(row.amount),
+    currency: row.currency,
+    country: row.country || undefined,
+    period: row.period,
+  };
+}
 
 export function SalarySection({ profile, onSave }: Props) {
-  const s = profile.salary;
-
-  // ── Current salary ──────────────────────────────────────────────────────────
-  // Migrate old shape:
-  //   1. Use `country` directly if present (new shape).
-  //   2. Otherwise reverse-look up `currency` — only if it maps to exactly one
-  //      country (unambiguous). EUR/USD/XOF etc. are left empty so the user
-  //      picks explicitly.
-  const initCurrentCountry = (() => {
-    if (s?.current?.country) {
-      const found = findCountryByNameOrCode(s.current.country);
-      if (found) return found.code;
-    }
-    if (s?.current?.currency) {
-      return primaryCountryForCurrency(s.current.currency) ?? '';
-    }
-    return '';
-  })();
-
-  const [currentCountry, setCurrentCountry] = useState(initCurrentCountry);
-  const [currentAmount, setCurrentAmount] = useState(
-    s?.current?.amount != null ? String(s.current.amount) : '',
+  const [current, setCurrent] = useState(() => initRow(profile.salary?.current));
+  const [expected, setExpected] = useState<SalaryRow[]>(() =>
+    profile.salary?.expected?.length ? profile.salary.expected.map(initRow) : [emptyRow()],
   );
-  const [currentPeriod, setCurrentPeriod] = useState<SalaryPeriod>(
-    s?.current?.period ?? 'monthly',
-  );
-
-  // ── Expected salary rows ────────────────────────────────────────────────────
-  const [expected, setExpected] = useState<ExpectedRow[]>(
-    s?.expected?.length ? s.expected.map(initExpectedRow) : [emptyExpected()],
-  );
-
-
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
-
+  const { showToast } = useToast();
   const [newEntryTick, setNewEntryTick] = useState(0);
   const entriesContainerRef = useRef<HTMLDivElement>(null);
   useScrollToNewEntry(entriesContainerRef, newEntryTick);
+  const saveDraft = useSectionDraft({ current, expected }, onSave);
 
-  // Per-row partial-entry validation: if either field is set, both are required.
-  // Returns errors keyed as `expected.<idx>.countryCode` / `expected.<idx>.amount`.
-  const expectedRowErrors = (row: ExpectedRow, idx: number): Record<string, string> => {
-    const e: Record<string, string> = {};
-    const hasCountry = !!row.countryCode;
-    const hasAmount  = row.amount.trim() !== '';
-    if (hasCountry && !hasAmount) e[`expected.${idx}.amount`] = 'Amount is required';
-    if (!hasCountry && hasAmount) e[`expected.${idx}.countryCode`] = 'Country is required';
-    if (hasAmount && !isValidAmount(row.amount))
-      e[`expected.${idx}.amount`] = 'Enter a valid amount';
-    return e;
-  };
-
-  const recheckExpectedRow = (idx: number, nextRow: ExpectedRow) => {
-    const rowErrs = expectedRowErrors(nextRow, idx);
-    setErrors((e) => ({
-      ...e,
-      [`expected.${idx}.countryCode`]: rowErrs[`expected.${idx}.countryCode`] ?? '',
-      [`expected.${idx}.amount`]:      rowErrs[`expected.${idx}.amount`]      ?? '',
+  const update = (row: SalaryRow, key: keyof SalaryRow, value: string): SalaryRow => ({
+    ...row,
+    [key]: value,
+    ...(key === 'country' && COUNTRY_TO_CURRENCY[value]
+      ? { currency: COUNTRY_TO_CURRENCY[value] }
+      : {}),
+  });
+  const checkRow = (prefix: string, row: SalaryRow) => {
+    const nextErrors = rowErrors(row);
+    setErrors((previous) => ({
+      ...previous,
+      ...Object.fromEntries(
+        ['country', 'currency', 'amount'].map((key) => [`${prefix}.${key}`, nextErrors[key] ?? '']),
+      ),
     }));
   };
-
-  const setExpectedField = (idx: number, key: keyof ExpectedRow, value: string) => {
-    setExpected((rows) => {
-      const next = rows.map((r, i) => {
-        if (i !== idx) return r;
-        if (key === 'period') return { ...r, period: value as SalaryPeriod };
-        return { ...r, [key]: value };
-      });
-      recheckExpectedRow(idx, next[idx]);
-      return next;
-    });
+  const changeCurrent = (key: keyof SalaryRow, value: string) => {
+    const next = update(current, key, value);
+    setCurrent(next);
+    checkRow('current', next);
   };
-
-  const validate = () => {
-    const e: Record<string, string> = {};
-    if (currentAmount.trim() === '') e.currentAmount = 'Current salary amount is required';
-    else if (!isValidAmount(currentAmount))
-      e.currentAmount = 'Enter a valid amount';
-    if (!currentCountry) e.currentCountry = 'Country is required';
-    else if (!COUNTRY_TO_CURRENCY[currentCountry]) e.currentCountry = 'Select a country with a currency';
-    expected.forEach((row, idx) => Object.assign(e, expectedRowErrors(row, idx)));
-    setErrors(e);
-    return Object.keys(e).length === 0;
+  const changeExpected = (index: number, key: keyof SalaryRow, value: string) => {
+    const next = update(expected[index], key, value);
+    setExpected((rows) => rows.map((row, i) => (i === index ? next : row)));
+    checkRow(`expected.${index}`, next);
   };
-
-  const saveDraft = useSectionDraft({ currentCountry, currentAmount, currentPeriod, expected }, onSave);
-
   const handleSave = async () => {
-    if (!validate()) return;
+    const nextErrors: Record<string, string> = {};
+    for (const [key, error] of Object.entries(rowErrors(current)))
+      nextErrors[`current.${key}`] = error;
+    expected.forEach((row, index) => {
+      for (const [key, error] of Object.entries(rowErrors(row)))
+        nextErrors[`expected.${index}.${key}`] = error;
+    });
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
     setSaving(true);
-    const currentCurrency = COUNTRY_TO_CURRENCY[currentCountry] || '';
-    await saveSection(saveDraft, {
-      salary: {
-        current: {
-          amount: Number(currentAmount),
-          currency: currentCurrency,
-          country: currentCountry || undefined,
-          period: currentPeriod,
+    await saveSection(
+      saveDraft,
+      {
+        salary: {
+          current: started(current) ? serialize(current) : undefined,
+          expected: expected.filter(started).map(serialize),
         },
-        expected: expected
-          // Drop fully-empty rows so the user can leave the form with no
-          // expected salary entries without saving placeholder objects.
-          .filter((r) => r.countryCode || r.amount.trim() !== '')
-          .map((r) => ({
-            country: r.countryCode || undefined,
-            currency: r.countryCode ? (COUNTRY_TO_CURRENCY[r.countryCode] || undefined) : undefined,
-            amount: r.amount !== '' ? Number(r.amount) : undefined,
-            period: r.period,
-          })),
       },
-    }, showToast, 'Salary saved');
+      showToast,
+      'Salary saved',
+    );
     setSaving(false);
   };
 
+  const renderRow = (
+    row: SalaryRow,
+    prefix: string,
+    change: (key: keyof SalaryRow, value: string) => void,
+    expectedIndex?: number,
+  ) => {
+    const isCurrent = expectedIndex === undefined;
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+        <FormField label="Amount" error={errors[`${prefix}.amount`]}>
+          <input
+            id={isCurrent ? 'field-currentAmount' : `field-expected-${expectedIndex}-amount`}
+            type="number"
+            min={0}
+            step="any"
+            className={fieldCls(errors[`${prefix}.amount`])}
+            value={row.amount}
+            onChange={(e) => change('amount', e.target.value)}
+            placeholder={isCurrent ? '80000' : '100000'}
+          />
+        </FormField>
+        <FormField label="Currency" error={errors[`${prefix}.currency`]}>
+          <SearchableCurrencySelect
+            id={isCurrent ? 'field-currentCurrency' : `field-expected-${expectedIndex}-currency`}
+            value={row.currency}
+            onChange={(value) => change('currency', value)}
+            error={errors[`${prefix}.currency`]}
+          />
+        </FormField>
+        <FormField label="Period">
+          <select
+            className={fieldCls()}
+            value={row.period}
+            onChange={(e) => change('period', e.target.value)}
+          >
+            <option value="monthly">Monthly</option>
+            <option value="annual">Annual</option>
+          </select>
+        </FormField>
+        <FormField
+          label="Country"
+          hint="Optional. Selecting a country suggests its currency; you can change it."
+          error={errors[`${prefix}.country`]}
+        >
+          <>
+            <SearchableCountryDropdown
+              id={isCurrent ? 'field-currentCountry' : `field-expected-${expectedIndex}-country`}
+              value={row.country}
+              onChange={(value) => change('country', value)}
+              error={errors[`${prefix}.country`]}
+            />
+            {row.country && (
+              <button
+                type="button"
+                onClick={() => change('country', '')}
+                className="mt-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Clear country
+              </button>
+            )}
+          </>
+        </FormField>
+      </div>
+    );
+  };
   return (
     <div>
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Salary</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Current compensation and expected salary</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Optional compensation details. Enter gross base pay before tax, excluding bonuses and
+          benefits.
+        </p>
       </div>
-
-      {/* ── Current Salary ─────────────────────────────────────────────────── */}
-      <div className="mb-6">
-        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">Current Salary</h3>
-        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <FormField label="Country" required error={errors.currentCountry}>
-              <SearchableCountryWithCurrencyDropdown
-                id="field-currentCountry"
-                value={currentCountry}
-                onChange={(code) => {
-                  setCurrentCountry(code);
-                  setErrors((err) => ({ ...err, currentCountry: code ? '' : 'Country is required' }));
-                }}
-                error={errors.currentCountry}
-              />
-            </FormField>
-            <FormField label="Amount" required error={errors.currentAmount}>
-              <input
-                id="field-currentAmount"
-                type="number"
-                min={0}
-                step="any"
-                className={cls(errors.currentAmount)}
-                value={currentAmount}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  setCurrentAmount(raw);
-                  let amtErr = '';
-                  if (raw.trim() === '') amtErr = 'Current salary amount is required';
-                  else if (!isValidAmount(raw)) amtErr = 'Enter a valid amount';
-                  setErrors((err) => ({ ...err, currentAmount: amtErr }));
-                }}
-                placeholder="80000"
-              />
-            </FormField>
-            <FormField label="Period" required error={errors.currentPeriod}>
-              <select
-                className={cls(errors.currentPeriod)}
-                value={currentPeriod}
-                onChange={(e) => setCurrentPeriod(e.target.value as SalaryPeriod)}
-              >
-                <option value="monthly">Monthly</option>
-                <option value="annual">Annual</option>
-              </select>
-            </FormField>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Expected Salary ────────────────────────────────────────────────── */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Expected Salary</h3>
-          <AddEntryButton
-            id="add-expected"
-            variant="pill"
-            onClick={() => { setExpected((r) => [...r, emptyExpected()]); setNewEntryTick((t) => t + 1); }}
-            label="+ Add Entry"
-          />
-        </div>
+      <section className="mb-6">
+        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
+          Expected Salary
+        </h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+          Add expectations independently of current pay. Leave unused entries blank.
+        </p>
         <div ref={entriesContainerRef}>
-        {expected.map((row, idx) => (
-          <div key={idx} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Entry {idx + 1}</span>
-              <RemoveButton
-                onClick={() => setExpected((rows) => rows.filter((_, i) => i !== idx))}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <FormField label="Country" error={errors[`expected.${idx}.countryCode`]}>
-                <SearchableCountryWithCurrencyDropdown
-                  id={`field-expected-${idx}-country`}
-                  value={row.countryCode}
-                  onChange={(code) => setExpectedField(idx, 'countryCode', code)}
-                  error={errors[`expected.${idx}.countryCode`]}
+          {expected.map((row, index) => (
+            <div
+              key={index}
+              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3"
+            >
+              <div className="flex justify-between mb-3">
+                <span className="text-xs text-gray-500 dark:text-gray-400">Entry {index + 1}</span>
+                <RemoveButton
+                  onClick={() => setExpected((rows) => rows.filter((_, i) => i !== index))}
                 />
-              </FormField>
-              <FormField label="Amount" error={errors[`expected.${idx}.amount`]}>
-                <input
-                  type="number"
-                  min={0}
-                  step="any"
-                  className={cls(errors[`expected.${idx}.amount`])}
-                  id={`field-expected-${idx}-amount`}
-                  value={row.amount}
-                  onChange={(e) => setExpectedField(idx, 'amount', e.target.value)}
-                  onBlur={() => recheckExpectedRow(idx, row)}
-                  placeholder="100000"
-                />
-              </FormField>
-              <FormField label="Period" required>
-                <select
-                  className={cls()}
-                  value={row.period}
-                  onChange={(e) => setExpectedField(idx, 'period', e.target.value)}
-                >
-                  <option value="monthly">Monthly</option>
-                  <option value="annual">Annual</option>
-                </select>
-              </FormField>
+              </div>
+              {renderRow(
+                row,
+                `expected.${index}`,
+                (key, value) => changeExpected(index, key, value),
+                index,
+              )}
             </div>
-          </div>
-        ))}
-        </div>{/* entriesContainerRef */}
-      </div>
-
-      <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
+          ))}
+        </div>
+        <AddEntryButton
+          id="add-expected"
+          onClick={() => {
+            setExpected((rows) => [...rows, emptyRow()]);
+            setNewEntryTick((value) => value + 1);
+          }}
+          label="+ Add Entry"
+        />
+      </section>
+      <section className="mb-6">
+        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
+          Current Salary · optional
+        </h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+          You can leave this blank. It is not needed to save your expected salary.
+        </p>
+        {started(current) && (
+          <button
+            type="button"
+            onClick={() => {
+              setCurrent(emptyRow());
+              checkRow('current', emptyRow());
+            }}
+            className="mb-3 text-xs text-red-600 dark:text-red-400 hover:underline"
+          >
+            Remove current salary
+          </button>
+        )}
+        <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+          {renderRow(current, 'current', changeCurrent)}
+        </div>
+      </section>
+      <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
         <SaveButton onClick={handleSave} saving={saving} label="Save Salary" />
       </div>
     </div>

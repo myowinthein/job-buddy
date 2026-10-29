@@ -17,10 +17,11 @@ function renderSection(profile: Partial<Profile>, onSave = vi.fn().mockResolvedV
 }
 
 describe('DocumentsSection — toDocumentEntry: URL and file must never become mutually exclusive', () => {
-  it.each(['https://example.com/cv.pdf', ''])('retains the uploaded file after switching to URL mode (URL: %s)', (url) => {
+  it.each(['https://example.com/cv.pdf', ''])('shows and retains the uploaded file alongside the URL input (URL: %s)', (url) => {
     const file = { name: 'cv.pdf', size: 1024, base64: 'abc' };
     const { onSave } = renderSection({ documents: { cv: { url, file } } });
-    fireEvent.click(screen.getByRole('button', { name: 'URL' }));
+    expect(screen.getByText('cv.pdf')).toBeTruthy();
+    expect(document.getElementById('field-cv')).toBeTruthy();
     fireEvent.click(screen.getByText('Save Documents'));
     expect(onSave).toHaveBeenCalledWith({
       documents: { cv: { ...(url ? { url } : {}), file }, coverLetter: undefined },
@@ -42,9 +43,7 @@ describe('DocumentsSection — toDocumentEntry: URL and file must never become m
   it('adds a file to an existing URL rather than replacing it', async () => {
     const { onSave } = renderSection({ documents: { cv: { url: 'https://example.com/cv.pdf' } } });
 
-    // Switch to the Upload tab (the URL stays in state — switching tabs does
-    // not clear it) and simulate a file upload.
-    fireEvent.click(screen.getByText('Upload'));
+    // Adding a file must retain the existing URL.
     const file = new File(['%PDF-1.4 fake content'], 'resume.pdf', { type: 'application/pdf' });
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(fileInput, { target: { files: [file] } });
@@ -69,16 +68,15 @@ describe('DocumentsSection — toDocumentEntry: URL and file must never become m
 });
 
 describe('DocumentsSection — required-field and URL-format validation', () => {
-  it('blocks save and shows an error when neither a URL nor a file is provided', () => {
+  it('allows clearing CV data while other documents remain independent', () => {
     const { onSave } = renderSection({ documents: { cv: {} } });
     fireEvent.click(screen.getByText('Save Documents'));
-    expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('Provide a URL or upload a file')).toBeTruthy();
+    expect(onSave).toHaveBeenCalledWith({ documents: { cv: {}, coverLetter: undefined } });
   });
 
   it('blocks save on an invalid URL', () => {
     const { onSave } = renderSection({ documents: { cv: {} } });
-    fireEvent.change(screen.getByPlaceholderText('https://drive.google.com/file/...'), { target: { value: 'not a url' } });
+    fireEvent.change(document.getElementById('field-cv')!, { target: { value: 'not a url' } });
     fireEvent.click(screen.getByText('Save Documents'));
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('Enter a valid URL')).toBeTruthy();
@@ -88,7 +86,6 @@ describe('DocumentsSection — required-field and URL-format validation', () => 
 describe('DocumentsSection — file-type restriction (drag-and-drop bypasses the input\'s accept attribute)', () => {
   it('rejects a non-PDF/DOC/DOCX file selected via the file input', async () => {
     renderSection({ documents: { cv: {} } });
-    fireEvent.click(screen.getByText('Upload'));
 
     const file = new File(['not a document'], 'malware.exe', { type: 'application/octet-stream' });
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -100,7 +97,6 @@ describe('DocumentsSection — file-type restriction (drag-and-drop bypasses the
 
   it('accepts a .docx file', async () => {
     renderSection({ documents: { cv: {} } });
-    fireEvent.click(screen.getByText('Upload'));
 
     const file = new File(['fake docx content'], 'resume.docx', {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -116,10 +112,9 @@ describe('DocumentsSection — file-type restriction (drag-and-drop bypasses the
 describe('DocumentsSection — drag-and-drop upload', () => {
   it('accepts a valid file dropped onto the dropzone', async () => {
     renderSection({ documents: { cv: {} } });
-    fireEvent.click(screen.getByText('Upload'));
 
     const file = new File(['fake pdf content'], 'resume.pdf', { type: 'application/pdf' });
-    const dropzone = screen.getByText('Drag & drop a file here, or click to browse').parentElement!;
+    const dropzone = screen.getAllByText(/Or drop a PDF or Word document here/)[0].parentElement!;
     fireEvent.drop(dropzone, { dataTransfer: { files: [file] } });
 
     expect(await screen.findByText('resume.pdf')).toBeTruthy();
@@ -127,10 +122,9 @@ describe('DocumentsSection — drag-and-drop upload', () => {
 
   it('runs the same type validation for a dropped file as for a browsed one', async () => {
     renderSection({ documents: { cv: {} } });
-    fireEvent.click(screen.getByText('Upload'));
 
     const file = new File(['not a document'], 'malware.exe', { type: 'application/octet-stream' });
-    const dropzone = screen.getByText('Drag & drop a file here, or click to browse').parentElement!;
+    const dropzone = screen.getAllByText(/Or drop a PDF or Word document here/)[0].parentElement!;
     fireEvent.drop(dropzone, { dataTransfer: { files: [file] } });
 
     expect(await screen.findByText('Only PDF and Word documents (.pdf, .doc, .docx) are supported')).toBeTruthy();
@@ -138,9 +132,8 @@ describe('DocumentsSection — drag-and-drop upload', () => {
 
   it('clears dragOver highlighting state via onDrop, not just the file itself', async () => {
     renderSection({ documents: { cv: {} } });
-    fireEvent.click(screen.getByText('Upload'));
 
-    const dropzone = screen.getByText('Drag & drop a file here, or click to browse').parentElement!;
+    const dropzone = screen.getAllByText(/Or drop a PDF or Word document here/)[0].parentElement!;
     fireEvent.dragOver(dropzone);
     const file = new File(['fake pdf content'], 'resume.pdf', { type: 'application/pdf' });
     fireEvent.drop(dropzone, { dataTransfer: { files: [file] } });
@@ -157,7 +150,6 @@ describe('DocumentsSection — drag-and-drop upload', () => {
 describe('DocumentsSection — Remove file', () => {
   it('clears the attached file and reverts the dropzone to its empty state', async () => {
     renderSection({ documents: { cv: {} } });
-    fireEvent.click(screen.getByText('Upload'));
 
     const file = new File(['fake pdf content'], 'resume.pdf', { type: 'application/pdf' });
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -167,12 +159,11 @@ describe('DocumentsSection — Remove file', () => {
     fireEvent.click(screen.getByText('Remove file'));
 
     expect(screen.queryByText('resume.pdf')).toBeNull();
-    expect(screen.getByText('Drag & drop a file here, or click to browse')).toBeTruthy();
+    expect(screen.getAllByText(/Or drop a PDF or Word document here/)[0]).toBeTruthy();
   });
 
   it('does not also trigger the dropzone click-to-browse handler (event does not bubble to open the file picker)', async () => {
     renderSection({ documents: { cv: {} } });
-    fireEvent.click(screen.getByText('Upload'));
 
     const file = new File(['fake pdf content'], 'resume.pdf', { type: 'application/pdf' });
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -197,7 +188,6 @@ describe('DocumentsSection — file-size restriction (4 MB cap)', () => {
 
   it('rejects a file over the 4 MB limit and reports its size', async () => {
     renderSection({ documents: { cv: {} } });
-    fireEvent.click(screen.getByText('Upload'));
 
     const file = new File(['x'], 'big.pdf', { type: 'application/pdf' });
     Object.defineProperty(file, 'size', { value: 5 * 1024 * 1024 });
@@ -210,7 +200,6 @@ describe('DocumentsSection — file-size restriction (4 MB cap)', () => {
 
   it('accepts a file under the 4 MB limit', async () => {
     renderSection({ documents: { cv: {} } });
-    fireEvent.click(screen.getByText('Upload'));
 
     const file = new File(['x'], 'small.pdf', { type: 'application/pdf' });
     Object.defineProperty(file, 'size', { value: 3 * 1024 * 1024 });
@@ -223,7 +212,7 @@ describe('DocumentsSection — file-size restriction (4 MB cap)', () => {
 });
 
 describe('DocumentsSection — cover letter preservation', () => {
-  it('preserves an existing cover letter unchanged even though the form does not expose it', () => {
+  it('preserves an existing cover letter unchanged when editing the CV', () => {
     const { onSave } = renderSection({
       documents: {
         cv: { url: 'https://example.com/cv.pdf' },
@@ -253,7 +242,6 @@ describe('DocumentsSection — file read lifecycle', () => {
     const { read, finish } = pendingReads();
     try {
       const { onSave } = renderSection({ documents: { cv: {} } });
-      fireEvent.click(screen.getByText('Upload'));
       const input = document.querySelector('input[type="file"]')!;
       fireEvent.change(input, { target: { files: [new File(['a'], 'a.pdf')] } });
       fireEvent.change(input, { target: { files: [new File(['b'], 'b.pdf')] } });

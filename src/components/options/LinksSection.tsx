@@ -20,10 +20,16 @@ interface Props {
 export function LinksSection({ profile, onSave }: Props) {
   const l = profile.links;
   const [form, setForm] = useState({
-    linkedin:  l?.linkedin  ?? '',
+    linkedin: l?.linkedin ?? '',
     portfolio: l?.portfolio ?? '',
+    github: l?.github ?? '',
+    twitter: l?.twitter ?? '',
+    dribbble: l?.dribbble ?? '',
+    behance: l?.behance ?? '',
   });
-  const [custom, setCustom] = useState<CustomLink[]>(l?.custom?.length ? l.custom : [{ label: '', url: '' }]);
+  const [custom, setCustom] = useState<CustomLink[]>(
+    l?.custom?.length ? l.custom : [{ label: '', url: '' }],
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -43,11 +49,10 @@ export function LinksSection({ profile, onSave }: Props) {
 
   const fieldError = (key: string, value: string): string => {
     if (key === 'linkedin') {
-      if (!value.trim()) return 'LinkedIn URL is required';
+      if (!value.trim()) return '';
       if (!isLinkedInUrl(value)) return 'Enter a valid LinkedIn URL';
     }
-    if (key === 'portfolio' && value.trim() && !isValidUrl(value.trim()))
-      return 'Enter a valid URL';
+    if (key !== 'linkedin' && value.trim() && !isValidUrl(value.trim())) return 'Enter a valid URL';
     return '';
   };
 
@@ -57,7 +62,10 @@ export function LinksSection({ profile, onSave }: Props) {
   };
 
   const handleBlur = (key: string) => {
-    setErrors((e) => ({ ...e, [key]: fieldError(key, (form as Record<string, string>)[key] ?? '') }));
+    setErrors((e) => ({
+      ...e,
+      [key]: fieldError(key, (form as Record<string, string>)[key] ?? ''),
+    }));
   };
 
   const updateCustom = (idx: number, key: keyof CustomLink, value: string) => {
@@ -76,7 +84,14 @@ export function LinksSection({ profile, onSave }: Props) {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    for (const key of ['linkedin', 'portfolio'] as const) {
+    for (const key of [
+      'linkedin',
+      'portfolio',
+      'github',
+      'twitter',
+      'dribbble',
+      'behance',
+    ] as const) {
       const err = fieldError(key, form[key]);
       if (err) e[key] = err;
     }
@@ -95,31 +110,54 @@ export function LinksSection({ profile, onSave }: Props) {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await saveSection(saveDraft, {
-      links: {
-        linkedin:  withScheme(form.linkedin.trim()),
-        portfolio: form.portfolio.trim() ? withScheme(form.portfolio.trim()) : undefined,
-        custom:    custom.filter((c) => c.label.trim() && c.url.trim()).map((c) => ({ ...c, url: withScheme(c.url.trim()) })),
-        // Preserve any IT-specific fields that may exist in older profiles
-        github:   l?.github,
-        twitter:  l?.twitter,
-        dribbble: l?.dribbble,
-        behance:  l?.behance,
+    await saveSection(
+      saveDraft,
+      {
+        links: {
+          linkedin: form.linkedin.trim() ? withScheme(form.linkedin.trim()) : '',
+          portfolio: form.portfolio.trim() ? withScheme(form.portfolio.trim()) : undefined,
+          custom: custom
+            .filter((c) => c.label.trim() && c.url.trim())
+            .map((c) => ({ ...c, url: withScheme(c.url.trim()) })),
+          // Dedicated controls also retain compatibility with existing social-link paths
+          github: form.github.trim() ? withScheme(form.github.trim()) : undefined,
+          twitter: form.twitter.trim() ? withScheme(form.twitter.trim()) : undefined,
+          dribbble: form.dribbble.trim() ? withScheme(form.dribbble.trim()) : undefined,
+          behance: form.behance.trim() ? withScheme(form.behance.trim()) : undefined,
+        },
       },
-    }, showToast, 'Links saved');
+      showToast,
+      'Links saved',
+    );
     setSaving(false);
   };
 
   const PLATFORMS = [
-    { key: 'linkedin',  label: 'LinkedIn',   required: true,  placeholder: 'https://www.linkedin.com/in/johnsmith' },
-    { key: 'portfolio', label: 'Portfolio',   required: false, placeholder: 'https://johnsmith.dev' },
+    {
+      key: 'linkedin',
+      label: 'LinkedIn',
+      required: false,
+      placeholder: 'https://www.linkedin.com/in/johnsmith',
+    },
+    { key: 'portfolio', label: 'Portfolio', required: false, placeholder: 'https://johnsmith.dev' },
+    { key: 'github', label: 'GitHub', required: false, placeholder: 'https://github.com/you' },
+    { key: 'twitter', label: 'X / Twitter', required: false, placeholder: 'https://x.com/you' },
+    {
+      key: 'dribbble',
+      label: 'Dribbble',
+      required: false,
+      placeholder: 'https://dribbble.com/you',
+    },
+    { key: 'behance', label: 'Behance', required: false, placeholder: 'https://behance.net/you' },
   ] as const;
 
   return (
     <div>
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Links & Profiles</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Online presence used in job applications</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Online presence used in job applications
+        </p>
       </div>
 
       {PLATFORMS.map(({ key, label, required, placeholder }) => (
@@ -137,21 +175,43 @@ export function LinksSection({ profile, onSave }: Props) {
         </FormField>
       ))}
 
+      <datalist id="custom-link-labels">
+        {[
+          'Blog',
+          'GitLab',
+          'Stack Overflow',
+          'YouTube',
+          'Personal website',
+          'Design portfolio',
+        ].map((label) => (
+          <option key={label} value={label} />
+        ))}
+      </datalist>
       <div className="mb-4">
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Custom Links</p>
           <AddEntryButton
             variant="pill"
-            onClick={() => { setCustom((rows) => [...rows, { label: '', url: '' }]); setNewEntryTick((t) => t + 1); }}
+            onClick={() => {
+              setCustom((rows) => [...rows, { label: '', url: '' }]);
+              setNewEntryTick((t) => t + 1);
+            }}
             label="+ Add Entry"
           />
         </div>
         <div ref={customContainerRef}>
-        {custom.map((c, idx) => (
-            <div key={idx} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3">
+          {custom.map((c, idx) => (
+            <div
+              key={idx}
+              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3"
+            >
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Entry {idx + 1}</span>
-                <RemoveButton onClick={() => setCustom((rows) => rows.filter((_, i) => i !== idx))} />
+                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                  Entry {idx + 1}
+                </span>
+                <RemoveButton
+                  onClick={() => setCustom((rows) => rows.filter((_, i) => i !== idx))}
+                />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FormField label="Label" error={errors[`custom.${idx}.label`]}>
@@ -160,6 +220,7 @@ export function LinksSection({ profile, onSave }: Props) {
                     value={c.label}
                     onChange={(e) => updateCustom(idx, 'label', e.target.value)}
                     placeholder="My Blog"
+                    list="custom-link-labels"
                     maxLength={100}
                   />
                 </FormField>
@@ -177,7 +238,8 @@ export function LinksSection({ profile, onSave }: Props) {
               </div>
             </div>
           ))}
-        </div>{/* customContainerRef */}
+        </div>
+        {/* customContainerRef */}
       </div>
 
       <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">

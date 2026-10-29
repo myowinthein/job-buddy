@@ -43,7 +43,7 @@ Complete Your Profile → Fill Form → Review answers → Submit on the applica
    Save your personal details, work history, education, and other relevant sections.
    Add a CV in **Documents** to attach it to supported upload fields.
    Unsaved edits show a warning before you leave a section or close the profile page.
-   The top bar tracks 15 required checks after saving; select a remaining detail
+   The top bar tracks 10 required checks after saving; select a remaining detail
    to go to its input. Optional details do not affect the percentage.
 2. Visit a job application page and click **Fill Form** in the popup.
 3. If the form already contains values, choose **Merge** to fill only empty fields

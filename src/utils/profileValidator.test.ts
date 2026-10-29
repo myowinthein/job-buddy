@@ -111,13 +111,17 @@ describe('validateImportedProfile', () => {
   });
 
   it('accepts valid salary', () => {
-    const result = validateImportedProfile({ salary: { current: { amount: 50000, currency: 'USD' } } });
+    const result = validateImportedProfile({
+      salary: { current: { amount: 50000, currency: 'USD' } },
+    });
     expect(result.valid).toBe(true);
     expect(result.sanitized.salary?.current?.amount).toBe(50000);
   });
 
   it('rejects salary with invalid currency code', () => {
-    const result = validateImportedProfile({ salary: { current: { amount: 50000, currency: 'us' } } });
+    const result = validateImportedProfile({
+      salary: { current: { amount: 50000, currency: 'us' } },
+    });
     expect(result.valid).toBe(false);
     expect(result.invalidFields.some((f) => f.path === 'salary.current.currency')).toBe(true);
   });
@@ -129,19 +133,21 @@ describe('validateImportedProfile', () => {
   });
 
   it('rejects salary with negative amount', () => {
-    const result = validateImportedProfile({ salary: { current: { amount: -1, currency: 'USD' } } });
+    const result = validateImportedProfile({
+      salary: { current: { amount: -1, currency: 'USD' } },
+    });
     expect(result.valid).toBe(false);
     expect(result.invalidFields.some((f) => f.path === 'salary.current.amount')).toBe(true);
   });
 
-  it('drops expected salary entries missing currency', () => {
+  it('reports invalid expected salary entries missing currency', () => {
     const result = validateImportedProfile({
       salary: {
         current: { amount: 50000, currency: 'USD' },
         expected: [{ country: 'TH' }],
       },
     });
-    expect(result.valid).toBe(true);
+    expect(result.valid).toBe(false);
     expect(result.sanitized.salary?.expected).toBeUndefined();
   });
 
@@ -202,28 +208,62 @@ describe('validateImportedProfile', () => {
 
   it('accepts valid education entry', () => {
     const result = validateImportedProfile({
-      education: [{ institution: 'MIT', degree: 'B.Sc.', fieldOfStudy: 'CS', startDate: '2014-09', endDate: '2018-05', isCurrent: false }],
+      education: [
+        {
+          institution: 'MIT',
+          degree: 'B.Sc.',
+          fieldOfStudy: 'CS',
+          startDate: '2014-09',
+          endDate: '2018-05',
+          isCurrent: false,
+        },
+      ],
     });
     expect(result.valid).toBe(true);
     expect(result.sanitized.education).toEqual([
-      { institution: 'MIT', degree: 'B.Sc.', fieldOfStudy: 'CS', startDate: '2014-09', endDate: '2018-05', isCurrent: false, grade: undefined, description: undefined },
+      {
+        institution: 'MIT',
+        degree: 'B.Sc.',
+        fieldOfStudy: 'CS',
+        startDate: '2014-09',
+        endDate: '2018-05',
+        isCurrent: false,
+        grade: undefined,
+        description: undefined,
+      },
     ]);
   });
 
   it('accepts a year-only (YYYY) education startDate/endDate, unlike work history which requires a month', () => {
     const result = validateImportedProfile({
-      education: [{ institution: 'MIT', degree: 'B.Sc.', fieldOfStudy: 'CS', startDate: '2014', endDate: '2018' }],
+      education: [
+        {
+          institution: 'MIT',
+          degree: 'B.Sc.',
+          fieldOfStudy: 'CS',
+          startDate: '2014',
+          endDate: '2018',
+        },
+      ],
     });
     expect(result.valid).toBe(true);
     expect(result.sanitized.education?.[0]).toMatchObject({ startDate: '2014', endDate: '2018' });
   });
 
-  it('drops a malformed endDate silently, without rejecting the whole entry (endDate is optional; startDate is not)', () => {
+  it('reports a malformed education end date for review', () => {
     const result = validateImportedProfile({
-      education: [{ institution: 'MIT', degree: 'B.Sc.', fieldOfStudy: 'CS', startDate: '2014-09', endDate: '2018/05' }],
+      education: [
+        {
+          institution: 'MIT',
+          degree: 'B.Sc.',
+          fieldOfStudy: 'CS',
+          startDate: '2014-09',
+          endDate: '2018/05',
+        },
+      ],
     });
-    expect(result.valid).toBe(true);
-    expect(result.sanitized.education?.[0]).toMatchObject({ startDate: '2014-09', endDate: undefined });
+    expect(result.valid).toBe(false);
+    expect(result.invalidFields.some((field) => field.path === 'education[0].endDate')).toBe(true);
   });
 
   it('rejects invalid language proficiency', () => {
@@ -279,31 +319,52 @@ describe('validateImportedProfile', () => {
     expect(result.invalidFields.some((f) => f.path === 'documents.cv.file')).toBe(true);
   });
 
-  it.each(['cv', 'coverLetter'])('rejects oversized %s metadata even with a short payload', (field) => {
-    const result = validateImportedProfile({
-      documents: { [field]: { file: { name: 'document.pdf', size: 4 * 1024 * 1024 + 1, base64: 'abc' } } },
-    });
-    expect(result.valid).toBe(false);
-    expect(result.invalidFields.some((f) => f.path === `documents.${field}.file`)).toBe(true);
-  });
+  it.each(['cv', 'coverLetter'])(
+    'rejects oversized %s metadata even with a short payload',
+    (field) => {
+      const result = validateImportedProfile({
+        documents: {
+          [field]: { file: { name: 'document.pdf', size: 4 * 1024 * 1024 + 1, base64: 'abc' } },
+        },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.invalidFields.some((f) => f.path === `documents.${field}.file`)).toBe(true);
+    },
+  );
 
   it('accepts a file at the 4 MB boundary with a data URI prefix', () => {
     const size = 4 * 1024 * 1024;
     const result = validateImportedProfile({
-      documents: { cv: { file: { name: 'cv.pdf', size, base64: 'data:application/pdf;base64,' + 'a'.repeat(Math.ceil(size / 3) * 4) } } },
+      documents: {
+        cv: {
+          file: {
+            name: 'cv.pdf',
+            size,
+            base64: 'data:application/pdf;base64,' + 'a'.repeat(Math.ceil(size / 3) * 4),
+          },
+        },
+      },
     });
     expect(result.valid).toBe(true);
   });
 
-  it.each(['cv', 'coverLetter'] as const)('rejects oversized %s base64 independently of raw size', (field) => {
-    // Well past the ~5.6M-char base64 bound for a 4 MB raw file.
-    const result = validateImportedProfile({
-      documents: { [field]: { file: { name: 'cv.pdf', size: 1024, base64: 'a'.repeat(7 * 1024 * 1024) } } },
-    });
-    expect(result.valid).toBe(false);
-    expect(result.invalidFields).toContainEqual({ path: `documents.${field}.file`, reason: 'File exceeds 4 MB limit' });
-    expect(result.sanitized.documents?.[field]?.file).toBeUndefined();
-  });
+  it.each(['cv', 'coverLetter'] as const)(
+    'rejects oversized %s base64 independently of raw size',
+    (field) => {
+      // Well past the ~5.6M-char base64 bound for a 4 MB raw file.
+      const result = validateImportedProfile({
+        documents: {
+          [field]: { file: { name: 'cv.pdf', size: 1024, base64: 'a'.repeat(7 * 1024 * 1024) } },
+        },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.invalidFields).toContainEqual({
+        path: `documents.${field}.file`,
+        reason: 'File exceeds 4 MB limit',
+      });
+      expect(result.sanitized.documents?.[field]?.file).toBeUndefined();
+    },
+  );
 
   it('passes through professional.summary and noticePeriod (object)', () => {
     const result = validateImportedProfile({
@@ -333,11 +394,11 @@ describe('validateImportedProfile', () => {
     expect(result.sanitized.professional?.noticePeriod).toBeUndefined();
   });
 
-  it('ignores a non-string professional.summary', () => {
+  it('reports invalid a non-string professional.summary', () => {
     const result = validateImportedProfile({
       professional: { summary: 42 as unknown as string },
     });
-    expect(result.valid).toBe(true);
+    expect(result.valid).toBe(false);
     expect(result.sanitized.professional?.summary).toBeUndefined();
   });
 
@@ -372,21 +433,44 @@ describe('validateImportedProfile', () => {
       links: { linkedin: '', custom: [{ label: 'GitHub', url: 'https://github.com/jane' }] },
     });
     expect(result.valid).toBe(true);
-    expect(result.sanitized.links?.custom).toEqual([{ label: 'GitHub', url: 'https://github.com/jane' }]);
+    expect(result.sanitized.links?.custom).toEqual([
+      { label: 'GitHub', url: 'https://github.com/jane' },
+    ]);
   });
 
   it('drops a malformed links.custom entry and reports it, keeping valid entries', () => {
     const result = validateImportedProfile({
       links: {
         linkedin: '',
-        custom: [
-          { label: 'GitHub', url: 'https://github.com/jane' },
-          { label: 'Missing URL' },
-        ],
+        custom: [{ label: 'GitHub', url: 'https://github.com/jane' }, { label: 'Missing URL' }],
       },
     });
     expect(result.valid).toBe(false);
     expect(result.invalidFields.some((f) => f.path === 'links.custom[1]')).toBe(true);
-    expect(result.sanitized.links?.custom).toEqual([{ label: 'GitHub', url: 'https://github.com/jane' }]);
+    expect(result.sanitized.links?.custom).toEqual([
+      { label: 'GitHub', url: 'https://github.com/jane' },
+    ]);
   });
+});
+
+it.each([
+  { personal: { dateOfBirth: '2024-02-30' } },
+  { personal: { phone: { countryCode: 'TH', callingCode: '+66', number: '12abc' } } },
+  { professional: { noticePeriod: { immediate: false, value: 1.5, unit: 'week' } } },
+  { salary: { current: { amount: Infinity, currency: 'USD' } } },
+  { links: { github: 'not a URL' } },
+  { workHistory: [{ company: 'A', title: 'B', startDate: '2020-13', isCurrent: true }] },
+  { languages: [{ language: ' ', proficiency: 'elementary' }] },
+])('reports populated input values that the editor would reject: %j', (profile) => {
+  const result = validateImportedProfile(profile);
+  expect(result.valid).toBe(false);
+  expect(result.invalidFields.length).toBeGreaterThan(0);
+});
+
+it('preserves legacy currency-only expected salary rows for editing', () => {
+  const result = validateImportedProfile({ salary: { expected: [{ currency: 'EUR' }] } });
+  expect(result.valid).toBe(true);
+  expect(result.sanitized.salary?.expected).toEqual([
+    { currency: 'EUR', amount: undefined, country: undefined, period: 'monthly' },
+  ]);
 });

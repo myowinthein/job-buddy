@@ -99,7 +99,7 @@ it.each([false, true])('explains both completion icons when collapsed=%s', (coll
     'All tracked details complete',
   );
   expect(document.getElementById(salary.getAttribute('aria-describedby')!)?.textContent).toBe(
-    'Required details remaining',
+    'Optional section; no details added',
   );
   expect(personal.title).toContain('optional details remaining');
 });

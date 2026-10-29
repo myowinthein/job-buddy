@@ -17,11 +17,10 @@ function renderSection(profile: Partial<Profile>, onSave = vi.fn().mockResolvedV
 }
 
 describe('LinksSection — LinkedIn validation', () => {
-  it('requires a LinkedIn URL', () => {
+  it('can save links without a LinkedIn URL', () => {
     const { onSave } = renderSection({ links: { linkedin: '' } });
     fireEvent.click(screen.getByText('Save Links'));
-    expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('LinkedIn URL is required')).toBeTruthy();
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ links: expect.objectContaining({ linkedin: '' }) }));
   });
 
   it('rejects a URL that does not contain linkedin.com', () => {
@@ -220,8 +219,8 @@ describe('LinksSection — custom link CRUD via UI interaction', () => {
   });
 });
 
-describe('LinksSection — preserves unexposed legacy fields', () => {
-  it('carries github/twitter/dribbble/behance through unchanged even though the form has no UI for them', () => {
+describe('LinksSection — preserves dedicated social fields', () => {
+  it('carries github/twitter/dribbble/behance through unchanged through the dedicated controls', () => {
     const { onSave } = renderSection({
       links: {
         linkedin: 'https://linkedin.com/in/x',

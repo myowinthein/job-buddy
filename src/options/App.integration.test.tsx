@@ -115,7 +115,7 @@ describe('options App — real section persistence', () => {
     expect(await screen.findByText('Failed to save: storage may be full.')).toBeTruthy();
     expect(screen.queryByText('Documents saved')).toBeNull();
     expect(screen.queryByText('Failed to save. Please try again.')).toBeNull();
-    expect((screen.getByPlaceholderText('https://drive.google.com/file/...') as HTMLInputElement).value).toBe('https://example.com/cv.pdf');
+    expect((document.getElementById('field-cv')! as HTMLInputElement).value).toBe('https://example.com/cv.pdf');
     expect(syncProfileToDrive).not.toHaveBeenCalled();
     fireEvent.click(screen.getByText('Save Documents'));
     await waitFor(() => expect(saveProfile).toHaveBeenCalledTimes(2));

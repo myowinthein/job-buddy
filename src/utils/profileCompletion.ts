@@ -6,13 +6,11 @@ import {
   isValidProfileUrl,
   noticeDurationError,
   profileDateRangeErrors,
-  birthDateError,
-  isValidPersonalOption,
 } from './profileInputValidation';
 import { findCountryByNameOrCode } from '../data/countries';
-import { primaryCountryForCurrency, COUNTRY_TO_CURRENCY } from '../data/currencies';
+import { CURRENCIES } from '../data/currencies';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
-import { LANGUAGE_PROFICIENCY_LABELS } from '../data/languages';
+import { findLanguage, LANGUAGE_PROFICIENCY_LABELS } from '../data/languages';
 import type {
   Profile,
   PhoneNumber,
@@ -77,6 +75,28 @@ function validProficiency(value: string): boolean {
   );
 }
 
+function validSalary(row?: { amount?: number; currency?: string }): boolean {
+  return (
+    !!row &&
+    row.amount != null &&
+    isValidAmount(row.amount) &&
+    CURRENCIES.some((currency) => currency.code === row.currency)
+  );
+}
+function hasProfileLink(profile: Partial<Profile>): boolean {
+  const links = profile.links;
+  return (
+    (!!links &&
+      (['linkedin', 'portfolio', 'github', 'twitter', 'dribbble', 'behance'] as const).some(
+        (key) =>
+          key === 'linkedin'
+            ? isLinkedInUrl(links[key] ?? '')
+            : isValidProfileUrl(links[key] ?? ''),
+      )) ||
+    (links?.custom ?? []).some((link) => !!link.label.trim() && isValidProfileUrl(link.url))
+  );
+}
+
 export interface CompletionGroup {
   sectionId: string;
   sectionLabel: string;
@@ -97,7 +117,7 @@ export const FIELD_FOCUS_IDS: Record<string, string> = {
   'Current Salary Currency': 'field-currentCountry',
   'LinkedIn URL': 'field-linkedin',
   // Optional
-  Nickname: 'field-nickname',
+  'Preferred name': 'field-nickname',
   'Date of Birth': 'field-dateOfBirth',
   Gender: 'field-gender',
   Ethnicity: 'field-ethnicity',
@@ -119,7 +139,7 @@ export interface CompletionResult {
   optionalGroups: CompletionGroup[];
 }
 
-const TOTAL_CHECKS = 15;
+const TOTAL_CHECKS = 10;
 
 function makeChecker(target: CompletionGroup[]) {
   return (condition: boolean, sectionId: string, sectionLabel: string, field: string) => {
@@ -146,12 +166,6 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
     'First Name',
   );
   check(
-    validText(profile.personal?.lastName, 100),
-    'personal',
-    'Personal Information',
-    'Last Name',
-  );
-  check(
     isValidProfileEmail(profile.personal?.email ?? ''),
     'personal',
     'Personal Information',
@@ -168,30 +182,13 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
   check(validText(profile.address?.city, 100), 'address', 'Address', 'City');
   check(validCountry(profile.address?.country), 'address', 'Address', 'Country');
 
-  // Salary (2 mandatory; Expected Salary is optional and tracked below)
-  check(
-    typeof profile.salary?.current?.amount === 'number' &&
-      isValidAmount(profile.salary.current.amount),
-    'salary',
-    'Salary',
-    'Current Salary Amount',
-  );
-  check(
-    !!profile.salary?.current?.currency &&
-      COUNTRY_TO_CURRENCY[
-        findCountryByNameOrCode(profile.salary.current.country ?? '')?.code ??
-          primaryCountryForCurrency(profile.salary.current.currency) ??
-          ''
-      ] === profile.salary.current.currency,
-    'salary',
-    'Salary',
-    'Current Salary Currency',
-  );
-
   // Work Authorization (1)
   const waEntries = profile.workAuthorization ?? [];
   check(
     waEntries.length >= 1 &&
+      new Set(
+        waEntries.map((entry) => findCountryByNameOrCode(entry.country)?.code ?? entry.country),
+      ).size === waEntries.length &&
       waEntries.every(
         (e) => validCountry(e.country) && Object.hasOwn(WORK_AUTH_STATUS_LABELS, e.status),
       ),
@@ -200,14 +197,7 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
     'At least one valid entry',
   );
 
-  // Work History (2)
-  const whEntries = profile.workHistory ?? [];
-  check(
-    whEntries.length >= 1 && whEntries.every((e) => Object.keys(workErrors(e)).length === 0),
-    'workHistory',
-    'Work History',
-    'At least one complete entry',
-  );
+  // Availability (1); employment history is optional.
   check(
     isNoticePeriodValid(profile.professional?.noticePeriod),
     'workHistory',
@@ -227,14 +217,16 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
   // Languages (1)
   check(
     (profile.languages ?? []).length >= 1 &&
+      new Set(
+        profile.languages!.map(
+          (entry) => findLanguage(entry.language)?.code ?? entry.language.trim().toLowerCase(),
+        ),
+      ).size === profile.languages!.length &&
       profile.languages!.every((e) => !!e.language?.trim() && validProficiency(e.proficiency)),
     'languages',
     'Languages',
     'At least one language',
   );
-
-  // Links (1)
-  check(isLinkedInUrl(profile.links?.linkedin ?? ''), 'links', 'Links & Profiles', 'LinkedIn URL');
 
   // Documents (1)
   check(
@@ -254,45 +246,6 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
   const optGroups: CompletionGroup[] = [];
   const optCheck = makeChecker(optGroups);
 
-  optCheck(
-    validText(profile.personal?.nickname, 100),
-    'personal',
-    'Personal Information',
-    'Nickname',
-  );
-  optCheck(
-    !!profile.personal?.dateOfBirth && !birthDateError(profile.personal.dateOfBirth),
-    'personal',
-    'Personal Information',
-    'Date of Birth',
-  );
-  optCheck(
-    !!profile.personal?.gender?.trim() && isValidPersonalOption('gender', profile.personal.gender),
-    'personal',
-    'Personal Information',
-    'Gender',
-  );
-  optCheck(
-    !!profile.personal?.ethnicity?.trim() &&
-      isValidPersonalOption('ethnicity', profile.personal.ethnicity),
-    'personal',
-    'Personal Information',
-    'Ethnicity',
-  );
-  optCheck(
-    !!profile.personal?.veteranStatus?.trim() &&
-      isValidPersonalOption('veteranStatus', profile.personal.veteranStatus),
-    'personal',
-    'Personal Information',
-    'Veteran Status',
-  );
-  optCheck(
-    !!profile.personal?.disabilityStatus?.trim() &&
-      isValidPersonalOption('disabilityStatus', profile.personal.disabilityStatus),
-    'personal',
-    'Personal Information',
-    'Disability Status',
-  );
   optCheck(validText(profile.address?.street, 255), 'address', 'Address', 'Street Address');
   optCheck(validText(profile.address?.state, 100), 'address', 'Address', 'State / Province');
   optCheck(validText(profile.address?.postalCode, 20), 'address', 'Address', 'Postal Code');
@@ -302,7 +255,7 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
         (e) =>
           e.amount != null &&
           isValidAmount(e.amount) &&
-          (validCountry(e.country) || !!primaryCountryForCurrency(e.currency ?? '')),
+          CURRENCIES.some((currency) => currency.code === e.currency),
       ),
     'salary',
     'Salary',
@@ -343,12 +296,8 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
     );
   }
 
-  optCheck(
-    isValidProfileUrl(profile.links?.portfolio ?? ''),
-    'links',
-    'Links & Profiles',
-    'Portfolio URL',
-  );
+  optCheck(hasProfileLink(profile), 'links', 'Links & Profiles', 'Profile links');
+  optCheck(validSalary(profile.salary?.current), 'salary', 'Salary', 'Current Salary');
 
   const optionalFieldsRemaining = optGroups.reduce((sum, g) => sum + g.fields.length, 0);
 
@@ -368,12 +317,13 @@ export function getSectionCompletion(profile: Partial<Profile>): Record<string, 
   return {
     personal: !missing.has('personal'),
     address: !missing.has('address'),
-    salary: !missing.has('salary'),
+    salary:
+      validSalary(profile.salary?.current) || (profile.salary?.expected ?? []).some(validSalary),
     workAuthorization: !missing.has('workAuthorization'),
     workHistory: !missing.has('workHistory'),
     education: !missing.has('education'),
     languages: !missing.has('languages'),
-    links: !missing.has('links'),
+    links: hasProfileLink(profile),
     documents: !missing.has('documents'),
   };
 }
@@ -394,25 +344,47 @@ export function getCompletionTarget(
   if (FIELD_FOCUS_IDS[field]) return { id: FIELD_FOCUS_IDS[field] };
   if (section === 'workAuthorization') {
     const rows = profile.workAuthorization ?? [];
+    const seen = new Set<string>();
+    let key = 'country';
     const idx = Math.max(
       0,
-      rows.findIndex(
-        (e) => !validCountry(e.country) || !Object.hasOwn(WORK_AUTH_STATUS_LABELS, e.status),
-      ),
+      rows.findIndex((row) => {
+        const country = findCountryByNameOrCode(row.country)?.code;
+        if (!country || seen.has(country)) {
+          key = 'country';
+          return true;
+        }
+        seen.add(country);
+        if (!Object.hasOwn(WORK_AUTH_STATUS_LABELS, row.status)) {
+          key = 'status';
+          return true;
+        }
+        return false;
+      }),
     );
-    const key = !validCountry(rows[idx]?.country) ? 'country' : 'status';
     return { id: `field-workAuthorization-${idx}-${key}`, fallbackId: 'add-workAuthorization' };
   }
   if (section === 'languages') {
     const rows = profile.languages ?? [];
+    const seen = new Set<string>();
+    let key = 'language';
     const idx = Math.max(
       0,
-      rows.findIndex((e) => !e.language?.trim() || !validProficiency(e.proficiency)),
+      rows.findIndex((row) => {
+        const language = findLanguage(row.language)?.code ?? row.language.trim().toLowerCase();
+        if (!language || seen.has(language)) {
+          key = 'language';
+          return true;
+        }
+        seen.add(language);
+        if (!validProficiency(row.proficiency)) {
+          key = 'proficiency';
+          return true;
+        }
+        return false;
+      }),
     );
-    return {
-      id: `field-languages-${idx}-${!rows[idx]?.language?.trim() ? 'language' : 'proficiency'}`,
-      fallbackId: 'add-languages',
-    };
+    return { id: `field-languages-${idx}-${key}`, fallbackId: 'add-languages' };
   }
   if (field === 'Notice Period')
     return {
@@ -421,16 +393,20 @@ export function getCompletionTarget(
           ? 'field-noticeValue'
           : 'field-noticePeriod',
     };
-  if (field === 'CV / Résumé') return { id: 'field-cv', revealId: 'show-cv-url' };
+  if (field === 'CV / Résumé') return { id: 'field-cv' };
+  if (field === 'Profile links') return { id: 'field-linkedin' };
+  if (field === 'Current Salary')
+    return {
+      id: profile.salary?.current?.amount == null ? 'field-currentAmount' : 'field-currentCurrency',
+    };
   if (field === 'Expected Salary') {
     const rows = profile.salary?.expected ?? [];
     const idx = Math.max(
       0,
-      rows.findIndex(
-        (e) => e.amount == null || !isValidAmount(e.amount) || !validCountry(e.country),
-      ),
+      rows.findIndex((e) => e.amount == null || !isValidAmount(e.amount) || !e.currency),
     );
-    const key = !validCountry(rows[idx]?.country) ? 'country' : 'amount';
+    const key =
+      rows[idx]?.amount == null || !isValidAmount(rows[idx]!.amount!) ? 'amount' : 'currency';
     return { id: `field-expected-${idx}-${key}`, fallbackId: 'add-expected' };
   }
   if (section === 'workHistory' || section === 'education') {

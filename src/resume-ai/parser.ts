@@ -87,7 +87,7 @@ function setDoublyNestedField<
   });
 }
 
-function salaryDisplay(s: Partial<Profile['salary']['current']>): string {
+function salaryDisplay(s: Partial<NonNullable<Profile['salary']['current']>>): string {
   const parts: string[] = [];
   if (s.amount != null) parts.push(String(s.amount));
   if (s.currency)       parts.push(s.currency);
@@ -118,7 +118,7 @@ export const FIELD_DEFS: FieldDef[] = [
   },
   {
     id: 'personal.nickname',
-    label: 'Nickname',
+    label: 'Preferred name',
     section: 'Personal',
     getValue: (p) => p.personal?.nickname ?? null,
     setValue: setNestedField('personal', 'nickname', {} as Profile['personal']),
@@ -282,12 +282,12 @@ export const FIELD_DEFS: FieldDef[] = [
     }),
     isEmpty: (v) => {
       if (!v) return true;
-      const s = v as Partial<Profile['salary']['current']>;
+      const s = v as Partial<NonNullable<Profile['salary']['current']>>;
       return !s.amount && !s.currency;
     },
     display: (v) => {
       if (!v) return '';
-      return salaryDisplay(v as Partial<Profile['salary']['current']>);
+      return salaryDisplay(v as Partial<NonNullable<Profile['salary']['current']>>);
     },
   },
   {
@@ -297,7 +297,7 @@ export const FIELD_DEFS: FieldDef[] = [
     getValue: (p) => p.salary?.expected ?? [],
     setValue: (p, v) => ({
       ...p,
-      salary: { ...(p.salary ?? { current: { amount: 0, currency: '', period: 'monthly' }, expected: [] }), expected: v as Profile['salary']['expected'] },
+      salary: { ...(p.salary ?? { expected: [] }), expected: v as Profile['salary']['expected'] },
     }),
     isEmpty: emptyArr,
     display: (v) => {
@@ -348,7 +348,7 @@ export const FIELD_DEFS: FieldDef[] = [
       const arr = (v ?? []) as EducationEntry[];
       return arr
         .map((e) => {
-          const end = e.isCurrent ? 'present' : (e.endDate ?? '');
+          const end = e.isCurrent ? (e.endDate ? `expected ${e.endDate}` : 'present') : (e.endDate ?? '');
           return `${e.degree} in ${e.fieldOfStudy}, ${e.institution} (${e.startDate}${end ? ' – ' + end : ''})`;
         })
         .join('\n');

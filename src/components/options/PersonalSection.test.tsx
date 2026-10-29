@@ -158,7 +158,7 @@ describe('PersonalSection — save validation', () => {
     fireEvent.click(screen.getByText('Save Personal Information'));
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('First name is required')).toBeTruthy();
-    expect(screen.getByText('Last name is required')).toBeTruthy();
+    expect(screen.queryByText('Last name is required')).toBeNull();
     expect(screen.getByText('Email is required')).toBeTruthy();
     expect(screen.getByText('Phone number is required')).toBeTruthy();
   });
@@ -222,7 +222,7 @@ describe('PersonalSection — save validation', () => {
     fireEvent.click(screen.getByText('Save Personal Information'));
 
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('Nickname must be 100 characters or fewer')).toBeTruthy();
+    expect(screen.getByText('Preferred name must be 100 characters or fewer')).toBeTruthy();
   });
 
   it('shows a live max-length error on blur for a first name over 100 characters, not just at save time', () => {

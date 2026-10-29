@@ -61,7 +61,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 - JSON export contains profile, learned mappings, application history, and safe metadata. Drive backup contains profile, learned mappings, and lastModified; it does not contain application history. Neither includes Gemini settings or Drive token/state.
 - Adding a Drive payload field requires updating `syncProfileToDrive()`, `handleRestoreFromDrive`, and `handleDriveReviewSave`.
 - Resume review applies only accepted changes; arrays are replaced as units. Bullet normalization preserves prose context; summary normalization merges soft wraps while preserving paragraphs. PDF hyperlink extraction uses annotations and fails to an empty list.
-- Experience merges overlapping work intervals and counts inclusive calendar months. Completion uses 15 checks across the nine editor sections.
+- Experience merges overlapping work intervals and counts inclusive calendar months. Completion uses 10 required checks across the nine editor sections; last name, salary, LinkedIn and employment history are optional. Demographic details never affect completion.
 
 ## Behavior Rules
 

@@ -48,6 +48,14 @@ export function isValidProfileUrl(value: string): boolean {
   }
 }
 
+export function isValidCalendarDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const [, y, m, d] = match.map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
+}
+
 export function birthDateError(value: string, today = new Date()): string {
   if (!value) return '';
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -71,16 +79,19 @@ export function profileDateRangeErrors(
   const year = new Date().getFullYear();
   const pattern = yearOnly ? /^\d{4}(-(?:0[1-9]|1[0-2]))?$/ : /^\d{4}-(?:0[1-9]|1[0-2])$/;
   for (const key of ['startDate', 'endDate'] as const) {
-    if (key === 'endDate' && row.isCurrent) continue;
+    if (key === 'endDate' && row.isCurrent && (!yearOnly || !row.endDate)) continue;
     const value = row[key] ?? '';
     const label = key === 'startDate' ? 'Start date' : 'End date';
     if (!value.trim()) errors[key] = `${label} is required`;
     else if (!pattern.test(value))
       errors[key] = `Enter ${yearOnly ? 'a year or month and year' : 'a month and year'}`;
-    else if (Number(value.slice(0, 4)) < year - 100 || Number(value.slice(0, 4)) > year)
-      errors[key] = `Year must be between ${year - 100} and ${year}`;
+    else {
+      const maxYear = key === 'endDate' && yearOnly && row.isCurrent ? year + 10 : year;
+      if (Number(value.slice(0, 4)) < year - 100 || Number(value.slice(0, 4)) > maxYear)
+        errors[key] = `Year must be between ${year - 100} and ${maxYear}`;
+    }
   }
-  if (!row.isCurrent && !errors.startDate && !errors.endDate) {
+  if (row.endDate && !errors.startDate && !errors.endDate && (!row.isCurrent || yearOnly)) {
     const start = row.startDate!.length === 4 ? `${row.startDate}-01` : row.startDate!;
     const end = row.endDate!.length === 4 ? `${row.endDate}-12` : row.endDate!;
     if (end < start) errors.endDate = 'End date cannot be before start date';

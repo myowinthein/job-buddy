@@ -37,9 +37,16 @@ export function AddressSection({ profile, onSave }: Props) {
 
   const fieldError = (key: string, value: string): string => {
     if (key === 'city' && !value.trim()) return 'City is required';
-    const max = ({ city: 100, state: 100, street: 255, postalCode: 20 } as Record<string, number>)[key];
+    const max = ({ city: 100, state: 100, street: 255, postalCode: 20 } as Record<string, number>)[
+      key
+    ];
     if (max && value.length > max) return `Use ${max} characters or fewer`;
-    if (key === 'countryCode') return !value ? 'Country is required' : !findCountryByNameOrCode(value) ? 'Select a valid country' : '';
+    if (key === 'countryCode')
+      return !value
+        ? 'Country is required'
+        : !findCountryByNameOrCode(value)
+          ? 'Select a valid country'
+          : '';
     return '';
   };
 
@@ -63,15 +70,20 @@ export function AddressSection({ profile, onSave }: Props) {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await saveSection(saveDraft, {
-      address: {
-        city: form.city.trim(),
-        country: form.countryCode,           // stores ISO code, e.g. "TH"
-        street: form.street || undefined,
-        state: form.state || undefined,
-        postalCode: form.postalCode || undefined,
+    await saveSection(
+      saveDraft,
+      {
+        address: {
+          city: form.city.trim(),
+          country: form.countryCode, // stores ISO code, e.g. "TH"
+          street: form.street || undefined,
+          state: form.state || undefined,
+          postalCode: form.postalCode || undefined,
+        },
       },
-    }, showToast, 'Address saved');
+      showToast,
+      'Address saved',
+    );
     setSaving(false);
   };
 
@@ -79,8 +91,19 @@ export function AddressSection({ profile, onSave }: Props) {
     <div>
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Address</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Your current residential address</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Your current residential address
+        </p>
       </div>
+
+      <FormField label="Country" required error={errors.countryCode}>
+        <SearchableCountryDropdown
+          id="field-country"
+          value={form.countryCode}
+          onChange={(code) => set('countryCode', code)}
+          error={errors.countryCode}
+        />
+      </FormField>
 
       <FormField label="Street Address" error={errors.street}>
         <input
@@ -117,14 +140,6 @@ export function AddressSection({ profile, onSave }: Props) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <FormField label="Country" required error={errors.countryCode}>
-          <SearchableCountryDropdown
-            id="field-country"
-            value={form.countryCode}
-            onChange={(code) => set('countryCode', code)}
-            error={errors.countryCode}
-          />
-        </FormField>
         <FormField label="Postal Code" error={errors.postalCode}>
           <input
             className={cls(errors.postalCode)}

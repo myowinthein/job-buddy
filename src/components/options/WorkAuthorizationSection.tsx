@@ -1,3 +1,4 @@
+import { isValidCalendarDate } from '@/src/utils/profileInputValidation';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef } from 'react';
@@ -19,8 +20,12 @@ interface Props {
 }
 
 // Local row allows empty status while the user hasn't selected yet.
-type LocalRow = { country: string; status: WorkAuthorizationStatus | ''; visaType?: string; expiryDate?: string };
-
+type LocalRow = {
+  country: string;
+  status: WorkAuthorizationStatus | '';
+  visaType?: string;
+  expiryDate?: string;
+};
 
 function emptyRow(): LocalRow {
   return { country: '', status: '' };
@@ -39,9 +44,7 @@ function initRow(raw: WorkAuthorizationEntry): LocalRow {
 
 export function WorkAuthorizationSection({ profile, onSave }: Props) {
   const [entries, setEntries] = useState<LocalRow[]>(
-    profile.workAuthorization?.length
-      ? profile.workAuthorization.map(initRow)
-      : [emptyRow()],
+    profile.workAuthorization?.length ? profile.workAuthorization.map(initRow) : [emptyRow()],
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { showToast } = useToast();
@@ -56,18 +59,28 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
     const ek = `${idx}.${key}`;
     let err = '';
     if (key === 'country' && !findCountryByNameOrCode(value)) err = 'Select a valid country';
-    else if (key === 'status' && !WORK_AUTH_STATUS_OPTIONS.some((opt) => opt.value === value)) err = 'Select a valid status';
+    else if (key === 'status' && !WORK_AUTH_STATUS_OPTIONS.some((opt) => opt.value === value))
+      err = 'Select a valid status';
     setErrors((e) => ({ ...e, [ek]: err }));
   };
 
   const validate = () => {
     const e: Record<string, string> = {};
     if (entries.length === 0) e.general = 'At least one work authorization entry is required';
+    const seen = new Set<string>();
     entries.forEach((row, idx) => {
+      if (seen.has(row.country.toUpperCase()))
+        e[`${idx}.country`] = 'This country is already listed';
+      seen.add(row.country.toUpperCase());
+      if ((row.visaType?.length ?? 0) > 100) e[`${idx}.visaType`] = 'Use 100 characters or fewer';
+      if (row.expiryDate && !isValidCalendarDate(row.expiryDate))
+        e[`${idx}.expiryDate`] = 'Enter a valid expiry date';
       if (!row.country) e[`${idx}.country`] = 'Country is required';
-      else if (!findCountryByNameOrCode(row.country)) e[`${idx}.country`] = 'Select a valid country';
+      else if (!findCountryByNameOrCode(row.country))
+        e[`${idx}.country`] = 'Select a valid country';
       if (!row.status) e[`${idx}.status`] = 'Status is required';
-      else if (!WORK_AUTH_STATUS_OPTIONS.some((opt) => opt.value === row.status)) e[`${idx}.status`] = 'Select a valid status';
+      else if (!WORK_AUTH_STATUS_OPTIONS.some((opt) => opt.value === row.status))
+        e[`${idx}.status`] = 'Select a valid status';
     });
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -78,68 +91,111 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await saveSection(saveDraft, {
-      workAuthorization: entries.map((r) => ({
-        ...(r.visaType !== undefined ? { visaType: r.visaType } : {}),
-        ...(r.expiryDate !== undefined ? { expiryDate: r.expiryDate } : {}),
-        country: r.country,
-        status: r.status as WorkAuthorizationStatus,
-      })),
-    }, showToast, 'Work authorization saved');
+    await saveSection(
+      saveDraft,
+      {
+        workAuthorization: entries.map((r) => ({
+          ...(r.visaType !== undefined ? { visaType: r.visaType } : {}),
+          ...(r.expiryDate !== undefined ? { expiryDate: r.expiryDate } : {}),
+          country: r.country,
+          status: r.status as WorkAuthorizationStatus,
+        })),
+      },
+      showToast,
+      'Work authorization saved',
+    );
     setSaving(false);
   };
 
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Work Authorization</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Your eligibility to work in each country</p>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+          Work Authorization
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Your eligibility to work in each country
+        </p>
       </div>
 
       {errors.general && (
-        <p className="text-sm text-red-500 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">{errors.general}</p>
+        <p className="text-sm text-red-500 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
+          {errors.general}
+        </p>
       )}
 
       <div ref={entriesContainerRef}>
-      {entries.map((row, idx) => (
-        <div key={idx} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Entry {idx + 1}</span>
-            <RemoveButton
-              onClick={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label="Country" required error={errors[`${idx}.country`]}>
-              <SearchableCountryDropdown
-                id={`field-workAuthorization-${idx}-country`}
-                value={row.country}
-                onChange={(code) => update(idx, 'country', code)}
-                error={errors[`${idx}.country`]}
+        {entries.map((row, idx) => (
+          <div
+            key={idx}
+            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                Entry {idx + 1}
+              </span>
+              <RemoveButton
+                onClick={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
               />
-            </FormField>
-            <FormField label="Authorization Status" required error={errors[`${idx}.status`]}>
-              <select
-                id={`field-workAuthorization-${idx}-status`}
-                className={cls(errors[`${idx}.status`])}
-                value={row.status}
-                onChange={(e) => update(idx, 'status', e.target.value)}
-              >
-                <option value="">Select authorization status…</option>
-                {WORK_AUTH_STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </FormField>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField label="Country" required error={errors[`${idx}.country`]}>
+                <SearchableCountryDropdown
+                  id={`field-workAuthorization-${idx}-country`}
+                  value={row.country}
+                  onChange={(code) => update(idx, 'country', code)}
+                  error={errors[`${idx}.country`]}
+                />
+              </FormField>
+              <FormField label="Authorization Status" required error={errors[`${idx}.status`]}>
+                <select
+                  id={`field-workAuthorization-${idx}-status`}
+                  className={cls(errors[`${idx}.status`])}
+                  value={row.status}
+                  onChange={(e) => update(idx, 'status', e.target.value)}
+                >
+                  <option value="">Select authorization status…</option>
+                  {WORK_AUTH_STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+            </div>
+            {row.status === 'work_visa' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField label="Visa type" error={errors[`${idx}.visaType`]}>
+                  <input
+                    className={cls(errors[`${idx}.visaType`])}
+                    value={row.visaType ?? ''}
+                    maxLength={100}
+                    onChange={(e) => update(idx, 'visaType', e.target.value)}
+                    placeholder="Employment Pass"
+                  />
+                </FormField>
+                <FormField label="Visa expiry date" error={errors[`${idx}.expiryDate`]}>
+                  <input
+                    type="date"
+                    className={cls(errors[`${idx}.expiryDate`])}
+                    value={row.expiryDate ?? ''}
+                    onChange={(e) => update(idx, 'expiryDate', e.target.value)}
+                  />
+                </FormField>
+              </div>
+            )}
           </div>
-        </div>
-      ))}
-      </div>{/* entriesContainerRef */}
+        ))}
+      </div>
+      {/* entriesContainerRef */}
 
       <AddEntryButton
         id="add-workAuthorization"
-        onClick={() => { setEntries((rows) => [...rows, emptyRow()]); setNewEntryTick((t) => t + 1); }}
+        onClick={() => {
+          setEntries((rows) => [...rows, emptyRow()]);
+          setNewEntryTick((t) => t + 1);
+        }}
         label="+ Add Entry"
       />
 

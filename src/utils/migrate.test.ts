@@ -34,20 +34,20 @@ describe('normalizeProfile', () => {
     // Simulate an old profile loaded from storage with no period
     p.salary.current = { amount: 80000, currency: 'THB' } as Profile['salary']['current'];
     const out = normalizeProfile(p);
-    expect(out.salary.current.period).toBe('monthly');
+    expect(out.salary.current!.period).toBe('monthly');
   });
 
   it('preserves valid existing "annual" period on current salary', () => {
     const p = baseProfile();
-    p.salary.current.period = 'annual';
+    p.salary.current!.period = 'annual';
     const out = normalizeProfile(p);
-    expect(out.salary.current.period).toBe('annual');
+    expect(out.salary.current!.period).toBe('annual');
     expect(out).toBe(p); // unchanged
   });
 
   it('preserves valid existing "monthly" period on current salary', () => {
     const p = baseProfile();
-    p.salary.current.period = 'monthly';
+    p.salary.current!.period = 'monthly';
     expect(normalizeProfile(p)).toBe(p);
   });
 
@@ -59,7 +59,7 @@ describe('normalizeProfile', () => {
       period: 'weekly',
     } as unknown as Profile['salary']['current'];
     const out = normalizeProfile(p);
-    expect(out.salary.current.period).toBe('monthly');
+    expect(out.salary.current!.period).toBe('monthly');
   });
 
   it('preserves country, currency, and amount on current salary', () => {
@@ -70,10 +70,10 @@ describe('normalizeProfile', () => {
       country: 'US',
     } as Profile['salary']['current'];
     const out = normalizeProfile(p);
-    expect(out.salary.current.amount).toBe(99000);
-    expect(out.salary.current.currency).toBe('USD');
-    expect(out.salary.current.country).toBe('US');
-    expect(out.salary.current.period).toBe('monthly');
+    expect(out.salary.current!.amount).toBe(99000);
+    expect(out.salary.current!.currency).toBe('USD');
+    expect(out.salary.current!.country).toBe('US');
+    expect(out.salary.current!.period).toBe('monthly');
   });
 
   it('defaults period for each expected salary entry that is missing it', () => {
@@ -189,7 +189,7 @@ describe('normalizeProfile', () => {
     p.salary.current = { amount: 80000, currency: 'THB' } as Profile['salary']['current'];
     p.links.linkedin = 'linkedin.com/in/jane';
     const out = normalizeProfile(p);
-    expect(out.salary.current.period).toBe('monthly');
+    expect(out.salary.current!.period).toBe('monthly');
     expect(out.links.linkedin).toBe('https://linkedin.com/in/jane');
     expect(out).not.toBe(p);
   });

@@ -51,14 +51,13 @@ const emptyRow = (): Row => ({
 });
 
 const entrySummary = (row: Row, idx: number) =>
-  row.institution && row.degree
-    ? `${row.institution}: ${row.degree}`
-    : `Entry ${idx + 1}`;
+  row.institution && row.degree ? `${row.institution}: ${row.degree}` : `Entry ${idx + 1}`;
 
 export function EducationSection({ profile, onSave }: Props) {
   const [entries, setEntries] = useState<Row[]>(() =>
     profile.education?.length ? profile.education.map(initRow) : [emptyRow()],
   );
+  const [partialDates, setPartialDates] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -69,7 +68,10 @@ export function EducationSection({ profile, onSave }: Props) {
 
   // Shared by handleEntryBlur, update, and validate() — the one check each
   // required text field needs, regardless of when it fires.
-  const textFieldError = (key: 'institution' | 'degree' | 'fieldOfStudy', value: string): string => {
+  const textFieldError = (
+    key: 'institution' | 'degree' | 'fieldOfStudy',
+    value: string,
+  ): string => {
     if (key === 'institution' && !value.trim()) return 'Institution is required';
     if (key === 'degree' && !value.trim()) return 'Degree is required';
     if (key === 'fieldOfStudy' && !value.trim()) return 'Field of study is required';
@@ -88,13 +90,15 @@ export function EducationSection({ profile, onSave }: Props) {
     minYear: EDU_MIN_YEAR,
     maxYear: EDU_MAX_YEAR,
     allowYearOnlyEnd: true,
+    allowFutureEnd: true,
   });
 
   const update = (idx: number, key: keyof Row, value: string | boolean) => {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     const ek = `${idx}.${key}`;
     let err = '';
-    if (key === 'institution' || key === 'degree' || key === 'fieldOfStudy') err = textFieldError(key, String(value));
+    if (key === 'institution' || key === 'degree' || key === 'fieldOfStudy')
+      err = textFieldError(key, String(value));
     else if (key === 'startDate') {
       if (!String(value).trim()) err = 'Start date is required';
       else {
@@ -104,8 +108,9 @@ export function EducationSection({ profile, onSave }: Props) {
       }
     } else if (key === 'endDate' && typeof value === 'string' && value) {
       const y = parseInt(value.split('-')[0] ?? '', 10);
-      if (!isNaN(y) && (y > EDU_MAX_YEAR || y < EDU_MIN_YEAR))
-        err = `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}`;
+      const maxEnd = entries[idx].isCurrent ? EDU_MAX_YEAR + 10 : EDU_MAX_YEAR;
+      if (!isNaN(y) && (y > maxEnd || y < EDU_MIN_YEAR))
+        err = `Year must be between ${EDU_MIN_YEAR} and ${maxEnd}`;
     } else if (key === 'isCurrent' && value === true) {
       setErrors((e) => ({ ...e, [`${idx}.endDate`]: '' }));
     }
@@ -120,7 +125,14 @@ export function EducationSection({ profile, onSave }: Props) {
         const err = textFieldError(key, row[key]);
         if (err) e[`${idx}.${key}`] = err;
       }
-      for (const [key, error] of Object.entries(profileDateRangeErrors(row, true))) e[`${idx}.${key}`] = error;
+      for (const [key, error] of Object.entries(profileDateRangeErrors(row, true)))
+        e[`${idx}.${key}`] = error;
+      for (const key of ['startDate', 'endDate'])
+        if (partialDates[`${row.rowId}.${key}`])
+          e[`${idx}.${key}`] = 'Complete the year, or leave the optional date blank';
+      if ((row.grade?.length ?? 0) > 100) e[`${idx}.grade`] = 'Use 100 characters or fewer';
+      if ((row.description?.length ?? 0) > 3000)
+        e[`${idx}.description`] = 'Use 3000 characters or fewer';
     });
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -131,20 +143,24 @@ export function EducationSection({ profile, onSave }: Props) {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await saveSection(saveDraft, {
-      education: entries.map((r) => ({
-        institution: r.institution.trim(),
-        degree: r.degree.trim(),
-        fieldOfStudy: r.fieldOfStudy.trim(),
-        startDate: r.startDate,
-        isCurrent: r.isCurrent,
-        endDate: r.isCurrent ? undefined : r.endDate || undefined,
-        // Preserve grade and description from storage; they are no longer editable
-        // via the form but should not be silently deleted from existing profiles.
-        grade: r.grade || undefined,
-        description: r.description || undefined,
-      })),
-    }, showToast, 'Education saved');
+    await saveSection(
+      saveDraft,
+      {
+        education: entries.map((r) => ({
+          institution: r.institution.trim(),
+          degree: r.degree.trim(),
+          fieldOfStudy: r.fieldOfStudy.trim(),
+          startDate: r.startDate,
+          isCurrent: r.isCurrent,
+          endDate: r.endDate || undefined,
+          // Optional details are editable and round-trip with JSON imports.
+          grade: r.grade || undefined,
+          description: r.description || undefined,
+        })),
+      },
+      showToast,
+      'Education saved',
+    );
     setSaving(false);
   };
 
@@ -152,103 +168,156 @@ export function EducationSection({ profile, onSave }: Props) {
     <div>
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Education</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Your academic qualifications</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Your academic qualifications
+        </p>
       </div>
 
       {errors.general && (
-        <p className="text-sm text-red-500 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">{errors.general}</p>
+        <p className="text-sm text-red-500 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
+          {errors.general}
+        </p>
       )}
 
       <div ref={entriesContainerRef}>
-      {entries.map((row, idx) => (
-        <ExpandableCard
-          id={`entry-education-${idx}`}
-          key={row.rowId}
-          summary={entrySummary(row, idx)}
-          subtitle={row.fieldOfStudy || undefined}
-          onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
-          defaultExpanded={!row.institution}
-          invalid={Object.entries(errors).some(([key, value]) => key.startsWith(`${idx}.`) && !!value)}
-        >
-          <FormField label="Institution" required error={errors[`${idx}.institution`]}>
-            <input
-              className={cls(errors[`${idx}.institution`])}
-              id={`field-education-${idx}-institution`}
-              value={row.institution}
-              onChange={(e) => update(idx, 'institution', e.target.value)}
-              onBlur={() => handleEntryBlur(idx, 'institution')}
-              placeholder="University of California, Berkeley"
-              maxLength={150}
-            />
-          </FormField>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label="Degree" required error={errors[`${idx}.degree`]}>
+        {entries.map((row, idx) => (
+          <ExpandableCard
+            id={`entry-education-${idx}`}
+            key={row.rowId}
+            summary={entrySummary(row, idx)}
+            subtitle={row.fieldOfStudy || undefined}
+            onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
+            defaultExpanded={!row.institution}
+            invalid={Object.entries(errors).some(
+              ([key, value]) => key.startsWith(`${idx}.`) && !!value,
+            )}
+          >
+            <FormField label="Institution" required error={errors[`${idx}.institution`]}>
               <input
-                className={cls(errors[`${idx}.degree`])}
-                id={`field-education-${idx}-degree`}
-                value={row.degree}
-                onChange={(e) => update(idx, 'degree', e.target.value)}
-                onBlur={() => handleEntryBlur(idx, 'degree')}
-                placeholder="Bachelor of Science"
+                className={cls(errors[`${idx}.institution`])}
+                id={`field-education-${idx}-institution`}
+                value={row.institution}
+                onChange={(e) => update(idx, 'institution', e.target.value)}
+                onBlur={() => handleEntryBlur(idx, 'institution')}
+                placeholder="University of California, Berkeley"
                 maxLength={150}
               />
             </FormField>
-            <FormField label="Field of Study" required error={errors[`${idx}.fieldOfStudy`]}>
-              <input
-                className={cls(errors[`${idx}.fieldOfStudy`])}
-                id={`field-education-${idx}-fieldOfStudy`}
-                value={row.fieldOfStudy}
-                onChange={(e) => update(idx, 'fieldOfStudy', e.target.value)}
-                onBlur={() => handleEntryBlur(idx, 'fieldOfStudy')}
-                placeholder="Computer Science"
-                maxLength={150}
-              />
-            </FormField>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label="Start Date" required error={errors[`${idx}.startDate`]}>
-              <MonthYearPicker
-                id={`field-education-${idx}-startDate`}
-                value={row.startDate}
-                onChange={(v) => update(idx, 'startDate', v)}
-                onYearChange={(y) => handleYearChange(idx, 'startDate', y)}
-                onBlur={(m, y) => handleDateBlur(idx, 'startDate', m, y)}
-                error={errors[`${idx}.startDate`]}
-                monthOptional
-              />
-            </FormField>
-            <FormField label="End Date" required={!row.isCurrent} error={errors[`${idx}.endDate`]}>
-              <MonthYearPicker
-                id={`field-education-${idx}-endDate`}
-                value={row.endDate ?? ''}
-                onChange={(v) => update(idx, 'endDate', v)}
-                onYearChange={(y) => handleYearChange(idx, 'endDate', y)}
-                onBlur={(m, y) => handleDateBlur(idx, 'endDate', m, y)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField label="Degree" required error={errors[`${idx}.degree`]}>
+                <input
+                  className={cls(errors[`${idx}.degree`])}
+                  id={`field-education-${idx}-degree`}
+                  value={row.degree}
+                  onChange={(e) => update(idx, 'degree', e.target.value)}
+                  onBlur={() => handleEntryBlur(idx, 'degree')}
+                  placeholder="Bachelor of Science"
+                  maxLength={150}
+                />
+              </FormField>
+              <FormField label="Field of Study" required error={errors[`${idx}.fieldOfStudy`]}>
+                <input
+                  className={cls(errors[`${idx}.fieldOfStudy`])}
+                  id={`field-education-${idx}-fieldOfStudy`}
+                  value={row.fieldOfStudy}
+                  onChange={(e) => update(idx, 'fieldOfStudy', e.target.value)}
+                  onBlur={() => handleEntryBlur(idx, 'fieldOfStudy')}
+                  placeholder="Computer Science"
+                  maxLength={150}
+                />
+              </FormField>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField label="Start Date" required error={errors[`${idx}.startDate`]}>
+                <MonthYearPicker
+                  id={`field-education-${idx}-startDate`}
+                  onPartialChange={(partial) =>
+                    setPartialDates((previous) => ({
+                      ...previous,
+                      [`${row.rowId}.startDate`]: partial,
+                    }))
+                  }
+                  value={row.startDate}
+                  onChange={(v) => update(idx, 'startDate', v)}
+                  onYearChange={(y) => handleYearChange(idx, 'startDate', y)}
+                  onBlur={(m, y) => handleDateBlur(idx, 'startDate', m, y)}
+                  error={errors[`${idx}.startDate`]}
+                  monthOptional
+                />
+              </FormField>
+              <FormField
+                label={row.isCurrent ? 'Expected graduation date' : 'End Date'}
+                required={!row.isCurrent}
                 error={errors[`${idx}.endDate`]}
-                disabled={row.isCurrent}
-                monthOptional
-              />
-            </FormField>
-          </div>
+              >
+                <MonthYearPicker
+                  id={`field-education-${idx}-endDate`}
+                  onPartialChange={(partial) =>
+                    setPartialDates((previous) => ({
+                      ...previous,
+                      [`${row.rowId}.endDate`]: partial,
+                    }))
+                  }
+                  value={row.endDate ?? ''}
+                  onChange={(v) => update(idx, 'endDate', v)}
+                  onYearChange={(y) => handleYearChange(idx, 'endDate', y)}
+                  onBlur={(m, y) => handleDateBlur(idx, 'endDate', m, y)}
+                  error={errors[`${idx}.endDate`]}
+                  monthOptional
+                />
+              </FormField>
+            </div>
 
-          <label className="flex items-center gap-2 mb-4 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={row.isCurrent}
-              onChange={(e) => update(idx, 'isCurrent', e.target.checked)}
-              className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400"
-            />
-            <span className="text-sm text-gray-700 dark:text-gray-300">Currently active</span>
-          </label>
-        </ExpandableCard>
-      ))}
-      </div>{/* entriesContainerRef */}
+            <label className="flex items-center gap-2 mb-4 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={row.isCurrent}
+                onChange={(e) => update(idx, 'isCurrent', e.target.checked)}
+                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                I’m currently studying here
+              </span>
+            </label>
+            <details className="mb-4">
+              <summary className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300">
+                Optional education details
+              </summary>
+              <div className="mt-3">
+                <FormField label="Grade / GPA" error={errors[`${idx}.grade`]}>
+                  <input
+                    className={cls()}
+                    value={row.grade ?? ''}
+                    onChange={(e) => update(idx, 'grade', e.target.value)}
+                    maxLength={100}
+                    placeholder="3.8 / 4.0"
+                  />
+                </FormField>
+                <FormField label="Education description" error={errors[`${idx}.description`]}>
+                  <textarea
+                    className={`${cls()} min-h-24`}
+                    value={row.description ?? ''}
+                    onChange={(e) => update(idx, 'description', e.target.value)}
+                    maxLength={3000}
+                    placeholder="Honors, thesis, relevant coursework…"
+                  />
+                </FormField>
+              </div>
+            </details>
+          </ExpandableCard>
+        ))}
+      </div>
+      {/* entriesContainerRef */}
 
       <AddEntryButton
         id="add-education"
-        onClick={() => { const row = emptyRow(); setEntries((rows) => [...rows, row]); setNewEntryTick((t) => t + 1); }}
+        onClick={() => {
+          const row = emptyRow();
+          setEntries((rows) => [...rows, row]);
+          setNewEntryTick((t) => t + 1);
+        }}
         label="+ Add Education"
       />
 

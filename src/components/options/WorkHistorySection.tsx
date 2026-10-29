@@ -1,8 +1,18 @@
-import { NOTICE_MAX, noticeDurationError as validateNoticePeriod, profileDateRangeErrors } from '@/src/utils/profileInputValidation';
+import {
+  NOTICE_MAX,
+  noticeDurationError as validateNoticePeriod,
+  profileDateRangeErrors,
+} from '@/src/utils/profileInputValidation';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef, useMemo } from 'react';
-import type { Profile, WorkHistoryEntry, WorkArrangement, WorkLocation, NoticePeriodUnit } from '@/src/types/profile';
+import type {
+  Profile,
+  WorkHistoryEntry,
+  WorkArrangement,
+  WorkLocation,
+  NoticePeriodUnit,
+} from '@/src/types/profile';
 import { calculateExperience } from '@/src/utils/experience';
 import { FormField } from './shared/FormField';
 import { ExpandableCard } from './shared/ExpandableCard';
@@ -34,7 +44,7 @@ type LocalRow = {
   endDate: string;
   locationCountry: string;
   locationCity: string;
-  arrangement: string;   // WorkArrangement | ''
+  arrangement: string; // WorkArrangement | ''
   description: string;
 };
 
@@ -89,11 +99,28 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   );
 
   // ── Career summary ──────────────────────────────────────────────────────────
+  const [partialDates, setPartialDates] = useState<Record<string, boolean>>({});
+  const rowStarted = (row: LocalRow) =>
+    !!(
+      row.company.trim() ||
+      row.title.trim() ||
+      row.startDate ||
+      row.endDate ||
+      row.isCurrent ||
+      row.locationCountry ||
+      row.locationCity.trim() ||
+      row.arrangement ||
+      row.description.trim() ||
+      partialDates[`${row.rowId}.startDate`] ||
+      partialDates[`${row.rowId}.endDate`]
+    );
   const [summary, setSummary] = useState(profile.professional?.summary ?? '');
 
   // ── Notice period ────────────────────────────────────────────────────────────
   const np = profile.professional?.noticePeriod;
-  const [noticeImmediate, setNoticeImmediate] = useState<boolean | null>(typeof np?.immediate === 'boolean' ? np.immediate : null);
+  const [noticeImmediate, setNoticeImmediate] = useState<boolean | null>(
+    typeof np?.immediate === 'boolean' ? np.immediate : null,
+  );
   const [noticeValue, setNoticeValue] = useState(np?.value?.toString() ?? '');
   const [noticeUnit, setNoticeUnit] = useState<NoticePeriodUnit>(np?.unit ?? 'week');
 
@@ -160,18 +187,21 @@ export function WorkHistorySection({ profile, onSave }: Props) {
     const e: Record<string, string> = {};
 
     if (summary.length > 2000) e.summary = 'Use 2000 characters or fewer';
-    if (entries.length === 0) e.general = 'At least one work history entry is required';
     entries.forEach((row, idx) => {
+      if (!rowStarted(row)) return;
       for (const key of ['company', 'title'] as const) {
         const err = textFieldError(key, row[key]);
         if (err) e[`${idx}.${key}`] = err;
       }
       if (row.locationCity.length > 100) e[`${idx}.locationCity`] = 'Use 100 characters or fewer';
       if (row.description.length > 3000) e[`${idx}.description`] = 'Use 3000 characters or fewer';
-      for (const [key, error] of Object.entries(profileDateRangeErrors(row))) e[`${idx}.${key}`] = error;
+      for (const [key, error] of Object.entries(profileDateRangeErrors(row)))
+        e[`${idx}.${key}`] = error;
+      for (const key of ['startDate', 'endDate'])
+        if (partialDates[`${row.rowId}.${key}`] && !(key === 'endDate' && row.isCurrent))
+          e[`${idx}.${key}`] = 'Complete the month and year';
     });
 
-    if (noticeImmediate === null) e.noticePeriod = 'Select your availability';
     if (noticeImmediate === false) {
       const noticeErr = validateNoticePeriod(noticeValue, noticeUnit);
       if (noticeErr) e.noticeValue = noticeErr;
@@ -181,33 +211,48 @@ export function WorkHistorySection({ profile, onSave }: Props) {
     return Object.keys(e).length === 0;
   };
 
-  const saveDraft = useSectionDraft({ entries, summary, noticeImmediate, noticeValue, noticeUnit }, onSave);
+  const saveDraft = useSectionDraft(
+    { entries, summary, noticeImmediate, noticeValue, noticeUnit },
+    onSave,
+  );
 
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await saveSection(saveDraft, {
-      workHistory: entries.map((r) => ({
-        company: r.company.trim(),
-        title: r.title.trim(),
-        startDate: r.startDate,
-        isCurrent: r.isCurrent,
-        endDate: r.isCurrent ? undefined : r.endDate || undefined,
-        location: (r.locationCountry || r.locationCity.trim())
-          ? { countryCode: r.locationCountry || undefined, city: r.locationCity.trim() || undefined }
-          : undefined,
-        arrangement: (r.arrangement as WorkArrangement) || undefined,
-        description: r.description.trim() || undefined,
-      })),
-      professional: {
-        summary: summary.trim() || undefined,
-        noticePeriod: {
-          immediate: noticeImmediate === true,
-          value: noticeImmediate ? undefined : Number(noticeValue),
-          unit: noticeImmediate ? undefined : noticeUnit,
+    await saveSection(
+      saveDraft,
+      {
+        workHistory: entries.filter(rowStarted).map((r) => ({
+          company: r.company.trim(),
+          title: r.title.trim(),
+          startDate: r.startDate,
+          isCurrent: r.isCurrent,
+          endDate: r.isCurrent ? undefined : r.endDate || undefined,
+          location:
+            r.locationCountry || r.locationCity.trim()
+              ? {
+                  countryCode: r.locationCountry || undefined,
+                  city: r.locationCity.trim() || undefined,
+                }
+              : undefined,
+          arrangement: (r.arrangement as WorkArrangement) || undefined,
+          description: r.description.trim() || undefined,
+        })),
+        professional: {
+          summary: summary.trim() || undefined,
+          noticePeriod:
+            noticeImmediate === null
+              ? undefined
+              : {
+                  immediate: noticeImmediate === true,
+                  value: noticeImmediate ? undefined : Number(noticeValue),
+                  unit: noticeImmediate ? undefined : noticeUnit,
+                },
         },
       },
-    }, showToast, 'Work history saved');
+      showToast,
+      'Work history saved',
+    );
     setSaving(false);
   };
 
@@ -215,11 +260,18 @@ export function WorkHistorySection({ profile, onSave }: Props) {
     <div>
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Work History</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Your experience, career summary, and availability</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Save your summary, experience, and availability independently. Leave experience blank if
+          you have no employment history yet.
+        </p>
       </div>
 
       {/* ── Career Summary ──────────────────────────────────────────────────── */}
-      <FormField error={errors.summary} label="Career Summary" hint={`${summary.length} / 2000`}>
+      <FormField
+        error={errors.summary}
+        label="Career Summary · optional"
+        hint={`${summary.length} / 2000`}
+      >
         <textarea
           id="field-summary"
           className={`${cls()} min-h-[100px] resize-y`}
@@ -232,151 +284,190 @@ export function WorkHistorySection({ profile, onSave }: Props) {
 
       {/* ── Work Entries ────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-3 mt-2">
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Work Experience</p>
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          Experience · optional
+        </p>
         <AddEntryButton
           id="add-workHistory"
           variant="pill"
-          onClick={() => { const row = emptyRow(); setEntries((rows) => [...rows, row]); setNewEntryTick((t) => t + 1); }}
+          onClick={() => {
+            const row = emptyRow();
+            setEntries((rows) => [...rows, row]);
+            setNewEntryTick((t) => t + 1);
+          }}
           label="+ Add Entry"
         />
       </div>
 
       {errors.general && (
-        <p className="text-sm text-red-500 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">{errors.general}</p>
+        <p className="text-sm text-red-500 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
+          {errors.general}
+        </p>
       )}
 
       <div ref={entriesContainerRef}>
-      {entries.map((row, idx) => (
-        <ExpandableCard
-          id={`entry-workHistory-${idx}`}
-          key={row.rowId}
-          summary={cardSummary(row, idx)}
-          onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
-          defaultExpanded={!row.company}
-          invalid={Object.entries(errors).some(([key, value]) => key.startsWith(`${idx}.`) && !!value)}
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label="Company" required error={errors[`${idx}.company`]}>
-              <input
-                className={cls(errors[`${idx}.company`])}
-                id={`field-workHistory-${idx}-company`}
-                value={row.company}
-                onChange={(e) => updateEntry(idx, 'company', e.target.value)}
-                onBlur={() => handleEntryBlur(idx, 'company')}
-                placeholder="Acme Inc."
-                maxLength={150}
-              />
-            </FormField>
-            <FormField label="Job Title" required error={errors[`${idx}.title`]}>
-              <input
-                className={cls(errors[`${idx}.title`])}
-                id={`field-workHistory-${idx}-title`}
-                value={row.title}
-                onChange={(e) => updateEntry(idx, 'title', e.target.value)}
-                onBlur={() => handleEntryBlur(idx, 'title')}
-                placeholder="Senior Software Engineer"
-                maxLength={150}
-              />
-            </FormField>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label="Country">
-              <SearchableCountryDropdown
-                id={`field-workHistory-${idx}-location`}
-                value={row.locationCountry}
-                onChange={(code) => updateEntry(idx, 'locationCountry', code)}
-              />
-            </FormField>
-            <FormField label="City" error={errors[`${idx}.locationCity`]}>
-              <input
-                className={cls()}
-                value={row.locationCity}
-                onChange={(e) => updateEntry(idx, 'locationCity', e.target.value)}
-                placeholder="San Francisco"
-                maxLength={100}
-              />
-            </FormField>
-          </div>
-
-          <div className="mb-4">
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Work Arrangement
-            </p>
-            <div className="flex flex-wrap gap-x-6 gap-y-2">
-              {(['onsite', 'remote', 'hybrid'] as const).map((opt) => (
-                <label key={opt} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    id={opt === 'onsite' ? `field-workHistory-${idx}-arrangement` : undefined}
-                    name={`arrangement-${idx}`}
-                    value={opt}
-                    checked={row.arrangement === opt}
-                    // A native radio only fires `change` when its checked
-                    // state actually flips — e.g. arrow-key navigation to a
-                    // different option in the group — so that alone is
-                    // enough to pick up a new selection. But re-clicking the
-                    // already-selected radio never flips its checked state,
-                    // so no `change` fires for that gesture; `click` still
-                    // fires regardless, which is what lets deselect-by-
-                    // reclick work.
-                    onChange={(e) => { if (e.target.checked) updateEntry(idx, 'arrangement', opt); }}
-                    onClick={() => { if (row.arrangement === opt) updateEntry(idx, 'arrangement', ''); }}
-                    className="text-blue-600"
-                  />
-                  <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">{opt}</span>
-                </label>
-              ))}
+        {entries.map((row, idx) => (
+          <ExpandableCard
+            id={`entry-workHistory-${idx}`}
+            key={row.rowId}
+            summary={cardSummary(row, idx)}
+            onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
+            defaultExpanded={!row.company}
+            invalid={Object.entries(errors).some(
+              ([key, value]) => key.startsWith(`${idx}.`) && !!value,
+            )}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField label="Company" required error={errors[`${idx}.company`]}>
+                <input
+                  className={cls(errors[`${idx}.company`])}
+                  id={`field-workHistory-${idx}-company`}
+                  value={row.company}
+                  onChange={(e) => updateEntry(idx, 'company', e.target.value)}
+                  onBlur={() => handleEntryBlur(idx, 'company')}
+                  placeholder="Acme Inc."
+                  maxLength={150}
+                />
+              </FormField>
+              <FormField label="Job Title" required error={errors[`${idx}.title`]}>
+                <input
+                  className={cls(errors[`${idx}.title`])}
+                  id={`field-workHistory-${idx}-title`}
+                  value={row.title}
+                  onChange={(e) => updateEntry(idx, 'title', e.target.value)}
+                  onBlur={() => handleEntryBlur(idx, 'title')}
+                  placeholder="Senior Software Engineer"
+                  maxLength={150}
+                />
+              </FormField>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label="Start Date" required error={errors[`${idx}.startDate`]}>
-              <MonthYearPicker
-                id={`field-workHistory-${idx}-startDate`}
-                value={row.startDate}
-                onChange={(v) => updateEntry(idx, 'startDate', v)}
-                onYearChange={(y) => handleYearChange(idx, 'startDate', y)}
-                onBlur={(m, y) => handleDateBlur(idx, 'startDate', m, y)}
-                error={errors[`${idx}.startDate`]}
-              />
-            </FormField>
-            <FormField label="End Date" required={!row.isCurrent} error={errors[`${idx}.endDate`]}>
-              <MonthYearPicker
-                id={`field-workHistory-${idx}-endDate`}
-                value={row.endDate}
-                onChange={(v) => updateEntry(idx, 'endDate', v)}
-                onYearChange={(y) => handleYearChange(idx, 'endDate', y)}
-                onBlur={(m, y) => handleDateBlur(idx, 'endDate', m, y)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField label="Country">
+                <SearchableCountryDropdown
+                  id={`field-workHistory-${idx}-location`}
+                  value={row.locationCountry}
+                  onChange={(code) => updateEntry(idx, 'locationCountry', code)}
+                />
+              </FormField>
+              <FormField label="City" error={errors[`${idx}.locationCity`]}>
+                <input
+                  className={cls()}
+                  value={row.locationCity}
+                  onChange={(e) => updateEntry(idx, 'locationCity', e.target.value)}
+                  placeholder="San Francisco"
+                  maxLength={100}
+                />
+              </FormField>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Work Arrangement
+              </p>
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
+                {(['onsite', 'remote', 'hybrid'] as const).map((opt) => (
+                  <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      id={opt === 'onsite' ? `field-workHistory-${idx}-arrangement` : undefined}
+                      name={`arrangement-${idx}`}
+                      value={opt}
+                      checked={row.arrangement === opt}
+                      // A native radio only fires `change` when its checked
+                      // state actually flips — e.g. arrow-key navigation to a
+                      // different option in the group — so that alone is
+                      // enough to pick up a new selection. But re-clicking the
+                      // already-selected radio never flips its checked state,
+                      // so no `change` fires for that gesture; `click` still
+                      // fires regardless, which is what lets deselect-by-
+                      // reclick work.
+                      onChange={(e) => {
+                        if (e.target.checked) updateEntry(idx, 'arrangement', opt);
+                      }}
+                      onClick={() => {
+                        if (row.arrangement === opt) updateEntry(idx, 'arrangement', '');
+                      }}
+                      className="text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">
+                      {opt}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField label="Start Date" required error={errors[`${idx}.startDate`]}>
+                <MonthYearPicker
+                  id={`field-workHistory-${idx}-startDate`}
+                  onPartialChange={(partial) =>
+                    setPartialDates((previous) => ({
+                      ...previous,
+                      [`${row.rowId}.startDate`]: partial,
+                    }))
+                  }
+                  value={row.startDate}
+                  onChange={(v) => updateEntry(idx, 'startDate', v)}
+                  onYearChange={(y) => handleYearChange(idx, 'startDate', y)}
+                  onBlur={(m, y) => handleDateBlur(idx, 'startDate', m, y)}
+                  error={errors[`${idx}.startDate`]}
+                />
+              </FormField>
+              <FormField
+                label="End Date"
+                required={!row.isCurrent}
                 error={errors[`${idx}.endDate`]}
-                disabled={row.isCurrent}
+              >
+                <MonthYearPicker
+                  id={`field-workHistory-${idx}-endDate`}
+                  onPartialChange={(partial) =>
+                    setPartialDates((previous) => ({
+                      ...previous,
+                      [`${row.rowId}.endDate`]: partial,
+                    }))
+                  }
+                  value={row.endDate}
+                  onChange={(v) => updateEntry(idx, 'endDate', v)}
+                  onYearChange={(y) => handleYearChange(idx, 'endDate', y)}
+                  onBlur={(m, y) => handleDateBlur(idx, 'endDate', m, y)}
+                  error={errors[`${idx}.endDate`]}
+                  disabled={row.isCurrent}
+                />
+              </FormField>
+            </div>
+
+            <label className="flex items-center gap-2 mb-4 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={row.isCurrent}
+                onChange={(e) => updateEntry(idx, 'isCurrent', e.target.checked)}
+                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                I currently work here
+              </span>
+            </label>
+
+            <FormField
+              label="Description"
+              error={errors[`${idx}.description`]}
+              hint={`${row.description.length} / 3000`}
+            >
+              <textarea
+                className={`${cls()} min-h-[100px] resize-y`}
+                id={`field-workHistory-${idx}-description`}
+                value={row.description}
+                onChange={(e) => updateEntry(idx, 'description', e.target.value)}
+                placeholder="Key responsibilities and achievements..."
+                maxLength={3000}
               />
             </FormField>
-          </div>
-
-          <label className="flex items-center gap-2 mb-4 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={row.isCurrent}
-              onChange={(e) => updateEntry(idx, 'isCurrent', e.target.checked)}
-              className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400"
-            />
-            <span className="text-sm text-gray-700 dark:text-gray-300">Currently active</span>
-          </label>
-
-          <FormField label="Description" error={errors[`${idx}.description`]} hint={`${row.description.length} / 3000`}>
-            <textarea
-              className={`${cls()} min-h-[100px] resize-y`}
-              id={`field-workHistory-${idx}-description`}
-              value={row.description}
-              onChange={(e) => updateEntry(idx, 'description', e.target.value)}
-              placeholder="Key responsibilities and achievements..."
-              maxLength={3000}
-            />
-          </FormField>
-        </ExpandableCard>
-      ))}
-      </div>{/* entriesContainerRef */}
+          </ExpandableCard>
+        ))}
+      </div>
+      {/* entriesContainerRef */}
 
       {/* Total experience — updates live as the user edits dates */}
       {experience.totalMonths > 0 && (
@@ -388,7 +479,9 @@ export function WorkHistorySection({ profile, onSave }: Props) {
 
       {/* ── Notice Period ────────────────────────────────────────────────────── */}
       <div className="pt-4 mb-4" data-field-error={!!errors.noticePeriod}>
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notice Period<span className="text-red-500 ml-0.5">*</span></p>
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Notice Period<span className="text-red-500 ml-0.5">*</span>
+        </p>
         <div className="flex flex-wrap gap-4 mb-3">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
@@ -396,7 +489,10 @@ export function WorkHistorySection({ profile, onSave }: Props) {
               id="field-noticePeriod"
               name="notice"
               checked={noticeImmediate === true}
-              onChange={() => { setNoticeImmediate(true); setErrors((e) => ({ ...e, noticePeriod: '' })); }}
+              onChange={() => {
+                setNoticeImmediate(true);
+                setErrors((e) => ({ ...e, noticePeriod: '' }));
+              }}
               className="text-blue-600"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">Available Now</span>
@@ -406,17 +502,29 @@ export function WorkHistorySection({ profile, onSave }: Props) {
               type="radio"
               name="notice"
               checked={noticeImmediate === false}
-              onChange={() => { setNoticeImmediate(false); setErrors((e) => ({ ...e, noticePeriod: '' })); }}
+              onChange={() => {
+                setNoticeImmediate(false);
+                setErrors((e) => ({ ...e, noticePeriod: '' }));
+              }}
               className="text-blue-600"
             />
             <span className="text-sm text-gray-700 dark:text-gray-300">Available Later</span>
           </label>
         </div>
 
-        {errors.noticePeriod && noticeImmediate === null && <p role="alert" className="text-xs text-red-500 mb-2">{errors.noticePeriod}</p>}
+        {errors.noticePeriod && noticeImmediate === null && (
+          <p role="alert" className="text-xs text-red-500 mb-2">
+            {errors.noticePeriod}
+          </p>
+        )}
         {noticeImmediate === false && (
-          <div data-field-error={!!errors.noticeValue} className="flex flex-wrap items-center gap-2 mt-1">
-            <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">Available after</span>
+          <div
+            data-field-error={!!errors.noticeValue}
+            className="flex flex-wrap items-center gap-2 mt-1"
+          >
+            <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">
+              Available after
+            </span>
             <div className="w-20">
               <input
                 id="field-noticeValue"
@@ -430,7 +538,10 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                   const raw = e.target.value;
                   if (raw === '' || Number(raw) <= 999) {
                     setNoticeValue(raw);
-                    setErrors((prev) => ({ ...prev, noticeValue: validateNoticePeriod(raw, noticeUnit) }));
+                    setErrors((prev) => ({
+                      ...prev,
+                      noticeValue: validateNoticePeriod(raw, noticeUnit),
+                    }));
                   }
                 }}
                 placeholder="3"
@@ -445,7 +556,9 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                   setNoticeUnit(newUnit);
                   setErrors((prev) => ({
                     ...prev,
-                    noticeValue: noticeValue.trim() ? validateNoticePeriod(noticeValue, newUnit) : '',
+                    noticeValue: noticeValue.trim()
+                      ? validateNoticePeriod(noticeValue, newUnit)
+                      : '',
                   }));
                 }}
               >

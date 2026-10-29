@@ -23,7 +23,10 @@ function renderSection(profile: Partial<Profile>, onSave = vi.fn().mockResolvedV
 describe('SalarySection — current-salary country migration (initCurrentCountry)', () => {
   it('passes an already-ISO country code through unchanged on save', () => {
     const { onSave } = renderSection({
-      salary: { current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' }, expected: [] },
+      salary: {
+        current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' },
+        expected: [],
+      },
     });
     fireEvent.click(screen.getByText('Save Salary'));
     expect(onSave).toHaveBeenCalledWith({
@@ -33,7 +36,10 @@ describe('SalarySection — current-salary country migration (initCurrentCountry
 
   it('normalizes a legacy full country name to its ISO code', () => {
     const { onSave } = renderSection({
-      salary: { current: { amount: 5000, currency: 'THB', country: 'Thailand', period: 'monthly' }, expected: [] },
+      salary: {
+        current: { amount: 5000, currency: 'THB', country: 'Thailand', period: 'monthly' },
+        expected: [],
+      },
     });
     fireEvent.click(screen.getByText('Save Salary'));
     expect(onSave).toHaveBeenCalledWith({
@@ -41,32 +47,39 @@ describe('SalarySection — current-salary country migration (initCurrentCountry
     });
   });
 
-  it('migrates an unambiguous currency-only entry to its single matching country', () => {
-    // THB maps to exactly one country (TH) in COUNTRY_TO_CURRENCY.
+  it('keeps country optional when loading an existing currency-only entry', () => {
     const { onSave } = renderSection({
       salary: { current: { amount: 5000, currency: 'THB', period: 'monthly' }, expected: [] },
     });
     fireEvent.click(screen.getByText('Save Salary'));
     expect(onSave).toHaveBeenCalledWith({
-      salary: expect.objectContaining({ current: expect.objectContaining({ country: 'TH' }) }),
+      salary: expect.objectContaining({
+        current: expect.objectContaining({ currency: 'THB', country: undefined }),
+      }),
     });
   });
 
-  it('leaves the country blank for an ambiguous shared currency and blocks save', () => {
+  it('preserves a shared currency without requiring a country', () => {
     // USD maps to many countries — deliberately not auto-resolved.
     const { onSave } = renderSection({
       salary: { current: { amount: 5000, currency: 'USD', period: 'monthly' }, expected: [] },
     });
     fireEvent.click(screen.getByText('Save Salary'));
-    expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('Country is required')).toBeTruthy();
+    expect(onSave).toHaveBeenCalledWith({
+      salary: expect.objectContaining({
+        current: expect.objectContaining({ currency: 'USD', country: undefined }),
+      }),
+    });
   });
 });
 
 describe('SalarySection — expected-salary rows', () => {
   it('drops a fully-empty expected row from the save payload', () => {
     const { onSave } = renderSection({
-      salary: { current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' }, expected: [] },
+      salary: {
+        current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' },
+        expected: [],
+      },
     });
     fireEvent.click(screen.getByText('Save Salary'));
     expect(onSave).toHaveBeenCalledWith({
@@ -74,7 +87,7 @@ describe('SalarySection — expected-salary rows', () => {
     });
   });
 
-  it('migrates a stored expected row with an unambiguous currency-only value', () => {
+  it('preserves a stored expected currency without inferring a country', () => {
     const { onSave } = renderSection({
       salary: {
         current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' },
@@ -84,21 +97,31 @@ describe('SalarySection — expected-salary rows', () => {
     fireEvent.click(screen.getByText('Save Salary'));
     expect(onSave).toHaveBeenCalledWith({
       salary: expect.objectContaining({
-        expected: [expect.objectContaining({ country: 'TH', amount: 6000, period: 'annual' })],
+        expected: [
+          expect.objectContaining({
+            country: undefined,
+            currency: 'THB',
+            amount: 6000,
+            period: 'annual',
+          }),
+        ],
       }),
     });
   });
 
-  it('requires an amount once a row has a country, and vice versa', () => {
+  it('requires currency for a populated amount', () => {
     const { onSave } = renderSection({
-      salary: { current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' }, expected: [] },
+      salary: {
+        current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' },
+        expected: [],
+      },
     });
     // Type an amount into the (initially empty) expected row without picking a country.
     const amountInputs = screen.getAllByPlaceholderText('100000');
     fireEvent.change(amountInputs[0], { target: { value: '7000' } });
     fireEvent.click(screen.getByText('Save Salary'));
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('Country is required', { selector: 'p' })).toBeTruthy();
+    expect(screen.getByText('Currency is required', { selector: 'p' })).toBeTruthy();
   });
 
   it('rejects a negative expected-salary amount', () => {
@@ -127,9 +150,9 @@ describe('SalarySection — expected-salary rows', () => {
       },
     });
 
-    // [0] is the current-salary period select; expected-row periods follow.
+    // Expected rows appear first; the current-salary period follows.
     const periodSelects = screen.getAllByDisplayValue('Monthly');
-    fireEvent.change(periodSelects[2], { target: { value: 'annual' } });
+    fireEvent.change(periodSelects[1], { target: { value: 'annual' } });
     fireEvent.click(screen.getByText('Save Salary'));
 
     expect(onSave).toHaveBeenCalledWith({
@@ -146,11 +169,16 @@ describe('SalarySection — expected-salary rows', () => {
 describe('SalarySection — current-salary country drives the saved currency', () => {
   it('saves the currency mapped from the chosen country, via the searchable dropdown', () => {
     const { onSave } = renderSection({
-      salary: { current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' }, expected: [] },
+      salary: {
+        current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' },
+        expected: [],
+      },
     });
 
-    fireEvent.click(screen.getAllByRole('button')[0]); // the current-salary country trigger
-    fireEvent.change(screen.getByPlaceholderText('Search country, code, or currency…'), { target: { value: 'Singapore' } });
+    fireEvent.click(document.getElementById('field-currentCountry')!); // optional country suggests a default
+    fireEvent.change(screen.getByPlaceholderText('Search country or code…'), {
+      target: { value: 'Singapore' },
+    });
     fireEvent.click(screen.getByText('Singapore'));
 
     fireEvent.click(screen.getByText('Save Salary'));
@@ -166,24 +194,37 @@ describe('SalarySection — current-salary country drives the saved currency', (
 describe('SalarySection — invalid current-salary amount', () => {
   it('shows a live error for a negative amount as the user types', () => {
     renderSection({
-      salary: { current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' }, expected: [] },
+      salary: {
+        current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' },
+        expected: [],
+      },
     });
-    fireEvent.change(document.getElementById('field-currentAmount')!, { target: { value: '-100' } });
+    fireEvent.change(document.getElementById('field-currentAmount')!, {
+      target: { value: '-100' },
+    });
     expect(screen.getByText('Enter a valid amount')).toBeTruthy();
   });
 
   it('blocks save for a negative current-salary amount', () => {
     const { onSave } = renderSection({
-      salary: { current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' }, expected: [] },
+      salary: {
+        current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' },
+        expected: [],
+      },
     });
-    fireEvent.change(document.getElementById('field-currentAmount')!, { target: { value: '-100' } });
+    fireEvent.change(document.getElementById('field-currentAmount')!, {
+      target: { value: '-100' },
+    });
     fireEvent.click(screen.getByText('Save Salary'));
     expect(onSave).not.toHaveBeenCalled();
   });
 
   it('clears the error once the amount becomes valid', () => {
     renderSection({
-      salary: { current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' }, expected: [] },
+      salary: {
+        current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' },
+        expected: [],
+      },
     });
     const input = document.getElementById('field-currentAmount')!;
     fireEvent.change(input, { target: { value: '-100' } });

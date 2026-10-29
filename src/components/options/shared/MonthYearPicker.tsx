@@ -13,6 +13,7 @@ interface Props {
   // Fires with the raw 4-digit year string whenever the year input changes,
   // even when month is not yet selected. Use this to validate year range
   // independently of the full YYYY-MM value.
+  onPartialChange?: (partial: boolean) => void;
   onYearChange?: (year: string) => void;
   // Fires when focus leaves the entire month+year group (not when tabbing
   // between month and year within the picker). Receives the current internal
@@ -43,6 +44,7 @@ export function MonthYearPicker({
   value,
   onChange,
   onYearChange,
+  onPartialChange,
   onBlur,
   error,
   disabled = false,
@@ -76,6 +78,7 @@ export function MonthYearPicker({
 
   const handleMonth = (m: string) => {
     setMonth(m);
+    onPartialChange?.(!!(m || yearStr) && (!isValidYear(yearStr) || (!monthOptional && !m)));
     emit(m, isValidYear(yearStr) ? yearStr : '');
   };
 
@@ -83,6 +86,7 @@ export function MonthYearPicker({
     // Strip non-digits, cap at 4 chars
     const cleaned = raw.replace(/\D/g, '').slice(0, 4);
     setYearStr(cleaned);
+    onPartialChange?.(!!(month || cleaned) && (!isValidYear(cleaned) || (!monthOptional && !month)));
     emit(month, isValidYear(cleaned) ? cleaned : '');
     onYearChange?.(cleaned);
   };

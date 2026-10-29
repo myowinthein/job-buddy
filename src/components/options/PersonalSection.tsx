@@ -1,5 +1,5 @@
 import { useSectionDraft } from './shared/useSectionDraft';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useToast } from '@/src/components/ui/useToast';
 import type { Profile, PhoneNumber } from '@/src/types/profile';
 import { findCountry } from '@/src/data/countries';
@@ -10,7 +10,12 @@ import { saveSection } from './shared/saveSection';
 import { SaveButton } from './shared/SaveButton';
 import { DateOfBirthPicker } from './shared/DateOfBirthPicker';
 import { fieldCls as cls } from './shared/fieldCls';
-import { isValidProfileEmail, isValidProfilePhone, birthDateError, isValidPersonalOption } from '@/src/utils/profileInputValidation';
+import {
+  isValidProfileEmail,
+  isValidProfilePhone,
+  birthDateError,
+  isValidPersonalOption,
+} from '@/src/utils/profileInputValidation';
 
 interface Props {
   profile: Partial<Profile>;
@@ -60,6 +65,7 @@ export function PersonalSection({ profile, onSave }: Props) {
   const [saving, setSaving] = useState(false);
   // True when DateOfBirthPicker has some-but-not-all of day/month/year filled.
   const [dobIsPartial, setDobIsPartial] = useState(false);
+  const optionalDetailsRef = useRef<HTMLDetailsElement>(null);
 
   const fieldError = (key: string, value: string): string => {
     switch (key) {
@@ -68,10 +74,10 @@ export function PersonalSection({ profile, onSave }: Props) {
         if (value.length > 100) return 'First name must be 100 characters or fewer';
         return '';
       case 'lastName':
-        if (!value.trim()) return 'Last name is required';
         if (value.length > 100) return 'Last name must be 100 characters or fewer';
         return '';
-      case 'nickname':  return value.length > 100 ? 'Nickname must be 100 characters or fewer' : '';
+      case 'nickname':
+        return value.length > 100 ? 'Preferred name must be 100 characters or fewer' : '';
       case 'email':
         if (!value.trim()) return 'Email is required';
         if (value.length > 254) return 'Email must be 254 characters or fewer';
@@ -81,8 +87,10 @@ export function PersonalSection({ profile, onSave }: Props) {
         if (!value.trim()) return 'Phone number is required';
         if (!isValidProfilePhone(value)) return 'Enter 4 to 15 digits';
         return '';
-      case 'dateOfBirth': return birthDateError(value);
-      default: return isValidPersonalOption(key, value) ? '' : 'Select a valid option';
+      case 'dateOfBirth':
+        return birthDateError(value);
+      default:
+        return isValidPersonalOption(key, value) ? '' : 'Select a valid option';
     }
   };
 
@@ -108,13 +116,26 @@ export function PersonalSection({ profile, onSave }: Props) {
   // Blur handler: validates the current stored value so that focusing a
   // required field and leaving it blank (without typing) still shows an error.
   const handleBlur = (key: string) => {
-    setErrors((e) => ({ ...e, [key]: fieldError(key, (form as Record<string, string>)[key] ?? '') }));
+    setErrors((e) => ({
+      ...e,
+      [key]: fieldError(key, (form as Record<string, string>)[key] ?? ''),
+    }));
   };
 
   const validate = () => {
     const e: Record<string, string> = {};
 
-    for (const key of ['firstName', 'lastName', 'nickname', 'email', 'phoneNumber', 'gender', 'ethnicity', 'veteranStatus', 'disabilityStatus'] as const) {
+    for (const key of [
+      'firstName',
+      'lastName',
+      'nickname',
+      'email',
+      'phoneNumber',
+      'gender',
+      'ethnicity',
+      'veteranStatus',
+      'disabilityStatus',
+    ] as const) {
       const err = fieldError(key, form[key]);
       if (err) e[key] = err;
     }
@@ -128,6 +149,13 @@ export function PersonalSection({ profile, onSave }: Props) {
       e.dateOfBirth = 'Complete day, month, and year, or leave blank';
     }
 
+    if (
+      ['dateOfBirth', 'gender', 'ethnicity', 'veteranStatus', 'disabilityStatus'].some(
+        (key) => e[key],
+      ) &&
+      optionalDetailsRef.current
+    )
+      optionalDetailsRef.current.open = true;
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -137,32 +165,41 @@ export function PersonalSection({ profile, onSave }: Props) {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await saveSection(saveDraft, {
-      personal: {
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
-        nickname: form.nickname.trim() || undefined,
-        email: form.email.trim(),
-        phone: {
-          countryCode: form.phoneCountry,
-          callingCode: form.phoneCallingCode,
-          number: form.phoneNumber.trim(),
+    await saveSection(
+      saveDraft,
+      {
+        personal: {
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          nickname: form.nickname.trim() || undefined,
+          email: form.email.trim(),
+          phone: {
+            countryCode: form.phoneCountry,
+            callingCode: form.phoneCallingCode,
+            number: form.phoneNumber.trim(),
+          },
+          dateOfBirth: form.dateOfBirth || undefined,
+          gender: form.gender || undefined,
+          ethnicity: form.ethnicity || undefined,
+          veteranStatus: form.veteranStatus || undefined,
+          disabilityStatus: form.disabilityStatus || undefined,
         },
-        dateOfBirth: form.dateOfBirth || undefined,
-        gender: form.gender || undefined,
-        ethnicity: form.ethnicity || undefined,
-        veteranStatus: form.veteranStatus || undefined,
-        disabilityStatus: form.disabilityStatus || undefined,
       },
-    }, showToast, 'Personal information saved');
+      showToast,
+      'Personal information saved',
+    );
     setSaving(false);
   };
 
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Personal Information</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Basic personal details used in job applications</p>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+          Personal Information
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Basic personal details used in job applications
+        </p>
       </div>
 
       {/* Name */}
@@ -178,7 +215,11 @@ export function PersonalSection({ profile, onSave }: Props) {
             maxLength={100}
           />
         </FormField>
-        <FormField label="Last Name" required error={errors.lastName}>
+        <FormField
+          label="Last Name"
+          hint="Optional for names without a family name"
+          error={errors.lastName}
+        >
           <input
             className={cls(errors.lastName)}
             value={form.lastName}
@@ -189,7 +230,7 @@ export function PersonalSection({ profile, onSave }: Props) {
             maxLength={100}
           />
         </FormField>
-        <FormField label="Nickname" error={errors.nickname}>
+        <FormField label="Preferred name" error={errors.nickname}>
           <input
             className={cls(errors.nickname)}
             value={form.nickname}
@@ -220,15 +261,14 @@ export function PersonalSection({ profile, onSave }: Props) {
       <FormField label="Phone" required error={errors.phoneNumber}>
         <div
           className={`flex items-stretch rounded-lg border ${
-            errors.phoneNumber ? 'border-red-300 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'
+            errors.phoneNumber
+              ? 'border-red-300 dark:border-red-500'
+              : 'border-gray-300 dark:border-gray-600'
           } focus-within:ring-2 ${
             errors.phoneNumber ? 'focus-within:ring-red-500' : 'focus-within:ring-blue-500'
           } focus-within:border-transparent`}
         >
-          <SearchableCallingCodeSelect
-            value={form.phoneCountry}
-            onChange={handleCountryChange}
-          />
+          <SearchableCallingCodeSelect value={form.phoneCountry} onChange={handleCountryChange} />
           <input
             type="text"
             inputMode="numeric"
@@ -246,98 +286,108 @@ export function PersonalSection({ profile, onSave }: Props) {
       </FormField>
 
       {/* Date of Birth */}
-      <FormField
-        label="Date of Birth"
-        error={errors.dateOfBirth}
+      <details
+        ref={optionalDetailsRef}
+        className="mt-5 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
       >
-        <DateOfBirthPicker
-          id="field-dateOfBirth"
-          value={form.dateOfBirth}
-          onChange={(v) => set('dateOfBirth', v)}
-          onPartialChange={(partial) => {
-            setDobIsPartial(partial);
-            // Live feedback: surface or clear the partial-completion error as
-            // the user types, but don't stomp on more specific range errors.
-            setErrors((e) => {
-              const existing = e.dateOfBirth;
-              if (partial) {
-                if (!existing) return { ...e, dateOfBirth: 'Complete day, month, and year, or leave blank' };
+        <summary className="cursor-pointer font-medium text-sm text-gray-800 dark:text-gray-200">
+          Optional personal details
+        </summary>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 mb-4">
+          Share only what you want used in applications. These details never affect profile
+          completion.
+        </p>
+        <FormField label="Date of Birth" error={errors.dateOfBirth}>
+          <DateOfBirthPicker
+            id="field-dateOfBirth"
+            value={form.dateOfBirth}
+            onChange={(v) => set('dateOfBirth', v)}
+            onPartialChange={(partial) => {
+              setDobIsPartial(partial);
+              // Live feedback: surface or clear the partial-completion error as
+              // the user types, but don't stomp on more specific range errors.
+              setErrors((e) => {
+                const existing = e.dateOfBirth;
+                if (partial) {
+                  if (!existing)
+                    return { ...e, dateOfBirth: 'Complete day, month, and year, or leave blank' };
+                  return e;
+                }
+                if (existing === 'Complete day, month, and year, or leave blank') {
+                  return { ...e, dateOfBirth: '' };
+                }
                 return e;
-              }
-              if (existing === 'Complete day, month, and year, or leave blank') {
-                return { ...e, dateOfBirth: '' };
-              }
-              return e;
-            });
-          }}
-          error={errors.dateOfBirth}
-        />
-      </FormField>
-
-      {/* Gender & Ethnicity */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <FormField label="Gender" error={errors.gender}>
-          <select
-            id="field-gender"
-            className={cls(errors.gender)}
-            value={form.gender}
-            onChange={(e) => set('gender', e.target.value)}
-          >
-            <option value="">Select gender…</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-            <option value="prefer_not_to_say">Prefer not to say</option>
-          </select>
+              });
+            }}
+            error={errors.dateOfBirth}
+          />
         </FormField>
 
-        <FormField label="Ethnicity" error={errors.ethnicity}>
-          <select
-            id="field-ethnicity"
-            className={cls(errors.ethnicity)}
-            value={form.ethnicity}
-            onChange={(e) => set('ethnicity', e.target.value)}
-          >
-            <option value="">Select ethnicity…</option>
-            {ETHNICITIES.map((eth) => (
-              <option key={eth} value={eth}>
-                {eth}
-              </option>
-            ))}
-            <option value="prefer_not_to_say">Prefer not to say</option>
-          </select>
-        </FormField>
-      </div>
+        {/* Gender & Ethnicity */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField label="Gender" error={errors.gender}>
+            <select
+              id="field-gender"
+              className={cls(errors.gender)}
+              value={form.gender}
+              onChange={(e) => set('gender', e.target.value)}
+            >
+              <option value="">Select gender…</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+              <option value="prefer_not_to_say">Prefer not to say</option>
+            </select>
+          </FormField>
 
-      {/* Veteran & Disability */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <FormField label="Veteran Status" error={errors.veteranStatus}>
-          <select
-            id="field-veteranStatus"
-            className={cls(errors.veteranStatus)}
-            value={form.veteranStatus}
-            onChange={(e) => set('veteranStatus', e.target.value)}
-          >
-            <option value="">Select veteran status…</option>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-            <option value="prefer_not_to_say">Prefer not to say</option>
-          </select>
-        </FormField>
-        <FormField label="Disability Status" error={errors.disabilityStatus}>
-          <select
-            id="field-disabilityStatus"
-            className={cls(errors.disabilityStatus)}
-            value={form.disabilityStatus}
-            onChange={(e) => set('disabilityStatus', e.target.value)}
-          >
-            <option value="">Select disability status…</option>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-            <option value="prefer_not_to_say">Prefer not to say</option>
-          </select>
-        </FormField>
-      </div>
+          <FormField label="Ethnicity" error={errors.ethnicity}>
+            <select
+              id="field-ethnicity"
+              className={cls(errors.ethnicity)}
+              value={form.ethnicity}
+              onChange={(e) => set('ethnicity', e.target.value)}
+            >
+              <option value="">Select ethnicity…</option>
+              {ETHNICITIES.map((eth) => (
+                <option key={eth} value={eth}>
+                  {eth}
+                </option>
+              ))}
+              <option value="prefer_not_to_say">Prefer not to say</option>
+            </select>
+          </FormField>
+        </div>
+
+        {/* Veteran & Disability */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FormField label="Veteran Status" error={errors.veteranStatus}>
+            <select
+              id="field-veteranStatus"
+              className={cls(errors.veteranStatus)}
+              value={form.veteranStatus}
+              onChange={(e) => set('veteranStatus', e.target.value)}
+            >
+              <option value="">Select veteran status…</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+              <option value="prefer_not_to_say">Prefer not to say</option>
+            </select>
+          </FormField>
+          <FormField label="Disability Status" error={errors.disabilityStatus}>
+            <select
+              id="field-disabilityStatus"
+              className={cls(errors.disabilityStatus)}
+              value={form.disabilityStatus}
+              onChange={(e) => set('disabilityStatus', e.target.value)}
+            >
+              <option value="">Select disability status…</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+              <option value="prefer_not_to_say">Prefer not to say</option>
+            </select>
+          </FormField>
+        </div>
+      </details>
 
       <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
         <SaveButton onClick={handleSave} saving={saving} label="Save Personal Information" />

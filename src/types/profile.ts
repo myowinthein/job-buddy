@@ -29,7 +29,7 @@ export interface NoticePeriod {
 export interface CurrentSalary {
   amount: number;
   currency: string;
-  country?: string;        // ISO 3166-1 alpha-2 — used to drive the currency picker
+  country?: string;        // ISO 3166-1 alpha-2 — optional context; currency is selected independently
   period: SalaryPeriod;
 }
 
@@ -129,7 +129,7 @@ export interface Profile {
     noticePeriod?: NoticePeriod;
   };
   salary: {
-    current: CurrentSalary;
+    current?: CurrentSalary;
     expected: ExpectedSalaryEntry[];
   };
   workAuthorization: WorkAuthorizationEntry[];
@@ -140,7 +140,7 @@ export interface Profile {
     linkedin: string;
     portfolio?: string;
     custom?: CustomLink[];
-    // Retained for backward compat with old profiles; no longer shown in UI
+    // Dedicated social profiles; retained paths keep older backups compatible
     github?: string;
     twitter?: string;
     dribbble?: string;

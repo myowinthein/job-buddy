@@ -146,26 +146,10 @@ it.each([
     },
   ],
   [
-    'Current Salary Currency',
-    'field-currentCountry',
-    (p: Profile) => {
-      p.salary.current.currency = '';
-      delete p.salary.current.country;
-    },
-  ],
-  [
     'At least one valid entry',
     'field-workAuthorization-0-status',
     (p: Profile) => {
       p.workAuthorization[0].status = '' as Profile['workAuthorization'][0]['status'];
-    },
-  ],
-  [
-    'At least one complete entry',
-    'field-workHistory-0-endDate',
-    (p: Profile) => {
-      p.workHistory[0].isCurrent = false;
-      delete p.workHistory[0].endDate;
     },
   ],
   [
@@ -203,11 +187,11 @@ it.each([
   await saveProfile(profile);
   await openPersonal();
   const progress = screen.getByRole('progressbar');
-  expect(progress.getAttribute('aria-valuenow')).toBe('93');
+  expect(progress.getAttribute('aria-valuenow')).toBe('90');
   fireEvent.click(screen.getByRole('button', { name: /required remaining/ }));
   fireEvent.click(screen.getByRole('button', { name: label }));
   await waitFor(() => expect(document.activeElement?.id).toBe(id));
-  expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('93');
+  expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('90');
 });
 
 it('reveals and focuses an optional field in a later collapsed entry', async () => {
@@ -229,7 +213,7 @@ it('updates required progress only after a successful section save', async () =>
   await saveProfile(profile);
   const name = await openPersonal();
   fireEvent.change(name, { target: { value: 'Jane' } });
-  expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('93');
+  expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('90');
   fireEvent.click(screen.getByText('Save Personal Information'));
   await waitFor(() =>
     expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('100'),

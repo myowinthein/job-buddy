@@ -62,7 +62,7 @@ describe('calculateCompletion', () => {
       ...COMPLETE,
       salary: { current: { amount: -1, currency: 'THB', period: 'monthly' }, expected: [] },
     });
-    expect(result.missingFields).toContain('Current Salary Amount');
+    expect(result.optionalGroups.find((group) => group.sectionId === 'salary')?.fields).toContain('Current Salary');
   });
 
   it('accepts notice period immediate', () => {
@@ -128,10 +128,10 @@ describe('calculateCompletion', () => {
     expect(personalGroup?.fields).toContain('Email');
   });
 
-  it('percentage rounds correctly for one missing check out of 15', () => {
-    // 14/15 = 93.33 → rounds to 93
+  it('percentage rounds correctly for one missing check out of 10', () => {
+    // 9/10 = 90
     const result = calculateCompletion({ ...COMPLETE, languages: [] });
-    expect(result.percentage).toBe(93);
+    expect(result.percentage).toBe(90);
   });
 });
 
@@ -201,19 +201,15 @@ describe('saved progress validates the required values', () => {
   it.each([
     ['Email', { personal: { ...COMPLETE.personal, email: 'invalid' } }],
     ['Phone', { personal: { ...COMPLETE.personal, phone: { ...COMPLETE.personal.phone, number: '12' } } }],
-    ['Current Salary Amount', { salary: { ...COMPLETE.salary, current: { ...COMPLETE.salary.current, amount: Infinity } } }],
-    ['Current Salary Currency', { salary: { ...COMPLETE.salary, current: { ...COMPLETE.salary.current, currency: 'USD' } } }],
-    ['At least one complete entry', { workHistory: [{ ...COMPLETE.workHistory[0], isCurrent: false }] }],
     ['At least one complete entry', { education: [{ ...COMPLETE.education[0], endDate: '2000-01' }] }],
     ['At least one language', { languages: [{ language: '', proficiency: 'native_bilingual' }] }],
     ['Notice Period', { professional: { noticePeriod: { immediate: false, value: 1.5, unit: 'week' } } }],
-    ['LinkedIn URL', { links: { linkedin: 'https://example.com/linkedin.com' } }],
     ['CV / Résumé', { documents: { cv: { url: 'invalid' } } }],
   ] as [string, Partial<Profile>][] )('keeps %s incomplete for invalid saved data', (field, patch) => {
     const result = calculateCompletion({ ...COMPLETE, ...patch });
     expect(result.missingFields).toContain(field);
     expect(result.isCoreComplete).toBe(false);
-    expect(result.percentage).toBe(93);
+    expect(result.percentage).toBe(90);
   });
 
   it('focuses the invalid field in a later collapsed work entry', () => {
@@ -221,9 +217,24 @@ describe('saved progress validates the required values', () => {
     expect(getCompletionTarget(profile, 'workHistory', 'At least one complete entry')).toEqual({ id: 'field-workHistory-1-endDate', cardId: 'entry-workHistory-1', fallbackId: 'add-workHistory' });
   });
 
-  it('keeps optional details separate from the 15 required checks', () => {
+  it('keeps optional details separate from the 10 required checks', () => {
     const result = calculateCompletion(COMPLETE);
     expect(result.percentage).toBe(100);
     expect(result.optionalFieldsRemaining).toBeGreaterThan(0);
   });
+});
+
+it('allows 100% without last name, salary, LinkedIn, employment history or demographics', () => {
+  const profile: Profile = { ...COMPLETE, personal: { firstName: 'Jane', lastName: '', email: 'jane@example.com', phone: COMPLETE.personal.phone }, salary: { expected: [] }, links: { linkedin: '' }, workHistory: [] };
+  const result = calculateCompletion(profile);
+  expect(result.percentage).toBe(100);
+  expect(result.optionalGroups.some((group) => group.sectionId === 'personal')).toBe(false);
+  expect(getSectionCompletion(profile).personal).toBe(true);
+});
+
+it('targets the duplicate row when an imported profile repeats a country or language', () => {
+  const profile = { ...COMPLETE, workAuthorization: [COMPLETE.workAuthorization[0], { ...COMPLETE.workAuthorization[0] }], languages: [COMPLETE.languages[0], { ...COMPLETE.languages[0], language: 'en' }] };
+  expect(calculateCompletion(profile).missingFields).toContain('At least one valid entry');
+  expect(getCompletionTarget(profile, 'workAuthorization', 'At least one valid entry')?.id).toBe('field-workAuthorization-1-country');
+  expect(getCompletionTarget(profile, 'languages', 'At least one language')?.id).toBe('field-languages-1-language');
 });

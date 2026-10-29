@@ -71,8 +71,9 @@ describe('WorkHistorySection — date validation across the keystroke/blur/save-
     expect(screen.getByText(/Year must be between/)).toBeTruthy();
   });
 
-  it('requires company, title, and start date on save when left blank', () => {
+  it('requires company, title, and start date once an entry is started', () => {
     const { onSave } = renderSection({ workHistory: [] });
+    fireEvent.change(screen.getByPlaceholderText('San Francisco'), { target: { value: 'Austin' } });
     fireEvent.click(screen.getByText('Save Work History'));
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('Company name is required')).toBeTruthy();
@@ -155,7 +156,7 @@ describe('WorkHistorySection — Work Arrangement radio group', () => {
 });
 
 describe('WorkHistorySection — Notice Period validation', () => {
-  it('does not invent immediate availability when no notice period was saved', () => {
+  it('does not invent immediate availability when no notice period was saved', async () => {
     const { onSave } = renderSection({
       professional: {},
       workHistory: [{ company: 'Acme', title: 'Engineer', startDate: '2020-01', isCurrent: true }],
@@ -163,8 +164,9 @@ describe('WorkHistorySection — Notice Period validation', () => {
     expect((screen.getByLabelText('Available Now') as HTMLInputElement).checked).toBe(false);
     expect((screen.getByLabelText('Available Later') as HTMLInputElement).checked).toBe(false);
     fireEvent.click(screen.getByText('Save Work History'));
-    expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('Select your availability')).toBeTruthy();
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ professional: expect.objectContaining({ noticePeriod: undefined }) }));
+    expect(screen.queryByText('Select your availability')).toBeNull();
+    await screen.findByText('Save Work History');
     fireEvent.click(screen.getByText('Available Now'));
     fireEvent.click(screen.getByText('Save Work History'));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
