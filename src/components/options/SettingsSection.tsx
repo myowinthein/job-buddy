@@ -970,74 +970,35 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="reset-data-title"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-md mx-4"
+            aria-describedby="reset-data-description"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-sm p-6 mx-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 id="reset-data-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">Reset All Data</h3>
-              <button
-                type="button"
-                onClick={handleResetDialogClose}
-                aria-label="Close"
-                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
-              >
-                ×
-              </button>
-            </div>
+            <h3 id="reset-data-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
+              Reset All Data
+            </h3>
+            <p id="reset-data-description" className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+              {driveState.connected
+                ? 'Permanently delete local Job Buddy data and disconnect Drive.'
+                : 'Permanently delete all Job Buddy data on this device.'}
+            </p>
 
-            <div className="px-6 py-5">
-              <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                Deletes your profile, mappings, history, and settings from this device.
-              </p>
-              <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
-                <button type="button" className="underline hover:text-gray-900 dark:hover:text-gray-100 transition-colors" onClick={handleExport}>
-                  Export a backup first
-                </button>
-              </p>
-              <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-5">This cannot be undone.</p>
+            {driveState.connected && (
+              <label className="mt-4 flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={resetScope === 'everywhere'}
+                  disabled={resetting}
+                  onChange={(e) => setResetScope(e.target.checked ? 'everywhere' : 'device')}
+                  className="mt-0.5 accent-red-600"
+                />
+                Also delete the Drive backup
+              </label>
+            )}
 
-              {driveState.connected && (
-                <div className="mb-5">
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Also reset Google Drive?</p>
-                  <div className="space-y-2">
-                    <label className="flex items-start gap-2.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="resetScope"
-                        value="device"
-                        checked={resetScope === 'device'}
-                        onChange={() => setResetScope('device')}
-                        className="mt-0.5 text-red-600"
-                      />
-                      <div>
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">This device only</span>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                          Disconnects Drive. Your Drive backup file is kept.
-                        </p>
-                      </div>
-                    </label>
-                    <label className="flex items-start gap-2.5 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="resetScope"
-                        value="everywhere"
-                        checked={resetScope === 'everywhere'}
-                        onChange={() => setResetScope('everywhere')}
-                        className="mt-0.5 text-red-600"
-                      />
-                      <div>
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">This device and Google Drive</span>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                          Disconnects Drive and deletes the Drive backup file.
-                        </p>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-              )}
-
+            <div className="mt-5">
               <label htmlFor="reset-confirmation" className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
-                Type <code className="font-mono font-bold text-red-600 dark:text-red-400">DELETE</code> to confirm
+                Type <code className="font-mono font-semibold">DELETE</code> to confirm
               </label>
               <input
                 type="text"
@@ -1051,7 +1012,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               />
             </div>
 
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={handleResetDialogClose}

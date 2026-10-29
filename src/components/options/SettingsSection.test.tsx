@@ -257,11 +257,12 @@ describe('SettingsSection — Reset All Data confirmation gate', () => {
   });
 
   it('disables the reset button until DELETE is typed, and clears storage once confirmed', async () => {
-    vi.mocked(getProfile).mockResolvedValue(makeProfile()); // non-empty, so Reset Now proceeds to the dialog
+    vi.mocked(getProfile).mockResolvedValue(makeProfile());
+    vi.mocked(getFullDriveState).mockResolvedValue({ connected: true, lastSynced: null, pendingSync: false, error: null });
 
     renderSection();
     fireEvent.click(await screen.findByText('Reset Now'));
-    await screen.findByText('This cannot be undone.');
+    await screen.findByRole('dialog', { name: 'Reset All Data' });
 
     const resetButton = screen.getByRole('button', { name: 'Reset All Data' }) as HTMLButtonElement;
     expect(resetButton.disabled).toBe(true);
@@ -271,17 +272,18 @@ describe('SettingsSection — Reset All Data confirmation gate', () => {
 
     fireEvent.click(resetButton);
     await waitFor(() => expect(vi.mocked(clearAllStorage)).toHaveBeenCalled());
+    expect(disconnectDrive).toHaveBeenCalledWith(false);
   });
 
-  it('deletes the Drive backup only when "everywhere" scope is selected', async () => {
+  it('deletes the Drive backup only when the backup checkbox is selected', async () => {
     vi.mocked(getProfile).mockResolvedValue(makeProfile());
     vi.mocked(getFullDriveState).mockResolvedValue({ connected: true, lastSynced: null, pendingSync: false, error: null });
 
     renderSection();
     fireEvent.click(await screen.findByText('Reset Now'));
-    await screen.findByText('This cannot be undone.');
+    await screen.findByRole('dialog', { name: 'Reset All Data' });
 
-    fireEvent.click(screen.getByLabelText(/This device and Google Drive/));
+    fireEvent.click(screen.getByLabelText('Also delete the Drive backup'));
     fireEvent.change(screen.getByPlaceholderText('DELETE'), { target: { value: 'DELETE' } });
     fireEvent.click(screen.getByRole('button', { name: 'Reset All Data' }));
 
@@ -293,7 +295,7 @@ describe('SettingsSection — Reset All Data confirmation gate', () => {
 
     renderSection();
     fireEvent.click(await screen.findByText('Reset Now'));
-    await screen.findByText('This cannot be undone.');
+    await screen.findByRole('dialog', { name: 'Reset All Data' });
 
     fireEvent.change(screen.getByPlaceholderText('DELETE'), { target: { value: 'DELETE' } });
     fireEvent.click(screen.getByRole('button', { name: 'Reset All Data' }));
@@ -309,10 +311,10 @@ describe('SettingsSection — Reset All Data confirmation gate', () => {
 
     renderSection();
     fireEvent.click(await screen.findByText('Reset Now'));
-    await screen.findByText('This cannot be undone.');
+    await screen.findByRole('dialog', { name: 'Reset All Data' });
 
     fireEvent.keyDown(window, { key: 'Escape' });
-    expect(screen.queryByText('This cannot be undone.')).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Reset All Data' })).toBeNull();
   });
 
   it('ignores Escape while a reset is actually in flight', async () => {
@@ -322,7 +324,7 @@ describe('SettingsSection — Reset All Data confirmation gate', () => {
 
     renderSection();
     fireEvent.click(await screen.findByText('Reset Now'));
-    await screen.findByText('This cannot be undone.');
+    await screen.findByRole('dialog', { name: 'Reset All Data' });
     fireEvent.change(screen.getByPlaceholderText('DELETE'), { target: { value: 'DELETE' } });
     fireEvent.click(screen.getByRole('button', { name: 'Reset All Data' }));
 
@@ -331,7 +333,7 @@ describe('SettingsSection — Reset All Data confirmation gate', () => {
     expect(screen.getByText('Resetting…')).toBeTruthy(); // dialog is still up, mid-reset
 
     resolveClear();
-    await waitFor(() => expect(screen.queryByText('This cannot be undone.')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Reset All Data' })).toBeNull());
   });
 });
 
