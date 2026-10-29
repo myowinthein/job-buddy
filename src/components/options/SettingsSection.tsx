@@ -106,10 +106,8 @@ function isProfileEmpty(profile: Partial<Profile> | null): boolean {
   return calculateCompletion(profile ?? {}).percentage === 0;
 }
 
-// Shared by the empty-profile fast path (handleFileChange) and the
-// diff/review path (performImportSave) so the two import flows can't drift
-// apart. Learned mappings are always merged, never overwritten, so an older
-// import can't silently erase newer local learning.
+// Shared by JSON imports and both Drive restore paths. Learned mappings are
+// always merged, never overwritten, so an older import can't erase newer learning.
 async function saveImportedData(
   profile: Profile,
   learnedMappings: LearnedMappings | undefined,
@@ -515,15 +513,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         closeRestoreDialog();
         return;
       }
-      await saveProfile(validation.sanitized as Profile);
-      if (driveRestoreData.learnedMappings) {
-        // Merge rather than overwrite — the Drive copy may be stale (it only
-        // syncs on profile-related actions, not every time autofill learns
-        // something new), so a blind overwrite could silently discard newer
-        // local learning.
-        const localMappings = await getLearnedMappings();
-        await saveLearnedMappings(mergeLearnedMappings(localMappings, driveRestoreData.learnedMappings));
-      }
+      await saveImportedData(validation.sanitized as Profile, driveRestoreData.learnedMappings, undefined);
       const fresh = await getFullDriveState();
       setDriveState(fresh);
       showToast('success', 'Profile restored from Google Drive');
@@ -561,11 +551,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     setDriveRestoreBusy(true);
     try {
       const applied = applyChanges(driveLocalProfile, finalChanges);
-      await saveProfile(applied as Profile);
-      if (driveRestoreData?.learnedMappings) {
-        const localMappings = await getLearnedMappings();
-        await saveLearnedMappings(mergeLearnedMappings(localMappings, driveRestoreData.learnedMappings));
-      }
+      await saveImportedData(applied as Profile, driveRestoreData?.learnedMappings, undefined);
       // saveProfile() above already triggers the debounced background sync
       // (see entrypoints/background.ts) — an explicit call here would upload twice.
       showToast('success', 'Profile updated from Drive backup');
