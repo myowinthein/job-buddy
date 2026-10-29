@@ -319,8 +319,35 @@
         ],
         "invariant": "Preserve every scenario, input, assertion, test environment and in-case configuration; retain Drive quota-case runtime.lastError cleanup and synthetic fixtures."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "2bb61a6b4ad4814c97cb6443c0e3e3afa62e0293",
+        "date": "2026-10-29",
+        "method": "runtime",
+        "evidence": [
+          "afterEach owns environment, spy and clock restoration; direct Chrome replacements use restorable spies. Existing assertions, test environments and quota cleanup retained."
+        ],
+        "checks": [
+          {
+            "command": "pnpm compile",
+            "scope": "project",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm exec vitest run src/utils/storage.test.ts src/utils/sessionStorage.test.ts src/utils/driveSync.test.ts src/utils/derivedFields.test.ts src/utils/experience.test.ts",
+            "scope": "five resource-owning suites",
+            "outcome": "120 tests passed; existing cases and assertions retained"
+          },
+          {
+            "command": "pnpm exec eslint src/utils/storage.test.ts src/utils/sessionStorage.test.ts src/utils/driveSync.test.ts src/utils/derivedFields.test.ts src/utils/experience.test.ts",
+            "scope": "R6 files",
+            "outcome": "passed"
+          }
+        ]
+      }
     },
     {
       "id": "r-5ea0bad7-2cd0-43b7-87bd-eb4265494635",
