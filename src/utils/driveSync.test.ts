@@ -471,3 +471,24 @@ describe('syncIfConnected', () => {
   });
 });
 
+
+
+describe('syncProfileToDrive — local persistence failure', () => {
+  it('returns a failure result if both success and retry-state writes reject', async () => {
+    store.driveToken = 'synthetic-token';
+    store.driveBackupState = { fileId: 'f1', lastSynced: null, pendingSync: false, error: null };
+    const profile = makeProfile();
+    store.profile = profile;
+    mockFetchSequence([{ ok: true }]);
+    const runtime = chrome.runtime as unknown as { lastError: { message: string } | null };
+    const write = vi.spyOn(chrome.storage.local, 'set').mockImplementation((_items, callback) => {
+      runtime.lastError = { message: 'synthetic quota failure' };
+      (callback as () => void)();
+      runtime.lastError = null;
+    });
+    try {
+      await expect(syncProfileToDrive(profile)).resolves.toEqual({ success: false, errorCode: 'sync_error' });
+      expect(store.profile).toEqual(profile);
+    } finally { write.mockRestore(); runtime.lastError = null; }
+  });
+});
