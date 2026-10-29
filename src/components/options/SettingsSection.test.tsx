@@ -494,7 +494,6 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
 
     renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));
-    fireEvent.click(await screen.findByText('Restore'));
 
     expect(await screen.findByText('Drive backup contains invalid profile data.')).toBeTruthy();
     expect(vi.mocked(saveProfile)).not.toHaveBeenCalled();
