@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Circle, LoaderCircle, RefreshCw } from 'lucide-react';
 import { checkApiKey, validateApiKey, KEY_ERROR_MESSAGES } from '@/src/resume-ai/gemini';
-import { MODEL_DISPLAY_NAMES, GEMINI_MODEL_PRIORITY } from '@/src/resume-ai/types';
+import { MODEL_DISPLAY_NAMES } from '@/src/resume-ai/types';
 import {
   getGeminiSettings,
   saveGeminiSettings,
@@ -315,9 +315,21 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
               autoComplete="off"
               spellCheck={false}
               aria-invalid={keyInvalid || undefined}
-              aria-describedby={`gemini-key-privacy${error ? ' gemini-key-error' : ''}`}
+              aria-describedby={`gemini-key-help gemini-key-privacy${error ? ' gemini-key-error' : ''}`}
               className={fieldCls(keyInvalid ? error : undefined, busy || !saved)}
             />
+            <p id="gemini-key-help" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Get a key from{' '}
+              <a
+                href="https://aistudio.google.com/api-keys"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 dark:text-blue-400 underline"
+              >
+                Google AI Studio
+              </a>
+              . No payment required for the free tier.
+            </p>
             <p id="gemini-key-privacy" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               Stored in this browser. Excluded from profile backups.
             </p>
@@ -393,59 +405,6 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
           )}
         </div>
       </form>
-      <details className="mt-3 max-w-md">
-        <summary className="text-xs text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
-          Options &amp; help
-        </summary>
-        {configured && (
-          <div className="mt-3">
-            <label
-              htmlFor="gemini-model"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-            >
-              AI Model
-            </label>
-            <select
-              id="gemini-model"
-              value={preference}
-              disabled={busy}
-              onChange={(e) => {
-                const choice = e.target.value as GeminiModelPreference;
-                setPreference(choice);
-                if (!replacing) void verify(saved?.apiKey ?? '', choice, true);
-              }}
-              className={fieldCls(undefined, busy)}
-            >
-              <option value="auto">Automatic (recommended)</option>
-              {GEMINI_MODEL_PRIORITY.map((model) => (
-                <option key={model} value={model}>
-                  {MODEL_DISPLAY_NAMES[model]}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-        <p className="mt-3 text-xs text-gray-600 dark:text-gray-400">
-          Create a key in{' '}
-          <a
-            href="https://aistudio.google.com/api-keys"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 dark:text-blue-400 underline"
-          >
-            Google AI Studio
-          </a>
-          , then paste it here and select Save Key.
-        </p>
-        <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-          Your key is stored in this browser and excluded from profile backups. It authenticates
-          requests sent directly to Google.
-        </p>
-        <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-          AI autofill excludes stored document files and only includes personal background details
-          when a field asks for them. Resume import sends the selected file.
-        </p>
-      </details>
     </section>
   );
 }
