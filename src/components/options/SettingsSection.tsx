@@ -68,6 +68,7 @@ interface ParsedImport {
 // strings.
 const btnPrimaryCls   = 'px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors';
 const btnSecondaryCls = 'px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 active:scale-95 transition-colors';
+const footerLinkCls = 'rounded-sm hover:text-blue-600 dark:hover:text-blue-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500 transition-colors';
 
 // ── Drive timestamp formatter ────────────────────────────────────────────────
 // Timestamps are stored as UTC ISO strings. Display converts to local timezone:
@@ -928,15 +929,35 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         </button>
       </section>
 
-      <footer className="mt-10 pt-5 border-t border-gray-200 dark:border-gray-700">
-        <a
-          href="https://ko-fi.com/myowinthein"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500 transition-colors"
-        >
-          Support on Ko-fi <span aria-hidden="true">↗</span>
-        </a>
+      <footer className="mt-10 pt-5 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+        <nav aria-label="Settings links" className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
+          <a
+            href="https://myowinthein.github.io/job-buddy/legal/privacy/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={footerLinkCls}
+          >
+            Privacy Policy
+          </a>
+          <span aria-hidden="true">·</span>
+          <a
+            href="https://myowinthein.github.io/job-buddy/legal/disclaimer/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={footerLinkCls}
+          >
+            Disclaimer
+          </a>
+          <span aria-hidden="true">·</span>
+          <a
+            href="https://ko-fi.com/myowinthein"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${footerLinkCls} inline-flex items-center gap-1 font-normal`}
+          >
+            Support on Ko-fi <span aria-hidden="true">↗</span>
+          </a>
+        </nav>
       </footer>
 
       {/* ── Import Profile — summary / review dialogs ──────────────────────────── */}
