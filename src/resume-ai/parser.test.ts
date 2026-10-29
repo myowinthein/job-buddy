@@ -240,8 +240,8 @@ describe('FIELD_DEFS display functions', () => {
   });
 
   describe('professional.noticePeriod', () => {
-    it('renders "Immediate" when immediate is true', () => {
-      expect(display('professional.noticePeriod', { immediate: true })).toBe('Immediate');
+    it('uses the profile availability label when immediate is true', () => {
+      expect(display('professional.noticePeriod', { immediate: true })).toBe('Available Now');
     });
     it('pluralises the unit for values other than 1', () => {
       expect(display('professional.noticePeriod', { value: 3, unit: 'week' })).toBe('3 weeks');
@@ -263,7 +263,7 @@ describe('FIELD_DEFS display functions', () => {
       expect(display('salary.current', { currency: 'USD' })).toBe('USD');
     });
     it('appends country parenthetically, matching salary.expected\'s convention', () => {
-      expect(display('salary.current', { amount: 5000, currency: 'USD', period: 'monthly', country: 'US' })).toBe('5000 USD (monthly) (US)');
+      expect(display('salary.current', { amount: 5000, currency: 'USD', period: 'monthly', country: 'US' })).toBe('5000 USD (monthly) (United States)');
     });
     it('returns "" for a null value', () => {
       expect(display('salary.current', null)).toBe('');
@@ -277,7 +277,7 @@ describe('FIELD_DEFS display functions', () => {
           { amount: 100, currency: 'USD', period: 'monthly', country: 'US' },
           { amount: 200, currency: 'GBP', period: 'annual', country: 'GB' },
         ]),
-      ).toBe('100 USD (monthly) (US)\n200 GBP (annual) (GB)');
+      ).toBe('100 USD (monthly) (United States)\n200 GBP (annual) (United Kingdom)');
     });
     it('returns "" for an empty array', () => {
       expect(display('salary.expected', [])).toBe('');
@@ -329,11 +329,11 @@ describe('FIELD_DEFS display functions', () => {
     it('returns the summary unchanged when under the 120-char limit', () => {
       expect(display('professional.summary', 'Short summary.')).toBe('Short summary.');
     });
-    it('truncates to 117 chars plus an ellipsis at exactly 121 chars', () => {
+    it('preserves the full summary for review', () => {
       const s = 'x'.repeat(121);
       const result = display('professional.summary', s);
-      expect(result).toBe('x'.repeat(117) + '…');
-      expect(result.length).toBe(118);
+      expect(result).toBe('x'.repeat(121));
+      expect(result.length).toBe(121);
     });
     it('does not truncate a summary of exactly 120 chars', () => {
       const s = 'x'.repeat(120);
@@ -382,7 +382,7 @@ describe('FIELD_DEFS display functions', () => {
         display('workAuthorization', [
           { country: 'US', status: 'authorized_no_sponsorship' },
         ]),
-      ).toBe('US: authorized no sponsorship');
+      ).toBe('United States: Authorized no sponsorship');
     });
     it('joins multiple entries on separate lines', () => {
       expect(
@@ -390,7 +390,7 @@ describe('FIELD_DEFS display functions', () => {
           { country: 'US', status: 'citizen' },
           { country: 'TH', status: 'requires_sponsorship' },
         ]),
-      ).toBe('US: citizen\nTH: requires sponsorship');
+      ).toBe('United States: Citizen\n\nThailand: Requires Sponsorship');
     });
     it('returns "" for an empty array', () => {
       expect(display('workAuthorization', [])).toBe('');
@@ -401,7 +401,7 @@ describe('FIELD_DEFS display functions', () => {
     it('renders each entry as "language (proficiency)" with underscores replaced', () => {
       expect(
         display('languages', [{ language: 'English', proficiency: 'native_bilingual' }]),
-      ).toBe('English (native bilingual)');
+      ).toBe('English (Native)');
     });
     it('joins multiple entries on separate lines', () => {
       expect(
@@ -409,7 +409,7 @@ describe('FIELD_DEFS display functions', () => {
           { language: 'English', proficiency: 'native' },
           { language: 'Thai', proficiency: 'fluent' },
         ]),
-      ).toBe('English (native)\nThai (fluent)');
+      ).toBe('English (Native)\nThai (Fluent)');
     });
     it('returns "" for an empty array', () => {
       expect(display('languages', [])).toBe('');
@@ -427,7 +427,7 @@ describe('FIELD_DEFS display functions', () => {
 
   describe('documents.cv.file', () => {
     it("returns the file's name", () => {
-      expect(display('documents.cv.file', { name: 'resume.pdf', size: 1024, base64: 'abc' })).toBe('resume.pdf');
+      expect(display('documents.cv.file', { name: 'resume.pdf', size: 1024, base64: 'abc' })).toBe('resume.pdf · 1.0 KB');
     });
     it('returns "" for a null value', () => {
       expect(display('documents.cv.file', null)).toBe('');

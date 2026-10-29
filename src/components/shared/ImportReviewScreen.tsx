@@ -1,167 +1,183 @@
-import { useState } from 'react';
+import { useId, useState, type RefObject } from 'react';
 import type { FieldChange } from '@/src/resume-ai/types';
 import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
+import { useDialogFocus } from '@/src/components/ui/useDialogFocus';
+import { PROFILE_SECTIONS } from '@/src/components/options/shared/profileSections';
+import { ImportWarnings } from './ImportWarnings';
 
-// FieldRow only ever renders 'new' or 'conflict' rows — every caller
-// pre-filters out 'unchanged' fields before reaching it.
 type ReviewableChange = FieldChange & { status: 'new' | 'conflict' };
-
-const SECTION_ORDER = [
-  'Personal',
-  'Address',
-  'Salary',
-  'Work Authorization',
-  'Work History',
-  'Education',
-  'Languages',
-  'Links',
-  'Documents',
-];
-
 export interface ImportReviewScreenProps {
-  changes:    FieldChange[];
-  onSave:     (finalChanges: FieldChange[]) => Promise<void>;
-  onBack:     () => void;
-  isSaving?:  boolean;
-  title?:     string;
+  changes: FieldChange[];
+  onChangesChange?: (changes: FieldChange[]) => void;
+  onSave: (finalChanges: FieldChange[]) => Promise<void>;
+  onBack: () => void;
+  onDismiss?: () => void;
+  isSaving?: boolean;
+  title?: string;
   saveLabel?: string;
+  incomingLabel?: string;
+  sourceLabel?: string;
+  warnings?: string[];
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }
 
 export default function ImportReviewScreen({
   changes: initialChanges,
+  onChangesChange,
   onSave,
   onBack,
-  isSaving  = false,
-  title     = 'Review Changes',
-  saveLabel = 'Save Selected',
+  onDismiss = onBack,
+  isSaving = false,
+  title = 'Review Import',
+  saveLabel = 'Import Selected',
+  incomingLabel = 'Imported',
+  sourceLabel,
+  warnings,
+  returnFocusRef,
 }: ImportReviewScreenProps) {
-  const [changes, setChanges] = useState<FieldChange[]>(initialChanges);
-
-  const newFields = changes.filter((c) => c.status === 'new');
-  const conflicts = changes.filter((c) => c.status === 'conflict');
-
-  const toggleAccepted = (id: string) =>
-    setChanges((prev) => prev.map((c) => (c.id === id ? { ...c, accepted: !c.accepted } : c)));
-
-  const acceptAllNew = () =>
-    setChanges((prev) => prev.map((c) => (c.status === 'new' ? { ...c, accepted: true } : c)));
-
-  const setConflictChoice = (id: string, useSuggested: boolean) =>
-    setChanges((prev) => prev.map((c) => (c.id === id ? { ...c, accepted: useSuggested } : c)));
-
-  const handleSave = () => { void onSave(changes); };
-
-  // Same guard as the backdrop click below — no dismissal while a save is
-  // in flight, since the write isn't meaningfully cancelable mid-flight.
-  useEscapeToClose(isSaving ? undefined : onBack);
-
-  // Single pass bucketing reviewable (non-'unchanged') fields by section,
-  // instead of re-filtering the full `changes` array once per SECTION_ORDER entry.
-  const reviewableBySection = new Map<string, ReviewableChange[]>();
-  for (const c of changes) {
-    if (c.status === 'unchanged') continue;
-    const reviewable = c as ReviewableChange;
-    const arr = reviewableBySection.get(c.section);
-    if (arr) arr.push(reviewable);
-    else reviewableBySection.set(c.section, [reviewable]);
+  const [localChanges, setLocalChanges] = useState(initialChanges);
+  const changes = onChangesChange ? initialChanges : localChanges;
+  const update = (next: FieldChange[]) => {
+    setLocalChanges(next);
+    onChangesChange?.(next);
+  };
+  const select = (id: string, accepted: boolean) =>
+    update(changes.map((change) => (change.id === id ? { ...change, accepted } : change)));
+  const selectAll = (accepted: boolean) =>
+    update(
+      changes.map((change) => (change.status === 'unchanged' ? change : { ...change, accepted })),
+    );
+  const reviewable = changes.filter(
+    (change) => change.status !== 'unchanged',
+  ) as ReviewableChange[];
+  const selectedCount = reviewable.filter((change) => change.accepted).length;
+  const grouped = new Map<string, ReviewableChange[]>();
+  for (const change of reviewable) {
+    const section = change.section === 'Professional' ? 'Work History' : change.section;
+    grouped.set(section, [...(grouped.get(section) ?? []), change]);
   }
-
+  // Include unknown future sections too, so a selectable update can never be hidden.
+  const sections = [
+    ...new Set([
+      ...PROFILE_SECTIONS.map((section) => section.label),
+      'Learned Mappings',
+      'Application History',
+      ...grouped.keys(),
+    ]),
+  ];
+  const titleId = useId();
+  const descriptionId = useId();
+  const dialogRef = useDialogFocus(returnFocusRef);
+  const dismiss = isSaving ? undefined : onDismiss;
+  useEscapeToClose(dismiss);
+  const secondaryCls =
+    'px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 active:scale-95 transition-colors';
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={isSaving ? undefined : onBack}
+      onClick={dismiss}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-2xl mx-4 flex flex-col max-h-[90vh]"
-        onClick={(e) => e.stopPropagation()}
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-2xl mx-4 flex flex-col max-h-[90vh] outline-none"
+        onClick={(event) => event.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
-          <div>
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-            {(newFields.length > 0 || conflicts.length > 0) && (
-              <p className="text-xs mt-0.5">
-                {newFields.length > 0 && (
-                  <span className="text-green-600 dark:text-green-400">New {newFields.length}</span>
-                )}
-                {newFields.length > 0 && conflicts.length > 0 && ' · '}
-                {conflicts.length > 0 && (
-                  <span className="text-yellow-600 dark:text-yellow-500">Conflicts {conflicts.length}</span>
-                )}
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h3 id={titleId} className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                {title}
+              </h3>
+              <p id={descriptionId} className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Choose which details to import. Missing values stay unchanged.
               </p>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            {newFields.length > 0 && (
-              <button
-                type="button"
-                onClick={acceptAllNew} disabled={isSaving}
-                className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
-              >
-                Accept All New Fields
-              </button>
-            )}
+              {sourceLabel && (
+                <p
+                  className="mt-1 truncate text-xs text-gray-500 dark:text-gray-400"
+                  title={sourceLabel}
+                >
+                  {sourceLabel}
+                </p>
+              )}
+            </div>
             <button
               type="button"
-              onClick={isSaving ? undefined : onBack} disabled={isSaving}
-              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
+              aria-label="Close import review"
+              onClick={dismiss}
+              disabled={isSaving}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl disabled:opacity-50"
             >
               ×
             </button>
           </div>
-        </div>
-
-        {/* Scrollable body — fields grouped by section */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
-          <div className="space-y-6">
-            {SECTION_ORDER.map((section) => {
-              const fields = reviewableBySection.get(section);
-              if (!fields || fields.length === 0) return null;
-              return (
-                <div key={section}>
-                  <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-                    {section}
-                  </h4>
-                  <div className="space-y-1.5">
-                    {fields.map((change) => (
-                      <FieldRow
-                        key={change.id}
-                        change={change}
-                        isSaving={isSaving}
-                        onToggle={toggleAccepted}
-                        onConflictChoice={setConflictChoice}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+            <span className="text-gray-500 dark:text-gray-400" aria-live="polite">
+              {selectedCount} of {reviewable.length} selected
+            </span>
+            <button
+              type="button"
+              onClick={() => selectAll(true)}
+              disabled={isSaving}
+              className="text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
+            >
+              Select All
+            </button>
+            <button
+              type="button"
+              onClick={() => selectAll(false)}
+              disabled={isSaving}
+              className="text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
+            >
+              Clear Selection
+            </button>
           </div>
-
-          {newFields.length === 0 && conflicts.length === 0 && (
+          <ImportWarnings warnings={warnings} />
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-6">
+          {sections.map((section) => {
+            const fields = grouped.get(section);
+            if (!fields?.length) return null;
+            return (
+              <section key={section}>
+                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  {section}
+                </h4>
+                <div className="space-y-3">
+                  {fields.map((change) => (
+                    <FieldRow
+                      key={change.id}
+                      change={change}
+                      isSaving={isSaving}
+                      incomingLabel={incomingLabel}
+                      onSelect={select}
+                    />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+          {!reviewable.length && (
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">
               No changes to review.
             </p>
           )}
         </div>
-
-        {/* Footer */}
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
-          <button
-            type="button"
-            onClick={isSaving ? undefined : onBack}
-            disabled={isSaving}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 active:scale-95 transition-colors"
-          >
+        <div className="flex flex-wrap justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
+          <button type="button" onClick={onBack} disabled={isSaving} className={secondaryCls}>
             Back
           </button>
           <button
             type="button"
-            onClick={handleSave}
-            disabled={isSaving}
+            onClick={() => void onSave(changes)}
+            disabled={isSaving || selectedCount === 0}
             className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
           >
-            {isSaving ? 'Saving…' : saveLabel}
+            {isSaving ? 'Saving…' : `${saveLabel} (${selectedCount})`}
           </button>
         </div>
       </div>
@@ -169,81 +185,94 @@ export default function ImportReviewScreen({
   );
 }
 
-// ── Helper sub-components ─────────────────────────────────────────────────────
-
-function MultilineValue({ value, className }: { value: string; className?: string }) {
-  const lines = value.split('\n').filter(Boolean);
-  if (lines.length <= 1) return <p className={className}>{value || '—'}</p>;
+function Value({ value, muted = false }: { value: string; muted?: boolean }) {
   return (
-    <ul className={`list-none space-y-0.5 ${className ?? ''}`}>
-      {lines.map((line, i) => (
-        <li key={i} className="flex gap-1">
-          <span className="shrink-0 text-gray-400">·</span>
-          <span>{line}</span>
-        </li>
-      ))}
-    </ul>
+    <p
+      className={`whitespace-pre-wrap break-words text-sm ${muted ? 'text-gray-600 dark:text-gray-400' : 'text-gray-900 dark:text-gray-100'}`}
+    >
+      {value || '—'}
+    </p>
   );
 }
-
 function FieldRow({
   change,
   isSaving,
-  onToggle,
-  onConflictChoice,
+  incomingLabel,
+  onSelect,
 }: {
-  change:           ReviewableChange;
-  isSaving:         boolean;
-  onToggle:         (id: string) => void;
-  onConflictChoice: (id: string, useSuggested: boolean) => void;
+  change: ReviewableChange;
+  isSaving: boolean;
+  incomingLabel: string;
+  onSelect: (id: string, accepted: boolean) => void;
 }) {
-  if (change.status === 'new') {
-    return (
-      <label className="flex items-start gap-3 p-2.5 bg-green-50 dark:bg-green-900/15 border border-green-200 dark:border-green-800 rounded-lg cursor-pointer">
-        <input
-          type="checkbox" disabled={isSaving}
-          checked={change.accepted}
-          onChange={() => onToggle(change.id)}
-          className="mt-0.5 shrink-0 accent-green-600"
-        />
-        <div className="min-w-0">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">{change.label}</p>
-          <MultilineValue value={change.displaySuggested} className="text-sm text-gray-900 dark:text-gray-100" />
-        </div>
-      </label>
-    );
-  }
-
-  // change.status === 'conflict' — the only remaining case ReviewableChange allows.
+  const labelId = useId();
   return (
-    <div className="p-2.5 bg-yellow-50 dark:bg-yellow-900/15 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{change.label}</p>
-      <label className="flex items-start gap-2 mb-2 cursor-pointer">
-        <input
-          type="radio" disabled={isSaving}
-          name={change.id}
-          checked={!change.accepted}
-          onChange={() => onConflictChoice(change.id, false)}
-          className="mt-0.5 shrink-0"
-        />
-        <div className="min-w-0">
-          <span className="text-xs text-gray-400 dark:text-gray-500">Keep current</span>
-          <MultilineValue value={change.displayCurrent} className="text-sm text-gray-700 dark:text-gray-300" />
+    <div
+      role="group"
+      aria-labelledby={labelId}
+      className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <p id={labelId} className="text-sm font-medium text-gray-800 dark:text-gray-200">
+          {change.label}
+        </p>
+        <span
+          className={`text-xs ${change.status === 'new' ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}
+        >
+          {change.status === 'new' ? 'New' : 'Changed'}
+        </span>
+      </div>
+      {change.note && (
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{change.note}</p>
+      )}
+      {change.status === 'new' ? (
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            aria-label={`Import ${change.label}: ${change.displaySuggested}`}
+            disabled={isSaving}
+            checked={change.accepted}
+            onChange={() => onSelect(change.id, !change.accepted)}
+            className="mt-1 shrink-0 accent-blue-600"
+          />
+          <Value value={change.displaySuggested} />
+        </label>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name={change.id}
+              disabled={isSaving}
+              checked={!change.accepted}
+              onChange={() => onSelect(change.id, false)}
+              className="mt-1 shrink-0 accent-blue-600"
+            />
+            <div className="min-w-0">
+              <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                Keep Current
+              </span>
+              <Value value={change.displayCurrent} muted />
+            </div>
+          </label>
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name={change.id}
+              disabled={isSaving}
+              checked={change.accepted}
+              onChange={() => onSelect(change.id, true)}
+              className="mt-1 shrink-0 accent-blue-600"
+            />
+            <div className="min-w-0">
+              <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                {incomingLabel}
+              </span>
+              <Value value={change.displaySuggested} />
+            </div>
+          </label>
         </div>
-      </label>
-      <label className="flex items-start gap-2 cursor-pointer">
-        <input
-          type="radio" disabled={isSaving}
-          name={change.id}
-          checked={change.accepted}
-          onChange={() => onConflictChoice(change.id, true)}
-          className="mt-0.5 shrink-0"
-        />
-        <div className="min-w-0">
-          <span className="text-xs text-gray-400 dark:text-gray-500">Use suggested</span>
-          <MultilineValue value={change.displaySuggested} className="text-sm font-medium text-gray-900 dark:text-gray-100" />
-        </div>
-      </label>
+      )}
     </div>
   );
 }

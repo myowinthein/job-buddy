@@ -37,7 +37,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 - `src/autofill/index.ts` owns scan/fill/undo, pending matches, manual-learning watchers, and silent refill. `scanner.ts`, `signals.ts`, `mapper.ts`, `resolver.ts`, and `filler.ts` implement the core pipeline.
 - Page-wide phone/language/education/work-history/expected-salary resolution runs after individual mapping. Education/work history/salary share `repeatingEntryResolution.ts`; languages have their own pass.
 - `src/resume-ai/gemini.ts` owns extraction/autofill requests; `types.ts` centralizes model priorities/defaults; `prompt.ts` and `autofillPrompt.ts` hold separate prompts. `parser.ts` also powers JSON and Drive import review.
-- `src/utils/storageArea.ts` backs local/session wrappers. Low-level gets/removes resolve on failure; local sets reject, session sets are best-effort. `getProfile()` can reject when persisting a migration.
+- `src/utils/storageArea.ts` backs local/session wrappers. Low-level gets/removes resolve on failure by default; explicit resets reject removal failures. Local sets reject, session sets are best-effort. `getProfile()` can reject when persisting a migration.
 - `src/utils/driveSync.ts` owns Drive OAuth, appdata backup, and retry state. Both restore paths are in `SettingsSection.tsx`.
 - `docs/index.html` is a static Tailwind-CDN landing page; `docs/project-site/` is a static overview.
 
@@ -59,6 +59,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 - Options `handleSave` computes derived fields defensively, then performs one profile write; derivation failure must not prevent the raw save. Sections never write `derived` directly.
 - When changing `Profile`, audit validator, parser `FIELD_DEFS`, and relevant extraction schema. Preserve Gemini's intentional exclusions (`id`, `derived`, documents/cover letter) rather than blindly adding every field to the prompt.
 - JSON export contains profile, learned mappings, application history, and safe metadata. Drive backup contains profile, learned mappings, and lastModified; it does not contain application history. Neither includes Gemini settings or Drive token/state.
+- JSON import reviews mappings and application history alongside profile updates. History merges by ID, keeping existing applications; `backupImport.ts` validates backup-only data and owns these merge/selection helpers.
 - Adding a Drive payload field requires updating `syncProfileToDrive()`, `handleRestoreFromDrive`, and `handleDriveReviewSave`.
 - Resume review applies only accepted changes; arrays are replaced as units. Bullet normalization preserves prose context; summary normalization merges soft wraps while preserving paragraphs. PDF hyperlink extraction uses annotations and fails to an empty list.
 - Experience merges overlapping work intervals and counts inclusive calendar months. Completion uses 10 required checks across the nine editor sections; last name, salary, LinkedIn and employment history are optional. Demographic details never affect completion.
@@ -84,6 +85,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 
 - `MonthYearPicker` emits `''` during partial input. Validate required fields at save time; preserve internal partial-entry/resync handling.
 - Reset/import must reload the profile before bumping section remount/navigation state inside `handleImportComplete(afterLoad)`.
+- Shared import dialogs keep review choices in their owner state. Dismissal is separate from data actions; Drive's explicit Keep Current uploads locally saved data, while Escape/backdrop/Close must only dismiss.
 - Work-authorization labels come from `src/data/workAuthorization.ts`; do not duplicate the status strings.
 - Section loaders retain backward compatibility for string phones/work locations, country names, older language proficiency, and currency-only salary rows. Ambiguous shared currencies remain for user selection.
 - `normalizeProfile()` defaults missing/invalid salary periods to monthly and adds missing URL schemes; both load/save use it. New on-load migrations belong here.

@@ -98,7 +98,7 @@ it('reviews imports into optional-only profiles instead of overwriting their exi
   const { onImportComplete } = renderSection();
   const file = new File([JSON.stringify({ profile: { personal: { firstName: 'Imported' } } })], 'backup.json', { type: 'application/json' });
   fireEvent.change(document.querySelector('input[accept=".json"]')!, { target: { files: [file] } });
-  fireEvent.click(await screen.findByText('Accept All'));
+  fireEvent.click(await screen.findByText('Import All'));
   await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
   expect(vi.mocked(saveProfile).mock.calls[0][0]).toMatchObject({
     personal: { firstName: 'Imported' },
@@ -115,7 +115,7 @@ it('preserves legacy links and editor-valid emails through a real JSON review', 
   const { onImportComplete } = renderSection();
   const file = new File([JSON.stringify({ profile: { personal: { email: "o'brien@example.com" }, links } })], 'backup.json', { type: 'application/json' });
   fireEvent.change(document.querySelector('input[accept=".json"]')!, { target: { files: [file] } });
-  fireEvent.click(await screen.findByText('Accept All'));
+  fireEvent.click(await screen.findByText('Import All'));
   await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
   expect(vi.mocked(saveProfile).mock.calls[0][0]).toMatchObject({
     personal: { email: "o'brien@example.com" },
@@ -132,7 +132,7 @@ it('keeps local-only fields when accepting all changes from a sparse Drive backu
   });
   const { onImportComplete } = renderSection();
   fireEvent.click(await screen.findByText('Connect Google Drive'));
-  fireEvent.click(await screen.findByText('Accept All'));
+  fireEvent.click(await screen.findByText('Restore All'));
   await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
   expect(vi.mocked(saveProfile).mock.calls[0][0]).toMatchObject({
     personal: { firstName: 'Remote' },
@@ -170,9 +170,9 @@ describe('SettingsSection — real Drive document validation', () => {
       });
       const { onImportComplete } = renderSection();
       fireEvent.click(await screen.findByText('Connect Google Drive'));
-      fireEvent.click(await screen.findByText('Review →'));
+      fireEvent.click(await screen.findByText('Review Changes'));
       expect(screen.queryByText('oversized.pdf')).toBeNull();
-      fireEvent.click(screen.getByText('Apply Selected'));
+      fireEvent.click(screen.getByRole('button', {name:/^Apply Selected/}));
       await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
       const saved = vi.mocked(saveProfile).mock.calls[0][0];
       expect(saved.personal.firstName).toBe('Remote');

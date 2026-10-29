@@ -162,7 +162,7 @@ describe('SettingsSection — importing into an existing (non-empty) profile', (
     fireEvent.change(fileInput, { target: { files: [file] } });
 
     await screen.findByText('Import Profile');
-    expect(screen.getByText('1 conflict')).toBeTruthy();
+    expect(screen.getByText('1 Changed')).toBeTruthy();
     expect(vi.mocked(saveProfile)).not.toHaveBeenCalled();
   });
 
@@ -180,7 +180,7 @@ describe('SettingsSection — importing into an existing (non-empty) profile', (
     const fileInput = document.querySelector('input[type="file"][accept=".json"]') as HTMLInputElement;
     fireEvent.change(fileInput, { target: { files: [file] } });
 
-    fireEvent.click(await screen.findByText('Accept All'));
+    fireEvent.click(await screen.findByText('Import All'));
 
     await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
     expect(vi.mocked(applyChanges)).toHaveBeenCalledWith(existing, changes);
@@ -199,7 +199,7 @@ describe('SettingsSection — importing into an existing (non-empty) profile', (
 
     fireEvent.click(await screen.findByText('Keep Current'));
 
-    await waitFor(() => expect(screen.queryByText('1 conflict')).toBeNull());
+    await waitFor(() => expect(screen.queryByText('1 Changed')).toBeNull());
     expect(vi.mocked(saveProfile)).not.toHaveBeenCalled();
     expect(vi.mocked(applyChanges)).not.toHaveBeenCalled();
   });
@@ -217,9 +217,9 @@ describe('SettingsSection — importing into an existing (non-empty) profile', (
     const fileInput = document.querySelector('input[type="file"][accept=".json"]') as HTMLInputElement;
     fireEvent.change(fileInput, { target: { files: [file] } });
 
-    fireEvent.click(await screen.findByText('Review →'));
+    fireEvent.click(await screen.findByText('Review Changes'));
     await screen.findByText('Review Import');
-    fireEvent.click(screen.getByText('Import Selected'));
+    fireEvent.click(screen.getByText(/^Import Selected/));
 
     await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
     expect(vi.mocked(saveProfile)).toHaveBeenCalledWith({ ...merged, derived: calculateDerivedFields(merged) });
@@ -401,10 +401,11 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
       backup: { profile: makeProfile({ personal: { firstName: 'Other', lastName: 'Person' } } as Partial<Profile>), lastModified: '2026-01-01T00:00:00.000Z' },
     });
 
+    vi.mocked(generateDiff).mockReturnValueOnce([makeFieldChange()]);
     renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));
 
-    expect(await screen.findByText('Profile Conflict')).toBeTruthy();
+    expect(await screen.findByText('Import Drive Backup')).toBeTruthy();
   });
 
   it('pushes the local profile to Drive as the initial snapshot when no backup exists yet', async () => {
@@ -482,14 +483,15 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
       backup: { profile: makeProfile({ personal: { firstName: 'Other', lastName: 'Person' } } as Partial<Profile>), lastModified: '2026-01-01T00:00:00.000Z' },
     });
 
+    vi.mocked(generateDiff).mockReturnValueOnce([makeFieldChange()]);
     renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));
-    await screen.findByText('Profile Conflict');
+    await screen.findByText('Import Drive Backup');
     fireEvent.click(screen.getByText('Keep Current'));
 
     await waitFor(() => expect(vi.mocked(overwriteDriveWithLocal)).toHaveBeenCalledWith(localProfile));
     expect(vi.mocked(saveProfile)).not.toHaveBeenCalled(); // local wins — nothing pulled from the Drive backup
-    expect(screen.queryByText('Profile Conflict')).toBeNull();
+    expect(screen.queryByText('Import Drive Backup')).toBeNull();
   });
 
   it('Review → Apply Selected on a conflict saves only the reviewed changes, not the raw Drive backup', async () => {
@@ -505,10 +507,10 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
 
     const { onImportComplete } = renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));
-    await screen.findByText('Profile Conflict');
-    fireEvent.click(screen.getByText('Review →'));
+    await screen.findByText('Import Drive Backup');
+    fireEvent.click(screen.getByText('Review Changes'));
     await screen.findByText('Review Drive Backup');
-    fireEvent.click(screen.getByText('Apply Selected'));
+    fireEvent.click(screen.getByText(/^Apply Selected/));
 
     await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
     expect(vi.mocked(applyChanges)).toHaveBeenCalledWith(localProfile, [makeFieldChange()]);

@@ -74,6 +74,11 @@ check every answer and uploaded document before submitting.
 - **JSON backup:** use **Export Profile** and **Import Profile** in **Settings** to
   transfer your profile, learned mappings, and application history.
 
+Valid JSON backups import immediately into an empty profile. Otherwise, review
+new and changed details before importing all or selected updates. Missing values
+keep your current data; importing a list replaces that list. Mappings are merged,
+and application history adds missing IDs while keeping existing applications.
+
 AI sends profile and form or resume information to Google's Gemini API. Drive
 backup uploads your profile and learned mappings to Google. Read the
 [privacy policy](docs/legal/privacy/index.html) and

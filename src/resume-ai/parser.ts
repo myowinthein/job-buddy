@@ -7,6 +7,16 @@ import type {
   WorkAuthorizationEntry,
 } from '@/src/types/profile';
 import type { FieldChange, FieldStatus } from './types';
+import { equalJsonValues } from '@/src/utils/equalJsonValues';
+import { findCountryByNameOrCode } from '@/src/data/countries';
+import { languageName, LANGUAGE_PROFICIENCY_LABELS } from '@/src/data/languages';
+import { WORK_AUTH_STATUS_LABELS } from '@/src/data/workAuthorization';
+
+const countryName = (value: string) => findCountryByNameOrCode(value)?.name ?? value;
+const readableValue = (value: unknown) => {
+  const text = String(value ?? '').replace(/_/g, ' ');
+  return text ? text[0].toUpperCase() + text.slice(1) : '';
+};
 
 // ── Field descriptors ────────────────────────────────────────────────────────
 
@@ -92,7 +102,7 @@ function salaryDisplay(s: Partial<NonNullable<Profile['salary']['current']>>): s
   if (s.amount != null) parts.push(String(s.amount));
   if (s.currency)       parts.push(s.currency);
   if (s.period)         parts.push(`(${s.period})`);
-  if (s.country)        parts.push(`(${s.country})`);
+  if (s.country)        parts.push(`(${countryName(s.country)})`);
   return parts.join(' ');
 }
 
@@ -136,7 +146,7 @@ export const FIELD_DEFS: FieldDef[] = [
   },
   {
     id: 'personal.phone',
-    label: 'Phone Number',
+    label: 'Phone',
     section: 'Personal',
     getValue: (p) => p.personal?.phone ?? null,
     setValue: setNestedField('personal', 'phone', {} as Profile['personal']),
@@ -148,7 +158,7 @@ export const FIELD_DEFS: FieldDef[] = [
     display: (v) => {
       if (!v) return '';
       const ph = v as Partial<PhoneNumber>;
-      return [ph.callingCode, ph.number].filter(Boolean).join(' ');
+      return [[ph.callingCode, ph.number].filter(Boolean).join(' '), ph.countryCode ? countryName(ph.countryCode) : ''].filter(Boolean).join(' · ');
     },
   },
   {
@@ -167,7 +177,7 @@ export const FIELD_DEFS: FieldDef[] = [
     getValue: (p) => p.personal?.gender ?? null,
     setValue: setNestedField('personal', 'gender', {} as Profile['personal']),
     isEmpty: emptyStr,
-    display: (v) => String(v ?? '').replace(/_/g, ' '),
+    display: readableValue,
   },
   {
     id: 'personal.ethnicity',
@@ -176,7 +186,7 @@ export const FIELD_DEFS: FieldDef[] = [
     getValue: (p) => p.personal?.ethnicity ?? null,
     setValue: setNestedField('personal', 'ethnicity', {} as Profile['personal']),
     isEmpty: emptyStr,
-    display: (v) => String(v ?? ''),
+    display: readableValue,
   },
   {
     id: 'personal.veteranStatus',
@@ -185,7 +195,7 @@ export const FIELD_DEFS: FieldDef[] = [
     getValue: (p) => p.personal?.veteranStatus ?? null,
     setValue: setNestedField('personal', 'veteranStatus', {} as Profile['personal']),
     isEmpty: emptyStr,
-    display: (v) => String(v ?? '').replace(/_/g, ' '),
+    display: readableValue,
   },
   {
     id: 'personal.disabilityStatus',
@@ -194,7 +204,7 @@ export const FIELD_DEFS: FieldDef[] = [
     getValue: (p) => p.personal?.disabilityStatus ?? null,
     setValue: setNestedField('personal', 'disabilityStatus', {} as Profile['personal']),
     isEmpty: emptyStr,
-    display: (v) => String(v ?? '').replace(/_/g, ' '),
+    display: readableValue,
   },
   // ── Address ─────────────────────────────────────────────────────────────────
   {
@@ -213,7 +223,7 @@ export const FIELD_DEFS: FieldDef[] = [
     getValue: (p) => p.address?.country ?? null,
     setValue: setNestedField('address', 'country', {} as Profile['address']),
     isEmpty: emptyStr,
-    display: (v) => String(v ?? ''),
+    display: (v) => countryName(String(v ?? '')),
   },
   {
     id: 'address.street',
@@ -246,26 +256,23 @@ export const FIELD_DEFS: FieldDef[] = [
   {
     id: 'professional.summary',
     label: 'Career Summary',
-    section: 'Professional',
+    section: 'Work History',
     getValue: (p) => p.professional?.summary ?? null,
     setValue: setNestedField('professional', 'summary', {}),
     isEmpty: emptyStr,
-    display: (v) => {
-      const s = String(v ?? '');
-      return s.length > 120 ? s.slice(0, 117) + '…' : s;
-    },
+    display: (v) => String(v ?? ''),
   },
   {
     id: 'professional.noticePeriod',
     label: 'Notice Period',
-    section: 'Professional',
+    section: 'Work History',
     getValue: (p) => p.professional?.noticePeriod ?? null,
     setValue: setNestedField('professional', 'noticePeriod', {}),
     isEmpty: (v) => !v || typeof v !== 'object',
     display: (v) => {
       if (!v || typeof v !== 'object') return '';
       const np = v as { immediate?: boolean; value?: number; unit?: string };
-      if (np.immediate) return 'Immediate';
+      if (np.immediate) return 'Available Now';
       if (np.value != null && np.unit) return `${np.value} ${np.unit}${np.value !== 1 ? 's' : ''}`;
       return '';
     },
@@ -315,7 +322,11 @@ export const FIELD_DEFS: FieldDef[] = [
     isEmpty: emptyArr,
     display: (v) => {
       const arr = (v ?? []) as WorkAuthorizationEntry[];
-      return arr.map((e) => `${e.country}: ${e.status.replace(/_/g, ' ')}`).join('\n');
+      return arr.map((e) => [
+        `${countryName(e.country)}: ${WORK_AUTH_STATUS_LABELS[e.status] ?? readableValue(e.status)}`,
+        e.visaType && `Visa type: ${e.visaType}`,
+        e.expiryDate && `Visa expiry: ${e.expiryDate}`,
+      ].filter(Boolean).join('\n')).join('\n\n');
     },
   },
   // ── Work History ─────────────────────────────────────────────────────────────
@@ -331,7 +342,14 @@ export const FIELD_DEFS: FieldDef[] = [
       return arr
         .map((e) => {
           const end = e.isCurrent ? 'present' : (e.endDate ?? '');
-          return `${e.title} at ${e.company} (${e.startDate}${end ? ' – ' + end : ''})`;
+          const location = typeof e.location === 'string' ? e.location :
+            [e.location?.city, e.location?.countryCode && countryName(e.location.countryCode)].filter(Boolean).join(', ');
+          return [
+            `${e.title} at ${e.company} (${e.startDate}${end ? ' – ' + end : ''})`,
+            location && `Location: ${location}`,
+            e.arrangement && `Work arrangement: ${readableValue(e.arrangement)}`,
+            e.description,
+          ].filter(Boolean).join('\n');
         })
         .join('\n');
     },
@@ -349,7 +367,11 @@ export const FIELD_DEFS: FieldDef[] = [
       return arr
         .map((e) => {
           const end = e.isCurrent ? (e.endDate ? `expected ${e.endDate}` : 'present') : (e.endDate ?? '');
-          return `${e.degree} in ${e.fieldOfStudy}, ${e.institution} (${e.startDate}${end ? ' – ' + end : ''})`;
+          return [
+            `${e.degree} in ${e.fieldOfStudy}, ${e.institution} (${e.startDate}${end ? ' – ' + end : ''})`,
+            e.grade && `Grade: ${e.grade}`,
+            e.description,
+          ].filter(Boolean).join('\n');
         })
         .join('\n');
     },
@@ -364,7 +386,7 @@ export const FIELD_DEFS: FieldDef[] = [
     isEmpty: emptyArr,
     display: (v) => {
       const arr = (v ?? []) as LanguageEntry[];
-      return arr.map((e) => `${e.language} (${e.proficiency.replace(/_/g, ' ')})`).join('\n');
+      return arr.map((e) => `${languageName(e.language)} (${LANGUAGE_PROFICIENCY_LABELS[e.proficiency] ?? readableValue(e.proficiency)})`).join('\n');
     },
   },
   // ── Links ────────────────────────────────────────────────────────────────────
@@ -426,7 +448,8 @@ export const FIELD_DEFS: FieldDef[] = [
     isEmpty: (v) => !v || typeof v !== 'object',
     display: (v) => {
       if (!v || typeof v !== 'object') return '';
-      return (v as { name: string }).name ?? '';
+      const file = v as { name: string; size?: number };
+      return [file.name, file.size != null && `${(file.size / 1024).toFixed(1)} KB`].filter(Boolean).join(' · ');
     },
   },
   {
@@ -447,7 +470,8 @@ export const FIELD_DEFS: FieldDef[] = [
     isEmpty: (v) => !v || typeof v !== 'object',
     display: (v) => {
       if (!v || typeof v !== 'object') return '';
-      return (v as { name: string }).name ?? '';
+      const file = v as { name: string; size?: number };
+      return [file.name, file.size != null && `${(file.size / 1024).toFixed(1)} KB`].filter(Boolean).join(' · ');
     },
   },
 ];
@@ -477,7 +501,7 @@ export function generateDiff(
     } else if (currentEmpty) {
       status = 'new';
     } else {
-      status = JSON.stringify(currentVal) !== JSON.stringify(suggestedVal) ? 'conflict' : 'unchanged';
+      status = !equalJsonValues(currentVal, suggestedVal) ? 'conflict' : 'unchanged';
     }
 
     return {
@@ -490,6 +514,12 @@ export function generateDiff(
       displaySuggested: def.display(suggestedVal),
       status,
       accepted:         status !== 'unchanged',
+      hasIncomingValue: !suggestedEmpty,
+      note: status === 'conflict' && Array.isArray(suggestedVal)
+        ? 'Importing replaces this list.'
+        : status === 'conflict' && def.id.endsWith('.file') &&
+          (currentVal as { base64?: string })?.base64 !== (suggestedVal as { base64?: string })?.base64
+          ? 'File contents differ.' : undefined,
     };
   });
 }

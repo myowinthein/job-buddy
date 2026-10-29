@@ -253,7 +253,7 @@ describe('ResumeImportSection — CV invariant on save', () => {
     fireEvent.click(screen.getByText('Analyze CV'));
 
     await screen.findByText('Review Suggestions', {}, { timeout: 12000 });
-    fireEvent.click(screen.getByText('Accept All'));
+    fireEvent.click(screen.getByText('Import All'));
 
     await waitFor(() => expect(onSave).toHaveBeenCalled(), { timeout: 12000 });
     const saved = onSave.mock.calls[0][0];
@@ -274,7 +274,7 @@ describe('ResumeImportSection — CV invariant on save', () => {
     await screen.findByText('Review Suggestions');
 
     size = 5 * 1024 * 1024;
-    fireEvent.click(screen.getByText('Accept All'));
+    fireEvent.click(screen.getByText('Import All'));
 
     expect(await screen.findByText('File exceeds 4 MB limit (5.0 MB)')).toBeTruthy();
     expect(onSave).not.toHaveBeenCalled();
@@ -291,7 +291,7 @@ describe('ResumeImportSection — CV invariant on save', () => {
     fireEvent.click(screen.getByText('Analyze CV'));
 
     await screen.findByText('Review Suggestions', {}, { timeout: 12000 });
-    fireEvent.click(screen.getByText('Accept All'));
+    fireEvent.click(screen.getByText('Import All'));
 
     expect(await screen.findByText('Save failed. Please try again.')).toBeTruthy();
     // Never reached the 'done' screen — save failure keeps the user on review.

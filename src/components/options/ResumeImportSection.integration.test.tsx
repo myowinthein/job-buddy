@@ -108,12 +108,12 @@ describe('ResumeImportSection — real review and parser integration', () => {
       await screen.findByText(/Drop your CV here/);
       await selectFile(pdfFile());
       fireEvent.click(screen.getByText('Analyze CV'));
-      fireEvent.click(await screen.findByText('Review →'));
+      fireEvent.click(await screen.findByText('Review Changes'));
       fireEvent.click(document.querySelector('input[name="personal.firstName"]')!);
       const arrayChoices = document.querySelectorAll('input[name="education"]');
       fireEvent.click(arrayChoices[acceptArray ? 1 : 0]);
       fireEvent.click(screen.getByRole('checkbox', { name: /Resume File/ }));
-      fireEvent.click(screen.getByText('Save selected'));
+      fireEvent.click(screen.getByRole('button', {name:/^Import Selected/}));
       await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
       const saved = onSave.mock.calls[0][0];
       expect(saved.personal.firstName).toBe('Local');

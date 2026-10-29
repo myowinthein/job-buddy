@@ -48,16 +48,13 @@ function renderScreen(changes: FieldChange[], overrides: Partial<{ isSaving: boo
 }
 
 describe('ImportReviewScreen — multiline value rendering', () => {
-  it('renders a multi-line suggested value as a bulleted list, not a single paragraph', () => {
+  it('preserves multiline prose without adding bullet points', () => {
     const field = newField('summary', 'Career Summary');
     field.displaySuggested = 'Led the platform team.\nShipped three major releases.\nMentored junior engineers.';
     renderScreen([field]);
 
-    expect(screen.getByText('Led the platform team.')).toBeTruthy();
-    expect(screen.getByText('Shipped three major releases.')).toBeTruthy();
-    expect(screen.getByText('Mentored junior engineers.')).toBeTruthy();
-    // Full joined text is not rendered anywhere as one block.
-    expect(screen.queryByText(field.displaySuggested)).toBeNull();
+    expect(screen.getByText(/Led the platform team/).tagName).toBe('P');
+    expect(screen.getByText(/Led the platform team/).textContent).toBe(field.displaySuggested);
   });
 
   it('renders a single-line value as a plain paragraph, not a one-item list', () => {
@@ -69,25 +66,26 @@ describe('ImportReviewScreen — multiline value rendering', () => {
 });
 
 describe('ImportReviewScreen — accept-all new fields', () => {
-  it('accepts every "new" field without touching conflicts', () => {
+  it('selects new and changed details together', () => {
     const { onSave } = renderScreen([
       newField('a', 'First Name', false),
       newField('b', 'Last Name', false),
       conflictField('c', false),
     ]);
 
-    fireEvent.click(screen.getByText('Accept All New Fields'));
-    fireEvent.click(screen.getByText('Save Selected'));
+    fireEvent.click(screen.getByText('Select All'));
+    fireEvent.click(screen.getByRole('button', {name:/^Import Selected/}));
 
     const saved = onSave.mock.calls[0][0] as FieldChange[];
     expect(saved.find((c) => c.id === 'a')?.accepted).toBe(true);
     expect(saved.find((c) => c.id === 'b')?.accepted).toBe(true);
-    expect(saved.find((c) => c.id === 'c')?.accepted).toBe(false); // conflict untouched
+    expect(saved.find((c) => c.id === 'c')?.accepted).toBe(true);
   });
 
-  it('hides the Accept All button when there are no new fields', () => {
+  it('offers bulk selection when only changed details exist', () => {
     renderScreen([conflictField('c')]);
-    expect(screen.queryByText('Accept All New Fields')).toBeNull();
+    expect(screen.getByText('Select All')).toBeTruthy();
+    expect(screen.getByText('Clear Selection')).toBeTruthy();
   });
 });
 
@@ -95,7 +93,7 @@ describe('ImportReviewScreen — individual toggle for new fields', () => {
   it('toggles a single new field\'s accepted state via its checkbox', () => {
     const { onSave } = renderScreen([newField('a', 'First Name', false)]);
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByText('Save Selected'));
+    fireEvent.click(screen.getByRole('button', {name:/^Import Selected/}));
 
     const saved = onSave.mock.calls[0][0] as FieldChange[];
     expect(saved[0].accepted).toBe(true);
@@ -115,13 +113,14 @@ describe('ImportReviewScreen — conflict resolution radios', () => {
     const [keepCurrent, useSuggested] = screen.getAllByRole('radio');
 
     fireEvent.click(useSuggested);
-    fireEvent.click(screen.getByText('Save Selected'));
+    fireEvent.click(screen.getByRole('button', {name:/^Import Selected/}));
     expect((onSave.mock.calls[0][0] as FieldChange[])[0].accepted).toBe(true);
 
     onSave.mockClear();
     fireEvent.click(keepCurrent);
-    fireEvent.click(screen.getByText('Save Selected'));
-    expect((onSave.mock.calls[0][0] as FieldChange[])[0].accepted).toBe(false);
+    fireEvent.click(screen.getByRole('button', {name:/^Import Selected/}));
+    expect(onSave).not.toHaveBeenCalled();
+    expect((screen.getByRole('button', {name:/^Import Selected/}) as HTMLButtonElement).disabled).toBe(true);
   });
 });
 
@@ -139,18 +138,19 @@ describe('ImportReviewScreen — section grouping and empty state', () => {
 
   it('shows New/Conflicts counts in the header badge', () => {
     renderScreen([newField('a', 'A'), newField('b', 'B'), conflictField('c')]);
-    expect(screen.getByText('New 2')).toBeTruthy();
-    expect(screen.getByText('Conflicts 1')).toBeTruthy();
+    expect(screen.getByText('0 of 3 selected')).toBeTruthy();
+    expect(screen.getAllByText('New')).toHaveLength(2);
+    expect(screen.getByText('Changed')).toBeTruthy();
   });
 });
 
 describe('ImportReviewScreen — backdrop and saving state', () => {
   it('calls onBack when the backdrop is clicked, but not when the dialog body is clicked', () => {
     const { onBack } = renderScreen([newField('a', 'A')]);
-    fireEvent.click(screen.getByText('Save Selected'));
+    fireEvent.click(screen.getByRole('button', {name:/^Import Selected/}));
     expect(onBack).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByText('Save Selected').closest('.fixed')!);
+    fireEvent.click(screen.getByRole('button', {name:/^Import Selected/}).closest('.fixed')!);
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
@@ -185,9 +185,19 @@ describe('ImportReviewScreen — save isolation', () => {
     expect(onBack).not.toHaveBeenCalled();
     expect((screen.getByRole('checkbox') as HTMLInputElement).disabled).toBe(true);
     for (const radio of screen.getAllByRole('radio')) expect((radio as HTMLInputElement).disabled).toBe(true);
-    expect((screen.getByText('Accept All New Fields') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByText('Select All') as HTMLButtonElement).disabled).toBe(true);
     view.rerender(<ImportReviewScreen changes={changes} onSave={onSave} onBack={onBack} isSaving={false} />);
     fireEvent.click(screen.getByText('×'));
     expect(onBack).toHaveBeenCalledTimes(1);
   });
+});
+
+it('shows legacy professional fields and any future section instead of hiding selected changes', () => {
+  const legacy = {...newField('summary','Career Summary'),section:'Professional'};
+  const future = {...newField('future','Future detail'),section:'Future Section'};
+  renderScreen([legacy,future]);
+  expect(screen.getByRole('heading',{name:'Work History'})).toBeTruthy();
+  expect(screen.getByText('Career Summary')).toBeTruthy();
+  expect(screen.getByRole('heading',{name:'Future Section'})).toBeTruthy();
+  expect(screen.getByText('Future detail')).toBeTruthy();
 });

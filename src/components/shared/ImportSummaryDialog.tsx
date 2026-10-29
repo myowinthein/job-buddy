@@ -1,99 +1,111 @@
+import { useId, type RefObject } from 'react';
 import type { FieldChange } from '@/src/resume-ai/types';
 import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
+import { useDialogFocus } from '@/src/components/ui/useDialogFocus';
+import { ImportWarnings } from './ImportWarnings';
 
 export interface ImportSummaryDialogProps {
-  changes:      FieldChange[];
-  title?:       string;
-  onAcceptAll:  () => void;
-  onRejectAll:  () => void;
-  onReview:     () => void;
+  changes: FieldChange[];
+  title?: string;
+  description?: string;
+  sourceLabel?: string;
+  warnings?: string[];
+  returnFocusRef?: RefObject<HTMLElement | null>;
+  acceptLabel?: string;
+  onAcceptAll: () => void;
+  onRejectAll: () => void;
+  onReview: () => void;
+  onDismiss: () => void;
   isProcessing?: boolean;
 }
 
 export default function ImportSummaryDialog({
   changes,
-  title        = 'Review Changes',
+  title = 'Import Profile',
+  description = 'Choose which details to import.',
+  sourceLabel,
+  warnings,
+  returnFocusRef,
+  acceptLabel = 'Import All',
   onAcceptAll,
   onRejectAll,
   onReview,
+  onDismiss,
   isProcessing = false,
 }: ImportSummaryDialogProps) {
-  const newCount       = changes.filter((c) => c.status === 'new').length;
-  const conflictCount  = changes.filter((c) => c.status === 'conflict').length;
-  const unchangedCount = changes.filter((c) => c.status === 'unchanged').length;
-  const hasActionable  = newCount > 0 || conflictCount > 0;
-
-  // Escape/backdrop dismiss maps to "Keep Current" (onRejectAll) — the same
-  // non-destructive, nothing-applied outcome ImportReviewScreen's onBack
-  // gives via its own Escape/backdrop handling. No dismissal while a
-  // save/accept is in flight, matching that same guard.
-  useEscapeToClose(isProcessing ? undefined : onRejectAll);
-
+  const counts = {
+    new: changes.filter((change) => change.status === 'new').length,
+    changed: changes.filter((change) => change.status === 'conflict').length,
+    unchanged: changes.filter(
+      (change) => change.status === 'unchanged' && change.hasIncomingValue !== false,
+    ).length,
+  };
+  const hasChanges = counts.new + counts.changed > 0;
+  const titleId = useId();
+  const descriptionId = useId();
+  const dialogRef = useDialogFocus(returnFocusRef);
+  const dismiss = isProcessing ? undefined : onDismiss;
+  useEscapeToClose(dismiss);
+  const secondaryCls =
+    'px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 active:scale-95 transition-colors';
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={isProcessing ? undefined : onRejectAll}
+      onClick={dismiss}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-sm mx-4"
-        onClick={(e) => e.stopPropagation()}
+        ref={dialogRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        className={`bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full ${hasChanges ? 'max-w-md' : 'max-w-sm'} mx-4 p-6 max-h-[90vh] overflow-y-auto outline-none`}
+        onClick={(event) => event.stopPropagation()}
       >
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-        </div>
-
-        <div className="px-6 py-5 space-y-2">
-          {newCount > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                {newCount} new
-              </span>
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                {newCount === 1 ? 'field to add' : 'fields to add'}
-              </span>
-            </div>
-          )}
-          {conflictCount > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-500">
-                {conflictCount} {conflictCount === 1 ? 'conflict' : 'conflicts'}
-              </span>
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                {conflictCount === 1 ? 'different value' : 'different values'}
-              </span>
-            </div>
-          )}
-          {unchangedCount > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400">
-                {unchangedCount} match
-              </span>
-              <span className="text-sm text-gray-600 dark:text-gray-400">no changes</span>
-            </div>
-          )}
-          {!hasActionable && unchangedCount === 0 && (
-            <p className="text-sm text-gray-500 dark:text-gray-400">No changes found.</p>
-          )}
-        </div>
-
-        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex-wrap">
-          <button
-            type="button"
-            onClick={onRejectAll}
-            disabled={isProcessing}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 active:scale-95 transition-colors"
-          >
-            Keep Current
-          </button>
-          {hasActionable && (
+        <h3 id={titleId} className="text-base font-semibold text-gray-900 dark:text-gray-100">
+          {hasChanges ? title : 'No Changes Found'}
+        </h3>
+        <p id={descriptionId} className="mt-2 text-pretty text-sm text-gray-500 dark:text-gray-400">
+          {hasChanges ? description : 'No new or changed details were found.'}
+        </p>
+        {sourceLabel && (
+          <p className="mt-2 truncate text-xs text-gray-500 dark:text-gray-400" title={sourceLabel}>
+            {sourceLabel}
+          </p>
+        )}
+        {hasChanges && (
+          <p className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium">
+            {counts.new > 0 && (
+              <span className="text-green-700 dark:text-green-400">{counts.new} New</span>
+            )}
+            {counts.changed > 0 && (
+              <span className="text-amber-700 dark:text-amber-400">{counts.changed} Changed</span>
+            )}
+            {counts.unchanged > 0 && (
+              <span className="text-gray-500 dark:text-gray-400">{counts.unchanged} Unchanged</span>
+            )}
+          </p>
+        )}
+        <ImportWarnings warnings={warnings} />
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
+          {hasChanges ? (
             <>
+              <button
+                type="button"
+                onClick={onRejectAll}
+                disabled={isProcessing}
+                className={secondaryCls}
+              >
+                Keep Current
+              </button>
               <button
                 type="button"
                 onClick={onReview}
                 disabled={isProcessing}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 active:scale-95 transition-colors"
+                className={secondaryCls}
               >
-                Review →
+                Review Changes
               </button>
               <button
                 type="button"
@@ -101,9 +113,18 @@ export default function ImportSummaryDialog({
                 disabled={isProcessing}
                 className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
               >
-                {isProcessing ? 'Saving…' : 'Accept All'}
+                {isProcessing ? 'Saving…' : acceptLabel}
               </button>
             </>
+          ) : (
+            <button
+              type="button"
+              onClick={onDismiss}
+              disabled={isProcessing}
+              className={secondaryCls}
+            >
+              Done
+            </button>
           )}
         </div>
       </div>

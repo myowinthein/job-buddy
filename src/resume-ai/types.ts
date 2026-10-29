@@ -50,6 +50,10 @@ export interface FieldChange {
   status: FieldStatus;
   /** new: true = include; conflict: true = use suggested, false = keep current */
   accepted: boolean;
+  /** Explains list replacement, merging, or a binary file change. */
+  note?: string;
+  /** Absent values are preserved, rather than counted as matching details. */
+  hasIncomingValue?: boolean;
 }
 
 // ── AI autofill payload types ────────────────────────────────────────────────

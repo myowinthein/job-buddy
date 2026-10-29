@@ -3,6 +3,7 @@ import type { Profile, DocumentFile } from '@/src/types/profile';
 import { getGeminiApiKey, getGeminiModel } from '@/src/utils/storage';
 import { extractFromResume } from '@/src/resume-ai/gemini';
 import { extractLinks } from '@/src/resume-ai/extractLinks';
+import { acceptAllChanges } from '@/src/utils/backupImport';
 import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
 import type { FieldChange, ImportProgressStep, ImportErrorCode } from '@/src/resume-ai/types';
 import { toGeminiModel } from '@/src/resume-ai/types';
@@ -133,8 +134,8 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
   }, [onClose]);
 
   // 'progress' has its own Esc handling above (cancels the in-flight
-  // request); 'summary' (ImportSummaryDialog) has no dismiss action at all —
-  // it's a forced choice. 'dialog' and 'done' reuse the same closeSection
+  // request); shared summary/review dialogs own their dismissal handlers.
+  // 'dialog' and 'done' reuse the same closeSection
   // their backdrop click / Done button already use.
   useEscapeToClose(screen === 'dialog' || screen === 'done' ? closeSection : undefined);
 
@@ -542,8 +543,9 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
         <ImportSummaryDialog
           changes={changes}
           title="Review Suggestions"
-          onAcceptAll={() => void performSave(changes)}
+          onAcceptAll={() => void performSave(acceptAllChanges(changes))}
           onRejectAll={() => setScreen('dialog')}
+          onDismiss={() => setScreen('dialog')}
           onReview={() => setScreen('review')}
           isProcessing={saving}
         />
@@ -555,11 +557,14 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
       {screen === 'review' && (
         <ImportReviewScreen
           changes={changes}
+          onChangesChange={setChanges}
+          onDismiss={() => setScreen('dialog')}
+          incomingLabel="From Resume"
           onSave={performSave}
           onBack={() => setScreen('summary')}
           isSaving={saving}
           title="Review Suggestions"
-          saveLabel="Save selected"
+          saveLabel="Import Selected"
         />
       )}
 
