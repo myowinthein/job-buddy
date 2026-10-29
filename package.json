@@ -7,6 +7,7 @@
   "packageManager": "pnpm@11.7.0",
   "scripts": {
     "dev": "wxt",
+    "dev:preview": "vite --config vite.preview.config.ts",
     "dev:firefox": "wxt -b firefox",
     "build": "wxt build",
     "build:firefox": "wxt build -b firefox",
@@ -52,6 +53,7 @@
     "prettier": "^3.8.4",
     "tailwindcss": "^4.3.1",
     "typescript": "^5.9.3",
+    "vite": "8.0.16",
     "vitest": "^4.1.9",
     "wxt": "^0.20.26"
   }

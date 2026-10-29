@@ -81,21 +81,28 @@ See [Project Setup](.github/SETUP.md) for integration configuration.
 
 The extension uses WXT, React, TypeScript, and Tailwind CSS v4, with Vitest for tests.
 
-| Command              | Purpose                                              |
-| -------------------- | ---------------------------------------------------- |
-| `pnpm dev`           | Start Chrome extension development.                  |
-| `pnpm compile`       | Check TypeScript without emitting files.             |
-| `pnpm lint`          | Run ESLint.                                          |
-| `pnpm test:run`      | Run the test suite once.                             |
-| `pnpm build`         | Build the production Chrome extension.               |
-| `pnpm zip`           | Build and package a Chrome Web Store archive.        |
-| `pnpm serve:landing` | Serve the static website at `http://localhost:3000`. |
+| Command              | Purpose                                                             |
+| -------------------- | ------------------------------------------------------------------- |
+| `pnpm dev`           | Start Chrome extension development.                                 |
+| `pnpm dev:preview`   | Preview the profile UI with sample data at `http://127.0.0.1:4173`. |
+| `pnpm compile`       | Check TypeScript without emitting files.                            |
+| `pnpm lint`          | Run ESLint.                                                         |
+| `pnpm test:run`      | Run the test suite once.                                            |
+| `pnpm build`         | Build the production Chrome extension.                              |
+| `pnpm zip`           | Build and package a Chrome Web Store archive.                       |
+| `pnpm serve:landing` | Serve the static website at `http://localhost:3000`.                |
 
 Browser tests use Playwright with an isolated Chromium profile and synthetic local forms.
 Install the browser once with `pnpm exec playwright install chromium`, then run
 `pnpm test:browser`. This builds the extension and runs headless tests. After a build,
 use `pnpm exec playwright test --headed` to see the browser while debugging.
 Normal edits do not start browser tests.
+
+The localhost profile preview uses the existing Options UI with in-memory sample
+data. Saves last until you refresh the page. It does not access your installed
+extension's data, load environment files, or connect to Gemini or Google Drive.
+Use it to review profile forms and layout; extension autofill and real integrations
+still require an unpacked extension.
 
 Chrome builds are under `.output/`. Firefox development, build, and packaging
 scripts are also available in [package.json](package.json); production distribution
