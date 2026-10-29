@@ -286,7 +286,17 @@ describe('SettingsSection — Reset All Data confirmation gate', () => {
     fireEvent.click(await screen.findByText('Reset Now'));
     await screen.findByRole('dialog', { name: 'Reset All Data' });
 
-    fireEvent.click(screen.getByLabelText('Also delete the Drive backup'));
+    const checkbox = screen.getByLabelText('Also delete the Drive backup');
+    const warning = 'Your Drive backup will also be permanently deleted.';
+    expect(screen.queryByText(warning)).toBeNull();
+    fireEvent.click(checkbox);
+    expect(screen.getByText(warning).id).toBe(checkbox.getAttribute('aria-describedby'));
+    expect(screen.getByRole('dialog', { name: 'Reset All Data' })).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Reset All Data' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(checkbox);
+    expect(screen.queryByText(warning)).toBeNull();
+    expect(checkbox.getAttribute('aria-describedby')).toBeNull();
+    fireEvent.click(checkbox);
     fireEvent.change(screen.getByPlaceholderText('DELETE'), { target: { value: 'DELETE' } });
     fireEvent.click(screen.getByRole('button', { name: 'Reset All Data' }));
 

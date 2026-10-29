@@ -973,11 +973,17 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                   type="checkbox"
                   checked={resetScope === 'everywhere'}
                   disabled={resetting}
+                  aria-describedby={resetScope === 'everywhere' ? 'reset-drive-warning' : undefined}
                   onChange={(e) => setResetScope(e.target.checked ? 'everywhere' : 'device')}
                   className="mt-0.5 accent-red-600"
                 />
                 Also delete the Drive backup
               </label>
+            )}
+            {driveState.connected && resetScope === 'everywhere' && (
+              <p id="reset-drive-warning" className="mt-2 text-xs text-red-600 dark:text-red-400">
+                Your Drive backup will also be permanently deleted.
+              </p>
             )}
 
             <div className="mt-5">
