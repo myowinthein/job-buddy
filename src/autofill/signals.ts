@@ -15,10 +15,11 @@ const WRAPPER_SELECTORS =
 
 // Resolves space-separated element IDs from aria-labelledby / aria-describedby
 // into their visible text content, joined by a space.
-function resolveAriaRef(attr: string | null): string {
+function resolveAriaRef(attr: string | null, element: HTMLElement): string {
+  const root = element.getRootNode() as Document | ShadowRoot;
   if (!attr) return '';
   return attr.split(/\s+/)
-    .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
+    .map((id) => root.getElementById?.(id)?.textContent?.trim() ?? '')
     .filter(Boolean)
     .join(' ');
 }
@@ -137,7 +138,7 @@ export function extractSignals(element: HTMLElement): FieldSignals {
   // aria-label: prefer explicit attribute (falling back through the shadow
   // host chain — see withHostFallback), then resolve aria-labelledby.
   const explicitAriaLabel = withHostFallback(element, (el) => el.getAttribute('aria-label') ?? '');
-  const labelledByText    = resolveAriaRef(element.getAttribute('aria-labelledby'));
+  const labelledByText    = resolveAriaRef(element.getAttribute('aria-labelledby'), element);
   const ariaLabel         = explicitAriaLabel || labelledByText;
 
   // placeholder: native property first, then ARIA/plain attribute, each with

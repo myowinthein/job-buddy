@@ -344,3 +344,17 @@ describe('displayLabel', () => {
     expect(result).toHaveLength(120);
   });
 });
+
+
+describe('shadow-local ARIA references', () => {
+  it('uses inner labelledby/describedby references and never a duplicate outer ID', () => {
+    const outside = document.createElement('span'); outside.id = 'shared-label'; outside.textContent = 'Wrong outside label';
+    const host = document.createElement('div'); const root = host.attachShadow({ mode: 'open' });
+    root.innerHTML = '<span id="shared-label">First name</span><span id="detail">Required</span><input aria-labelledby="shared-label detail">';
+    document.body.append(outside, host);
+    const input = root.querySelector('input')!;
+    expect(extractSignals(input).ariaLabel).toBe('First name Required');
+    root.querySelector('#shared-label')!.remove();
+    expect(extractSignals(input).ariaLabel).toBe('Required');
+  });
+});
