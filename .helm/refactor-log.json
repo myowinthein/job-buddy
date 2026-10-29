@@ -204,8 +204,35 @@
         ],
         "invariant": "Preserve sequential and partial-failure semantics, optional-map/history truthiness, JSON-only history, fresh local mapping reads, validation/review/toast/refresh/close ordering, existing legacy local documents and no added explicit Drive sync."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "ba65cff2ee0d3acdd7ef1e74056d9221e58bcc39",
+        "date": "2026-10-29",
+        "method": "runtime",
+        "evidence": [
+          "JSON and both Drive restore paths reuse saveImportedData; guards preserve absent-map behavior, profile-before-mapping ordering, failure handling and Drive exclusion of history."
+        ],
+        "checks": [
+          {
+            "command": "pnpm compile",
+            "scope": "project",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm exec vitest run src/components/options/SettingsSection.test.tsx src/components/options/SettingsSection.integration.test.tsx",
+            "scope": "JSON and Drive import flows",
+            "outcome": "35 tests passed"
+          },
+          {
+            "command": "pnpm exec eslint src/components/options/SettingsSection.tsx src/components/options/SettingsSection.integration.test.tsx",
+            "scope": "R4 files",
+            "outcome": "passed"
+          }
+        ]
+      }
     },
     {
       "id": "r-788fc973-e6be-47e9-a650-0a08d1d81c88",
