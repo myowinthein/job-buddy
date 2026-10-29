@@ -3,6 +3,7 @@ import { COUNTRIES } from '../data/countries';
 import { languageName, LANGUAGE_PROFICIENCY_LABELS } from '../data/languages';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
 import { resolveProfileValue } from './resolver';
+import { mostRecentIdx } from './entryRecency';
 
 // Builds a human-labeled tree of every profile field that currently has a
 // value, pairing each with its dot-notation path. Pure function of `profile`
@@ -44,18 +45,6 @@ export interface Section {
 
 function countryName(code: string): string {
   return COUNTRIES.find(c => c.code === code)?.name ?? code;
-}
-
-// Returns the index of the most recent entry (isCurrent first, then latest startDate).
-export function mostRecentIdx(entries: Array<{ startDate?: string; isCurrent?: boolean }>): number {
-  if (!entries.length) return 0;
-  const currIdx = entries.findIndex(e => e.isCurrent);
-  if (currIdx >= 0) return currIdx;
-  let best = 0;
-  for (let i = 1; i < entries.length; i++) {
-    if ((entries[i].startDate ?? '') > (entries[best].startDate ?? '')) best = i;
-  }
-  return best;
 }
 
 // Shared by workHistoryHeading/educationHeading below: primary/secondary

@@ -3,7 +3,7 @@ import type { FieldMatch } from './mapper';
 import type { CheckboxOption } from './scanner';
 import { resolveProfileValue } from './resolver';
 import { normalize } from './normalizer';
-import { mostRecentIdx } from './profileFieldTree';
+import { mostRecentIdx } from './entryRecency';
 
 // Shared by education/work-history sibling-detection (see
 // educationResolution.ts / workHistoryResolution.ts) — same reasoning as
