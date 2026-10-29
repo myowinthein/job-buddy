@@ -1,10 +1,23 @@
-import { retryPendingDriveSync, syncIfConnected } from '@/src/utils/driveSync';
+import {
+  DRIVE_RETRY_ALARM,
+  DRIVE_AUTH_ALARM,
+  refreshDriveConnection,
+  markDriveBackupPending,
+  retryPendingDriveSync,
+  syncIfConnected,
+} from '@/src/utils/driveSync';
 
 export default defineBackground(() => {
   // On browser startup, retry any deferred Drive upload. Silent — failures
   // are captured in driveBackupState by syncProfileToDrive itself.
   chrome.runtime.onStartup.addListener(() => {
+    void refreshDriveConnection();
     void retryPendingDriveSync();
+  });
+  chrome.alarms?.onAlarm.addListener((alarm) => {
+    if (alarm.name === DRIVE_RETRY_ALARM) void retryPendingDriveSync();
+    if (alarm.name === DRIVE_AUTH_ALARM)
+      void refreshDriveConnection().then(() => retryPendingDriveSync());
   });
 
   // Debounced Drive sync whenever the profile or learnedMappings changes
@@ -19,6 +32,8 @@ export default defineBackground(() => {
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== 'local') return;
     if (!('learnedMappings' in changes) && !('profile' in changes)) return;
+    if (changes.profile?.newValue == null && changes.learnedMappings?.newValue == null) return;
+    void markDriveBackupPending();
     clearTimeout(syncTimer);
     syncTimer = setTimeout(() => {
       void syncIfConnected();

@@ -38,7 +38,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 - Page-wide phone/language/education/work-history/expected-salary resolution runs after individual mapping. Education/work history/salary share `repeatingEntryResolution.ts`; languages have their own pass.
 - `src/resume-ai/gemini.ts` owns extraction/autofill requests; `types.ts` centralizes model priorities/defaults; `prompt.ts` and `autofillPrompt.ts` hold separate prompts. `parser.ts` also powers JSON and Drive import review.
 - `src/utils/storageArea.ts` backs local/session wrappers. Low-level gets/removes resolve on failure by default; explicit resets reject removal failures. Local sets reject, session sets are best-effort. `getProfile()` can reject when persisting a migration.
-- `src/utils/driveSync.ts` owns Drive OAuth, appdata backup, and retry state. Both restore paths are in `SettingsSection.tsx`.
+- `src/utils/driveSync.ts` owns Drive OAuth, appdata backup, and retry state. Web Locks serialize uploads/review/disconnect across extension contexts; backup fingerprints and conditional writes protect remote changes. Both restore paths are in `SettingsSection.tsx`.
 - `docs/index.html` is a static Tailwind-CDN landing page; `docs/project-site/` is a static overview.
 
 ## Domain Rules
@@ -85,7 +85,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 
 - `MonthYearPicker` emits `''` during partial input. Validate required fields at save time; preserve internal partial-entry/resync handling.
 - Reset/import must reload the profile before bumping section remount/navigation state inside `handleImportComplete(afterLoad)`.
-- Shared import dialogs keep review choices in their owner state. Dismissal is separate from data actions; Drive's explicit Keep Current uploads locally saved data, while Escape/backdrop/Close must only dismiss.
+- Shared import dialogs keep review choices in their owner state. Dismissal is separate from data actions; Drive's explicit Keep Current uploads locally saved data, while Escape/backdrop/Close only dismiss and leave uploads paused. `completeDriveRestore()` validates the review before saving; `finishDriveReview()` acknowledges identical data. Retry/session-renewal alarms and connection metadata stay local and are never exported.
 - Work-authorization labels come from `src/data/workAuthorization.ts`; do not duplicate the status strings.
 - Section loaders retain backward compatibility for string phones/work locations, country names, older language proficiency, and currency-only salary rows. Ambiguous shared currencies remain for user selection.
 - `normalizeProfile()` defaults missing/invalid salary periods to monthly and adds missing URL schemes; both load/save use it. New on-load migrations belong here.
@@ -95,7 +95,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 - Dev builds use amber icons (`wxt.config.ts` and `branding.ts`); production uses blue. Theme initializes before React and follows system/light/dark through the root `.dark` class.
 - Drive uses implicit-token OAuth with `drive.appdata`. Development setup requires Web Application OAuth clients with separate dev/prod redirect IDs; see `.github/SETUP.md`.
 - Document uploads, Resume Import, and JSON/Drive import validation share the 4 MB file limit in `src/utils/documentLimits.ts`. Existing stored files are preserved; the per-file cap does not guarantee the whole profile fits local storage.
-- Popup confidence tooltips and parts of `docs/project-site/` still mention a removed picker. A Settings restore comment incorrectly says mappings do not sync independently; background does debounce mapping changes.
+- Popup confidence tooltips and parts of `docs/project-site/` still mention a removed picker. Background backup reacts to both profile and learned-mapping saves; deletes during reset do not queue uploads.
 - Static site brand colors are duplicated across landing and overview; update both copies together.
 
 ## Rules

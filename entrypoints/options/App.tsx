@@ -298,7 +298,7 @@ function App() {
     // Fire-and-forget Drive sync. Never blocks the local save flow.
     void syncProfileToDrive(synced).then((res) => {
       if (!res.success && res.errorCode) {
-        showToast('warning', 'Profile saved. Drive sync failed, will retry.');
+        showToast('warning', res.errorCode === 'review_required' ? 'Profile saved. Review your Drive backup in Settings.' : res.errorCode === 'token_expired' ? 'Profile saved. Reconnect Google Drive to continue backups.' : 'Profile saved. Drive backup is pending.');
       }
     }).catch(() => { /* syncProfileToDrive never throws, but be defensive */ });
   };

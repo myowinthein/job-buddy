@@ -265,7 +265,7 @@ it.each(['Escape', 'backdrop'])(
     const uploadLocal = vi.spyOn(previewDrive, 'overwriteDriveWithLocal');
     await mountBase();
     fireEvent.click(screen.getByText('Connect Google Drive'));
-    const dialog = await screen.findByRole('dialog', { name: 'Import Drive Backup' });
+    const dialog = await screen.findByRole('dialog', { name: 'Restore Drive Backup' });
     if (action === 'Escape') fireEvent.keyDown(window, { key: 'Escape' });
     else fireEvent.click(dialog.parentElement!);
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());

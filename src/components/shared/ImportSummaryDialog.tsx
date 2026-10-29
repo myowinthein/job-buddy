@@ -11,6 +11,7 @@ export interface ImportSummaryDialogProps {
   warnings?: string[];
   returnFocusRef?: RefObject<HTMLElement | null>;
   acceptLabel?: string;
+  forceDecision?: boolean;
   onAcceptAll: () => void;
   onRejectAll: () => void;
   onReview: () => void;
@@ -25,6 +26,7 @@ export default function ImportSummaryDialog({
   warnings,
   returnFocusRef,
   acceptLabel = 'Import All',
+  forceDecision = false,
   onAcceptAll,
   onRejectAll,
   onReview,
@@ -38,7 +40,7 @@ export default function ImportSummaryDialog({
       (change) => change.status === 'unchanged' && change.hasIncomingValue !== false,
     ).length,
   };
-  const hasChanges = counts.new + counts.changed > 0;
+  const hasChanges = counts.new + counts.changed > 0 || forceDecision;
   const titleId = useId();
   const descriptionId = useId();
   const dialogRef = useDialogFocus(returnFocusRef);

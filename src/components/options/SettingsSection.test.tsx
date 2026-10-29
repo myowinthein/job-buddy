@@ -29,6 +29,9 @@ vi.mock('@/src/resume-ai/gemini', () => ({
 vi.mock('@/src/utils/driveSync', () => ({
   getFullDriveState: vi.fn().mockResolvedValue({ connected: false, lastSynced: null, pendingSync: false, error: null }),
   connectDrive: vi.fn(),
+  inspectDriveBackup: vi.fn(),
+  finishDriveReview: vi.fn().mockResolvedValue(undefined),
+  completeDriveRestore: vi.fn(async (_id: string | undefined, save: () => Promise<void>) => { await save(); }),
   disconnectDrive: vi.fn().mockResolvedValue(undefined),
   syncProfileToDrive: vi.fn().mockResolvedValue({ success: true, errorCode: null }),
   overwriteDriveWithLocal: vi.fn().mockResolvedValue({ success: true, errorCode: null }),
@@ -342,19 +345,19 @@ describe('SettingsSection — fmtDriveTimestamp (via the connected Drive state d
     const today = new Date();
     vi.mocked(getFullDriveState).mockResolvedValue({ connected: true, lastSynced: today.toISOString(), pendingSync: false, error: null });
     renderSection();
-    expect(await screen.findByText(/Last synced: Today at/)).toBeTruthy();
+    expect(await screen.findByText(/Last backed up: Today at/)).toBeTruthy();
   });
 
   it('shows "Not synced yet" when lastSynced is null', async () => {
     vi.mocked(getFullDriveState).mockResolvedValue({ connected: true, lastSynced: null, pendingSync: false, error: null });
     renderSection();
-    expect(await screen.findByText(/Last synced: Not synced yet/)).toBeTruthy();
+    expect(await screen.findByText(/No backup yet/)).toBeTruthy();
   });
 
   it('shows "Not synced yet" for an unparseable timestamp rather than crashing', async () => {
     vi.mocked(getFullDriveState).mockResolvedValue({ connected: true, lastSynced: 'not-a-date', pendingSync: false, error: null });
     renderSection();
-    expect(await screen.findByText(/Last synced: Not synced yet/)).toBeTruthy();
+    expect(await screen.findByText(/No backup yet/)).toBeTruthy();
   });
 });
 
@@ -369,7 +372,7 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));
 
-    expect(await screen.findByText('Profile found in Google Drive. Restore it?')).toBeTruthy();
+    expect(await screen.findByText('Restore your saved profile and learned mappings from Google Drive.')).toBeTruthy();
   });
 
   it('restores the Drive backup on Restore, merges learned mappings, and completes the import', async () => {
@@ -383,7 +386,7 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
 
     const { onImportComplete } = renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));
-    fireEvent.click(await screen.findByText('Restore'));
+    fireEvent.click(await screen.findByText('Restore All'));
 
     await waitFor(() => expect(vi.mocked(saveProfile)).toHaveBeenCalledWith({ ...backupProfile, derived: calculateDerivedFields(backupProfile) }));
     expect(vi.mocked(saveLearnedMappings)).toHaveBeenCalledWith(
@@ -391,7 +394,7 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     );
     expect(onImportComplete).toHaveBeenCalled();
     // Wait for the final state update that closes the restore dialog.
-    await waitFor(() => expect(screen.queryByText('Profile found in Google Drive. Restore it?')).toBeNull());
+    await waitFor(() => expect(screen.queryByText('Restore your saved profile and learned mappings from Google Drive.')).toBeNull());
   });
 
   it('shows a conflict summary dialog when connecting with a non-empty local profile', async () => {
@@ -405,7 +408,7 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));
 
-    expect(await screen.findByText('Import Drive Backup')).toBeTruthy();
+    expect(await screen.findByText('Restore Drive Backup')).toBeTruthy();
   });
 
   it('pushes the local profile to Drive as the initial snapshot when no backup exists yet', async () => {
@@ -437,10 +440,10 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     renderSection();
     const connectButton = await screen.findByText('Connect Google Drive');
     await act(async () => { fireEvent.click(connectButton); });
-    await screen.findByText('Profile found in Google Drive. Restore it?');
+    await screen.findByText('Restore your saved profile and learned mappings from Google Drive.');
 
     fireEvent.keyDown(window, { key: 'Escape' });
-    expect(screen.queryByText('Profile found in Google Drive. Restore it?')).toBeNull();
+    expect(screen.queryByText('Restore your saved profile and learned mappings from Google Drive.')).toBeNull();
   });
 
   it('ignores Escape on the restore dialog while a restore is actually in flight', async () => {
@@ -454,14 +457,14 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
 
     renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));
-    fireEvent.click(await screen.findByText('Restore'));
+    fireEvent.click(await screen.findByText('Restore All'));
 
     await screen.findByText('Restoring…');
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.getByText('Restoring…')).toBeTruthy(); // dialog is still up, mid-restore
 
     resolveSave();
-    await waitFor(() => expect(screen.queryByText('Profile found in Google Drive. Restore it?')).toBeNull());
+    await waitFor(() => expect(screen.queryByText('Restore your saved profile and learned mappings from Google Drive.')).toBeNull());
   });
 
   it('closes the disconnect dialog on Escape', async () => {
@@ -469,10 +472,10 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
 
     renderSection();
     fireEvent.click(await screen.findByText('Disconnect'));
-    await screen.findByText('What to do with your Drive backup?');
+    await screen.findByText('Disconnect Google Drive');
 
     fireEvent.keyDown(window, { key: 'Escape' });
-    expect(screen.queryByText('What to do with your Drive backup?')).toBeNull();
+    expect(screen.queryByText('Disconnect Google Drive')).toBeNull();
   });
 
   it('Keep Current on a conflict pushes the local profile to Drive instead of restoring the backup', async () => {
@@ -486,12 +489,12 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     vi.mocked(generateDiff).mockReturnValueOnce([makeFieldChange()]);
     renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));
-    await screen.findByText('Import Drive Backup');
+    await screen.findByText('Restore Drive Backup');
     fireEvent.click(screen.getByText('Keep Current'));
 
-    await waitFor(() => expect(vi.mocked(overwriteDriveWithLocal)).toHaveBeenCalledWith(localProfile));
+    await waitFor(() => expect(vi.mocked(overwriteDriveWithLocal)).toHaveBeenCalledWith(localProfile, undefined));
     expect(vi.mocked(saveProfile)).not.toHaveBeenCalled(); // local wins — nothing pulled from the Drive backup
-    expect(screen.queryByText('Import Drive Backup')).toBeNull();
+    expect(screen.queryByText('Restore Drive Backup')).toBeNull();
   });
 
   it('Review → Apply Selected on a conflict saves only the reviewed changes, not the raw Drive backup', async () => {
@@ -507,10 +510,10 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
 
     const { onImportComplete } = renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));
-    await screen.findByText('Import Drive Backup');
+    await screen.findByText('Restore Drive Backup');
     fireEvent.click(screen.getByText('Review Changes'));
     await screen.findByText('Review Drive Backup');
-    fireEvent.click(screen.getByText(/^Apply Selected/));
+    fireEvent.click(screen.getByText(/^Restore Selected/));
 
     await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
     expect(vi.mocked(applyChanges)).toHaveBeenCalledWith(localProfile, [makeFieldChange()]);
@@ -531,17 +534,17 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));
 
-    expect(await screen.findByText('Drive backup contains invalid profile data.')).toBeTruthy();
+    expect(await screen.findByText('The Drive backup contains no valid profile data. Your profile is unchanged.')).toBeTruthy();
     expect(vi.mocked(saveProfile)).not.toHaveBeenCalled();
-    expect(screen.queryByText('Profile found in Google Drive. Restore it?')).toBeNull();
+    expect(screen.queryByText('Restore your saved profile and learned mappings from Google Drive.')).toBeNull();
   });
 
   it('shows the storage-full error state and its "Manage storage" link, not a retry button', async () => {
     vi.mocked(getFullDriveState).mockResolvedValue({ connected: true, lastSynced: null, pendingSync: false, error: 'storage_full' });
 
     renderSection();
-    expect(await screen.findByText('Google Drive storage full. Sync paused.')).toBeTruthy();
-    expect(screen.getByText('Manage storage →')).toBeTruthy();
+    expect(await screen.findByText('Google Drive is full. Free up space, then try again.')).toBeTruthy();
+    expect(screen.getByText('Manage Storage')).toBeTruthy();
   });
 
   it('Retry on a sync_error state calls syncProfileToDrive again', async () => {
@@ -550,10 +553,10 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     vi.mocked(syncProfileToDrive).mockResolvedValueOnce({ success: true, errorCode: null });
 
     renderSection();
-    fireEvent.click(await screen.findByText('Retry'));
+    fireEvent.click(await screen.findByText('Retry Backup'));
 
     await waitFor(() => expect(vi.mocked(syncProfileToDrive)).toHaveBeenCalled());
-    expect(await screen.findByText('Synced to Google Drive')).toBeTruthy();
+    expect(await screen.findByText('Profile backed up to Google Drive.')).toBeTruthy();
   });
 
   it('Sync Now shows a storage-full toast when the retry itself hits the quota', async () => {
@@ -562,9 +565,9 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     vi.mocked(syncProfileToDrive).mockResolvedValueOnce({ success: false, errorCode: 'storage_full' });
 
     renderSection();
-    fireEvent.click(await screen.findByText('Sync Now'));
+    fireEvent.click(await screen.findByText('Back Up Now'));
 
-    expect(await screen.findByText('Google Drive storage full. Sync paused.')).toBeTruthy();
+    expect(await screen.findByText('Google Drive is full. Free up space, then try again.')).toBeTruthy();
   });
 
   it('Sync Now shows a reconnect-prompt toast when the token has expired', async () => {
@@ -573,9 +576,9 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     vi.mocked(syncProfileToDrive).mockResolvedValueOnce({ success: false, errorCode: 'token_expired' });
 
     renderSection();
-    fireEvent.click(await screen.findByText('Sync Now'));
+    fireEvent.click(await screen.findByText('Back Up Now'));
 
-    expect(await screen.findByText('Drive disconnected. Reconnect to resume syncing.')).toBeTruthy();
+    expect(await screen.findByText('Reconnect Google Drive to continue backups.')).toBeTruthy();
   });
 });
 

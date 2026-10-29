@@ -31,6 +31,9 @@ vi.mock('@/src/utils/driveSync', () => ({
     .fn()
     .mockResolvedValue({ connected: false, lastSynced: null, pendingSync: false, error: null }),
   connectDrive: vi.fn(),
+  inspectDriveBackup: vi.fn(),
+  finishDriveReview: vi.fn().mockResolvedValue(undefined),
+  completeDriveRestore: vi.fn(async (_id: string | undefined, save: () => Promise<void>) => { await save(); }),
   disconnectDrive: vi.fn().mockResolvedValue(undefined),
   syncProfileToDrive: vi.fn().mockResolvedValue({ success: true, errorCode: null }),
   overwriteDriveWithLocal: vi.fn().mockResolvedValue({ success: true, errorCode: null }),
@@ -172,7 +175,7 @@ describe('SettingsSection — real Drive document validation', () => {
       fireEvent.click(await screen.findByText('Connect Google Drive'));
       fireEvent.click(await screen.findByText('Review Changes'));
       expect(screen.queryByText('oversized.pdf')).toBeNull();
-      fireEvent.click(screen.getByRole('button', {name:/^Apply Selected/}));
+      fireEvent.click(screen.getByRole('button', {name:/^Restore Selected/}));
       await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
       const saved = vi.mocked(saveProfile).mock.calls[0][0];
       expect(saved.personal.firstName).toBe('Remote');
@@ -190,7 +193,7 @@ it.each([false, true])('preserves direct Drive persistence ordering with mapping
   if (failMappings) vi.mocked(saveLearnedMappings).mockRejectedValueOnce(new Error('synthetic write failure'));
   const { onImportComplete } = renderSection();
   fireEvent.click(await screen.findByText('Connect Google Drive'));
-  fireEvent.click(await screen.findByText('Restore'));
+  fireEvent.click(await screen.findByText('Restore All'));
   if (failMappings) {
     expect(await screen.findByText('Restore failed. Please try again.')).toBeTruthy();
     expect(saveProfile).toHaveBeenCalledTimes(1);

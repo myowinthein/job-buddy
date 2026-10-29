@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('@/src/utils/driveSync', () => ({
+  DRIVE_AUTH_ALARM: 'jb:drive-authorization-renewal',
+  refreshDriveConnection: vi.fn().mockResolvedValue(undefined),
+  DRIVE_RETRY_ALARM: 'jb:drive-backup-retry',
+  markDriveBackupPending: vi.fn().mockResolvedValue(undefined),
   retryPendingDriveSync: vi.fn().mockResolvedValue(undefined),
   syncIfConnected: vi.fn().mockResolvedValue(undefined),
 }));
@@ -13,22 +17,30 @@ vi.mock('@/src/utils/driveSync', () => ({
 // implementation (wxt/dist/utils/define-background.mjs) is exactly this
 // trivial, side-effect-free wrapper — inlined here rather than dynamically
 // imported, since vi.hoisted's callback must stay synchronous.
-const { onStartupAddListener, storageOnChangedAddListener } = vi.hoisted(() => {
+const { onStartupAddListener, storageOnChangedAddListener, onAlarmAddListener } = vi.hoisted(() => {
   const onStartupAddListener = vi.fn();
   const storageOnChangedAddListener = vi.fn();
+  const onAlarmAddListener = vi.fn();
 
   vi.stubGlobal('chrome', {
+    alarms: { onAlarm: { addListener: onAlarmAddListener } },
     runtime: { onStartup: { addListener: onStartupAddListener } },
     storage: { onChanged: { addListener: storageOnChangedAddListener } },
   });
   vi.stubGlobal('defineBackground', (arg: unknown) =>
-    (arg == null || typeof arg === 'function') ? { main: arg } : arg);
+    arg == null || typeof arg === 'function' ? { main: arg } : arg,
+  );
 
-  return { onStartupAddListener, storageOnChangedAddListener };
+  return { onStartupAddListener, storageOnChangedAddListener, onAlarmAddListener };
 });
 
 import background from '@/entrypoints/background';
-import { retryPendingDriveSync, syncIfConnected } from '@/src/utils/driveSync';
+import {
+  retryPendingDriveSync,
+  syncIfConnected,
+  refreshDriveConnection,
+  markDriveBackupPending,
+} from '@/src/utils/driveSync';
 
 function getOnStartupListener(): () => void {
   return onStartupAddListener.mock.calls[0][0];
@@ -56,7 +68,7 @@ describe('background — onStartup retries pending Drive sync', () => {
 
 describe('background — debounced sync on storage changes', () => {
   it('ignores changes outside the "local" storage area', async () => {
-    getStorageChangedListener()({ profile: {} }, 'sync');
+    getStorageChangedListener()({ profile: { newValue: { id: 'p1' } } }, 'sync');
     await vi.advanceTimersByTimeAsync(6000);
     expect(vi.mocked(syncIfConnected)).not.toHaveBeenCalled();
   });
@@ -68,7 +80,7 @@ describe('background — debounced sync on storage changes', () => {
   });
 
   it('syncs 5s after a profile change', async () => {
-    getStorageChangedListener()({ profile: {} }, 'local');
+    getStorageChangedListener()({ profile: { newValue: { id: 'p1' } } }, 'local');
     await vi.advanceTimersByTimeAsync(4999);
     expect(vi.mocked(syncIfConnected)).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1);
@@ -76,16 +88,16 @@ describe('background — debounced sync on storage changes', () => {
   });
 
   it('syncs 5s after a learnedMappings change', async () => {
-    getStorageChangedListener()({ learnedMappings: {} }, 'local');
+    getStorageChangedListener()({ learnedMappings: { newValue: {} } }, 'local');
     await vi.advanceTimersByTimeAsync(5000);
     expect(vi.mocked(syncIfConnected)).toHaveBeenCalledTimes(1);
   });
 
   it('coalesces a burst of changes into a single sync, timed from the last change', async () => {
     const listener = getStorageChangedListener();
-    listener({ profile: {} }, 'local');
+    listener({ profile: { newValue: { id: 'p1' } } }, 'local');
     await vi.advanceTimersByTimeAsync(3000);
-    listener({ profile: {} }, 'local'); // resets the timer
+    listener({ profile: { newValue: { id: 'p1' } } }, 'local'); // resets the timer
     await vi.advanceTimersByTimeAsync(3000); // 6s since the first change, but only 3s since the second
     expect(vi.mocked(syncIfConnected)).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(2000); // 5s since the second change
@@ -93,8 +105,31 @@ describe('background — debounced sync on storage changes', () => {
   });
 
   it('a single burst touching both profile and learnedMappings together still syncs only once', async () => {
-    getStorageChangedListener()({ profile: {}, learnedMappings: {} }, 'local');
+    getStorageChangedListener()(
+      { profile: { newValue: { id: 'p1' } }, learnedMappings: { newValue: {} } },
+      'local',
+    );
     await vi.advanceTimersByTimeAsync(5000);
     expect(vi.mocked(syncIfConnected)).toHaveBeenCalledTimes(1);
   });
+});
+
+it('retries durable backups when the retry alarm fires', () => {
+  onAlarmAddListener.mock.calls[0][0]({ name: 'jb:drive-backup-retry' });
+  expect(retryPendingDriveSync).toHaveBeenCalledTimes(1);
+});
+it('renews the session before retrying pending data on the authorization alarm', async () => {
+  onAlarmAddListener.mock.calls[0][0]({ name: 'jb:drive-authorization-renewal' });
+  await Promise.resolve();
+  expect(refreshDriveConnection).toHaveBeenCalledTimes(1);
+  expect(retryPendingDriveSync).toHaveBeenCalledTimes(1);
+});
+it('does not back up removals during reset', async () => {
+  getStorageChangedListener()(
+    { profile: { oldValue: { id: 'old' } }, learnedMappings: { oldValue: {} } },
+    'local',
+  );
+  await vi.advanceTimersByTimeAsync(6000);
+  expect(markDriveBackupPending).not.toHaveBeenCalled();
+  expect(syncIfConnected).not.toHaveBeenCalled();
 });

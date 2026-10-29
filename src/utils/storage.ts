@@ -224,7 +224,7 @@ export async function saveDriveToken(token: string): Promise<void> {
 }
 
 export async function clearDriveToken(): Promise<void> {
-  await storageRemove(['driveToken']);
+  await local.remove(['driveToken'], { rejectOnError: true });
 }
 
 const DEFAULT_DRIVE_STATE: DriveBackupState = {
@@ -244,7 +244,7 @@ export async function saveDriveBackupState(state: DriveBackupState): Promise<voi
 }
 
 export async function clearDriveBackupState(): Promise<void> {
-  await storageRemove(['driveBackupState']);
+  await local.remove(['driveBackupState'], { rejectOnError: true });
 }
 
 // ── Appearance / theme ────────────────────────────────────────────────────────

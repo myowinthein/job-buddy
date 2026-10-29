@@ -134,7 +134,7 @@ describe('options App — handleSave contract', () => {
     fireEvent.click(await screen.findByText('save-personal'));
 
     await waitFor(() => expect(vi.mocked(saveProfile)).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText('Profile saved. Drive sync failed, will retry.')).toBeTruthy();
+    expect(await screen.findByText('Profile saved. Drive backup is pending.')).toBeTruthy();
   });
 
   it('shows an error toast and does not update profile state or sync to Drive when saveProfile rejects', async () => {

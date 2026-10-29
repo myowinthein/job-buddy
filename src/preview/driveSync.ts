@@ -12,6 +12,15 @@ export const getFullDriveState: typeof Drive.getFullDriveState = async () => ({
   error: null,
 });
 export const connectDrive: typeof Drive.connectDrive = disabled;
+export const inspectDriveBackup: typeof Drive.inspectDriveBackup = disabled;
+export const finishDriveReview: typeof Drive.finishDriveReview = async () => {};
+export const markDriveBackupPending: typeof Drive.markDriveBackupPending = async () => {};
+export const DRIVE_AUTH_ALARM = 'jb:drive-authorization-renewal';
+export const refreshDriveConnection: typeof Drive.refreshDriveConnection = async () => {};
+export const completeDriveRestore: typeof Drive.completeDriveRestore = async (_id, save) => {
+  await save();
+};
+export const DRIVE_RETRY_ALARM = 'jb:drive-backup-retry';
 export const launchDriveOAuth: typeof Drive.launchDriveOAuth = disabled;
 export const revokeDriveToken: typeof Drive.revokeDriveToken = disabled;
 export const syncProfileToDrive: typeof Drive.syncProfileToDrive = async () => ({

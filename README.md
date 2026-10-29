@@ -70,9 +70,16 @@ check every answer and uploaded document before submitting.
 - **Gemini:** add your own API key in **Settings → AI Features** for AI autofill
   assistance and PDF/DOCX resume import. Review imported suggestions before saving.
 - **Google Drive:** connect in **Settings** to back up your profile and learned
-  mappings. Changes can sync automatically while connected.
+  mappings. Saved changes update the backup automatically. Use **Back Up Now**
+  to check and update it manually. Different Drive data requires review before
+  replacement. Temporary failures retry with increasing delays; Google may ask
+  you to reconnect. History, appearance, and Gemini settings stay in this browser.
 - **JSON backup:** use **Export Profile** and **Import Profile** in **Settings** to
   transfer your profile, learned mappings, and application history.
+
+Disconnecting keeps the last successful Drive backup unless you choose to delete
+it. Keeping a backup does not upload unsynced changes first. A failed cloud
+deletion must be retried before a reset can clear this browser.
 
 Valid JSON backups import immediately into an empty profile. Otherwise, review
 new and changed details before importing all or selected updates. Missing values

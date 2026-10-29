@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
+import { createHash, webcrypto } from 'node:crypto';
 
 // In-memory chrome.storage.local
 const store: Record<string, unknown> = {};
@@ -67,13 +68,22 @@ function makeProfile(): Profile {
 }
 
 function mockFetchSequence(responses: Array<{ ok: boolean; status?: number; body?: unknown }>) {
+  const state = store.driveBackupState as { fileId?: string; remoteHash?: string } | undefined;
+  const remote = { profile: { personal: { firstName: 'Previous' } }, learnedMappings: {}, lastModified: '2026-01-01T00:00:00Z' };
+  const stable = (v: unknown): unknown => Array.isArray(v) ? v.map(stable) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b)).map(([k,x])=>[k,stable(x)])) : v;
+  if (state?.fileId) state.remoteHash = createHash('sha256').update(JSON.stringify(stable({profile:remote.profile,learnedMappings:{}}))).digest('hex');
   let i = 0;
-  fetchMock.mockImplementation(() => {
+  fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+    if (state?.fileId && !options?.method) {
+      const body = url.includes('alt=media') ? remote : {files:[{id:state.fileId,name:'job-buddy-profile.json'}]};
+      return Promise.resolve({ok:true,status:200,headers:new Headers({etag:'"audit-v1"'}),json:async()=>body,text:async()=>JSON.stringify(body)});
+    }
     const r = responses[i++] ?? { ok: true, body: {} };
     const status = r.status ?? (r.ok ? 200 : 500);
     return Promise.resolve({
       ok: r.ok,
       status,
+      headers: new Headers({etag:'"audit-v1"'}),
       json: () => Promise.resolve(r.body ?? {}),
       text: () => Promise.resolve(typeof r.body === 'string' ? r.body : JSON.stringify(r.body ?? '')),
     });
@@ -84,6 +94,8 @@ beforeEach(() => {
   Object.keys(store).forEach(k => delete store[k]);
   fetchMock.mockReset();
   vi.clearAllMocks();
+  vi.stubEnv('DEV', false);
+  vi.stubGlobal('crypto', webcrypto);
 });
 
 describe('isDriveConfigured', () => {
@@ -218,7 +230,7 @@ describe('connectDrive', () => {
 
     const result = await mod.connectDrive();
 
-    expect(result).toEqual({ token: 'tok-fresh', backup: null, fileId: null });
+    expect(result).toEqual({ token: 'tok-fresh', backup: null, fileId: null, errorCode: 'sync_error' });
     expect(store['driveToken']).toBe('tok-fresh');
     const state = store['driveBackupState'] as { pendingSync: boolean; error: string | null };
     expect(state.pendingSync).toBe(true);
@@ -241,11 +253,11 @@ describe('connectDrive', () => {
     expect(result.backup).toEqual(backupFile);
     const state = store['driveBackupState'] as { pendingSync: boolean; error: string | null; fileId: string | null };
     expect(state.pendingSync).toBe(false);
-    expect(state.error).toBeNull();
+    expect(state.error).toBe('review_required');
     expect(state.fileId).toBe('file-1');
   });
 
-  it('file found but body is not an object → treated as no backup, not a sync error', async () => {
+  it('file found but body is not an object → pauses uploads as an invalid backup', async () => {
     const mod = await importConfiguredDriveSync();
     mockAuthFlow({ token: 'tok-ok' });
     mockFetchSequence([
@@ -255,13 +267,13 @@ describe('connectDrive', () => {
 
     const result = await mod.connectDrive();
 
-    expect(result).toEqual({ token: 'tok-ok', backup: null, fileId: 'file-1' });
+    expect(result).toEqual({ token: 'tok-ok', backup: null, fileId: 'file-1', errorCode: 'invalid_backup' });
     const state = store['driveBackupState'] as { pendingSync: boolean; error: string | null };
-    expect(state.pendingSync).toBe(false);
-    expect(state.error).toBeNull();
+    expect(state.pendingSync).toBe(true);
+    expect(state.error).toBe('invalid_backup');
   });
 
-  it('file found but body is missing .profile → treated as no backup, not a sync error', async () => {
+  it('file found but body is missing .profile → pauses uploads as an invalid backup', async () => {
     const mod = await importConfiguredDriveSync();
     mockAuthFlow({ token: 'tok-ok' });
     mockFetchSequence([
@@ -271,10 +283,10 @@ describe('connectDrive', () => {
 
     const result = await mod.connectDrive();
 
-    expect(result).toEqual({ token: 'tok-ok', backup: null, fileId: 'file-1' });
+    expect(result).toEqual({ token: 'tok-ok', backup: null, fileId: 'file-1', errorCode: 'invalid_backup' });
   });
 
-  it('file found but response body fails to parse as JSON → treated as no backup, not a sync error', async () => {
+  it('file found but response body fails to parse as JSON → pauses uploads as an invalid backup', async () => {
     const mod = await importConfiguredDriveSync();
     mockAuthFlow({ token: 'tok-ok' });
     let call = 0;
@@ -298,7 +310,7 @@ describe('connectDrive', () => {
 
     const result = await mod.connectDrive();
 
-    expect(result).toEqual({ token: 'tok-ok', backup: null, fileId: 'file-1' });
+    expect(result).toEqual({ token: 'tok-ok', backup: null, fileId: 'file-1', errorCode: 'invalid_backup' });
   });
 });
 
@@ -327,7 +339,7 @@ describe('revokeDriveToken', () => {
   });
 
   it('POSTs to the revoke endpoint with the token', async () => {
-    fetchMock.mockResolvedValue({ ok: true, status: 200, json: vi.fn(), text: vi.fn() });
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: vi.fn().mockResolvedValue({files: []}), text: vi.fn() });
     await revokeDriveToken('tok-xyz');
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('token=tok-xyz'),
@@ -340,7 +352,7 @@ describe('disconnectDrive', () => {
   it('clears token and backup state regardless of deleteFile', async () => {
     store['driveToken'] = 'tok-abc';
     store['driveBackupState'] = { fileId: null, lastSynced: null, pendingSync: false, error: null };
-    fetchMock.mockResolvedValue({ ok: true, status: 200, json: vi.fn(), text: vi.fn().mockResolvedValue('') });
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: vi.fn().mockResolvedValue({files: []}), text: vi.fn().mockResolvedValue('') });
     await disconnectDrive(false);
     expect(store['driveToken']).toBeUndefined();
     expect(store['driveBackupState']).toBeUndefined();
@@ -349,7 +361,7 @@ describe('disconnectDrive', () => {
   it('calls Drive delete endpoint when deleteFile=true and fileId exists', async () => {
     store['driveToken'] = 'tok-abc';
     store['driveBackupState'] = { fileId: 'file-xyz', lastSynced: null, pendingSync: false, error: null };
-    fetchMock.mockResolvedValue({ ok: true, status: 200, json: vi.fn(), text: vi.fn().mockResolvedValue('') });
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: vi.fn().mockResolvedValue({files: []}), text: vi.fn().mockResolvedValue('') });
     await disconnectDrive(true);
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('file-xyz'),
@@ -360,7 +372,7 @@ describe('disconnectDrive', () => {
   it('does not call delete when deleteFile=false', async () => {
     store['driveToken'] = 'tok-abc';
     store['driveBackupState'] = { fileId: 'file-xyz', lastSynced: null, pendingSync: false, error: null };
-    fetchMock.mockResolvedValue({ ok: true, status: 200, json: vi.fn(), text: vi.fn().mockResolvedValue('') });
+    fetchMock.mockResolvedValue({ ok: true, status: 200, json: vi.fn().mockResolvedValue({files: []}), text: vi.fn().mockResolvedValue('') });
     await disconnectDrive(false);
     // Only revoke call (no DELETE)
     const deleteCalled = fetchMock.mock.calls.some(
