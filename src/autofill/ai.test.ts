@@ -66,7 +66,6 @@ function textCandidate(
     element,
     signals: makeSignals({ label: labelText, element }),
     originalState,
-    originalFieldPath: null,
   };
 }
 
@@ -243,14 +242,14 @@ describe('runAIAutofill — key gating', () => {
   it('returns false and does nothing when no API key is available', async () => {
     vi.mocked(getGeminiApiKey).mockResolvedValue('');
     const result = freshResult();
-    const ran = await runAIAutofill([], PROFILE, result, [], 'example.com');
+    const ran = await runAIAutofill([], PROFILE, result, []);
     expect(ran).toBe(false);
     expect(resolveFieldsWithAI).not.toHaveBeenCalled();
   });
 
   it('returns true without calling the AI when there are no candidates', async () => {
     const result = freshResult();
-    const ran = await runAIAutofill([], PROFILE, result, [], 'example.com');
+    const ran = await runAIAutofill([], PROFILE, result, []);
     expect(ran).toBe(true);
     expect(resolveFieldsWithAI).not.toHaveBeenCalled();
   });
@@ -268,7 +267,7 @@ describe('runAIAutofill — high-confidence text fills', () => {
     ]);
 
     const ran = await runAIAutofill(
-      [cand], PROFILE, result, sessionElements, 'example.com', undefined, { onTextFilled },
+      [cand], PROFILE, result, sessionElements, undefined, { onTextFilled },
     );
 
     expect(ran).toBe(true);
@@ -292,7 +291,7 @@ describe('runAIAutofill — high-confidence text fills', () => {
       { fieldId: 'field_001', profilePath: 'personal.email', confidence: 'high' },
     ]);
 
-    await runAIAutofill([cand], PROFILE, result, [], 'example.com', undefined, { onTextFilled });
+    await runAIAutofill([cand], PROFILE, result, [], undefined, { onTextFilled });
 
     expect(result.noData).toBe(0);
     expect(result.noReview).toBe(1);
@@ -309,7 +308,7 @@ describe('runAIAutofill — high-confidence text fills', () => {
       { fieldId: 'field_001', profilePath: 'links.linkedin', confidence: 'high' },
     ]);
 
-    await runAIAutofill([cand], PROFILE, result, [], 'example.com', undefined, { onTextFilled });
+    await runAIAutofill([cand], PROFILE, result, [], undefined, { onTextFilled });
 
     expect(fillField).toHaveBeenCalledWith(cand.element, 'https://linkedin.com/in/jane', expect.any(Function));
     expect(result.needReview).toBe(0);
@@ -323,7 +322,7 @@ describe('runAIAutofill — high-confidence text fills', () => {
     mockResponses([
       { fieldId: 'field_001', profilePath: 'personal.firstName', confidence: 'high' },
     ]);
-    await runAIAutofill([cand], PROFILE, result, [], 'example.com');
+    await runAIAutofill([cand], PROFILE, result, []);
     expect(result.lowConfidence).toBe(0);
   });
 });
@@ -340,7 +339,6 @@ describe('runAIAutofill — native <select> candidates', () => {
       element,
       signals: makeSignals({ label: 'Country of Residence', element }),
       originalState,
-      originalFieldPath: null,
     };
   }
 
@@ -348,7 +346,7 @@ describe('runAIAutofill — native <select> candidates', () => {
     const cand = selectCandidate([{ text: 'Thailand', value: 'TH' }, { text: 'Germany', value: 'DE' }]);
     mockResponses([{ fieldId: 'field_001', selectedOption: 'Germany', confidence: 'high' }]);
 
-    await runAIAutofill([cand], PROFILE, freshResult(), [], 'example.com');
+    await runAIAutofill([cand], PROFILE, freshResult(), []);
 
     expect(resolveFieldsWithAI).toHaveBeenCalledWith(
       'key-123', expect.any(String),
@@ -366,7 +364,7 @@ describe('runAIAutofill — native <select> candidates', () => {
     const cand = selectCandidate([{ text: 'Thailand', value: 'TH' }, { text: 'Germany', value: 'DE' }]);
     mockResponses([{ fieldId: 'field_001', selectedOption: 'Germany', confidence: 'high' }]);
 
-    await runAIAutofill([cand], PROFILE, freshResult(), [], 'example.com');
+    await runAIAutofill([cand], PROFILE, freshResult(), []);
 
     expect(fillField).toHaveBeenCalledWith(cand.element, 'Germany', expect.any(Function));
   });
@@ -378,11 +376,11 @@ describe('runAIAutofill — native <select> candidates', () => {
     const cand: AITextCandidate = {
       type: 'text', element,
       signals: makeSignals({ label: 'Country', element }),
-      originalState: 'lowConfidence', originalFieldPath: null,
+      originalState: 'lowConfidence',
     };
     mockResponses([{ fieldId: 'field_001', profilePath: 'personal.email', confidence: null }]);
 
-    await runAIAutofill([cand], PROFILE, freshResult(), [], 'example.com');
+    await runAIAutofill([cand], PROFILE, freshResult(), []);
 
     expect(resolveFieldsWithAI).toHaveBeenCalledWith(
       'key-123', expect.any(String),
@@ -402,7 +400,7 @@ describe('runAIAutofill — native <select> candidates', () => {
     const cand = selectCandidate([{ text: 'Thailand', value: 'TH' }]);
     mockResponses([{ fieldId: 'field_001', profilePath: 'address.country', confidence: 'high' }]);
 
-    await runAIAutofill([cand], PROFILE, freshResult(), [], 'example.com');
+    await runAIAutofill([cand], PROFILE, freshResult(), []);
 
     expect(fillField).not.toHaveBeenCalled();
   });
@@ -418,7 +416,7 @@ describe('runAIAutofill — low-confidence text fills', () => {
       { fieldId: 'field_001', profilePath: 'personal.firstName', confidence: 'low' },
     ]);
 
-    await runAIAutofill([cand], PROFILE, result, [], 'example.com', undefined, { onTextFilled });
+    await runAIAutofill([cand], PROFILE, result, [], undefined, { onTextFilled });
 
     expect(fillField).toHaveBeenCalledWith(cand.element, 'Jane', expect.any(Function));
     expect(result.lowConfidence).toBe(0);
@@ -437,7 +435,7 @@ describe('runAIAutofill — low-confidence text fills', () => {
       { fieldId: 'field_001', profilePath: 'links.linkedin', confidence: 'low' },
     ]);
 
-    await runAIAutofill([cand], PROFILE, result, [], 'example.com', undefined, { onTextFilled });
+    await runAIAutofill([cand], PROFILE, result, [], undefined, { onTextFilled });
 
     expect(result.needReview).toBe(1);
     expect(result.noReview).toBe(0);
@@ -450,7 +448,7 @@ describe('runAIAutofill — low-confidence text fills', () => {
     mockResponses([
       { fieldId: 'field_001', profilePath: 'personal.doesNotExist', confidence: 'high' },
     ]);
-    await runAIAutofill([cand], PROFILE, result, [], 'example.com');
+    await runAIAutofill([cand], PROFILE, result, []);
     expect(fillField).not.toHaveBeenCalled();
     expect(result.lowConfidence).toBe(1); // unchanged
     expect(result.noReview).toBe(0);
@@ -460,7 +458,7 @@ describe('runAIAutofill — low-confidence text fills', () => {
     const cand = textCandidate('lowConfidence', 'First Name');
     const result = { ...freshResult(), lowConfidence: 1 };
     mockResponses([{ fieldId: 'field_001', profilePath: 'personal.firstName', confidence: null }]);
-    await runAIAutofill([cand], PROFILE, result, [], 'example.com');
+    await runAIAutofill([cand], PROFILE, result, []);
     expect(fillField).not.toHaveBeenCalled();
     expect(result.lowConfidence).toBe(1);
   });
@@ -491,7 +489,7 @@ describe('runAIAutofill — radio fills', () => {
 
     mockResponses([{ fieldId: 'field_001', selectedOption: 'Female', confidence: 'high' }]);
 
-    await runAIAutofill([], PROFILE, result, sessionElements, 'example.com');
+    await runAIAutofill([], PROFILE, result, sessionElements);
 
     expect(fillRadioInput).toHaveBeenCalledWith(el);
     expect(result.noReview).toBe(1);
@@ -503,7 +501,7 @@ describe('runAIAutofill — radio fills', () => {
     vi.mocked(scanRadioGroups).mockReturnValue([group]);
     const result = freshResult();
     mockResponses([{ fieldId: 'field_001', selectedOption: 'Nonbinary', confidence: 'high' }]);
-    await runAIAutofill([], PROFILE, result, [], 'example.com');
+    await runAIAutofill([], PROFILE, result, []);
     expect(fillRadioInput).not.toHaveBeenCalled();
     expect(result.noReview).toBe(0);
   });
@@ -515,7 +513,7 @@ describe('runAIAutofill — radio fills', () => {
 
     mockResponses([{ fieldId: 'field_001', selectedOption: 'Female', confidence: 'low' }]);
 
-    await runAIAutofill([], PROFILE, result, [], 'example.com');
+    await runAIAutofill([], PROFILE, result, []);
 
     expect(fillRadioInput).toHaveBeenCalledWith(el);
     expect(result.needReview).toBe(1);
@@ -529,7 +527,7 @@ describe('runAIAutofill — radio fills', () => {
 
     mockResponses([{ fieldId: 'field_001', selectedOption: 'Femal', confidence: 'high' }]);
 
-    await runAIAutofill([], PROFILE, result, [], 'example.com');
+    await runAIAutofill([], PROFILE, result, []);
 
     expect(fillRadioInput).toHaveBeenCalledWith(el);
     expect(result.noReview).toBe(1);
@@ -542,7 +540,7 @@ describe('runAIAutofill — radio fills', () => {
 
     mockResponses([{ fieldId: 'field_001', selectedOption: 'Fem', confidence: 'high' }]);
 
-    await runAIAutofill([], PROFILE, result, [], 'example.com');
+    await runAIAutofill([], PROFILE, result, []);
 
     expect(fillRadioInput).not.toHaveBeenCalled();
     expect(result.noReview).toBe(0);
@@ -579,7 +577,7 @@ describe('runAIAutofill — checkbox fills', () => {
       { fieldId: 'field_001', selectedOptions: ['JavaScript', 'TypeScript'], confidence: 'high' },
     ]);
 
-    await runAIAutofill([], PROFILE, result, sessionElements, 'example.com');
+    await runAIAutofill([], PROFILE, result, sessionElements);
 
     expect(fillCheckboxInput).toHaveBeenCalledWith(a);
     expect(fillCheckboxInput).toHaveBeenCalledWith(b);
@@ -597,7 +595,7 @@ describe('runAIAutofill — checkbox fills', () => {
       { fieldId: 'field_001', selectedOptions: ['JavaScript', 'TypeScript'], confidence: 'low' },
     ]);
 
-    await runAIAutofill([], PROFILE, result, [], 'example.com');
+    await runAIAutofill([], PROFILE, result, []);
 
     expect(fillCheckboxInput).toHaveBeenCalledWith(a);
     expect(fillCheckboxInput).toHaveBeenCalledWith(b);
@@ -611,7 +609,7 @@ describe('runAIAutofill — checkbox fills', () => {
     vi.mocked(scanCheckboxGroups).mockReturnValue([consent]);
     // No text candidates + only a consent group → filtered out → no candidates.
     const result = freshResult();
-    await runAIAutofill([], PROFILE, result, [], 'example.com');
+    await runAIAutofill([], PROFILE, result, []);
     expect(resolveFieldsWithAI).not.toHaveBeenCalled();
     expect(fillCheckboxInput).not.toHaveBeenCalled();
   });
@@ -623,7 +621,7 @@ describe('runAIAutofill — AI failure', () => {
     const result = { ...freshResult(), lowConfidence: 1 };
     vi.mocked(resolveFieldsWithAI).mockRejectedValue(new Error('network down'));
 
-    const ran = await runAIAutofill([cand], PROFILE, result, [], 'example.com');
+    const ran = await runAIAutofill([cand], PROFILE, result, []);
 
     expect(ran).toBe(true);
     expect(fillField).not.toHaveBeenCalled();
@@ -639,7 +637,7 @@ describe('AI candidate ownership and debug identity', () => {
     const no = document.createElement('input'); no.type = 'radio'; no.value = 'no';
     vi.mocked(scanRadioGroups).mockReturnValue([{ name: 'privacy', groupLabel: 'Privacy consent', options: [{ element: yes, label: 'Yes', value: 'yes' }, { element: no, label: 'No', value: 'no' }] }]);
     mockResponses([]);
-    await runAIAutofill([], PROFILE, freshResult(), [], 'example.test');
+    await runAIAutofill([], PROFILE, freshResult(), []);
     expect(resolveFieldsWithAI).not.toHaveBeenCalled();
     expect(fillRadioInput).not.toHaveBeenCalled();
   });
@@ -648,7 +646,7 @@ describe('AI candidate ownership and debug identity', () => {
     const candidate = textCandidate('lowConfidence', 'Name'); candidate.debugFieldId = 'field_007';
     mockResponses([{ fieldId: 'field_001', confidence: 'high', profilePath: 'personal.firstName' }]);
     const debug: import('./debug').DebugAIField[] = [];
-    await runAIAutofill([candidate], PROFILE, freshResult(), [], 'example.test', debug);
+    await runAIAutofill([candidate], PROFILE, freshResult(), [], debug);
     expect(debug[0].fieldId).toBe('field_007');
   });
 
@@ -658,7 +656,7 @@ describe('AI candidate ownership and debug identity', () => {
     vi.mocked(scanRadioGroups).mockReturnValue([{ name: 'authorization', groupLabel: 'Work authorization', options: [{ element: yes, label: 'Yes', value: 'yes' }, { element: no, label: 'No', value: 'no' }] }]);
     let finish!: (responses: AIFieldResponse[]) => void;
     vi.mocked(resolveFieldsWithAI).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
-    const work = runAIAutofill([], PROFILE, freshResult(), [], 'example.test', undefined, { mode: 'merge' });
+    const work = runAIAutofill([], PROFILE, freshResult(), [], undefined, { mode: 'merge' });
     await vi.waitFor(() => expect(resolveFieldsWithAI).toHaveBeenCalled());
     no.checked = true;
     finish([{ fieldId: 'field_001', confidence: 'high', selectedOption: 'Yes' }]);
@@ -674,7 +672,7 @@ it('does not restore a rule-yellow value the user cleared while AI was pending',
   let finish!: (responses: AIFieldResponse[]) => void;
   vi.mocked(resolveFieldsWithAI).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
   const result = { ...freshResult(), needReview: 1 };
-  const work = runAIAutofill([candidate], PROFILE, result, [candidate.element], 'example.test');
+  const work = runAIAutofill([candidate], PROFILE, result, [candidate.element]);
   await vi.waitFor(() => expect(resolveFieldsWithAI).toHaveBeenCalled());
   (candidate.element as HTMLInputElement).value = '';
   finish([{ fieldId: 'field_001', confidence: 'high', profilePath: 'personal.firstName' }]);

@@ -218,9 +218,9 @@ describe('executeAutofill', () => {
 
     expect(runAIAutofill).toHaveBeenCalledWith(
       expect.arrayContaining([
-        expect.objectContaining({ element: el, originalState: 'needReview', originalFieldPath: 'personal.firstName' }),
+        expect.objectContaining({ element: el, originalState: 'needReview' }),
       ]),
-      expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(),
+      expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(),
     );
   });
 
@@ -595,7 +595,7 @@ describe('AI green-filled elements are excluded from edit-watching', () => {
     const el = makeInput('');
     vi.mocked(scanFields).mockReturnValue([el]);
     vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.7, value: 'Jane', fieldPath: 'personal.firstName', matchLayer: 'context' });
-    vi.mocked(runAIAutofill).mockImplementation(async (_c, _p, _r, _s, _d, _dbg, options) => {
+    vi.mocked(runAIAutofill).mockImplementation(async (_c, _p, _r, _s, _dbg, options) => {
       options?.onTextFilled?.(el, 'green');
       return true;
     });
@@ -652,7 +652,7 @@ describe('all three tiers reach the AI layer', () => {
         expect.objectContaining({ element: elRed, originalState: 'lowConfidence' }),
         expect.objectContaining({ element: elGray, originalState: 'noData' }),
       ]),
-      expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(),
+      expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(),
     );
   });
 });
@@ -748,7 +748,7 @@ describe('silent re-fill on visibilitychange', () => {
     document.body.appendChild(el);
     vi.mocked(scanFields).mockReturnValue([el]);
     vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.7, value: null, fieldPath: 'personal.email', matchLayer: 'context' });
-    vi.mocked(runAIAutofill).mockImplementation(async (_c, _p, _r, _s, _d, _dbg, options) => {
+    vi.mocked(runAIAutofill).mockImplementation(async (_c, _p, _r, _s, _dbg, options) => {
       options?.onTextFilled?.(el, 'green');
       return true;
     });
@@ -986,7 +986,7 @@ describe('session ownership and asynchronous lifecycle', () => {
     const input = makeInput(); document.body.appendChild(input);
     vi.mocked(scanFields).mockReturnValue([input]);
     vi.mocked(mapField).mockReturnValueOnce({ confidence: origin === 'noData' ? 0.9 : 0.2, value: null, fieldPath: 'personal.email', matchLayer: 'dictionary_exact' });
-    vi.mocked(runAIAutofill).mockImplementationOnce(async (_c, _p, result, owned, _d, _dbg, options) => {
+    vi.mocked(runAIAutofill).mockImplementationOnce(async (_c, _p, result, owned, _dbg, options) => {
       result[origin]--; result.needReview++;
       input.value = 'AI answer'; owned.push(input); options?.onTextFilled?.(input, 'yellow');
       return true;
@@ -1042,7 +1042,7 @@ it('removes AI-yellow former gray fields from visibility refill without overwrit
   const input = makeInput(); document.body.appendChild(input);
   vi.mocked(scanFields).mockReturnValue([input]);
   vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.9, value: null, fieldPath: 'personal.email', matchLayer: 'dictionary_exact' });
-  vi.mocked(runAIAutofill).mockImplementationOnce(async (_c, _p, result, owned, _d, _dbg, options) => {
+  vi.mocked(runAIAutofill).mockImplementationOnce(async (_c, _p, result, owned, _dbg, options) => {
     input.value = 'ai@example.test'; owned.push(input); result.noData--; result.needReview++;
     options?.onTextFilled?.(input, 'yellow'); return true;
   });
