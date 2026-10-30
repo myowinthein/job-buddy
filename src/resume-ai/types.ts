@@ -28,7 +28,12 @@ export function toGeminiModel(stored: string | null | undefined): GeminiModel {
 
 export type ImportProgressStep = 'reading' | 'sending' | 'processing';
 
-export type ImportErrorCode = 'rate_limit' | 'auth' | 'parse' | 'network' | 'file_too_large';
+export type ImportErrorCode = 'rate_limit' | 'auth' | 'parse' | 'network' | 'timeout' | 'service' | 'file_too_large';
+
+export interface ResumeModelAttempt {
+  model: GeminiModel;
+  reason?: 'rate_limit' | 'timeout' | 'unavailable';
+}
 
 export interface ImportError {
   code: ImportErrorCode;
@@ -50,6 +55,7 @@ export interface FieldChange {
   accepted: boolean;
   /** Explains list replacement, merging, or a binary file change. */
   note?: string;
+  entries?: import('./entryComparison').EntryComparison[];
   /** Absent values are preserved, rather than counted as matching details. */
   hasIncomingValue?: boolean;
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Profile } from '@/src/types/profile';
+import type { ProfileUpdate } from '@/src/resume-ai/resumeImport';
 import { getProfile, saveProfile } from '@/src/utils/storage';
 import { sessionGet, sessionRemove } from '@/src/utils/sessionStorage';
 import { calculateCompletion, getSectionCompletion, getCompletionTarget } from '@/src/utils/profileCompletion';
@@ -308,10 +309,12 @@ function App() {
       });
   };
 
-  const handleSave = async (updates: Partial<Profile>) => {
+  const handleSave = async (update: ProfileUpdate) => {
     // Keep changes saved by another Options tab in other profile sections.
     const latest = await getProfile();
-    const merged = { ...(latest ?? profile), ...updates } as Profile;
+    const base = latest ?? (typeof update === 'function' ? {} : profile);
+    const updates = typeof update === 'function' ? update(base) : update;
+    const merged = { ...base, ...updates } as Profile;
     let synced: Profile = merged;
     try {
       const derived = calculateDerivedFields(merged);

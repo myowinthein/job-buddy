@@ -71,7 +71,9 @@ check every answer and uploaded document before submitting.
   assistance and PDF/DOCX resume import. Select **Save Key** to verify and save it.
   Keys remain in this browser and are excluded from JSON and Drive backups.
   Use **Replace Key** or **Remove Key** to manage access. Review imported suggestions
-  before saving.
+  before saving. Resume imports keep saved entries and missing details. The review
+  shows one work or education entry at a time and highlights changes. Slow,
+  rate-limited, or unavailable models fall back to the next model automatically.
 - **Google Drive:** connect in **Settings** to back up your profile and learned
   mappings. Saved changes update the backup automatically. Use **Back Up Now**
   to check and update it manually. Different Drive data requires review before

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 
 vi.mock('@/src/utils/storage', () => ({
   getGeminiApiKey: vi.fn().mockResolvedValue('fake-key'),
@@ -12,11 +12,6 @@ vi.mock('@/src/resume-ai/gemini', () => ({
 vi.mock('@/src/resume-ai/extractLinks', () => ({
   extractLinks: vi.fn().mockResolvedValue([]),
 }));
-vi.mock('@/src/resume-ai/parser', () => ({
-  generateDiff: vi.fn(() => []),
-  applyChanges: vi.fn((base: object) => base),
-}));
-
 import { ResumeImportSection } from './ResumeImportSection';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import { getGeminiApiKey } from '@/src/utils/storage';
@@ -29,7 +24,7 @@ function renderSection(profile: Partial<Profile> = {}, onSave = vi.fn().mockReso
   const onClose = vi.fn();
   render(
     <ToastProvider>
-      <ResumeImportSection profile={profile} onSave={onSave} onGoToApiKey={onGoToApiKey} onClose={onClose} />
+      <ResumeImportSection profile={profile} onSave={update => onSave(typeof update === 'function' ? update(profile) : update)} onGoToApiKey={onGoToApiKey} onClose={onClose} />
     </ToastProvider>,
   );
   return { onSave, onGoToApiKey, onClose };
@@ -56,21 +51,21 @@ afterEach(cleanup);
 describe('ResumeImportSection — file validation', () => {
   it('rejects a non-PDF/DOCX file with an error message', async () => {
     renderSection();
-    await screen.findByText(/Drop your CV here/);
+    await screen.findByText(/Drop your resume here/);
     await selectFile(new File(['hello'], 'resume.txt', { type: 'text/plain' }));
     expect(await screen.findByText('Only PDF and DOCX files are supported.')).toBeTruthy();
   });
 
   it('rejects a file just over 4 MB', async () => {
     renderSection();
-    await screen.findByText(/Drop your CV here/);
+    await screen.findByText(/Drop your resume here/);
     await selectFile(pdfFile('big.pdf', 4 * 1024 * 1024 + 1));
     expect(await screen.findByText('File exceeds 4 MB limit (4.0 MB)')).toBeTruthy();
   });
 
   it('accepts a PDF exactly at the 4 MB limit', async () => {
     renderSection();
-    await screen.findByText(/Drop your CV here/);
+    await screen.findByText(/Drop your resume here/);
     await selectFile(pdfFile('boundary.pdf', 4 * 1024 * 1024));
     expect(screen.getByText('boundary.pdf')).toBeTruthy();
     expect(screen.queryByText(/File exceeds/)).toBeNull();
@@ -78,7 +73,7 @@ describe('ResumeImportSection — file validation', () => {
 
   it('accepts a valid PDF and clears a prior error', async () => {
     renderSection();
-    await screen.findByText(/Drop your CV here/);
+    await screen.findByText(/Drop your resume here/);
     await selectFile(new File(['x'], 'bad.txt', { type: 'text/plain' }));
     await screen.findByText('Only PDF and DOCX files are supported.');
     await selectFile(pdfFile());
@@ -109,17 +104,17 @@ describe('ResumeImportSection — cancel/abort during analysis', () => {
     );
 
     renderSection();
-    await screen.findByText(/Drop your CV here/);
+    await screen.findByText(/Drop your resume here/);
     await selectFile(pdfFile());
-    fireEvent.click(screen.getByText('Analyze CV'));
+    fireEvent.click(screen.getByText('Analyze Resume'));
 
-    await screen.findByText('Analyzing your CV...', {}, { timeout: 12000 });
+    await screen.findByText('Analyzing Resume', {}, { timeout: 12000 });
     fireEvent.click(screen.getByText('Cancel'));
 
     // Cancel returns to the upload dialog (selectedFile is preserved — only
     // the screen reverts), not all the way back to the empty drop-zone state.
-    await screen.findByText('Analyze CV');
-    expect(screen.queryByText('Analyzing your CV...')).toBeNull();
+    await screen.findByText('Analyze Resume');
+    expect(screen.queryByText('Analyzing Resume')).toBeNull();
   }, 20000);
 
   it('aborts on Escape while analysis is in progress', async () => {
@@ -133,22 +128,22 @@ describe('ResumeImportSection — cancel/abort during analysis', () => {
     );
 
     renderSection();
-    await screen.findByText(/Drop your CV here/);
+    await screen.findByText(/Drop your resume here/);
     await selectFile(pdfFile());
-    fireEvent.click(screen.getByText('Analyze CV'));
+    fireEvent.click(screen.getByText('Analyze Resume'));
 
-    await screen.findByText('Analyzing your CV...', {}, { timeout: 12000 });
+    await screen.findByText('Analyzing Resume', {}, { timeout: 12000 });
     fireEvent.keyDown(window, { key: 'Escape' });
 
-    await screen.findByText('Analyze CV');
-    expect(screen.queryByText('Analyzing your CV...')).toBeNull();
+    await screen.findByText('Analyze Resume');
+    expect(screen.queryByText('Analyzing Resume')).toBeNull();
   }, 20000);
 });
 
 describe('ResumeImportSection — Escape on the initial dialog', () => {
   it('closes the section on Escape before any file is selected', async () => {
     const { onClose } = renderSection();
-    await screen.findByText(/Drop your CV here/);
+    await screen.findByText(/Drop your resume here/);
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -161,11 +156,11 @@ describe('ResumeImportSection — rate_limit error branch', () => {
     );
 
     renderSection();
-    await screen.findByText(/Drop your CV here/);
+    await screen.findByText(/Drop your resume here/);
     await selectFile(pdfFile());
-    fireEvent.click(screen.getByText('Analyze CV'));
+    fireEvent.click(screen.getByText('Analyze Resume'));
 
-    expect(await screen.findByText(/All AI models are currently busy/)).toBeTruthy();
+    expect(await screen.findByText(/The AI models reached their usage limits/)).toBeTruthy();
     const link = screen.getByText('Google AI Studio') as HTMLAnchorElement;
     expect(link.href).toBe('https://aistudio.google.com/rate-limit');
   });
@@ -176,9 +171,9 @@ describe('ResumeImportSection — rate_limit error branch', () => {
     );
 
     renderSection();
-    await screen.findByText(/Drop your CV here/);
+    await screen.findByText(/Drop your resume here/);
     await selectFile(pdfFile());
-    fireEvent.click(screen.getByText('Analyze CV'));
+    fireEvent.click(screen.getByText('Analyze Resume'));
 
     expect(await screen.findByText('Invalid API key')).toBeTruthy();
     expect(screen.queryByText('Google AI Studio')).toBeNull();
@@ -200,16 +195,16 @@ describe('ResumeImportSection — retry after failure does not re-extract links'
       .mockImplementationOnce(() => Promise.resolve({}));
 
     renderSection();
-    await screen.findByText(/Drop your CV here/);
+    await screen.findByText(/Drop your resume here/);
     await selectFile(pdfFile());
-    fireEvent.click(screen.getByText('Analyze CV'));
+    fireEvent.click(screen.getByText('Analyze Resume'));
 
     await screen.findByText('Network error', {}, { timeout: 12000 });
     expect(vi.mocked(extractLinks)).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByText('Try again'));
 
-    await waitFor(() => expect(screen.getByText('Review Suggestions')).toBeTruthy(), { timeout: 12000 });
+    await waitFor(() => expect(screen.getByText('Review Resume')).toBeTruthy(), { timeout: 12000 });
     // extractLinks is only called from the initial handleExtract path, never from handleRetry.
     expect(vi.mocked(extractLinks)).toHaveBeenCalledTimes(1);
   });
@@ -223,9 +218,9 @@ describe('ResumeImportSection — pre-AI-call failure', () => {
     vi.mocked(extractLinks).mockRejectedValueOnce(new Error('failed to parse PDF links'));
 
     renderSection();
-    await screen.findByText(/Drop your CV here/);
+    await screen.findByText(/Drop your resume here/);
     await selectFile(pdfFile());
-    fireEvent.click(screen.getByText('Analyze CV'));
+    fireEvent.click(screen.getByText('Analyze Resume'));
 
     expect(await screen.findByText('failed to parse PDF links')).toBeTruthy();
     expect(vi.mocked(extractFromResume)).not.toHaveBeenCalled();
@@ -235,9 +230,9 @@ describe('ResumeImportSection — pre-AI-call failure', () => {
     vi.mocked(extractLinks).mockRejectedValueOnce({});
 
     renderSection();
-    await screen.findByText(/Drop your CV here/);
+    await screen.findByText(/Drop your resume here/);
     await selectFile(pdfFile());
-    fireEvent.click(screen.getByText('Analyze CV'));
+    fireEvent.click(screen.getByText('Analyze Resume'));
 
     expect(await screen.findByText('Something went wrong. Try again.')).toBeTruthy();
   });
@@ -248,11 +243,11 @@ describe('ResumeImportSection — CV invariant on save', () => {
     vi.mocked(extractFromResume).mockReset().mockResolvedValue({});
     const { onSave } = renderSection({ documents: { cv: { url: 'https://example.com/old-cv.pdf' } } });
 
-    await screen.findByText(/Drop your CV here/);
+    await screen.findByText(/Drop your resume here/);
     await selectFile(pdfFile());
-    fireEvent.click(screen.getByText('Analyze CV'));
+    fireEvent.click(screen.getByText('Analyze Resume'));
 
-    await screen.findByText('Review Suggestions', {}, { timeout: 12000 });
+    await screen.findByText('Review Resume', {}, { timeout: 12000 });
     fireEvent.click(screen.getByText('Import All'));
 
     await waitFor(() => expect(onSave).toHaveBeenCalled(), { timeout: 12000 });
@@ -268,17 +263,17 @@ describe('ResumeImportSection — CV invariant on save', () => {
     let size = 1024;
     Object.defineProperty(file, 'size', { get: () => size });
 
-    await screen.findByText(/Drop your CV here/);
+    await screen.findByText(/Drop your resume here/);
     await selectFile(file);
-    fireEvent.click(screen.getByText('Analyze CV'));
-    await screen.findByText('Review Suggestions');
+    fireEvent.click(screen.getByText('Analyze Resume'));
+    await screen.findByText('Review Resume');
 
     size = 5 * 1024 * 1024;
     fireEvent.click(screen.getByText('Import All'));
 
     expect(await screen.findByText('File exceeds 4 MB limit (5.0 MB)')).toBeTruthy();
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('Review Suggestions')).toBeTruthy();
+    expect(screen.getByText('Review Resume')).toBeTruthy();
   });
 
   it('shows a toast and stays on the review screen when onSave rejects', async () => {
@@ -286,16 +281,16 @@ describe('ResumeImportSection — CV invariant on save', () => {
     const onSave = vi.fn().mockRejectedValue(new Error('quota exceeded'));
     renderSection({}, onSave);
 
-    await screen.findByText(/Drop your CV here/);
+    await screen.findByText(/Drop your resume here/);
     await selectFile(pdfFile());
-    fireEvent.click(screen.getByText('Analyze CV'));
+    fireEvent.click(screen.getByText('Analyze Resume'));
 
-    await screen.findByText('Review Suggestions', {}, { timeout: 12000 });
+    await screen.findByText('Review Resume', {}, { timeout: 12000 });
     fireEvent.click(screen.getByText('Import All'));
 
     expect(await screen.findByText('Save failed. Please try again.')).toBeTruthy();
     // Never reached the 'done' screen — save failure keeps the user on review.
-    expect(screen.getByText('Review Suggestions')).toBeTruthy();
+    expect(screen.getByText('Review Resume')).toBeTruthy();
   }, 20000);
 });
 
@@ -303,6 +298,39 @@ describe('ResumeImportSection — CV invariant on save', () => {
 it('shows the Settings route when the key cannot be loaded instead of remaining blank', async () => {
   vi.mocked(getGeminiApiKey).mockRejectedValueOnce(new Error('Storage unavailable'));
   renderSection();
-  expect(await screen.findByText('You need a Gemini API key to use this feature.')).toBeTruthy();
+  expect(await screen.findByText('Could not load AI settings. Open Settings and try again.')).toBeTruthy();
   expect(screen.getByRole('button', { name: /Go to Settings/ })).toBeTruthy();
+});
+
+
+it('ignores a late response from an extraction that was cancelled before a new run', async () => {
+  let finishOld!: (profile: Partial<Profile>) => void;
+  vi.mocked(extractFromResume).mockReset()
+    .mockImplementationOnce(() => new Promise(resolve => { finishOld = resolve; }))
+    .mockImplementationOnce(() => new Promise(() => {}));
+  renderSection();
+  await screen.findByText(/Drop your resume here/);
+  await selectFile(pdfFile());
+  fireEvent.click(screen.getByText('Analyze Resume'));
+  await waitFor(() => expect(extractFromResume).toHaveBeenCalledTimes(1));
+  fireEvent.click(screen.getByText('Cancel'));
+  fireEvent.click(screen.getByText('Analyze Resume'));
+  await waitFor(() => expect(extractFromResume).toHaveBeenCalledTimes(2));
+  await act(async () => { finishOld({}); });
+  expect(screen.getByText('Analyzing Resume')).toBeTruthy();
+  expect(screen.queryByText('Review Resume')).toBeNull();
+});
+
+it('shows the active model and the reason for fallback', async () => {
+  vi.mocked(extractFromResume).mockReset().mockImplementation(
+    (_key, _model, _data, _mime, _profile, _signal, _links, onAttempt) => {
+      onAttempt?.({ model: 'gemini-3.8-flash', reason: 'timeout' });
+      return new Promise(() => {});
+    },
+  );
+  renderSection();
+  await screen.findByText(/Drop your resume here/);
+  await selectFile(pdfFile());
+  fireEvent.click(screen.getByText('Analyze Resume'));
+  expect(await screen.findByRole('status')).toHaveProperty('textContent', 'The previous model took too long. Trying Gemini 3.8 Flash.');
 });

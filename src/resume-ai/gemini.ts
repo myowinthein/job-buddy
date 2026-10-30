@@ -1,10 +1,11 @@
 import { KEY_ERROR_MESSAGES } from './keyErrors';
 export { KEY_ERROR_MESSAGES } from './keyErrors';
 import type { Profile } from '@/src/types/profile';
-import type { GeminiModel, KeyValidationResult, ImportError, AIFieldPayload, AIFieldResponse, KeyCheckStatus } from './types';
+import type { GeminiModel, KeyValidationResult, ImportError, AIFieldPayload, AIFieldResponse, KeyCheckStatus, ResumeModelAttempt } from './types';
 import { GEMINI_MODEL_PRIORITY } from './types';
 import { buildPrompt } from './prompt';
-import { normalizeExtractedProfile, stripMarkdown } from './normalize';
+import { stripMarkdown } from './normalize';
+import { validateResumeProfile } from './validateResume';
 import { buildAutofillPrompt } from './autofillPrompt';
 import { autofillProfilePayload } from './profilePayload';
 
@@ -15,25 +16,36 @@ function endpoint(model: string): string {
 }
 
 export const GEMINI_REQUEST_TIMEOUT_MS = 15_000;
-async function geminiFetch(url: string, apiKey: string, init: RequestInit = {}): Promise<Response> {
+export const RESUME_REQUEST_TIMEOUT_MS = 30_000;
+async function geminiRequest<T>(
+  url: string, apiKey: string, init: RequestInit,
+  consume: (response: Response) => Promise<T>, timeoutMs = GEMINI_REQUEST_TIMEOUT_MS,
+): Promise<T> {
   const controller = new AbortController();
   const abort = () => controller.abort(init.signal?.reason);
   if (init.signal?.aborted) abort();
   else init.signal?.addEventListener('abort', abort, { once: true });
   const timer = setTimeout(
     () => controller.abort(new DOMException('Request timed out', 'TimeoutError')),
-    GEMINI_REQUEST_TIMEOUT_MS,
+    timeoutMs,
   );
   try {
-    return await fetch(url, {
+    return await consume(await fetch(url, {
       ...init,
       signal: controller.signal,
       headers: { ...init.headers, 'x-goog-api-key': apiKey },
-    });
+    }));
+  } catch (error) {
+    if (controller.signal.aborted) throw controller.signal.reason ?? error;
+    throw error;
   } finally {
     clearTimeout(timer);
     init.signal?.removeEventListener('abort', abort);
   }
+}
+
+function geminiFetch(url: string, apiKey: string, init: RequestInit = {}): Promise<Response> {
+  return geminiRequest(url, apiKey, init, async response => response);
 }
 
 function extractGeminiText(data: unknown): string | undefined {
@@ -105,6 +117,7 @@ export async function extractFromResume(
   _currentProfile: Partial<Profile>,
   signal?: AbortSignal,
   links: string[] = [],
+  onAttempt?: (attempt: ResumeModelAttempt) => void,
 ): Promise<Partial<Profile>> {
   // Review compares against the current profile locally; extraction needs only the selected file.
   const prompt = buildPrompt('{}', links);
@@ -118,55 +131,56 @@ export async function extractFromResume(
     generationConfig: { temperature: 0 },
   });
 
-  // Start with the configured model, then fall through the priority list on 429
   const modelsToTry = [model, ...GEMINI_MODEL_PRIORITY.filter(m => m !== model)];
-
+  let reason: ResumeModelAttempt['reason'];
+  let lastError: ImportError = importError('rate_limit', 'The AI models reached their usage limits. Try again later or check Google AI Studio.');
   for (const tryModel of modelsToTry) {
-    let resp: Response;
+    if (signal?.aborted) throw signal.reason ?? new DOMException('Cancelled', 'AbortError');
+    onAttempt?.({ model: tryModel, reason });
     try {
-      resp = await geminiFetch(endpoint(tryModel), apiKey, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-        signal,
-      });
-    } catch (err) {
-      if ((err as { name?: string })?.name === 'AbortError') throw err;
-      throw importError('network', 'Connection failed. Check your internet.');
+      const result = await geminiRequest(endpoint(tryModel), apiKey, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal,
+      }, async response => {
+        if (!response.ok) return { status: response.status, error: await responseError(response) };
+        let data: unknown;
+        try { data = await response.json(); }
+        catch { throw importError('parse', "Couldn't read the AI response. Try again."); }
+        const text = extractGeminiText(data);
+        if (typeof text !== 'string' || !text) throw importError('parse', "Couldn't read the AI response. Try again.");
+        let profile: unknown;
+        try { profile = JSON.parse(stripMarkdown(text)); }
+        catch { throw importError('parse', "Couldn't read the AI response. Try again."); }
+        try { return { profile: validateResumeProfile(profile) }; }
+        catch { throw importError('parse', 'AI returned invalid profile data. Try analyzing the resume again.'); }
+      }, RESUME_REQUEST_TIMEOUT_MS);
+      if (result.profile) return result.profile;
+      if (result.error === 'invalid' || result.error === 'permission_denied')
+        throw importError('auth', result.error === 'invalid'
+          ? 'Your API key is invalid or expired. Check it in Settings.'
+          : 'This key does not have permission to use the model. Check Settings.');
+      if (result.status === 429) {
+        reason = 'rate_limit';
+        lastError = importError('rate_limit', 'The AI models reached their usage limits. Try again later or check Google AI Studio.');
+        continue;
+      }
+      if (result.status >= 500 || result.error === 'no_model') {
+        reason = 'unavailable';
+        lastError = importError('service', 'The AI models are unavailable right now. Try again later.');
+        continue;
+      }
+      throw importError('service', 'The AI service could not analyze this file. Try again or choose another resume.');
+    } catch (error) {
+      if (signal?.aborted || (error as { name?: string })?.name === 'AbortError') throw error;
+      if ((error as { name?: string })?.name === 'TimeoutError') {
+        reason = 'timeout';
+        lastError = importError('timeout', 'The AI models took too long to respond. Try again later.');
+        continue;
+      }
+      if ((error as ImportError)?.code) throw error;
+      throw importError('network', 'Could not connect to Gemini. Check your connection and try again.');
     }
-
-    if (resp.status === 429) continue;
-
-    if (!resp.ok) {
-      if (resp.status === 401 || resp.status === 403) throw importError('auth', 'API key invalid. Check your key in Settings.');
-      throw importError('network', 'Connection failed. Check your internet.');
-    }
-
-    let data: unknown;
-    try {
-      data = await resp.json();
-    } catch {
-      throw importError('parse', "Couldn't read the response. Try again.");
-    }
-
-    const text = extractGeminiText(data);
-
-    if (!text) throw importError('parse', "Couldn't read the response. Try again.");
-
-    return normalizeExtractedProfile(parseResponse(text));
   }
-
-  // All models in the probe list returned 429
-  throw importError('rate_limit', 'All AI models are currently busy. Try again later or check your usage at Google AI Studio.');
-}
-
-function parseResponse(text: string): Partial<Profile> {
-  const cleaned = stripMarkdown(text);
-  try {
-    return JSON.parse(cleaned) as Partial<Profile>;
-  } catch {
-    throw importError('parse', "Couldn't read the response. Try again.");
-  }
+  throw lastError;
 }
 
 // ── AI autofill field resolution ─────────────────────────────────────────────
@@ -184,7 +198,7 @@ export async function resolveFieldsWithAI(
   });
 
   // Start with the configured model, then fall through the priority list on
-  // 429 — mirrors extractFromResume()'s fallback so a manually-picked model
+  // 429 so a manually-picked model
   // that's rate-limited doesn't silently disable AI autofill (its caller in
   // src/autofill/ai.ts swallows any thrown error as a silent no-op).
   const modelsToTry = [model, ...GEMINI_MODEL_PRIORITY.filter(m => m !== model)];

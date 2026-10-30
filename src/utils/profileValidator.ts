@@ -334,6 +334,7 @@ function validateWorkAuthorization(
 function validateWorkHistory(
   data: Record<string, unknown>,
   err: ErrFn,
+  allowMissingDates = false,
 ): Profile['workHistory'] | undefined {
   if (!('workHistory' in data) || !Array.isArray(data.workHistory)) return undefined;
   const valid: Profile['workHistory'] = [];
@@ -343,14 +344,17 @@ function validateWorkHistory(
       if (
         typeof e.company === 'string' &&
         typeof e.title === 'string' &&
-        typeof e.startDate === 'string' &&
-        RE_YYYYMM.test(e.startDate) &&
+        ((typeof e.startDate === 'string' && RE_YYYYMM.test(e.startDate)) ||
+          (allowMissingDates && !e.startDate)) &&
         typeof e.isCurrent === 'boolean'
       ) {
         const dateErrors = profileDateRangeErrors(e as unknown as Profile['workHistory'][number]);
+        if (allowMissingDates) {
+          if (!e.startDate) delete dateErrors.startDate;
+          if (!e.endDate) delete dateErrors.endDate;
+        }
         if (Object.keys(dateErrors).length) {
-          for (const [key, reason] of Object.entries(dateErrors))
-            err(`workHistory[${i}].${key}`, reason);
+          for (const [key, reason] of Object.entries(dateErrors)) err(`workHistory[${i}].${key}`, reason);
           return;
         }
         if (
@@ -364,7 +368,7 @@ function validateWorkHistory(
         valid.push({
           company: e.company,
           title: e.title,
-          startDate: e.startDate,
+          startDate: typeof e.startDate === 'string' ? e.startDate : '',
           isCurrent: e.isCurrent,
           endDate: typeof e.endDate === 'string' ? e.endDate : undefined,
           description: typeof e.description === 'string' ? e.description : undefined,
@@ -391,6 +395,7 @@ function validateWorkHistory(
 function validateEducation(
   data: Record<string, unknown>,
   err: ErrFn,
+  allowMissingDates = false,
 ): Profile['education'] | undefined {
   if (!('education' in data) || !Array.isArray(data.education)) return undefined;
   const valid: Profile['education'] = [];
@@ -401,8 +406,8 @@ function validateEducation(
         typeof e.institution === 'string' &&
         typeof e.degree === 'string' &&
         typeof e.fieldOfStudy === 'string' &&
-        typeof e.startDate === 'string' &&
-        RE_YYYY_OR_YYYYMM.test(e.startDate)
+        ((typeof e.startDate === 'string' && RE_YYYY_OR_YYYYMM.test(e.startDate)) ||
+          (allowMissingDates && !e.startDate))
       ) {
         if (
           String(e.institution).length > 150 ||
@@ -418,9 +423,12 @@ function validateEducation(
           e as unknown as Profile['education'][number],
           true,
         );
+        if (allowMissingDates) {
+          if (!e.startDate) delete dateErrors.startDate;
+          if (!e.endDate) delete dateErrors.endDate;
+        }
         if (Object.keys(dateErrors).length) {
-          for (const [key, reason] of Object.entries(dateErrors))
-            err(`education[${i}].${key}`, reason);
+          for (const [key, reason] of Object.entries(dateErrors)) err(`education[${i}].${key}`, reason);
           return;
         }
         const endDate =
@@ -431,7 +439,7 @@ function validateEducation(
           institution: e.institution,
           degree: e.degree,
           fieldOfStudy: e.fieldOfStudy,
-          startDate: e.startDate,
+          startDate: typeof e.startDate === 'string' ? e.startDate : '',
           isCurrent: typeof e.isCurrent === 'boolean' ? e.isCurrent : false,
           endDate,
           grade: typeof e.grade === 'string' ? e.grade : undefined,
@@ -577,7 +585,10 @@ function validateDocuments(
   return Object.keys(sd).length > 0 ? (sd as Profile['documents']) : undefined;
 }
 
-export function validateImportedProfile(raw: unknown): ValidationResult {
+export function validateImportedProfile(
+  raw: unknown,
+  options: { allowMissingDates?: boolean } = {},
+): ValidationResult {
   if (typeof raw !== 'object' || raw === null) {
     return {
       valid: false,
@@ -610,10 +621,10 @@ export function validateImportedProfile(raw: unknown): ValidationResult {
   const workAuthorization = validateWorkAuthorization(data, err);
   if (workAuthorization) s.workAuthorization = workAuthorization;
 
-  const workHistory = validateWorkHistory(data, err);
+  const workHistory = validateWorkHistory(data, err, options.allowMissingDates);
   if (workHistory) s.workHistory = workHistory;
 
-  const education = validateEducation(data, err);
+  const education = validateEducation(data, err, options.allowMissingDates);
   if (education) s.education = education;
 
   const languages = validateLanguages(data, err);

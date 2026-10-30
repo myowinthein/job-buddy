@@ -3,6 +3,7 @@ import type { FieldChange } from '@/src/resume-ai/types';
 import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 import { useDialogFocus } from '@/src/components/ui/useDialogFocus';
 import { PROFILE_SECTIONS } from '@/src/components/options/shared/profileSections';
+import { EntryComparison } from './EntryComparison';
 import { ImportWarnings } from './ImportWarnings';
 
 type ReviewableChange = FieldChange & { status: 'new' | 'conflict' };
@@ -94,7 +95,7 @@ export default function ImportReviewScreen({
                 {title}
               </h3>
               <p id={descriptionId} className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Review one section at a time. Missing values stay unchanged.
+                Review one section at a time before importing.
               </p>
             </div>
             <button
@@ -247,6 +248,10 @@ function FieldRow({
   onSelect: (id: string, accepted: boolean) => void;
 }) {
   const labelId = useId();
+  const listSummary = (value: unknown) => {
+    const count = Array.isArray(value) ? value.length : 0;
+    return `${count} ${count === 1 ? 'entry' : 'entries'}`;
+  };
   return (
     <div
       role="group"
@@ -270,13 +275,13 @@ function FieldRow({
         <label className="flex items-start gap-2 cursor-pointer">
           <input
             type="checkbox"
-            aria-label={`Import ${change.label}: ${change.displaySuggested}`}
+            aria-label={`Import ${change.label}: ${change.entries ? listSummary(change.suggestedValue) : change.displaySuggested}`}
             disabled={isSaving}
             checked={change.accepted}
             onChange={() => onSelect(change.id, !change.accepted)}
             className="mt-1 shrink-0 accent-blue-600"
           />
-          <Value value={change.displaySuggested} />
+          <Value value={change.entries ? listSummary(change.suggestedValue) : change.displaySuggested} />
         </label>
       ) : (
         <div className="space-y-2">
@@ -293,7 +298,7 @@ function FieldRow({
               <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
                 {incomingLabel}
               </span>
-              <Value value={change.displaySuggested} />
+              <Value value={change.entries ? listSummary(change.suggestedValue) : change.displaySuggested} />
             </div>
           </label>
           <label className="flex items-start gap-2 cursor-pointer py-2">
@@ -309,11 +314,12 @@ function FieldRow({
               <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
                 Keep Current
               </span>
-              <Value value={change.displayCurrent} muted />
+              <Value value={change.entries ? listSummary(change.currentValue) : change.displayCurrent} muted />
             </div>
           </label>
         </div>
       )}
+      {change.entries && <EntryComparison entries={change.entries} incomingLabel={incomingLabel} />}
     </div>
   );
 }

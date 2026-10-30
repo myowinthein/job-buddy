@@ -29,7 +29,7 @@ function renderSection(
     <ToastProvider>
       <ResumeImportSection
         profile={profile}
-        onSave={onSave}
+        onSave={update => onSave(typeof update === 'function' ? update(profile) : update)}
         onGoToApiKey={onGoToApiKey}
         onClose={onClose}
       />
@@ -105,22 +105,22 @@ describe('ResumeImportSection — real review and parser integration', () => {
           education: newEducation,
         });
       const { onSave } = renderSection(profile);
-      await screen.findByText(/Drop your CV here/);
+      await screen.findByText(/Drop your resume here/);
       await selectFile(pdfFile());
-      fireEvent.click(screen.getByText('Analyze CV'));
+      fireEvent.click(screen.getByText('Analyze Resume'));
       fireEvent.click(await screen.findByText('Review Changes'));
       fireEvent.click(screen.getByRole('radio', { name: /Keep Current Local/ }));
       fireEvent.click(screen.getByRole('button', { name: 'Education' }));
       const arrayChoices = document.querySelectorAll('input[name="education"]');
       fireEvent.click(arrayChoices[acceptArray ? 0 : 1]);
       fireEvent.click(screen.getByRole('button', { name: 'Documents' }));
-      fireEvent.click(screen.getByRole('checkbox', { name: /Resume File/ }));
+      fireEvent.click(screen.getByRole('radio', { name: /Keep Current old.pdf/ }));
       fireEvent.click(screen.getByRole('button', {name:/^Import Selected/}));
       await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
       const saved = onSave.mock.calls[0][0];
       expect(saved.personal.firstName).toBe('Local');
       expect(saved.personal.nickname).toBe('New Nickname');
-      expect(saved.education).toEqual(acceptArray ? newEducation : oldEducation);
+      expect(saved.education).toEqual(acceptArray ? [...newEducation, ...oldEducation] : oldEducation);
       expect(saved.documents).toEqual(documents);
     },
   );

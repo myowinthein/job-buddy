@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { useEffect, useState } from 'react';
+import type { ProfileUpdate } from '@/src/resume-ai/resumeImport';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 
@@ -66,8 +67,11 @@ vi.mock('@/src/components/options/LanguagesSection', () => ({ LanguagesSection: 
 vi.mock('@/src/components/options/LinksSection', () => ({ LinksSection: () => <div>links-section</div> }));
 vi.mock('@/src/components/options/DocumentsSection', () => ({ DocumentsSection: () => <div>documents-section</div> }));
 vi.mock('@/src/components/options/ResumeImportSection', () => ({
-  ResumeImportSection: ({ onGoToApiKey }: { onGoToApiKey: () => void }) => (
-    <button onClick={onGoToApiKey}>Go to Settings</button>
+  ResumeImportSection: ({ onGoToApiKey, onSave }: { onGoToApiKey: () => void; onSave: (update: ProfileUpdate) => Promise<void> }) => (
+    <div>
+      <button onClick={onGoToApiKey}>Go to Settings</button>
+      <button onClick={() => void onSave(latest => ({ personal: { ...latest.personal!, nickname: 'From resume' } }))}>apply-resume-update</button>
+    </div>
   ),
 }));
 vi.mock('@/src/components/options/LearnedMappingsSection', () => ({ LearnedMappingsSection: () => <div>learnedMappings-section</div> }));
@@ -282,4 +286,18 @@ describe('options App — initial profile load failure', () => {
 
     consoleError.mockRestore();
   });
+});
+
+
+it('applies a reviewed resume update to the latest stored profile before saving and syncing', async () => {
+  sessionStorage.setItem('jb:ui:section', 'resume');
+  vi.mocked(getProfile).mockResolvedValueOnce({ personal: { firstName: 'Old' } } as Profile)
+    .mockResolvedValueOnce({ personal: { firstName: 'Concurrent edit' }, links: { linkedin: 'https://linkedin.com/in/concurrent' } } as Profile);
+  renderApp();
+  fireEvent.click(await screen.findByText('apply-resume-update'));
+  await waitFor(() => expect(saveProfile).toHaveBeenCalledOnce());
+  const saved = vi.mocked(saveProfile).mock.calls[0][0];
+  expect(saved.personal).toEqual({ firstName: 'Concurrent edit', nickname: 'From resume' });
+  expect(saved.links.linkedin).toBe('https://linkedin.com/in/concurrent');
+  expect(syncProfileToDrive).toHaveBeenCalledWith(saved);
 });

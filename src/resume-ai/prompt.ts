@@ -94,6 +94,8 @@ ${currentProfileJson}
 
 ${hyperlinksSection}Rules:
 - Never invent or guess values not present in the document
+- Preserve the complete job title, including parenthetical team or initiative names. Never shorten a title.
+- Preserve previous roles, promotions, and any "Previously:" line within the same employment entry. Put these lines in the description context paragraph before the responsibilities. Do not omit them or turn them into separate employers.
 - Dates: workHistory uses YYYY-MM (month required); education uses YYYY-MM when month is given, or YYYY when only the year is available; dateOfBirth uses YYYY-MM-DD
 - Education dates: NEVER infer, guess, estimate, or backfill education startDate or endDate. Do not derive education dates from degree level (e.g. "Bachelor's takes 4 years"), work history dates, the candidate's age, graduation conventions, or the current profile JSON. Only extract a date if it appears explicitly next to or within the same education entry in the resume. If no date is written, return null for startDate and endDate.
 - country/countryCode must be ISO 3166-1 alpha-2 (e.g. US, GB, SG, AU, CA, MM)

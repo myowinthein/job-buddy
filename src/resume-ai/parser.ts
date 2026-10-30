@@ -7,6 +7,7 @@ import type {
   WorkAuthorizationEntry,
 } from '@/src/types/profile';
 import type { FieldChange, FieldStatus } from './types';
+import { compareEntries } from './entryComparison';
 import { equalJsonValues } from '@/src/utils/equalJsonValues';
 import { findCountryByNameOrCode } from '@/src/data/countries';
 import { languageName, LANGUAGE_PROFICIENCY_LABELS } from '@/src/data/languages';
@@ -345,7 +346,7 @@ export const FIELD_DEFS: FieldDef[] = [
           const location = typeof e.location === 'string' ? e.location :
             [e.location?.city, e.location?.countryCode && countryName(e.location.countryCode)].filter(Boolean).join(', ');
           return [
-            `${e.title} at ${e.company} (${e.startDate}${end ? ' – ' + end : ''})`,
+            `${e.title} at ${e.company} (${e.startDate || 'Start date not provided'}${end ? ' – ' + end : ''})`,
             location && `Location: ${location}`,
             e.arrangement && `Work arrangement: ${readableValue(e.arrangement)}`,
             e.description,
@@ -368,7 +369,7 @@ export const FIELD_DEFS: FieldDef[] = [
         .map((e) => {
           const end = e.isCurrent ? (e.endDate ? `expected ${e.endDate}` : 'present') : (e.endDate ?? '');
           return [
-            `${e.degree} in ${e.fieldOfStudy}, ${e.institution} (${e.startDate}${end ? ' – ' + end : ''})`,
+            `${e.degree} in ${e.fieldOfStudy}, ${e.institution} (${e.startDate || 'Start date not provided'}${end ? ' – ' + end : ''})`,
             e.grade && `Grade: ${e.grade}`,
             e.description,
           ].filter(Boolean).join('\n');
@@ -515,6 +516,7 @@ export function generateDiff(
       status,
       accepted:         status !== 'unchanged',
       hasIncomingValue: !suggestedEmpty,
+      entries: compareEntries(def.id, currentVal, suggestedVal),
       note: status === 'conflict' && Array.isArray(suggestedVal)
         ? 'Importing replaces this list.'
         : status === 'conflict' && def.id.endsWith('.file') &&

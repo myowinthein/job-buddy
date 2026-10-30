@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 const fetchMock = vi.fn();
 vi.stubGlobal('fetch', fetchMock);
 
-import { checkApiKey, validateApiKey, resolveFieldsWithAI, extractFromResume, KEY_ERROR_MESSAGES, GEMINI_REQUEST_TIMEOUT_MS } from './gemini';
+import { checkApiKey, validateApiKey, resolveFieldsWithAI, extractFromResume, KEY_ERROR_MESSAGES, GEMINI_REQUEST_TIMEOUT_MS, RESUME_REQUEST_TIMEOUT_MS } from './gemini';
 import type { AIFieldPayload, GeminiModel } from './types';
 import type { Profile } from '@/src/types/profile';
 
@@ -315,9 +315,10 @@ describe('extractFromResume', () => {
     await expect(extract()).rejects.toMatchObject({ code: 'auth' });
   });
 
-  it('throws a network ImportError on other non-ok, non-429 statuses', async () => {
-    fetchMock.mockResolvedValueOnce(httpResponse(500));
-    await expect(extract()).rejects.toMatchObject({ code: 'network' });
+  it('tries each model on server failures and reports a service error', async () => {
+    fetchMock.mockResolvedValue(httpResponse(503));
+    await expect(extract()).rejects.toMatchObject({ code: 'service' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('throws a parse ImportError when the response body cannot be read as JSON', async () => {
@@ -403,5 +404,66 @@ describe('Gemini credential transport and validation failures', () => {
     await validateApiKey('key', undefined, 'gemini-3.8-flash');
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][0]).toContain('gemini-3.8-flash');
+  });
+});
+
+
+describe('resume model fallback and response validation', () => {
+  it('announces attempts and switches models after a timeout', async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementationOnce((_url, init) => new Promise((_resolve, reject) => {
+      init.signal.addEventListener('abort', () => reject(init.signal.reason));
+    })).mockResolvedValueOnce(geminiTextResponse('{"personal":{"firstName":"Jane"}}'));
+    const onAttempt = vi.fn();
+    const pending = extractFromResume('key', 'gemini-3.8-flash', 'pdf', 'application/pdf', {}, undefined, [], onAttempt);
+    await vi.advanceTimersByTimeAsync(RESUME_REQUEST_TIMEOUT_MS);
+    expect(await pending).toMatchObject({ personal: { firstName: 'Jane' } });
+    expect(onAttempt.mock.calls.map(([attempt]) => attempt)).toEqual([
+      { model: 'gemini-3.8-flash', reason: undefined },
+      { model: 'gemini-3.5-flash-lite', reason: 'timeout' },
+    ]);
+    expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(true);
+  });
+
+  it('times out the response body as well as waiting for headers', async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementationOnce((_url, init) => Promise.resolve({
+      ok: true, status: 200,
+      json: () => new Promise((_resolve, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason))),
+    })).mockResolvedValueOnce(geminiTextResponse('{}'));
+    const pending = extractFromResume('key', 'gemini-3.8-flash', 'pdf', 'application/pdf', {});
+    await vi.advanceTimersByTimeAsync(RESUME_REQUEST_TIMEOUT_MS);
+    expect(await pending).toEqual({});
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports timeout after both models stall, rather than blaming the internet', async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementation((_url, init) => new Promise((_resolve, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason))));
+    const outcome = extractFromResume('key', 'gemini-3.8-flash', 'pdf', 'application/pdf', {}).catch(error => error);
+    await vi.advanceTimersByTimeAsync(RESUME_REQUEST_TIMEOUT_MS * 2);
+    expect(await outcome).toMatchObject({ code: 'timeout' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('announces rate limiting and unavailable models without changing the saved preference', async () => {
+    fetchMock.mockResolvedValueOnce(httpResponse(429)).mockResolvedValueOnce(geminiTextResponse('{}'));
+    const onAttempt = vi.fn();
+    await extractFromResume('key', 'gemini-3.8-flash', 'pdf', 'application/pdf', {}, undefined, [], onAttempt);
+    expect(onAttempt).toHaveBeenLastCalledWith({ model: 'gemini-3.5-flash-lite', reason: 'rate_limit' });
+  });
+
+  it('does not try another model after cancellation', async () => {
+    const controller = new AbortController();
+    fetchMock.mockImplementation((_url, init) => new Promise((_resolve, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason))));
+    const pending = extractFromResume('key', 'gemini-3.8-flash', 'pdf', 'application/pdf', {}, controller.signal);
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['[]', 'null', '{"education":"not an array"}', '{"personal":{"email":42}}'])('rejects malformed profile JSON before comparison: %s', output => {
+    fetchMock.mockResolvedValueOnce(geminiTextResponse(output));
+    return expect(extractFromResume('key', 'gemini-3.8-flash', 'pdf', 'application/pdf', {})).rejects.toMatchObject({ code: 'parse' });
   });
 });
