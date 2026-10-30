@@ -1,12 +1,12 @@
 <svg width="320" height="80" viewBox="0 0 320 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="8" y="8" width="64" height="64" rx="16" fill="#4B79F7"/>
-
-  <rect x="28" y="24" width="12" height="12" fill="white"/>
-
-  <path
-    d="M52 24H64V45C64 58 55 66 42 66C34 66 27 63 22 57L31 48C34 52 37 54 42 54C48 54 52 50 52 44V24Z"
-    fill="white"
-  />
+  <g transform="translate(8 8) scale(0.5)">
+    <rect width="128" height="128" rx="32" fill="#4B79F7"/>
+    <rect x="36" y="28" width="22" height="22" rx="3" fill="white"/>
+    <path
+      d="M80 28H102V69C102 91 86 104 65 104C48 104 33 96 26 84L42 70C47 79 54 84 65 84C74 84 80 78 80 68V28Z"
+      fill="white"
+    />
+  </g>
 
   <text
     x="92"

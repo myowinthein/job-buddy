@@ -1,10 +1,10 @@
 <svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect width="128" height="128" rx="32" fill="#4B79F7"/>
 
-  <rect x="40" y="34" width="20" height="20" fill="white"/>
+  <rect x="36" y="28" width="22" height="22" rx="3" fill="white"/>
 
   <path
-    d="M78 34H98V74C98 98 81 112 58 112C43 112 31 106 22 96L37 81C43 88 49 92 58 92C70 92 78 84 78 72V34Z"
+    d="M80 28H102V69C102 91 86 104 65 104C48 104 33 96 26 84L42 70C47 79 54 84 65 84C74 84 80 78 80 68V28Z"
     fill="white"
   />
 </svg>
