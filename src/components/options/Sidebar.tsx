@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { FileUp, Brain, Menu, Settings, Check, Minus, Sparkles } from 'lucide-react';
 import { LOGO_ICON_SRC } from '@/src/utils/branding';
+import { getGeminiSettings } from '@/src/utils/storage';
 
 import { PROFILE_SECTIONS } from './shared/profileSections';
 
@@ -20,6 +22,39 @@ export function Sidebar({
   onToggle,
   sectionCompletion,
 }: SidebarProps) {
+  const [geminiConfigured, setGeminiConfigured] = useState(false);
+  const resumeAiDescription = geminiConfigured
+    ? 'AI-assisted · Key saved'
+    : 'AI-assisted · Add your Gemini API key';
+
+  useEffect(() => {
+    let active = true;
+    let sequence = 0;
+    const load = async () => {
+      const id = ++sequence;
+      try {
+        const settings = await getGeminiSettings();
+        if (active && id === sequence) setGeminiConfigured(!!settings.apiKey && !!settings.model);
+      } catch {
+        if (active && id === sequence) setGeminiConfigured(false);
+      }
+    };
+    const changed = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      if (
+        area === 'local' &&
+        ['geminiApiKey', 'geminiModel', 'geminiSettingsMeta'].some((key) => key in changes)
+      )
+        void load();
+    };
+    const storageChanges = typeof chrome !== 'undefined' ? chrome.storage?.onChanged : undefined;
+    storageChanges?.addListener(changed);
+    void load();
+    return () => {
+      active = false;
+      storageChanges?.removeListener(changed);
+    };
+  }, []);
+
   return (
     <aside
       className={`flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-200 shrink-0 ${
@@ -126,7 +161,7 @@ export function Sidebar({
         <button
           type="button"
           onClick={() => onSelect('resume')}
-          title="Import Resume · AI-assisted"
+          title={`Import Resume · ${resumeAiDescription}`}
           aria-label="Import Resume"
           aria-describedby="resume-ai-description"
           aria-current={activeSection === 'resume' ? 'page' : undefined}
@@ -144,12 +179,12 @@ export function Sidebar({
               <span className="truncate">Import Resume</span>
               <Sparkles
                 aria-hidden="true"
-                className="w-3.5 h-3.5 shrink-0 text-blue-500 dark:text-blue-400"
+                className={`w-3.5 h-3.5 shrink-0 ${geminiConfigured ? 'text-blue-500 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
               />
             </span>
           )}
           <span id="resume-ai-description" className="sr-only">
-            AI-assisted resume import
+            {resumeAiDescription}
           </span>
         </button>
         <button

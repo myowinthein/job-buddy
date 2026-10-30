@@ -1,9 +1,35 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 import { Sidebar } from './Sidebar';
+import { getGeminiSettings, type GeminiSettings } from '@/src/utils/storage';
 
-afterEach(cleanup);
+vi.mock('@/src/utils/storage', () => ({ getGeminiSettings: vi.fn() }));
+
+const empty: GeminiSettings = {
+  apiKey: null,
+  model: null,
+  preference: 'auto',
+  revision: null,
+  verifiedAt: null,
+};
+const configured: GeminiSettings = {
+  ...empty,
+  apiKey: 'test-key',
+  model: 'gemini-3.5-flash-lite',
+  revision: 'saved',
+};
+const storageChanges = { addListener: vi.fn(), removeListener: vi.fn() };
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(getGeminiSettings).mockReset().mockResolvedValue(empty);
+  vi.stubGlobal('chrome', { storage: { onChanged: storageChanges } });
+});
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 function renderSidebar(overrides: Partial<React.ComponentProps<typeof Sidebar>> = {}) {
   const onSelect = vi.fn();
@@ -96,4 +122,89 @@ it.each([false, true])('explains section status when collapsed=%s', (collapsed) 
     'No details added',
   );
   expect(personal.title).toContain('Required details complete');
+});
+
+describe('Sidebar — AI setup indicator', () => {
+  it.each([false, true])(
+    'describes saved AI configuration when collapsed=%s',
+    async (collapsed) => {
+      vi.mocked(getGeminiSettings).mockResolvedValue(configured);
+      renderSidebar({ collapsed });
+      const resume = screen.getByRole('button', { name: 'Import Resume' });
+      await waitFor(() => expect(resume.title).toBe('Import Resume · AI-assisted · Key saved'));
+      expect(document.getElementById(resume.getAttribute('aria-describedby')!)?.textContent).toBe(
+        'AI-assisted · Key saved',
+      );
+    },
+  );
+
+  it.each([empty, { ...configured, model: null }])(
+    'keeps setup guidance and navigation without complete AI settings',
+    async (settings) => {
+      vi.mocked(getGeminiSettings).mockResolvedValue(settings);
+      const { onSelect } = renderSidebar();
+      const resume = screen.getByRole('button', { name: 'Import Resume' });
+      await waitFor(() => expect(getGeminiSettings).toHaveBeenCalledOnce());
+      expect(resume.title).toBe('Import Resume · AI-assisted · Add your Gemini API key');
+      expect(resume.hasAttribute('disabled')).toBe(false);
+      fireEvent.click(resume);
+      expect(onSelect).toHaveBeenCalledWith('resume');
+    },
+  );
+
+  it('updates immediately after local save and removal events and cleans up its listener', async () => {
+    const view = render(
+      <Sidebar
+        activeSection="personal"
+        onSelect={vi.fn()}
+        collapsed={false}
+        onToggle={vi.fn()}
+        sectionCompletion={{}}
+      />,
+    );
+    const resume = screen.getByRole('button', { name: 'Import Resume' });
+    await waitFor(() => expect(getGeminiSettings).toHaveBeenCalledOnce());
+    const changed = storageChanges.addListener.mock.calls[0][0];
+    vi.mocked(getGeminiSettings).mockResolvedValue(configured);
+    act(() => changed({ geminiApiKey: {} }, 'local'));
+    await waitFor(() => expect(resume.title).toContain('Key saved'));
+    vi.mocked(getGeminiSettings).mockResolvedValue(empty);
+    act(() => changed({ geminiSettingsMeta: {} }, 'local'));
+    await waitFor(() => expect(resume.title).toContain('Add your Gemini API key'));
+    act(() => changed({ geminiApiKey: {} }, 'session'));
+    expect(getGeminiSettings).toHaveBeenCalledTimes(3);
+    view.unmount();
+    expect(storageChanges.removeListener).toHaveBeenCalledWith(changed);
+  });
+
+  it('does not restore an outdated configured indicator after a reset', async () => {
+    let finish!: (settings: GeminiSettings) => void;
+    vi.mocked(getGeminiSettings).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    renderSidebar();
+    const changed = storageChanges.addListener.mock.calls[0][0];
+    await act(async () => {
+      changed({ geminiSettingsMeta: {} }, 'local');
+    });
+    await act(async () => {
+      finish(configured);
+    });
+    expect(screen.getByRole('button', { name: 'Import Resume' }).title).toContain(
+      'Add your Gemini API key',
+    );
+  });
+
+  it('retains navigation when saved settings cannot be read', async () => {
+    vi.mocked(getGeminiSettings).mockRejectedValue(new Error('Storage unavailable'));
+    const { onSelect } = renderSidebar();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Import Resume' }));
+    expect(onSelect).toHaveBeenCalledWith('resume');
+  });
 });
