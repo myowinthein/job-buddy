@@ -120,7 +120,9 @@ it('preserves legacy links and editor-valid emails through a real JSON review', 
   const { onImportComplete } = renderSection();
   const file = new File([JSON.stringify({ profile: { personal: { email: "o'brien@example.com" }, links } })], 'backup.json', { type: 'application/json' });
   fireEvent.change(document.querySelector('input[accept=".json"]')!, { target: { files: [file] } });
-  fireEvent.click(await screen.findByText('Import All'));
+  await screen.findByText('This may be another person’s profile');
+  fireEvent.click(screen.getByRole('radio', { name: /Update current profile/ }));
+  fireEvent.click(screen.getByText('Import All'));
   await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
   expect(vi.mocked(saveProfile).mock.calls[0][0]).toMatchObject({
     personal: { email: "o'brien@example.com" },
@@ -199,11 +201,11 @@ it.each([false, true])('preserves direct Drive persistence ordering with mapping
   if (failMappings) {
     expect(await screen.findByText('Restore failed. Please try again.')).toBeTruthy();
     expect(saveProfile).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(saveProfile).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(getLearnedMappings).mock.invocationCallOrder[0]);
+    expect(vi.mocked(saveProfile).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(saveLearnedMappings).mock.invocationCallOrder[0]);
     expect(onImportComplete).not.toHaveBeenCalled();
   } else {
     await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
-    expect(getLearnedMappings).not.toHaveBeenCalled();
+    expect(getLearnedMappings).toHaveBeenCalledTimes(1); // read for review; no metadata write needed
     expect(saveLearnedMappings).not.toHaveBeenCalled();
   }
   expect(saveApplicationHistory).not.toHaveBeenCalled();

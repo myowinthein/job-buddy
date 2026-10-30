@@ -25,6 +25,8 @@ import { ReportedSaveError } from '@/src/components/options/shared/saveSection';
 import { useToast } from '@/src/components/ui/useToast';
 import type { CompletionTarget } from '@/src/utils/profileCompletion';
 import { DraftStatusContext, SectionSaveStatusContext } from '@/src/components/options/shared/draftStatus';
+import { replaceImportedProfile } from '@/src/utils/replaceImportedProfile';
+import { withProfileWriteLock } from '@/src/utils/profileWriteLock';
 
 const DevToolsPage = import.meta.env.DEV ? lazy(() => import('@/src/devtools/DevToolsPage')) : null;
 
@@ -322,12 +324,16 @@ function App() {
       });
   };
 
-  const handleSave = async (update: ProfileUpdate) => {
+  const handleSave = (update: ProfileUpdate) => withProfileWriteLock(async () => {
     // Keep changes saved by another Options tab in other profile sections.
-    const latest = await getProfile();
+    const latest = await getProfile({ rejectOnError: true });
+    if (typeof update !== 'function' && latest?.id !== profile.id) {
+      showToast('warning', 'Your profile was replaced in another tab. Reload before saving.');
+      throw new ReportedSaveError('Profile replaced in another tab');
+    }
     const base = latest ?? (typeof update === 'function' ? {} : profile);
     const updates = typeof update === 'function' ? update(base) : update;
-    const merged = { ...base, ...updates } as Profile;
+    const merged = { ...base, ...updates, id: base.id || crypto.randomUUID() } as Profile;
     let synced: Profile = merged;
     try {
       const derived = calculateDerivedFields(merged);
@@ -352,7 +358,7 @@ function App() {
         showToast('warning', res.errorCode === 'review_required' ? 'Profile saved. Review your Drive backup in Settings.' : res.errorCode === 'token_expired' ? 'Profile saved. Reconnect Google Drive to continue backups.' : 'Profile saved. Drive backup is pending.');
       }
     }).catch(() => { /* syncProfileToDrive never throws, but be defensive */ });
-  };
+  });
 
   const handleFocusField = (sectionId: string, fieldLabel: string) => {
     navigateAndFocus(sectionId as SectionId, getCompletionTarget(profile, sectionId, fieldLabel));
@@ -399,7 +405,7 @@ function App() {
       case 'languages':         return <LanguagesSection key={`languages-${sectionSeq}`} {...sectionProps} />;
       case 'links':             return <LinksSection key={`links-${sectionSeq}`} {...sectionProps} />;
       case 'documents':         return <DocumentsSection key={`documents-${sectionSeq}`} {...sectionProps} />;
-      case 'resume':            return <ResumeImportSection key="resume" profile={profile} onSave={handleSave} onGoToApiKey={handleGoToApiKey} onClose={handleCloseResumeImport} />;
+      case 'resume':            return <ResumeImportSection key="resume" profile={profile} onSave={handleSave} onReplace={async (base, changes) => { setProfile(await replaceImportedProfile(base, changes)); }} onGoToApiKey={handleGoToApiKey} onClose={handleCloseResumeImport} />;
       case 'learnedMappings':   return <LearnedMappingsSection key="learnedMappings" />;
       case 'devTools': return DevToolsPage ? <Suspense fallback={<p>Loading development tools…</p>}><DevToolsPage onFocusField={handleFocusField} /></Suspense> : null;
       case 'settings':          return <SettingsSection key="settings" onImportComplete={handleImportComplete} onResetComplete={handleResetComplete} />;

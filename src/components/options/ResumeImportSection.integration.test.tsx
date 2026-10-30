@@ -30,6 +30,7 @@ function renderSection(
       <ResumeImportSection
         profile={profile}
         onSave={update => onSave(typeof update === 'function' ? update(profile) : update)}
+        onReplace={vi.fn().mockResolvedValue(undefined)}
         onGoToApiKey={onGoToApiKey}
         onClose={onClose}
       />

@@ -13,6 +13,14 @@ import { useToast } from '@/src/components/ui/useToast';
 import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 import ImportSummaryDialog from '@/src/components/shared/ImportSummaryDialog';
 import ImportReviewScreen from '@/src/components/shared/ImportReviewScreen';
+import { ImportModeChoice } from '@/src/components/shared/ImportModeChoice';
+import {
+  assertImportCurrent,
+  initialImportMode,
+  replacementChanges,
+  ImportProfileChangedError,
+  type ImportMode,
+} from '@/src/utils/importPolicy';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -52,6 +60,7 @@ function fileToDataUri(file: File): Promise<string> {
 interface Props {
   profile:      Partial<Profile>;
   onSave:       (updates: ProfileUpdate) => Promise<void>;
+  onReplace:    (base: Partial<Profile>, changes: FieldChange[]) => Promise<void>;
   onGoToApiKey: () => void;
   onClose:      () => void;
 }
@@ -60,7 +69,7 @@ interface Props {
 
 type Screen = 'dialog' | 'progress' | 'summary' | 'review' | 'done';
 
-export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: Props) {
+export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, onClose }: Props) {
   const { showToast }  = useToast();
   const [screen,       setScreen]       = useState<Screen>('dialog');
   const [apiKey,       setApiKey]       = useState<string | null>(null);
@@ -75,8 +84,24 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
   const [errorCode,    setErrorCode]    = useState<ImportErrorCode | null>(null);
   const [changes,      setChanges]      = useState<FieldChange[]>([]);
   const [saving,       setSaving]       = useState(false);
-  const [summary,      setSummary]      = useState<{ updated: number; conflicts: number; skipped: number } | null>(null);
+  const [summary,      setSummary]      = useState<{ updated: number; conflicts: number; skipped: number; replaced?: boolean } | null>(null);
   const [extractedLinks, setExtractedLinks] = useState<string[]>([]);
+  const [reviewBase, setReviewBase] = useState(profile);
+  const [incomingProfile, setIncomingProfile] = useState<Partial<Profile>>({});
+  const [importMode, setImportMode] = useState<ImportMode | null>('update');
+  const buildChanges = (base: Partial<Profile>, incoming: Partial<Profile>, mode: ImportMode | null) => {
+    if (mode === 'replace') return replacementChanges(base, incoming);
+    const extracted = { ...incoming };
+    delete extracted.documents;
+    return [
+      resumeFileChange(incoming.documents!.cv.file!, base.documents?.cv?.file),
+      ...resumeChanges(base, extracted),
+    ];
+  };
+  const chooseMode = (mode: ImportMode) => {
+    setImportMode(mode);
+    setChanges(buildChanges(reviewBase, incomingProfile, mode));
+  };
 
   const fileInputRef       = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -182,8 +207,14 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
     );
     if (!isCurrent(controller)) return;
     setProgressStep('processing');
-    const fileChange = resumeFileChange({ name: file.name, size: file.size, base64: dataUri }, profile.documents?.cv?.file);
-    setChanges([fileChange, ...resumeChanges(profile, extracted)]);
+    const incoming = {
+      ...extracted,
+      documents: { cv: { file: { name: file.name, size: file.size, base64: dataUri } } },
+    };
+    const mode = initialImportMode(reviewBase, incoming);
+    setIncomingProfile(incoming);
+    setImportMode(mode);
+    setChanges(buildChanges(reviewBase, incoming, mode));
     setScreen('summary');
   };
 
@@ -227,10 +258,12 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
   // ── Save ──────────────────────────────────────────────────────────────────────
 
   const performSave = async (finalChanges: FieldChange[]): Promise<void> => {
-    const fileChange   = finalChanges.find((c) => c.id === FILE_CHANGE_ID);
-    const newAccepted      = finalChanges.filter((c) => c.status === 'new'      && c.accepted).length;
-    const conflictAccepted = finalChanges.filter((c) => c.status === 'conflict' && c.accepted).length;
-    const skipped          = finalChanges.filter((c) => c.status !== 'unchanged' && !c.accepted).length;
+    if (!importMode) return;
+    const fileChange   = finalChanges.find((c) => c.id === FILE_CHANGE_ID || c.id === 'documents.cv.file');
+    const counted = importMode === 'replace' ? finalChanges.filter(c => c.hasIncomingValue !== false) : finalChanges;
+    const newAccepted      = counted.filter((c) => c.status === 'new'      && c.accepted).length;
+    const conflictAccepted = counted.filter((c) => c.status === 'conflict' && c.accepted).length;
+    const skipped          = counted.filter((c) => c.status !== 'unchanged' && !c.accepted).length;
     if (fileChange?.accepted && selectedFile) {
       const sizeError = documentFileSizeError(selectedFile.size);
       if (sizeError) { showToast('error', sizeError); return; }
@@ -238,11 +271,22 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
 
     setSaving(true);
     try {
-      await onSave(latest => applyReviewedResumeChanges(latest, finalChanges));
-      setSummary({ updated: newAccepted, conflicts: conflictAccepted, skipped });
+      if (importMode === 'replace') await onReplace(reviewBase, finalChanges);
+      else await onSave(latest => {
+        assertImportCurrent(reviewBase, latest, finalChanges);
+        return applyReviewedResumeChanges(latest, finalChanges);
+      });
+      setSummary({ updated: newAccepted, conflicts: conflictAccepted, skipped, replaced: importMode === 'replace' });
       setScreen('done');
     } catch (error) {
-      if (error instanceof ResumeReviewChangedError) {
+      if (error instanceof ImportProfileChangedError) {
+        const mode = initialImportMode(error.current, incomingProfile);
+        setReviewBase(error.current);
+        setImportMode(mode);
+        setChanges(buildChanges(error.current, incomingProfile, mode));
+        setScreen('summary');
+        showToast('warning', error.message);
+      } else if (error instanceof ResumeReviewChangedError) {
         setChanges(error.changes);
         setScreen('review');
         showToast('warning', error.message);
@@ -513,6 +557,11 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
         <ImportSummaryDialog
           changes={changes}
           title="Review Resume"
+          importControls={<ImportModeChoice current={reviewBase} incoming={incomingProfile} mode={importMode} onChange={chooseMode} busy={saving} />}
+          replacement={importMode === 'replace'}
+          canProceed={importMode !== null && (importMode !== 'replace' || changes.some(c => c.hasIncomingValue === true))}
+          forceDecision={importMode !== 'update'}
+          acceptLabel={importMode === 'replace' ? 'Replace Profile' : 'Import All'}
           onAcceptAll={() => void performSave(acceptAllChanges(changes))}
           onRejectAll={closeSection}
           onDismiss={closeSection}
@@ -534,7 +583,8 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
           onBack={() => setScreen('summary')}
           isSaving={saving}
           title="Review Resume"
-          saveLabel="Import Selected"
+          replacement={importMode === 'replace'}
+          saveLabel={importMode === 'replace' ? 'Replace Profile' : 'Import Selected'}
         />
       )}
 
@@ -548,8 +598,9 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
               Import Complete
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              Imported {summary.updated + summary.conflicts} change{summary.updated + summary.conflicts !== 1 ? 's' : ''}
-              {summary.skipped > 0 ? ` and kept ${summary.skipped}` : ''}.
+              {summary.replaced
+                ? `Profile replaced with ${summary.updated + summary.conflicts} selected details.`
+                : `Imported ${summary.updated + summary.conflicts} change${summary.updated + summary.conflicts !== 1 ? 's' : ''}${summary.skipped > 0 ? ` and kept ${summary.skipped}` : ''}.`}
             </p>
             <div className="flex justify-end">
               <button

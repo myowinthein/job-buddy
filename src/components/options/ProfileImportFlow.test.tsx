@@ -287,3 +287,50 @@ it('preserves unrelated profile edits made while the import review is open', asy
   expect((await getProfile())?.personal.firstName).toBe('Alex Imported');
   expect((await getProfile())?.links.portfolio).toBe('https://example.com/new-portfolio');
 });
+
+it('requires an owner decision, then replaces profile data without retaining the previous person’s details', async () => {
+  const current = baseProfile();
+  await mountBase(current);
+  const incoming = {
+    personal: { ...current.personal, firstName: 'Sam', lastName: 'Lee', email: 'sam@example.com' },
+  };
+  upload(incoming);
+  await screen.findByText('This may be another person’s profile');
+  expect((screen.getByRole('button', { name: 'Import All' }) as HTMLButtonElement).disabled).toBe(
+    true,
+  );
+  expect(
+    (screen.getByRole('button', { name: 'Review Changes' }) as HTMLButtonElement).disabled,
+  ).toBe(true);
+  expect((await getProfile())?.id).toBe(current.id);
+  fireEvent.click(screen.getByRole('radio', { name: /Replace current profile/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Review Changes' }));
+  expect(screen.queryByRole('radio', { name: /Keep Current/ })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: /^Replace Profile/ }));
+  await waitFor(async () => expect((await getProfile())?.personal.email).toBe('sam@example.com'));
+  const saved = (await getProfile())!;
+  expect(saved.id).not.toBe(current.id);
+  expect(saved.personal.phone).toEqual(current.personal.phone);
+  expect(saved.address).toBeUndefined();
+  expect(saved.documents).toBeUndefined();
+  expect(saved.workHistory).toBeUndefined();
+  expect(await getApplicationHistory()).toEqual([]);
+});
+
+it('asks for review again if the profile changes while replacement is open', async () => {
+  const current = baseProfile();
+  await mountBase(current);
+  upload({
+    personal: { ...current.personal, firstName: 'Sam', lastName: 'Lee', email: 'sam@example.com' },
+  });
+  await screen.findByText('This may be another person’s profile');
+  fireEvent.click(screen.getByRole('radio', { name: /Replace current profile/ }));
+  await saveProfile({ ...current, address: { city: 'Concurrent city', country: 'US' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Replace Profile' }));
+  await screen.findByText('Your profile changed in another tab. Review the import again.');
+  expect((await getProfile())?.address.city).toBe('Concurrent city');
+  expect((await getProfile())?.personal.email).toBe(current.personal.email);
+  expect((screen.getByRole('button', { name: 'Import All' }) as HTMLButtonElement).disabled).toBe(
+    true,
+  );
+});

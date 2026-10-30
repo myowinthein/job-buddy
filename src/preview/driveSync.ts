@@ -4,6 +4,8 @@ import type * as Drive from '@/src/utils/driveSync';
 const disabled = async (): Promise<never> => {
   throw new Error('Google Drive is disabled in the sample-data preview.');
 };
+export const protectProfileReplacement: typeof Drive.protectProfileReplacement = async (save) =>
+  devContext() ? (await import('../utils/driveSync')).protectProfileReplacement(save) : save();
 
 export const isDriveConfigured: typeof Drive.isDriveConfigured = () => !!devContext();
 export const getFullDriveState: typeof Drive.getFullDriveState = async (...args) =>

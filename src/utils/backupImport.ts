@@ -131,10 +131,14 @@ export function backupDataChanges(
   incomingMappings: LearnedMappings | undefined,
   localHistory: ApplicationEntry[] = [],
   incomingHistory?: ApplicationEntry[],
+  mode: 'update' | 'replace' = 'update',
 ): FieldChange[] {
   const changes: FieldChange[] = [];
-  if (incomingMappings) {
-    const merged = mergeLearnedMappings(localMappings, incomingMappings);
+  if (incomingMappings || mode === 'replace') {
+    const merged =
+      mode === 'replace'
+        ? (incomingMappings ?? {})
+        : mergeLearnedMappings(localMappings, incomingMappings!);
     changes.push({
       id: MAPPINGS_CHANGE_ID,
       label: 'Learned Mappings',
@@ -143,18 +147,32 @@ export function backupDataChanges(
       suggestedValue: merged,
       displayCurrent: mappingsDisplay(localMappings),
       displaySuggested: mappingsDisplay(merged),
-      status: equalJsonValues(localMappings, merged)
-        ? 'unchanged'
-        : Object.keys(localMappings).length
-          ? 'conflict'
-          : 'new',
-      accepted: !equalJsonValues(localMappings, merged),
-      hasIncomingValue: Object.keys(incomingMappings).length > 0,
-      note: 'Mappings are merged. Existing mappings are kept when equally trusted.',
+      status:
+        mode === 'replace' && Object.keys(merged).length
+          ? Object.keys(localMappings).length
+            ? 'conflict'
+            : 'new'
+          : equalJsonValues(localMappings, merged)
+            ? 'unchanged'
+            : Object.keys(localMappings).length
+              ? 'conflict'
+              : 'new',
+      accepted:
+        mode === 'replace'
+          ? Object.keys(merged).length > 0 || Object.keys(localMappings).length > 0
+          : !equalJsonValues(localMappings, merged),
+      hasIncomingValue: Object.keys(incomingMappings ?? {}).length > 0,
+      note:
+        mode === 'replace'
+          ? 'Current mappings will be replaced. Unselected mappings will be cleared.'
+          : 'Mappings are merged. Existing mappings are kept when equally trusted.',
     });
   }
-  if (incomingHistory) {
-    const merged = mergeApplicationHistory(localHistory, incomingHistory);
+  if (incomingHistory || mode === 'replace') {
+    const merged =
+      mode === 'replace'
+        ? (incomingHistory ?? [])
+        : mergeApplicationHistory(localHistory, incomingHistory!);
     const display = (rows: ApplicationEntry[]) =>
       rows
         .map(
@@ -170,14 +188,25 @@ export function backupDataChanges(
       suggestedValue: merged,
       displayCurrent: display(localHistory),
       displaySuggested: display(merged),
-      status: equalJsonValues(localHistory, merged)
-        ? 'unchanged'
-        : localHistory.length
-          ? 'conflict'
-          : 'new',
-      accepted: !equalJsonValues(localHistory, merged),
-      hasIncomingValue: incomingHistory.length > 0,
-      note: 'Applications are merged by ID. Existing applications are kept.',
+      status:
+        mode === 'replace' && merged.length
+          ? localHistory.length
+            ? 'conflict'
+            : 'new'
+          : equalJsonValues(localHistory, merged)
+            ? 'unchanged'
+            : localHistory.length
+              ? 'conflict'
+              : 'new',
+      accepted:
+        mode === 'replace'
+          ? merged.length > 0 || localHistory.length > 0
+          : !equalJsonValues(localHistory, merged),
+      hasIncomingValue: (incomingHistory?.length ?? 0) > 0,
+      note:
+        mode === 'replace'
+          ? 'Current history will be replaced. Unselected history will be cleared.'
+          : 'Applications are merged by ID. Existing applications are kept.',
     });
   }
   return changes;

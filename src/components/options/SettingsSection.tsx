@@ -54,6 +54,16 @@ import { calculateDerivedFields } from '@/src/utils/derivedFields';
 import type { FieldChange } from '@/src/resume-ai/types';
 import ImportSummaryDialog from '@/src/components/shared/ImportSummaryDialog';
 import ImportReviewScreen from '@/src/components/shared/ImportReviewScreen';
+import { ImportModeChoice } from '@/src/components/shared/ImportModeChoice';
+import {
+  assertImportCurrent,
+  initialImportMode,
+  replacementChanges,
+  ImportProfileChangedError,
+  type ImportMode,
+} from '@/src/utils/importPolicy';
+import { replaceImportedProfile } from '@/src/utils/replaceImportedProfile';
+import { withProfileWriteLock } from '@/src/utils/profileWriteLock';
 
 interface Props {
   onImportComplete: () => void;
@@ -62,6 +72,24 @@ interface Props {
 
 interface ParsedImport {
   invalidFields: InvalidField[];
+  incoming: Partial<Profile>;
+  backup: ReturnType<typeof validateBackupData>;
+  localMappings: LearnedMappings;
+  localHistory: ApplicationEntry[];
+}
+
+function backupImportChanges(
+  base: Partial<Profile>,
+  incoming: Partial<Profile>,
+  mappings: LearnedMappings,
+  history: ApplicationEntry[],
+  backup: { learnedMappings?: LearnedMappings; applicationHistory?: ApplicationEntry[] },
+  mode: ImportMode | null,
+) {
+  return [
+    ...(mode === 'replace' ? replacementChanges(base, incoming) : generateDiff(base, incoming)),
+    ...backupDataChanges(mappings, backup.learnedMappings, history, backup.applicationHistory, mode ?? 'update'),
+  ];
 }
 
 // ── Shared button classes ────────────────────────────────────────────────────
@@ -111,8 +139,8 @@ function isProfileEmpty(profile: Partial<Profile> | null): boolean {
   return !profile || FIELD_DEFS.every((field) => field.isEmpty(field.getValue(profile)));
 }
 
-// Shared by JSON imports and both Drive restore paths. Learned mappings are
-// always merged, never overwritten, so an older import can't erase newer learning.
+// Update mode merges backup metadata with the latest saved data.
+// Replacement uses replaceImportedProfile instead.
 async function saveImportedData(
   profile: Profile,
   learnedMappings: LearnedMappings | undefined,
@@ -149,6 +177,15 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const [importScreen, setImportScreen] = useState<'idle' | 'summary' | 'review'>('idle');
   const [importChanges, setImportChanges] = useState<FieldChange[]>([]);
   const [importBaseProfile, setImportBaseProfile] = useState<Partial<Profile>>({});
+  const [importMode, setImportMode] = useState<ImportMode | null>('update');
+  const chooseImportMode = (mode: ImportMode) => {
+    if (!parsedImport) return;
+    setImportMode(mode);
+    setImportChanges(backupImportChanges(
+      importBaseProfile, parsedImport.incoming, parsedImport.localMappings,
+      parsedImport.localHistory, parsedImport.backup, mode,
+    ));
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importButtonRef = useRef<HTMLButtonElement>(null);
@@ -194,6 +231,17 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const [driveConflictChanges, setDriveConflictChanges] = useState<FieldChange[]>([]);
   const [driveImportWarnings, setDriveImportWarnings] = useState<string[]>([]);
   const [driveConflictScreen, setDriveConflictScreen] = useState<'summary' | 'review'>('summary');
+  const [driveImportMode, setDriveImportMode] = useState<ImportMode | null>('update');
+  const [driveLocalMappings, setDriveLocalMappings] = useState<LearnedMappings>({});
+  const [driveLocalHistory, setDriveLocalHistory] = useState<ApplicationEntry[]>([]);
+  const chooseDriveImportMode = (mode: ImportMode) => {
+    if (!driveRestoreData) return;
+    setDriveImportMode(mode);
+    setDriveConflictChanges(backupImportChanges(
+      driveLocalProfile ?? {}, driveRestoreData.profile, driveLocalMappings,
+      driveLocalHistory, driveRestoreData, mode,
+    ));
+  };
   const [resetScope, setResetScope] = useState<'device' | 'everywhere'>('device');
 
   // Storage events reach other Options tabs and background-worker updates.
@@ -330,7 +378,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           path: 'AI settings',
           reason: 'API keys and connection settings are not imported.',
         });
-      const [currentProfile, localMappings, localHistory] = await Promise.all([
+      let [currentProfile, localMappings, localHistory] = await Promise.all([
         getProfile(),
         getLearnedMappings(),
         getApplicationHistory(),
@@ -346,23 +394,37 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         metadataChanges.some((change) => change.status !== 'unchanged');
       // Fully valid files still import immediately when there is no profile to replace.
       // Partly invalid files show their skipped items before any data is written.
-      if (isProfileEmpty(currentProfile) && !invalidFields.length && hasIncomingData) {
-        await saveImportedData(
-          validation.sanitized as Profile,
-          backup.learnedMappings,
-          backup.applicationHistory,
-        );
-        showToast('success', 'Profile imported successfully');
-        onImportComplete();
-        return;
+      if (
+        isProfileEmpty(currentProfile) && !Object.keys(localMappings).length &&
+        !localHistory.length && !invalidFields.length && hasIncomingData
+      ) {
+        try {
+          await withProfileWriteLock(async () => {
+            const latest = (await getProfile({ rejectOnError: true })) ?? {};
+            assertImportCurrent(currentProfile ?? {}, latest, []);
+            if (!isProfileEmpty(latest)) throw new ImportProfileChangedError(latest);
+            await saveImportedData(
+              validation.sanitized as Profile, backup.learnedMappings, backup.applicationHistory,
+            );
+          });
+          showToast('success', 'Profile imported successfully');
+          onImportComplete();
+          return;
+        } catch (error) {
+          if (!(error instanceof ImportProfileChangedError)) throw error;
+          currentProfile = error.current as Profile;
+          [localMappings, localHistory] = await Promise.all([getLearnedMappings(), getApplicationHistory()]);
+          showToast('warning', error.message);
+        }
       }
-      const diff = [
-        ...generateDiff(currentProfile ?? {}, validation.sanitized),
-        ...metadataChanges,
-      ];
+      const mode = initialImportMode(currentProfile ?? {}, validation.sanitized);
+      const diff = backupImportChanges(
+        currentProfile ?? {}, validation.sanitized, localMappings, localHistory, backup, mode,
+      );
+      setImportMode(mode);
       setImportBaseProfile(currentProfile ?? {});
       setImportChanges(diff);
-      setParsedImport({ invalidFields });
+      setParsedImport({ invalidFields, incoming: validation.sanitized, backup, localMappings, localHistory });
       setImportScreen('summary');
     } catch (err) {
       console.error('[Job Buddy] Import failed:', err);
@@ -375,14 +437,20 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   // ── Import — shared save helper ───────────────────────────────────────────────
 
   const performImportSave = async (finalChanges: FieldChange[]) => {
-    if (!parsedImport) return;
+    if (!parsedImport || !importMode) return;
     setImporting(true);
     try {
       if (!finalChanges.some((change) => change.status !== 'unchanged' && change.accepted)) return;
-      const latestProfile = await getProfile();
-      const applied = applyChanges(latestProfile ?? importBaseProfile, finalChanges);
-      const backup = selectedBackupData(finalChanges);
-      await saveImportedData(applied as Profile, backup.learnedMappings, backup.applicationHistory);
+      if (importMode === 'replace') await replaceImportedProfile(importBaseProfile, finalChanges);
+      else {
+        await withProfileWriteLock(async () => {
+          const latestProfile = (await getProfile({ rejectOnError: true })) ?? {};
+          assertImportCurrent(importBaseProfile, latestProfile, finalChanges);
+          const applied = applyChanges(latestProfile, finalChanges);
+          const backup = selectedBackupData(finalChanges);
+          await saveImportedData(applied as Profile, backup.learnedMappings, backup.applicationHistory);
+        });
+      }
       const skipped = parsedImport.invalidFields.length;
       const suffix = skipped > 0 ? ` (${skipped} item${skipped !== 1 ? 's' : ''} skipped)` : '';
       showToast('success', `Profile imported successfully${suffix}`);
@@ -392,6 +460,19 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       setParsedImport(null);
       onImportComplete();
     } catch (err) {
+      if (err instanceof ImportProfileChangedError) {
+        const [localMappings, localHistory] = await Promise.all([getLearnedMappings(), getApplicationHistory()]);
+        const mode = initialImportMode(err.current, parsedImport.incoming);
+        setImportBaseProfile(err.current);
+        setImportMode(mode);
+        setParsedImport({ ...parsedImport, localMappings, localHistory });
+        setImportChanges(backupImportChanges(
+          err.current, parsedImport.incoming, localMappings, localHistory, parsedImport.backup, mode,
+        ));
+        setImportScreen('summary');
+        showToast('warning', err.message);
+        return;
+      }
       console.error('[Job Buddy] Import failed:', err);
       showToast('error', 'Import failed. Please try again.');
     } finally {
@@ -432,8 +513,12 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     }
     const { backup } = result;
     setDriveReviewId(result.reviewId);
-    const localProfile = await getProfile();
+    const [localProfile, localMappings, localHistory] = await Promise.all([
+      getProfile(), getLearnedMappings(), getApplicationHistory(),
+    ]);
     setDriveLocalProfile(localProfile);
+    setDriveLocalMappings(localMappings);
+    setDriveLocalHistory(localHistory);
     if (backup) {
       const validation = validateImportedProfile(backup.profile);
       if (Object.keys(validation.sanitized).length === 0) {
@@ -454,15 +539,15 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         profile: validation.sanitized as Profile,
         learnedMappings: backupData.learnedMappings,
       };
-      if (isProfileEmpty(localProfile)) {
+      const mode = initialImportMode(localProfile ?? {}, validatedBackup.profile);
+      setDriveImportMode(mode);
+      if (isProfileEmpty(localProfile) && !Object.keys(localMappings).length && !localHistory.length) {
         setDriveRestoreCase('empty');
         setDriveRestoreData(validatedBackup);
       } else {
-        const localMappings = await getLearnedMappings();
-        const diff = [
-          ...generateDiff(localProfile ?? {}, validatedBackup.profile),
-          ...backupDataChanges(localMappings, validatedBackup.learnedMappings),
-        ];
+        const diff = backupImportChanges(
+          localProfile ?? {}, validatedBackup.profile, localMappings, localHistory, validatedBackup, mode,
+        );
         if (
           diff.every((change) => change.status === 'unchanged') &&
           validation.invalidFields.length === 0 &&
@@ -575,44 +660,27 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   };
 
   const handleRestoreFromDrive = async () => {
+    if (!driveRestoreData || (driveRestoreCase === 'conflict' && !driveImportMode)) return;
+    const changes = driveRestoreCase === 'conflict' ? driveConflictChanges : backupImportChanges(
+      driveLocalProfile ?? {}, driveRestoreData.profile, driveLocalMappings,
+      driveLocalHistory, driveRestoreData, 'update',
+    );
+    await handleDriveReviewSave(acceptAllChanges(changes));
+  };
+
+  const refreshDriveImport = async (current: Partial<Profile>) => {
     if (!driveRestoreData) return;
-    setDriveRestoreBusy(true);
-    try {
-      const validation = validateImportedProfile(driveRestoreData.profile);
-      if (Object.keys(validation.sanitized).length === 0) {
-        showToast('error', 'Drive backup contains invalid profile data.');
-        closeRestoreDialog();
-        return;
-      }
-      await completeDriveRestore(driveReviewId, async () => {
-        const latestProfile = await getProfile();
-        const changes =
-          driveRestoreCase === 'conflict'
-            ? acceptAllChanges(driveConflictChanges)
-            : generateDiff(driveLocalProfile ?? {}, validation.sanitized);
-        const restored =
-          driveRestoreCase === 'empty' && isProfileEmpty(latestProfile)
-            ? validation.sanitized
-            : applyChanges(latestProfile ?? { id: driveRestoreData.profile.id }, changes);
-        await saveImportedData(
-          restored as Profile,
-          driveRestoreCase === 'conflict'
-            ? selectedBackupData(changes).learnedMappings
-            : driveRestoreData.learnedMappings,
-          undefined,
-        );
-      });
-      const fresh = await getFullDriveState();
-      setDriveState(fresh);
-      showToast('success', 'Profile restored from Google Drive.');
-      onImportComplete();
-      closeRestoreDialog();
-    } catch (err) {
-      console.error('[Job Buddy] Restore from Drive failed:', err);
-      showToast('error', 'Restore failed. Please try again.');
-    } finally {
-      setDriveRestoreBusy(false);
-    }
+    const [mappings, history] = await Promise.all([getLearnedMappings(), getApplicationHistory()]);
+    const mode = initialImportMode(current, driveRestoreData.profile);
+    setDriveLocalProfile(current);
+    setDriveLocalMappings(mappings);
+    setDriveLocalHistory(history);
+    setDriveImportMode(mode);
+    setDriveConflictChanges(backupImportChanges(
+      current, driveRestoreData.profile, mappings, history, driveRestoreData, mode,
+    ));
+    setDriveRestoreCase('conflict');
+    setDriveConflictScreen('summary');
   };
 
   const handleKeepLocal = async () => {
@@ -622,9 +690,10 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     }
     setDriveRestoreBusy(true);
     try {
-      const latestProfile = await getProfile();
+      const latestProfile = (await getProfile({ rejectOnError: true })) ?? {};
+      assertImportCurrent(driveLocalProfile, latestProfile, []);
       const res = await overwriteDriveWithLocal(
-        (latestProfile ?? driveLocalProfile) as Profile,
+        latestProfile as Profile,
         driveReviewId,
       );
       if (res.success) {
@@ -634,30 +703,47 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         return;
       }
       closeRestoreDialog();
+    } catch (error) {
+      if (error instanceof ImportProfileChangedError) {
+        await refreshDriveImport(error.current);
+        showToast('warning', error.message);
+      } else showToast('error', 'Backup failed. Please try again.');
     } finally {
       setDriveRestoreBusy(false);
     }
   };
 
   const handleDriveReviewSave = async (finalChanges: FieldChange[]) => {
-    if (!driveLocalProfile) return;
+    if (!driveRestoreData || !driveImportMode) return;
     setDriveRestoreBusy(true);
     try {
-      if (!finalChanges.some((change) => change.accepted && change.status !== 'unchanged')) return;
+      if (
+        driveRestoreCase !== 'empty' &&
+        !finalChanges.some((change) => change.accepted && change.status !== 'unchanged')
+      ) return;
       await completeDriveRestore(driveReviewId, async () => {
-        const latestProfile = await getProfile();
-        const applied = applyChanges(latestProfile ?? driveLocalProfile, finalChanges);
-        await saveImportedData(
-          applied as Profile,
-          selectedBackupData(finalChanges).learnedMappings,
-          undefined,
-        );
+        if (driveImportMode === 'replace') {
+          await replaceImportedProfile(driveLocalProfile ?? {}, finalChanges, true);
+        } else {
+          await withProfileWriteLock(async () => {
+            const latestProfile = (await getProfile({ rejectOnError: true })) ?? {};
+            assertImportCurrent(driveLocalProfile ?? {}, latestProfile, finalChanges);
+            const applied = driveRestoreCase === 'empty' && isProfileEmpty(latestProfile)
+              ? driveRestoreData.profile : applyChanges(latestProfile, finalChanges);
+            const mappings = driveRestoreCase === 'empty'
+              ? driveRestoreData.learnedMappings : selectedBackupData(finalChanges).learnedMappings;
+            await saveImportedData(applied as Profile, mappings, undefined);
+          });
+        }
       });
       showToast('success', 'Profile restored from Google Drive.');
       onImportComplete();
       closeRestoreDialog();
-    } catch {
-      showToast('error', 'Save failed. Please try again.');
+    } catch (error) {
+      if (error instanceof ImportProfileChangedError) {
+        await refreshDriveImport(error.current);
+        showToast('warning', error.message);
+      } else showToast('error', 'Restore failed. Please try again.');
     } finally {
       setDriveRestoreBusy(false);
     }
@@ -958,6 +1044,11 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         <ImportSummaryDialog
           changes={importChanges}
           title="Import Profile"
+          importControls={parsedImport && <ImportModeChoice current={importBaseProfile} incoming={parsedImport.incoming} mode={importMode} onChange={chooseImportMode} busy={importing} />}
+          replacement={importMode === 'replace'}
+          canProceed={importMode !== null && (importMode !== 'replace' || importChanges.some(c => c.hasIncomingValue === true))}
+          forceDecision={importMode !== 'update'}
+          acceptLabel={importMode === 'replace' ? 'Replace Profile' : 'Import All'}
           returnFocusRef={importButtonRef}
           warnings={parsedImport?.invalidFields.map(
             (field) =>
@@ -984,7 +1075,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           onBack={() => setImportScreen('summary')}
           isSaving={importing}
           title="Review Import"
-          saveLabel="Import Selected"
+          replacement={importMode === 'replace'}
+          saveLabel={importMode === 'replace' ? 'Replace Profile' : 'Import Selected'}
         />
       )}
 
@@ -1164,13 +1256,17 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         <ImportSummaryDialog
           changes={driveConflictChanges}
           title="Restore Drive Backup"
-          description="Choose which details to restore. Keeping current uploads this browser’s profile to Drive."
-          acceptLabel="Restore All"
-          forceDecision={driveImportWarnings.length > 0}
+          description={driveImportMode === 'update' ? 'Choose which details to restore. Keeping current uploads this browser’s profile to Drive.' : 'Choose how to import this Drive backup. Cancelling keeps both profiles unchanged.'}
+          importControls={driveRestoreData && <ImportModeChoice current={driveLocalProfile ?? {}} incoming={driveRestoreData.profile} mode={driveImportMode} onChange={chooseDriveImportMode} busy={driveRestoreBusy} fromDrive />}
+          replacement={driveImportMode === 'replace'}
+          canProceed={driveImportMode !== null && (driveImportMode !== 'replace' || driveConflictChanges.some(c => c.hasIncomingValue === true))}
+          acceptLabel={driveImportMode === 'replace' ? 'Replace Profile' : 'Restore All'}
+          rejectLabel={driveImportMode === 'update' ? 'Keep Current' : 'Cancel'}
+          forceDecision={driveImportWarnings.length > 0 || driveImportMode !== 'update'}
           warnings={driveImportWarnings}
           onDismiss={dismissRestoreDialog}
           onAcceptAll={() => void handleRestoreFromDrive()}
-          onRejectAll={() => void handleKeepLocal()}
+          onRejectAll={driveImportMode === 'update' ? () => void handleKeepLocal() : dismissRestoreDialog}
           onReview={() => setDriveConflictScreen('review')}
           isProcessing={driveRestoreBusy}
         />
@@ -1186,7 +1282,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           onBack={() => setDriveConflictScreen('summary')}
           isSaving={driveRestoreBusy}
           title="Review Drive Backup"
-          saveLabel="Restore Selected"
+          replacement={driveImportMode === 'replace'}
+          saveLabel={driveImportMode === 'replace' ? 'Replace Profile' : 'Restore Selected'}
         />
       )}
     </div>

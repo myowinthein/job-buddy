@@ -6,6 +6,9 @@ import { DEV_PROFILE } from './devProfile';
 import { DEFAULT_GEMINI_MODEL, toGeminiModel } from '../resume-ai/types';
 import type { GeminiModel } from '../resume-ai/types';
 import { wrapStorageArea } from './storageArea';
+import { equalJsonValues } from './equalJsonValues';
+import { profileData } from './profileData';
+import { withProfileWriteLock } from './profileWriteLock';
 
 // Rejects on a set() failure (e.g. quota exceeded) so callers can surface an
 // error instead of silently losing data — unlike sessionStorage.ts, where
@@ -20,8 +23,8 @@ function storageSet(items: Record<string, unknown>): Promise<void> {
   return local.set(items);
 }
 
-export async function getProfile(): Promise<Profile | null> {
-  const result = await storageGet('profile');
+export async function getProfile(options: { rejectOnError?: boolean } = {}): Promise<Profile | null> {
+  const result = await local.get('profile', options);
   const raw = (result.profile as Profile) ?? null;
   if (!raw) {
     // No profile saved yet. In local dev, fall back to a fully-filled dummy
@@ -30,7 +33,7 @@ export async function getProfile(): Promise<Profile | null> {
     // saveProfile() (e.g. editing a section in Options) still takes over
     // normally on the next read. Never true in a production/zip build.
     if (import.meta.env.DEV) {
-      const flags = await storageGet('devProfileDisabled');
+      const flags = await local.get('devProfileDisabled', options);
       if (!flags.devProfileDisabled) return normalizeProfile(DEV_PROFILE);
     }
     return null;
@@ -62,6 +65,35 @@ export async function saveProfile(profile: Profile): Promise<void> {
   // salary entry without a valid period, even via Drive restore or resume
   // import paths that bypass validateImportedProfile.
   await storageSet({ profile: normalizeProfile(profile) });
+}
+
+export class ProfileReplacementChangedError extends Error {
+  constructor(public current: Partial<Profile>) {
+    super('The profile changed before replacement.');
+  }
+}
+
+/** One write prevents old-person history or mappings surviving a replacement. */
+export async function replaceProfileData(
+  profile: Profile,
+  expected: Partial<Profile>,
+  learnedMappings: LearnedMappings,
+  applicationHistory: ApplicationEntry[],
+  pausedDriveState?: DriveBackupState,
+): Promise<void> {
+  // Fail closed on a read error; never interpret a failed read as an empty profile.
+  const stored = await local.get('profile', { rejectOnError: true });
+  const current = stored.profile
+    ? normalizeProfile(stored.profile as Profile)
+    : (await getProfile({ rejectOnError: true })) ?? {};
+  if (!equalJsonValues(profileData(current), profileData(expected)))
+    throw new ProfileReplacementChangedError(current);
+  await storageSet({
+    profile: normalizeProfile(profile),
+    learnedMappings,
+    applicationHistory,
+    ...(pausedDriveState ? { driveBackupState: pausedDriveState } : {}),
+  });
 }
 
 export async function getLearnedMappings(): Promise<LearnedMappings> {
@@ -118,9 +150,11 @@ export async function saveApplicationHistory(history: ApplicationEntry[]): Promi
 }
 
 export async function clearAllStorage(): Promise<void> {
-  // An explicit reset must not immediately resurrect the development fixture.
-  if (import.meta.env.DEV) await storageSet({ devProfileDisabled: true });
-  await local.remove(['profile', 'learnedMappings', 'applicationHistory'], { rejectOnError: true });
+  await withProfileWriteLock(async () => {
+    // An explicit reset must not immediately resurrect the development fixture.
+    if (import.meta.env.DEV) await storageSet({ devProfileDisabled: true });
+    await local.remove(['profile', 'learnedMappings', 'applicationHistory'], { rejectOnError: true });
+  });
 }
 
 // ── Gemini AI settings ──────────────────────────────────────────────────────
@@ -273,8 +307,8 @@ export async function saveLearnedMapping(
 // Token and backup state live in chrome.storage.local only; never included
 // in profile export bundles (privacy boundary).
 
-export async function getDriveToken(): Promise<string | null> {
-  const result = await storageGet('driveToken');
+export async function getDriveToken(options: { rejectOnError?: boolean } = {}): Promise<string | null> {
+  const result = await local.get('driveToken', options);
   return (result.driveToken as string) ?? null;
 }
 
@@ -293,8 +327,8 @@ const DEFAULT_DRIVE_STATE: DriveBackupState = {
   error:       null,
 };
 
-export async function getDriveBackupState(): Promise<DriveBackupState> {
-  const result = await storageGet('driveBackupState');
+export async function getDriveBackupState(options: { rejectOnError?: boolean } = {}): Promise<DriveBackupState> {
+  const result = await local.get('driveBackupState', options);
   return (result.driveBackupState as DriveBackupState) ?? { ...DEFAULT_DRIVE_STATE };
 }
 

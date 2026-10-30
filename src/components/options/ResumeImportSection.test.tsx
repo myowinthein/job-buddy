@@ -24,7 +24,7 @@ function renderSection(profile: Partial<Profile> = {}, onSave = vi.fn().mockReso
   const onClose = vi.fn();
   render(
     <ToastProvider>
-      <ResumeImportSection profile={profile} onSave={update => onSave(typeof update === 'function' ? update(profile) : update)} onGoToApiKey={onGoToApiKey} onClose={onClose} />
+      <ResumeImportSection profile={profile} onSave={update => onSave(typeof update === 'function' ? update(profile) : update)} onReplace={vi.fn().mockResolvedValue(undefined)} onGoToApiKey={onGoToApiKey} onClose={onClose} />
     </ToastProvider>,
   );
   return { onSave, onGoToApiKey, onClose };

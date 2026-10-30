@@ -323,11 +323,12 @@ describe('overwriteDriveWithLocal', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('propagates a successful sync result', async () => {
+  it('propagates a successful sync result for the saved local profile', async () => {
+    store['profile'] = { ...makeProfile(), id: 'saved-profile' };
     store['driveToken'] = 'tok-valid';
     store['driveBackupState'] = { fileId: 'existing-id', lastSynced: null, pendingSync: false, error: null };
     mockFetchSequence([{ ok: true, body: { id: 'existing-id' } }]); // PATCH update
-    const result = await overwriteDriveWithLocal(makeProfile());
+    const result = await overwriteDriveWithLocal(store['profile'] as Profile);
     expect(result).toEqual({ success: true, errorCode: null });
   });
 });

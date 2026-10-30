@@ -72,8 +72,8 @@ check every answer and uploaded document before submitting.
   assistance and PDF/DOCX resume import. Select **Save Key** to verify and save it.
   Keys remain in this browser and are excluded from JSON and Drive backups.
   Use **Replace Key** or **Remove Key** to manage access. Review imported suggestions
-  before saving. Resume imports keep saved entries and missing details. The review
-  shows one work or education entry at a time and highlights changes. Slow,
+  before saving. Updating from a resume keeps saved entries and missing details.
+  The review shows one work or education entry at a time and highlights changes. Slow,
   rate-limited, or unavailable models fall back to the next model automatically.
 - **Google Drive:** connect in **Settings** to back up your profile and learned
   mappings. Saved changes update the backup automatically. Use **Back Up Now**
@@ -87,10 +87,16 @@ Disconnecting keeps the last successful Drive backup unless you choose to delete
 it. Keeping a backup does not upload unsynced changes first. A failed cloud
 deletion must be retried before a reset can clear this browser.
 
-Valid JSON backups import immediately into an empty profile. Otherwise, review
-new and changed details before importing all or selected updates. Missing values
-keep your current data; importing a list replaces that list. Mappings are merged,
-and application history adds missing IDs while keeping existing applications.
+Valid JSON backups import immediately into an empty profile. Resume, JSON, and Drive
+imports offer **Update current profile** or **Replace current profile**. A possible
+name/email mismatch requires an explicit choice. Update keeps omitted details;
+JSON and Drive lists replace supplied lists, while resume updates retain saved
+entries. Updated mappings and JSON application history merge with saved data.
+
+Replace starts fresh with the selected incoming details and clears old documents,
+mappings, and history unless imported. Appearance and AI settings stay in this
+browser. Replacing from a resume or JSON pauses connected Drive backups until you
+review the saved backup in Settings.
 
 AI autofill sends profile details and form fields to Google's Gemini API, excluding
 stored document files. Personal background details are included only when a field

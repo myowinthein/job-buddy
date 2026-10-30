@@ -85,6 +85,7 @@ function makeProfile(overrides: Partial<Profile> = {}): Profile {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(generateDiff).mockReset().mockReturnValue([]);
   vi.mocked(getProfile).mockResolvedValue(null);
   vi.mocked(getGeminiApiKey).mockResolvedValue(null);
   vi.mocked(getGeminiSettings).mockResolvedValue({ apiKey: null, model: null, preference: 'auto', revision: null, verifiedAt: null });
@@ -122,8 +123,8 @@ describe('SettingsSection — explicit Gemini saves', () => {
 });
 
 describe('SettingsSection — profile import merges learned mappings, never overwrites', () => {
-  it('merges rather than overwrites learned mappings on an empty-profile immediate import', async () => {
-    vi.mocked(getProfile).mockResolvedValue(null); // triggers the "empty profile, import immediately" path
+  it('reviews existing learned mappings even when the profile is empty, then merges on update', async () => {
+    vi.mocked(getProfile).mockResolvedValue(null); // mappings still require review
     vi.mocked(getLearnedMappings).mockResolvedValue({ 'existing.com': { sig: { path: 'a.b', count: 2 } } });
 
     const { onImportComplete } = renderSection();
@@ -135,6 +136,7 @@ describe('SettingsSection — profile import merges learned mappings, never over
     const fileInput = document.querySelector('input[type="file"][accept=".json"]') as HTMLInputElement;
     fireEvent.change(fileInput, { target: { files: [file] } });
 
+    fireEvent.click(await screen.findByText('Import All'));
     await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
     expect(vi.mocked(saveLearnedMappings)).toHaveBeenCalledWith(
       expect.objectContaining({ 'existing.com': expect.anything(), 'new.com': expect.anything() }),
@@ -209,7 +211,7 @@ describe('SettingsSection — importing into an existing (non-empty) profile', (
   it('Review → Import Selected saves only the changes the review screen passes through', async () => {
     const existing = makeProfile();
     vi.mocked(getProfile).mockResolvedValue(existing);
-    vi.mocked(generateDiff).mockReturnValueOnce([makeFieldChange()]);
+    vi.mocked(generateDiff).mockReturnValue([makeFieldChange()]);
     const merged = { ...existing, personal: { ...existing.personal, firstName: 'Janet' } };
     vi.mocked(applyChanges).mockReturnValueOnce(merged);
 
@@ -387,6 +389,7 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
   it('restores the Drive backup on Restore, merges learned mappings, and completes the import', async () => {
     vi.mocked(getProfile).mockResolvedValue(null);
     const backupProfile = makeProfile();
+    vi.mocked(applyChanges).mockReturnValueOnce(backupProfile);
     vi.mocked(connectDrive).mockResolvedValue({
       token: 't', fileId: 'f1',
       backup: { profile: backupProfile, learnedMappings: { 'a.com': { sig: { path: 'a.b', count: 2 } } }, lastModified: '2026-01-01T00:00:00.000Z' },
@@ -495,10 +498,11 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
       backup: { profile: makeProfile({ personal: { firstName: 'Other', lastName: 'Person' } } as Partial<Profile>), lastModified: '2026-01-01T00:00:00.000Z' },
     });
 
-    vi.mocked(generateDiff).mockReturnValueOnce([makeFieldChange()]);
+    vi.mocked(generateDiff).mockReturnValue([makeFieldChange()]);
     renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));
     await screen.findByText('Restore Drive Backup');
+    fireEvent.click(screen.getByRole('radio', { name: /Update current profile/ }));
     fireEvent.click(screen.getByText('Keep Current'));
 
     await waitFor(() => expect(vi.mocked(overwriteDriveWithLocal)).toHaveBeenCalledWith(localProfile, undefined));
@@ -513,13 +517,14 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
       token: 't', fileId: 'f1',
       backup: { profile: makeProfile({ personal: { firstName: 'Other', lastName: 'Person' } } as Partial<Profile>), lastModified: '2026-01-01T00:00:00.000Z' },
     });
-    vi.mocked(generateDiff).mockReturnValueOnce([makeFieldChange()]);
+    vi.mocked(generateDiff).mockReturnValue([makeFieldChange()]);
     const merged = { ...localProfile, personal: { ...localProfile.personal, firstName: 'Other' } };
     vi.mocked(applyChanges).mockReturnValueOnce(merged);
 
     const { onImportComplete } = renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));
     await screen.findByText('Restore Drive Backup');
+    fireEvent.click(screen.getByRole('radio', { name: /Update current profile/ }));
     fireEvent.click(screen.getByText('Review Changes'));
     await screen.findByText('Review Drive Backup');
     fireEvent.click(screen.getByText(/^Restore Selected/));

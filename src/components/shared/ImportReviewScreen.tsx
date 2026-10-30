@@ -19,6 +19,7 @@ export interface ImportReviewScreenProps {
   incomingLabel?: string;
   warnings?: string[];
   warningsSummary?: string;
+  replacement?: boolean;
   returnFocusRef?: RefObject<HTMLElement | null>;
 }
 
@@ -34,6 +35,7 @@ export default function ImportReviewScreen({
   incomingLabel = 'Imported',
   warnings,
   warningsSummary,
+  replacement = false,
   returnFocusRef,
 }: ImportReviewScreenProps) {
   const [localChanges, setLocalChanges] = useState(initialChanges);
@@ -51,7 +53,10 @@ export default function ImportReviewScreen({
   const reviewable = changes.filter(
     (change) => change.status !== 'unchanged',
   ) as ReviewableChange[];
-  const selectedCount = reviewable.filter((change) => change.accepted).length;
+  const selectable = reviewable.filter(
+    (change) => !replacement || change.hasIncomingValue !== false,
+  );
+  const selectedCount = selectable.filter((change) => change.accepted).length;
   const grouped = new Map<string, ReviewableChange[]>();
   for (const change of reviewable) {
     const section = change.section === 'Professional' ? 'Work History' : change.section;
@@ -97,7 +102,9 @@ export default function ImportReviewScreen({
                 {title}
               </h3>
               <p id={descriptionId} className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Choose which details to add or replace.
+                {replacement
+                  ? 'Choose incoming details. Current details not imported will be cleared.'
+                  : 'Choose which details to add or replace.'}
               </p>
             </div>
             <button
@@ -112,7 +119,7 @@ export default function ImportReviewScreen({
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
             <span className="text-gray-500 dark:text-gray-400" aria-live="polite">
-              {selectedCount} of {reviewable.length} selected
+              {selectedCount} of {selectable.length} selected
             </span>
             <button
               type="button"
@@ -164,8 +171,21 @@ export default function ImportReviewScreen({
                         id={`${headingId}-count`}
                         className="text-xs text-gray-500 dark:text-gray-400"
                       >
-                        {fields.length} {fields.length === 1 ? 'update' : 'updates'} ·{' '}
-                        {fields.filter((change) => change.accepted).length} selected
+                        {replacement ? (
+                          <>
+                            {
+                              fields.filter((c) => c.hasIncomingValue !== false && c.accepted)
+                                .length
+                            }{' '}
+                            selected · {fields.filter((c) => c.hasIncomingValue === false).length}{' '}
+                            cleared
+                          </>
+                        ) : (
+                          <>
+                            {fields.length} {fields.length === 1 ? 'update' : 'updates'} ·{' '}
+                            {fields.filter((change) => change.accepted).length} selected
+                          </>
+                        )}
                       </span>
                     </span>
                     <svg
@@ -197,6 +217,7 @@ export default function ImportReviewScreen({
                         change={change}
                         isSaving={isSaving}
                         incomingLabel={incomingLabel}
+                        replacement={replacement}
                         onSelect={select}
                       />
                     ))}
@@ -219,7 +240,7 @@ export default function ImportReviewScreen({
             type="button"
             onClick={() => void onSave(changes)}
             disabled={isSaving || selectedCount === 0}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
+            className={`px-4 py-2 text-white text-sm font-medium rounded-lg disabled:opacity-50 active:scale-95 transition-colors ${replacement ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
           >
             {isSaving ? 'Saving…' : `${saveLabel} (${selectedCount})`}
           </button>
@@ -242,11 +263,13 @@ function FieldRow({
   change,
   isSaving,
   incomingLabel,
+  replacement,
   onSelect,
 }: {
   change: ReviewableChange;
   isSaving: boolean;
   incomingLabel: string;
+  replacement: boolean;
   onSelect: (id: string, accepted: boolean) => void;
 }) {
   const labelId = useId();
@@ -255,25 +278,32 @@ function FieldRow({
     return `${count} ${count === 1 ? 'entry' : 'entries'}`;
   };
   return (
-    <div
-      role="group"
-      aria-labelledby={labelId}
-      className="py-4"
-    >
+    <div role="group" aria-labelledby={labelId} className="py-4">
       <div className="flex items-center gap-2 mb-2">
         <p id={labelId} className="text-sm font-medium text-gray-800 dark:text-gray-200">
           {change.label}
         </p>
         <span
-          className={`text-xs ${change.status === 'new' ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}
+          className={`text-xs ${replacement ? (change.hasIncomingValue === false ? 'text-gray-500 dark:text-gray-400' : 'text-blue-600 dark:text-blue-400') : change.status === 'new' ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}
         >
-          {change.status === 'new' ? 'New' : 'Changed'}
+          {replacement
+            ? change.hasIncomingValue === false
+              ? 'Will clear'
+              : 'Incoming'
+            : change.status === 'new'
+              ? 'New'
+              : 'Changed'}
         </span>
       </div>
-      {change.note && (
+      {change.note && !(replacement && change.hasIncomingValue === false) && (
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{change.note}</p>
       )}
-      {change.status === 'new' ? (
+      {replacement && change.hasIncomingValue === false ? (
+        <Value
+          value={change.entries ? listSummary(change.currentValue) : change.displayCurrent}
+          muted
+        />
+      ) : change.status === 'new' || replacement ? (
         <label className="flex items-start gap-2 cursor-pointer">
           <input
             type="checkbox"
@@ -283,7 +313,9 @@ function FieldRow({
             onChange={() => onSelect(change.id, !change.accepted)}
             className="mt-1 shrink-0 accent-blue-600"
           />
-          <Value value={change.entries ? listSummary(change.suggestedValue) : change.displaySuggested} />
+          <Value
+            value={change.entries ? listSummary(change.suggestedValue) : change.displaySuggested}
+          />
         </label>
       ) : (
         <div className="space-y-2">
@@ -300,7 +332,11 @@ function FieldRow({
               <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
                 {incomingLabel}
               </span>
-              <Value value={change.entries ? listSummary(change.suggestedValue) : change.displaySuggested} />
+              <Value
+                value={
+                  change.entries ? listSummary(change.suggestedValue) : change.displaySuggested
+                }
+              />
             </div>
           </label>
           <label className="flex items-start gap-2 cursor-pointer py-2">
@@ -316,7 +352,10 @@ function FieldRow({
               <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
                 Keep Current
               </span>
-              <Value value={change.entries ? listSummary(change.currentValue) : change.displayCurrent} muted />
+              <Value
+                value={change.entries ? listSummary(change.currentValue) : change.displayCurrent}
+                muted
+              />
             </div>
           </label>
         </div>

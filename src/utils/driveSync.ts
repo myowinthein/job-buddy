@@ -268,6 +268,37 @@ function withDriveLock<T>(operation: () => Promise<T>): Promise<T> {
   return result;
 }
 
+/** Serialize replacement with uploads; pause atomically with the new local data. */
+export function protectProfileReplacement<T>(
+  save: (paused?: DriveBackupState) => Promise<T>,
+): Promise<T> {
+  return withDriveLock(async () => {
+    const token = await getDriveToken({ rejectOnError: true });
+    const state = await getDriveBackupState({ rejectOnError: true });
+    const paused: DriveBackupState | undefined = token ? {
+      ...state,
+      reviewRequired: true,
+      error: 'review_required',
+      pendingSync: false,
+      reviewId: undefined,
+      remoteHash: undefined,
+      retryAt: undefined,
+      uploadingUntil: undefined,
+    } : undefined;
+    const result = await save(paused);
+    if (paused) {
+      // The durable state was saved with the profile. Alarm cleanup is best effort.
+      try {
+        await chrome.alarms?.clear(DRIVE_RETRY_ALARM);
+      } catch {
+        /* Durable state already pauses uploads. */
+      }
+      dispatchDriveStateChanged();
+    }
+    return result;
+  });
+}
+
 export const DRIVE_RETRY_ALARM = 'jb:drive-backup-retry';
 export const DRIVE_AUTH_ALARM = 'jb:drive-authorization-renewal';
 const UPLOAD_ACTIVITY_MS = 30_000;
@@ -556,7 +587,13 @@ async function uploadUnlocked(
     return { success: false, errorCode: 'review_required' };
   try {
     // Re-read inside the lock, so queued uploads never use a stale caller snapshot.
-    const profile = (await getProfile()) ?? fallback;
+    const savedProfile = await getProfile({ rejectOnError: allowReview });
+    if (
+      allowReview &&
+      !equalJsonValues(profileData(savedProfile ?? {}), profileData(fallback ?? {}))
+    )
+      return { success: false, errorCode: 'review_required' };
+    const profile = savedProfile ?? fallback;
     if (!profile) return { success: false, errorCode: null };
     const learnedMappings = await getLearnedMappings();
     const payload: DriveBackupFile = {

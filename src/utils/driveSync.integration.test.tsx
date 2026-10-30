@@ -490,7 +490,9 @@ it('JSON import automatically backs up the accepted result', async () => {
       ],
     },
   });
-  fireEvent.click(await screen.findByText('Import All'));
+  await screen.findByText('This may be another person’s profile');
+  fireEvent.click(screen.getByRole('radio', { name: /Update current profile/ }));
+  fireEvent.click(screen.getByText('Import All'));
   await screen.findByText('Profile imported successfully');
   await waitFor(() => expect(remote!.profile.personal.firstName).toBe('Imported'));
 });
@@ -579,4 +581,21 @@ it('allows an explicit decision when the only remote differences are invalid fie
   fireEvent.click(screen.getByRole('button', { name: 'Keep Current' }));
   await screen.findByText('Profile backed up to Google Drive.');
   expect(remote!.profile.personal.email).toBe(settingsReviewProfile().personal.email);
+});
+
+it('refuses a Keep Current upload after its local snapshot was replaced', async () => {
+  const inspected = await connectDrive();
+  const reviewed = settingsReviewProfile();
+  await saveProfile({
+    ...reviewed,
+    id: 'another-person',
+    personal: { ...reviewed.personal, firstName: 'Sam', email: 'sam@example.com' },
+  });
+  const before = structuredClone(remote);
+  expect((await overwriteDriveWithLocal(reviewed, inspected.reviewId)).errorCode).toBe(
+    'review_required',
+  );
+  expect(writes()).toHaveLength(0);
+  expect(remote).toEqual(before);
+  expect((await getDriveBackupState()).reviewRequired).toBe(true);
 });

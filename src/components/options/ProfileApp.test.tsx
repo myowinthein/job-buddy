@@ -286,3 +286,22 @@ it('updates required progress only after a successful section save', async () =>
   );
   expect(screen.queryByRole('button', { name: /required remaining/ })).toBeNull();
 });
+
+it('does not resurrect an old person’s editor data after another tab replaces the profile', async () => {
+  const name = await openPersonal();
+  const current = (await getProfile())!;
+  const replacement = {
+    ...current,
+    id: 'replacement-person',
+    personal: { ...current.personal, firstName: 'Sam', email: 'sam@example.com' },
+  };
+  await saveProfile(replacement);
+  fireEvent.change(name, { target: { value: 'Old draft' } });
+  fireEvent.blur(name);
+  fireEvent.click(screen.getByText('Save Personal'));
+  await screen.findByText('Your profile was replaced in another tab. Reload before saving.');
+  expect((await getProfile())?.personal.firstName).toBe('Sam');
+  expect((await getProfile())?.id).toBe('replacement-person');
+  expect(screen.queryByText('Saved')).toBeNull();
+  expect(screen.getByText('Unsaved changes')).toBeTruthy();
+});

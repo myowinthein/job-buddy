@@ -1,4 +1,4 @@
-import { useId, type RefObject } from 'react';
+import { useId, type ReactNode, type RefObject } from 'react';
 import type { FieldChange } from '@/src/resume-ai/types';
 import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 import { useDialogFocus } from '@/src/components/ui/useDialogFocus';
@@ -13,6 +13,10 @@ export interface ImportSummaryDialogProps {
   returnFocusRef?: RefObject<HTMLElement | null>;
   acceptLabel?: string;
   forceDecision?: boolean;
+  importControls?: ReactNode;
+  canProceed?: boolean;
+  rejectLabel?: string;
+  replacement?: boolean;
   onAcceptAll: () => void;
   onRejectAll: () => void;
   onReview: () => void;
@@ -29,6 +33,10 @@ export default function ImportSummaryDialog({
   returnFocusRef,
   acceptLabel = 'Import All',
   forceDecision = false,
+  importControls,
+  canProceed = true,
+  rejectLabel = 'Keep Current',
+  replacement = false,
   onAcceptAll,
   onRejectAll,
   onReview,
@@ -62,7 +70,7 @@ export default function ImportSummaryDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className={`bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full ${hasChanges ? 'max-w-md' : 'max-w-sm'} mx-4 p-6 max-h-[90vh] overflow-y-auto outline-none`}
+        className={`bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full ${importControls ? 'max-w-lg' : hasChanges ? 'max-w-md' : 'max-w-sm'} mx-4 p-6 max-h-[90vh] overflow-y-auto outline-none`}
         onClick={(event) => event.stopPropagation()}
       >
         <h3 id={titleId} className="text-base font-semibold text-gray-900 dark:text-gray-100">
@@ -71,7 +79,15 @@ export default function ImportSummaryDialog({
         <p id={descriptionId} className="mt-2 text-pretty text-sm text-gray-500 dark:text-gray-400">
           {hasChanges ? description : 'No new or changed details were found.'}
         </p>
-        {hasChanges && (
+        {hasChanges && replacement && (
+          <p className="mt-4 text-xs text-gray-600 dark:text-gray-400">
+            {changes.filter((c) => c.status !== 'unchanged' && c.hasIncomingValue !== false).length}{' '}
+            incoming details ·{' '}
+            {changes.filter((c) => c.status !== 'unchanged' && c.hasIncomingValue === false).length}{' '}
+            cleared
+          </p>
+        )}
+        {hasChanges && !replacement && (
           <p className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium">
             {counts.new > 0 && (
               <span className="text-green-700 dark:text-green-400">{counts.new} New</span>
@@ -85,6 +101,7 @@ export default function ImportSummaryDialog({
           </p>
         )}
         <ImportWarnings warnings={warnings} summary={warningsSummary} />
+        {importControls}
         <div className="mt-6 flex flex-wrap justify-end gap-2">
           {hasChanges ? (
             <>
@@ -94,12 +111,12 @@ export default function ImportSummaryDialog({
                 disabled={isProcessing}
                 className={secondaryCls}
               >
-                Keep Current
+                {rejectLabel}
               </button>
               <button
                 type="button"
                 onClick={onReview}
-                disabled={isProcessing}
+                disabled={isProcessing || !canProceed}
                 className={secondaryCls}
               >
                 Review Changes
@@ -107,8 +124,8 @@ export default function ImportSummaryDialog({
               <button
                 type="button"
                 onClick={onAcceptAll}
-                disabled={isProcessing}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
+                disabled={isProcessing || !canProceed}
+                className={`px-4 py-2 text-white text-sm font-medium rounded-lg disabled:opacity-50 active:scale-95 transition-colors ${replacement ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
               >
                 {isProcessing ? 'Saving…' : acceptLabel}
               </button>
