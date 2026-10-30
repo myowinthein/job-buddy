@@ -1,5 +1,7 @@
 import type { Profile } from '@/src/types/profile';
 import { importIdentity, possibleDifferentPerson, type ImportMode } from '@/src/utils/importPolicy';
+import { FIELD_DEFS } from '@/src/resume-ai/parser';
+import { equalJsonValues } from '@/src/utils/equalJsonValues';
 
 interface Props {
   current: Partial<Profile>;
@@ -11,12 +13,19 @@ interface Props {
 }
 export function ImportModeChoice({ current, incoming, mode, onChange, busy, fromDrive }: Props) {
   const different = possibleDifferentPerson(current, incoming);
+  const detailsDiffer = FIELD_DEFS.some((field) => {
+    const value = field.getValue(incoming);
+    return !field.isEmpty(value) && !equalJsonValues(value, field.getValue(current));
+  });
   return (
     <div className="mt-4 space-y-3 border-t border-gray-200 pt-4 dark:border-gray-700">
       {different && (
         <div className="space-y-2">
           <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
             This may be another person’s profile
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            The name or email doesn’t match your saved profile. Choose how to continue.
           </p>
           <dl className="grid grid-cols-2 gap-3 text-xs">
             {(
@@ -41,6 +50,13 @@ export function ImportModeChoice({ current, incoming, mode, onChange, busy, from
           </dl>
         </div>
       )}
+      {!different && (
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {detailsDiffer
+            ? 'The incoming details differ from your saved profile. Choose how to continue.'
+            : 'Choose how to apply these details to your saved profile.'}
+        </p>
+      )}
       <fieldset disabled={busy} className="space-y-3">
         <legend className="mb-2 text-xs font-medium text-gray-600 dark:text-gray-300">
           Import action
@@ -57,7 +73,7 @@ export function ImportModeChoice({ current, incoming, mode, onChange, busy, from
           <span>
             Update current profile
             <span className="block text-xs text-gray-500 dark:text-gray-400">
-              Keep saved details not found in this import.
+              Add or update details while keeping the rest of your profile.
             </span>
           </span>
         </label>
@@ -73,18 +89,19 @@ export function ImportModeChoice({ current, incoming, mode, onChange, busy, from
           <span>
             Replace current profile
             <span className="block text-xs text-gray-500 dark:text-gray-400">
-              Start fresh using the incoming details.
+              Start fresh with only the details you import.
             </span>
           </span>
         </label>
       </fieldset>
-      {mode === 'replace' && (
-        <p className="text-xs text-gray-600 dark:text-gray-400">
-          Replaces your profile, documents, mappings, and history. Details not imported are cleared.
-          Appearance and AI settings stay.
-          {!fromDrive && ' Connected Drive backups pause until reviewed.'}
-        </p>
-      )}
+      <p className="text-xs text-gray-500 dark:text-gray-400">
+        <span className="block">
+          Replacing clears current documents, mappings, and history. Settings are kept.
+        </span>
+        {!fromDrive && (
+          <span className="block">Connected Drive backups pause after replacement.</span>
+        )}
+      </p>
     </div>
   );
 }
