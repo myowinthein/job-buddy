@@ -106,7 +106,7 @@ it('saves portfolio and GitHub without LinkedIn', () => {
 });
 
 it.each([true, false])(
-  'saves a summary with no employment history (availability=%s)',
+  'allows no employment history but requires availability (availability=%s)',
   (availability) => {
     const onSave = save();
     show(
@@ -122,13 +122,17 @@ it.each([true, false])(
       />,
     );
     fireEvent.click(screen.getByText('Save Work History'));
+    if (!availability) {
+      expect(onSave).not.toHaveBeenCalled();
+      expect(screen.getByText('Select your availability')).toBeTruthy();
+      fireEvent.click(screen.getByLabelText('Available Now'));
+      fireEvent.click(screen.getByText('Save Work History'));
+    }
     expect(onSave).toHaveBeenCalledWith({
       workHistory: [],
       professional: {
         summary: 'Changing careers',
-        noticePeriod: availability
-          ? { immediate: true, value: undefined, unit: undefined }
-          : undefined,
+        noticePeriod: { immediate: true, value: undefined, unit: undefined },
       },
     });
   },

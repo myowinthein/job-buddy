@@ -203,7 +203,9 @@ export function WorkHistorySection({ profile, onSave }: Props) {
           e[`${idx}.${key}`] = 'Complete the month and year';
     });
 
-    if (noticeImmediate === false) {
+    if (noticeImmediate === null) {
+      e.noticePeriod = 'Select your availability';
+    } else if (noticeImmediate === false) {
       const noticeErr = validateNoticePeriod(noticeValue, noticeUnit);
       if (noticeErr) e.noticeValue = noticeErr;
     }
@@ -470,10 +472,17 @@ export function WorkHistorySection({ profile, onSave }: Props) {
 
       {/* ── Notice Period ────────────────────────────────────────────────────── */}
       <div className="pt-4 mb-4" data-field-error={!!errors.noticePeriod}>
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <p id="notice-period-label" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Notice Period<span className="text-red-500 ml-0.5">*</span>
         </p>
-        <div className="flex flex-wrap gap-4 mb-3">
+        <div
+          role="radiogroup"
+          aria-labelledby="notice-period-label"
+          aria-required="true"
+          aria-invalid={!!errors.noticePeriod}
+          aria-describedby={errors.noticePeriod ? 'notice-period-error' : undefined}
+          className="flex flex-wrap gap-4 mb-3"
+        >
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="radio"
@@ -504,7 +513,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
         </div>
 
         {errors.noticePeriod && noticeImmediate === null && (
-          <p role="alert" className="text-xs text-red-500 mb-2">
+          <p id="notice-period-error" role="alert" className="text-xs text-red-500 mb-2">
             {errors.noticePeriod}
           </p>
         )}

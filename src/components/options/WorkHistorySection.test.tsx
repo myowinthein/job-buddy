@@ -165,7 +165,7 @@ describe('WorkHistorySection — Work Arrangement radio group', () => {
 });
 
 describe('WorkHistorySection — Notice Period validation', () => {
-  it('does not invent immediate availability when no notice period was saved', async () => {
+  it('requires an explicit availability choice before saving without inventing one', async () => {
     const { onSave } = renderSection({
       professional: {},
       workHistory: [{ company: 'Acme', title: 'Engineer', startDate: '2020-01', isCurrent: true }],
@@ -173,10 +173,11 @@ describe('WorkHistorySection — Notice Period validation', () => {
     expect((screen.getByLabelText('Available Now') as HTMLInputElement).checked).toBe(false);
     expect((screen.getByLabelText('Available Later') as HTMLInputElement).checked).toBe(false);
     fireEvent.click(screen.getByText('Save Work History'));
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ professional: expect.objectContaining({ noticePeriod: undefined }) }));
-    expect(screen.queryByText('Select your availability')).toBeNull();
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText('Select your availability')).toBeTruthy();
     await screen.findByText('Save Work History');
     fireEvent.click(screen.getByText('Available Now'));
+    expect(screen.queryByText('Select your availability')).toBeNull();
     fireEvent.click(screen.getByText('Save Work History'));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       professional: expect.objectContaining({ noticePeriod: expect.objectContaining({ immediate: true }) }),
