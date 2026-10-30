@@ -237,8 +237,8 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
             ? 'Needs attention'
             : configured
               ? 'Key saved'
-              : 'Not configured';
-  const statusIndicator = (
+              : '';
+  const statusIndicator = statusText ? (
     <span
       role="status"
       className={`inline-flex items-center gap-1.5 text-xs ${status === 'ready' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}
@@ -252,7 +252,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
       )}
       {statusText}
     </span>
-  );
+  ) : null;
   return (
     <section className="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
       <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-1">AI Features</h3>
@@ -315,11 +315,20 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
               autoComplete="off"
               spellCheck={false}
               aria-invalid={keyInvalid || undefined}
-              aria-describedby={`gemini-key-privacy${error ? ' gemini-key-error' : ''}`}
+              aria-describedby={`gemini-key-help${error ? ' gemini-key-error' : ''}`}
               className={fieldCls(keyInvalid ? error : undefined, busy || !saved)}
             />
-            <p id="gemini-key-privacy" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Stored in this browser. Excluded from profile backups.
+            <p id="gemini-key-help" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Create a key in{' '}
+              <a
+                href="https://aistudio.google.com/api-keys"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 dark:text-blue-400 underline"
+              >
+                Google AI Studio
+              </a>
+              . No credit card required.
             </p>
           </>
         )}
@@ -393,11 +402,11 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
           )}
         </div>
       </form>
-      <details className="mt-3 max-w-md">
-        <summary className="text-xs text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
-          Options &amp; help
-        </summary>
-        {configured && (
+      {configured && (
+        <details className="mt-3 max-w-md">
+          <summary className="text-xs text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
+            Options &amp; help
+          </summary>
           <div className="mt-3">
             <label
               htmlFor="gemini-model"
@@ -424,28 +433,8 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
               ))}
             </select>
           </div>
-        )}
-        <p className="mt-3 text-xs text-gray-600 dark:text-gray-400">
-          Create a key in{' '}
-          <a
-            href="https://aistudio.google.com/api-keys"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 dark:text-blue-400 underline"
-          >
-            Google AI Studio
-          </a>
-          , then paste it here and select Save Key.
-        </p>
-        <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-          Your key is stored in this browser and excluded from profile backups. It authenticates
-          requests sent directly to Google.
-        </p>
-        <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-          AI autofill excludes stored document files and only includes personal background details
-          when a field asks for them. Resume import sends the selected file.
-        </p>
-      </details>
+        </details>
+      )}
     </section>
   );
 }

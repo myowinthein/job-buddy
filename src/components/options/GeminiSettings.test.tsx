@@ -43,7 +43,7 @@ const renderSettings = () =>
     </ToastProvider>,
   );
 async function enterKey(value = 'new-key') {
-  await screen.findByText('Not configured');
+  await screen.findByRole('button', { name: 'Save Key' });
   fireEvent.change(screen.getByLabelText('Gemini API Key'), { target: { value } });
 }
 async function replaceKey() {
@@ -86,7 +86,7 @@ describe('Gemini explicit key setup', () => {
   });
   it('validates empty input locally and links the error to the input', async () => {
     renderSettings();
-    await screen.findByText('Not configured');
+    await screen.findByRole('button', { name: 'Save Key' });
     fireEvent.click(screen.getByText('Save Key'));
     expect(await screen.findByText('Enter your Gemini API key.')).toBeTruthy();
     expect(screen.getByLabelText('Gemini API Key').getAttribute('aria-invalid')).toBe('true');
@@ -188,11 +188,12 @@ describe('Gemini explicit key setup', () => {
     expect(await screen.findByText('Could not remove the API key. Please try again.')).toBeTruthy();
     expect(screen.getByText('Remove Key')).toBeTruthy();
   });
-  it('shows Not configured after successful removal', async () => {
+  it('returns to the empty key input after successful removal', async () => {
     vi.mocked(getGeminiSettings).mockResolvedValueOnce(existing).mockResolvedValue(empty);
     renderSettings();
     fireEvent.click(await screen.findByText('Remove Key'));
-    expect(await screen.findByText('Not configured')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Save Key' })).toBeTruthy();
+    expect(screen.queryByText('Not configured')).toBeNull();
     expect((screen.getByLabelText('Gemini API Key') as HTMLInputElement).value).toBe('');
   });
   it('does not save a pending model result after the edit is cancelled', async () => {
@@ -269,6 +270,6 @@ it('shows Unavailable and allows retry when local settings cannot be loaded', as
   expect(await screen.findByText('Unavailable')).toBeTruthy();
   expect((screen.getByLabelText('Gemini API Key') as HTMLInputElement).disabled).toBe(true);
   fireEvent.click(screen.getByText('Try Again'));
-  expect(await screen.findByText('Not configured')).toBeTruthy();
+  expect(await screen.findByRole('button', { name: 'Save Key' })).toBeTruthy();
   expect(checkApiKey).not.toHaveBeenCalled();
 });
