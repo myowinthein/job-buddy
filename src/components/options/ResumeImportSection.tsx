@@ -17,7 +17,6 @@ import { ImportModeChoice } from '@/src/components/shared/ImportModeChoice';
 import {
   assertImportCurrent,
   initialImportMode,
-  possibleDifferentPerson,
   replacementChanges,
   ImportProfileChangedError,
   type ImportMode,
@@ -99,7 +98,6 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
       ...resumeChanges(base, extracted),
     ];
   };
-  const needsImportChoice = possibleDifferentPerson(reviewBase, incomingProfile);
   const chooseMode = (mode: ImportMode) => {
     setImportMode(mode);
     setChanges(buildChanges(reviewBase, incomingProfile, mode));
@@ -559,7 +557,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
         <ImportSummaryDialog
           changes={changes}
           title="Review Resume"
-          importControls={needsImportChoice && <ImportModeChoice current={reviewBase} incoming={incomingProfile} mode={importMode} onChange={chooseMode} busy={saving} />}
+          importControls={<ImportModeChoice current={reviewBase} incoming={incomingProfile} mode={importMode} onChange={chooseMode} busy={saving} />}
           replacement={importMode === 'replace'}
           canProceed={importMode !== null && (importMode !== 'replace' || changes.some(c => c.hasIncomingValue === true))}
           forceDecision={importMode !== 'update'}

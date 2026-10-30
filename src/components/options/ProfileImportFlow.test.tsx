@@ -84,8 +84,6 @@ it('shows summary and notice period and saves only the one selected detail', asy
   await mountBase();
   upload(incomingProfile(), { exportedAt: '2026-10-29T12:12:23Z' });
   await screen.findByText('Review Changes');
-  expect(screen.queryByRole('radio', { name: /^(Update|Replace) current profile/ })).toBeNull();
-  expect(screen.queryByText(/Replacing clears current documents/)).toBeNull();
   expect(screen.queryByText(/backup.json|Exported/)).toBeNull();
   fireEvent.click(screen.getByText('Review Changes'));
   expect(screen.queryByText(/backup.json|Exported/)).toBeNull();
@@ -297,7 +295,7 @@ it('requires an owner decision, then replaces profile data without retaining the
     personal: { ...current.personal, firstName: 'Sam', lastName: 'Lee', email: 'sam@example.com' },
   };
   upload(incoming);
-  await screen.findByRole('radio', { name: /Replace current profile/ });
+  await screen.findByText('This may be another person’s profile');
   expect((screen.getByRole('button', { name: 'Import All' }) as HTMLButtonElement).disabled).toBe(
     true,
   );
@@ -325,7 +323,7 @@ it('asks for review again if the profile changes while replacement is open', asy
   upload({
     personal: { ...current.personal, firstName: 'Sam', lastName: 'Lee', email: 'sam@example.com' },
   });
-  await screen.findByRole('radio', { name: /Replace current profile/ });
+  await screen.findByText('This may be another person’s profile');
   fireEvent.click(screen.getByRole('radio', { name: /Replace current profile/ }));
   await saveProfile({ ...current, address: { city: 'Concurrent city', country: 'US' } });
   fireEvent.click(screen.getByRole('button', { name: 'Replace Profile' }));

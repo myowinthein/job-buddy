@@ -58,7 +58,6 @@ import { ImportModeChoice } from '@/src/components/shared/ImportModeChoice';
 import {
   assertImportCurrent,
   initialImportMode,
-  possibleDifferentPerson,
   replacementChanges,
   ImportProfileChangedError,
   type ImportMode,
@@ -1045,7 +1044,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         <ImportSummaryDialog
           changes={importChanges}
           title="Import Profile"
-          importControls={parsedImport && possibleDifferentPerson(importBaseProfile, parsedImport.incoming) && <ImportModeChoice current={importBaseProfile} incoming={parsedImport.incoming} mode={importMode} onChange={chooseImportMode} busy={importing} />}
+          importControls={parsedImport && <ImportModeChoice current={importBaseProfile} incoming={parsedImport.incoming} mode={importMode} onChange={chooseImportMode} busy={importing} />}
           replacement={importMode === 'replace'}
           canProceed={importMode !== null && (importMode !== 'replace' || importChanges.some(c => c.hasIncomingValue === true))}
           forceDecision={importMode !== 'update'}
@@ -1258,7 +1257,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           changes={driveConflictChanges}
           title="Restore Drive Backup"
           description={driveImportMode === 'update' ? 'Choose which details to restore. Keeping current uploads this browser’s profile to Drive.' : 'Choose how to import this Drive backup. Cancelling keeps both profiles unchanged.'}
-          importControls={driveRestoreData && possibleDifferentPerson(driveLocalProfile ?? {}, driveRestoreData.profile) && <ImportModeChoice current={driveLocalProfile ?? {}} incoming={driveRestoreData.profile} mode={driveImportMode} onChange={chooseDriveImportMode} busy={driveRestoreBusy} />}
+          importControls={driveRestoreData && <ImportModeChoice current={driveLocalProfile ?? {}} incoming={driveRestoreData.profile} mode={driveImportMode} onChange={chooseDriveImportMode} busy={driveRestoreBusy} fromDrive />}
           replacement={driveImportMode === 'replace'}
           canProceed={driveImportMode !== null && (driveImportMode !== 'replace' || driveConflictChanges.some(c => c.hasIncomingValue === true))}
           acceptLabel={driveImportMode === 'replace' ? 'Replace Profile' : 'Restore All'}

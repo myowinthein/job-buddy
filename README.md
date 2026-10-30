@@ -88,9 +88,8 @@ it. Keeping a backup does not upload unsynced changes first. A failed cloud
 deletion must be retried before a reset can clear this browser.
 
 Valid JSON backups import immediately into an empty profile. Resume, JSON, and Drive
-imports use the normal update review when the identity matches. A possible name/email
-mismatch shows **Update current profile** or **Replace current profile** and requires
-an explicit choice. Update keeps omitted details;
+imports offer **Update current profile** or **Replace current profile**. A possible
+name/email mismatch requires an explicit choice. Update keeps omitted details;
 JSON and Drive lists replace supplied lists, while resume updates retain saved
 entries. Updated mappings and JSON application history merge with saved data.
 
