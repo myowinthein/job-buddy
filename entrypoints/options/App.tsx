@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
+import { devContext } from '@/src/devtools/context';
 import type { Profile } from '@/src/types/profile';
 import type { ProfileUpdate } from '@/src/resume-ai/resumeImport';
 import { getProfile, saveProfile } from '@/src/utils/storage';
@@ -25,6 +26,8 @@ import { useToast } from '@/src/components/ui/useToast';
 import type { CompletionTarget } from '@/src/utils/profileCompletion';
 import { DraftStatusContext, SectionSaveStatusContext } from '@/src/components/options/shared/draftStatus';
 
+const DevToolsPage = import.meta.env.DEV ? lazy(() => import('@/src/devtools/DevToolsPage')) : null;
+
 type SectionId =
   | 'personal'
   | 'address'
@@ -37,7 +40,8 @@ type SectionId =
   | 'documents'
   | 'resume'
   | 'learnedMappings'
-  | 'settings';
+  | 'settings'
+  | 'devTools';
 
 // ── UI state persistence keys (sessionStorage) ───────────────────────────────
 const UI_SECTION_KEY  = 'jb:ui:section';
@@ -47,10 +51,12 @@ const UI_SCROLL_KEY   = (section: SectionId) => `jb:ui:scroll:${section}`;
 const VALID_SECTIONS = new Set<SectionId>([
   'personal', 'address', 'salary', 'workAuthorization',
   'workHistory', 'education', 'languages', 'links', 'documents', 'resume', 'learnedMappings', 'settings',
+  ...(import.meta.env.DEV ? ['devTools' as const] : []),
 ]);
 
 function readSection(): SectionId {
   try {
+    if (import.meta.env.DEV && new URLSearchParams(location.search).has('devTools')) return 'devTools';
     const s = sessionStorage.getItem(UI_SECTION_KEY) as SectionId | null;
     return s && VALID_SECTIONS.has(s) ? s : 'personal';
   } catch { return 'personal'; }
@@ -139,6 +145,13 @@ function App() {
   // Skips the "autofocus first empty input" effect that would otherwise fire
   // on the section switch below, then focuses the specific target field once
   // it renders (via the focusTarget effect).
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const openTools = () => { navigateSection('devTools'); };
+    window.addEventListener('jb:dev:open-tools', openTools);
+    return () => window.removeEventListener('jb:dev:open-tools', openTools);
+  }, [navigateSection]);
+
   const navigateAndFocus = useCallback((section: SectionId, field?: string | CompletionTarget) => {
     if (!navigateSection(section)) return;
     if (section !== activeSection) skipAutoFocusRef.current = true;
@@ -325,10 +338,12 @@ function App() {
     try {
       await saveProfile(synced);
     } catch (err) {
+      if (import.meta.env.DEV) window.dispatchEvent(new CustomEvent('jb:dev:request', { detail: { operation: 'profile-save', status: 500, section: activeSection } }));
       console.error('[Job Buddy] Failed to save profile:', err);
       showToast('error', 'Failed to save: storage may be full.');
       throw new ReportedSaveError('Failed to save: storage may be full.');
     }
+    if (import.meta.env.DEV) window.dispatchEvent(new CustomEvent('jb:dev:request', { detail: { operation: 'profile-save', status: 200, section: activeSection } }));
     setProfile(synced);
     setSavedFeedbackAt(Date.now());
     // Fire-and-forget Drive sync. Never blocks the local save flow.
@@ -386,12 +401,13 @@ function App() {
       case 'documents':         return <DocumentsSection key={`documents-${sectionSeq}`} {...sectionProps} />;
       case 'resume':            return <ResumeImportSection key="resume" profile={profile} onSave={handleSave} onGoToApiKey={handleGoToApiKey} onClose={handleCloseResumeImport} />;
       case 'learnedMappings':   return <LearnedMappingsSection key="learnedMappings" />;
+      case 'devTools': return DevToolsPage ? <Suspense fallback={<p>Loading development tools…</p>}><DevToolsPage onFocusField={handleFocusField} /></Suspense> : null;
       case 'settings':          return <SettingsSection key="settings" onImportComplete={handleImportComplete} onResetComplete={handleResetComplete} />;
     }
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+    <div className={`flex ${import.meta.env.DEV && devContext() ? 'h-full' : 'h-screen'} bg-gray-50 dark:bg-gray-900`}>
       <Sidebar
         activeSection={activeSection}
         onSelect={(id) => { navigateSection(id as SectionId); }}
@@ -411,7 +427,7 @@ function App() {
         />
         <main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-8">
           {/* Settings uses max-w-none so long subtitles can flow to one line */}
-          <div data-profile-section={activeSection} className={activeSection === 'settings' ? 'max-w-none' : 'max-w-2xl'}
+          <div data-profile-section={activeSection} className={['settings', 'devTools'].includes(activeSection) ? 'max-w-none' : 'max-w-2xl'}
             onBlurCapture={() => {
               if (dirtyInputsRef.current.size > 0) setUnsavedStatusVisible(true);
             }}>

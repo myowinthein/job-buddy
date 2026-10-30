@@ -128,6 +128,12 @@ extension's data, load environment files, or connect to Gemini or Google Drive.
 Use it to review profile forms and layout; extension autofill and real integrations
 still require an unpacked extension.
 
+Development builds also include **Dev Tools** in the sidebar. Inspect local JSON,
+completion checks, storage usage, and diagnostics, or run profile, resume, AI, and
+Drive scenarios. Scenarios open the real interface with temporary storage and
+simulated providers. **Exit Simulation** returns to live inspection. Refreshing
+a simulation restarts it; production builds exclude these tools.
+
 Chrome builds are under `.output/`. Firefox development, build, and packaging
 scripts are also available in [package.json](package.json); production distribution
 targets Chrome.

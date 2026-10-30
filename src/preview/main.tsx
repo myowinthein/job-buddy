@@ -23,12 +23,28 @@ Object.defineProperty(window, 'chrome', {
   ),
 });
 
+const devTools = await import('@/src/devtools/bootstrap');
+try {
+  devTools.initializeDevTools();
+} catch {
+  const root = document.getElementById('root');
+  if (root) {
+    root.textContent = 'Could not start this simulation. ';
+    const back = document.createElement('a');
+    back.href = `${location.pathname}?devTools=1`;
+    back.textContent = 'Return to Dev Tools';
+    root.append(back);
+  }
+  throw new Error('Development simulation could not start.');
+}
+
 const [{ default: App }, { ToastProvider }, { initTheme }] = await Promise.all([
   import('@/entrypoints/options/App'),
   import('@/src/components/ui/Toast'),
   import('@/src/utils/theme'),
 ]);
 
+const { default: DevShell } = await import('@/src/devtools/SimulationShell');
 await initTheme();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -37,8 +53,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <aside className="preview-notice" aria-label="Preview information">
         <strong>Preview · sample data</strong>
         <span>
-          Profile changes reset on refresh. Appearance is remembered. Gemini and Google Drive are
-          disabled.
+          {devTools.getSimulation()
+            ? 'Scenario data and appearance reset on refresh. Providers are simulated.'
+            : 'Profile changes reset on refresh. Appearance is remembered. Gemini and Google Drive are disabled.'}
         </span>
         <span>
           <a className="underline" href="/">
@@ -52,9 +69,14 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       </aside>
       <div className="preview-app">
         <ToastProvider>
-          <App />
+          <DevShell>
+            <App />
+          </DevShell>
         </ToastProvider>
       </div>
     </div>
   </React.StrictMode>,
 );
+
+const root = document.getElementById('root');
+if (root) devTools.startScenario(root);

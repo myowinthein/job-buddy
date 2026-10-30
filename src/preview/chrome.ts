@@ -13,8 +13,13 @@ const PREVIEW_THEME_KEY = 'jb:preview:themePreference';
 export function createPreviewChrome(
   seed: Partial<Profile> = DEV_PROFILE,
   themeStorage?: ThemeStorage,
+  options: {
+    initialData?: Record<string, unknown>;
+    failWrite?: (items: Record<string, unknown>) => string | undefined;
+  } = {},
 ) {
   const listeners = new Set<ChangeListener>();
+  const runtime: { lastError: { message: string } | undefined } = { lastError: undefined };
   let themePreference: string | null = null;
   try {
     themePreference = themeStorage?.getItem(PREVIEW_THEME_KEY) ?? null;
@@ -34,10 +39,31 @@ export function createPreviewChrome(
   function area(areaName: string, seed: Record<string, unknown> = {}) {
     const data = structuredClone(seed);
     return {
-      get(key: string, callback: (result: Record<string, unknown>) => void) {
-        queueMicrotask(() => callback(key in data ? { [key]: structuredClone(data[key]) } : {}));
+      get(key: string | string[] | null, callback: (result: Record<string, unknown>) => void) {
+        const keys = key === null ? Object.keys(data) : typeof key === 'string' ? [key] : key;
+        queueMicrotask(() =>
+          callback(
+            Object.fromEntries(
+              keys
+                .filter((name) => name in data)
+                .map((name) => [name, structuredClone(data[name])]),
+            ),
+          ),
+        );
       },
       set(items: Record<string, unknown>, callback: () => void) {
+        const failure = options.failWrite?.(items);
+        if (failure) {
+          queueMicrotask(() => {
+            runtime.lastError = { message: failure };
+            try {
+              callback();
+            } finally {
+              runtime.lastError = undefined;
+            }
+          });
+          return;
+        }
         const changes: Record<string, chrome.storage.StorageChange> = {};
         for (const [key, value] of Object.entries(items)) {
           changes[key] = { oldValue: structuredClone(data[key]), newValue: structuredClone(value) };
@@ -64,14 +90,18 @@ export function createPreviewChrome(
           }
         });
       },
+      getBytesInUse(_keys: string | string[] | null, callback: (bytes: number) => void) {
+        queueMicrotask(() => callback(new TextEncoder().encode(JSON.stringify(data)).length));
+      },
     };
   }
 
   return {
-    runtime: { lastError: undefined },
+    runtime,
     storage: {
       local: area('local', {
         profile: seed,
+        ...options.initialData,
         ...(['system', 'light', 'dark'].includes(themePreference ?? '') ? { themePreference } : {}),
       }),
       session: area('session'),

@@ -21,6 +21,9 @@ async function geminiRequest<T>(
   url: string, apiKey: string, init: RequestInit,
   consume: (response: Response) => Promise<T>, timeoutMs = GEMINI_REQUEST_TIMEOUT_MS,
 ): Promise<T> {
+  const startedAt = Date.now();
+  let responseStatus: number | undefined;
+  let outcome: 'success' | 'error' | 'timeout' | 'cancelled' = 'success';
   const controller = new AbortController();
   const abort = () => controller.abort(init.signal?.reason);
   if (init.signal?.aborted) abort();
@@ -30,17 +33,30 @@ async function geminiRequest<T>(
     timeoutMs,
   );
   try {
-    return await consume(await fetch(url, {
+    const response = await fetch(url, {
       ...init,
       signal: controller.signal,
       headers: { ...init.headers, 'x-goog-api-key': apiKey },
-    }));
+    });
+    responseStatus = response.status;
+    if (!response.ok) outcome = 'error';
+    return await consume(response);
   } catch (error) {
+    outcome = controller.signal.aborted
+      ? (controller.signal.reason as { name?: string })?.name === 'TimeoutError' ? 'timeout' : 'cancelled'
+      : 'error';
     if (controller.signal.aborted) throw controller.signal.reason ?? error;
     throw error;
   } finally {
     clearTimeout(timer);
     init.signal?.removeEventListener('abort', abort);
+    if (import.meta.env.DEV && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('jb:dev:request', { detail: {
+        operation: url.includes(':generateContent') ? 'model-request' : 'key-check',
+        model: /models\/([^:/?]+):generateContent/.exec(url)?.[1],
+        status: responseStatus, outcome, durationMs: Date.now() - startedAt,
+      } }));
+    }
   }
 }
 

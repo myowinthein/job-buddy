@@ -1,3 +1,4 @@
+import { devContext, devLockName } from '@/src/devtools/context';
 import { profileData } from './profileData';
 import type { Profile } from '../types/profile';
 import type { DriveBackupFile, DriveBackupState, DriveError } from '../types/storage';
@@ -16,12 +17,13 @@ import { equalJsonValues } from './equalJsonValues';
 // ── OAuth ────────────────────────────────────────────────────────────────────
 
 const CLIENT_ID = (import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_ID as string | undefined) ?? '';
+const configuredClientId = () => import.meta.env.DEV && devContext() ? 'simulation-client' : CLIENT_ID;
 const PLACEHOLDER = 'your_google_drive_oauth_client_id_here';
 const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 
 /** Returns true when the build has a real OAuth client ID configured. */
 export function isDriveConfigured(): boolean {
-  return !!CLIENT_ID && CLIENT_ID !== PLACEHOLDER;
+  return !!configuredClientId() && configuredClientId() !== PLACEHOLDER;
 }
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
@@ -36,7 +38,7 @@ async function authorizeDrive(
   accountEmail?: string,
   storedClientId?: string,
 ): Promise<{ token: string; expiresAt: number }> {
-  const clientId = storedClientId ?? CLIENT_ID;
+  const clientId = storedClientId ?? configuredClientId();
   if (!clientId || clientId === PLACEHOLDER) {
     console.warn(
       '[Job Buddy] VITE_GOOGLE_DRIVE_CLIENT_ID is missing or still set to the placeholder. Set it in .env.development or .env.production.',
@@ -259,7 +261,7 @@ let queue: Promise<unknown> = Promise.resolve();
 function withDriveLock<T>(operation: () => Promise<T>): Promise<T> {
   const run = async (): Promise<T> =>
     typeof navigator !== 'undefined' && navigator.locks
-      ? await navigator.locks.request('job-buddy:drive-backup', operation)
+      ? await navigator.locks.request(import.meta.env.DEV ? devLockName('job-buddy:drive-backup') : 'job-buddy:drive-backup', operation)
       : await operation();
   const result = queue.then(run, run);
   queue = result.catch(() => {});
@@ -480,7 +482,7 @@ export async function connectDrive(): Promise<ConnectResult> {
       pendingSync: false,
       error: null,
       tokenExpiresAt: authorization.expiresAt,
-      oauthClientId: CLIENT_ID,
+      oauthClientId: configuredClientId(),
     });
   });
 }
