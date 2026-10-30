@@ -36,10 +36,16 @@ describe('normalizeBullets', () => {
 
   // ── Intro paragraph + bullet section → keep intro, bullet the rest ─────────
 
-  it('preserves a one-line context paragraph followed by a blank-line separator and plain lines', () => {
+  it('does not guess that a paragraph after a blank line is a responsibility list', () => {
     const input  = 'Worked at TechCo as Senior PD.\n\nLed mobile design.\nCollaborated with PMs.';
-    const output = 'Worked at TechCo as Senior PD.\n\n- Led mobile design.\n- Collaborated with PMs.';
-    expect(normalizeBullets(input)).toBe(output);
+    expect(normalizeBullets(input)).toBe(input);
+  });
+
+  it('preserves separate career, company, and project paragraphs before explicit bullets', () => {
+    const input = 'Previously: Developer, Team Lead\n\nA digital consultancy.\n\nProject context for the platform.\n\n- Led engineering.\nDelivered the release.';
+    const expected = 'Previously: Developer, Team Lead\n\nA digital consultancy.\n\nProject context for the platform.\n\n- Led engineering.\n- Delivered the release.';
+    expect(normalizeBullets(input)).toBe(expected);
+    expect(normalizeBullets(expected)).toBe(expected);
   });
 
   it('preserves a context paragraph immediately followed by pre-bulleted lines (no blank)', () => {
@@ -80,8 +86,8 @@ describe('normalizeBullets', () => {
   // ── Whitespace handling inside the bullet section ──────────────────────────
 
   it('trims surrounding whitespace from converted lines inside the bullet section', () => {
-    const input  = 'Context.\n\n   indented line.   ';
-    const output = 'Context.\n\n- indented line.';
+    const input  = 'Context.\n\n- First responsibility.\n   indented line.   ';
+    const output = 'Context.\n\n- First responsibility.\n- indented line.';
     expect(normalizeBullets(input)).toBe(output);
   });
 });
@@ -158,11 +164,8 @@ describe('normalizeExtractedProfile', () => {
         title: 'Senior PD',
         startDate: '2020-01',
         isCurrent: true,
-        // Context paragraph + blank separator + plain responsibilities is the
-        // shape the updated prompt asks Gemini for. The normaliser turns the
-        // bullet-section lines into "- " bullets while leaving the context
-        // paragraph alone.
-        description: 'Led design at Acme, a B2B SaaS startup.\n\nLed mobile design.\nCollaborated with PMs.',
+        // An explicit bullet starts the list; earlier context stays prose.
+        description: 'Led design at Acme, a B2B SaaS startup.\n\n- Led mobile design.\nCollaborated with PMs.',
       },
     ],
   };
@@ -246,7 +249,7 @@ describe('normalizeExtractedProfile', () => {
           title: 'Senior PD',
           startDate: '2020-01',
           isCurrent: true,
-          description: 'Led design at Acme, a B2B SaaS startup.\n\nLed mobile design.\nCollaborated with PMs.',
+          description: 'Led design at Acme, a B2B SaaS startup.\n\n- Led mobile design.\nCollaborated with PMs.',
         },
       ],
       professional: {

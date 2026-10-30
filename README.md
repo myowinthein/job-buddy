@@ -42,6 +42,7 @@ Complete Your Profile → Fill Form → Review answers → Submit on the applica
 1. Open the extension popup and choose **Complete Your Profile** or **Edit Profile**.
    Save your personal details, work history, education, and other relevant sections.
    Add a CV in **Documents** to attach it to supported upload fields.
+   Open uploaded PDFs with **View PDF**, or use **Download** to save PDF and Word attachments.
    Unsaved edits show a warning before you leave a section or close the profile page.
    The top bar tracks 10 required checks after saving; select a remaining detail
    to go to its input. Optional details do not affect the percentage.

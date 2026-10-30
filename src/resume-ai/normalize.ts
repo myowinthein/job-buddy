@@ -6,22 +6,19 @@ import type { Profile } from '@/src/types/profile';
 const BULLET_RE = /^\s*[-•*·◦‣▪■▶▸▹►→]\s+/;
 
 /**
- * Normalises a free-text description into an intro paragraph + bullet list.
- *
- * Detection of where the bullet section starts:
- *   1. The first line that already carries a bullet marker, OR
- *   2. The first non-blank line that follows a blank-line separator
- *      (the resume-import prompt instructs Gemini to use this exact shape).
+ * Normalises a description while preserving its context paragraphs.
+ * The first explicit bullet marker starts the responsibility list. Blank lines
+ * alone cannot distinguish company context, career progression, or achievements.
  *
  * Lines BEFORE the bullet section are preserved verbatim — they're the
- * company/team/product/role context paragraph that shouldn't be bulletised.
+ * company/team/product/role context paragraphs that shouldn't be bulletised.
  *
  * Lines AT or AFTER the bullet section:
  *   - Blank lines pass through as paragraph separators.
  *   - Lines that already begin with -, •, *, ·, ◦, ‣, ▪, ■, ▶, ▸, ▹, ►, → are kept as-is.
  *   - All other non-blank lines get a "- " prefix.
  *
- * If no structure (no marker, no blank-line separator) is detected, the text
+ * If no explicit bullet marker is detected, the text
  * is returned UNCHANGED. This is intentional: blindly bulleting plain prose
  * would convert legitimate context paragraphs into responsibility lines.
  *
@@ -35,10 +32,6 @@ export function normalizeBullets(text: string): string {
   for (let i = 0; i < lines.length; i++) {
     if (BULLET_RE.test(lines[i])) {
       bulletStartIdx = i;
-      break;
-    }
-    if (!lines[i].trim() && i + 1 < lines.length && lines[i + 1].trim()) {
-      bulletStartIdx = i + 1;
       break;
     }
   }

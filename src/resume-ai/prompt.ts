@@ -100,7 +100,7 @@ ${hyperlinksSection}Rules:
 - Never invent or guess values not present in the document
 - Use the dedicated links fields for LinkedIn, portfolio, GitHub, Twitter/X, Dribbble, and Behance profiles. Put GitHub profile URLs in links.github, not links.custom. Keep project/repository URLs and other sites in links.custom. Do not duplicate the same URL in both.
 - Preserve the complete job title, including parenthetical team or initiative names. Never shorten a title.
-- Preserve previous roles, promotions, and any "Previously:" line within the same employment entry. Put these lines in the description context paragraph before the responsibilities. Do not omit them or turn them into separate employers.
+- Preserve previous roles, promotions, and any "Previously:" line within the same employment entry. Keep this career progression in its own paragraph, separate from company or project context and before the responsibilities. Do not omit it or turn it into separate employers.
 - Dates: workHistory uses YYYY-MM (month required); education uses YYYY-MM when month is given, or YYYY when only the year is available; dateOfBirth uses YYYY-MM-DD
 - Education dates: NEVER infer, guess, estimate, or backfill education startDate or endDate. Do not derive education dates from degree level (e.g. "Bachelor's takes 4 years"), work history dates, the candidate's age, graduation conventions, or the current profile JSON. Only extract a date if it appears explicitly next to or within the same education entry in the resume. If no date is written, return null for startDate and endDate.
 - country/countryCode must be ISO 3166-1 alpha-2 (e.g. US, GB, SG, AU, CA, MM)
@@ -115,9 +115,9 @@ ${hyperlinksSection}Rules:
 - For array fields with no data found, return []
 - professional.summary: extract the summary content from the resume; separate logical paragraphs with \\n\\n; within each paragraph merge soft line wraps (single newlines caused by PDF column width) into a single line — do not carry over artificial line breaks from the source
 - workHistory[].description: include all content under the role, structured EXACTLY as follows:
-  1. If the resume has any company/team/product/role context (e.g. "Led design at TechCo, a B2B SaaS startup focused on…"), put it FIRST as ONE plain-prose paragraph with NO bullet marker.
-  2. If you wrote a context paragraph, follow it with a SINGLE BLANK LINE.
-  3. Then write EACH responsibility, achievement, duty, or impact statement on its own line starting with "- " (hyphen + space).
+  1. Group context by purpose: previous roles/promotions, company/team background, and product/project context. Keep each distinct group in its own plain-prose paragraph with NO bullet marker, in source order. Do not combine a promotion history line with a company description. Omit groups that are not present; do not invent headings or context.
+  2. Separate these paragraphs, and the responsibilities that follow, with a SINGLE BLANK LINE (\\n\\n). Merge soft PDF line wraps within each paragraph into spaces; a new sentence alone does not need a new paragraph.
+  3. Then write EACH responsibility, achievement, duty, or impact statement on its own line starting with "- " (hyphen + space), keeping any soft-wrapped continuation with that same statement.
   If the resume contains only responsibilities and no context paragraph, return ONLY the bullet list (no leading paragraph, no leading blank line).
   Never bullet a company/role context line. Never wrap a single sentence of context with a bullet marker.
   Do not add an extra bullet to lines that already begin with -, •, *, or another bullet marker.

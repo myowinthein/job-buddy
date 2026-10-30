@@ -11,6 +11,8 @@ import { SaveButton } from './shared/SaveButton';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { isValidProfileUrl } from '@/src/utils/profileInputValidation';
 import { withScheme } from '@/src/utils/url';
+import { downloadDocumentFile, viewDocumentPdf } from '@/src/utils/documentFiles';
+import { Download, ExternalLink } from 'lucide-react';
 
 interface Props {
   profile: Partial<Profile>;
@@ -67,6 +69,7 @@ function DocUploader({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const generation = useRef(0);
+  const [fileActionError, setFileActionError] = useState('');
   useEffect(
     () => () => {
       generation.current++;
@@ -74,6 +77,7 @@ function DocUploader({
     [],
   );
   const handleFile = async (file: File) => {
+    setFileActionError('');
     const current = ++generation.current;
     if (
       !['.pdf', '.doc', '.docx'].some((extension) => file.name.toLowerCase().endsWith(extension))
@@ -105,6 +109,18 @@ function DocUploader({
     const file = event.dataTransfer.files[0];
     if (file) void handleFile(file);
   };
+  const handleFileAction = (action: 'view' | 'download') => {
+    if (!state.file) return;
+    try {
+      if (action === 'view') viewDocumentPdf(state.file);
+      else downloadDocumentFile(state.file);
+      setFileActionError('');
+    } catch {
+      setFileActionError('Could not read this file. Try uploading it again.');
+    }
+  };
+  const fileActionCls =
+    'inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline';
   return (
     <section
       aria-label={label}
@@ -149,16 +165,38 @@ function DocUploader({
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {(state.file.size / 1024).toFixed(1)} KB
             </p>
-            <button
-              type="button"
-              className="text-xs text-red-600 dark:text-red-400 hover:underline"
-              onClick={() => {
-                generation.current++;
-                onChange({ file: null, reading: false, readError: '' });
-              }}
-            >
-              Remove file
-            </button>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+              {state.file.name.toLowerCase().endsWith('.pdf') && (
+                <button
+                  type="button"
+                  className={fileActionCls}
+                  onClick={() => handleFileAction('view')}
+                  title="View PDF in a new tab"
+                >
+                  <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+                  View PDF
+                </button>
+              )}
+              <button
+                type="button"
+                className={fileActionCls}
+                onClick={() => handleFileAction('download')}
+              >
+                <Download aria-hidden="true" className="h-3.5 w-3.5" />
+                Download
+              </button>
+              <button
+                type="button"
+                className="text-xs text-red-600 dark:text-red-400 hover:underline"
+                onClick={() => {
+                  generation.current++;
+                  setFileActionError('');
+                  onChange({ file: null, reading: false, readError: '' });
+                }}
+              >
+                Remove file
+              </button>
+            </div>
           </div>
         )}
         <button
@@ -186,7 +224,7 @@ function DocUploader({
           }}
         />
       </div>
-      {[state.sizeError, state.typeError, state.readError].filter(Boolean).map((error) => (
+      {[state.sizeError, state.typeError, state.readError, fileActionError].filter(Boolean).map((error) => (
         <p key={error} role="alert" className="text-xs text-red-500 mt-2">
           {error}
         </p>

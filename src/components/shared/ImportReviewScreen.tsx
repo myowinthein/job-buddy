@@ -97,7 +97,7 @@ export default function ImportReviewScreen({
                 {title}
               </h3>
               <p id={descriptionId} className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Review one section at a time before importing.
+                Choose which details to add or replace.
               </p>
             </div>
             <button

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, act, within } from '@testing-library/react';
 import { DocumentsSection } from './DocumentsSection';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import type { Profile } from '@/src/types/profile';
+import * as documentFiles from '@/src/utils/documentFiles';
 
 afterEach(cleanup);
 
@@ -15,6 +16,40 @@ function renderSection(profile: Partial<Profile>, onSave = vi.fn().mockResolvedV
   );
   return { onSave };
 }
+
+describe('DocumentsSection — local viewing and downloads', () => {
+  it('offers PDF viewing and downloads for both attachments without saving or changing data', () => {
+    const cv = { name: 'resume.pdf', size: 9, base64: 'JVBERi0xLjcK' };
+    const letter = { name: 'cover.docx', size: 4, base64: 'dGVzdA==' };
+    const view = vi.spyOn(documentFiles, 'viewDocumentPdf').mockImplementation(() => {});
+    const download = vi.spyOn(documentFiles, 'downloadDocumentFile').mockImplementation(() => {});
+    try {
+      const { onSave } = renderSection({ documents: { cv: { file: cv }, coverLetter: { file: letter } } });
+      document.querySelector('details')!.open = true;
+      const cvSection = within(screen.getByRole('region', { name: 'CV / Résumé' }));
+      const letterSection = within(screen.getByRole('region', { name: 'Cover letter' }));
+      fireEvent.click(cvSection.getByText('View PDF'));
+      fireEvent.click(cvSection.getByText('Download'));
+      fireEvent.click(letterSection.getByText('Download'));
+      expect(view).toHaveBeenCalledWith(cv);
+      expect(download.mock.calls.map(([file]) => file)).toEqual([cv, letter]);
+      expect(letterSection.queryByText('View PDF')).toBeNull();
+      expect(onSave).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByText('Save Documents'));
+      expect(onSave).toHaveBeenCalledWith({ documents: { cv: { file: cv }, coverLetter: { file: letter } } });
+    } finally { view.mockRestore(); download.mockRestore(); }
+  });
+
+  it('reports broken stored bytes while retaining the attachment and keeping replacement available', () => {
+    const file = { name: 'broken.pdf', size: 5, base64: '%%%' };
+    const { onSave } = renderSection({ documents: { cv: { file } } });
+    fireEvent.click(screen.getByText('Download'));
+    expect(screen.getByRole('alert').textContent).toBe('Could not read this file. Try uploading it again.');
+    expect(screen.getByText('broken.pdf')).toBeTruthy();
+    expect(screen.getByText('Replace file')).toBeTruthy();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+});
 
 describe('DocumentsSection — toDocumentEntry: URL and file must never become mutually exclusive', () => {
   it.each(['https://example.com/cv.pdf', ''])('shows and retains the uploaded file alongside the URL input (URL: %s)', (url) => {
