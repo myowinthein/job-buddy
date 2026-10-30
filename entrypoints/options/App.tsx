@@ -106,6 +106,7 @@ function App() {
     setHasUnsavedChanges(false);
     setUnsavedStatusVisible(false);
     setSavedFeedbackAt(null);
+    setFocusTarget(null);
     setActiveSection(section);
     return true;
   }, [activeSection, hasUnsavedChanges]);
@@ -252,18 +253,39 @@ function App() {
   useEffect(() => {
     if (!focusTarget) return;
     let focusRaf = 0;
+    let observer: MutationObserver | undefined;
     const raf = requestAnimationFrame(() => {
       if (focusTarget.revealId) document.getElementById(focusTarget.revealId)?.click();
       const card = focusTarget.cardId ? document.getElementById(focusTarget.cardId) : null;
       card?.querySelector<HTMLButtonElement>('button[aria-expanded="false"]')?.click();
       focusRaf = requestAnimationFrame(() => {
-        const el = document.getElementById(focusTarget.id) ?? (focusTarget.fallbackId ? document.getElementById(focusTarget.fallbackId) : null);
-        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el?.focus({ preventScroll: true });
-        setFocusTarget(null);
+        const focusWhenReady = () => {
+          const el = document.getElementById(focusTarget.id) ?? (focusTarget.fallbackId ? document.getElementById(focusTarget.fallbackId) : null);
+          // Settings can render the key input before its saved state finishes loading.
+          if (!el || el.matches(':disabled')) return;
+          el.focus({ preventScroll: true });
+          if (document.activeElement !== el) return;
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          observer?.disconnect();
+          setFocusTarget(null);
+        };
+        if (mainRef.current) {
+          observer = new MutationObserver(focusWhenReady);
+          observer.observe(mainRef.current, {
+            subtree: true,
+            childList: true,
+            attributes: true,
+            attributeFilter: ['disabled'],
+          });
+        }
+        focusWhenReady();
       });
     });
-    return () => { cancelAnimationFrame(raf); cancelAnimationFrame(focusRaf); };
+    return () => {
+      cancelAnimationFrame(raf);
+      cancelAnimationFrame(focusRaf);
+      observer?.disconnect();
+    };
   }, [focusTarget]);
 
   // Pass `afterLoad` when the caller needs to remount section components only

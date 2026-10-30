@@ -24,8 +24,8 @@ export function Sidebar({
 }: SidebarProps) {
   const [geminiConfigured, setGeminiConfigured] = useState(false);
   const resumeAiDescription = geminiConfigured
-    ? 'AI-assisted · Key saved'
-    : 'AI-assisted · Add your Gemini API key';
+    ? 'Import your resume with AI.'
+    : 'Add a Gemini API key to import your resume with AI.';
 
   useEffect(() => {
     let active = true;
@@ -161,7 +161,7 @@ export function Sidebar({
         <button
           type="button"
           onClick={() => onSelect('resume')}
-          title={`Import Resume · ${resumeAiDescription}`}
+          title={resumeAiDescription}
           aria-label="Import Resume"
           aria-describedby="resume-ai-description"
           aria-current={activeSection === 'resume' ? 'page' : undefined}

@@ -131,9 +131,9 @@ describe('Sidebar — AI setup indicator', () => {
       vi.mocked(getGeminiSettings).mockResolvedValue(configured);
       renderSidebar({ collapsed });
       const resume = screen.getByRole('button', { name: 'Import Resume' });
-      await waitFor(() => expect(resume.title).toBe('Import Resume · AI-assisted · Key saved'));
+      await waitFor(() => expect(resume.title).toBe('Import your resume with AI.'));
       expect(document.getElementById(resume.getAttribute('aria-describedby')!)?.textContent).toBe(
-        'AI-assisted · Key saved',
+        'Import your resume with AI.',
       );
     },
   );
@@ -145,7 +145,7 @@ describe('Sidebar — AI setup indicator', () => {
       const { onSelect } = renderSidebar();
       const resume = screen.getByRole('button', { name: 'Import Resume' });
       await waitFor(() => expect(getGeminiSettings).toHaveBeenCalledOnce());
-      expect(resume.title).toBe('Import Resume · AI-assisted · Add your Gemini API key');
+      expect(resume.title).toBe('Add a Gemini API key to import your resume with AI.');
       expect(resume.hasAttribute('disabled')).toBe(false);
       fireEvent.click(resume);
       expect(onSelect).toHaveBeenCalledWith('resume');
@@ -167,10 +167,10 @@ describe('Sidebar — AI setup indicator', () => {
     const changed = storageChanges.addListener.mock.calls[0][0];
     vi.mocked(getGeminiSettings).mockResolvedValue(configured);
     act(() => changed({ geminiApiKey: {} }, 'local'));
-    await waitFor(() => expect(resume.title).toContain('Key saved'));
+    await waitFor(() => expect(resume.title).toBe('Import your resume with AI.'));
     vi.mocked(getGeminiSettings).mockResolvedValue(empty);
     act(() => changed({ geminiSettingsMeta: {} }, 'local'));
-    await waitFor(() => expect(resume.title).toContain('Add your Gemini API key'));
+    await waitFor(() => expect(resume.title).toContain('Add a Gemini API key'));
     act(() => changed({ geminiApiKey: {} }, 'session'));
     expect(getGeminiSettings).toHaveBeenCalledTimes(3);
     view.unmount();
@@ -194,7 +194,7 @@ describe('Sidebar — AI setup indicator', () => {
       finish(configured);
     });
     expect(screen.getByRole('button', { name: 'Import Resume' }).title).toContain(
-      'Add your Gemini API key',
+      'Add a Gemini API key',
     );
   });
 

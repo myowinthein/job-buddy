@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useEffect, useState } from 'react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 
@@ -23,7 +24,12 @@ vi.mock('@/src/utils/driveSync', () => ({
 // (save contract, reset timing, focus routing), including a couple of real
 // focusable elements with the ids the real components would carry.
 vi.mock('@/src/components/options/Sidebar', () => ({
-  Sidebar: () => <div data-testid="sidebar" />,
+  Sidebar: ({ onSelect }: { onSelect: (section: string) => void }) => (
+    <div data-testid="sidebar">
+      <button onClick={() => onSelect('address')}>open-address</button>
+      <button onClick={() => onSelect('settings')}>open-settings</button>
+    </div>
+  ),
 }));
 vi.mock('@/src/components/options/CompletionBanner', () => ({
   CompletionBanner: (props: { onNavigate: (id: string) => void; onFocusField: (id: string, field: string) => void }) => (
@@ -32,7 +38,10 @@ vi.mock('@/src/components/options/CompletionBanner', () => ({
     </div>
   ),
 }));
-const { saveOutcome } = vi.hoisted(() => ({ saveOutcome: vi.fn() }));
+const { saveOutcome, loadSettings } = vi.hoisted(() => ({
+  saveOutcome: vi.fn(),
+  loadSettings: vi.fn<() => Promise<void>>(),
+}));
 vi.mock('@/src/components/options/PersonalSection', () => ({
   PersonalSection: (props: { profile: { personal?: { firstName?: string } }; onSave: (u: object) => Promise<void> }) => (
     <div>
@@ -56,16 +65,28 @@ vi.mock('@/src/components/options/EducationSection', () => ({ EducationSection: 
 vi.mock('@/src/components/options/LanguagesSection', () => ({ LanguagesSection: () => <div>languages-section</div> }));
 vi.mock('@/src/components/options/LinksSection', () => ({ LinksSection: () => <div>links-section</div> }));
 vi.mock('@/src/components/options/DocumentsSection', () => ({ DocumentsSection: () => <div>documents-section</div> }));
-vi.mock('@/src/components/options/ResumeImportSection', () => ({ ResumeImportSection: () => <div>resume-section</div> }));
+vi.mock('@/src/components/options/ResumeImportSection', () => ({
+  ResumeImportSection: ({ onGoToApiKey }: { onGoToApiKey: () => void }) => (
+    <button onClick={onGoToApiKey}>Go to Settings</button>
+  ),
+}));
 vi.mock('@/src/components/options/LearnedMappingsSection', () => ({ LearnedMappingsSection: () => <div>learnedMappings-section</div> }));
 vi.mock('@/src/components/options/SettingsSection', () => ({
-  SettingsSection: (props: { onImportComplete: (afterLoad?: () => void) => void; onResetComplete: () => void }) => (
-    <div>
-      <span>settings-section</span>
-      <input id="gemini-api-key" aria-label="Gemini API Key" />
-      <button onClick={() => props.onResetComplete()}>trigger-reset</button>
-    </div>
-  ),
+  SettingsSection: (props: { onImportComplete: (afterLoad?: () => void) => void; onResetComplete: () => void }) => {
+    const [loading, setLoading] = useState(true);
+    useEffect(() => {
+      let active = true;
+      void loadSettings().then(() => { if (active) setLoading(false); });
+      return () => { active = false; };
+    }, []);
+    return (
+      <div>
+        <span>settings-section</span>
+        <input id="gemini-api-key" aria-label="Gemini API Key" type="password" disabled={loading} />
+        <button onClick={() => props.onResetComplete()}>trigger-reset</button>
+      </div>
+    );
+  },
 }));
 
 vi.stubGlobal('chrome', {
@@ -90,6 +111,7 @@ function renderApp() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  loadSettings.mockReset().mockResolvedValue(undefined);
   sessionStorage.clear();
   // jsdom doesn't implement Element.scrollTo/scrollIntoView; App.tsx calls
   // both (section-nav reset, and focus-target scrolling).
@@ -178,6 +200,37 @@ describe('options App — reset timing', () => {
 });
 
 describe('options App — focus routing', () => {
+  it('waits for the API key input to become enabled after Go to Settings', async () => {
+    sessionStorage.setItem('jb:ui:section', 'resume');
+    let finishLoading!: () => void;
+    loadSettings.mockImplementationOnce(() => new Promise((resolve) => { finishLoading = resolve; }));
+    renderApp();
+    fireEvent.click(await screen.findByRole('button', { name: 'Go to Settings' }));
+    const input = await screen.findByLabelText('Gemini API Key');
+    // Let both focus frames run while settings are still loading.
+    await act(async () => { await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))); });
+    expect(input.hasAttribute('disabled')).toBe(true);
+    expect(document.activeElement).not.toBe(input);
+    await act(async () => { finishLoading(); });
+    await waitFor(() => expect(document.activeElement).toBe(input));
+  });
+
+  it('cancels a pending key focus request when navigating to another section', async () => {
+    sessionStorage.setItem('jb:ui:section', 'resume');
+    loadSettings.mockImplementationOnce(() => new Promise(() => {}));
+    renderApp();
+    fireEvent.click(await screen.findByRole('button', { name: 'Go to Settings' }));
+    await screen.findByLabelText('Gemini API Key');
+    await act(async () => { await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))); });
+    fireEvent.click(screen.getByText('open-address'));
+    await screen.findByText('address-section');
+    fireEvent.click(screen.getByText('open-settings'));
+    const input = await screen.findByLabelText('Gemini API Key');
+    await waitFor(() => expect(input.hasAttribute('disabled')).toBe(false));
+    await act(async () => { await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))); });
+    expect(document.activeElement).not.toBe(input);
+  });
+
   it('switches to Settings and focuses the Gemini API key input on a popup focus handoff', async () => {
     vi.mocked(sessionGet).mockResolvedValue({ 'jb:focusOnLoad': 'gemini-api-key' });
     renderApp();
