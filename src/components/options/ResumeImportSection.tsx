@@ -255,10 +255,6 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
   // ── Render ────────────────────────────────────────────────────────────────────
 
   const currentStepIdx = PROGRESS_STEPS.findIndex((s) => s.id === progressStep);
-  const missingDates = changes.some(change => ['education', 'workHistory'].includes(change.id) &&
-    Array.isArray(change.suggestedValue) && change.suggestedValue.some(entry =>
-      !entry.startDate || (!entry.isCurrent && !entry.endDate)));
-  const warnings = missingDates ? ['Some dates are missing. Complete them in your profile after import.'] : undefined;
 
   return (
     <div>
@@ -517,8 +513,6 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
         <ImportSummaryDialog
           changes={changes}
           title="Review Resume"
-          warnings={warnings}
-          warningsSummary="Missing dates"
           onAcceptAll={() => void performSave(acceptAllChanges(changes))}
           onRejectAll={closeSection}
           onDismiss={closeSection}
@@ -540,8 +534,6 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
           onBack={() => setScreen('summary')}
           isSaving={saving}
           title="Review Resume"
-          warnings={warnings}
-          warningsSummary="Missing dates"
           saveLabel="Import Selected"
         />
       )}

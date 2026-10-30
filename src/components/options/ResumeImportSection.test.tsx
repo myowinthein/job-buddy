@@ -347,7 +347,7 @@ it('closes the import without saving when Keep Current is chosen', async () => {
   expect(screen.queryByText('Analyze Resume')).toBeNull();
 });
 
-it('explains missing dates without claiming that valid entries will be skipped', async () => {
+it('imports entries with missing dates without an extra warning', async () => {
   vi.mocked(extractFromResume).mockReset().mockResolvedValue({ education: [{
     institution: 'Example University', degree: 'BSc', fieldOfStudy: 'Computing', startDate: '',
   }] });
@@ -355,10 +355,11 @@ it('explains missing dates without claiming that valid entries will be skipped',
   await screen.findByText(/Drop your resume here/);
   await selectFile(pdfFile());
   fireEvent.click(screen.getByText('Analyze Resume'));
-  await screen.findByText('Missing dates');
+  await screen.findByText('Review Resume');
+  expect(screen.queryByText('Missing dates')).toBeNull();
   expect(screen.queryByText(/invalid item/)).toBeNull();
   fireEvent.click(screen.getByText('Review Changes'));
-  expect(screen.getByText('Missing dates')).toBeTruthy();
+  expect(screen.queryByText('Missing dates')).toBeNull();
   expect(screen.queryByText(/invalid item/)).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: /^Import Selected/ }));
   await waitFor(() => expect(onSave).toHaveBeenCalled());
