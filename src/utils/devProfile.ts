@@ -77,7 +77,8 @@ export const DEV_PROFILE: Profile = {
   links: {
     linkedin: 'https://linkedin.com/in/janedoe-dev',
     portfolio: 'https://janedoe.dev',
-    custom: [{ label: 'GitHub', url: 'https://github.com/janedoe' }],
+    github: 'https://github.com/janedoe',
+    custom: [{ label: 'Blog', url: 'https://janedoe.dev/blog' }],
   },
   documents: {
     cv: { url: 'https://example.com/jane-doe-resume.pdf' },

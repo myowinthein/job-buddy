@@ -18,6 +18,7 @@ export interface ImportReviewScreenProps {
   saveLabel?: string;
   incomingLabel?: string;
   warnings?: string[];
+  warningsSummary?: string;
   returnFocusRef?: RefObject<HTMLElement | null>;
 }
 
@@ -32,6 +33,7 @@ export default function ImportReviewScreen({
   saveLabel = 'Import Selected',
   incomingLabel = 'Imported',
   warnings,
+  warningsSummary,
   returnFocusRef,
 }: ImportReviewScreenProps) {
   const [localChanges, setLocalChanges] = useState(initialChanges);
@@ -129,7 +131,7 @@ export default function ImportReviewScreen({
               Clear Selection
             </button>
           </div>
-          <ImportWarnings warnings={warnings} />
+          <ImportWarnings warnings={warnings} summary={warningsSummary} />
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-3">
           {sections.map((section, index) => {

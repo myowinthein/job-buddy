@@ -5,6 +5,7 @@ import { deferPointerFocus, focusOnClick } from './stableControlFocus';
 interface ExpandableCardProps {
   id?: string;
   summary: string;
+  badge?: React.ReactNode;
   subtitle?: string;
   onDelete?: () => void;
   children: React.ReactNode;
@@ -20,6 +21,7 @@ interface ExpandableCardProps {
 export function ExpandableCard({
   id,
   summary,
+  badge,
   subtitle,
   onDelete,
   children,
@@ -70,7 +72,10 @@ export function ExpandableCard({
           }}
           aria-expanded={isExpanded}
         >
-          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{summary}</p>
+          <span className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{summary}</span>
+            {badge}
+          </span>
           {subtitle && (
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{subtitle}</p>
           )}

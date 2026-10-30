@@ -332,5 +332,51 @@ it('shows the active model and the reason for fallback', async () => {
   await screen.findByText(/Drop your resume here/);
   await selectFile(pdfFile());
   fireEvent.click(screen.getByText('Analyze Resume'));
-  expect(await screen.findByRole('status')).toHaveProperty('textContent', 'The previous model took too long. Trying Gemini 3.8 Flash.');
+  expect(await screen.findByText('The previous model took too long. Trying Gemini 3.8 Flash.')).toBeTruthy();
+});
+
+it('closes the import without saving when Keep Current is chosen', async () => {
+  vi.mocked(extractFromResume).mockReset().mockResolvedValue({ professional: { summary: 'Incoming' } });
+  const { onClose, onSave } = renderSection();
+  await screen.findByText(/Drop your resume here/);
+  await selectFile(pdfFile());
+  fireEvent.click(screen.getByText('Analyze Resume'));
+  fireEvent.click(await screen.findByText('Keep Current'));
+  expect(onClose).toHaveBeenCalledTimes(1);
+  expect(onSave).not.toHaveBeenCalled();
+  expect(screen.queryByText('Analyze Resume')).toBeNull();
+});
+
+it('explains missing dates without claiming that valid entries will be skipped', async () => {
+  vi.mocked(extractFromResume).mockReset().mockResolvedValue({ education: [{
+    institution: 'Example University', degree: 'BSc', fieldOfStudy: 'Computing', startDate: '',
+  }] });
+  const { onSave } = renderSection();
+  await screen.findByText(/Drop your resume here/);
+  await selectFile(pdfFile());
+  fireEvent.click(screen.getByText('Analyze Resume'));
+  await screen.findByText('Missing dates');
+  expect(screen.queryByText(/invalid item/)).toBeNull();
+  fireEvent.click(screen.getByText('Review Changes'));
+  expect(screen.getByText('Missing dates')).toBeTruthy();
+  expect(screen.queryByText(/invalid item/)).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: /^Import Selected/ }));
+  await waitFor(() => expect(onSave).toHaveBeenCalled());
+  expect(onSave.mock.calls[0][0].education[0]).toMatchObject({ institution: 'Example University', startDate: '' });
+});
+
+it('shows an animated active step without routine model narration', async () => {
+  vi.mocked(extractFromResume).mockReset().mockImplementation(
+    (_key, _model, _data, _mime, _profile, _signal, _links, onAttempt) => {
+      onAttempt?.({ model: 'gemini-3.5-flash-lite' });
+      return new Promise(() => {});
+    },
+  );
+  renderSection();
+  await screen.findByText(/Drop your resume here/);
+  await selectFile(pdfFile());
+  fireEvent.click(screen.getByText('Analyze Resume'));
+  const active = await screen.findByText('Analyzing resume…');
+  await waitFor(() => expect(active.parentElement?.querySelector('.animate-spin')).toBeTruthy());
+  expect(screen.queryByText(/^Using Gemini/)).toBeNull();
 });

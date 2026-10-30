@@ -85,6 +85,10 @@ Schema (omit or set null for any field not found in the resume):
   "links": {
     "linkedin": string | null,
     "portfolio": string | null,
+    "github": string | null,
+    "twitter": string | null,
+    "dribbble": string | null,
+    "behance": string | null,
     "custom": [ { "label": string, "url": string } ]
   }
 }
@@ -94,6 +98,7 @@ ${currentProfileJson}
 
 ${hyperlinksSection}Rules:
 - Never invent or guess values not present in the document
+- Use the dedicated links fields for LinkedIn, portfolio, GitHub, Twitter/X, Dribbble, and Behance profiles. Put GitHub profile URLs in links.github, not links.custom. Keep project/repository URLs and other sites in links.custom. Do not duplicate the same URL in both.
 - Preserve the complete job title, including parenthetical team or initiative names. Never shorten a title.
 - Preserve previous roles, promotions, and any "Previously:" line within the same employment entry. Put these lines in the description context paragraph before the responsibilities. Do not omit them or turn them into separate employers.
 - Dates: workHistory uses YYYY-MM (month required); education uses YYYY-MM when month is given, or YYYY when only the year is available; dateOfBirth uses YYYY-MM-DD

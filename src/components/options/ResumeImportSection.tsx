@@ -280,8 +280,8 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
                 <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
                   Import Resume
                 </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Upload your resume to Gemini, then review the suggested profile changes before saving.
+                <p className="text-xs text-pretty text-gray-500 dark:text-gray-400 mt-0.5">
+                  Use Gemini to extract your details, then review what to import.
                 </p>
               </div>
               <button
@@ -414,7 +414,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
               Analyzing Resume
             </h3>
 
-            <div className="space-y-4">
+            <div className="space-y-4" role="status" aria-live="polite" aria-atomic="true">
               {PROGRESS_STEPS.map((step, i) => {
                 const isDone     = !errorMsg && currentStepIdx > i;
                 const isActive   = !errorMsg && step.id === progressStep;
@@ -424,7 +424,7 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
                       {isDone ? (
                         <span className="text-green-500 dark:text-green-400 text-sm">✓</span>
                       ) : isActive ? (
-                        <span className="inline-block w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
+                        <span aria-hidden="true" className="inline-block w-4 h-4 rounded-full border-2 border-blue-500 border-r-transparent animate-spin motion-reduce:animate-none" />
                       ) : (
                         <span className="inline-block w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600" />
                       )}
@@ -441,12 +441,12 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
               })}
             </div>
 
-            {attempt && !errorMsg && (
+            {attempt?.reason && !errorMsg && (
               <p role="status" className="mt-4 text-xs text-center text-gray-500 dark:text-gray-400">
                 {attempt.reason === 'timeout' ? 'The previous model took too long. '
                   : attempt.reason === 'rate_limit' ? 'The previous model reached its usage limit. '
                   : attempt.reason === 'unavailable' ? 'The previous model is unavailable. ' : ''}
-                {attempt.reason ? 'Trying' : 'Using'} {MODEL_DISPLAY_NAMES[attempt.model]}.
+                Trying {MODEL_DISPLAY_NAMES[attempt.model]}.
               </p>
             )}
             {/* Long wait message */}
@@ -518,9 +518,10 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
           changes={changes}
           title="Review Resume"
           warnings={warnings}
+          warningsSummary="Missing dates"
           onAcceptAll={() => void performSave(acceptAllChanges(changes))}
-          onRejectAll={() => setScreen('dialog')}
-          onDismiss={() => setScreen('dialog')}
+          onRejectAll={closeSection}
+          onDismiss={closeSection}
           onReview={() => setScreen('review')}
           isProcessing={saving}
         />
@@ -533,13 +534,14 @@ export function ResumeImportSection({ profile, onSave, onGoToApiKey, onClose }: 
         <ImportReviewScreen
           changes={changes}
           onChangesChange={setChanges}
-          onDismiss={() => setScreen('dialog')}
+          onDismiss={closeSection}
           incomingLabel="From Resume"
           onSave={performSave}
           onBack={() => setScreen('summary')}
           isSaving={saving}
           title="Review Resume"
           warnings={warnings}
+          warningsSummary="Missing dates"
           saveLabel="Import Selected"
         />
       )}

@@ -63,9 +63,39 @@ describe('validated resume data', () => {
     expect(result).toEqual({
       links: {
         linkedin: 'https://linkedin.com/in/test',
-        custom: [{ label: 'GitHub', url: 'https://github.com/test' }],
+        github: 'https://github.com/test',
+        custom: [],
       },
     });
+  });
+
+  it('imports dedicated social fields through comparison and save without losing other links', () => {
+    const current = { links: { linkedin: '', custom: [{ label: 'Blog', url: 'https://blog.example' }] } };
+    const extracted = validateResumeProfile({ links: {
+      github: 'github.com/test', twitter: 'https://x.com/test',
+      dribbble: 'https://dribbble.com/test', behance: 'https://behance.net/test',
+    } });
+    const saved = applyReviewedResumeChanges(current, resumeChanges(current, extracted));
+    expect(saved.links).toEqual({ ...current.links,
+      github: 'https://github.com/test', twitter: 'https://x.com/test',
+      dribbble: 'https://dribbble.com/test', behance: 'https://behance.net/test',
+    });
+  });
+
+  it('preserves repository, ambiguous account, and unrelated custom links', () => {
+    const custom = [
+      { label: 'GitHub', url: 'https://github.com/test/project' },
+      { label: 'GitHub', url: 'https://github.com/one' },
+      { label: 'GitHub', url: 'https://github.com/two' },
+      { label: 'GitHub', url: 'https://github.example/test' },
+    ];
+    expect(validateResumeProfile({ links: { custom } }).links).toEqual({ custom });
+  });
+
+  it('does not overwrite an explicit GitHub field with a different custom account', () => {
+    const links = { github: 'https://github.com/one', custom: [{ label: 'GitHub', url: 'https://github.com/two' }] };
+    expect(validateResumeProfile({ links }).links).toEqual(links);
+    expect(links.custom).toHaveLength(1);
   });
 });
 

@@ -135,25 +135,6 @@ export function LanguagesSection({ profile, onSave }: Props) {
   return (
     <div>
       <SectionHeader sectionId="languages" />
-      <details className="mb-5 rounded-lg border border-gray-200 dark:border-gray-700">
-        <summary
-          {...stableDisclosureFocus}
-          className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300"
-        >
-          <Info aria-hidden="true" className="h-3.5 w-3.5" />
-          Proficiency guide
-        </summary>
-        <dl className="space-y-3 border-t border-gray-200 px-3 py-3 text-xs dark:border-gray-700">
-          {PROFICIENCY_OPTIONS.map((level) => (
-            <div key={level.value}>
-              <dt className="font-medium text-gray-700 dark:text-gray-200">{level.label}</dt>
-              <dd className="mt-1 text-gray-500 dark:text-gray-400">
-                {PROFICIENCY_HELP[level.value]}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </details>
 
       <EntryListHeader id="add-languages" onAdd={addEntry} label="+ Add Language" />
 
@@ -203,6 +184,26 @@ export function LanguagesSection({ profile, onSave }: Props) {
           </div>
         ))}
       </div>
+
+      <details className="mb-4">
+        <summary
+          {...stableDisclosureFocus}
+          className="flex cursor-pointer items-center gap-2 py-1 text-xs font-medium text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
+        >
+          <Info aria-hidden="true" className="h-3.5 w-3.5" />
+          Proficiency guide
+        </summary>
+        <dl className="mt-3 grid gap-x-6 gap-y-3 text-xs sm:grid-cols-2">
+          {PROFICIENCY_OPTIONS.map((level) => (
+            <div key={level.value}>
+              <dt className="font-medium text-gray-700 dark:text-gray-200">{level.label}</dt>
+              <dd className="mt-1 text-gray-500 dark:text-gray-400">
+                {PROFICIENCY_HELP[level.value]}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </details>
 
       <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
         <SaveButton onClick={handleSave} saving={saving} label="Save Languages" />

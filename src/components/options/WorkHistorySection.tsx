@@ -90,7 +90,7 @@ function initRow(raw: WorkHistoryEntry): LocalRow {
 
 const cardSummary = (row: LocalRow, idx: number) =>
   row.company && row.title
-    ? `${row.company}: ${row.title}${row.isCurrent ? ' (Active)' : ''}`
+    ? `${row.company}: ${row.title}`
     : `Entry ${idx + 1}`;
 
 export function WorkHistorySection({ profile, onSave }: Props) {
@@ -297,6 +297,11 @@ export function WorkHistorySection({ profile, onSave }: Props) {
             id={`entry-workHistory-${idx}`}
             key={row.rowId}
             summary={cardSummary(row, idx)}
+            badge={row.isCurrent ? (
+              <span className="shrink-0 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                Current
+              </span>
+            ) : undefined}
             onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
             defaultExpanded={!row.company}
             invalid={Object.entries(errors).some(

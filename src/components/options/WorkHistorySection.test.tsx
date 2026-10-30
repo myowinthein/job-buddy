@@ -16,6 +16,15 @@ function renderSection(profile: Partial<Profile>, onSave = vi.fn().mockResolvedV
   return { onSave };
 }
 
+it('keeps the Current badge visible on a collapsed role and updates it with current status', () => {
+  renderSection({ workHistory: [{ company: 'Acme', title: 'Engineer', startDate: '2020-01', isCurrent: true }] });
+  expect(screen.getByText('Current')).toBeTruthy();
+  expect(screen.queryByText(/\(Active\)/)).toBeNull();
+  fireEvent.click(screen.getByText('Acme: Engineer'));
+  fireEvent.click(screen.getByLabelText('I currently work here'));
+  expect(screen.queryByText('Current')).toBeNull();
+});
+
 describe('WorkHistorySection — initRow location backward-compat loader', () => {
   it('migrates a legacy plain-string location into the city field', () => {
     const { onSave } = renderSection({

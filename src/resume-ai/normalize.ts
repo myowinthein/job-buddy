@@ -106,20 +106,47 @@ export function stripMarkdown(text: string): string {
     .trim();
 }
 
+// Older extraction prompts placed GitHub profiles in custom links. Promote only
+// an explicitly labelled account URL, preserving repository links and ambiguity.
+function normalizeExtractedLinks(links?: Profile['links']): Profile['links'] | undefined {
+  if (!links?.custom?.length) return links;
+  const profiles = links.custom.filter((entry) => {
+    if (!/^github(?:\s+profile)?$/i.test(entry.label.trim())) return false;
+    try {
+      const url = new URL(entry.url);
+      return ['github.com', 'www.github.com'].includes(url.hostname) &&
+        /^\/[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?\/?$/i.test(url.pathname);
+    } catch { return false; }
+  });
+  if (!profiles.length) return links;
+  const sameUrl = (a: string, b: string) => a.replace(/\/$/, '').toLowerCase() === b.replace(/\/$/, '').toLowerCase();
+  // Multiple different accounts need a human choice, not first-match selection.
+  const github = links.github || profiles[0].url;
+  if (!links.github && profiles.some((entry) => !sameUrl(entry.url, github))) return links;
+  return {
+    ...links,
+    github,
+    custom: links.custom.filter((entry) => !profiles.includes(entry) || !sameUrl(entry.url, github)),
+  };
+}
+
 /**
  * Post-processes the Partial<Profile> returned by Gemini:
  *   - Normalises every workHistory[].description into bullet form.
  *   - Merges soft PDF line wraps in professional.summary into spaces.
+ *   - Routes unambiguous extracted GitHub profiles to their dedicated field.
  *
  * Pure: returns a new object, does not mutate the input.
  */
 export function normalizeExtractedProfile(p: Partial<Profile>): Partial<Profile> {
   const needsWorkNorm = !!p.workHistory?.length;
   const needsSummaryNorm = !!p.professional?.summary;
-  if (!needsWorkNorm && !needsSummaryNorm) return p;
+  const links = normalizeExtractedLinks(p.links);
+  if (!needsWorkNorm && !needsSummaryNorm && links === p.links) return p;
 
   return {
     ...p,
+    ...(links !== p.links ? { links } : undefined),
     ...(needsWorkNorm
       ? {
           workHistory: p.workHistory!.map((entry) =>

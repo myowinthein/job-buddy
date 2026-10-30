@@ -9,6 +9,7 @@ export interface ImportSummaryDialogProps {
   title?: string;
   description?: string;
   warnings?: string[];
+  warningsSummary?: string;
   returnFocusRef?: RefObject<HTMLElement | null>;
   acceptLabel?: string;
   forceDecision?: boolean;
@@ -24,6 +25,7 @@ export default function ImportSummaryDialog({
   title = 'Import Profile',
   description = 'Choose which details to import.',
   warnings,
+  warningsSummary,
   returnFocusRef,
   acceptLabel = 'Import All',
   forceDecision = false,
@@ -82,7 +84,7 @@ export default function ImportSummaryDialog({
             )}
           </p>
         )}
-        <ImportWarnings warnings={warnings} />
+        <ImportWarnings warnings={warnings} summary={warningsSummary} />
         <div className="mt-6 flex flex-wrap justify-end gap-2">
           {hasChanges ? (
             <>

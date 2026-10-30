@@ -61,7 +61,10 @@ const shape: Shape = {
     },
   ],
   languages: [{ language: 'string', proficiency: 'string' }],
-  links: { linkedin: 'string', portfolio: 'string', custom: [{ label: 'string', url: 'string' }] },
+  links: {
+    linkedin: 'string', portfolio: 'string', github: 'string', twitter: 'string',
+    dribbble: 'string', behance: 'string', custom: [{ label: 'string', url: 'string' }],
+  },
 };
 
 const invalid = () =>
