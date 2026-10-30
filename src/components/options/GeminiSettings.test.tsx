@@ -173,7 +173,49 @@ describe('Gemini explicit key setup', () => {
       expect.any(AbortSignal),
       'gemini-3.5-flash-lite',
     );
+    expect(saveGeminiSettings).toHaveBeenCalledWith(
+      'saved-key',
+      'gemini-3.5-flash-lite',
+      'auto',
+      'original',
+      expect.any(Function),
+    );
+    expect(screen.getByText(/^Last checked:/)).toBeTruthy();
+  });
+  it('restores Ready and the last check after refresh without calling Gemini', async () => {
+    vi.mocked(getGeminiSettings).mockResolvedValue({ ...existing, verifiedAt: Date.now() });
+    const first = renderSettings();
+    await screen.findByText('Ready');
+    first.unmount();
+    renderSettings();
+    expect(await screen.findByText('Ready')).toBeTruthy();
+    expect(screen.getByText(/^Last checked: Today at/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Check again' })).toBeTruthy();
+    expect(checkApiKey).not.toHaveBeenCalled();
+    expect(validateApiKey).not.toHaveBeenCalled();
     expect(saveGeminiSettings).not.toHaveBeenCalled();
+  });
+  it('does not mark a recheck Ready if another tab removes the settings before it saves', async () => {
+    vi.mocked(getGeminiSettings).mockResolvedValueOnce(existing).mockResolvedValue(empty);
+    vi.mocked(saveGeminiSettings).mockResolvedValue(null);
+    renderSettings();
+    fireEvent.click(await screen.findByRole('button', { name: 'Check Key' }));
+    expect(
+      await screen.findByText('AI settings changed in another tab. Review them and try again.'),
+    ).toBeTruthy();
+    expect(screen.queryByText('Ready')).toBeNull();
+    expect(screen.queryByText(/^Last checked:/)).toBeNull();
+  });
+  it('shows attention after a failed recheck and can retry without replacing the key', async () => {
+    vi.mocked(getGeminiSettings).mockResolvedValue({ ...existing, verifiedAt: Date.now() });
+    vi.mocked(checkApiKey).mockResolvedValueOnce('network_error').mockResolvedValue('valid');
+    renderSettings();
+    fireEvent.click(await screen.findByRole('button', { name: 'Check again' }));
+    expect(await screen.findByText('Needs attention')).toBeTruthy();
+    expect(screen.getByText(KEY_ERROR_MESSAGES.network_error)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Try Again' }));
+    expect(await screen.findByText('Ready')).toBeTruthy();
+    expect(saveGeminiSettings).toHaveBeenCalledTimes(1);
   });
   it('keeps the old key active and explains it after a rejected replacement', async () => {
     vi.mocked(getGeminiSettings).mockResolvedValue(existing);
@@ -266,7 +308,7 @@ describe('Gemini explicit key setup', () => {
     vi.mocked(validateApiKey).mockResolvedValue({ valid: true, model: 'gemini-3.8-flash' });
     renderSettings();
     await screen.findByText('Replace Key');
-    fireEvent.click(screen.getByText('Options & help'));
+    fireEvent.click(screen.getByText('Model options'));
     fireEvent.change(screen.getByLabelText('AI Model'), { target: { value: 'gemini-3.8-flash' } });
     expect(await screen.findByText('Ready')).toBeTruthy();
     expect(saveGeminiSettings).toHaveBeenCalledWith(

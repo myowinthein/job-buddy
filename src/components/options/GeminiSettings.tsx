@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Circle, LoaderCircle, RefreshCw } from 'lucide-react';
 import { checkApiKey, validateApiKey, KEY_ERROR_MESSAGES } from '@/src/resume-ai/gemini';
 import { MODEL_DISPLAY_NAMES, GEMINI_MODEL_PRIORITY } from '@/src/resume-ai/types';
 import {
@@ -18,6 +17,39 @@ const primary =
 const secondary =
   'px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 active:scale-95 transition-colors';
 type Status = 'loading' | 'empty' | 'saved' | 'checking' | 'removing' | 'ready' | 'error';
+const storedStatus = (settings: SavedSettings | null): Status =>
+  !settings?.apiKey
+    ? 'empty'
+    : settings.model &&
+        settings.verifiedAt &&
+        Number.isFinite(settings.verifiedAt) &&
+        settings.verifiedAt > 0
+      ? 'ready'
+      : 'saved';
+
+function formatCheckedAt(timestamp: number | null | undefined): string {
+  if (!timestamp || !Number.isFinite(timestamp) || timestamp <= 0) return 'Not checked yet';
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return 'Not checked yet';
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const checkedDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const days = Math.round((today - checkedDay) / 86_400_000);
+  const time = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const formatted =
+    days === 0
+      ? `Today at ${time}`
+      : days === 1
+        ? `Yesterday at ${time}`
+        : date.toLocaleString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+  return `Last checked: ${formatted}`;
+}
 
 export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: boolean }) {
   const { showToast } = useToast();
@@ -56,7 +88,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
         setPreference(value.preference);
         setDraft('');
         setEditing(false);
-        setStatus(value.apiKey ? 'saved' : 'empty');
+        setStatus(storedStatus(value));
         setError('');
         setKeyInvalid(false);
         setRemoveDialog(false);
@@ -107,7 +139,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
     setDraft('');
     setEditing(false);
     setPreference(saved?.preference ?? 'auto');
-    setStatus(configured ? 'saved' : 'empty');
+    setStatus(storedStatus(saved));
     setError('');
     setKeyInvalid(false);
   }
@@ -168,32 +200,30 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
         setPreference(saved.preference);
         return;
       }
-      if (save || !saved.model) {
-        committing = true;
-        writing.current++;
-        const updated = await saveGeminiSettings(
-          trimmed,
-          result.model,
-          choice,
-          saved.revision,
-          current,
-        );
+      committing = true;
+      writing.current++;
+      const updated = await saveGeminiSettings(
+        trimmed,
+        result.model,
+        choice,
+        saved.revision,
+        current,
+      );
+      if (!current()) return;
+      if (!updated) {
+        const latest = await getGeminiSettings();
         if (!current()) return;
-        if (!updated) {
-          const latest = await getGeminiSettings();
-          if (!current()) return;
-          setSaved(latest);
-          setPreference(latest.preference);
-          setStatus('error');
-          setError('AI settings changed in another tab. Review them and try again.');
-          return;
-        }
-        setSaved(updated);
-        setPreference(updated.preference);
-        setEditing(false);
-        setDraft('');
-        showToast('success', replacing ? 'API key saved.' : 'AI model saved.');
+        setSaved(latest);
+        setPreference(latest.preference);
+        setStatus('error');
+        setError('AI settings changed in another tab. Review them and try again.');
+        return;
       }
+      setSaved(updated);
+      setPreference(updated.preference);
+      setEditing(false);
+      setDraft('');
+      if (save) showToast('success', replacing ? 'API key saved.' : 'AI model saved.');
       setStatus('ready');
     } catch {
       if (current()) {
@@ -204,7 +234,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
     } finally {
       if (committing) writing.current--;
       if (mounted.current && id === sequence.current && controller.signal.aborted)
-        setStatus(configured ? 'saved' : 'empty');
+        setStatus(replacing ? 'empty' : storedStatus(saved));
     }
   }
 
@@ -257,14 +287,15 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
   const statusIndicator = statusText ? (
     <span
       role="status"
-      className={`inline-flex items-center gap-1.5 text-xs ${status === 'ready' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}
+      className={`inline-flex items-center gap-1.5 text-xs ${status === 'checking' || status === 'loading' || status === 'removing' ? 'text-blue-600 dark:text-blue-400' : status === 'ready' ? 'text-green-700 dark:text-green-400' : status === 'error' ? 'text-amber-700 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'}`}
     >
       {status === 'checking' || status === 'loading' || status === 'removing' ? (
-        <LoaderCircle aria-hidden="true" className="w-3 h-3 motion-safe:animate-spin" />
-      ) : status === 'ready' ? (
-        <Check aria-hidden="true" className="w-3 h-3" />
+        <span
+          aria-hidden="true"
+          className="h-3 w-3 shrink-0 rounded-full border-2 border-current border-r-transparent animate-spin motion-reduce:animate-none"
+        />
       ) : (
-        <Circle aria-hidden="true" className="w-2 h-2" />
+        <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
       )}
       {statusText}
     </span>
@@ -283,24 +314,29 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
         }}
       >
         {configured && !replacing ? (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
-              {saved?.model ? MODEL_DISPLAY_NAMES[saved.model] : 'Gemini API key'}
-            </span>
-            <span aria-hidden="true" className="text-gray-300 dark:text-gray-600">
-              ·
-            </span>
-            {statusIndicator}
-            <button
-              type="button"
-              onClick={() => void verify(saved?.apiKey ?? '', preference, false)}
-              disabled={busy}
-              aria-label={status === 'error' ? 'Try Again' : 'Check Key'}
-              title={status === 'error' ? 'Try Again' : 'Check Key'}
-              className="inline-flex items-center justify-center rounded-md p-1.5 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50"
-            >
-              <RefreshCw aria-hidden="true" className="w-3.5 h-3.5" />
-            </button>
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                {saved?.model ? MODEL_DISPLAY_NAMES[saved.model] : 'Gemini API key'}
+              </span>
+              {statusIndicator}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+              <span>{formatCheckedAt(saved?.verifiedAt)}</span>
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                onClick={() => void verify(saved?.apiKey ?? '', preference, false)}
+                disabled={busy}
+                className="text-blue-600 dark:text-blue-400 hover:underline rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50"
+              >
+                {status === 'error'
+                  ? 'Try Again'
+                  : storedStatus(saved) === 'ready'
+                    ? 'Check again'
+                    : 'Check Key'}
+              </button>
+            </div>
           </div>
         ) : (
           <>
@@ -324,7 +360,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
                 setDraft(e.target.value);
                 setError('');
                 setKeyInvalid(false);
-                setStatus(configured ? 'saved' : 'empty');
+                setStatus('empty');
               }}
               disabled={busy || !saved}
               placeholder="Paste your API key"
@@ -400,6 +436,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
                 onClick={() => {
                   setEditing(true);
                   setDraft('');
+                  setStatus('empty');
                   setError('');
                   setKeyInvalid(false);
                 }}
@@ -458,7 +495,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
       {configured && (
         <details className="mt-3 max-w-md">
           <summary className="text-xs text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
-            Options &amp; help
+            Model options
           </summary>
           <div className="mt-3">
             <label
