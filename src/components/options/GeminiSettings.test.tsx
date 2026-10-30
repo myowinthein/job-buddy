@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { GeminiSettings } from './GeminiSettings';
 import { ToastProvider } from '../ui/Toast';
 import {
@@ -52,6 +52,13 @@ async function replaceKey() {
     target: { value: 'replacement-key' },
   });
   fireEvent.click(screen.getByText('Save Key'));
+}
+function confirmRemoval() {
+  fireEvent.click(
+    within(screen.getByRole('dialog', { name: 'Remove API Key?' })).getByRole('button', {
+      name: 'Remove Key',
+    }),
+  );
 }
 beforeEach(() => {
   vi.resetAllMocks();
@@ -180,21 +187,41 @@ describe('Gemini explicit key setup', () => {
     expect(screen.queryByLabelText('Gemini API Key')).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Replace Key' }));
   });
-  it('reports removal failure and retains the configured controls', async () => {
+  it('opens confirmation without removing the key and supports cancelling', async () => {
+    vi.mocked(getGeminiSettings).mockResolvedValue(existing);
+    renderSettings();
+    const removeButton = await screen.findByRole('button', { name: 'Remove Key' });
+    removeButton.focus();
+    fireEvent.click(removeButton);
+    expect(screen.getByRole('dialog', { name: 'Remove API Key?' })).toBeTruthy();
+    expect(screen.getByText('AI features will be turned off.')).toBeTruthy();
+    expect(clearGeminiSettings).not.toHaveBeenCalled();
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(clearGeminiSettings).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Remove Key' }));
+  });
+  it('reports removal failure inside the confirmation and retains the key', async () => {
     vi.mocked(getGeminiSettings).mockResolvedValue(existing);
     vi.mocked(clearGeminiSettings).mockRejectedValue(new Error('Removal failed'));
     renderSettings();
     fireEvent.click(await screen.findByText('Remove Key'));
+    confirmRemoval();
     expect(await screen.findByText('Could not remove the API key. Please try again.')).toBeTruthy();
-    expect(screen.getByText('Remove Key')).toBeTruthy();
+    expect(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Remove Key' }),
+    ).toBeTruthy();
   });
   it('returns to the empty key input after successful removal', async () => {
     vi.mocked(getGeminiSettings).mockResolvedValueOnce(existing).mockResolvedValue(empty);
     renderSettings();
     fireEvent.click(await screen.findByText('Remove Key'));
+    confirmRemoval();
     expect(await screen.findByRole('button', { name: 'Save Key' })).toBeTruthy();
     expect(screen.queryByText('Not configured')).toBeNull();
     expect((screen.getByLabelText('Gemini API Key') as HTMLInputElement).value).toBe('');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByLabelText('Gemini API Key'));
   });
   it('does not save a pending model result after the edit is cancelled', async () => {
     vi.mocked(getGeminiSettings).mockResolvedValue(existing);

@@ -11,12 +11,13 @@ import {
 } from '@/src/utils/storage';
 import { useToast } from '@/src/components/ui/useToast';
 import { fieldCls } from './shared/fieldCls';
+import { SettingsDialog } from './shared/SettingsDialog';
 
 const primary =
   'px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors';
 const secondary =
   'px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 active:scale-95 transition-colors';
-type Status = 'loading' | 'empty' | 'saved' | 'checking' | 'ready' | 'error';
+type Status = 'loading' | 'empty' | 'saved' | 'checking' | 'removing' | 'ready' | 'error';
 
 export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: boolean }) {
   const { showToast } = useToast();
@@ -28,6 +29,8 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
   const [status, setStatus] = useState<Status>('loading');
   const [error, setError] = useState('');
   const [keyInvalid, setKeyInvalid] = useState(false);
+  const [removeDialog, setRemoveDialog] = useState(false);
+  const [removeError, setRemoveError] = useState('');
   const request = useRef<AbortController | null>(null);
   const sequence = useRef(0);
   const writing = useRef(0);
@@ -35,8 +38,10 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
   const keyInput = useRef<HTMLInputElement>(null);
   const keyAction = useRef<HTMLButtonElement>(null);
   const returnFocus = useRef(false);
+  const focusEmptyKey = useRef(false);
   const configured = !!saved?.apiKey;
-  const busy = status === 'checking' || status === 'loading' || resetInProgress;
+  const busy =
+    status === 'checking' || status === 'loading' || status === 'removing' || resetInProgress;
   const replacing = editing || !configured;
 
   useEffect(() => {
@@ -54,6 +59,8 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
         setStatus(value.apiKey ? 'saved' : 'empty');
         setError('');
         setKeyInvalid(false);
+        setRemoveDialog(false);
+        setRemoveError('');
       } catch {
         if (mounted.current && id === sequence.current) {
           setStatus('error');
@@ -82,12 +89,16 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
     if (resetInProgress) request.current?.abort();
   }, [resetInProgress]);
   useEffect(() => {
-    if (editing) keyInput.current?.focus();
+    if (removeDialog) return;
+    if (focusEmptyKey.current) {
+      keyInput.current?.focus();
+      focusEmptyKey.current = false;
+    } else if (editing) keyInput.current?.focus();
     else if (returnFocus.current) {
       keyAction.current?.focus();
       returnFocus.current = false;
     }
-  }, [editing]);
+  }, [editing, removeDialog]);
 
   function cancelEdit() {
     returnFocus.current = true;
@@ -200,8 +211,8 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
   async function removeKey() {
     sequence.current++;
     request.current?.abort();
-    setStatus('checking');
-    setError('');
+    setStatus('removing');
+    setRemoveError('');
     writing.current++;
     try {
       await clearGeminiSettings();
@@ -213,11 +224,14 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
       setPreference('auto');
       setKeyInvalid(false);
       setStatus('empty');
+      setError('');
+      focusEmptyKey.current = true;
+      setRemoveDialog(false);
       showToast('success', 'API key removed.');
     } catch {
       if (mounted.current) {
-        setStatus('error');
-        setError('Could not remove the API key. Please try again.');
+        setStatus(status);
+        setRemoveError('Could not remove the API key. Please try again.');
       }
     } finally {
       writing.current--;
@@ -229,8 +243,10 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
       ? status === 'error'
         ? 'Unavailable'
         : 'Loading…'
-      : status === 'checking'
-        ? 'Checking…'
+      : status === 'checking' || status === 'removing'
+        ? status === 'removing'
+          ? 'Removing…'
+          : 'Checking…'
         : status === 'ready'
           ? 'Ready'
           : status === 'error' && configured && !replacing
@@ -243,7 +259,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
       role="status"
       className={`inline-flex items-center gap-1.5 text-xs ${status === 'ready' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}
     >
-      {status === 'checking' || status === 'loading' ? (
+      {status === 'checking' || status === 'loading' || status === 'removing' ? (
         <LoaderCircle aria-hidden="true" className="w-3 h-3 motion-safe:animate-spin" />
       ) : status === 'ready' ? (
         <Check aria-hidden="true" className="w-3 h-3" />
@@ -394,7 +410,10 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
                 type="button"
                 disabled={busy}
                 className={secondary}
-                onClick={() => void removeKey()}
+                onClick={() => {
+                  setRemoveError('');
+                  setRemoveDialog(true);
+                }}
               >
                 Remove Key
               </button>
@@ -402,6 +421,40 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
           )}
         </div>
       </form>
+      {removeDialog && (
+        <SettingsDialog
+          title="Remove API Key?"
+          busy={status === 'removing'}
+          onDismiss={() => setRemoveDialog(false)}
+        >
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            AI features will be turned off.
+          </p>
+          {removeError && (
+            <p role="alert" className="mt-2 text-xs text-red-600 dark:text-red-400">
+              {removeError}
+            </p>
+          )}
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              disabled={status === 'removing'}
+              className={secondary}
+              onClick={() => setRemoveDialog(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={status === 'removing'}
+              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 active:scale-95 transition-colors"
+              onClick={() => void removeKey()}
+            >
+              {status === 'removing' ? 'Removing…' : 'Remove Key'}
+            </button>
+          </div>
+        </SettingsDialog>
+      )}
       {configured && (
         <details className="mt-3 max-w-md">
           <summary className="text-xs text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
