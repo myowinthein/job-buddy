@@ -490,7 +490,7 @@ it('JSON import automatically backs up the accepted result', async () => {
       ],
     },
   });
-  await screen.findByText('This may be another person’s profile');
+  await screen.findByRole('radio', { name: /Replace current profile/ });
   fireEvent.click(screen.getByRole('radio', { name: /Update current profile/ }));
   fireEvent.click(screen.getByText('Import All'));
   await screen.findByText('Profile imported successfully');

@@ -297,7 +297,7 @@ it('requires an owner decision, then replaces profile data without retaining the
     personal: { ...current.personal, firstName: 'Sam', lastName: 'Lee', email: 'sam@example.com' },
   };
   upload(incoming);
-  await screen.findByText('This may be another person’s profile');
+  await screen.findByRole('radio', { name: /Replace current profile/ });
   expect((screen.getByRole('button', { name: 'Import All' }) as HTMLButtonElement).disabled).toBe(
     true,
   );
@@ -325,7 +325,7 @@ it('asks for review again if the profile changes while replacement is open', asy
   upload({
     personal: { ...current.personal, firstName: 'Sam', lastName: 'Lee', email: 'sam@example.com' },
   });
-  await screen.findByText('This may be another person’s profile');
+  await screen.findByRole('radio', { name: /Replace current profile/ });
   fireEvent.click(screen.getByRole('radio', { name: /Replace current profile/ }));
   await saveProfile({ ...current, address: { city: 'Concurrent city', country: 'US' } });
   fireEvent.click(screen.getByRole('button', { name: 'Replace Profile' }));

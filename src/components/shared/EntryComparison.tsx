@@ -65,6 +65,8 @@ export function EntryComparison({
   const safeIndex = Math.min(index, entries.length - 1);
   const entry = entries[safeIndex];
   if (!entry) return null;
+  const hasUnchangedDetails =
+    entry.status !== 'new' && entry.fields.some((field) => !field.changed);
   const fields = entry.fields.filter(
     (field) => showUnchanged || entry.status === 'new' || field.changed,
   );
@@ -104,15 +106,17 @@ export function EntryComparison({
           Not included in the imported list
         </p>
       )}
-      <label className="flex items-center gap-2 mb-3 text-xs text-gray-500 dark:text-gray-400">
-        <input
-          type="checkbox"
-          checked={showUnchanged}
-          onChange={(event) => setShowUnchanged(event.target.checked)}
-          className="accent-blue-600"
-        />
-        Show unchanged details
-      </label>
+      {hasUnchangedDetails && (
+        <label className="flex items-center gap-2 mb-3 text-xs text-gray-500 dark:text-gray-400">
+          <input
+            type="checkbox"
+            checked={showUnchanged}
+            onChange={(event) => setShowUnchanged(event.target.checked)}
+            className="accent-blue-600"
+          />
+          Show unchanged details
+        </label>
+      )}
       {fields.map((field) => (
         <div key={field.label} className="py-3 text-gray-700 dark:text-gray-300">
           <p className="mb-2 text-xs font-medium">{field.label}</p>

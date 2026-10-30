@@ -80,7 +80,7 @@ it.each(['update', 'replace'] as const)(
       target: { files: [new File(['%PDF-test'], 'sam.pdf', { type: 'application/pdf' })] },
     });
     fireEvent.click(screen.getByText('Analyze Resume'));
-    await screen.findByText('This may be another person’s profile');
+    await screen.findByRole('radio', { name: /Replace current profile/ });
     expect((screen.getByRole('button', { name: 'Import All' }) as HTMLButtonElement).disabled).toBe(
       true,
     );
@@ -128,7 +128,7 @@ it('Drive person mismatch can be cancelled without uploading or changing either 
   const before = structuredClone(remote.backup);
   mount();
   fireEvent.click(await screen.findByText('Connect Google Drive'));
-  await screen.findByText('This may be another person’s profile');
+  await screen.findByRole('radio', { name: /Replace current profile/ });
   expect((screen.getByRole('button', { name: 'Restore All' }) as HTMLButtonElement).disabled).toBe(
     true,
   );
@@ -151,7 +151,7 @@ it('Drive replacement adopts only the incoming person and clears unrelated local
   ]);
   mount();
   fireEvent.click(await screen.findByText('Connect Google Drive'));
-  await screen.findByText('This may be another person’s profile');
+  await screen.findByRole('radio', { name: /Replace current profile/ });
   fireEvent.click(screen.getByRole('radio', { name: /Replace current profile/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Replace Profile' }));
   await waitFor(async () => expect((await getProfile())?.personal.email).toBe('sam@example.com'));

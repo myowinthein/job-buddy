@@ -120,7 +120,7 @@ it('preserves legacy links and editor-valid emails through a real JSON review', 
   const { onImportComplete } = renderSection();
   const file = new File([JSON.stringify({ profile: { personal: { email: "o'brien@example.com" }, links } })], 'backup.json', { type: 'application/json' });
   fireEvent.change(document.querySelector('input[accept=".json"]')!, { target: { files: [file] } });
-  await screen.findByText('This may be another person’s profile');
+  await screen.findByRole('radio', { name: /Replace current profile/ });
   fireEvent.click(screen.getByRole('radio', { name: /Update current profile/ }));
   fireEvent.click(screen.getByText('Import All'));
   await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
