@@ -1,10 +1,11 @@
 <svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect width="128" height="128" rx="32" fill="#4B79F7"/>
 
-  <rect x="36" y="28" width="22" height="22" rx="3" fill="white"/>
+  <rect x="30" y="28" width="32" height="12" rx="4" fill="white"/>
+  <rect x="30" y="48" width="24" height="12" rx="4" fill="white"/>
 
   <path
-    d="M80 28H102V69C102 91 86 104 65 104C48 104 33 96 26 84L42 70C47 79 54 84 65 84C74 84 80 78 80 68V28Z"
+    d="M80 28H102V68C102 90 87 104 66 104C49 104 37 96 24 82L40 66C49 77 56 83 66 83C75 83 80 77 80 67V28Z"
     fill="white"
   />
 </svg>
