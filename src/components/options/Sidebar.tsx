@@ -28,7 +28,7 @@ export function Sidebar({
     >
       {/* Header: brand logo + sidebar toggle */}
       <div
-        className={`flex items-center h-16 px-3 border-b border-gray-200 dark:border-gray-800 ${collapsed ? 'justify-center' : 'justify-between'}`}
+        className={`flex items-center h-16 px-3 border-b border-gray-200 dark:border-gray-800 ${collapsed ? 'justify-center' : 'justify-between sm:pl-4 sm:pr-1'}`}
       >
         <img src={LOGO_ICON_SRC} alt="Job Buddy" className="w-7 h-7 sm:hidden" />
         {!collapsed && (
