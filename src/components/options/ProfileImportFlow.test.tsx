@@ -84,6 +84,8 @@ it('shows summary and notice period and saves only the one selected detail', asy
   await mountBase();
   upload(incomingProfile(), { exportedAt: '2026-10-29T12:12:23Z' });
   await screen.findByText('Review Changes');
+  expect(screen.queryByRole('radio', { name: /^(Update|Replace) current profile/ })).toBeNull();
+  expect(screen.queryByText(/Replacing clears current documents/)).toBeNull();
   expect(screen.queryByText(/backup.json|Exported/)).toBeNull();
   fireEvent.click(screen.getByText('Review Changes'));
   expect(screen.queryByText(/backup.json|Exported/)).toBeNull();

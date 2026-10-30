@@ -1,7 +1,5 @@
 import type { Profile } from '@/src/types/profile';
 import { importIdentity, possibleDifferentPerson, type ImportMode } from '@/src/utils/importPolicy';
-import { FIELD_DEFS } from '@/src/resume-ai/parser';
-import { equalJsonValues } from '@/src/utils/equalJsonValues';
 
 interface Props {
   current: Partial<Profile>;
@@ -12,51 +10,38 @@ interface Props {
   fromDrive?: boolean;
 }
 export function ImportModeChoice({ current, incoming, mode, onChange, busy, fromDrive }: Props) {
-  const different = possibleDifferentPerson(current, incoming);
-  const detailsDiffer = FIELD_DEFS.some((field) => {
-    const value = field.getValue(incoming);
-    return !field.isEmpty(value) && !equalJsonValues(value, field.getValue(current));
-  });
+  if (!possibleDifferentPerson(current, incoming)) return null;
   return (
     <div className="mt-4 space-y-3 border-t border-gray-200 pt-4 dark:border-gray-700">
-      {different && (
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-            This may be another person’s profile
-          </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            The name or email doesn’t match your saved profile. Choose how to continue.
-          </p>
-          <dl className="grid grid-cols-2 gap-3 text-xs">
-            {(
-              [
-                ['Current', current],
-                ['Incoming', incoming],
-              ] as const
-            ).map(([label, profile]) => {
-              const identity = importIdentity(profile);
-              return (
-                <div key={label} className="min-w-0">
-                  <dt className="text-gray-500 dark:text-gray-400">{label}</dt>
-                  <dd className="mt-1 break-words text-gray-800 dark:text-gray-200">
-                    {identity.name || 'Name not provided'}
-                    <span className="mt-0.5 block text-gray-500 dark:text-gray-400">
-                      {identity.email || 'Email not provided'}
-                    </span>
-                  </dd>
-                </div>
-              );
-            })}
-          </dl>
-        </div>
-      )}
-      {!different && (
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          {detailsDiffer
-            ? 'The incoming details differ from your saved profile. Choose how to continue.'
-            : 'Choose how to apply these details to your saved profile.'}
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+          This may be another person’s profile
         </p>
-      )}
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          The name or email doesn’t match your saved profile. Choose how to continue.
+        </p>
+        <dl className="grid grid-cols-2 gap-3 text-xs">
+          {(
+            [
+              ['Current', current],
+              ['Incoming', incoming],
+            ] as const
+          ).map(([label, profile]) => {
+            const identity = importIdentity(profile);
+            return (
+              <div key={label} className="min-w-0">
+                <dt className="text-gray-500 dark:text-gray-400">{label}</dt>
+                <dd className="mt-1 break-words text-gray-800 dark:text-gray-200">
+                  {identity.name || 'Name not provided'}
+                  <span className="mt-0.5 block text-gray-500 dark:text-gray-400">
+                    {identity.email || 'Email not provided'}
+                  </span>
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+      </div>
       <fieldset disabled={busy} className="space-y-3">
         <legend className="mb-2 text-xs font-medium text-gray-600 dark:text-gray-300">
           Import action
