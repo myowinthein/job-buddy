@@ -323,19 +323,23 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
             </div>
             <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
               <span>{formatCheckedAt(saved?.verifiedAt)}</span>
-              <span aria-hidden="true">·</span>
-              <button
-                type="button"
-                onClick={() => void verify(saved?.apiKey ?? '', preference, false)}
-                disabled={busy}
-                className="text-blue-600 dark:text-blue-400 hover:underline rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50"
-              >
-                {status === 'error'
-                  ? 'Try Again'
-                  : storedStatus(saved) === 'ready'
-                    ? 'Check again'
-                    : 'Check Key'}
-              </button>
+              {status !== 'checking' && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <button
+                    type="button"
+                    onClick={() => void verify(saved?.apiKey ?? '', preference, false)}
+                    disabled={busy}
+                    className="text-blue-600 dark:text-blue-400 hover:underline rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50"
+                  >
+                    {status === 'error'
+                      ? 'Try Again'
+                      : storedStatus(saved) === 'ready'
+                        ? 'Check again'
+                        : 'Check Key'}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         ) : (
