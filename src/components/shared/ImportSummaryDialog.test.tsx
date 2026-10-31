@@ -121,3 +121,11 @@ describe('ImportSummaryDialog — backdrop and Escape dismissal (parity with Imp
   view.unmount();
   expect(document.activeElement).toBe(opener);
 });
+
+it.each(['new', 'conflict'] as const)('shows only nonzero statuses for %s details', (status) => {
+  renderDialog([change(status)]);
+  expect(screen.getByText(status === 'new' ? '1 New' : '1 Changed')).toBeTruthy();
+  expect(screen.queryByText(/0 (New|Changed|Unchanged)/)).toBeNull();
+  expect(screen.queryByText(status === 'new' ? /Changed/ : /New/)).toBeNull();
+  expect(screen.queryByText(/Unchanged/)).toBeNull();
+});

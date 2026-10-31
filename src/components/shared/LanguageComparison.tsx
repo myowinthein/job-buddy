@@ -14,17 +14,17 @@ export function LanguageComparison({
 }) {
   const replacement = change.entryMode === 'replace';
   return (
-    <div className="divide-y divide-gray-200 dark:divide-gray-700">
+    <div>
       {change.entries!.map((entry, index) => {
         const field = entry.fields[0];
         const selectable = entryIsSelectable(entry, replacement);
         const selected = entryIsSelected(change, entry);
-        const changed = entry.status === 'changed' && !replacement;
+        const changed = entry.status === 'changed';
         const removed = entry.status === 'removed';
         return (
           <div key={index} className="py-3">
             <div className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-              {selectable && !changed && (
+              {selectable && (!changed || replacement) && (
                 <input
                   type="checkbox"
                   aria-label={`${removed ? 'Remove' : 'Import'} ${entry.label}`}
@@ -44,24 +44,33 @@ export function LanguageComparison({
                 </span>
               )}
             </div>
-            {changed && (
-              <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-xs text-gray-600 dark:text-gray-400">
-                {[true, false].map((accepted) => (
-                  <label key={String(accepted)} className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name={`language-${index}`}
-                      checked={selected === accepted}
-                      disabled={isSaving}
-                      onChange={() => onSelect(index, accepted)}
-                      className="accent-blue-600"
-                    />
-                    {accepted
-                      ? `${incomingLabel}: ${field.suggested}`
-                      : `Keep Current: ${field.current}`}
-                  </label>
-                ))}
+            {changed && replacement ? (
+              <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                <span>
+                  {incomingLabel}: {field.suggested}
+                </span>
+                <span>Current: {field.current}</span>
               </div>
+            ) : (
+              changed && (
+                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-xs text-gray-600 dark:text-gray-400">
+                  {[true, false].map((accepted) => (
+                    <label key={String(accepted)} className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name={`language-${index}`}
+                        checked={selected === accepted}
+                        disabled={isSaving}
+                        onChange={() => onSelect(index, accepted)}
+                        className="accent-blue-600"
+                      />
+                      {accepted
+                        ? `${incomingLabel}: ${field.suggested}`
+                        : `Keep Current: ${field.current}`}
+                    </label>
+                  ))}
+                </div>
+              )
             )}
             {removed && (
               <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">

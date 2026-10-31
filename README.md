@@ -92,7 +92,8 @@ possible name/email mismatch. Empty profiles and matching identities use the nor
 import flow. Update keeps omitted details;
 JSON and Drive lists replace supplied lists, while resume updates retain saved
 entries. The shared review lets you select work, education, and language entries
-individually. New entries show their details; matched entries highlight changes.
+individually. New entries show their details; changed entries compare current and
+incoming values in both Update and Replace.
 Updated mappings and JSON application history merge with saved data.
 
 Replace starts fresh with the selected incoming details and clears old documents,

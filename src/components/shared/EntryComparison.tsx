@@ -74,8 +74,7 @@ export function EntryComparison({
   const safeIndex = Math.min(index, entries.length - 1);
   const entry = entries[safeIndex];
   if (!entry) return null;
-  const incomingOnly =
-    entry.status === 'new' || (!!selection?.replacement && entry.suggestedIndex !== undefined);
+  const incomingOnly = entry.status === 'new';
   const clearing = !!selection?.replacement && entry.status === 'removed';
   const selectable = selection && entryIsSelectable(entry, selection.replacement);
   const checked = selection ? entryIsSelected(selection.change, entry) : false;
@@ -90,7 +89,7 @@ export function EntryComparison({
         : showUnchanged || field.changed,
   );
   return (
-    <div className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-3">
+    <div className="pt-3">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div className="flex min-w-0 items-start gap-2">
           {selectable && !radioChoice && (
@@ -149,6 +148,9 @@ export function EntryComparison({
       )}
       {entry.status === 'new' && (
         <p className="mb-3 text-xs text-green-700 dark:text-green-400">New entry</p>
+      )}
+      {entry.status === 'changed' && (
+        <p className="mb-3 text-xs text-amber-700 dark:text-amber-400">Changed entry</p>
       )}
       {entry.status === 'removed' && (
         <p className="mb-3 text-xs text-amber-700 dark:text-amber-400">

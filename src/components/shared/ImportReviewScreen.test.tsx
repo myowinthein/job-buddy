@@ -277,3 +277,21 @@ it('presents each language with its proficiency and its own selection', async ()
   fireEvent.click(screen.getByRole('button', { name: /^Import Selected/ }));
   expect(applyChanges({}, onSave.mock.calls[0][0]).languages).toEqual([languages[0]]);
 });
+
+it('shows both proficiency values for changed languages in Replace mode', async () => {
+  const { replacementChanges } = await import('@/src/utils/importPolicy');
+  const current = { languages: [{ language: 'en', proficiency: 'full_professional' as const }] };
+  const incoming = { languages: [{ language: 'en', proficiency: 'native_bilingual' as const }] };
+  render(
+    <ImportReviewScreen
+      changes={replacementChanges(current, incoming)}
+      replacement
+      onSave={vi.fn()}
+      onBack={vi.fn()}
+    />,
+  );
+  expect(screen.getByText('Imported: Native')).toBeTruthy();
+  expect(screen.getByText('Current: Fluent')).toBeTruthy();
+  expect(screen.getByRole('checkbox', { name: 'Import English' })).toBeTruthy();
+  expect(screen.queryByRole('radio')).toBeNull();
+});

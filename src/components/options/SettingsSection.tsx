@@ -1258,7 +1258,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           changes={driveConflictChanges}
           title="Restore Drive Backup"
           description={driveImportMode === 'update' ? 'Choose which details to restore. Keeping current uploads this browser’s profile to Drive.' : 'Choose how to import this Drive backup. Cancelling keeps both profiles unchanged.'}
-          importControls={driveRestoreData && possibleDifferentPerson(driveLocalProfile ?? {}, driveRestoreData.profile) && <ImportModeChoice current={driveLocalProfile ?? {}} incoming={driveRestoreData.profile} mode={driveImportMode} onChange={chooseDriveImportMode} busy={driveRestoreBusy} fromDrive />}
+          importControls={driveRestoreData && possibleDifferentPerson(driveLocalProfile ?? {}, driveRestoreData.profile) && <ImportModeChoice current={driveLocalProfile ?? {}} incoming={driveRestoreData.profile} mode={driveImportMode} onChange={chooseDriveImportMode} busy={driveRestoreBusy} />}
           replacement={driveImportMode === 'replace'}
           canProceed={driveImportMode !== null && (driveImportMode !== 'replace' || driveConflictChanges.some(c => c.hasIncomingValue === true))}
           acceptLabel={driveImportMode === 'replace' ? 'Replace Profile' : 'Restore All'}

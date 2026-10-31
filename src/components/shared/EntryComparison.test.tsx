@@ -124,3 +124,41 @@ it('hides unchanged controls for a new entry and restores them for a matching sa
   expect(screen.getByText('New entry')).toBeTruthy();
   expect(screen.queryByLabelText('Show unchanged details')).toBeNull();
 });
+
+it.each(['workHistory', 'education'] as const)(
+  'keeps current and incoming %s values visible in Replace mode',
+  async (section) => {
+    const { replacementChanges } = await import('@/src/utils/importPolicy');
+    const oldEntry =
+      section === 'workHistory'
+        ? { company: 'Example Company', title: 'Designer', startDate: '2020-01', isCurrent: true }
+        : {
+            institution: 'Example School',
+            degree: 'BA',
+            fieldOfStudy: 'Design',
+            startDate: '2020',
+            endDate: '2024',
+          };
+    const newEntry =
+      section === 'workHistory'
+        ? { ...oldEntry, title: 'Lead Designer' }
+        : { ...oldEntry, degree: 'MA' };
+    const change = replacementChanges({ [section]: [oldEntry] }, { [section]: [newEntry] }).find(
+      (change) => change.id === section,
+    )!;
+    render(
+      <EntryComparison
+        entries={change.entries!}
+        incomingLabel="Imported"
+        selection={{ change, replacement: true, isSaving: false, onSelect: () => {} }}
+      />,
+    );
+    expect(screen.getByText('Changed entry')).toBeTruthy();
+    expect(screen.getByText('Current')).toBeTruthy();
+    expect(screen.getByText('Imported')).toBeTruthy();
+    expect(screen.getByText(section === 'workHistory' ? 'Designer' : 'BA')).toBeTruthy();
+    expect(screen.getByText(section === 'workHistory' ? 'Lead Designer' : 'MA')).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: /^Import Example/ })).toBeTruthy();
+    expect(screen.queryByText('New entry')).toBeNull();
+  },
+);

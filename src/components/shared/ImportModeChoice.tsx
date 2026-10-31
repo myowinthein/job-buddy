@@ -7,45 +7,40 @@ interface Props {
   mode: ImportMode | null;
   onChange: (mode: ImportMode) => void;
   busy?: boolean;
-  fromDrive?: boolean;
 }
-export function ImportModeChoice({ current, incoming, mode, onChange, busy, fromDrive }: Props) {
+export function ImportModeChoice({ current, incoming, mode, onChange, busy }: Props) {
   const different = possibleDifferentPerson(current, incoming);
   if (!different) return null;
   return (
     <div className="mt-4 space-y-3 border-t border-gray-200 pt-4 dark:border-gray-700">
-      {different && (
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-            This may be another person’s profile
-          </p>
-          <dl className="grid grid-cols-2 gap-3 text-xs">
-            {(
-              [
-                ['Current', current],
-                ['Incoming', incoming],
-              ] as const
-            ).map(([label, profile]) => {
-              const identity = importIdentity(profile);
-              return (
-                <div key={label} className="min-w-0">
-                  <dt className="text-gray-500 dark:text-gray-400">{label}</dt>
-                  <dd className="mt-1 break-words text-gray-800 dark:text-gray-200">
-                    {identity.name || 'Name not provided'}
-                    <span className="mt-0.5 block text-gray-500 dark:text-gray-400">
-                      {identity.email || 'Email not provided'}
-                    </span>
-                  </dd>
-                </div>
-              );
-            })}
-          </dl>
-        </div>
-      )}
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+          This may be another person’s profile
+        </p>
+        <dl className="space-y-2 text-xs">
+          {(
+            [
+              ['Current', current],
+              ['Incoming', incoming],
+            ] as const
+          ).map(([label, profile]) => {
+            const identity = importIdentity(profile);
+            return (
+              <div key={label} className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3">
+                <dt className="text-gray-500 dark:text-gray-400">{label}</dt>
+                <dd className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5 break-words text-gray-800 dark:text-gray-200">
+                  <span className="font-medium">{identity.name || 'Name not provided'}</span>
+                  <span className="break-all text-gray-500 dark:text-gray-400">
+                    {identity.email || 'Email not provided'}
+                  </span>
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+      </div>
       <fieldset disabled={busy} className="space-y-3">
-        <legend className="mb-2 text-xs font-medium text-gray-600 dark:text-gray-300">
-          Import action
-        </legend>
+        <legend className="sr-only">Import action</legend>
         <label className="flex cursor-pointer items-start gap-2 text-sm text-gray-800 dark:text-gray-200">
           <input
             type="radio"
@@ -58,7 +53,7 @@ export function ImportModeChoice({ current, incoming, mode, onChange, busy, from
           <span>
             Update current profile
             <span className="block text-xs text-gray-500 dark:text-gray-400">
-              Keep saved details not found in this import.
+              Add or update details while keeping the rest.
             </span>
           </span>
         </label>
@@ -74,18 +69,11 @@ export function ImportModeChoice({ current, incoming, mode, onChange, busy, from
           <span>
             Replace current profile
             <span className="block text-xs text-gray-500 dark:text-gray-400">
-              Start fresh using the incoming details.
+              Clear saved data and import new details. Settings stay.
             </span>
           </span>
         </label>
       </fieldset>
-      {mode === 'replace' && (
-        <p className="text-xs text-gray-600 dark:text-gray-400">
-          Replaces your profile, documents, mappings, and history. Details not imported are cleared.
-          Appearance and AI settings stay.
-          {!fromDrive && ' Connected Drive backups pause until reviewed.'}
-        </p>
-      )}
     </div>
   );
 }
