@@ -478,13 +478,13 @@ function App() {
                 </button>
               )}
             </div>
-            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              {busy
-                ? 'Using your saved details to fill this form.'
-                : autofillState === 'success'
-                  ? 'Review the filled details before submitting.'
-                  : 'Open a job application form, then select Fill Form.'}
-            </p>
+            {(busy || autofillState === 'success') && (
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                {busy
+                  ? 'Using your saved details to fill this form.'
+                  : 'Review the filled details before submitting.'}
+              </p>
+            )}
           </>
         )}
         <p role="status" className="sr-only">

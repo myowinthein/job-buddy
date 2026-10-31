@@ -390,6 +390,7 @@ describe('popup profile and action presentation', () => {
     renderApp();
     await screen.findByRole('button', { name: 'Fill Form' });
     expect(screen.queryByRole('region', { name: 'Autofill details' })).toBeNull();
+    expect(screen.queryByText('Open a job application form, then select Fill Form.')).toBeNull();
   });
 });
 
