@@ -66,6 +66,7 @@ export interface FillLogFrame {
 export interface FillLogSnapshot {
   tabId: number;
   frames: FillLogFrame[];
+  needsRefresh?: boolean;
 }
 
 export function summarizeFillFields(fields: FillLogField[]) {
@@ -96,13 +97,27 @@ export function summarizeFillFields(fields: FillLogField[]) {
   };
 }
 
+/** Empty frames (for example CAPTCHA sandboxes) cannot supersede a form run. */
+export function latestFillRunId(
+  runs: { runId: string; startedAt: number; totalScanned: number }[],
+): string | undefined {
+  const forms = runs.filter((run) => run.totalScanned > 0);
+  return (forms.length ? forms : runs).reduce<{ runId: string; startedAt: number } | undefined>(
+    (latest, run) => (!latest || run.startedAt > latest.startedAt ? run : latest),
+    undefined,
+  )?.runId;
+}
+
 /** A stale frame from a previous run must not enter the current totals. */
 export function latestFillLogFrames(frames: FillLogFrame[]): FillLogFrame[] {
-  const latest = frames.reduce<FillLogFrame | undefined>(
-    (a, b) => (!a || b.log.startedAt > a.log.startedAt ? b : a),
-    undefined,
+  const runId = latestFillRunId(
+    frames.map(({ log }) => ({
+      runId: log.runId,
+      startedAt: log.startedAt,
+      totalScanned: log.fields.length,
+    })),
   );
-  return latest ? frames.filter((frame) => frame.log.runId === latest.log.runId) : [];
+  return runId ? frames.filter((frame) => frame.log.runId === runId) : [];
 }
 
 export const FILL_OUTCOME_LABELS: Record<FillOutcome, string> = {

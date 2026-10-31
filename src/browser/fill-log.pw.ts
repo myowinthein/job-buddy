@@ -118,3 +118,83 @@ test('the production Fill Log combines frames, reports real outcomes, tracks edi
   await logPage.getByRole('button', { name: 'Refresh', exact: true }).click();
   await expect(logPage.getByText(/No completed fill log is available/)).toBeVisible();
 });
+
+test('an independently scanned empty iframe does not hide form fills, and a fresh empty run stays empty', async ({
+  page,
+  context,
+  extension,
+}, testInfo) => {
+  await extension.send('AUTOFILL_FILL', 'merge');
+  const logs = (await extension.send('GET_FILL_LOG')) as unknown as FrameFillLog[];
+  const count = summarizeFillFields(logs.flatMap((log) => log.fields)).filled;
+  const before = await extension.worker.evaluate(
+    async (tabId) =>
+      (await chrome.webNavigation.getAllFrames({ tabId }))!.map((frame) => frame.frameId),
+    extension.sourceTabId,
+  );
+  await page.evaluate(() => {
+    const frame = document.createElement('iframe');
+    frame.srcdoc = '<p>Empty embedded frame</p>';
+    document.body.append(frame);
+  });
+  await expect
+    .poll(async () =>
+      extension.worker.evaluate(
+        async ({ tabId, before }) => {
+          const frames = await chrome.webNavigation.getAllFrames({ tabId });
+          const frame = frames?.find((frame) => !before.includes(frame.frameId));
+          if (!frame) return 'Frame not ready';
+          try {
+            await chrome.scripting
+              .executeScript({
+                target: { tabId, frameIds: [frame.frameId] },
+                files: ['content-scripts/content.js'],
+              })
+              .catch(() => undefined);
+            const result = await chrome.tabs.sendMessage(
+              tabId,
+              { action: 'AUTOFILL_SCAN', runId: 'independent-empty-run' },
+              { frameId: frame.frameId },
+            );
+            if (result?.preFilledCount !== 0) return JSON.stringify(result);
+            await chrome.tabs.sendMessage(
+              tabId,
+              { action: 'AUTOFILL_FILL', mode: 'overwrite' },
+              { frameId: frame.frameId },
+            );
+            return 'Completed';
+          } catch (error) {
+            return String(error);
+          }
+        },
+        { tabId: extension.sourceTabId, before },
+      ),
+    )
+    .toBe('Completed');
+
+  const popup = await context.newPage();
+  await popup.addInitScript((id) => {
+    chrome.tabs.query = async () => [{ id } as chrome.tabs.Tab];
+  }, extension.sourceTabId);
+  await popup.setViewportSize({ width: 380, height: 600 });
+  await popup.goto(new URL('popup.html', extension.worker.url()).href);
+  await expect(popup.getByText(`${count} fields filled`, { exact: true })).toBeVisible();
+  await expect(page.locator('[name="firstName"]')).toHaveValue('Jane');
+  const opened = context.waitForEvent('page');
+  await popup.getByRole('button', { name: 'View Fill Log →' }).click();
+  const logPage = await opened;
+  await expect(logPage.getByText('Detected', { exact: true }).locator('..')).toContainText('9');
+  await expect(logPage.getByText('Filled', { exact: true }).locator('..')).toContainText(
+    String(count),
+  );
+  await logPage.screenshot({ path: testInfo.outputPath('sandbox-fill-log.png'), fullPage: true });
+
+  await page.evaluate(() => {
+    document.body.innerHTML = '<p>No application form</p>';
+  });
+  await popup.getByRole('button', { name: 'Fill Form', exact: true }).click();
+  await expect(popup.getByText('No fillable fields found.', { exact: true })).toBeVisible();
+  await expect(popup.getByRole('link', { name: 'Report an issue ↗' })).toBeVisible();
+  await expect(popup.getByText(`${count} fields filled`, { exact: true })).toHaveCount(0);
+  await popup.locator('#root').screenshot({ path: testInfo.outputPath('empty-result.png') });
+});

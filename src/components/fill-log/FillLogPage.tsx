@@ -118,7 +118,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
           <div>
             <h1 className="text-xl font-semibold">Fill Log</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {source ?? 'Job Buddy'}
+              {source && source !== 'null' ? source : 'Job Buddy'}
               {timestamp > 0 && <> · Latest fill at {new Date(timestamp).toLocaleString()}</>}
             </p>
           </div>
@@ -154,6 +154,11 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
       ) : unavailable ? (
         <p role="status" className="text-sm text-gray-600 dark:text-gray-300">
           The source form is unavailable. Its tab may have closed.
+        </p>
+      ) : snapshot?.needsRefresh ? (
+        <p role="status" className="text-sm text-gray-600 dark:text-gray-300">
+          This form was filled with an earlier version. Refresh the form and fill again to create
+          its log.
         </p>
       ) : frames.length === 0 ? (
         <p role="status" className="text-sm text-gray-600 dark:text-gray-300">

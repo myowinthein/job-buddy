@@ -166,6 +166,29 @@ describe('popup App — GET_STATUS frame aggregation on mount', () => {
     expect(screen.queryByText('Undo')).toBeNull();
   });
 
+  it('restores filled fields even when a later unrelated empty frame reports another run', async () => {
+    getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 9 }]);
+    sendMessageMock.mockImplementation((_id, message, options) => Promise.resolve(
+      message.action !== 'GET_STATUS' ? null : options.frameId === 0
+        ? { ...statusResult({ noReview: 4, totalScanned: 4 }), runId: 'form', startedAt: 10 }
+        : { ...statusResult(), runId: 'empty-sandbox', startedAt: 20 },
+    ));
+    renderApp();
+    expect(await screen.findByText('4 fields filled')).toBeTruthy();
+    expect(screen.queryByText('No fillable fields found.')).toBeNull();
+  });
+
+  it('keeps an earlier script’s filled result when only an empty iframe has run metadata', async () => {
+    getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 9 }]);
+    sendMessageMock.mockImplementation((_id, message, options) => Promise.resolve(
+      message.action !== 'GET_STATUS' ? null : options.frameId === 0
+        ? statusResult({ noReview: 7, lowConfidence: 5, totalScanned: 12 })
+        : { ...statusResult(), runId: 'empty-sandbox', startedAt: 20 },
+    ));
+    renderApp();
+    expect(await screen.findByText('7 fields filled')).toBeTruthy();
+  });
+
   it('keeps every frame in the latest run and excludes older or legacy results', async () => {
     getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 3 }, { frameId: 7 }, { frameId: 9 }]);
     const replies = [
@@ -195,6 +218,22 @@ describe('popup App — GET_STATUS frame aggregation on mount', () => {
 });
 
 describe('popup App — handleAutofill scan orchestration', () => {
+  it('uses the explicitly requested empty run rather than resurrecting an older filled run', async () => {
+    getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 9 }]);
+    let runId = '';
+    sendMessageMock.mockImplementation((_id, message, options) => {
+      if (message.action === 'GET_STATUS') return Promise.resolve(null);
+      if (message.action === 'AUTOFILL_SCAN') { runId = message.runId; return Promise.resolve({ preFilledCount: 0 }); }
+      if (message.action === 'AUTOFILL_FILL') return Promise.resolve(options.frameId === 0
+        ? { ...statusResult({ noReview: 4, totalScanned: 4 }), runId: 'old', startedAt: 10 }
+        : { ...statusResult(), runId, startedAt: 20 });
+      return Promise.resolve(null);
+    });
+    renderApp();
+    fireEvent.click(await screen.findByRole('button', { name: 'Fill Form' }));
+    expect(await screen.findByText('No fillable fields found.')).toBeTruthy();
+    expect(screen.queryByText('4 fields filled')).toBeNull();
+  });
   it('shows the merge/overwrite confirmation dialog when scanned pre-filled fields sum > 0 across frames', async () => {
     getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 4 }]);
     sendMessageMock.mockImplementation((_tabId, message, opts) => {
@@ -450,8 +489,9 @@ it('shows a no-form explanation without promoting AI or suggesting iframes are u
   vi.mocked(getGeminiApiKey).mockResolvedValue(null);
   sendMessageMock.mockResolvedValue(statusResult({}, 'unavailable'));
   renderApp();
-  await screen.findByText('No fillable fields found on this page.');
-  expect(screen.getByText('Open the application form, then try Fill Form again.')).toBeTruthy();
+  await screen.findByText('No fillable fields found.');
+  expect(screen.queryByText('Open the application form, then try Fill Form again.')).toBeNull();
+  expect(screen.getByRole('link', { name: 'Report an issue ↗' })).toHaveProperty('href', 'https://github.com/myowinthein/job-buddy/issues/new');
   expect(screen.queryByRole('button', { name: 'Dismiss AI suggestion' })).toBeNull();
   expect(screen.queryByText(/iframe/)).toBeNull();
 });

@@ -5,6 +5,7 @@ import { LOGO_ICON_SRC } from '@/src/utils/branding';
 import { sessionSet } from '@/src/utils/sessionStorage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import { openFillLog } from '@/src/fill-log/client';
+import { latestFillRunId } from '@/src/autofill/fillLog';
 import { FIELD_DEFS } from '@/src/resume-ai/parser';
 import type { AIAutofillStatus } from '@/src/autofill/ai';
 
@@ -77,13 +78,24 @@ async function sendToAllFrames(tabId: number, message: object): Promise<unknown[
 
 // Aggregate every frame; one failed AI pass must remain visible even when
 // another frame completed successfully. Legacy results cannot prove AI success.
-function mergeAutofillResults(results: unknown[]): AutofillResult | null {
+function mergeAutofillResults(results: unknown[], requestedRunId?: string): AutofillResult | null {
   const available = results.filter(
     (r): r is AutofillResult => !!r && typeof (r as AutofillResult).totalScanned === 'number',
   );
   if (!available.length) return null;
-  const latest = available.filter(r => r.runId && typeof r.startedAt === 'number').reduce<AutofillResult | null>((a, b) => !a || b.startedAt! > a.startedAt! ? b : a, null);
-  const valid = latest ? available.filter(r => r.runId === latest.runId) : available;
+  const runs = available.flatMap((r) =>
+    r.runId && typeof r.startedAt === 'number'
+      ? [{ ...r, runId: r.runId, startedAt: r.startedAt }]
+      : [],
+  );
+  const runId = requestedRunId ?? latestFillRunId(runs);
+  // Older content scripts cannot report run IDs. Preserve their actual fill
+  // replies, and do not let an empty upgraded iframe hide their saved result.
+  const includeLegacy = !!requestedRunId || !runs.some(r => r.totalScanned > 0);
+  const valid = runId
+    ? available.filter((r) => r.runId === runId || (includeLegacy && !r.runId))
+    : available;
+  if (!valid.length) return null;
   const statuses = valid
     .filter((r) => r.totalScanned > 0)
     .map((r) =>
@@ -147,6 +159,7 @@ function App() {
   const [keyReadFailed, setKeyReadFailed] = useState(false);
   const [hasGeminiKey, setHasGeminiKey] = useState<boolean | null>(null);
   const sourceTabId = useRef<number | null>(null);
+  const activeRunId = useRef<string | undefined>(undefined);
   const [logOpenFailed, setLogOpenFailed] = useState(false);
   const fillButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -214,7 +227,7 @@ function App() {
   const dispatchFill = async (mode: 'merge' | 'overwrite') => {
     const responses = await sendToActiveTab({ action: 'AUTOFILL_FILL', mode });
     const setupError = applySetupError(responses);
-    const merged = mergeAutofillResults(responses);
+    const merged = mergeAutofillResults(responses, activeRunId.current);
     if (merged) {
       setAutofillResult(setupError ? { ...merged, aiStatus: 'unavailable' } : merged);
       setAutofillState('success');
@@ -284,9 +297,10 @@ function App() {
         setAutofillState(autofillResult ? 'success' : 'idle');
         return;
       }
+      activeRunId.current = crypto.randomUUID();
       const scanResponses = (await sendToActiveTab({
         action: 'AUTOFILL_SCAN',
-        runId: crypto.randomUUID(),
+        runId: activeRunId.current,
       })) as AutofillScanResult[];
       if (applySetupError(scanResponses)) {
         setAutofillState(autofillResult ? 'success' : 'idle');
@@ -606,18 +620,15 @@ function App() {
           {autofillState === 'success' &&
             autofillResult &&
             (autofillResult.totalScanned === 0 ? (
-              <div className="rounded-lg border border-gray-200 p-3 text-xs dark:border-gray-700">
-                <p className="mb-1 font-medium">No fillable fields found on this page.</p>
-                <p className="text-gray-500 dark:text-gray-400">
-                  Open the application form, then try Fill Form again.
-                </p>
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
+                <p className="text-gray-600 dark:text-gray-300">No fillable fields found.</p>
                 <a
                   href="https://github.com/myowinthein/job-buddy/issues/new"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-2 inline-flex min-h-6 items-center font-medium text-blue-700 underline dark:text-blue-400"
+                  className="inline-flex min-h-6 items-center font-medium text-blue-700 hover:underline dark:text-blue-400"
                 >
-                  Report on GitHub
+                  Report an issue ↗
                 </a>
               </div>
             ) : (

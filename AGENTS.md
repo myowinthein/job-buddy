@@ -101,6 +101,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 - Drive uses implicit-token OAuth with `drive.appdata`. Development setup requires Web Application OAuth clients with separate dev/prod redirect IDs; see `.github/SETUP.md`.
 - Document uploads, Resume Import, and JSON/Drive import validation share the 4 MB file limit in `src/utils/documentLimits.ts`. Existing stored files are preserved; the per-file cap does not guarantee the whole profile fits local storage.
 - Parts of `docs/project-site/` still mention a removed picker. Background backup reacts to both profile and learned-mapping saves; deletes during reset do not queue uploads.
+- Restart the WXT dev server after adding an HTML entrypoint; HMR may update existing pages without emitting the new HTML. Already-open forms can retain older content scripts. On status restore, empty sandbox runs cannot supersede a nonempty form run; explicit Fill results use the requested run ID. Legacy results without detailed logs require a form refresh, never a misleading zero-field report.
 - Static site brand colors are duplicated across landing and overview; update both copies together.
 
 ## Rules

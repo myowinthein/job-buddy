@@ -131,6 +131,11 @@ See [Project Setup](.github/SETUP.md) for integration configuration.
 
 The extension uses WXT, React, TypeScript, and Tailwind CSS v4, with Vitest for tests.
 
+Restart `pnpm dev` after adding a new extension page so WXT discovers and emits
+its HTML file. Already-open forms may keep an earlier content script; refresh
+the form before testing a changed autofill flow. The Fill Log explains when an
+earlier script cannot supply detailed records.
+
 | Command              | Purpose                                                             |
 | -------------------- | ------------------------------------------------------------------- |
 | `pnpm dev`           | Start Chrome extension development.                                 |

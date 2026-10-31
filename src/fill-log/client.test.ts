@@ -60,6 +60,26 @@ describe('reading a source form log', () => {
     expect(tabs.sendMessage).not.toHaveBeenCalled();
   });
 
+  it('requests a form refresh when an earlier script has fill results but no detailed log', async () => {
+    tabs.sendMessage.mockImplementation((_id, message, { frameId }) =>
+      Promise.resolve(
+        frameId === 0
+          ? message.action === 'GET_STATUS'
+            ? { totalScanned: 12, noReview: 7 }
+            : undefined
+          : log('empty-sandbox', 20),
+      ),
+    );
+    const snapshot = await loadFillLog(10);
+    expect(snapshot.needsRefresh).toBe(true);
+    expect(tabs.sendMessage).toHaveBeenCalledWith(10, { action: 'GET_STATUS' }, { frameId: 0 });
+    expect(
+      tabs.sendMessage.mock.calls.every(([, message]) =>
+        ['GET_FILL_LOG', 'GET_STATUS'].includes(message.action),
+      ),
+    ).toBe(true);
+  });
+
   it('opens the dedicated page and returns to the same source tab', async () => {
     await openFillLog(10);
     expect(tabs.create).toHaveBeenCalledWith({

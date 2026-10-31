@@ -89,4 +89,21 @@ describe('fill log summaries', () => {
     expect(summarizeFillFields(frames.flatMap((item) => item.log.fields)).detected).toBe(2);
     expect(latestFillLogFrames([])).toEqual([]);
   });
+
+  it('does not let a later empty sandbox run hide the form run', () => {
+    const log = (runId: string, startedAt: number, fields: FillLogField[]) => ({
+      version: 1 as const,
+      runId,
+      startedAt,
+      origin: 'https://example.test',
+      status: 'completed' as const,
+      fields,
+    });
+    const frames = latestFillLogFrames([
+      { frameId: 0, log: log('form-run', 10, [field()]) },
+      { frameId: 3, log: log('form-run', 11, []) },
+      { frameId: 9, log: log('sandbox-run', 20, []) },
+    ]);
+    expect(frames.map((frame) => frame.frameId)).toEqual([0, 3]);
+  });
 });

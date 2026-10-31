@@ -12,6 +12,7 @@ export async function loadFillLog(tabId: number): Promise<FillLogSnapshot> {
   } catch {
     /* The top frame can still supply a log. */
   }
+  let needsRefresh = false;
   const responses = await Promise.all(
     ids.map(async (frameId) => {
       try {
@@ -20,20 +21,30 @@ export async function loadFillLog(tabId: number): Promise<FillLogSnapshot> {
           { action: 'GET_FILL_LOG' },
           { frameId },
         )) as FrameFillLog | null;
-        return log?.version === 1 &&
+        if (
+          log?.version === 1 &&
           typeof log.runId === 'string' &&
           typeof log.startedAt === 'number' &&
           Array.isArray(log.fields)
-          ? { frameId, log }
-          : null;
+        )
+          return { frameId, log };
       } catch {
-        return null;
+        // An already-open form may still have the earlier content script.
       }
+      try {
+        const status = await chrome.tabs.sendMessage(tabId, { action: 'GET_STATUS' }, { frameId });
+        if (typeof status?.totalScanned === 'number' && status.totalScanned > 0)
+          needsRefresh = true;
+      } catch {
+        /* A detached or inaccessible frame has no readable result. */
+      }
+      return null;
     }),
   );
   return {
     tabId,
     frames: latestFillLogFrames(responses.filter((frame): frame is FillLogFrame => frame !== null)),
+    ...(needsRefresh ? { needsRefresh: true } : {}),
   };
 }
 

@@ -188,6 +188,14 @@ describe('Fill Log page', () => {
     expect(await screen.findByText(/The source form is unavailable/)).toBeTruthy();
   });
 
+  it('explains an older form script instead of presenting incomplete zero totals', async () => {
+    vi.mocked(loadFillLog).mockResolvedValue({ ...snapshot(), needsRefresh: true });
+    render(<FillLogPage tabId={10} />);
+    expect(await screen.findByText(/This form was filled with an earlier version/)).toBeTruthy();
+    expect(screen.queryByText('Detected')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Back to Form' })).toBeTruthy();
+  });
+
   it('does not query an unrelated active tab without a source ID', () => {
     render(<FillLogPage tabId={null} />);
     expect(loadFillLog).not.toHaveBeenCalled();
