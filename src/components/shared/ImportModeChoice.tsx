@@ -69,7 +69,7 @@ export function ImportModeChoice({ current, incoming, mode, onChange, busy }: Pr
           <span>
             Replace current profile
             <span className="block text-xs text-gray-500 dark:text-gray-400">
-              Clear saved data and import new details. Settings stay.
+              Clear saved data and import new details.
             </span>
           </span>
         </label>
