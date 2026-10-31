@@ -335,6 +335,31 @@ export interface CompletionTarget {
   revealId?: string;
 }
 
+const SECTION_START_TARGETS: Record<string, CompletionTarget> = {
+  personal: { id: 'field-firstName' },
+  address: { id: 'field-country' },
+  workAuthorization: {
+    id: 'field-workAuthorization-0-country',
+    fallbackId: 'add-workAuthorization',
+  },
+  workHistory: { id: 'field-summary' },
+  education: {
+    id: 'field-education-0-institution',
+    cardId: 'entry-education-0',
+    fallbackId: 'add-education',
+  },
+  languages: { id: 'field-languages-0-language', fallbackId: 'add-languages' },
+  links: { id: 'field-linkedin' },
+  documents: { id: 'field-cv' },
+  salary: { id: 'field-currentAmount' },
+};
+
+/** Category links start at the first field, even when it already has a value. */
+export function getSectionStartTarget(section: string): CompletionTarget | undefined {
+  const target = SECTION_START_TARGETS[section];
+  return target ? { ...target } : undefined;
+}
+
 /** Resolve aggregate checklist items to the first row/input that needs attention. */
 export function getCompletionTarget(
   profile: Partial<Profile>,

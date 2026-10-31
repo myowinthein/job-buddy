@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { Profile } from '@/src/types/profile';
 import App from '@/entrypoints/options/App';
 import { ToastProvider } from '@/src/components/ui/Toast';
@@ -50,6 +50,84 @@ async function openPersonal() {
   );
   return await screen.findByRole('textbox', { name: /First Name/ });
 }
+
+const categoryFocusCases: [string, string, (profile: Profile) => Profile][] = [
+  ['Personal', 'field-firstName', (p) => ({ ...p, personal: { ...p.personal, email: '' } })],
+  [
+    'Address',
+    'field-country',
+    (p) => ({ ...p, address: { ...p.address, city: '', postalCode: '' } }),
+  ],
+  [
+    'Work Authorization',
+    'field-workAuthorization-0-country',
+    (p) => ({
+      ...p,
+      workAuthorization: [...p.workAuthorization, { country: '', status: 'citizen_or_pr' }],
+    }),
+  ],
+  [
+    'Work History',
+    'field-summary',
+    (p) => ({ ...p, professional: { ...p.professional, noticePeriod: undefined } }),
+  ],
+  [
+    'Education',
+    'field-education-0-institution',
+    (p) => ({ ...p, education: [...p.education, { ...p.education[0], institution: '' }] }),
+  ],
+  [
+    'Languages',
+    'field-languages-0-language',
+    (p) => ({
+      ...p,
+      languages: [...p.languages, { language: '', proficiency: 'full_professional' }],
+    }),
+  ],
+  ['Links', 'field-linkedin', (p) => ({ ...p, links: { linkedin: '', custom: [] } })],
+  ['Documents', 'field-cv', (p) => ({ ...p, documents: { cv: {} } })],
+  ['Salary', 'field-currentAmount', (p) => ({ ...p, salary: { ...p.salary, expected: [] } })],
+];
+
+it.each(categoryFocusCases)(
+  'focuses the first field from the %s completion category, including populated fields and dropdowns',
+  async (label, target, prepare) => {
+    await saveProfile(prepare((await getProfile())!));
+    await openPersonal();
+    fireEvent.click(screen.getByRole('button', { name: /required remaining|more details/i }));
+    const popup = screen.getByRole('region', { name: /Missing details|More details/ });
+    fireEvent.click(within(popup).getByRole('button', { name: label }));
+    await waitFor(() => expect(document.activeElement?.id).toBe(target));
+    expect(screen.queryByRole('region', { name: /Missing details|More details/ })).toBeNull();
+    if (label === 'Education')
+      expect(
+        document
+          .getElementById('entry-education-0')
+          ?.querySelector('button')
+          ?.getAttribute('aria-expanded'),
+      ).toBe('true');
+  },
+);
+
+it('focuses a missing field directly and returns to the first field when its category is clicked on the same section', async () => {
+  const stored = (await getProfile())!;
+  await saveProfile({ ...stored, address: { ...stored.address, city: '', postalCode: '' } });
+  await openPersonal();
+  fireEvent.click(screen.getByRole('button', { name: /required remaining/i }));
+  fireEvent.click(
+    within(screen.getByRole('region', { name: 'Missing details' })).getByRole('button', {
+      name: 'City',
+    }),
+  );
+  await waitFor(() => expect(document.activeElement?.id).toBe('field-city'));
+  fireEvent.click(screen.getByRole('button', { name: /required remaining/i }));
+  fireEvent.click(
+    within(screen.getByRole('region', { name: 'Missing details' })).getByRole('button', {
+      name: 'Address',
+    }),
+  );
+  await waitFor(() => expect(document.activeElement?.id).toBe('field-country'));
+});
 
 it('opens Background details on the first click when phone blur adds a validation error', async () => {
   const stored = (await getProfile())!;

@@ -4,7 +4,7 @@ import type { Profile } from '@/src/types/profile';
 import type { ProfileUpdate } from '@/src/resume-ai/resumeImport';
 import { getProfile, saveProfile } from '@/src/utils/storage';
 import { sessionGet, sessionRemove } from '@/src/utils/sessionStorage';
-import { calculateCompletion, getSectionCompletion, getCompletionTarget } from '@/src/utils/profileCompletion';
+import { calculateCompletion, getSectionCompletion, getCompletionTarget, getSectionStartTarget } from '@/src/utils/profileCompletion';
 import { calculateDerivedFields } from '@/src/utils/derivedFields';
 import { Sidebar } from '@/src/components/options/Sidebar';
 import { CompletionBanner } from '@/src/components/options/CompletionBanner';
@@ -428,7 +428,7 @@ function App() {
           optionalFieldsRemaining={completion.optionalFieldsRemaining}
           optionalGroups={completion.optionalGroups}
           missingGroups={completion.missingGroups}
-          onNavigate={(sectionId) => { navigateSection(sectionId as SectionId); }}
+          onNavigate={(sectionId) => { navigateAndFocus(sectionId as SectionId, getSectionStartTarget(sectionId)); }}
           onFocusField={handleFocusField}
         />
         <main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-8">
