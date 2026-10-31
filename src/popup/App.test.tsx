@@ -403,7 +403,8 @@ it('does not ask for another AI key when a saved key exists but the fill did not
   );
   renderApp();
   await screen.findByRole('button', { name: 'Undo' });
-  expect(await screen.findByRole('button', { name: 'AI settings: key saved' })).toBeTruthy();
+  expect(screen.getByRole('banner').querySelector('svg')).toBeNull();
+  expect(screen.getByRole('button', { name: 'Fill Form' }).querySelector('svg')).not.toBeNull();
   expect(screen.queryByRole('button', { name: 'Dismiss AI suggestion' })).toBeNull();
   expect(screen.getByText('High confidence')).toBeTruthy();
   expect(screen.getByText('Review value')).toBeTruthy();
@@ -469,8 +470,9 @@ it('stores the Settings focus request before opening the options page', async ()
         }),
     );
   vi.mocked(getGeminiApiKey).mockResolvedValue(null);
+  sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }, false));
   renderApp();
-  fireEvent.click(await screen.findByRole('button', { name: 'Set up AI autofill' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Settings' }));
   expect(chrome.runtime.openOptionsPage).not.toHaveBeenCalled();
   stored();
   await waitFor(() => expect(chrome.runtime.openOptionsPage).toHaveBeenCalledOnce());
@@ -482,7 +484,7 @@ it('keeps AI setup neutral when the saved key cannot be read', async () => {
   sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }, false));
   renderApp();
   await screen.findByRole('button', { name: 'Undo' });
-  expect(screen.getByRole('button', { name: 'AI settings' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Fill Form' }).querySelector('svg')).toBeNull();
   expect(screen.queryByRole('button', { name: 'Dismiss AI suggestion' })).toBeNull();
 });
 

@@ -288,31 +288,6 @@ function App() {
           }}
         />
         <h1 className="flex-1 text-base font-bold">Job Buddy</h1>
-        <button
-          type="button"
-          onClick={goToSettingsKey}
-          disabled={busy}
-          aria-label={
-            hasGeminiKey === null
-              ? 'AI settings'
-              : hasGeminiKey
-                ? 'AI settings: key saved'
-                : 'Set up AI autofill'
-          }
-          title={
-            hasGeminiKey === null
-              ? 'Open AI settings.'
-              : hasGeminiKey
-                ? 'Your AI key is saved. Open AI settings.'
-                : 'Add an AI key in Settings to enable AI-assisted autofill.'
-          }
-          className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50 dark:hover:bg-gray-800"
-        >
-          <Sparkles
-            aria-hidden="true"
-            className={`h-4 w-4 ${hasGeminiKey ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}
-          />
-        </button>
         <span className="text-xs text-gray-400 dark:text-gray-500">v{EXTENSION_VERSION}</span>
       </header>
 
