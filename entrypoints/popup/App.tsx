@@ -464,6 +464,7 @@ function App() {
                 className={`${primaryButton} flex-1`}
               >
                 {keyReadFailed ? 'Open AI Settings' : 'Set Up AI Autofill'}
+                <Sparkles aria-hidden="true" className="h-4 w-4" />
               </button>
               {autofillState === 'success' && (
                 <button type="button" onClick={handleUndo} className={secondaryButton}>
@@ -556,7 +557,7 @@ function App() {
                   </>
                 ) : (
                   <>
-                    Fill Form{hasGeminiKey && <Sparkles aria-hidden="true" className="h-4 w-4" />}
+                    Fill Form <Sparkles aria-hidden="true" className="h-4 w-4" />
                   </>
                 )}
               </button>

@@ -180,7 +180,7 @@ export function Sidebar({
               <span className="truncate">Import Resume</span>
               <Sparkles
                 aria-hidden="true"
-                className={`w-3.5 h-3.5 shrink-0 ${geminiConfigured ? 'text-blue-500 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}
+                className="w-3.5 h-3.5 shrink-0 text-blue-500 dark:text-blue-400"
               />
             </span>
           )}
