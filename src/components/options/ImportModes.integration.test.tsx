@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import App from '@/entrypoints/options/App';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import { createPreviewChrome } from '@/src/preview/chrome';
@@ -226,5 +226,94 @@ it.each(['empty', 'matching'] as const)(
     expect(saved.professional.summary).toBe('Updated Drive summary');
     expect(saved.personal.email).toBe(DEV_PROFILE.personal.email);
     if (state === 'matching') expect(saved.id).toBe(before.id);
+  },
+);
+
+it.each(['resume', 'json', 'drive'] as const)(
+  '%s saves only the selected education, work, and language entries',
+  async (source) => {
+    const data = {
+      personal: DEV_PROFILE.personal,
+      workHistory: ['A', 'B', 'C'].map((company) => ({
+        company: `Company ${company}`,
+        title: 'Designer',
+        startDate: '2024-01',
+        isCurrent: true,
+      })),
+      education: ['A', 'B', 'C'].map((institution) => ({
+        institution: `School ${institution}`,
+        degree: 'BA',
+        fieldOfStudy: 'Design',
+        startDate: '2020',
+        endDate: '2024',
+      })),
+      languages: [
+        { language: 'en', proficiency: 'full_professional' as const },
+        { language: 'my', proficiency: 'native_bilingual' as const },
+      ],
+    };
+    const base = {
+      id: 'entry-choice-profile',
+      personal: DEV_PROFILE.personal,
+    } as typeof DEV_PROFILE;
+    if (source === 'drive') {
+      setupDrive(data as typeof DEV_PROFILE);
+      await saveProfile(base);
+    } else {
+      sessionStorage.setItem('jb:ui:section', source === 'resume' ? 'resume' : 'settings');
+      vi.stubGlobal(
+        'chrome',
+        createPreviewChrome(base, undefined, {
+          initialData: {
+            geminiApiKey: 'test-key',
+            geminiModel: DEFAULT_GEMINI_MODEL,
+            geminiDevDisabled: true,
+          },
+        }),
+      );
+    }
+    vi.mocked(extractFromResume).mockResolvedValue(data);
+    mount();
+    if (source === 'drive') fireEvent.click(await screen.findByText('Connect Google Drive'));
+    else {
+      if (source === 'resume') await screen.findByText(/Drop your resume here/);
+      else await screen.findByText('Choose File');
+      fireEvent.change(document.querySelector('input[type="file"]')!, {
+        target: {
+          files: [
+            source === 'resume'
+              ? new File(['%PDF-test'], 'selected.pdf', { type: 'application/pdf' })
+              : new File([JSON.stringify({ profile: data })], 'selected.json', {
+                  type: 'application/json',
+                }),
+          ],
+        },
+      });
+      if (source === 'resume') fireEvent.click(screen.getByText('Analyze Resume'));
+    }
+    fireEvent.click(await screen.findByRole('button', { name: 'Review Changes' }));
+    const workSection = within(screen.getByRole('dialog')).getByRole('button', {
+      name: 'Work History',
+    });
+    if (workSection.getAttribute('aria-expanded') !== 'true') fireEvent.click(workSection);
+    fireEvent.click(screen.getByRole('button', { name: 'Next entry' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Import Company B' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Education' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next entry' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Import School B' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Languages' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Import Burmese' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Review Changes' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Languages' }));
+    expect(
+      (screen.getByRole('checkbox', { name: 'Import Burmese' }) as HTMLInputElement).checked,
+    ).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: /^(Import|Restore) Selected/ }));
+    await waitFor(async () => expect((await getProfile())?.education).toHaveLength(2));
+    const saved = (await getProfile())!;
+    expect(saved.education.map((row) => row.institution)).toEqual(['School A', 'School C']);
+    expect(saved.workHistory.map((row) => row.company)).toEqual(['Company A', 'Company C']);
+    expect(saved.languages).toEqual([data.languages[0]]);
   },
 );

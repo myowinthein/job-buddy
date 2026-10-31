@@ -230,3 +230,50 @@ it('shows complete incoming and current values in reading order', () => {
   expect(choices[0].closest('label')!.textContent).toBe('Importedsuggested-summary');
   expect(choices[1].closest('label')!.textContent).toBe('Keep Currentcurrent-summary');
 });
+
+it('counts and imports education entries separately without comparing new entries to empty data', async () => {
+  const { generateDiff, applyChanges } = await import('@/src/resume-ai/parser');
+  const schools = ['School A', 'School B', 'School C'].map((institution) => ({
+    institution,
+    degree: 'BA',
+    fieldOfStudy: 'Design',
+    startDate: '2020',
+    endDate: '2024',
+  }));
+  const changes = generateDiff({}, { education: schools });
+  const { onSave } = renderScreen(changes);
+  expect(screen.getByText('3 of 3 selected')).toBeTruthy();
+  expect(screen.queryByText('Imported')).toBeNull();
+  expect(screen.queryByText('Keep Current')).toBeNull();
+  expect(screen.queryByLabelText('Show unchanged details')).toBeNull();
+  expect(document.querySelector('mark')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Next entry' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Import School B' }));
+  expect(screen.getByText('2 of 3 selected')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Next entry' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Import Selected/ }));
+  expect(applyChanges({}, onSave.mock.calls[0][0]).education).toEqual([schools[0], schools[2]]);
+  fireEvent.click(screen.getByText('Clear Selection'));
+  expect(
+    (screen.getByRole('button', { name: /^Import Selected/ }) as HTMLButtonElement).disabled,
+  ).toBe(true);
+  fireEvent.click(screen.getByText('Select All'));
+  expect(screen.getByText('3 of 3 selected')).toBeTruthy();
+});
+
+it('presents each language with its proficiency and its own selection', async () => {
+  const { generateDiff, applyChanges } = await import('@/src/resume-ai/parser');
+  const languages = [
+    { language: 'en', proficiency: 'full_professional' as const },
+    { language: 'my', proficiency: 'native_bilingual' as const },
+  ];
+  const { onSave } = renderScreen(generateDiff({}, { languages }));
+  expect(screen.getByText('English')).toBeTruthy();
+  expect(screen.getByText('Fluent')).toBeTruthy();
+  expect(screen.getByText('Burmese')).toBeTruthy();
+  expect(screen.getByText('Native')).toBeTruthy();
+  expect(screen.getAllByText('Languages')).toHaveLength(1);
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Import Burmese' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Import Selected/ }));
+  expect(applyChanges({}, onSave.mock.calls[0][0]).languages).toEqual([languages[0]]);
+});

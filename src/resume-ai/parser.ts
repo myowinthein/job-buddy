@@ -1,3 +1,4 @@
+import { selectedEntryValue } from './entrySelection';
 import type {
   Profile,
   PhoneNumber,
@@ -542,7 +543,7 @@ export function applyChanges(
     if (change.status === 'unchanged') continue;
     if (!change.accepted) continue;
     const def = FIELD_DEF_BY_ID.get(change.id);
-    if (def) result = def.setValue(result, change.suggestedValue);
+    if (def) result = def.setValue(result, selectedEntryValue(change));
   }
 
   return result;

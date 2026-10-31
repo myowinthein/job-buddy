@@ -1,3 +1,4 @@
+import { reviewCounts } from '@/src/resume-ai/entrySelection';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Profile } from '@/src/types/profile';
 import { getGeminiApiKey, getGeminiModel } from '@/src/utils/storage';
@@ -262,9 +263,9 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
     if (!importMode) return;
     const fileChange   = finalChanges.find((c) => c.id === FILE_CHANGE_ID || c.id === 'documents.cv.file');
     const counted = importMode === 'replace' ? finalChanges.filter(c => c.hasIncomingValue !== false) : finalChanges;
-    const newAccepted      = counted.filter((c) => c.status === 'new'      && c.accepted).length;
-    const conflictAccepted = counted.filter((c) => c.status === 'conflict' && c.accepted).length;
-    const skipped          = counted.filter((c) => c.status !== 'unchanged' && !c.accepted).length;
+    const newAccepted      = counted.filter(c => c.status === 'new').reduce((sum, c) => sum + reviewCounts(c).selected, 0);
+    const conflictAccepted = counted.filter(c => c.status === 'conflict').reduce((sum, c) => sum + reviewCounts(c).selected, 0);
+    const skipped          = counted.reduce((sum, c) => { const count = reviewCounts(c); return sum + count.total - count.selected; }, 0);
     if (fileChange?.accepted && selectedFile) {
       const sizeError = documentFileSizeError(selectedFile.size);
       if (sizeError) { showToast('error', sizeError); return; }

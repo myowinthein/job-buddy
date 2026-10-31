@@ -1,3 +1,10 @@
+import {
+  hasEntryChoices,
+  reviewCounts,
+  selectChange,
+  selectEntry,
+} from '@/src/resume-ai/entrySelection';
+import { LanguageComparison } from './LanguageComparison';
 import { useId, useState, type RefObject } from 'react';
 import type { FieldChange } from '@/src/resume-ai/types';
 import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
@@ -45,10 +52,16 @@ export default function ImportReviewScreen({
     onChangesChange?.(next);
   };
   const select = (id: string, accepted: boolean) =>
-    update(changes.map((change) => (change.id === id ? { ...change, accepted } : change)));
+    update(changes.map((change) => (change.id === id ? selectChange(change, accepted) : change)));
+  const selectItem = (id: string, index: number, accepted: boolean) =>
+    update(
+      changes.map((change) => (change.id === id ? selectEntry(change, index, accepted) : change)),
+    );
   const selectAll = (accepted: boolean) =>
     update(
-      changes.map((change) => (change.status === 'unchanged' ? change : { ...change, accepted })),
+      changes.map((change) =>
+        change.status === 'unchanged' ? change : selectChange(change, accepted),
+      ),
     );
   const reviewable = changes.filter(
     (change) => change.status !== 'unchanged',
@@ -56,7 +69,8 @@ export default function ImportReviewScreen({
   const selectable = reviewable.filter(
     (change) => !replacement || change.hasIncomingValue !== false,
   );
-  const selectedCount = selectable.filter((change) => change.accepted).length;
+  const selectedCount = selectable.reduce((sum, change) => sum + reviewCounts(change).selected, 0);
+  const selectableCount = selectable.reduce((sum, change) => sum + reviewCounts(change).total, 0);
   const grouped = new Map<string, ReviewableChange[]>();
   for (const change of reviewable) {
     const section = change.section === 'Professional' ? 'Work History' : change.section;
@@ -119,7 +133,7 @@ export default function ImportReviewScreen({
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
             <span className="text-gray-500 dark:text-gray-400" aria-live="polite">
-              {selectedCount} of {selectable.length} selected
+              {selectedCount} of {selectableCount} selected
             </span>
             <button
               type="button"
@@ -144,6 +158,9 @@ export default function ImportReviewScreen({
           {sections.map((section, index) => {
             const fields = grouped.get(section)!;
             const expanded = expandedSection === section;
+            const total = fields.reduce((sum, c) => sum + reviewCounts(c).total, 0);
+            const selected = fields.reduce((sum, c) => sum + reviewCounts(c).selected, 0);
+            const cleared = fields.reduce((sum, c) => sum + reviewCounts(c).cleared, 0);
             const headingId = `${sectionId}-heading-${index}`;
             const panelId = `${sectionId}-panel-${index}`;
             return (
@@ -173,17 +190,11 @@ export default function ImportReviewScreen({
                       >
                         {replacement ? (
                           <>
-                            {
-                              fields.filter((c) => c.hasIncomingValue !== false && c.accepted)
-                                .length
-                            }{' '}
-                            selected · {fields.filter((c) => c.hasIncomingValue === false).length}{' '}
-                            cleared
+                            {selected} selected · {cleared} cleared
                           </>
                         ) : (
                           <>
-                            {fields.length} {fields.length === 1 ? 'update' : 'updates'} ·{' '}
-                            {fields.filter((change) => change.accepted).length} selected
+                            {total} {total === 1 ? 'update' : 'updates'} · {selected} selected
                           </>
                         )}
                       </span>
@@ -219,6 +230,7 @@ export default function ImportReviewScreen({
                         incomingLabel={incomingLabel}
                         replacement={replacement}
                         onSelect={select}
+                        onEntrySelect={selectItem}
                       />
                     ))}
                   </div>
@@ -265,18 +277,44 @@ function FieldRow({
   incomingLabel,
   replacement,
   onSelect,
+  onEntrySelect,
 }: {
   change: ReviewableChange;
   isSaving: boolean;
   incomingLabel: string;
   replacement: boolean;
   onSelect: (id: string, accepted: boolean) => void;
+  onEntrySelect: (id: string, index: number, accepted: boolean) => void;
 }) {
   const labelId = useId();
   const listSummary = (value: unknown) => {
     const count = Array.isArray(value) ? value.length : 0;
     return `${count} ${count === 1 ? 'entry' : 'entries'}`;
   };
+  if (hasEntryChoices(change))
+    return (
+      <div role="group" aria-label={change.label} className="py-1">
+        {change.id === 'languages' ? (
+          <LanguageComparison
+            change={change}
+            incomingLabel={incomingLabel}
+            isSaving={isSaving}
+            onSelect={(index, accepted) => onEntrySelect(change.id, index, accepted)}
+          />
+        ) : (
+          <EntryComparison
+            entries={change.entries!}
+            incomingLabel={incomingLabel}
+            selection={{
+              change,
+              isSaving,
+              replacement,
+              onSelect: (index, accepted) => onEntrySelect(change.id, index, accepted),
+            }}
+          />
+        )}
+      </div>
+    );
   return (
     <div role="group" aria-labelledby={labelId} className="py-4">
       <div className="flex items-center gap-2 mb-2">

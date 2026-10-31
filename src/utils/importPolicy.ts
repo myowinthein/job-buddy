@@ -1,3 +1,4 @@
+import { selectedEntryValue } from '@/src/resume-ai/entrySelection';
 import type { Profile } from '@/src/types/profile';
 import type { FieldChange } from '@/src/resume-ai/types';
 import { FIELD_DEFS, generateDiff } from '@/src/resume-ai/parser';
@@ -45,12 +46,14 @@ export function replacementChanges(
     if (!def.isEmpty(change.suggestedValue))
       return {
         ...change,
+        entryMode: 'replace',
         status: def.isEmpty(change.currentValue) ? 'new' : 'conflict',
         accepted: true,
       };
     if (!def.isEmpty(change.currentValue) && def.isEmpty(change.suggestedValue))
       return {
         ...change,
+        entryMode: 'replace',
         status: 'conflict',
         accepted: true,
         hasIncomingValue: false,
@@ -80,7 +83,7 @@ export function assertImportCurrent(
     const value = def.getValue(current);
     if (
       !equalJsonValues(value, change.currentValue) &&
-      !equalJsonValues(value, change.suggestedValue)
+      !equalJsonValues(value, selectedEntryValue(change))
     )
       throw new ImportProfileChangedError(current);
   }

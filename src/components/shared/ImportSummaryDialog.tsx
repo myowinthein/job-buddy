@@ -1,3 +1,4 @@
+import { reviewCounts } from '@/src/resume-ai/entrySelection';
 import { useId, type ReactNode, type RefObject } from 'react';
 import type { FieldChange } from '@/src/resume-ai/types';
 import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
@@ -43,13 +44,19 @@ export default function ImportSummaryDialog({
   onDismiss,
   isProcessing = false,
 }: ImportSummaryDialogProps) {
-  const counts = {
-    new: changes.filter((change) => change.status === 'new').length,
-    changed: changes.filter((change) => change.status === 'conflict').length,
-    unchanged: changes.filter(
-      (change) => change.status === 'unchanged' && change.hasIncomingValue !== false,
-    ).length,
-  };
+  const counts = changes.reduce(
+    (sum, change) => {
+      const count = reviewCounts(change);
+      return {
+        new: sum.new + count.new,
+        changed: sum.changed + count.changed,
+        unchanged: sum.unchanged + count.unchanged,
+        incoming: sum.incoming + count.incoming,
+        cleared: sum.cleared + count.cleared,
+      };
+    },
+    { new: 0, changed: 0, unchanged: 0, incoming: 0, cleared: 0 },
+  );
   const hasChanges = counts.new + counts.changed > 0 || forceDecision;
   const titleId = useId();
   const descriptionId = useId();
@@ -81,10 +88,7 @@ export default function ImportSummaryDialog({
         </p>
         {hasChanges && replacement && (
           <p className="mt-4 text-xs text-gray-600 dark:text-gray-400">
-            {changes.filter((c) => c.status !== 'unchanged' && c.hasIncomingValue !== false).length}{' '}
-            incoming details ·{' '}
-            {changes.filter((c) => c.status !== 'unchanged' && c.hasIncomingValue === false).length}{' '}
-            cleared
+            {counts.incoming} incoming details · {counts.cleared} cleared
           </p>
         )}
         {hasChanges && !replacement && (

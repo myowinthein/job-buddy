@@ -1,3 +1,4 @@
+import { selectChange } from '@/src/resume-ai/entrySelection';
 import type { ApplicationEntry, LearnedMappings, LearnedMappingValue } from '@/src/types/storage';
 import type { FieldChange } from '@/src/resume-ai/types';
 import type { InvalidField } from './profileValidator';
@@ -226,4 +227,4 @@ export function selectedBackupData(changes: FieldChange[]) {
 }
 
 export const acceptAllChanges = (changes: FieldChange[]) =>
-  changes.map((change) => ({ ...change, accepted: change.status !== 'unchanged' }));
+  changes.map((change) => selectChange(change, change.status !== 'unchanged'));

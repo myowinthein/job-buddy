@@ -56,6 +56,8 @@ export interface FieldChange {
   /** Explains list replacement, merging, or a binary file change. */
   note?: string;
   entries?: import('./entryComparison').EntryComparison[];
+  /** Replacement omits rejected entries instead of retaining their saved versions. */
+  entryMode?: 'replace';
   /** Absent values are preserved, rather than counted as matching details. */
   hasIncomingValue?: boolean;
 }

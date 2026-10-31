@@ -1,3 +1,4 @@
+import { selectedEntryValue } from './entrySelection';
 import type { DocumentFile, Profile } from '@/src/types/profile';
 import { normalizeProfile } from '@/src/utils/migrate';
 import { equalJsonValues } from '@/src/utils/equalJsonValues';
@@ -39,7 +40,9 @@ export function resumeChanges(
       ['workHistory', 'education', 'languages', 'workAuthorization', 'links.custom'].includes(
         change.id,
       ) && {
-        note: 'Saved entries and details not found in the resume are kept. Your choice applies to the whole list.',
+        note: change.entries
+          ? 'Saved entries and details not found in the resume are kept.'
+          : 'Saved entries and details not found in the resume are kept. Your choice applies to the whole list.',
       }),
   }));
 }
@@ -64,7 +67,7 @@ export function applyReviewedResumeChanges(
         : FIELD_DEFS.find((def) => def.id === change.id)?.getValue(latest);
     if (
       equalJsonValues(current, change.currentValue) ||
-      equalJsonValues(current, change.suggestedValue)
+      equalJsonValues(current, selectedEntryValue(change))
     )
       return change;
     stale = true;

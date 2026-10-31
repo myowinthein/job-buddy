@@ -29,7 +29,7 @@ function renderSection(
     <ToastProvider>
       <ResumeImportSection
         profile={profile}
-        onSave={update => onSave(typeof update === 'function' ? update(profile) : update)}
+        onSave={(update) => onSave(typeof update === 'function' ? update(profile) : update)}
         onReplace={vi.fn().mockResolvedValue(undefined)}
         onGoToApiKey={onGoToApiKey}
         onClose={onClose}
@@ -112,16 +112,18 @@ describe('ResumeImportSection — real review and parser integration', () => {
       fireEvent.click(await screen.findByText('Review Changes'));
       fireEvent.click(screen.getByRole('radio', { name: /Keep Current Local/ }));
       fireEvent.click(screen.getByRole('button', { name: 'Education' }));
-      const arrayChoices = document.querySelectorAll('input[name="education"]');
-      fireEvent.click(arrayChoices[acceptArray ? 0 : 1]);
+      const schoolChoice = screen.getByRole('checkbox', { name: 'Import New School' });
+      if (!acceptArray) fireEvent.click(schoolChoice);
       fireEvent.click(screen.getByRole('button', { name: 'Documents' }));
       fireEvent.click(screen.getByRole('radio', { name: /Keep Current old.pdf/ }));
-      fireEvent.click(screen.getByRole('button', {name:/^Import Selected/}));
+      fireEvent.click(screen.getByRole('button', { name: /^Import Selected/ }));
       await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
       const saved = onSave.mock.calls[0][0];
       expect(saved.personal.firstName).toBe('Local');
       expect(saved.personal.nickname).toBe('New Nickname');
-      expect(saved.education).toEqual(acceptArray ? [...newEducation, ...oldEducation] : oldEducation);
+      expect(saved.education).toEqual(
+        acceptArray ? [...newEducation, ...oldEducation] : oldEducation,
+      );
       expect(saved.documents).toEqual(documents);
     },
   );

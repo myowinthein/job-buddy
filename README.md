@@ -73,8 +73,7 @@ check every answer and uploaded document before submitting.
   Keys remain in this browser and are excluded from JSON and Drive backups.
   Use **Replace Key** or **Remove Key** to manage access. Review imported suggestions
   before saving. Updating from a resume keeps saved entries and missing details.
-  The review shows one work or education entry at a time and highlights changes. Slow,
-  rate-limited, or unavailable models fall back to the next model automatically.
+  Slow, rate-limited, or unavailable models fall back to the next model automatically.
 - **Google Drive:** connect in **Settings** to back up your profile and learned
   mappings. Saved changes update the backup automatically. Use **Back Up Now**
   to check and update it manually. Different Drive data requires review before
@@ -92,7 +91,9 @@ imports show **Update current profile** and **Replace current profile** only for
 possible name/email mismatch. Empty profiles and matching identities use the normal
 import flow. Update keeps omitted details;
 JSON and Drive lists replace supplied lists, while resume updates retain saved
-entries. Updated mappings and JSON application history merge with saved data.
+entries. The shared review lets you select work, education, and language entries
+individually. New entries show their details; matched entries highlight changes.
+Updated mappings and JSON application history merge with saved data.
 
 Replace starts fresh with the selected incoming details and clears old documents,
 mappings, and history unless imported. Appearance and AI settings stay in this

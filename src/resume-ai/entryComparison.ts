@@ -1,5 +1,6 @@
 import type { Profile } from '@/src/types/profile';
-import { findLanguage } from '@/src/data/languages';
+import { findLanguage, languageName, LANGUAGE_PROFICIENCY_LABELS } from '@/src/data/languages';
+import type { LanguageProficiency } from '@/src/types/profile';
 import { findCountryByNameOrCode } from '@/src/data/countries';
 import { equalJsonValues } from '@/src/utils/equalJsonValues';
 
@@ -7,6 +8,9 @@ type Entry = Record<string, unknown>;
 export interface EntryComparison {
   label: string;
   status?: 'new' | 'removed' | 'changed' | 'unchanged';
+  currentIndex?: number;
+  suggestedIndex?: number;
+  accepted?: boolean;
   fields: { label: string; current: string; suggested: string; changed: boolean }[];
 }
 const key = (value: unknown) =>
@@ -130,47 +134,68 @@ export function compareEntries(
   currentValue: unknown,
   suggestedValue: unknown,
 ): EntryComparison[] | undefined {
-  if (!['workHistory', 'education'].includes(section)) return undefined;
+  if (!['workHistory', 'education', 'languages'].includes(section)) return undefined;
   const current = (currentValue ?? []) as Entry[];
   const suggested = (suggestedValue ?? []) as Entry[];
   const used = new Set<number>();
-  const pairs = suggested.map((entry) => {
-    const index = matchedEntryIndex(section, entry, current);
-    if (index >= 0 && !used.has(index)) {
-      used.add(index);
-      return { incoming: entry, saved: current[index] };
-    }
-    return { incoming: entry, saved: {} as Entry };
-  });
+  const pairs: { incoming: Entry; saved: Entry; currentIndex?: number; suggestedIndex?: number }[] =
+    suggested.map((entry, suggestedIndex) => {
+      let index = matchedEntryIndex(section, entry, current);
+      if (index < 0 || used.has(index)) {
+        // Exact copies can be paired safely even when their identifying labels are ambiguous.
+        index = current.findIndex((saved, i) => !used.has(i) && equalJsonValues(saved, entry));
+      }
+      if (index >= 0 && !used.has(index)) {
+        used.add(index);
+        return { incoming: entry, saved: current[index], suggestedIndex, currentIndex: index };
+      }
+      return { incoming: entry, saved: {} as Entry, suggestedIndex, currentIndex: undefined };
+    });
   pairs.push(
-    ...current
-      .filter((_, index) => !used.has(index))
-      .map((saved) => ({ incoming: {} as Entry, saved })),
+    ...current.flatMap((saved, currentIndex) =>
+      used.has(currentIndex)
+        ? []
+        : [
+            {
+              incoming: {} as Entry,
+              saved,
+              currentIndex,
+              suggestedIndex: undefined,
+            },
+          ],
+    ),
   );
   const fields =
-    section === 'workHistory'
-      ? {
-          company: 'Company',
-          title: 'Job title',
-          startDate: 'Start date',
-          endDate: 'End date',
-          isCurrent: 'Current role',
-          location: 'Location',
-          arrangement: 'Work arrangement',
-          description: 'Description',
-        }
-      : {
-          institution: 'Institution',
-          degree: 'Degree',
-          fieldOfStudy: 'Field of study',
-          startDate: 'Start date',
-          endDate: 'End date',
-          isCurrent: 'Currently studying',
-          grade: 'Grade',
-          description: 'Description',
-        };
-  return pairs.map(({ incoming, saved }) => ({
-    label: text(incoming.company ?? incoming.institution ?? saved.company ?? saved.institution),
+    section === 'languages'
+      ? { proficiency: 'Proficiency' }
+      : section === 'workHistory'
+        ? {
+            company: 'Company',
+            title: 'Job title',
+            startDate: 'Start date',
+            endDate: 'End date',
+            isCurrent: 'Current role',
+            location: 'Location',
+            arrangement: 'Work arrangement',
+            description: 'Description',
+          }
+        : {
+            institution: 'Institution',
+            degree: 'Degree',
+            fieldOfStudy: 'Field of study',
+            startDate: 'Start date',
+            endDate: 'End date',
+            isCurrent: 'Currently studying',
+            grade: 'Grade',
+            description: 'Description',
+          };
+  return pairs.map(({ incoming, saved, currentIndex, suggestedIndex }) => ({
+    label:
+      section === 'languages'
+        ? languageName(String(incoming.language ?? saved.language ?? ''))
+        : text(incoming.company ?? incoming.institution ?? saved.company ?? saved.institution),
+    currentIndex,
+    suggestedIndex,
     status: !Object.keys(saved).length
       ? 'new'
       : !Object.keys(incoming).length
@@ -179,11 +204,18 @@ export function compareEntries(
           ? 'unchanged'
           : 'changed',
     fields: Object.entries(fields)
-      .filter(([name]) => incoming[name] != null || saved[name] != null)
+      .filter(([name]) => section === 'languages' || incoming[name] != null || saved[name] != null)
       .map(([name, label]) => ({
         label,
-        current: text(saved[name]),
-        suggested: text(incoming[name]),
+        current:
+          section === 'languages'
+            ? (LANGUAGE_PROFICIENCY_LABELS[saved[name] as LanguageProficiency] ?? text(saved[name]))
+            : text(saved[name]),
+        suggested:
+          section === 'languages'
+            ? (LANGUAGE_PROFICIENCY_LABELS[incoming[name] as LanguageProficiency] ??
+              text(incoming[name]))
+            : text(incoming[name]),
         changed: !equalJsonValues(saved[name] ?? '', incoming[name] ?? ''),
       })),
   }));
