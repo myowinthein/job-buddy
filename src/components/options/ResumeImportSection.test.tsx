@@ -413,13 +413,13 @@ it('stops a non-resume document without a review or save action', async () => {
     .mockReset()
     .mockRejectedValue({
       code: 'not_resume',
-      message: 'This document doesn’t appear to be a resume. Choose another file.',
+      message: 'This document doesn’t appear to be a resume.',
     });
   const { onSave } = renderSection();
   await screen.findByText(/Drop your resume here/);
   await selectFile(pdfFile());
   fireEvent.click(screen.getByText('Analyze Resume'));
-  await screen.findByText('This document doesn’t appear to be a resume. Choose another file.');
+  await screen.findByText('This document doesn’t appear to be a resume.');
   expect(screen.queryByText('Try again')).toBeNull();
   expect(screen.queryByText('Review Changes')).toBeNull();
   expect(onSave).not.toHaveBeenCalled();

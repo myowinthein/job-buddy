@@ -11,7 +11,7 @@ export function resumeDocumentType(raw: unknown): ResumeDocumentType {
   if (type === 'other')
     throw {
       code: 'not_resume',
-      message: 'This document doesn’t appear to be a resume. Choose another file.',
+      message: 'This document doesn’t appear to be a resume.',
     };
   if (type === 'resume' || type === 'uncertain') return type;
   // Missing assessment is not evidence that the document is a resume.
