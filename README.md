@@ -36,10 +36,10 @@ developing. External integration setup is optional for basic autofill.
 ## Usage
 
 ```text
-Complete Your Profile → Fill Form → Review answers → Submit on the application site
+Set Up Profile → Fill Form → Review answers → Submit on the application site
 ```
 
-1. Open the extension popup and choose **Complete Your Profile** or **Edit Profile**.
+1. Open the extension popup and choose **Set Up Profile**, **Complete Profile**, or **Edit Profile**.
    Save your personal details, work history, education, and other relevant sections.
    Add a CV in **Documents** to attach it to supported upload fields.
    Open uploaded PDFs with **View PDF**, or use **Download** to save PDF and Word attachments.
@@ -47,17 +47,17 @@ Complete Your Profile → Fill Form → Review answers → Submit on the applica
    The top bar tracks 10 required checks after saving; select a remaining detail
    to go to its input. Optional details do not affect the percentage.
 2. Visit a job application page and click **Fill Form** in the popup.
-3. If the form already contains values, choose **Merge** to fill only empty fields
-   or **Overwrite** to replace matched fields, then click **Continue**.
+3. If the form already contains values, choose **Fill empty fields** to keep existing values
+   or **Replace matched values** to use your saved details, then click **Fill Form**.
 4. Review the results and type any missing or corrected answers directly into the
    form. Submit the application yourself on the website.
 
-| Result            | Meaning                                                   |
-| ----------------- | --------------------------------------------------------- |
-| Green / No Review | Filled with high confidence; still check the answer.      |
-| Yellow / Review   | Filled with lower confidence; review and correct it.      |
-| Red / No Match    | Left unfilled because no confident match was found.       |
-| Gray / No Data    | Your profile lacks the value; the field has no highlight. |
+| Result                      | Meaning                                                   |
+| --------------------------- | --------------------------------------------------------- |
+| Green / High confidence     | Filled with high confidence; still check the answer.      |
+| Yellow / Review value       | Filled with lower confidence; review and correct it.      |
+| Red / Not matched           | Left unfilled because no confident match was found.       |
+| Gray / Missing profile data | Your profile lacks the value; the field has no highlight. |
 
 **Undo** clears Job Buddy's fills for the current session. Corrections that match
 saved profile values can teach the extension a field mapping for that website.

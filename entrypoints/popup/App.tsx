@@ -1,31 +1,21 @@
-import { useState, useEffect, useCallback } from 'react';
-import { CheckCircle } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Check, LoaderCircle, Sparkles, X } from 'lucide-react';
 import { getProfile, getGeminiApiKey } from '@/src/utils/storage';
 import { LOGO_ICON_SRC } from '@/src/utils/branding';
 import { sessionGet, sessionSet } from '@/src/utils/sessionStorage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import type { DebugSession } from '@/src/autofill/debug';
 import { DebugPanel } from './DebugPanel';
-import { InfoTooltip } from '@/src/components/ui/InfoTooltip';
-import { AiSparkIcon } from '@/src/components/ui/AiSparkIcon';
-
+import { FIELD_DEFS } from '@/src/resume-ai/parser';
 
 interface AutofillResult {
-  noReview:      number;
-  needReview:    number;
+  noReview: number;
+  needReview: number;
   lowConfidence: number;
-  noData:        number;
-  totalScanned:  number;
-  aiAvailable?:  boolean;
+  noData: number;
+  totalScanned: number;
+  aiAvailable?: boolean;
 }
-
-// Static — none of its contents depend on props/state — so it's hoisted to
-// module scope rather than rebuilt on every render.
-const COLOR_MAP = {
-  red:    { bar: 'bg-red-500',    text: 'text-red-600 dark:text-red-400',       badge: 'bg-red-50 border-red-200 dark:bg-red-900/30 dark:border-red-800'             },
-  yellow: { bar: 'bg-yellow-500', text: 'text-yellow-600 dark:text-yellow-400', badge: 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-800' },
-  green:  { bar: 'bg-green-500',  text: 'text-green-600 dark:text-green-400',   badge: 'bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-800'     },
-};
 
 // Actively (re-)injects the content script into every given frame before
 // messaging it. Chrome's declarative content_scripts injection (matches +
@@ -104,9 +94,8 @@ interface AutofillScanResult {
 const EXTENSION_VERSION = chrome.runtime.getManifest().version;
 
 interface CompletionState {
-  percentage:              number;
-  isCoreComplete:          boolean;
-  optionalFieldsRemaining: number;
+  percentage: number;
+  isCoreComplete: boolean;
 }
 
 // 'confirming' is shown when the scan found pre-filled fields and we need
@@ -117,30 +106,38 @@ function App() {
   const [completion, setCompletion] = useState<CompletionState>({
     percentage: 0,
     isCoreComplete: false,
-    optionalFieldsRemaining: 0,
   });
-  const [loading, setLoading]               = useState(true);
-  const [autofillState, setAutofillState]   = useState<AutofillState>('idle');
+  const [hasProfileData, setHasProfileData] = useState(false);
+  const [profileLoadFailed, setProfileLoadFailed] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [autofillState, setAutofillState] = useState<AutofillState>('idle');
   const [autofillResult, setAutofillResult] = useState<AutofillResult | null>(null);
   const [preFilledCount, setPreFilledCount] = useState(0);
-  const [fillMode, setFillMode]             = useState<'merge' | 'overwrite'>('merge');
+  const [fillMode, setFillMode] = useState<'merge' | 'overwrite'>('merge');
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
-  const [hasGeminiKey,   setHasGeminiKey]   = useState<boolean | null>(null);
-  const [debugSession,   setDebugSession]   = useState<DebugSession | null>(null);
-  const [debugOpen,      setDebugOpen]      = useState(false);
+  const [hasGeminiKey, setHasGeminiKey] = useState<boolean | null>(null);
+  const [debugSession, setDebugSession] = useState<DebugSession | null>(null);
+  const [debugOpen, setDebugOpen] = useState(false);
+  const fillButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (autofillState !== 'loading' && autofillState !== 'confirming')
+      fillButtonRef.current?.focus({ preventScroll: true });
+  }, [autofillState]);
 
   useEffect(() => {
     getProfile()
       .then((p) => {
         const r = calculateCompletion(p ?? {});
         setCompletion({
-          percentage:              r.percentage,
-          isCoreComplete:          r.isCoreComplete,
-          optionalFieldsRemaining: r.optionalFieldsRemaining,
+          percentage: r.percentage,
+          isCoreComplete: r.isCoreComplete,
         });
+        setHasProfileData(!!p && FIELD_DEFS.some((field) => !field.isEmpty(field.getValue(p))));
       })
       .catch((err) => {
         console.error('[Job Buddy] Failed to load profile:', err);
+        setProfileLoadFailed(true);
       })
       .finally(() => {
         setLoading(false);
@@ -199,8 +196,16 @@ function App() {
     sessionGet('jb:ai:nudge:dismissed').then((r) => {
       if (!cancelled && r?.['jb:ai:nudge:dismissed']) setNudgeDismissed(true);
     });
-    getGeminiApiKey().then((key) => { if (!cancelled) setHasGeminiKey(!!key); }).catch(() => { if (!cancelled) setHasGeminiKey(false); });
-    return () => { cancelled = true; };
+    getGeminiApiKey()
+      .then((key) => {
+        if (!cancelled) setHasGeminiKey(!!key);
+      })
+      .catch(() => {
+        if (!cancelled) setHasGeminiKey(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [sendToActiveTab]);
 
   const dismissNudge = () => {
@@ -213,10 +218,10 @@ function App() {
   // Open Settings → AI Features and focus the Gemini API key input.
   // Same end-state as ResumeImportSection's "Go to Settings →" link, but
   // crosses the popup→options-page context boundary via chrome.storage.session.
-  const goToSettingsKey = () => {
+  const goToSettingsKey = async () => {
     dismissNudge();
-    void sessionSet({ 'jb:focusOnLoad': 'gemini-api-key' });
-    chrome.runtime.openOptionsPage();
+    await sessionSet({ 'jb:focusOnLoad': 'gemini-api-key' });
+    await chrome.runtime.openOptionsPage();
   };
 
   const handleAutofill = async () => {
@@ -260,25 +265,21 @@ function App() {
     setAutofillResult(null);
   };
 
-  const { percentage, isCoreComplete, optionalFieldsRemaining } = completion;
-
-  // True once loading is done and at least one profile field has been filled.
-  const hasProfileData = !loading && percentage > 0;
-
-  const color = percentage >= 80 ? 'green' : percentage >= 50 ? 'yellow' : 'red';
-  const colorMap = COLOR_MAP[color];
+  const { percentage, isCoreComplete } = completion;
+  const busy = autofillState === 'loading';
 
   return (
-    <div className="w-[380px] p-5 font-sans bg-white dark:bg-gray-900">
-      {/* Header */}
-      <div className="flex items-center gap-2.5 mb-5">
+    <div className="flex max-h-[600px] w-[380px] flex-col bg-white font-sans text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+      <header className="flex shrink-0 items-center gap-2.5 px-5 pb-3 pt-5">
         <img
           src={LOGO_ICON_SRC}
           alt="Job Buddy"
-          className="w-8 h-8 shrink-0"
+          className="h-8 w-8 shrink-0"
           role={autofillState === 'success' ? 'button' : undefined}
           tabIndex={autofillState === 'success' ? 0 : undefined}
-          onClick={(e) => { if (e.shiftKey && autofillState === 'success') openDebugPanel(); }}
+          onClick={(e) => {
+            if (e.shiftKey && autofillState === 'success') openDebugPanel();
+          }}
           onKeyDown={(e) => {
             if (e.shiftKey && (e.key === 'Enter' || e.key === ' ') && autofillState === 'success') {
               e.preventDefault();
@@ -286,278 +287,356 @@ function App() {
             }
           }}
         />
-        <div className="flex items-center gap-1 flex-1">
-          <h1 className="text-base font-bold text-gray-900 dark:text-gray-100">Job Buddy</h1>
-          <div className="relative group">
-            <AiSparkIcon active={hasGeminiKey === true} onClick={goToSettingsKey} />
-            {hasGeminiKey !== null && (
-              <div className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 z-50 mt-1.5 whitespace-nowrap rounded-md bg-gray-800 dark:bg-gray-700 px-2 py-1.5 text-[11px] leading-snug text-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
-                {hasGeminiKey ? 'AI-assisted autofill is on' : 'Add an AI key in Settings for smarter fills'}
-              </div>
-            )}
-          </div>
-        </div>
-        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">v{EXTENSION_VERSION}</span>
+        <h1 className="flex-1 text-base font-bold">Job Buddy</h1>
+        <button
+          type="button"
+          onClick={goToSettingsKey}
+          disabled={busy}
+          aria-label={
+            hasGeminiKey === null
+              ? 'AI settings'
+              : hasGeminiKey
+                ? 'AI settings: key saved'
+                : 'Set up AI autofill'
+          }
+          title={
+            hasGeminiKey === null
+              ? 'Open AI settings.'
+              : hasGeminiKey
+                ? 'Your AI key is saved. Open AI settings.'
+                : 'Add an AI key in Settings to enable AI-assisted autofill.'
+          }
+          className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50 dark:hover:bg-gray-800"
+        >
+          <Sparkles
+            aria-hidden="true"
+            className={`h-4 w-4 ${hasGeminiKey ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`}
+          />
+        </button>
+        <span className="text-xs text-gray-400 dark:text-gray-500">v{EXTENSION_VERSION}</span>
+      </header>
+
+      <div className="shrink-0 px-5">
+        {loading ? (
+          <div className="h-10 animate-pulse rounded-lg bg-gray-100 motion-reduce:animate-none dark:bg-gray-800" />
+        ) : profileLoadFailed ? (
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+            Could not load your profile. Reopen the popup or open your profile to try again.
+          </p>
+        ) : (
+          <>
+            <div className="flex min-h-8 items-center justify-between gap-2 text-xs">
+              <span
+                className={`flex items-center gap-1.5 font-medium ${isCoreComplete ? 'text-green-700 dark:text-green-400' : 'text-gray-600 dark:text-gray-300'}`}
+              >
+                {isCoreComplete && <Check aria-hidden="true" className="h-3.5 w-3.5" />}
+                {isCoreComplete ? 'Required details complete' : 'Required profile'}
+                {!isCoreComplete && (
+                  <span className="font-semibold text-blue-700 dark:text-blue-400">
+                    {percentage}%
+                  </span>
+                )}
+              </span>
+              {hasProfileData && (
+                <button
+                  type="button"
+                  onClick={openOptions}
+                  disabled={busy}
+                  className="min-h-8 shrink-0 rounded px-1 font-medium text-blue-700 hover:underline focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50 dark:text-blue-400"
+                >
+                  {isCoreComplete ? 'Edit Profile' : 'Complete Profile'}
+                </button>
+              )}
+            </div>
+            <div
+              role="progressbar"
+              aria-label="Saved required profile details"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={percentage}
+              className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
+            >
+              <div
+                className={`h-full rounded-full transition-all motion-reduce:transition-none ${isCoreComplete ? 'bg-green-500' : 'bg-blue-500'}`}
+                style={{ width: `${percentage}%` }}
+              />
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Completion indicator */}
-      {loading ? (
-        <div className="h-20 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse mb-4" />
-      ) : isCoreComplete ? (
-        <div className="p-4 rounded-xl border mb-4 bg-green-50 border-green-200 dark:bg-green-900/30 dark:border-green-800 flex flex-col items-center text-center">
-          <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400 mb-2" />
-          <span className="text-base font-bold text-green-700 dark:text-green-400">You're ready to apply!</span>
-          {optionalFieldsRemaining > 0 && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {optionalFieldsRemaining} optional field{optionalFieldsRemaining !== 1 ? 's' : ''} available for richer autofill coverage
-            </p>
-          )}
-        </div>
-      ) : (
-        <div className={`p-4 rounded-xl border mb-4 ${colorMap.badge}`}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Profile Completion</span>
-            <span className={`text-xl font-bold ${colorMap.text}`}>{percentage}%</span>
-          </div>
-          <div className="w-full bg-white dark:bg-gray-800 bg-opacity-60 rounded-full h-2 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${colorMap.bar}`}
-              style={{ width: `${percentage}%` }}
-            />
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            {percentage < 50
-              ? 'Complete your profile to start auto-filling job forms'
-              : 'Almost there: finish the remaining sections'}
-          </p>
-        </div>
-      )}
-
-      {/* CTA button — stays primary (bold blue) only while it's the sole
-          actionable button; once profile data exists, Fill Form becomes the
-          primary action below and this steps back to an outline style.
-          Skeleton avoids a blue-then-outline flash while profile is loading. */}
-      {loading ? (
-        <div className="h-9 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse mb-4" />
-      ) : (
-        <button
-          onClick={openOptions}
-          className={
-            hasProfileData
-              ? 'w-full py-2.5 px-4 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-95 transition-colors mb-4'
-              : 'w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors mb-4'
-          }
-        >
-          {isCoreComplete ? 'Edit Profile' : 'Complete Your Profile'}
-        </button>
-      )}
-
-      {/* Autofill panel */}
-      <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-1.5 mb-3">
-          <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wide">Autofill</p>
-        </div>
-
-        {/* Loading skeleton */}
+      <div className="shrink-0 px-5 pb-4 pt-4">
         {loading ? (
-          <div className="h-9 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
-
-        ) : !hasProfileData ? (
-          /* ── State 1: no profile data ── */
-          <p className="text-sm text-gray-600 dark:text-gray-300 leading-snug">
-            Set up your profile to start autofilling.
-          </p>
-
+          <div
+            role="status"
+            className="h-11 animate-pulse rounded-lg bg-gray-100 motion-reduce:animate-none dark:bg-gray-800"
+          >
+            <span className="sr-only">Loading profile…</span>
+          </div>
+        ) : profileLoadFailed || !hasProfileData ? (
+          <>
+            {!profileLoadFailed && (
+              <p className="mb-3 text-sm text-gray-600 dark:text-gray-300">
+                Add your details to fill job application forms.
+              </p>
+            )}
+            <button type="button" autoFocus onClick={openOptions} className={`${primaryButton} w-full`}>
+              {profileLoadFailed ? 'Open Profile' : 'Set Up Profile'}
+            </button>
+          </>
         ) : autofillState === 'confirming' ? (
-          /* ── State 2a: merge / overwrite confirmation dialog ── */
           <div>
-            <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
-              This form already has data filled in.
-            </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-              {preFilledCount} field{preFilledCount !== 1 ? 's' : ''} already {preFilledCount !== 1 ? 'have' : 'has'} a value. How would you like to proceed?
-            </p>
-
-            <div className="space-y-2 mb-4">
-              <label className="flex items-start gap-2.5 cursor-pointer">
-                <input
-                  type="radio"
-                  name="fillMode"
-                  value="merge"
-                  checked={fillMode === 'merge'}
-                  onChange={() => setFillMode('merge')}
-                  className="mt-0.5 shrink-0"
-                />
-                <div>
-                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Merge</span>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug">Only fill empty fields: keep existing values</p>
-                </div>
-              </label>
-
-              <label className="flex items-start gap-2.5 cursor-pointer">
-                <input
-                  type="radio"
-                  name="fillMode"
-                  value="overwrite"
-                  checked={fillMode === 'overwrite'}
-                  onChange={() => setFillMode('overwrite')}
-                  className="mt-0.5 shrink-0"
-                />
-                <div>
-                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Overwrite</span>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug">Replace all matched fields with profile data</p>
-                </div>
-              </label>
-            </div>
-
-            <div className="flex gap-2">
+            <fieldset>
+              <legend className="mb-1 text-sm font-semibold">
+                This form already has data filled in.
+              </legend>
+              <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                {preFilledCount} field{preFilledCount !== 1 ? 's' : ''} already{' '}
+                {preFilledCount !== 1 ? 'have' : 'has'} a value. Choose how to fill the form.
+              </p>
+              <div className="space-y-1">
+                <label className="flex cursor-pointer items-start gap-2.5 rounded-lg py-2">
+                  <input
+                    type="radio"
+                    name="fillMode"
+                    value="merge"
+                    autoFocus
+                    checked={fillMode === 'merge'}
+                    onChange={() => setFillMode('merge')}
+                    className="mt-0.5 accent-blue-600"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium">Fill empty fields</span>
+                    <span className="block text-xs text-gray-500 dark:text-gray-400">
+                      Keep values already entered on this page.
+                    </span>
+                  </span>
+                </label>
+                <label className="flex cursor-pointer items-start gap-2.5 rounded-lg py-2">
+                  <input
+                    type="radio"
+                    name="fillMode"
+                    value="overwrite"
+                    checked={fillMode === 'overwrite'}
+                    onChange={() => setFillMode('overwrite')}
+                    className="mt-0.5 accent-blue-600"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium">Replace matched values</span>
+                    <span className="block text-xs text-gray-500 dark:text-gray-400">
+                      Use your saved details for matched fields.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+            <div className="mt-4 flex gap-2">
               <button
+                type="button"
                 onClick={handleCancelFill}
-                className="flex-1 py-2 px-3 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-95 transition-colors"
+                className={`${secondaryButton} flex-1`}
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleConfirmFill}
-                className="flex-1 py-2 px-3 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 active:scale-95 transition-colors"
+                className={`${primaryButton} flex-1`}
               >
-                Continue
+                Fill Form
               </button>
             </div>
           </div>
-
         ) : (
-          /* ── State 2b: normal autofill controls ── */
           <>
-            {/* Auto Fill button */}
-            <button
-              onClick={handleAutofill}
-              disabled={autofillState === 'loading'}
-              className="w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors mb-2"
-            >
-              {autofillState === 'loading' ? 'Filling…' : 'Fill Form ✨'}
-            </button>
-
-            {/* Undo — only visible after a fill has run in this session */}
-            {autofillState === 'success' && (
+            <div className="flex gap-2">
               <button
-                onClick={handleUndo}
-                className="w-full py-2 px-4 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 active:scale-95 transition-colors"
+                type="button"
+                autoFocus
+                ref={fillButtonRef}
+                onClick={handleAutofill}
+                disabled={busy}
+                className={`${primaryButton} flex-1`}
               >
-                Undo
+                {busy ? (
+                  <>
+                    <LoaderCircle
+                      aria-hidden="true"
+                      className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                    />
+                    Filling…
+                  </>
+                ) : (
+                  <>
+                    Fill Form{hasGeminiKey && <Sparkles aria-hidden="true" className="h-4 w-4" />}
+                  </>
+                )}
               </button>
-            )}
-
-            {autofillState === 'success' && autofillResult?.aiAvailable === false && !nudgeDismissed && (
-              <div className="mt-2 flex items-start gap-2 px-3 py-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <span className="flex-1 text-xs text-blue-700 dark:text-blue-300 leading-snug">
-                  Add an AI key in{' '}
-                  <button
-                    type="button"
-                    onClick={goToSettingsKey}
-                    className="underline font-medium hover:text-blue-900 dark:hover:text-blue-200 active:scale-95"
-                  >
-                    Settings
-                  </button>
-                  {' '}to improve autofill accuracy.
-                </span>
-                <button
-                  type="button"
-                  onClick={dismissNudge}
-                  className="shrink-0 text-blue-400 hover:text-blue-600 dark:text-blue-500 dark:hover:text-blue-300 text-base leading-none active:scale-95"
-                >
-                  ×
+              {autofillState === 'success' && (
+                <button type="button" onClick={handleUndo} className={secondaryButton}>
+                  Undo
                 </button>
-              </div>
-            )}
+              )}
+            </div>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              {busy
+                ? 'Using your saved details to fill this form.'
+                : autofillState === 'success'
+                  ? 'Review the filled details before submitting.'
+                  : 'Open a job application form, then select Fill Form.'}
+            </p>
+          </>
+        )}
+        <p role="status" className="sr-only">
+          {busy
+            ? 'Filling form…'
+            : autofillState === 'success' && autofillResult
+              ? `${autofillResult.noReview + autofillResult.needReview} filled, ${autofillResult.needReview} to review, ${autofillResult.lowConfidence + autofillResult.noData} not filled.`
+              : ''}
+        </p>
+      </div>
 
-            {/* Result summary — no fields found */}
-            {autofillState === 'success' && autofillResult && autofillResult.totalScanned === 0 && (
-              <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
-                <p className="font-medium mb-1">No fillable fields found on this page.</p>
-                <p className="text-gray-500 dark:text-gray-400 mb-2.5">
-                  This page might use a custom form (iframe or non-standard inputs) we don't support yet.
+      {hasProfileData && !loading && (autofillState === 'success' || autofillState === 'error') && (
+        <div
+          role="region"
+          aria-label="Autofill details"
+          tabIndex={0}
+          className="min-h-0 overflow-y-auto px-5 pb-5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-500"
+        >
+          {autofillState === 'error' && (
+            <p
+              role="alert"
+              className="rounded-lg bg-red-50 p-3 text-xs leading-relaxed text-red-600 dark:bg-red-900/20 dark:text-red-400"
+            >
+              Could not connect to page. Open a job application page, or refresh this page and try
+              again.
+            </p>
+          )}
+          {autofillState === 'success' &&
+            autofillResult &&
+            (autofillResult.totalScanned === 0 ? (
+              <div className="rounded-lg border border-gray-200 p-3 text-xs dark:border-gray-700">
+                <p className="mb-1 font-medium">No fillable fields found on this page.</p>
+                <p className="text-gray-500 dark:text-gray-400">
+                  Open the application form, then try Fill Form again.
                 </p>
                 <a
                   href="https://github.com/myowinthein/job-buddy/issues/new"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline font-medium"
+                  className="mt-2 inline-flex min-h-6 items-center font-medium text-blue-700 underline dark:text-blue-400"
                 >
                   Report on GitHub
                 </a>
               </div>
-            )}
-
-            {/* Result summary — normal */}
-            {autofillState === 'success' && autofillResult && autofillResult.totalScanned > 0 && (
-              <div className="mt-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs">
-
-                {/* ── Filled header ── */}
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 rounded-t-lg">
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Filled</span>
-                  <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">({autofillResult.noReview + autofillResult.needReview})</span>
-                </div>
-
-                {/* No Review + Review — side by side */}
-                <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100 dark:border-gray-700">
-                  <span className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
-                    <span className="text-green-600 dark:text-green-400 font-semibold">✓</span>
-                    No Review
-                    <span className="font-medium text-gray-600 dark:text-gray-300">{autofillResult.noReview}</span>
-                    <InfoTooltip text="This field is filled and looks correct." />
-                  </span>
-                  <span className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
-                    <span className="text-yellow-600 dark:text-yellow-400 font-semibold">⚠</span>
-                    Review
-                    <span className="font-medium text-gray-600 dark:text-gray-300">{autofillResult.needReview}</span>
-                    <InfoTooltip text="Filled automatically, but not fully confident. Click to review or change it." align="right" />
-                  </span>
-                </div>
-
-                {/* ── Not Filled header ── */}
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Not Filled</span>
-                  <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300">({autofillResult.lowConfidence + autofillResult.noData})</span>
-                </div>
-
-                {/* No Match + No Data — side by side */}
-                <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100 dark:border-gray-700">
-                  <span className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
-                    <span className="text-red-500 dark:text-red-400 font-semibold">✗</span>
-                    No Match
-                    <span className="font-medium text-gray-600 dark:text-gray-300">{autofillResult.lowConfidence}</span>
-                    <InfoTooltip text="We couldn't confidently identify this field. Click it to choose a value." />
-                  </span>
-                  <span className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
-                    <span className="text-gray-400 dark:text-gray-500">○</span>
-                    No Data
-                    <span className="font-medium text-gray-600 dark:text-gray-300">{autofillResult.noData}</span>
-                    <InfoTooltip text="This field isn't in your profile yet. Click to choose a value." align="right" />
-                  </span>
-                </div>
-
+            ) : (
+              <section
+                aria-label="Fill results"
+                className="rounded-lg border border-gray-200 px-3 dark:border-gray-700"
+              >
+                <p className="flex items-center justify-between pb-1 pt-3 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                  <span>Filled</span>
+                  <span>({autofillResult.noReview + autofillResult.needReview})</span>
+                </p>
+                <ResultRow
+                  symbol="✓"
+                  color="text-green-700 dark:text-green-400"
+                  label="High confidence"
+                  count={autofillResult.noReview}
+                  description="Filled with a confident match."
+                />
+                <ResultRow
+                  symbol="⚠"
+                  color="text-amber-700 dark:text-amber-400"
+                  label="Review value"
+                  count={autofillResult.needReview}
+                  description="Check the yellow fields on the page."
+                />
+                <p className="flex items-center justify-between border-t border-gray-200 pb-1 pt-3 text-xs font-semibold text-gray-600 dark:border-gray-700 dark:text-gray-300">
+                  <span>Not filled</span>
+                  <span>({autofillResult.lowConfidence + autofillResult.noData})</span>
+                </p>
+                <ResultRow
+                  symbol="✗"
+                  color="text-red-600 dark:text-red-400"
+                  label="Not matched"
+                  count={autofillResult.lowConfidence}
+                  description="Enter these values manually."
+                />
+                <ResultRow
+                  symbol="○"
+                  color="text-gray-500 dark:text-gray-400"
+                  label="Missing profile data"
+                  count={autofillResult.noData}
+                  description="No saved value. Enter these manually."
+                />
+              </section>
+            ))}
+          {autofillState === 'success' &&
+            autofillResult &&
+            autofillResult.totalScanned > 0 &&
+            autofillResult.aiAvailable === false &&
+            hasGeminiKey === false &&
+            !nudgeDismissed && (
+              <div className="mt-3 flex items-start gap-1 rounded-lg bg-gray-50 p-2 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                <p className="flex-1 py-1 leading-relaxed">
+                  Add an AI key in{' '}
+                  <button
+                    type="button"
+                    onClick={goToSettingsKey}
+                    className="font-medium text-blue-700 underline dark:text-blue-400"
+                  >
+                    Settings
+                  </button>{' '}
+                  to enable AI-assisted autofill.
+                </p>
+                <button
+                  type="button"
+                  onClick={dismissNudge}
+                  aria-label="Dismiss AI suggestion"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded hover:bg-gray-200 focus-visible:outline-2 focus-visible:outline-blue-500 dark:hover:bg-gray-700"
+                >
+                  <X aria-hidden="true" className="h-4 w-4" />
+                </button>
               </div>
             )}
-
-            {/* Error state */}
-            {autofillState === 'error' && (
-              <p className="mt-3 text-xs text-red-500 dark:text-red-400 text-center leading-snug">
-                Could not connect to page.
-                <br />
-                Try refreshing and clicking Fill Form again.
-              </p>
-            )}
-          </>
-        )}
-      </div>
-
-      {debugOpen && debugSession && (
-        <DebugPanel
-          session={debugSession}
-          onClose={() => setDebugOpen(false)}
-        />
+        </div>
       )}
+      {debugOpen && debugSession && (
+        <DebugPanel session={debugSession} onClose={() => setDebugOpen(false)} />
+      )}
+    </div>
+  );
+}
+
+const primaryButton =
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50';
+const secondaryButton =
+  'inline-flex min-h-11 items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800';
+
+function ResultRow({
+  symbol,
+  color,
+  label,
+  count,
+  description,
+}: {
+  symbol: string;
+  color: string;
+  label: string;
+  count: number;
+  description: string;
+}) {
+  return (
+    <div className="grid grid-cols-[16px_1fr_auto] gap-x-2 py-2 text-xs">
+      <span aria-hidden="true" className={`font-semibold ${color}`}>
+        {symbol}
+      </span>
+      <span className="font-medium">{label}</span>
+      <span className="font-semibold tabular-nums">{count}</span>
+      <p className="col-start-2 col-end-4 mt-1 leading-relaxed text-gray-500 dark:text-gray-400">
+        {description}
+      </p>
     </div>
   );
 }

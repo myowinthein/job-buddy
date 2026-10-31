@@ -99,7 +99,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 - Dev builds use amber icons (`wxt.config.ts` and `branding.ts`); production uses blue. Theme initializes before React and follows system/light/dark through the root `.dark` class.
 - Drive uses implicit-token OAuth with `drive.appdata`. Development setup requires Web Application OAuth clients with separate dev/prod redirect IDs; see `.github/SETUP.md`.
 - Document uploads, Resume Import, and JSON/Drive import validation share the 4 MB file limit in `src/utils/documentLimits.ts`. Existing stored files are preserved; the per-file cap does not guarantee the whole profile fits local storage.
-- Popup confidence tooltips and parts of `docs/project-site/` still mention a removed picker. Background backup reacts to both profile and learned-mapping saves; deletes during reset do not queue uploads.
+- Parts of `docs/project-site/` still mention a removed picker. Background backup reacts to both profile and learned-mapping saves; deletes during reset do not queue uploads.
 - Static site brand colors are duplicated across landing and overview; update both copies together.
 
 ## Rules
