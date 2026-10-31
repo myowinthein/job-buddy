@@ -937,7 +937,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                     : 'No backup yet'}
                 </p>
               </div>
-              {driveState.error && driveState.error !== 'token_expired' && !driveBackupBusy && (
+              {driveState.error && !driveBackupBusy && (
                 <p role="status" className="text-sm text-amber-700 dark:text-amber-400">
                   {driveFailureText(driveState.error)}
                 </p>
