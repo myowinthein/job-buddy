@@ -558,7 +558,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
       {screen === 'summary' && (
         <ImportSummaryDialog
           changes={changes}
-          title="Review Resume"
+          title="Import Resume"
           importControls={possibleDifferentPerson(reviewBase, incomingProfile) && <ImportModeChoice current={reviewBase} incoming={incomingProfile} mode={importMode} onChange={chooseMode} busy={saving} />}
           replacement={importMode === 'replace'}
           canProceed={importMode !== null && (importMode !== 'replace' || changes.some(c => c.hasIncomingValue === true))}

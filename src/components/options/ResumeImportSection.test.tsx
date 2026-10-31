@@ -204,7 +204,7 @@ describe('ResumeImportSection — retry after failure does not re-extract links'
 
     fireEvent.click(screen.getByText('Try again'));
 
-    await waitFor(() => expect(screen.getByText('Review Resume')).toBeTruthy(), { timeout: 12000 });
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Import Resume' })).toBeTruthy(), { timeout: 12000 });
     // extractLinks is only called from the initial handleExtract path, never from handleRetry.
     expect(vi.mocked(extractLinks)).toHaveBeenCalledTimes(1);
   });
@@ -247,7 +247,7 @@ describe('ResumeImportSection — CV invariant on save', () => {
     await selectFile(pdfFile());
     fireEvent.click(screen.getByText('Analyze Resume'));
 
-    await screen.findByText('Review Resume', {}, { timeout: 12000 });
+    await screen.findByRole('heading', { name: 'Import Resume' }, { timeout: 12000 });
     fireEvent.click(screen.getByText('Import All'));
 
     await waitFor(() => expect(onSave).toHaveBeenCalled(), { timeout: 12000 });
@@ -266,14 +266,14 @@ describe('ResumeImportSection — CV invariant on save', () => {
     await screen.findByText(/Drop your resume here/);
     await selectFile(file);
     fireEvent.click(screen.getByText('Analyze Resume'));
-    await screen.findByText('Review Resume');
+    await screen.findByRole('heading', { name: 'Import Resume' });
 
     size = 5 * 1024 * 1024;
     fireEvent.click(screen.getByText('Import All'));
 
     expect(await screen.findByText('File exceeds 4 MB limit (5.0 MB)')).toBeTruthy();
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('Review Resume')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Import Resume' })).toBeTruthy();
   });
 
   it('shows a toast and stays on the review screen when onSave rejects', async () => {
@@ -285,12 +285,12 @@ describe('ResumeImportSection — CV invariant on save', () => {
     await selectFile(pdfFile());
     fireEvent.click(screen.getByText('Analyze Resume'));
 
-    await screen.findByText('Review Resume', {}, { timeout: 12000 });
+    await screen.findByRole('heading', { name: 'Import Resume' }, { timeout: 12000 });
     fireEvent.click(screen.getByText('Import All'));
 
     expect(await screen.findByText('Save failed. Please try again.')).toBeTruthy();
     // Never reached the 'done' screen — save failure keeps the user on review.
-    expect(screen.getByText('Review Resume')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Import Resume' })).toBeTruthy();
   }, 20000);
 });
 
@@ -318,7 +318,7 @@ it('ignores a late response from an extraction that was cancelled before a new r
   await waitFor(() => expect(extractFromResume).toHaveBeenCalledTimes(2));
   await act(async () => { finishOld({}); });
   expect(screen.getByText('Analyzing Resume')).toBeTruthy();
-  expect(screen.queryByText('Review Resume')).toBeNull();
+  expect(screen.queryByRole('heading', { name: 'Import Resume' })).toBeNull();
 });
 
 it('shows the active model and the reason for fallback', async () => {
@@ -355,10 +355,13 @@ it('imports entries with missing dates without an extra warning', async () => {
   await screen.findByText(/Drop your resume here/);
   await selectFile(pdfFile());
   fireEvent.click(screen.getByText('Analyze Resume'));
-  await screen.findByText('Review Resume');
+  await screen.findByRole('heading', { name: 'Import Resume' });
   expect(screen.queryByText('Missing dates')).toBeNull();
   expect(screen.queryByText(/invalid item/)).toBeNull();
   fireEvent.click(screen.getByText('Review Changes'));
+  expect(screen.getByRole('heading', { name: 'Review Resume' })).toBeTruthy();
+  expect(screen.queryByRole('heading', { name: 'Import Resume' })).toBeNull();
+  expect(screen.getByText('Select the details to save to your profile.')).toBeTruthy();
   expect(screen.queryByText('Missing dates')).toBeNull();
   expect(screen.queryByText(/invalid item/)).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: /^Import Selected/ }));

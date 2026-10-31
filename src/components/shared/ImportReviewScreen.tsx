@@ -37,7 +37,7 @@ export default function ImportReviewScreen({
   onBack,
   onDismiss = onBack,
   isSaving = false,
-  title = 'Review Import',
+  title = 'Review Profile',
   saveLabel = 'Import Selected',
   incomingLabel = 'Imported',
   warnings,
@@ -116,9 +116,7 @@ export default function ImportReviewScreen({
                 {title}
               </h3>
               <p id={descriptionId} className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {replacement
-                  ? 'Choose incoming details. Current details not imported will be cleared.'
-                  : 'Choose which details to add or replace.'}
+                Select the details to save to your profile.
               </p>
             </div>
             <button

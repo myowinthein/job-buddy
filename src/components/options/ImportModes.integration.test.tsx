@@ -133,6 +133,12 @@ it('Drive person mismatch can be cancelled without uploading or changing either 
   expect((screen.getByRole('button', { name: 'Restore All' }) as HTMLButtonElement).disabled).toBe(
     true,
   );
+  const description = 'Restore this backup or upload your saved profile.';
+  expect(screen.getByText(description)).toBeTruthy();
+  fireEvent.click(screen.getByRole('radio', { name: /Update current profile/ }));
+  expect(screen.getByText(description)).toBeTruthy();
+  fireEvent.click(screen.getByRole('radio', { name: /Replace current profile/ }));
+  expect(screen.getByText(description)).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
   expect((await getProfile())?.personal.email).toBe(DEV_PROFILE.personal.email);
   expect(remote.backup).toEqual(before);
@@ -186,7 +192,7 @@ it.each(['empty', 'matching'] as const)(
       target: { files: [new File(['%PDF-test'], 'updated.pdf', { type: 'application/pdf' })] },
     });
     fireEvent.click(screen.getByText('Analyze Resume'));
-    await screen.findByText('Review Resume');
+    await screen.findByRole('heading', { name: 'Import Resume' });
     expect(screen.queryByText('Import action')).toBeNull();
     expect(screen.queryByRole('radio', { name: /^(Update|Replace) current profile/ })).toBeNull();
     expect((screen.getByRole('button', { name: 'Import All' }) as HTMLButtonElement).disabled).toBe(

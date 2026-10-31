@@ -28,7 +28,7 @@ export interface ImportSummaryDialogProps {
 export default function ImportSummaryDialog({
   changes,
   title = 'Import Profile',
-  description = 'Choose which details to import.',
+  description = 'Import all details or review the changes first.',
   warnings,
   warningsSummary,
   returnFocusRef,

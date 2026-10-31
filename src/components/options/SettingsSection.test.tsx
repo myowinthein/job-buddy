@@ -222,7 +222,7 @@ describe('SettingsSection — importing into an existing (non-empty) profile', (
     fireEvent.change(fileInput, { target: { files: [file] } });
 
     fireEvent.click(await screen.findByText('Review Changes'));
-    await screen.findByText('Review Import');
+    await screen.findByText('Review Profile');
     fireEvent.click(screen.getByText(/^Import Selected/));
 
     await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
