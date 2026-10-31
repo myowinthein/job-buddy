@@ -41,13 +41,16 @@ export function extractSelectOptions(select: HTMLSelectElement): AIOptionPayload
   return opts;
 }
 
+export type AIAutofillStatus = 'not_needed' | 'succeeded' | 'unavailable';
+
 export interface AIAutofillOptions {
   mode?: 'merge' | 'overwrite';
   isActive?: () => boolean;
   onTextFilled?: (element: HTMLElement, state: 'green' | 'yellow') => void;
+  onStatus?: (status: AIAutofillStatus) => void;
 }
 
-// Returns true if the AI layer ran (key was available), false if skipped (no key).
+// Returns legacy setup availability. onStatus reports the actual request outcome.
 // Mutates `result` and `sessionElements` in-place.
 //
 // All non-green candidates are eligible, including rule-filled yellow fields.
@@ -64,10 +67,14 @@ export async function runAIAutofill(
   try {
     [apiKey, storedModel] = await Promise.all([getGeminiApiKey(), getGeminiModel()]);
   } catch {
+    options.onStatus?.('unavailable');
     return false;
   } // Storage failures must leave rule-based fills intact.
   const isActive = options.isActive ?? (() => true);
-  if (!isActive() || !apiKey || !storedModel) return false;
+  if (!isActive() || !apiKey || !storedModel) {
+    options.onStatus?.('unavailable');
+    return false;
+  }
   const model = toGeminiModel(storedModel);
 
   const eligible = (group: RadioGroup | CheckboxGroup) =>
@@ -88,7 +95,10 @@ export async function runAIAutofill(
     ...checkboxGroups.map((g) => ({ type: 'checkbox' as const, group: g })),
   ];
 
-  if (candidates.length === 0) return true;
+  if (candidates.length === 0) {
+    options.onStatus?.('not_needed');
+    return true;
+  }
 
   const candidateMap = new Map<string, Candidate>();
   const payload: AIFieldPayload[] = candidates.map((c, i) => {
@@ -134,7 +144,8 @@ export async function runAIAutofill(
   try {
     responses = await resolveFieldsWithAI(apiKey, model, payload, profile as object);
   } catch {
-    return true; // AI available but failed — silent fallback
+    options.onStatus?.('unavailable');
+    return true; // Keep the legacy availability result; report failure separately.
   }
 
   // Debug-only helper: append a debug record for an AI response.
@@ -292,6 +303,7 @@ export async function runAIAutofill(
     }
   }
 
+  options.onStatus?.('succeeded');
   return true;
 }
 

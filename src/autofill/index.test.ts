@@ -1055,3 +1055,16 @@ it('removes AI-yellow former gray fields from visibility refill without overwrit
   expect(getLastResult()).toMatchObject({ noData: 0, needReview: 1, noReview: 0 });
   input.remove();
 });
+
+it('retains the AI failure status in the result restored by the popup', async () => {
+  vi.mocked(scanFields).mockReturnValue([makeInput()]);
+  vi.mocked(runAIAutofill).mockImplementationOnce(async (_c, _p, _r, _s, _debug, options) => {
+    options?.onStatus?.('unavailable');
+    return true;
+  });
+  await scanAutofill();
+  const result = await executeAutofill('overwrite');
+  expect(result.aiStatus).toBe('unavailable');
+  expect(getLastResult()?.aiStatus).toBe('unavailable');
+  expect(result.noReview).toBe(1);
+});

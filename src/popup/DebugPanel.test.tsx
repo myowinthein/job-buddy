@@ -24,16 +24,16 @@ describe('DebugPanel — empty states', () => {
     expect(screen.getByText('No mapping data.')).toBeTruthy();
   });
 
-  it('shows "AI layer skipped…" when aiSkipped is true, even with ai entries present', () => {
+  it('reports unavailable AI when aiSkipped is true, even with ai entries present', () => {
     render(<DebugPanel session={emptySession({ aiSkipped: true })} onClose={vi.fn()} />);
     fireEvent.click(screen.getByText('AI Mapping'));
-    expect(screen.getByText('AI layer skipped: no API key configured.')).toBeTruthy();
+    expect(screen.getByText('AI assistance was unavailable for this fill.')).toBeTruthy();
   });
 
-  it('shows "No fields sent to AI." when aiSkipped is false and ai is empty', () => {
+  it('shows "No AI field changes were recorded." when aiSkipped is false and ai is empty', () => {
     render(<DebugPanel session={emptySession({ aiSkipped: false, ai: [] })} onClose={vi.fn()} />);
     fireEvent.click(screen.getByText('AI Mapping'));
-    expect(screen.getByText('No fields sent to AI.')).toBeTruthy();
+    expect(screen.getByText('No AI field changes were recorded.')).toBeTruthy();
   });
 });
 

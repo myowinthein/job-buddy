@@ -1,3 +1,5 @@
+import type { AIAutofillStatus } from './ai';
+
 // Ephemeral autofill debug session. Held in memory by the content script,
 // fetched on demand by the popup. One session at a time — new runs overwrite.
 
@@ -53,5 +55,6 @@ export interface DebugSession {
   mapping:   DebugMappingField[];
   ai:        DebugAIField[];
   summary:   DebugSummary;
-  aiSkipped: boolean; // true when no API key was configured at run time
+  aiSkipped: boolean; // Legacy setup flag; aiStatus describes the request outcome.
+  aiStatus?: AIAutofillStatus;
 }

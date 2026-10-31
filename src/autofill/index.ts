@@ -19,7 +19,7 @@ import type { FlatProfileValue } from './resolver';
 import { normalize, similarity } from './normalizer';
 import { refreshLearnedLabels, saveElementMappings } from './mappings';
 import { runAIAutofill } from './ai';
-import type { AITextCandidate } from './ai';
+import type { AITextCandidate, AIAutofillStatus } from './ai';
 import type { DebugSession, DebugScanField, DebugMappingField, DebugAIField, FieldFinalState } from './debug';
 
 export { clearHighlights } from './highlighter';
@@ -30,7 +30,7 @@ export interface AutofillResult {
   lowConfidence: number;  // not filled, confidence < 0.60 — red highlight
   noData:        number;  // not filled, confidence >= 0.60 but profile value is empty
   totalScanned:  number;  // every field found by the scanner, regardless of outcome
-  aiAvailable?:  boolean; // true if the AI layer ran (key configured), false/undefined if skipped
+  aiStatus?: AIAutofillStatus;
 }
 
 // Zero-valued result used as a safe fallback when a fill cycle throws before
@@ -598,8 +598,10 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
 
   const debugAI: DebugAIField[] = [];
   const aiStates = new Map<HTMLElement, 'green' | 'yellow'>();
+  let aiStatus: AIAutofillStatus | undefined;
   const aiRan = await runAIAutofill(aiTextCandidates, profile, result, ownedElements, debugAI, {
     mode, isActive, onTextFilled: (element, state) => aiStates.set(element, state),
+    onStatus: status => { aiStatus = status; },
   });
   if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
   for (const field of editableFields) {
@@ -607,7 +609,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   }
   noDataFields = noDataFields.filter((entry) => !aiStates.has(entry.element));
   if (noDataFields.length === 0) teardownVisibilityListener();
-  result.aiAvailable = aiRan;
+  result.aiStatus = aiStatus ?? (aiRan ? 'not_needed' : 'unavailable');
 
   // Strip pre-AI entries for elements AI confirmed green. Without this, an
   // AI-filled green field would still get a blur watcher for its stale
@@ -625,6 +627,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     debugSession.mapping   = debugMapping;
     debugSession.ai        = debugAI;
     debugSession.aiSkipped = !aiRan;
+    debugSession.aiStatus = result.aiStatus;
     debugSession.summary   = {
       green:  result.noReview,
       yellow: result.needReview,

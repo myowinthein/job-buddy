@@ -2,7 +2,7 @@
 
 ## Project Identity
 
-Chrome MV3 extension built with WXT 0.20.26, React 19, TypeScript 5.9, Tailwind CSS v4, and Vitest 4. Single-user application: no backend or database; profile data lives in `chrome.storage.local`. Gemini and Google Drive are optional integrations. Chrome Web Store is the production distribution surface; Firefox build scripts are present.
+Chrome MV3 extension built with WXT 0.20.26, React 19, TypeScript 5.9, Tailwind CSS v4, and Vitest 4. Single-user application: no backend or database; profile data lives in `chrome.storage.local`. Gemini is required for autofill and Resume Import; Google Drive backup is optional. Chrome Web Store is the production distribution surface; Firefox build scripts are present.
 
 ## Project Config
 
@@ -30,7 +30,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 ## Architecture Pointers
 
 - `entrypoints/content.ts` runs in all matching frames, including about:blank/origin-fallback frames. Preserve its idempotent injection guard.
-- `entrypoints/popup/App.tsx` reinjects content scripts into enumerated frames before sending messages with explicit `frameId`. Results aggregate across frames; reopening restores status. Debug uses the frame with most scanned fields; Shift+click the logo after success opens it.
+- `entrypoints/popup/App.tsx` reinjects content scripts into enumerated frames before sending messages with explicit `frameId`. Results aggregate across frames; reopening restores status. Autofill requires a saved Gemini key/model at the content-message boundary; setup does not block Undo or previous results. Explicit AI outcomes distinguish successful, unnecessary, and unavailable requests. The obsolete session-scoped AI nudge is no longer used. Debug uses the frame with most scanned fields; Shift+click the logo after success opens it.
 - `entrypoints/background.ts` retries pending Drive sync at startup and debounces profile/mapping changes for five seconds; it also routes options-page deep links through session storage.
 - `entrypoints/options/App.tsx` coordinates nine profile editor sections, Resume Import, Learned Mappings, and Settings; implementations are in `src/components/options/`.
 - `src/types/profile.ts` is the canonical profile schema. `src/utils/profileValidator.ts` validates imports per section; `src/utils/migrate.ts` normalizes stored profiles.
@@ -48,7 +48,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 - Preserve two phases: scan stores `pendingMatches`; merge/overwrite consumes them without rescanning. Merge skips existing values; overwrite replaces them.
 - Mapper signal order is label, ariaLabel, placeholder, name, id. Layers are learned → autocomplete → exact dictionary → fuzzy → custom-link labels → nearby context. `autocomplete="url"` deliberately has no fixed profile path.
 - `mapField()` sees one field. Sibling-dependent ambiguity belongs in a post-pass: phones use a calling-code sibling; languages and expected salary start at index 0; education/work history use current/latest entry for a single occurrence and sequential indices for repeats.
-- Rule-based current-status checkbox matching uses an exact-term allowlist, never fuzzy matching. Optional AI separately considers visible non-consent checkbox/radio groups.
+- Rule-based current-status checkbox matching uses an exact-term allowlist, never fuzzy matching. AI separately considers visible non-consent checkbox/radio groups.
 - Notice period has distinct virtual paths: `professional.noticePeriod.availableDate` is a calendar date; `.formatted` is a duration. Do not conflate them.
 - CV aliases redirect to `documents.cv.url` for non-file inputs. Document URLs and files may coexist; preserve both, including existing cover-letter data.
 - Education/work date aliases stay qualified: bare “Start Date”/“End Date” cannot safely distinguish sections. Work dates require `YYYY-MM`; education permits `YYYY` or `YYYY-MM`.
@@ -58,7 +58,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 - Stale mapping paths are flagged “Empty right now,” never automatically corrected/deleted. JSON/Drive imports merge mappings with `mergeLearnedMappings()`; preserve concurrent storage updates.
 - Gemini key setup uses explicit verification and an atomic key/model/preference save. A local revision plus Web Locks prevent stale checks from restoring removed settings. Credential cleanup rejects storage errors; removal/reset leaves a local marker that suppresses development seeding.
 - Gemini requests authenticate with `x-goog-api-key`, never a URL query. Autofill excludes stored document bytes, profile IDs, and unsolicited demographic details. Resume extraction sends the selected file and extracted links; profile comparison stays local. `profileData.ts` projects known profile fields at import and export/Drive boundaries.
-- AI autofill is additive: all non-green tiers receive a pass; failures silently retain rules; high-confidence AI may replace yellow rule values. AI self-reported confidence never writes learned mappings. Resume import has its own visible error/cancellation flow.
+- AI autofill is additive: all non-green tiers receive a pass; failures retain rules and the popup reports unavailable AI assistance; high-confidence AI may replace yellow rule values. AI self-reported confidence never writes learned mappings. Resume import has its own visible error/cancellation flow.
 - Options `handleSave` computes derived fields defensively, then performs one profile write; derivation failure must not prevent the raw save. Sections never write `derived` directly.
 - When changing `Profile`, audit validator, parser `FIELD_DEFS`, and relevant extraction schema. Preserve Gemini's intentional exclusions (`id`, `derived`, documents/cover letter) rather than blindly adding every field to the prompt.
 - JSON export contains profile, learned mappings, application history, and safe metadata. Drive backup contains profile, learned mappings, and lastModified; it does not contain application history. Neither includes Gemini settings or Drive token/state.

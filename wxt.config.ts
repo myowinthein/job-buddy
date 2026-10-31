@@ -5,7 +5,7 @@ export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: ({ mode }) => ({
     name: 'Job Buddy: Autofill Job Applications',
-    description: 'Fill job application forms in one click using your saved profile. Works across supported job sites, with no account required.',
+    description: 'Fill job application forms with AI assistance using your saved profile. Works across supported job sites.',
     permissions: ['storage', 'identity', 'activeTab', 'webNavigation', 'scripting', 'alarms'],
     host_permissions: [
       'https://generativelanguage.googleapis.com/*',

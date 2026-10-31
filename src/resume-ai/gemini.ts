@@ -221,9 +221,8 @@ export async function resolveFieldsWithAI(
   });
 
   // Start with the configured model, then fall through the priority list on
-  // 429 so a manually-picked model
-  // that's rate-limited doesn't silently disable AI autofill (its caller in
-  // src/autofill/ai.ts swallows any thrown error as a silent no-op).
+  // 429 so a rate-limited model can fall back. The caller preserves rule-based
+  // fills and reports unavailable AI assistance if the request still fails.
   const modelsToTry = [model, ...GEMINI_MODEL_PRIORITY.filter(m => m !== model)];
 
   for (const tryModel of modelsToTry) {
@@ -242,7 +241,7 @@ export async function resolveFieldsWithAI(
     if (!resp.ok) throw new Error(`AI autofill request failed: ${resp.status}`);
 
     let data: unknown;
-    try { data = await resp.json(); } catch { return []; }
+    try { data = await resp.json(); } catch { throw new Error('Invalid AI autofill response'); }
 
     const text = extractGeminiText(data) ?? '';
     return parseAutofillResponse(text);
@@ -256,14 +255,19 @@ function parseAutofillResponse(text: string): AIFieldResponse[] {
   const cleaned = stripMarkdown(text);
 
   let parsed: unknown;
-  try { parsed = JSON.parse(cleaned); } catch { return []; }
-  if (!Array.isArray(parsed)) return [];
+  try { parsed = JSON.parse(cleaned); } catch { throw new Error('Invalid AI autofill response'); }
+  if (!Array.isArray(parsed)) throw new Error('Invalid AI autofill response');
 
-  return (parsed as unknown[]).filter((item): item is AIFieldResponse => {
+  const valid = (parsed as unknown[]).filter((item): item is AIFieldResponse => {
     if (typeof item !== 'object' || item === null) return false;
     const r = item as Record<string, unknown>;
     if (typeof r.fieldId !== 'string' || !r.fieldId) return false;
     if (r.confidence !== 'high' && r.confidence !== 'low' && r.confidence !== null) return false;
+    if (r.profilePath != null && typeof r.profilePath !== 'string') return false;
+    if (r.selectedOption != null && typeof r.selectedOption !== 'string') return false;
+    if (r.selectedOptions != null && (!Array.isArray(r.selectedOptions) || !r.selectedOptions.every(value => typeof value === 'string'))) return false;
     return true;
   });
+  if (parsed.length && !valid.length) throw new Error('Invalid AI autofill response');
+  return valid;
 }

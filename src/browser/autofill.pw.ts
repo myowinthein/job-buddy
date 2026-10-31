@@ -119,3 +119,51 @@ test('AI fills authorization radios, excludes consent radios, and Undo preserves
   await expect(page.locator('#work-yes')).not.toBeChecked();
   await expect(page.locator('#work-yes')).toHaveValue('yes');
 });
+
+test('requires AI setup before scanning or filling and leaves existing answers unchanged', async ({
+  page,
+  extension,
+}) => {
+  await extension.worker.evaluate(async () => {
+    await chrome.storage.local.remove(['geminiApiKey', 'geminiModel']);
+  });
+  for (const action of ['AUTOFILL_SCAN', 'AUTOFILL_FILL']) {
+    const responses = await extension.send(action, 'overwrite');
+    expect(responses).toContainEqual({ error: 'ai_setup_required' });
+    expect(responses.every((response) => response.error === 'ai_setup_required')).toBe(true);
+  }
+  await expect(page.locator('[name="firstName"]')).toHaveValue('');
+  await expect(page.locator('[name="lastName"]')).toHaveValue('Existing answer');
+  expect(
+    await page.locator('form').evaluate((form) => (form as HTMLFormElement).checkValidity()),
+  ).toBe(false);
+});
+
+test('a removed key blocks a pending fill, while Undo remains available after a completed fill', async ({
+  page,
+  extension,
+}) => {
+  await extension.worker.evaluate(async () => {
+    await chrome.storage.local.remove('geminiApiKey');
+  });
+  expect(await extension.send('AUTOFILL_FILL', 'overwrite')).toContainEqual({
+    error: 'ai_setup_required',
+  });
+  await expect(page.locator('[name="firstName"]')).toHaveValue('');
+  await extension.worker.evaluate(async () => {
+    await chrome.storage.local.set({ geminiApiKey: 'synthetic-key' });
+  });
+  await extension.send('AUTOFILL_SCAN');
+  const results = await extension.send('AUTOFILL_FILL', 'merge');
+  // The fixture blocks external network traffic. A failed AI request must be
+  // distinguishable from the rules that already filled real values.
+  expect(results.some((result) => result.aiStatus === 'unavailable')).toBe(true);
+  await expect(page.locator('[name="firstName"]')).toHaveValue('Jane');
+  await expect(page.locator('[name="lastName"]')).toHaveValue('Existing answer');
+  await extension.worker.evaluate(async () => {
+    await chrome.storage.local.remove('geminiApiKey');
+  });
+  await extension.send('CLEAR');
+  await expect(page.locator('[name="firstName"]')).toHaveValue('');
+  await expect(page.locator('[name="lastName"]')).toHaveValue('Existing answer');
+});

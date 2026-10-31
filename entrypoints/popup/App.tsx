@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Check, LoaderCircle, Sparkles, X } from 'lucide-react';
+import { Check, LoaderCircle, Sparkles } from 'lucide-react';
 import { getProfile, getGeminiApiKey } from '@/src/utils/storage';
 import { LOGO_ICON_SRC } from '@/src/utils/branding';
-import { sessionGet, sessionSet } from '@/src/utils/sessionStorage';
+import { sessionSet } from '@/src/utils/sessionStorage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import type { DebugSession } from '@/src/autofill/debug';
 import { DebugPanel } from './DebugPanel';
 import { FIELD_DEFS } from '@/src/resume-ai/parser';
+import type { AIAutofillStatus } from '@/src/autofill/ai';
 
 interface AutofillResult {
   noReview: number;
@@ -14,7 +15,7 @@ interface AutofillResult {
   lowConfidence: number;
   noData: number;
   totalScanned: number;
-  aiAvailable?: boolean;
+  aiStatus?: AIAutofillStatus | 'unknown';
 }
 
 // Actively (re-)injects the content script into every given frame before
@@ -32,10 +33,12 @@ interface AutofillResult {
 async function ensureContentScriptInjected(tabId: number, frameIds: number[]): Promise<void> {
   await Promise.all(
     frameIds.map((frameId) =>
-      chrome.scripting.executeScript({
-        target: { tabId, frameIds: [frameId] },
-        files: ['content-scripts/content.js'],
-      }).catch(() => undefined),
+      chrome.scripting
+        .executeScript({
+          target: { tabId, frameIds: [frameId] },
+          files: ['content-scripts/content.js'],
+        })
+        .catch(() => undefined),
     ),
   );
 }
@@ -61,28 +64,45 @@ async function sendToAllFrames(tabId: number, message: object): Promise<unknown[
   await ensureContentScriptInjected(tabId, frameIds);
 
   const responses = await Promise.all(
-    frameIds.map((frameId) => chrome.tabs.sendMessage(tabId, message, { frameId }).catch(() => undefined)),
+    frameIds.map((frameId) =>
+      chrome.tabs.sendMessage(tabId, message, { frameId }).catch(() => undefined),
+    ),
   );
   return responses.filter((r) => r !== undefined);
 }
 
-// Sums AutofillResult counts across frames — a job form split across an iframe
-// (the application widget) and the top page (rare, but possible) should read
-// as one combined outcome in the popup, not one frame's numbers silently
-// overwriting another's. aiAvailable is true if any frame's AI layer ran.
+// Aggregate every frame; one failed AI pass must remain visible even when
+// another frame completed successfully. Legacy results cannot prove AI success.
 function mergeAutofillResults(results: unknown[]): AutofillResult | null {
   const valid = results.filter(
     (r): r is AutofillResult => !!r && typeof (r as AutofillResult).totalScanned === 'number',
   );
-  if (valid.length === 0) return null;
-  return valid.reduce((acc, r) => ({
-    noReview:      acc.noReview      + r.noReview,
-    needReview:    acc.needReview    + r.needReview,
-    lowConfidence: acc.lowConfidence + r.lowConfidence,
-    noData:        acc.noData        + r.noData,
-    totalScanned:  acc.totalScanned  + r.totalScanned,
-    aiAvailable:   acc.aiAvailable || !!r.aiAvailable,
-  }), { noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0, aiAvailable: false });
+  if (!valid.length) return null;
+  const statuses = valid
+    .filter((r) => r.totalScanned > 0)
+    .map((r) =>
+      ['unavailable', 'succeeded', 'not_needed'].includes(r.aiStatus ?? '')
+        ? r.aiStatus!
+        : 'unknown',
+    );
+  const aiStatus = statuses.includes('unavailable')
+    ? 'unavailable'
+    : statuses.includes('unknown')
+      ? 'unknown'
+      : statuses.includes('succeeded')
+        ? 'succeeded'
+        : 'not_needed';
+  return valid.reduce(
+    (acc, r) => ({
+      noReview: acc.noReview + r.noReview,
+      needReview: acc.needReview + r.needReview,
+      lowConfidence: acc.lowConfidence + r.lowConfidence,
+      noData: acc.noData + r.noData,
+      totalScanned: acc.totalScanned + r.totalScanned,
+      aiStatus,
+    }),
+    { noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0, aiStatus },
+  );
 }
 
 interface AutofillScanResult {
@@ -114,7 +134,8 @@ function App() {
   const [autofillResult, setAutofillResult] = useState<AutofillResult | null>(null);
   const [preFilledCount, setPreFilledCount] = useState(0);
   const [fillMode, setFillMode] = useState<'merge' | 'overwrite'>('merge');
-  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const [keyLoading, setKeyLoading] = useState(true);
+  const [keyReadFailed, setKeyReadFailed] = useState(false);
   const [hasGeminiKey, setHasGeminiKey] = useState<boolean | null>(null);
   const [debugSession, setDebugSession] = useState<DebugSession | null>(null);
   const [debugOpen, setDebugOpen] = useState(false);
@@ -124,6 +145,21 @@ function App() {
     if (autofillState !== 'loading' && autofillState !== 'confirming')
       fillButtonRef.current?.focus({ preventScroll: true });
   }, [autofillState]);
+
+  const checkApiKey = async () => {
+    try {
+      const key = await getGeminiApiKey();
+      setHasGeminiKey(!!key);
+      setKeyReadFailed(false);
+      return !!key;
+    } catch {
+      setHasGeminiKey(null);
+      setKeyReadFailed(true);
+      return false;
+    } finally {
+      setKeyLoading(false);
+    }
+  };
 
   useEffect(() => {
     getProfile()
@@ -150,16 +186,32 @@ function App() {
     return sendToAllFrames(tab.id, message);
   }, []);
 
-  const dispatchFill = useCallback(async (mode: 'merge' | 'overwrite') => {
+  const applySetupError = (responses: unknown[]) => {
+    const errors = responses.map((r) => (r as { error?: string } | null)?.error);
+    if (errors.includes('ai_settings_unavailable')) {
+      setKeyReadFailed(true);
+      setHasGeminiKey(null);
+      return true;
+    }
+    if (errors.includes('ai_setup_required')) {
+      setKeyReadFailed(false);
+      setHasGeminiKey(false);
+      return true;
+    }
+    return false;
+  };
+
+  const dispatchFill = async (mode: 'merge' | 'overwrite') => {
     const responses = await sendToActiveTab({ action: 'AUTOFILL_FILL', mode });
+    const setupError = applySetupError(responses);
     const merged = mergeAutofillResults(responses);
     if (merged) {
-      setAutofillResult(merged);
+      setAutofillResult(setupError ? { ...merged, aiStatus: 'unavailable' } : merged);
       setAutofillState('success');
     } else {
-      setAutofillState('error');
+      setAutofillState(setupError ? (autofillResult ? 'success' : 'idle') : 'error');
     }
-  }, [sendToActiveTab]);
+  };
 
   // Lazily fetch the debug session from the content script when the user opens
   // the panel — keeps the popup's initial render cheap.
@@ -171,14 +223,17 @@ function App() {
       // plus the mostly-empty top page) — surface whichever scanned the most
       // fields, since that's the frame actually holding the form.
       if (sessions.length > 0) {
-        const total = (s: DebugSession) => s.summary.green + s.summary.yellow + s.summary.red + s.summary.gray;
+        const total = (s: DebugSession) =>
+          s.summary.green + s.summary.yellow + s.summary.red + s.summary.gray;
         setDebugSession(sessions.reduce((a, b) => (total(b) > total(a) ? b : a)));
       }
-    } catch { /* content script absent */ }
+    } catch {
+      /* content script absent */
+    }
     setDebugOpen(true);
   };
 
-  // On mount: restore fill state, check AI nudge dismissal, check Gemini key.
+  // On mount: restore the last fill and load the AI setup state.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -193,25 +248,26 @@ function App() {
         // Content script not loaded on this page — stay in idle state.
       }
     })();
-    sessionGet('jb:ai:nudge:dismissed').then((r) => {
-      if (!cancelled && r?.['jb:ai:nudge:dismissed']) setNudgeDismissed(true);
-    });
     getGeminiApiKey()
       .then((key) => {
-        if (!cancelled) setHasGeminiKey(!!key);
+        if (!cancelled) {
+          setHasGeminiKey(!!key);
+          setKeyReadFailed(false);
+        }
       })
       .catch(() => {
-        if (!cancelled) setHasGeminiKey(null);
+        if (!cancelled) {
+          setHasGeminiKey(null);
+          setKeyReadFailed(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setKeyLoading(false);
       });
     return () => {
       cancelled = true;
     };
   }, [sendToActiveTab]);
-
-  const dismissNudge = () => {
-    setNudgeDismissed(true);
-    void sessionSet({ 'jb:ai:nudge:dismissed': true });
-  };
 
   const openOptions = () => chrome.runtime.openOptionsPage();
 
@@ -219,16 +275,26 @@ function App() {
   // Same end-state as ResumeImportSection's "Go to Settings →" link, but
   // crosses the popup→options-page context boundary via chrome.storage.session.
   const goToSettingsKey = async () => {
-    dismissNudge();
     await sessionSet({ 'jb:focusOnLoad': 'gemini-api-key' });
     await chrome.runtime.openOptionsPage();
   };
 
   const handleAutofill = async () => {
     setAutofillState('loading');
-    setAutofillResult(null);
     try {
-      const scanResponses = await sendToActiveTab({ action: 'AUTOFILL_SCAN' }) as AutofillScanResult[];
+      if (!(await checkApiKey())) {
+        setAutofillState(autofillResult ? 'success' : 'idle');
+        return;
+      }
+      const scanResponses = (await sendToActiveTab({
+        action: 'AUTOFILL_SCAN',
+      })) as AutofillScanResult[];
+      if (applySetupError(scanResponses)) {
+        setAutofillState(autofillResult ? 'success' : 'idle');
+        return;
+      }
+      if (scanResponses.some((r) => (r as { error?: string })?.error))
+        throw new Error('Scan failed');
       const preFilledCount = scanResponses.reduce((sum, r) => sum + (r?.preFilledCount ?? 0), 0);
       if (preFilledCount > 0) {
         // Form already has data — ask the user how to proceed
@@ -246,6 +312,10 @@ function App() {
   const handleConfirmFill = async () => {
     setAutofillState('loading');
     try {
+      if (!(await checkApiKey())) {
+        setAutofillState(autofillResult ? 'success' : 'idle');
+        return;
+      }
       await dispatchFill(fillMode);
     } catch {
       setAutofillState('error');
@@ -260,13 +330,21 @@ function App() {
   const handleUndo = async () => {
     try {
       await sendToActiveTab({ action: 'CLEAR' });
-    } catch { /* ignore — page may have already been refreshed */ }
+    } catch {
+      /* ignore — page may have already been refreshed */
+    }
     setAutofillState('idle');
     setAutofillResult(null);
   };
 
   const { percentage, isCoreComplete } = completion;
   const busy = autofillState === 'loading';
+  const aiWarning =
+    autofillResult?.aiStatus === 'unavailable'
+      ? 'AI assistance was unavailable. Review the filled details carefully.'
+      : autofillResult?.aiStatus === 'unknown'
+        ? 'AI assistance could not be confirmed. Review the filled details carefully.'
+        : null;
 
   return (
     <div className="flex max-h-[600px] w-[380px] flex-col bg-white font-sans text-gray-900 dark:bg-gray-900 dark:text-gray-100">
@@ -355,9 +433,44 @@ function App() {
                 Add your details to fill job application forms.
               </p>
             )}
-            <button type="button" autoFocus onClick={openOptions} className={`${primaryButton} w-full`}>
+            <button
+              type="button"
+              autoFocus
+              onClick={openOptions}
+              className={`${primaryButton} w-full`}
+            >
               {profileLoadFailed ? 'Open Profile' : 'Set Up Profile'}
             </button>
+          </>
+        ) : keyLoading ? (
+          <div role="status" className="h-11 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800">
+            <span className="sr-only">Loading AI settings…</span>
+          </div>
+        ) : keyReadFailed || !hasGeminiKey ? (
+          <>
+            <p
+              role={keyReadFailed ? 'alert' : undefined}
+              className="mb-3 text-sm text-gray-600 dark:text-gray-300"
+            >
+              {keyReadFailed
+                ? 'Could not read your AI settings. Open Settings to try again.'
+                : 'Add a Gemini API key to enable AI-assisted autofill.'}
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                autoFocus
+                onClick={goToSettingsKey}
+                className={`${primaryButton} flex-1`}
+              >
+                {keyReadFailed ? 'Open AI Settings' : 'Set Up AI Autofill'}
+              </button>
+              {autofillState === 'success' && (
+                <button type="button" onClick={handleUndo} className={secondaryButton}>
+                  Undo
+                </button>
+              )}
+            </div>
           </>
         ) : autofillState === 'confirming' ? (
           <div>
@@ -418,7 +531,7 @@ function App() {
                 onClick={handleConfirmFill}
                 className={`${primaryButton} flex-1`}
               >
-                Fill Form
+                Fill Form <Sparkles aria-hidden="true" className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -453,7 +566,11 @@ function App() {
                 </button>
               )}
             </div>
-            {(busy || autofillState === 'success') && (
+            {(busy ||
+              (autofillState === 'success' &&
+                !!autofillResult &&
+                autofillResult.noReview + autofillResult.needReview > 0 &&
+                !aiWarning)) && (
               <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 {busy
                   ? 'Using your saved details to fill this form.'
@@ -487,6 +604,17 @@ function App() {
               again.
             </p>
           )}
+          {autofillState === 'success' &&
+            autofillResult &&
+            autofillResult.totalScanned > 0 &&
+            aiWarning && (
+              <p
+                role="alert"
+                className="mb-3 rounded-lg bg-amber-50 p-3 text-xs leading-relaxed text-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
+              >
+                {aiWarning}
+              </p>
+            )}
           {autofillState === 'success' &&
             autofillResult &&
             (autofillResult.totalScanned === 0 ? (
@@ -547,34 +675,6 @@ function App() {
                 />
               </section>
             ))}
-          {autofillState === 'success' &&
-            autofillResult &&
-            autofillResult.totalScanned > 0 &&
-            autofillResult.aiAvailable === false &&
-            hasGeminiKey === false &&
-            !nudgeDismissed && (
-              <div className="mt-3 flex items-start gap-1 rounded-lg bg-gray-50 p-2 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                <p className="flex-1 py-1 leading-relaxed">
-                  Add an AI key in{' '}
-                  <button
-                    type="button"
-                    onClick={goToSettingsKey}
-                    className="font-medium text-blue-700 underline dark:text-blue-400"
-                  >
-                    Settings
-                  </button>{' '}
-                  to enable AI-assisted autofill.
-                </p>
-                <button
-                  type="button"
-                  onClick={dismissNudge}
-                  aria-label="Dismiss AI suggestion"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded hover:bg-gray-200 focus-visible:outline-2 focus-visible:outline-blue-500 dark:hover:bg-gray-700"
-                >
-                  <X aria-hidden="true" className="h-4 w-4" />
-                </button>
-              </div>
-            )}
         </div>
       )}
       {debugOpen && debugSession && (

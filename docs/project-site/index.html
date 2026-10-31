@@ -309,12 +309,12 @@
 
       <div class="feature-card">
         <div class="feature-icon">🤖</div>
-        <div class="feature-name">Optional AI autofill assist</div>
+        <div class="feature-name">AI-assisted autofill</div>
         <div class="feature-desc">
           For fields the rule-based pipeline cannot resolve (complex selects, radio groups), the
-          extension can ask Gemini for a match. Off by default.
+          extension asks Gemini for a match. A saved Gemini API key is required before filling.
         </div>
-        <div class="feature-status"><span class="badge badge-green">Implemented (opt-in, BYOK)</span></div>
+        <div class="feature-status"><span class="badge badge-green">Implemented (Gemini key required)</span></div>
 
         <div class="tech-only">
           <div class="tech-block">
@@ -322,7 +322,7 @@
             <ul>
               <li><code>src/autofill/ai.ts</code> — runs after the rule pipeline</li>
               <li>Filters out consent checkboxes before any request</li>
-              <li>If AI returns high confidence (green), the picker overlay is removed</li>
+              <li>AI request failures keep rule-based fills and show a warning in the popup</li>
             </ul>
           </div>
         </div>
@@ -533,7 +533,7 @@
           <div class="perm-name">Host permissions for Google APIs</div>
           <div class="perm-why">
             <code>generativelanguage.googleapis.com</code>, <code>www.googleapis.com</code>,
-            <code>oauth2.googleapis.com</code>. Used by the optional Gemini AI features and
+            <code>oauth2.googleapis.com</code>. Used by Gemini AI features and
             Google Drive backup.
           </div>
         </div>
@@ -626,7 +626,7 @@
     <p>
       The codebase is split into four entrypoints (background service worker, injected content
       script, action popup, full-page options editor) plus shared modules for the autofill engine,
-      profile types, storage wrappers, and the optional AI integrations. Distribution is through
+      profile types, storage wrappers, and the AI integrations. Distribution is through
       the Chrome Web Store, with automated uploads triggered by pushing semver tags to GitHub.
     </p>
 

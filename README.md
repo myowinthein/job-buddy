@@ -3,14 +3,14 @@
 AI-powered job application assistant browser extension
 
 Save your profile once and use Job Buddy to fill supported job application forms.
-It stores your profile in your browser, with optional Gemini assistance and Google
-Drive backup. Basic autofill requires no account or API key.
+It stores your profile in your browser. A Gemini API key is required for autofill
+and resume import; Google Drive backup is optional.
 
 ## Table of Contents
 
 - [Install](#install)
 - [Usage](#usage)
-- [Optional features](#optional-features)
+- [Integrations](#integrations)
 - [Development](#development)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
@@ -31,12 +31,12 @@ pnpm dev
 
 In Chrome, open `chrome://extensions/`, enable **Developer mode**, click **Load
 unpacked**, and select `.output/chrome-mv3-dev/`. Keep `pnpm dev` running while
-developing. External integration setup is optional for basic autofill.
+developing. Set up Gemini to use autofill and resume import. Google Drive setup is optional.
 
 ## Usage
 
 ```text
-Set Up Profile → Fill Form → Review answers → Submit on the application site
+Set Up Profile → Set Up AI Autofill → Fill Form → Review answers → Submit on the application site
 ```
 
 1. Open the extension popup and choose **Set Up Profile**, **Complete Profile**, or **Edit Profile**.
@@ -46,7 +46,8 @@ Set Up Profile → Fill Form → Review answers → Submit on the application si
    Unsaved edits show a warning before you leave a section or close the profile page.
    The top bar tracks 10 required checks after saving; select a remaining detail
    to go to its input. Optional details do not affect the percentage.
-2. Visit a job application page and click **Fill Form** in the popup.
+2. Choose **Set Up AI Autofill** and save a Gemini key in **Settings → AI Features**.
+   Then visit a job application page and click **Fill Form** in the popup.
 3. If the form already contains values, choose **Fill empty fields** to keep existing values
    or **Replace matched values** to use your saved details, then click **Fill Form**.
 4. Review the results and type any missing or corrected answers directly into the
@@ -59,6 +60,9 @@ Set Up Profile → Fill Form → Review answers → Submit on the application si
 | Red / Not matched           | Left unfilled because no confident match was found.       |
 | Gray / Missing profile data | Your profile lacks the value; the field has no highlight. |
 
+If AI assistance is unavailable during a fill, the popup warns you to review the
+results. Existing rule-based fills remain, and **Undo** is still available.
+
 **Undo** clears Job Buddy's fills for the current session. Corrections that match
 saved profile values can teach the extension a field mapping for that website.
 Review or edit these in **Learned Mappings**.
@@ -66,9 +70,9 @@ Review or edit these in **Learned Mappings**.
 Compatibility depends on the site's controls. Some custom fields cannot be filled;
 check every answer and uploaded document before submitting.
 
-## Optional features
+## Integrations
 
-- **Gemini:** add your own API key in **Settings → AI Features** for AI autofill
+- **Gemini (required for autofill and resume import):** add your own API key in **Settings → AI Features** for AI autofill
   assistance and PDF/DOCX resume import. Select **Save Key** to verify and save it.
   Keys remain in this browser and are excluded from JSON and Drive backups.
   Use **Replace Key** or **Remove Key** to manage access. Review imported suggestions

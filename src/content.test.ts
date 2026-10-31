@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('@/src/utils/storage', () => ({ getGeminiSettings: vi.fn() }));
+
 vi.mock('@/src/autofill/index', () => ({
   scanAutofill: vi.fn(),
   executeAutofill: vi.fn(),
   undoAutofill: vi.fn(),
   getLastResult: vi.fn(),
   getDebugSession: vi.fn(),
-  EMPTY_AUTOFILL_RESULT: { noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0 },
 }));
 
 // entrypoints/content.ts calls the WXT-auto-imported `defineContentScript` at
@@ -23,8 +24,12 @@ const { onMessageAddListener } = vi.hoisted(() => {
 
 import contentScript from '@/entrypoints/content';
 import {
-  scanAutofill, executeAutofill, undoAutofill, getLastResult, getDebugSession, EMPTY_AUTOFILL_RESULT,
+  scanAutofill, executeAutofill, undoAutofill, getLastResult, getDebugSession,
 } from '@/src/autofill/index';
+
+import { getGeminiSettings } from '@/src/utils/storage';
+import { DEFAULT_GEMINI_MODEL } from '@/src/resume-ai/types';
+const settings = { apiKey: 'synthetic-key', model: DEFAULT_GEMINI_MODEL, preference: 'auto' as const, revision: null, verifiedAt: null };
 
 type SendResponse = (r: unknown) => void;
 function getListener(): (message: object, sender: object, sendResponse: SendResponse) => boolean | undefined {
@@ -33,6 +38,7 @@ function getListener(): (message: object, sender: object, sendResponse: SendResp
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(getGeminiSettings).mockReset().mockResolvedValue(settings);
   // main()'s idempotency guard (see entrypoints/content.ts) sets a flag on
   // globalThis that would otherwise persist across tests in this same file
   // and silently no-op every main() call after the first.
@@ -55,12 +61,12 @@ describe('content script — message dispatcher', () => {
     await vi.waitFor(() => expect(sendResponse).toHaveBeenCalledWith({ preFilledCount: 2, totalMatched: 5 }));
   });
 
-  it('falls back to a zeroed scan result when scanAutofill rejects', async () => {
+  it('reports a scan failure instead of a zero-field success', async () => {
     vi.mocked(scanAutofill).mockRejectedValue(new Error('scan failed'));
     const sendResponse = vi.fn();
     getListener()({ action: 'AUTOFILL_SCAN' }, {}, sendResponse);
 
-    await vi.waitFor(() => expect(sendResponse).toHaveBeenCalledWith({ preFilledCount: 0, totalMatched: 0 }));
+    await vi.waitFor(() => expect(sendResponse).toHaveBeenCalledWith({ error: 'autofill_failed' }));
   });
 
   it('routes AUTOFILL_FILL with mode "merge" through unchanged', async () => {
@@ -79,12 +85,12 @@ describe('content script — message dispatcher', () => {
     await vi.waitFor(() => expect(vi.mocked(executeAutofill)).toHaveBeenCalledWith('overwrite'));
   });
 
-  it('falls back to EMPTY_AUTOFILL_RESULT when executeAutofill rejects', async () => {
+  it('reports a fill failure instead of a zero-field success', async () => {
     vi.mocked(executeAutofill).mockRejectedValue(new Error('fill failed'));
     const sendResponse = vi.fn();
     getListener()({ action: 'AUTOFILL_FILL', mode: 'overwrite' }, {}, sendResponse);
 
-    await vi.waitFor(() => expect(sendResponse).toHaveBeenCalledWith(EMPTY_AUTOFILL_RESULT));
+    await vi.waitFor(() => expect(sendResponse).toHaveBeenCalledWith({ error: 'autofill_failed' }));
   });
 
   it('routes CLEAR to undoAutofill and responds synchronously with success', () => {
@@ -131,5 +137,55 @@ describe('content script — re-injection idempotency guard', () => {
     const callsBeforeSecondRun = onMessageAddListener.mock.calls.length;
     (contentScript as { main: () => void }).main();
     expect(onMessageAddListener.mock.calls.length).toBe(callsBeforeSecondRun);
+  });
+});
+
+describe('required AI setup', () => {
+  it.each(['AUTOFILL_SCAN', 'AUTOFILL_FILL'])(
+    'blocks %s without a key before invoking the engine',
+    async (action) => {
+      vi.mocked(getGeminiSettings).mockResolvedValue({ ...settings, apiKey: null });
+      const response = vi.fn();
+      getListener()({ action }, {}, response);
+      await vi.waitFor(() => expect(response).toHaveBeenCalledWith({ error: 'ai_setup_required' }));
+      expect(scanAutofill).not.toHaveBeenCalled();
+      expect(executeAutofill).not.toHaveBeenCalled();
+    },
+  );
+  it('requires the saved model along with the key', async () => {
+    vi.mocked(getGeminiSettings).mockResolvedValue({ ...settings, model: null });
+    const response = vi.fn();
+    getListener()({ action: 'AUTOFILL_FILL' }, {}, response);
+    await vi.waitFor(() => expect(response).toHaveBeenCalledWith({ error: 'ai_setup_required' }));
+    expect(executeAutofill).not.toHaveBeenCalled();
+  });
+  it('reports a settings read failure rather than treating it as an empty form', async () => {
+    vi.mocked(getGeminiSettings).mockRejectedValue(new Error('read failed'));
+    const response = vi.fn();
+    getListener()({ action: 'AUTOFILL_SCAN' }, {}, response);
+    await vi.waitFor(() =>
+      expect(response).toHaveBeenCalledWith({ error: 'ai_settings_unavailable' }),
+    );
+    expect(scanAutofill).not.toHaveBeenCalled();
+  });
+  it('rechecks setup between the scan and fill phases', async () => {
+    vi.mocked(scanAutofill).mockResolvedValue({ preFilledCount: 1, totalMatched: 1 });
+    const scanned = vi.fn();
+    getListener()({ action: 'AUTOFILL_SCAN' }, {}, scanned);
+    await vi.waitFor(() => expect(scanned).toHaveBeenCalled());
+    vi.mocked(getGeminiSettings).mockResolvedValue({ ...settings, apiKey: null });
+    const filled = vi.fn();
+    getListener()({ action: 'AUTOFILL_FILL', mode: 'overwrite' }, {}, filled);
+    await vi.waitFor(() => expect(filled).toHaveBeenCalledWith({ error: 'ai_setup_required' }));
+    expect(executeAutofill).not.toHaveBeenCalled();
+  });
+  it('allows Undo and previous results without reading AI settings', () => {
+    vi.mocked(getGeminiSettings).mockRejectedValue(new Error('no settings'));
+    const response = vi.fn();
+    getListener()({ action: 'CLEAR' }, {}, response);
+    getListener()({ action: 'GET_STATUS' }, {}, response);
+    expect(undoAutofill).toHaveBeenCalledOnce();
+    expect(getLastResult).toHaveBeenCalledOnce();
+    expect(getGeminiSettings).not.toHaveBeenCalled();
   });
 });

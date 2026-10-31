@@ -161,10 +161,12 @@ export function DebugPanel({
             subtitle={`${session.ai.length} field${session.ai.length !== 1 ? 's' : ''}`}
             contentClassName="p-2"
           >
-            {session.aiSkipped ? (
-              <p className="text-gray-400 dark:text-gray-500 italic">AI layer skipped: no API key configured.</p>
+            {session.aiStatus === 'unavailable' || session.aiSkipped ? (
+              <p className="text-gray-400 dark:text-gray-500 italic">AI assistance was unavailable for this fill.</p>
+            ) : session.aiStatus === 'not_needed' ? (
+              <p className="text-gray-400 dark:text-gray-500 italic">No fields needed AI assistance.</p>
             ) : session.ai.length === 0 ? (
-              <p className="text-gray-400 dark:text-gray-500 italic">No fields sent to AI.</p>
+              <p className="text-gray-400 dark:text-gray-500 italic">No AI field changes were recorded.</p>
             ) : (
               <>
                 {aiChanged.length > 0 && (

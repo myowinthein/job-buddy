@@ -5,7 +5,10 @@ import { resolve } from 'node:path';
 export const test = base.extend<{
   extension: {
     worker: Worker;
-    send: (action: string, mode?: string) => Promise<Record<string, number>[]>;
+    send: (
+      action: string,
+      mode?: string,
+    ) => Promise<Record<string, number | string | boolean | undefined>[]>;
   };
 }>({
   context: async ({ browserName: _browserName }, provide, info) => {
@@ -30,6 +33,8 @@ export const test = base.extend<{
     const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
     await worker.evaluate(async () => {
       await chrome.storage.local.set({
+        geminiApiKey: 'synthetic-key',
+        geminiModel: 'gemini-3.8-flash',
         profile: {
           id: 'synthetic-browser-profile',
           personal: {
@@ -77,7 +82,7 @@ export const test = base.extend<{
           );
         },
         { action, mode },
-      ) as Promise<Record<string, number>[]>;
+      ) as Promise<Record<string, number | string | boolean | undefined>[]>;
     await expect
       .poll(async () => {
         const responses = await send('AUTOFILL_SCAN');

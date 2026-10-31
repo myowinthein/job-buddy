@@ -41,14 +41,12 @@ describe('parseAutofillResponse (via resolveFieldsWithAI)', () => {
     return resolveFieldsWithAI('key', 'gemini-3.8-flash', FIELDS, {});
   }
 
-  it('returns [] when the model output is not JSON', async () => {
-    const result = await resolveWithText('this is not json at all');
-    expect(result).toEqual([]);
+  it('rejects non-JSON model output so the popup can report unavailable AI', async () => {
+    await expect(resolveWithText('this is not json at all')).rejects.toThrow('Invalid AI autofill response');
   });
 
-  it('returns [] when the parsed JSON is not an array', async () => {
-    const result = await resolveWithText('{"fieldId":"f1","confidence":"high"}');
-    expect(result).toEqual([]);
+  it('rejects a non-array response', async () => {
+    await expect(resolveWithText('{"fieldId":"f1","confidence":"high"}')).rejects.toThrow('Invalid AI autofill response');
   });
 
   it('keeps valid items and filters out invalid (non-object) items', async () => {
@@ -95,14 +93,26 @@ describe('parseAutofillResponse (via resolveFieldsWithAI)', () => {
     expect(result[0].fieldId).toBe('f1');
   });
 
-  it('returns [] when the response JSON body cannot be read', async () => {
+  it('rejects an unreadable response body', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       status: 200,
       json: () => Promise.reject(new Error('bad body')),
     });
-    const result = await resolveFieldsWithAI('key', 'gemini-3.8-flash', FIELDS, {});
-    expect(result).toEqual([]);
+    await expect(resolveFieldsWithAI('key', 'gemini-3.8-flash', FIELDS, {})).rejects.toThrow('Invalid AI autofill response');
+  });
+
+  it('accepts a valid empty response as no changes', async () => {
+    expect(await resolveWithText('[]')).toEqual([]);
+  });
+
+  it.each([
+    '[null]',
+    '[{"fieldId":"f1","confidence":"high","profilePath":42}]',
+    '[{"fieldId":"f1","confidence":"high","selectedOption":42}]',
+    '[{"fieldId":"f1","confidence":"high","selectedOptions":[42]}]',
+  ])('rejects a response containing only invalid fields: %s', async output => {
+    await expect(resolveWithText(output)).rejects.toThrow('Invalid AI autofill response');
   });
 
   it('throws on a non-ok HTTP status', async () => {
@@ -356,6 +366,7 @@ describe('Gemini credential transport and validation failures', () => {
       'application/pdf',
       {},
     );
+    fetchMock.mockResolvedValueOnce(geminiTextResponse('[]'));
     await resolveFieldsWithAI('synthetic-private-key', 'gemini-3.8-flash', [], {});
     for (const [url, init] of fetchMock.mock.calls) {
       expect(url).not.toContain('synthetic-private-key');

@@ -690,3 +690,49 @@ it('retains rule-based results when AI settings cannot be read', async () => {
   expect(result.noReview).toBe(3);
   expect(resolveFieldsWithAI).not.toHaveBeenCalled();
 });
+
+describe('AI completion status', () => {
+  it('reports no request needed when there are no eligible candidates', async () => {
+    const onStatus = vi.fn();
+    await runAIAutofill([], PROFILE, freshResult(), [], undefined, { onStatus });
+    expect(onStatus).toHaveBeenCalledWith('not_needed');
+    expect(resolveFieldsWithAI).not.toHaveBeenCalled();
+  });
+  it('reports a completed request even if the response contains no changes', async () => {
+    const onStatus = vi.fn();
+    mockResponses([]);
+    await runAIAutofill(
+      [textCandidate('lowConfidence', 'Name')],
+      PROFILE,
+      freshResult(),
+      [],
+      undefined,
+      { onStatus },
+    );
+    expect(onStatus).toHaveBeenCalledWith('succeeded');
+  });
+  it('reports provider failures separately from the legacy availability flag', async () => {
+    const onStatus = vi.fn();
+    vi.mocked(resolveFieldsWithAI).mockRejectedValue(new Error('provider unavailable'));
+    const result = freshResult();
+    result.lowConfidence = 1;
+    const available = await runAIAutofill(
+      [textCandidate('lowConfidence', 'Name')],
+      PROFILE,
+      result,
+      [],
+      undefined,
+      { onStatus },
+    );
+    expect(available).toBe(true);
+    expect(onStatus).toHaveBeenCalledWith('unavailable');
+    expect(result.lowConfidence).toBe(1);
+    expect(fillField).not.toHaveBeenCalled();
+  });
+  it('reports unavailable when settings cannot be read', async () => {
+    const onStatus = vi.fn();
+    vi.mocked(getGeminiApiKey).mockRejectedValueOnce(new Error('read failed'));
+    await runAIAutofill([], PROFILE, freshResult(), [], undefined, { onStatus });
+    expect(onStatus).toHaveBeenCalledWith('unavailable');
+  });
+});

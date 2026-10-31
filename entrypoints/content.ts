@@ -1,4 +1,24 @@
-import { scanAutofill, executeAutofill, undoAutofill, getLastResult, getDebugSession, EMPTY_AUTOFILL_RESULT } from '@/src/autofill/index';
+import {
+  scanAutofill,
+  executeAutofill,
+  undoAutofill,
+  getLastResult,
+  getDebugSession,
+} from '@/src/autofill/index';
+import { getGeminiSettings } from '@/src/utils/storage';
+
+// Check fresh settings in each frame before an explicit scan or fill. Undo and
+// previous results remain available after a key is removed.
+async function withAISetup<T>(action: () => Promise<T>) {
+  let settings;
+  try {
+    settings = await getGeminiSettings();
+  } catch {
+    return { error: 'ai_settings_unavailable' };
+  }
+  if (!settings.apiKey || !settings.model) return { error: 'ai_setup_required' };
+  return action();
+}
 
 export default defineContentScript({
   matches: ['*://*/*'],
@@ -34,22 +54,22 @@ export default defineContentScript({
 
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message.action === 'AUTOFILL_SCAN') {
-        scanAutofill()
+        withAISetup(scanAutofill)
           .then(sendResponse)
           .catch((err) => {
             console.error('[Job Buddy] AUTOFILL_SCAN failed:', err);
-            sendResponse({ preFilledCount: 0, totalMatched: 0 });
+            sendResponse({ error: 'autofill_failed' });
           });
         return true;
       }
 
       if (message.action === 'AUTOFILL_FILL') {
         const mode: 'merge' | 'overwrite' = message.mode === 'merge' ? 'merge' : 'overwrite';
-        executeAutofill(mode)
+        withAISetup(() => executeAutofill(mode))
           .then(sendResponse)
           .catch((err) => {
             console.error('[Job Buddy] AUTOFILL_FILL failed:', err);
-            sendResponse(EMPTY_AUTOFILL_RESULT);
+            sendResponse({ error: 'autofill_failed' });
           });
         return true;
       }
