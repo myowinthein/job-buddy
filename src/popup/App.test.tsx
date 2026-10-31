@@ -572,7 +572,7 @@ it.each(['succeeded', 'not_needed'] as const)(
   },
 );
 
-it('treats legacy availability flags as unknown request outcomes', async () => {
+it('keeps legacy fill results available without warning about unknown AI outcomes', async () => {
   const result = {
     noReview: 1,
     needReview: 0,
@@ -583,10 +583,9 @@ it('treats legacy availability flags as unknown request outcomes', async () => {
   };
   sendMessageMock.mockResolvedValue(result);
   renderApp();
-  expect(await screen.findByRole('alert')).toHaveProperty(
-    'textContent',
-    'Refresh this page, then fill again to check AI assistance.',
-  );
+  await screen.findByRole('button', { name: 'Undo' });
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(screen.getByText('Review the filled details before submitting.')).toBeTruthy();
 });
 
 it('can undo previous fills after the key is removed', async () => {

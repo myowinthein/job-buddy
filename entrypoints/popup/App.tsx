@@ -342,9 +342,7 @@ function App() {
   const aiWarning =
     autofillResult?.aiStatus === 'unavailable'
       ? 'AI assistance was unavailable. Review the filled details carefully.'
-      : autofillResult?.aiStatus === 'unknown'
-        ? 'Refresh this page, then fill again to check AI assistance.'
-        : null;
+      : null;
 
   return (
     <div className="flex max-h-[600px] w-[380px] flex-col bg-white font-sans text-gray-900 dark:bg-gray-900 dark:text-gray-100">
