@@ -121,7 +121,7 @@ export function CompletionBanner({
               <p className="text-xs font-semibold text-gray-600 dark:text-gray-300 px-3 py-2.5 border-b border-gray-100 dark:border-gray-700">
                 {heading}
               </p>
-              <ul className="max-h-52 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
+              <ul className="mb-2 max-h-52 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
                 {groups.map((group) => (
                   <li key={group.sectionId}>
                     <button
