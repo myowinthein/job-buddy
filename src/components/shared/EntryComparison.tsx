@@ -83,7 +83,7 @@ export function EntryComparison({
     !incomingOnly && !clearing && entry.fields.some((field) => !field.changed);
   const fields = entry.fields.filter((field) =>
     incomingOnly
-      ? field.suggested !== 'Not provided' && !['Company', 'Institution'].includes(field.label)
+      ? field.suggested !== 'Not provided' && !['Company', 'Institution', 'Country'].includes(field.label)
       : clearing
         ? field.current !== 'Not provided'
         : showUnchanged || field.changed,

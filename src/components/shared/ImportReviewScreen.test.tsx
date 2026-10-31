@@ -315,6 +315,44 @@ it('shows custom links separately and saves only checked links', async () => {
   expect(applyChanges({}, onSave.mock.calls[0][0]).links?.custom).toEqual([links.custom[0]]);
 });
 
+it.each(['Review Resume', 'Review Profile', 'Review Drive Backup'])(
+  '%s selects each new work authorization separately',
+  async title => {
+    const { generateDiff, applyChanges } = await import('@/src/resume-ai/parser');
+    const rows = ['US', 'GB'].map(country => ({ country, status: 'citizen_or_pr' as const }));
+    const onSave = vi.fn();
+    render(<ImportReviewScreen title={title} changes={generateDiff({}, { workAuthorization: rows })} onSave={onSave} onBack={vi.fn()} />);
+    expect(screen.getByRole('heading', { name: title })).toBeTruthy();
+    expect(screen.getByText('2 of 2 selected')).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'Import United States' })).toBeTruthy();
+    expect(screen.getByText('Citizen / Permanent Resident')).toBeTruthy();
+    expect(screen.queryByText('Current')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Next entry' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Import United Kingdom' }));
+    expect(screen.getByText('1 of 2 selected')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /^Import Selected/ }));
+    expect(applyChanges({}, onSave.mock.calls[0][0]).workAuthorization).toEqual([rows[0]]);
+  },
+);
+
+it.each(['update', 'replace'] as const)(
+  'shows saved and incoming work authorization details in %s mode',
+  async mode => {
+    const { generateDiff } = await import('@/src/resume-ai/parser');
+    const { replacementChanges } = await import('@/src/utils/importPolicy');
+    const current = { workAuthorization: [{ country: 'US', status: 'work_visa' as const, visaType: 'H-1B', expiryDate: '2028-01-31' }] };
+    const incoming = { workAuthorization: [{ country: 'US', status: 'requires_sponsorship' as const, visaType: 'O-1', expiryDate: '2029-02-28' }] };
+    render(<ImportReviewScreen changes={(mode === 'replace' ? replacementChanges : generateDiff)(current, incoming)} replacement={mode === 'replace'} onSave={vi.fn()} onBack={vi.fn()} />);
+    expect(screen.getByText('Authorized to work without sponsorship')).toBeTruthy();
+    expect(screen.getByText('Requires Sponsorship')).toBeTruthy();
+    for (const value of ['H-1B', 'O-1', '2028-01-31', '2029-02-28']) expect(screen.getByText(value)).toBeTruthy();
+    fireEvent.click(mode === 'update'
+      ? screen.getByRole('radio', { name: 'Keep Current for United States' })
+      : screen.getByRole('checkbox', { name: 'Import United States' }));
+    expect(screen.getByText('0 of 1 selected')).toBeTruthy();
+  },
+);
+
 it.each(['update', 'replace'] as const)(
   'shows old and incoming custom link labels and URLs in %s mode',
   async (mode) => {

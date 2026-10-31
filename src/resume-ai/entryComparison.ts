@@ -2,6 +2,8 @@ import type { Profile } from '@/src/types/profile';
 import { findLanguage, languageName, LANGUAGE_PROFICIENCY_LABELS } from '@/src/data/languages';
 import type { LanguageProficiency } from '@/src/types/profile';
 import { findCountryByNameOrCode } from '@/src/data/countries';
+import { WORK_AUTH_STATUS_LABELS } from '@/src/data/workAuthorization';
+import type { WorkAuthorizationStatus } from '@/src/types/profile';
 import { equalJsonValues } from '@/src/utils/equalJsonValues';
 
 type Entry = Record<string, unknown>;
@@ -129,12 +131,28 @@ const text = (value: unknown): string =>
         ? Object.values(value).filter(Boolean).join(', ')
         : String(value);
 
+function fieldText(section: string, name: string, value: unknown): string {
+  if (section === 'languages')
+    return LANGUAGE_PROFICIENCY_LABELS[value as LanguageProficiency] ?? text(value);
+  if (section === 'workAuthorization') {
+    if (name === 'country')
+      return findCountryByNameOrCode(String(value ?? ''))?.name ?? text(value);
+    if (name === 'status')
+      return WORK_AUTH_STATUS_LABELS[value as WorkAuthorizationStatus] ?? text(value);
+  }
+  return text(value);
+}
+
 export function compareEntries(
   section: string,
   currentValue: unknown,
   suggestedValue: unknown,
 ): EntryComparison[] | undefined {
-  if (!['workHistory', 'education', 'languages', 'links.custom'].includes(section))
+  if (
+    !['workHistory', 'education', 'languages', 'workAuthorization', 'links.custom'].includes(
+      section,
+    )
+  )
     return undefined;
   const current = (currentValue ?? []) as Entry[];
   const suggested = (suggestedValue ?? []) as Entry[];
@@ -173,36 +191,41 @@ export function compareEntries(
   const fields =
     section === 'languages'
       ? { proficiency: 'Proficiency' }
-      : section === 'links.custom'
-        ? { label: 'Label', url: 'URL' }
-        : section === 'workHistory'
-          ? {
-              company: 'Company',
-              title: 'Job title',
-              startDate: 'Start date',
-              endDate: 'End date',
-              isCurrent: 'Current role',
-              location: 'Location',
-              arrangement: 'Work arrangement',
-              description: 'Description',
-            }
-          : {
-              institution: 'Institution',
-              degree: 'Degree',
-              fieldOfStudy: 'Field of study',
-              startDate: 'Start date',
-              endDate: 'End date',
-              isCurrent: 'Currently studying',
-              grade: 'Grade',
-              description: 'Description',
-            };
+      : section === 'workAuthorization'
+        ? { country: 'Country', status: 'Status', visaType: 'Visa type', expiryDate: 'Visa expiry' }
+        : section === 'links.custom'
+          ? { label: 'Label', url: 'URL' }
+          : section === 'workHistory'
+            ? {
+                company: 'Company',
+                title: 'Job title',
+                startDate: 'Start date',
+                endDate: 'End date',
+                isCurrent: 'Current role',
+                location: 'Location',
+                arrangement: 'Work arrangement',
+                description: 'Description',
+              }
+            : {
+                institution: 'Institution',
+                degree: 'Degree',
+                fieldOfStudy: 'Field of study',
+                startDate: 'Start date',
+                endDate: 'End date',
+                isCurrent: 'Currently studying',
+                grade: 'Grade',
+                description: 'Description',
+              };
   return pairs.map(({ incoming, saved, currentIndex, suggestedIndex }) => ({
     label:
       section === 'languages'
         ? languageName(String(incoming.language ?? saved.language ?? ''))
-        : section === 'links.custom'
-          ? text(incoming.label ?? saved.label ?? incoming.url ?? saved.url)
-          : text(incoming.company ?? incoming.institution ?? saved.company ?? saved.institution),
+        : section === 'workAuthorization'
+          ? (findCountryByNameOrCode(String(incoming.country ?? saved.country ?? ''))?.name ??
+            text(incoming.country ?? saved.country))
+          : section === 'links.custom'
+            ? text(incoming.label ?? saved.label ?? incoming.url ?? saved.url)
+            : text(incoming.company ?? incoming.institution ?? saved.company ?? saved.institution),
     currentIndex,
     suggestedIndex,
     status: !Object.keys(saved).length
@@ -216,15 +239,8 @@ export function compareEntries(
       .filter(([name]) => section === 'languages' || incoming[name] != null || saved[name] != null)
       .map(([name, label]) => ({
         label,
-        current:
-          section === 'languages'
-            ? (LANGUAGE_PROFICIENCY_LABELS[saved[name] as LanguageProficiency] ?? text(saved[name]))
-            : text(saved[name]),
-        suggested:
-          section === 'languages'
-            ? (LANGUAGE_PROFICIENCY_LABELS[incoming[name] as LanguageProficiency] ??
-              text(incoming[name]))
-            : text(incoming[name]),
+        current: fieldText(section, name, saved[name]),
+        suggested: fieldText(section, name, incoming[name]),
         changed: !equalJsonValues(saved[name] ?? '', incoming[name] ?? ''),
       })),
   }));

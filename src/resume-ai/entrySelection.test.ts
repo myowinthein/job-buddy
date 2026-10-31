@@ -20,6 +20,7 @@ const job = (company: string) => ({
 });
 const changeFor = (id: string, current: object, incoming: object) =>
   generateDiff(current, incoming).find((change) => change.id === id)!;
+const authorization = (country: string) => ({ country, status: 'citizen_or_pr' as const });
 
 describe('individual import entries', () => {
   it.each(['education', 'workHistory'] as const)(
@@ -158,6 +159,94 @@ describe('individual import entries', () => {
     });
     change = selectEntry(change, 1, false);
     expect(applyChanges({}, [change]).languages).toEqual([incoming.languages[0]]);
+  });
+});
+
+describe('individual work authorizations', () => {
+  it('counts and imports each new country independently', () => {
+    const rows = ['US', 'GB', 'TH'].map(authorization);
+    const change = selectEntry(
+      changeFor('workAuthorization', {}, { workAuthorization: rows }),
+      1,
+      false,
+    );
+    expect(reviewCounts(change)).toMatchObject({ total: 3, selected: 2, new: 3 });
+    expect(change.entries![0]).toMatchObject({
+      label: 'United States',
+      fields: expect.arrayContaining([
+        {
+          label: 'Status',
+          current: 'Not provided',
+          suggested: 'Citizen / Permanent Resident',
+          changed: true,
+        },
+      ]),
+    });
+    expect(applyChanges({}, [change]).workAuthorization).toEqual([rows[0], rows[2]]);
+    const single = selectEntry(selectChange(change, false), 1, true);
+    expect(applyChanges({}, [single]).workAuthorization).toEqual([rows[1]]);
+  });
+
+  it('matches countries by code or name and preserves rejected changes and removals for JSON/Drive', () => {
+    const current = { workAuthorization: [authorization('US'), authorization('TH')] };
+    const incoming = {
+      workAuthorization: [
+        {
+          country: 'United States',
+          status: 'work_visa' as const,
+          visaType: 'H-1B',
+          expiryDate: '2028-01-31',
+        },
+        authorization('GB'),
+      ],
+    };
+    let change = changeFor('workAuthorization', current, incoming);
+    expect(change.entries!.map((entry) => entry.status)).toEqual(['changed', 'new', 'removed']);
+    change = selectEntry(selectEntry(change, 0, false), 2, false);
+    expect(applyChanges(current, [change]).workAuthorization).toEqual([
+      current.workAuthorization[0],
+      incoming.workAuthorization[1],
+      current.workAuthorization[1],
+    ]);
+    expect(applyChanges(current, acceptAllChanges([change])).workAuthorization).toEqual(
+      incoming.workAuthorization,
+    );
+  });
+
+  it('keeps saved resume authorizations and missing visa details while respecting individual choices', () => {
+    const current = {
+      workAuthorization: [
+        { country: 'US', status: 'work_visa' as const, visaType: 'H-1B', expiryDate: '2028-01-31' },
+        authorization('TH'),
+      ],
+    };
+    const incoming = {
+      workAuthorization: [
+        { country: 'US', status: 'requires_sponsorship' as const },
+        authorization('GB'),
+      ],
+    };
+    const change = selectEntry(
+      resumeChanges(current, incoming).find((c) => c.id === 'workAuthorization')!,
+      1,
+      false,
+    );
+    expect(applyReviewedResumeChanges(current, [change]).workAuthorization).toEqual([
+      { ...current.workAuthorization[0], status: 'requires_sponsorship' },
+      current.workAuthorization[1],
+    ]);
+    expect(() =>
+      applyReviewedResumeChanges({ workAuthorization: [authorization('CA')] }, [change]),
+    ).toThrow('changed in another tab');
+  });
+
+  it('replaces with only selected incoming countries, including unchanged entries', () => {
+    const current = { workAuthorization: ['US', 'TH'].map(authorization) };
+    const incoming = { workAuthorization: ['US', 'GB'].map(authorization) };
+    let change = replacementChanges(current, incoming).find((c) => c.id === 'workAuthorization')!;
+    expect(reviewCounts(change)).toMatchObject({ total: 2, selected: 2, cleared: 1 });
+    change = selectEntry(change, 0, false);
+    expect(applyChanges({}, [change]).workAuthorization).toEqual([incoming.workAuthorization[1]]);
   });
 });
 
