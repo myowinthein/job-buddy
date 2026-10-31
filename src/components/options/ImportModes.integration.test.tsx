@@ -10,6 +10,7 @@ import {
   getDriveBackupState,
   getApplicationHistory,
   saveApplicationHistory,
+  saveProfile,
 } from '@/src/utils/storage';
 import { DevSimulation } from '@/src/devtools/simulation';
 import { scenarioById } from '@/src/devtools/scenarios';
@@ -109,10 +110,10 @@ it.each(['update', 'replace'] as const)(
   },
 );
 
-function setupDrive() {
+function setupDrive(profile = incoming() as typeof DEV_PROFILE) {
   sessionStorage.setItem('jb:ui:section', 'settings');
   simulation = new DevSimulation(scenarioById('drive-different')!, 'test-extension', '1.0');
-  simulation.backup!.profile = incoming() as typeof DEV_PROFILE;
+  simulation.backup!.profile = profile;
   vi.stubGlobal('chrome', simulation.chrome);
   vi.stubGlobal('fetch', simulation.fetch.bind(simulation));
   vi.stubGlobal('__JB_DEV_CONTEXT__', {
@@ -160,3 +161,70 @@ it('Drive replacement adopts only the incoming person and clears unrelated local
   expect((await getDriveBackupState()).reviewRequired).toBe(false);
   expect(remote.backup?.profile.personal.email).toBe('sam@example.com');
 });
+
+it.each(['empty', 'matching'] as const)(
+  'resume import skips the action choice for an %s profile',
+  async (state) => {
+    sessionStorage.setItem('jb:ui:section', 'resume');
+    vi.stubGlobal(
+      'chrome',
+      createPreviewChrome(state === 'empty' ? { id: 'empty-resume' } : DEV_PROFILE, undefined, {
+        initialData: {
+          geminiApiKey: 'test-key',
+          geminiModel: DEFAULT_GEMINI_MODEL,
+          geminiDevDisabled: true,
+        },
+      }),
+    );
+    vi.mocked(extractFromResume).mockResolvedValue({
+      ...incoming(),
+      personal: DEV_PROFILE.personal,
+    });
+    mount();
+    await screen.findByText(/Drop your resume here/);
+    fireEvent.change(document.querySelector('input[type="file"]')!, {
+      target: { files: [new File(['%PDF-test'], 'updated.pdf', { type: 'application/pdf' })] },
+    });
+    fireEvent.click(screen.getByText('Analyze Resume'));
+    await screen.findByText('Review Resume');
+    expect(screen.queryByText('Import action')).toBeNull();
+    expect(screen.queryByRole('radio', { name: /^(Update|Replace) current profile/ })).toBeNull();
+    expect((screen.getByRole('button', { name: 'Import All' }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Import All' }));
+    await screen.findByText('Import Complete');
+    const saved = (await getProfile())!;
+    expect(saved.personal.email).toBe(DEV_PROFILE.personal.email);
+    expect(saved.workHistory).toHaveLength(
+      state === 'empty' ? 1 : DEV_PROFILE.workHistory.length + 1,
+    );
+    expect(saved.address).toEqual(state === 'empty' ? undefined : DEV_PROFILE.address);
+  },
+);
+
+it.each(['empty', 'matching'] as const)(
+  'Drive import skips the action choice for an %s profile',
+  async (state) => {
+    setupDrive({
+      ...DEV_PROFILE,
+      professional: { ...DEV_PROFILE.professional, summary: 'Updated Drive summary' },
+    });
+    if (state === 'empty') await saveProfile({ id: 'empty-drive' } as typeof DEV_PROFILE);
+    const before = (await getProfile())!;
+    mount();
+    fireEvent.click(await screen.findByText('Connect Google Drive'));
+    await screen.findByRole('button', { name: 'Restore All' });
+    expect(screen.queryByText('Import action')).toBeNull();
+    expect(screen.queryByRole('radio', { name: /^(Update|Replace) current profile/ })).toBeNull();
+    expect(
+      (screen.getByRole('button', { name: 'Restore All' }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Restore All' }));
+    await screen.findByText('Profile restored from Google Drive.');
+    const saved = (await getProfile())!;
+    expect(saved.professional.summary).toBe('Updated Drive summary');
+    expect(saved.personal.email).toBe(DEV_PROFILE.personal.email);
+    if (state === 'matching') expect(saved.id).toBe(before.id);
+  },
+);

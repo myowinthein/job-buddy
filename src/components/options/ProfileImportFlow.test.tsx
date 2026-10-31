@@ -84,6 +84,8 @@ it('shows summary and notice period and saves only the one selected detail', asy
   await mountBase();
   upload(incomingProfile(), { exportedAt: '2026-10-29T12:12:23Z' });
   await screen.findByText('Review Changes');
+  expect(screen.queryByText('Import action')).toBeNull();
+  expect(screen.queryByRole('radio', { name: /^(Update|Replace) current profile/ })).toBeNull();
   expect(screen.queryByText(/backup.json|Exported/)).toBeNull();
   fireEvent.click(screen.getByText('Review Changes'));
   expect(screen.queryByText(/backup.json|Exported/)).toBeNull();
@@ -206,6 +208,8 @@ it('shows skipped fields before importing a partly invalid backup into an empty 
   profile.personal.email = 'invalid-email';
   upload(profile);
   expect(await screen.findByText('1 invalid item will be skipped')).toBeTruthy();
+  expect(screen.queryByText('Import action')).toBeNull();
+  expect(screen.queryByRole('radio', { name: /^(Update|Replace) current profile/ })).toBeNull();
   expect(await getProfile()).toEqual({ id: 'empty-import-test' });
   fireEvent.click(screen.getByText('Import All'));
   await screen.findByText('Profile imported successfully (1 item skipped)');
@@ -333,4 +337,19 @@ it('asks for review again if the profile changes while replacement is open', asy
   expect((screen.getByRole('button', { name: 'Import All' }) as HTMLButtonElement).disabled).toBe(
     true,
   );
+});
+
+it('imports valid JSON into an empty profile without asking for an import action', async () => {
+  vi.stubGlobal('chrome', createPreviewChrome({ id: 'empty-import-test' }));
+  render(
+    <ToastProvider>
+      <App />
+    </ToastProvider>,
+  );
+  await screen.findByText('Choose File');
+  upload(baseProfile());
+  await screen.findByText('Profile imported successfully');
+  expect(screen.queryByText('Import action')).toBeNull();
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect((await getProfile())?.personal).toEqual(baseProfile().personal);
 });

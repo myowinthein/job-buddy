@@ -11,6 +11,7 @@ interface Props {
 }
 export function ImportModeChoice({ current, incoming, mode, onChange, busy, fromDrive }: Props) {
   const different = possibleDifferentPerson(current, incoming);
+  if (!different) return null;
   return (
     <div className="mt-4 space-y-3 border-t border-gray-200 pt-4 dark:border-gray-700">
       {different && (

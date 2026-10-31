@@ -17,6 +17,7 @@ import { ImportModeChoice } from '@/src/components/shared/ImportModeChoice';
 import {
   assertImportCurrent,
   initialImportMode,
+  possibleDifferentPerson,
   replacementChanges,
   ImportProfileChangedError,
   type ImportMode,
@@ -557,7 +558,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
         <ImportSummaryDialog
           changes={changes}
           title="Review Resume"
-          importControls={<ImportModeChoice current={reviewBase} incoming={incomingProfile} mode={importMode} onChange={chooseMode} busy={saving} />}
+          importControls={possibleDifferentPerson(reviewBase, incomingProfile) && <ImportModeChoice current={reviewBase} incoming={incomingProfile} mode={importMode} onChange={chooseMode} busy={saving} />}
           replacement={importMode === 'replace'}
           canProceed={importMode !== null && (importMode !== 'replace' || changes.some(c => c.hasIncomingValue === true))}
           forceDecision={importMode !== 'update'}
