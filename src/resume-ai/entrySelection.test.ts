@@ -160,3 +160,67 @@ describe('individual import entries', () => {
     expect(applyChanges({}, [change]).languages).toEqual([incoming.languages[0]]);
   });
 });
+
+const link = (
+  label: string,
+  url = `https://example.com/${label.toLowerCase().replace(/\s+/g, '-')}`,
+) => ({
+  label,
+  url,
+});
+it('matches custom links by URL or unique label and preserves rejected changes and removals', () => {
+  const current = {
+    links: { linkedin: '', custom: [link('Docs'), link('Old label'), link('Saved')] },
+  };
+  const incoming = {
+    links: {
+      linkedin: '',
+      custom: [
+        link('Docs', 'https://example.com/new-docs'),
+        link('New label', link('Old label').url),
+        link('New'),
+      ],
+    },
+  };
+  let change = changeFor('links.custom', current, incoming);
+  expect(change.entries?.slice(0, 2).map((entry) => entry.status)).toEqual(['changed', 'changed']);
+  change = selectEntry(change, 0, false);
+  change = selectEntry(change, 3, false);
+  expect(applyChanges(current, [change]).links?.custom).toEqual([
+    current.links.custom[0],
+    incoming.links.custom[1],
+    incoming.links.custom[2],
+    current.links.custom[2],
+  ]);
+});
+
+it('keeps omitted resume links while filtering rejected incoming links', () => {
+  const current = { links: { linkedin: '', custom: [link('Saved')] } };
+  const incoming = { links: { linkedin: '', custom: [link('A'), link('B')] } };
+  const change = selectEntry(
+    resumeChanges(current, incoming).find((c) => c.id === 'links.custom')!,
+    1,
+    false,
+  );
+  expect(applyReviewedResumeChanges(current, [change]).links?.custom).toEqual([
+    link('A'),
+    link('Saved'),
+  ]);
+  expect(applyChanges(current, acceptAllChanges([change])).links?.custom).toEqual([
+    link('A'),
+    link('B'),
+    link('Saved'),
+  ]);
+});
+
+it('imports only selected custom links into a replacement', () => {
+  const current = { links: { linkedin: '', custom: [link('Saved')] } };
+  const incoming = { links: { linkedin: '', custom: [link('A'), link('B')] } };
+  const change = selectEntry(
+    replacementChanges(current, incoming).find((c) => c.id === 'links.custom')!,
+    1,
+    false,
+  );
+  expect(applyChanges({}, [change]).links?.custom).toEqual([link('A')]);
+  expect(reviewCounts(change)).toMatchObject({ total: 2, selected: 1, new: 2, cleared: 1 });
+});

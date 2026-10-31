@@ -134,13 +134,18 @@ export function compareEntries(
   currentValue: unknown,
   suggestedValue: unknown,
 ): EntryComparison[] | undefined {
-  if (!['workHistory', 'education', 'languages'].includes(section)) return undefined;
+  if (!['workHistory', 'education', 'languages', 'links.custom'].includes(section))
+    return undefined;
   const current = (currentValue ?? []) as Entry[];
   const suggested = (suggestedValue ?? []) as Entry[];
   const used = new Set<number>();
   const pairs: { incoming: Entry; saved: Entry; currentIndex?: number; suggestedIndex?: number }[] =
     suggested.map((entry, suggestedIndex) => {
-      let index = matchedEntryIndex(section, entry, current);
+      let index = matchedEntryIndex(
+        section === 'links.custom' ? 'customLinks' : section,
+        entry,
+        current,
+      );
       if (index < 0 || used.has(index)) {
         // Exact copies can be paired safely even when their identifying labels are ambiguous.
         index = current.findIndex((saved, i) => !used.has(i) && equalJsonValues(saved, entry));
@@ -168,32 +173,36 @@ export function compareEntries(
   const fields =
     section === 'languages'
       ? { proficiency: 'Proficiency' }
-      : section === 'workHistory'
-        ? {
-            company: 'Company',
-            title: 'Job title',
-            startDate: 'Start date',
-            endDate: 'End date',
-            isCurrent: 'Current role',
-            location: 'Location',
-            arrangement: 'Work arrangement',
-            description: 'Description',
-          }
-        : {
-            institution: 'Institution',
-            degree: 'Degree',
-            fieldOfStudy: 'Field of study',
-            startDate: 'Start date',
-            endDate: 'End date',
-            isCurrent: 'Currently studying',
-            grade: 'Grade',
-            description: 'Description',
-          };
+      : section === 'links.custom'
+        ? { label: 'Label', url: 'URL' }
+        : section === 'workHistory'
+          ? {
+              company: 'Company',
+              title: 'Job title',
+              startDate: 'Start date',
+              endDate: 'End date',
+              isCurrent: 'Current role',
+              location: 'Location',
+              arrangement: 'Work arrangement',
+              description: 'Description',
+            }
+          : {
+              institution: 'Institution',
+              degree: 'Degree',
+              fieldOfStudy: 'Field of study',
+              startDate: 'Start date',
+              endDate: 'End date',
+              isCurrent: 'Currently studying',
+              grade: 'Grade',
+              description: 'Description',
+            };
   return pairs.map(({ incoming, saved, currentIndex, suggestedIndex }) => ({
     label:
       section === 'languages'
         ? languageName(String(incoming.language ?? saved.language ?? ''))
-        : text(incoming.company ?? incoming.institution ?? saved.company ?? saved.institution),
+        : section === 'links.custom'
+          ? text(incoming.label ?? saved.label ?? incoming.url ?? saved.url)
+          : text(incoming.company ?? incoming.institution ?? saved.company ?? saved.institution),
     currentIndex,
     suggestedIndex,
     status: !Object.keys(saved).length

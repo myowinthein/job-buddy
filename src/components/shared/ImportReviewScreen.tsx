@@ -5,6 +5,7 @@ import {
   selectEntry,
 } from '@/src/resume-ai/entrySelection';
 import { LanguageComparison } from './LanguageComparison';
+import { CustomLinkComparison } from './CustomLinkComparison';
 import { useId, useState, type RefObject } from 'react';
 import type { FieldChange } from '@/src/resume-ai/types';
 import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
@@ -292,7 +293,14 @@ function FieldRow({
   if (hasEntryChoices(change))
     return (
       <div role="group" aria-label={change.label} className="py-1">
-        {change.id === 'languages' ? (
+        {change.id === 'links.custom' ? (
+          <CustomLinkComparison
+            change={change}
+            incomingLabel={incomingLabel}
+            isSaving={isSaving}
+            onSelect={(index, accepted) => onEntrySelect(change.id, index, accepted)}
+          />
+        ) : change.id === 'languages' ? (
           <LanguageComparison
             change={change}
             incomingLabel={incomingLabel}

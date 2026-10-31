@@ -236,7 +236,7 @@ it.each(['empty', 'matching'] as const)(
 );
 
 it.each(['resume', 'json', 'drive'] as const)(
-  '%s saves only the selected education, work, and language entries',
+  '%s saves only the selected education, work, language, and custom link entries',
   async (source) => {
     const data = {
       personal: DEV_PROFILE.personal,
@@ -253,6 +253,13 @@ it.each(['resume', 'json', 'drive'] as const)(
         startDate: '2020',
         endDate: '2024',
       })),
+      links: {
+        linkedin: '',
+        custom: ['A', 'B', 'C'].map((label) => ({
+          label: `Link ${label}`,
+          url: `https://example.com/${label.toLowerCase()}`,
+        })),
+      },
       languages: [
         { language: 'en', proficiency: 'full_professional' as const },
         { language: 'my', proficiency: 'native_bilingual' as const },
@@ -309,11 +316,17 @@ it.each(['resume', 'json', 'drive'] as const)(
     fireEvent.click(screen.getByRole('checkbox', { name: 'Import School B' }));
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Languages' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Import Burmese' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Links' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Import Link B' }));
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     fireEvent.click(screen.getByRole('button', { name: 'Review Changes' }));
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Languages' }));
     expect(
       (screen.getByRole('checkbox', { name: 'Import Burmese' }) as HTMLInputElement).checked,
+    ).toBe(false);
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Links' }));
+    expect(
+      (screen.getByRole('checkbox', { name: 'Import Link B' }) as HTMLInputElement).checked,
     ).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: /^(Import|Restore) Selected/ }));
     await waitFor(async () => expect((await getProfile())?.education).toHaveLength(2));
@@ -321,5 +334,6 @@ it.each(['resume', 'json', 'drive'] as const)(
     expect(saved.education.map((row) => row.institution)).toEqual(['School A', 'School C']);
     expect(saved.workHistory.map((row) => row.company)).toEqual(['Company A', 'Company C']);
     expect(saved.languages).toEqual([data.languages[0]]);
+    expect(saved.links.custom).toEqual([data.links.custom[0], data.links.custom[2]]);
   },
 );

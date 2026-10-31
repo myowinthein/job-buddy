@@ -295,3 +295,54 @@ it('shows both proficiency values for changed languages in Replace mode', async 
   expect(screen.getByRole('checkbox', { name: 'Import English' })).toBeTruthy();
   expect(screen.queryByRole('radio')).toBeNull();
 });
+
+it('shows custom links separately and saves only checked links', async () => {
+  const { generateDiff, applyChanges } = await import('@/src/resume-ai/parser');
+  const links = {
+    linkedin: '',
+    custom: [
+      { label: 'StudyMe', url: 'https://example.com/study' },
+      { label: 'Android', url: 'https://example.com/android' },
+    ],
+  };
+  const { onSave } = renderScreen(generateDiff({}, { links }));
+  expect(screen.getByText('2 of 2 selected')).toBeTruthy();
+  expect(screen.getByRole('checkbox', { name: 'Import StudyMe' })).toBeTruthy();
+  expect(screen.getByText('https://example.com/study')).toBeTruthy();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Import Android' }));
+  expect(screen.getByText('1 of 2 selected')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: /^Import Selected/ }));
+  expect(applyChanges({}, onSave.mock.calls[0][0]).links?.custom).toEqual([links.custom[0]]);
+});
+
+it.each(['update', 'replace'] as const)(
+  'shows old and incoming custom link labels and URLs in %s mode',
+  async (mode) => {
+    const { generateDiff } = await import('@/src/resume-ai/parser');
+    const { replacementChanges } = await import('@/src/utils/importPolicy');
+    const current = {
+      links: { linkedin: '', custom: [{ label: 'Old name', url: 'https://example.com/old' }] },
+    };
+    const incoming = {
+      links: { linkedin: '', custom: [{ label: 'Old name', url: 'https://example.com/new' }] },
+    };
+    const changes = (mode === 'replace' ? replacementChanges : generateDiff)(current, incoming);
+    const onSave = vi.fn();
+    render(
+      <ImportReviewScreen
+        changes={changes}
+        replacement={mode === 'replace'}
+        onSave={onSave}
+        onBack={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('https://example.com/old')).toBeTruthy();
+    expect(screen.getByText('https://example.com/new')).toBeTruthy();
+    if (mode === 'update')
+      fireEvent.click(screen.getByRole('radio', { name: 'Keep Current for Old name' }));
+    else fireEvent.click(screen.getByRole('checkbox', { name: 'Import Old name' }));
+    expect(
+      (screen.getByRole('button', { name: /^Import Selected/ }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+  },
+);
