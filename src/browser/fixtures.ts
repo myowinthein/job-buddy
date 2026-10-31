@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 export const test = base.extend<{
   extension: {
     worker: Worker;
+    sourceTabId: number;
     send: (
       action: string,
       mode?: string,
@@ -64,24 +65,26 @@ export const test = base.extend<{
       });
     });
     await page.goto('http://127.0.0.1/application');
+    const sourceTabId = await worker.evaluate(async () => {
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      return tabs[0].id!;
+    });
     const send = (action: string, mode?: string) =>
       worker.evaluate(
-        async ({ action, mode }) => {
-          const tabs = await chrome.tabs.query({});
-          const tab =
-            tabs.find((t) => t.url?.startsWith('http://127.0.0.1/application')) ?? tabs.at(-1)!;
-          const frames = await chrome.webNavigation.getAllFrames({ tabId: tab.id! });
+        async ({ action, mode, sourceTabId }) => {
+          const frames = await chrome.webNavigation.getAllFrames({ tabId: sourceTabId });
+          const message = { action, mode, ...(action === 'AUTOFILL_SCAN' ? { runId: crypto.randomUUID() } : {}) };
           return Promise.all(
             (frames ?? [{ frameId: 0 }]).map(async ({ frameId }) => {
               try {
-                return await chrome.tabs.sendMessage(tab.id!, { action, mode }, { frameId });
+                return await chrome.tabs.sendMessage(sourceTabId, message, { frameId });
               } catch {
                 return { missingListener: 1 };
               }
             }),
           );
         },
-        { action, mode },
+        { action, mode, sourceTabId },
       ) as Promise<Record<string, number | string | boolean | undefined>[]>;
     await expect
       .poll(async () => {
@@ -89,7 +92,7 @@ export const test = base.extend<{
         return responses.length >= 2 && responses.every((result) => !result.missingListener);
       })
       .toBe(true);
-    await provide({ worker, send });
+    await provide({ worker, sourceTabId, send });
   },
 });
 export { expect };

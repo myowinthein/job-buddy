@@ -63,6 +63,17 @@ Set Up Profile → Set Up AI Autofill → Fill Form → Review answers → Submi
 If AI assistance is unavailable during a fill, the popup warns you to review the
 results. Existing rule-based fills remain, and **Undo** is still available.
 
+The popup shows a compact result summary. Choose **View Fill Log** for detected
+fields, rule fills, AI handoffs, and final outcomes across the form's frames.
+Use **Fields** to search, filter, or inspect how an individual answer was handled.
+Processing-stage counts can overlap when AI refines a rule-filled value; final
+totals count each field or question group once. Kept answers and consent questions
+are separate from unfilled fields.
+
+The log follows edits on the source form and keeps only its latest run in memory.
+Reloading or closing the form discards it. It records field metadata, not profile
+values, uploaded document contents, or API keys.
+
 **Undo** clears Job Buddy's fills for the current session. Corrections that match
 saved profile values can teach the extension a field mapping for that website.
 Review or edit these in **Learned Mappings**.

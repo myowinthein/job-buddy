@@ -21,6 +21,10 @@ import { refreshLearnedLabels, saveElementMappings } from './mappings';
 import { runAIAutofill } from './ai';
 import type { AITextCandidate, AIAutofillStatus } from './ai';
 import type { DebugSession, DebugScanField, DebugMappingField, DebugAIField, FieldFinalState } from './debug';
+import { summarizeFillFields } from './fillLog';
+import type { FillLogField, FrameFillLog } from './fillLog';
+import type { RadioGroup, CheckboxGroup } from './scanner';
+import { isConsentGroup } from './consent';
 
 export { clearHighlights } from './highlighter';
 
@@ -31,6 +35,12 @@ export interface AutofillResult {
   noData:        number;  // not filled, confidence >= 0.60 but profile value is empty
   totalScanned:  number;  // every field found by the scanner, regardless of outcome
   aiStatus?: AIAutofillStatus;
+  kept?: number;
+  excluded?: number;
+  failed?: number;
+  manual?: number;
+  runId?: string;
+  startedAt?: number;
 }
 
 // Zero-valued result used as a safe fallback when a fill cycle throws before
@@ -56,6 +66,76 @@ let sessionElements: HTMLElement[] = [];
 let sessionGeneration = 0;
 let refillInFlight: Promise<void> | null = null;
 let pendingReady = false;
+let fillLog: FrameFillLog | null = null;
+let fieldRecords = new Map<HTMLElement, FillLogField>();
+let recordElements = new Map<FillLogField, HTMLElement[]>();
+let recordValues = new Map<FillLogField, string>();
+const writingElements = new Set<HTMLElement>();
+let removeReportWatchers = () => {};
+let pendingRadioGroups: RadioGroup[] = [];
+let pendingCheckboxGroups: CheckboxGroup[] = [];
+
+function bindRecord(record: FillLogField, elements: HTMLElement[]): void {
+  recordElements.set(record, elements);
+  for (const element of elements) fieldRecords.set(element, record);
+  recordValues.set(record, recordValue(record));
+}
+
+function recordValue(record: FillLogField): string {
+  const elements = recordElements.get(record) ?? [];
+  if (record.kind === 'radio' || record.kind === 'checkbox') {
+    return elements.flatMap((e, index) => (e as HTMLInputElement).checked ? [String(index)] : []).join(',');
+  }
+  return elements[0] ? getFieldValue(elements[0]).trim() : '';
+}
+
+function syncFillLogResult(result: AutofillResult | null = lastResult): void {
+  if (!result || !fillLog) return;
+  const counts = summarizeFillFields(fillLog.fields);
+  Object.assign(result, {
+    noReview: counts.highConfidence + counts.manual, needReview: counts.review,
+    lowConfidence: counts.unmatched, noData: counts.missing, totalScanned: counts.detected,
+    kept: counts.kept, excluded: counts.excluded, failed: counts.failed, manual: counts.manual,
+    runId: fillLog.runId, startedAt: fillLog.startedAt,
+  });
+  if (debugSession) debugSession.summary = { green: result.noReview, yellow: result.needReview, red: result.lowConfidence, gray: result.noData };
+}
+
+function refreshTrackedField(element: HTMLElement): void {
+  const record = fieldRecords.get(element);
+  if (!record || record.outcome === 'excluded' || fillLog?.status !== 'completed') return;
+  const elements = recordElements.get(record) ?? [];
+  if (elements.some(e => writingElements.has(e))) return;
+  const value = recordValue(record);
+  if (recordValues.get(record) === value) return;
+  recordValues.set(record, value);
+  record.outcome = value ? 'manual' : 'not_matched';
+  record.source = 'manual';
+  record.reason = value ? 'manual_edit' : 'manual_clear';
+  if (!value) for (const item of elements) clearElementHighlight(item);
+  syncFillLogResult();
+}
+
+function attachReportWatchers(): void {
+  removeReportWatchers();
+  const removals: (() => void)[] = [];
+  for (const [record, elements] of recordElements) {
+    recordValues.set(record, recordValue(record));
+    if (record.outcome === 'excluded') continue;
+    for (const element of elements) {
+      const handler = () => refreshTrackedField(element);
+      for (const name of ['input', 'change', 'blur']) element.addEventListener(name, handler);
+      removals.push(() => { for (const name of ['input', 'change', 'blur']) element.removeEventListener(name, handler); });
+    }
+  }
+  removeReportWatchers = () => { removals.forEach(remove => remove()); };
+}
+
+export function getFillLog(): FrameFillLog | null {
+  if (fillLog?.status === 'completed') for (const element of fieldRecords.keys()) refreshTrackedField(element);
+  syncFillLogResult();
+  return fillLog;
+}
 
 // Tracks the noData fields from the most recent executeAutofill run.
 // Used by the visibilitychange listener to silently re-fill fields whose
@@ -159,8 +239,11 @@ function attachEditWatchers(fields: EditableField[], result: AutofillResult, dom
       const currentValue = getFieldValue(element);
       if (currentValue === valueAtAttach) return; // nothing actually changed
 
+      refreshTrackedField(element);
+
       // User has handled this field — promote to No Review (green).
-      applyHighlight(element, CONF_CONFIRMED);
+      if (currentValue.trim()) applyHighlight(element, CONF_CONFIRMED);
+      else clearElementHighlight(element);
 
       // Register a real manual edit; unfilled red/gray fields were not owned yet.
       if (!sessionElements.includes(element)) sessionElements.push(element);
@@ -187,6 +270,7 @@ function attachEditWatchers(fields: EditableField[], result: AutofillResult, dom
       // Field is resolved — tear down the edit watcher so it doesn't fire again.
       element.removeEventListener('blur', handler);
       editWatchers.delete(element);
+      syncFillLogResult(result);
     };
 
     element.addEventListener('blur', handler);
@@ -201,6 +285,7 @@ function attachEditWatchers(fields: EditableField[], result: AutofillResult, dom
 let lastResult: AutofillResult | null = null;
 
 export function getLastResult(): AutofillResult | null {
+  getFillLog();
   return lastResult;
 }
 
@@ -209,6 +294,7 @@ export function getLastResult(): AutofillResult | null {
 let debugSession: DebugSession | null = null;
 
 export function getDebugSession(): DebugSession | null {
+  getFillLog();
   return debugSession;
 }
 
@@ -253,7 +339,10 @@ function runSilentRefill(): Promise<void> {
         const value = resolveProfileValue(profile, fieldPath);
         if (!value) continue;
         if (!sessionElements.includes(element)) sessionElements.push(element);
-        const filled = await fillField(element, value, () => isActive() && !getFieldValue(element).trim());
+        writingElements.add(element);
+        let filled: boolean | void;
+        try { filled = await fillField(element, value, () => isActive() && !getFieldValue(element).trim()); }
+        finally { writingElements.delete(element); }
         if (!isActive()) return;
         if (!noDataFields.includes(entry)) continue; // a manual blur resolved it while awaiting
         if (filled === false) {
@@ -262,6 +351,14 @@ function runSilentRefill(): Promise<void> {
           continue;
         }
         applyHighlight(element, CONF_CONFIRMED);
+        const record = fieldRecords.get(element);
+        if (record) {
+          record.rule.outcome = 'filled';
+          record.outcome = 'high_confidence';
+          record.source = 'rules';
+          record.reason = 'profile_updated';
+          recordValues.set(record, recordValue(record));
+        }
         result.noData = Math.max(0, result.noData - 1);
         result.noReview++;
         noDataFields = noDataFields.filter((item) => item !== entry);
@@ -272,6 +369,7 @@ function runSilentRefill(): Promise<void> {
         }
       }
       if (noDataFields.length === 0) teardownVisibilityListener();
+      syncFillLogResult(result);
     } catch {
       // Keep unresolved entries for the next visibility event.
     }
@@ -282,6 +380,9 @@ function runSilentRefill(): Promise<void> {
 }
 
 export function undoAutofill(): void {
+  getFillLog();
+  removeReportWatchers();
+  if (fillLog) fillLog.status = 'undone';
   sessionGeneration++;
   refillInFlight = null;
   pendingReady = false;
@@ -304,7 +405,14 @@ export function undoAutofill(): void {
 
 // Phase 1: scan and map all fields; detect which matched fields already have values.
 // Results are held in pendingMatches for executeAutofill().
-export async function scanAutofill(): Promise<AutofillScanResult> {
+export async function scanAutofill(runId: string = crypto.randomUUID()): Promise<AutofillScanResult> {
+  removeReportWatchers();
+  fieldRecords = new Map();
+  recordElements = new Map();
+  recordValues = new Map();
+  pendingRadioGroups = [];
+  pendingCheckboxGroups = [];
+  fillLog = { version: 1, runId, startedAt: Date.now(), origin: location.origin, status: 'scanning', fields: [] };
   const generation = ++sessionGeneration;
   refillInFlight = null;
   pendingReady = false;
@@ -383,8 +491,34 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
   // — see matchCurrentEducationCheckboxes for why. Reuses scanCheckboxGroups(),
   // the same source ai.ts already scans for checkbox groups.
   const checkboxGroups = scanCheckboxGroups();
+  pendingRadioGroups = scanRadioGroups();
+  pendingCheckboxGroups = checkboxGroups;
+  for (const { element, signals, match, debugFieldId } of scanned) {
+    const record: FillLogField = {
+      id: debugFieldId, label: bestLabel(signals) || 'Unlabelled field',
+      kind: element instanceof HTMLInputElement && element.type === 'file' ? 'file'
+        : element instanceof HTMLSelectElement || element.getAttribute('role') === 'combobox' || element.getAttribute('aria-haspopup') === 'listbox' ? 'select' : 'text',
+      rule: { outcome: 'not_applicable', layer: match.matchLayer, confidence: match.confidence, ...(match.fieldPath ? { profilePath: match.fieldPath } : {}) },
+      ai: { outcome: 'not_sent' }, outcome: 'not_matched', source: null,
+    };
+    fillLog!.fields.push(record);
+    bindRecord(record, [element]);
+  }
+  for (const [kind, groups] of [['radio', pendingRadioGroups], ['checkbox', checkboxGroups]] as const) {
+    groups.forEach((group, index) => {
+      const excluded = !!group.isConsent || isConsentGroup(group);
+      const record: FillLogField = {
+        id: `${kind}_${index + 1}`, label: group.groupLabel || group.name || `Unlabelled ${kind} group`, kind,
+        rule: { outcome: 'not_applicable' }, ai: { outcome: 'not_sent' },
+        outcome: excluded ? 'excluded' : 'not_matched', source: null,
+        ...(excluded ? { reason: 'consent' as const } : {}),
+      };
+      fillLog!.fields.push(record);
+      bindRecord(record, group.options.map(option => option.element));
+    });
+  }
   const checkboxCandidates = checkboxGroups
-    .filter((g) => !g.isConsent)
+    .filter((g) => !g.isConsent && !isConsentGroup(g))
     .flatMap((g) => g.options);
   const checkboxMatches = [
     ...matchCurrentEducationCheckboxes(checkboxCandidates, profile),
@@ -403,13 +537,13 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
   }));
   scanned.push(...checkboxScanned);
 
-  const prefilledElements = new Set<HTMLElement>();
-  for (const group of [...scanRadioGroups(), ...checkboxGroups]) {
-    if (!group.isConsent) for (const option of group.options) if (option.element.checked) prefilledElements.add(option.element);
+  const prefilledRecords = new Set<FillLogField>();
+  for (const group of [...pendingRadioGroups, ...checkboxGroups]) {
+    if (!group.isConsent && !isConsentGroup(group)) for (const option of group.options) if (option.element.checked) prefilledRecords.add(fieldRecords.get(option.element)!);
   }
   scanned.forEach(({ element, signals, match, debugFieldId }) => {
     const hasExistingValue = getFieldValue(element).trim() !== '';
-    if (hasExistingValue) prefilledElements.add(element);
+    if (hasExistingValue) prefilledRecords.add(fieldRecords.get(element)!);
 
     if (match.confidence >= CONF_FILL && match.value) {
       totalMatched++;
@@ -440,7 +574,7 @@ export async function scanAutofill(): Promise<AutofillScanResult> {
     aiSkipped: false,
   };
 
-  preFilledCount = prefilledElements.size;
+  preFilledCount = prefilledRecords.size;
   pendingReady = true;
   return { preFilledCount, totalMatched };
 }
@@ -483,6 +617,16 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   const editableFields: EditableField[] = [];
   const aiTextCandidates: AITextCandidate[] = [];
   const debugMapping: DebugMappingField[] = [];
+  if (fillLog) fillLog.mode = mode;
+  if (mode === 'merge') for (const [record, elements] of recordElements) {
+    if (record.outcome !== 'excluded' && (recordValues.get(record) || recordValue(record))) {
+      record.outcome = 'kept';
+      record.rule.outcome = 'kept';
+      record.reason = 'existing_value';
+      // Includes an already-selected option elsewhere in the same group.
+      for (const element of elements) fieldRecords.set(element, record);
+    }
+  }
 
   // Reset the noData registry — silent re-fill will only consider noData
   // fields from this fresh run, not stale ones from a previous session.
@@ -490,8 +634,13 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
 
   for (const { element, signals, match, hasExistingValue, debugFieldId } of matchesToFill) {
     if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
+    const record = fieldRecords.get(element)!;
+    Object.assign(record.rule, { layer: match.matchLayer, confidence: match.confidence, ...(match.fieldPath ? { profilePath: match.fieldPath } : {}) });
     // Merge mode: skip pre-filled fields that would otherwise be overwritten.
-    if (mode === 'merge' && (hasExistingValue || getFieldValue(element).trim() !== '')) {
+    if (mode === 'merge' && (record.outcome === 'kept' || hasExistingValue || getFieldValue(element).trim() !== '')) {
+      record.outcome = 'kept';
+      record.rule.outcome = 'kept';
+      record.reason = 'existing_value';
       // For debug: pre-filled merge skip is reported as the would-have-been state.
       debugMapping.push({
         fieldId: debugFieldId, matchLayer: match.matchLayer, confidence: match.confidence,
@@ -526,6 +675,9 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
 
       if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
       if (!filled) {
+        record.rule.outcome = 'failed';
+        record.outcome = 'failed';
+        record.reason = 'fill_failed';
         ownedElements.splice(ownedElements.indexOf(element), 1);
         // Reconstruction failed (corrupt base64, etc.). Log already emitted by
         // fillFileField; silently skip this element so the rest of the run
@@ -538,6 +690,9 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       }
 
       applyHighlight(element, match.confidence); // green >=CONF_GREEN, yellow CONF_FILL–0.84
+      record.rule.outcome = 'filled';
+      record.outcome = match.confidence >= CONF_GREEN ? 'high_confidence' : 'review';
+      record.source = 'rules';
 
       if (match.confidence >= CONF_GREEN) {
         result.noReview++;
@@ -555,6 +710,8 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       }
 
     } else if (match.confidence < CONF_FILL) {
+      record.rule.outcome = 'not_matched';
+      record.outcome = 'not_matched';
       // Low or no confidence — red highlight; left for manual resolution.
       applyHighlight(element, 0);
       result.lowConfidence++;
@@ -565,6 +722,8 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       finalState = 'red';
 
     } else {
+      record.rule.outcome = 'missing_data';
+      record.outcome = 'missing_data';
       // confidence >= 0.60 but profile value is empty — nothing to write.
       // No highlight; the user can type the value in directly.
       result.noData++;
@@ -600,7 +759,16 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   const aiStates = new Map<HTMLElement, 'green' | 'yellow'>();
   let aiStatus: AIAutofillStatus | undefined;
   const aiRan = await runAIAutofill(aiTextCandidates, profile, result, ownedElements, debugAI, {
-    mode, isActive, onTextFilled: (element, state) => aiStates.set(element, state),
+    mode, isActive, fieldRecords, radioGroups: pendingRadioGroups, checkboxGroups: pendingCheckboxGroups,
+    onTextFilled: (element, state) => {
+      aiStates.set(element, state);
+      const record = fieldRecords.get(element);
+      if (record) {
+        record.ai.outcome = record.rule.outcome === 'filled' ? 'refined' : 'filled';
+        record.outcome = state === 'green' ? 'high_confidence' : 'review';
+        record.source = 'ai';
+      }
+    },
     onStatus: status => { aiStatus = status; },
   });
   if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
@@ -610,6 +778,12 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   noDataFields = noDataFields.filter((entry) => !aiStates.has(entry.element));
   if (noDataFields.length === 0) teardownVisibilityListener();
   result.aiStatus = aiStatus ?? (aiRan ? 'not_needed' : 'unavailable');
+  if (fillLog) {
+    fillLog.aiStatus = result.aiStatus;
+    fillLog.status = 'completed';
+    fillLog.completedAt = Date.now();
+    syncFillLogResult(result);
+  }
 
   // Strip pre-AI entries for elements AI confirmed green. Without this, an
   // AI-filled green field would still get a blur watcher for its stale
@@ -640,6 +814,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   // place by those callbacks, so the reference remains accurate after they run.
   lastResult = result;
 
+  attachReportWatchers();
   attachEditWatchers(editableFields, result, domain, profile);
 
   return result;

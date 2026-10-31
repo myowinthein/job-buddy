@@ -2,6 +2,8 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 
+vi.mock('@/src/fill-log/client', () => ({ openFillLog: vi.fn().mockResolvedValue(undefined) }));
+
 vi.mock('@/src/utils/storage', () => ({
   getProfile: vi.fn().mockResolvedValue({ personal: { firstName: 'Jane', lastName: 'Doe', email: 'jane@x.com' } }),
   getGeminiApiKey: vi.fn().mockResolvedValue('fake-key'),
@@ -49,6 +51,7 @@ const { sendMessageMock, getAllFramesMock, tabsQueryMock, executeScriptMock } = 
 });
 
 import App from '@/entrypoints/popup/App';
+import { openFillLog } from '@/src/fill-log/client';
 import { getProfile, getGeminiApiKey } from '@/src/utils/storage';
 import type { Profile } from '@/src/types/profile';
 import type { AIAutofillStatus } from '@/src/autofill/ai';
@@ -115,7 +118,7 @@ describe('popup App — active content-script re-injection', () => {
     });
 
     renderApp();
-    await waitFor(() => expect(screen.getByText('(3)')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('3 fields filled')).toBeTruthy());
   });
 });
 
@@ -130,8 +133,8 @@ describe('popup App — GET_STATUS frame aggregation on mount', () => {
     });
 
     renderApp();
-    // Combined totalScanned = 3 + 2 = 5, noReview = 2 + 1 = 3 -> "Filled (3)"
-    await waitFor(() => expect(screen.getByText('(3)')).toBeTruthy());
+    // Both frames contribute to the compact filled count.
+    await waitFor(() => expect(screen.getByText('3 fields filled')).toBeTruthy());
   });
 
   it('requires AI setup without a key while keeping previous results and Undo available', async () => {
@@ -153,7 +156,7 @@ describe('popup App — GET_STATUS frame aggregation on mount', () => {
     });
 
     renderApp();
-    await waitFor(() => expect(screen.getByText('(5)')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('5 fields filled')).toBeTruthy());
   });
 
   it('stays idle (no crash) when every frame rejects', async () => {
@@ -161,6 +164,23 @@ describe('popup App — GET_STATUS frame aggregation on mount', () => {
     renderApp();
     await screen.findByRole('button', { name: 'Fill Form' });
     expect(screen.queryByText('Undo')).toBeNull();
+  });
+
+  it('keeps every frame in the latest run and excludes older or legacy results', async () => {
+    getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 3 }, { frameId: 7 }, { frameId: 9 }]);
+    const replies = [
+      { ...statusResult({ noReview: 8, totalScanned: 8 }), runId: 'old', startedAt: 100 },
+      { ...statusResult({ noReview: 2, kept: 1, failed: 1, totalScanned: 4 }), runId: 'latest', startedAt: 200 },
+      { ...statusResult({ noReview: 1, excluded: 1, totalScanned: 2 }), runId: 'latest', startedAt: 201 },
+      statusResult({ noReview: 5, totalScanned: 5 }),
+    ];
+    sendMessageMock.mockImplementation((_id, message, options) => Promise.resolve(
+      message.action === 'GET_STATUS' ? replies[[0, 3, 7, 9].indexOf(options.frameId)] : null,
+    ));
+    renderApp();
+    expect(await screen.findByText('3 fields filled')).toBeTruthy();
+    expect(screen.getByText('1 field still needs your input.')).toBeTruthy();
+    expect(screen.getByText('1 existing answer kept.')).toBeTruthy();
   });
 
   it('reports an unavailable AI pass even when another frame succeeds', async () => {
@@ -205,7 +225,7 @@ describe('popup App — handleAutofill scan orchestration', () => {
     renderApp();
     fireEvent.click(await screen.findByRole('button', { name: 'Fill Form' }));
     expect(screen.queryByText('This form already has data filled in.')).toBeNull();
-    await waitFor(() => expect(screen.getByText('(4)')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('4 fields filled')).toBeTruthy());
   });
 
   it('confirming the dialog dispatches fill with the selected mode and merges the result', async () => {
@@ -223,7 +243,7 @@ describe('popup App — handleAutofill scan orchestration', () => {
     await screen.findByText('This form already has data filled in.');
     fireEvent.click(screen.getByRole('button', { name: 'Fill Form' })); // default fillMode is 'merge'
 
-    await waitFor(() => expect(screen.getByText('(2)')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('2 fields filled')).toBeTruthy());
   });
 
   it('shows an error state when no active tab can be found', async () => {
@@ -251,42 +271,23 @@ describe('popup App — handleAutofill scan orchestration', () => {
   });
 });
 
-describe('popup App — openDebugPanel', () => {
-  it('picks the frame session with the highest green+yellow+red+gray total, opened via shift-click', async () => {
-    getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 5 }]);
-    sendMessageMock.mockImplementation((_tabId, message, opts) => {
-      if (message.action === 'GET_STATUS') {
-        if (opts.frameId === 0) return Promise.resolve(statusResult({ noReview: 1, totalScanned: 1 }));
-        return Promise.reject(new Error('no listener'));
-      }
-      if (message.action === 'GET_DEBUG_SESSION') {
-        if (opts.frameId === 0) {
-          return Promise.resolve({
-            timestamp: 1, scanner: [], mapping: [], ai: [],
-            summary: { green: 1, yellow: 0, red: 0, gray: 0 }, // total 1
-            aiSkipped: true,
-          });
-        }
-        if (opts.frameId === 5) {
-          return Promise.resolve({
-            timestamp: 2, scanner: [],
-            mapping: [{ fieldId: 'f1', matchLayer: 'dictionary_exact', confidence: 0.9, profilePath: 'personal.firstName', finalState: 'green' }],
-            ai: [],
-            summary: { green: 2, yellow: 1, red: 0, gray: 0 }, // total 3, higher
-            aiSkipped: true,
-          });
-        }
-      }
-      return Promise.reject(new Error('n/a'));
-    });
-
+describe('popup App — Fill Log access', () => {
+  it('opens the full-page log for the original application tab', async () => {
+    sendMessageMock.mockResolvedValue(statusResult({ noReview: 3, totalScanned: 3 }));
     renderApp();
-    await screen.findByText('Undo'); // confirms autofillState === 'success' before shift-clicking
-    fireEvent.click(screen.getByAltText('Job Buddy'), { shiftKey: true });
+    fireEvent.click(await screen.findByRole('button', { name: 'View Fill Log →' }));
+    expect(openFillLog).toHaveBeenCalledWith(123);
+    expect(sendMessageMock.mock.calls.some(([, message]) => message.action === 'GET_DEBUG_SESSION')).toBe(false);
+  });
 
-    // Frame 5's session (total 3) is chosen over frame 0's (total 1) — its
-    // one mapping entry renders as "1 field", not frame 0's "0 fields".
-    expect(await screen.findByText('1 field')).toBeTruthy();
+  it('reports a failed log open without losing Fill Form and Undo', async () => {
+    vi.mocked(openFillLog).mockRejectedValueOnce(new Error('could not open'));
+    sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }));
+    renderApp();
+    fireEvent.click(await screen.findByRole('button', { name: 'View Fill Log →' }));
+    expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'Could not open the fill log. Please try again.');
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Fill Form' })).toBeTruthy();
   });
 });
 
@@ -400,10 +401,11 @@ it('does not ask for another AI key when a saved key exists but the fill did not
   expect(screen.getByRole('banner').querySelector('svg')).toBeNull();
   expect(screen.getByRole('button', { name: 'Fill Form' }).querySelector('svg')).not.toBeNull();
   expect(screen.queryByRole('button', { name: 'Dismiss AI suggestion' })).toBeNull();
-  expect(screen.getByText('High confidence')).toBeTruthy();
-  expect(screen.getByText('Review value')).toBeTruthy();
-  expect(screen.getByText('Not matched')).toBeTruthy();
-  expect(screen.getByText('Missing profile data')).toBeTruthy();
+  expect(screen.getByText('3 fields filled')).toBeTruthy();
+  expect(screen.getByText(/1 filled value needs review/)).toBeTruthy();
+  expect(screen.getByText(/2 fields still need your input/)).toBeTruthy();
+  expect(screen.queryByText('High confidence')).toBeNull();
+  expect(screen.getByRole('button', { name: 'View Fill Log →' })).toBeTruthy();
   expect(screen.getByRole('status').textContent).toBe('3 filled, 1 to review, 2 not filled.');
   expect(screen.queryByText(/choose a value|No Review/)).toBeNull();
 });
@@ -585,7 +587,7 @@ it('keeps legacy fill results available without warning about unknown AI outcome
   renderApp();
   await screen.findByRole('button', { name: 'Undo' });
   expect(screen.queryByRole('alert')).toBeNull();
-  expect(screen.getByText('Review the filled details before submitting.')).toBeTruthy();
+  expect(screen.getByText('Review your answers before submitting.')).toBeTruthy();
 });
 
 it('can undo previous fills after the key is removed', async () => {

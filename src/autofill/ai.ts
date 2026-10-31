@@ -16,6 +16,7 @@ import { getGeminiApiKey, getGeminiModel } from '../utils/storage';
 import { isSkippableOption } from './normalizer';
 import type { DebugAIField } from './debug';
 import type { AutofillResult } from './index';
+import type { AIOutcome, FillLogField } from './fillLog';
 
 // Mutable result shape — the subset of AutofillResult's fields that AI updates
 type MutableResult = Pick<AutofillResult, 'noReview' | 'needReview' | 'lowConfidence' | 'noData'>;
@@ -48,6 +49,9 @@ export interface AIAutofillOptions {
   isActive?: () => boolean;
   onTextFilled?: (element: HTMLElement, state: 'green' | 'yellow') => void;
   onStatus?: (status: AIAutofillStatus) => void;
+  fieldRecords?: Map<HTMLElement, FillLogField>;
+  radioGroups?: RadioGroup[];
+  checkboxGroups?: CheckboxGroup[];
 }
 
 // Returns legacy setup availability. onStatus reports the actual request outcome.
@@ -80,9 +84,13 @@ export async function runAIAutofill(
   const eligible = (group: RadioGroup | CheckboxGroup) =>
     !group.isConsent &&
     !isConsentGroup(group) &&
-    !(options.mode === 'merge' && group.options.some((option) => option.element.checked));
-  const radioGroups = scanRadioGroups().filter(eligible);
-  const checkboxGroups = scanCheckboxGroups().filter(eligible);
+    !(options.mode === 'merge' && group.options.some((option) => option.element.checked)) &&
+    !group.options.some(option => {
+      const record = options.fieldRecords?.get(option.element);
+      return record && ['high_confidence', 'kept', 'excluded'].includes(record.outcome);
+    });
+  const radioGroups = (options.radioGroups ?? scanRadioGroups()).filter(eligible);
+  const checkboxGroups = (options.checkboxGroups ?? scanCheckboxGroups()).filter(eligible);
 
   type Candidate =
     | AITextCandidate
@@ -101,9 +109,15 @@ export async function runAIAutofill(
   }
 
   const candidateMap = new Map<string, Candidate>();
+  const candidateRecords = new Map<string, FillLogField>();
   const payload: AIFieldPayload[] = candidates.map((c, i) => {
     const fieldId = `field_${String(i + 1).padStart(3, '0')}`;
     candidateMap.set(fieldId, c);
+    const record = options.fieldRecords?.get(c.type === 'text' ? c.element : c.group.options[0].element);
+    if (record) {
+      record.ai.outcome = 'sent';
+      candidateRecords.set(fieldId, record);
+    }
 
     if (c.type === 'text') {
       const s = c.signals;
@@ -144,6 +158,7 @@ export async function runAIAutofill(
   try {
     responses = await resolveFieldsWithAI(apiKey, model, payload, profile as object);
   } catch {
+    for (const record of candidateRecords.values()) record.ai.outcome = 'failed';
     options.onStatus?.('unavailable');
     return true; // Keep the legacy availability result; report failure separately.
   }
@@ -155,7 +170,21 @@ export async function runAIAutofill(
     aiResult: string | null,
     aiConfidence: 'high' | 'low' | null,
     finalState: 'green' | 'yellow' | 'unchanged',
+    aiOutcome?: AIOutcome,
   ) => {
+    const record = candidateRecords.get(fieldId);
+    if (record) {
+      record.ai.confidence = aiConfidence;
+      if (finalState === 'unchanged') {
+        record.ai.outcome = aiOutcome ?? 'not_matched';
+        if (aiOutcome === 'missing_data' && record.rule.outcome !== 'filled') record.outcome = 'missing_data';
+        if (aiOutcome === 'fill_failed' && record.rule.outcome !== 'filled') { record.outcome = 'failed'; record.reason = 'fill_failed'; }
+      } else {
+        record.ai.outcome = record.rule.outcome === 'filled' ? 'refined' : 'filled';
+        record.outcome = finalState === 'green' ? 'high_confidence' : 'review';
+        record.source = 'ai';
+      }
+    }
     if (!debug) return;
     const label =
       candidate.type === 'text' ? bestLabel(candidate.signals) : candidate.group.groupLabel;
@@ -180,7 +209,12 @@ export async function runAIAutofill(
     handled.add(resp.fieldId);
     const candidate = candidateMap.get(resp.fieldId);
     if (!candidate) continue;
-    if (candidate.type !== 'text' && !eligible(candidate.group)) continue;
+    const tracked = candidateRecords.get(resp.fieldId);
+    if (tracked && resp.profilePath) tracked.ai.profilePath = resp.profilePath;
+    if (candidate.type !== 'text' && !eligible(candidate.group)) {
+      if (tracked) { tracked.ai.outcome = 'skipped'; tracked.outcome = 'manual'; tracked.source = 'manual'; tracked.reason = 'value_changed'; }
+      continue;
+    }
     const fieldId = resp.fieldId;
 
     if (resp.confidence === null) {
@@ -212,12 +246,15 @@ export async function runAIAutofill(
         isSelect && resp.selectedOption ? resp.selectedOption : (resp.profilePath ?? null);
 
       if (!value) {
-        recordDebug(candidate, fieldId, aiResult, resp.confidence, 'unchanged');
+        recordDebug(candidate, fieldId, aiResult, resp.confidence, 'unchanged', 'missing_data');
         continue;
       }
 
       const liveValue = readFieldValue(candidate.element);
-      if (liveValue !== valuesAtRequest.get(candidate.element)) continue;
+      if (liveValue !== valuesAtRequest.get(candidate.element)) {
+        if (tracked) { tracked.ai.outcome = 'skipped'; tracked.outcome = liveValue.trim() ? 'manual' : 'not_matched'; tracked.source = 'manual'; tracked.reason = 'value_changed'; }
+        continue;
+      }
       if (options.mode === 'merge' && candidate.originalState !== 'needReview' && liveValue.trim())
         continue;
       const alreadyOwned = sessionElements.includes(candidate.element);
@@ -230,7 +267,7 @@ export async function runAIAutofill(
       if (!isActive()) break;
       if (filled === false) {
         if (!alreadyOwned) sessionElements.splice(sessionElements.indexOf(candidate.element), 1);
-        recordDebug(candidate, fieldId, aiResult, resp.confidence, 'unchanged');
+        recordDebug(candidate, fieldId, aiResult, resp.confidence, 'unchanged', 'fill_failed');
         continue;
       }
       applyHighlight(candidate.element, confScore);
@@ -303,6 +340,7 @@ export async function runAIAutofill(
     }
   }
 
+  for (const record of candidateRecords.values()) if (record.ai.outcome === 'sent') record.ai.outcome = 'no_response';
   options.onStatus?.('succeeded');
   return true;
 }

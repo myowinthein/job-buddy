@@ -8,6 +8,7 @@ vi.mock('@/src/autofill/index', () => ({
   undoAutofill: vi.fn(),
   getLastResult: vi.fn(),
   getDebugSession: vi.fn(),
+  getFillLog: vi.fn(),
 }));
 
 // entrypoints/content.ts calls the WXT-auto-imported `defineContentScript` at
@@ -24,7 +25,7 @@ const { onMessageAddListener } = vi.hoisted(() => {
 
 import contentScript from '@/entrypoints/content';
 import {
-  scanAutofill, executeAutofill, undoAutofill, getLastResult, getDebugSession,
+  scanAutofill, executeAutofill, undoAutofill, getLastResult, getDebugSession, getFillLog,
 } from '@/src/autofill/index';
 
 import { getGeminiSettings } from '@/src/utils/storage';
@@ -67,6 +68,26 @@ describe('content script — message dispatcher', () => {
     getListener()({ action: 'AUTOFILL_SCAN' }, {}, sendResponse);
 
     await vi.waitFor(() => expect(sendResponse).toHaveBeenCalledWith({ error: 'autofill_failed' }));
+  });
+
+  it('forwards a shared run ID to the scan without changing the two-phase flow', async () => {
+    vi.mocked(scanAutofill).mockResolvedValue({ preFilledCount: 0, totalMatched: 1 });
+    const response = vi.fn();
+    getListener()({ action: 'AUTOFILL_SCAN', runId: 'shared-run' }, {}, response);
+    await vi.waitFor(() => expect(scanAutofill).toHaveBeenCalledWith('shared-run'));
+    expect(executeAutofill).not.toHaveBeenCalled();
+  });
+
+  it('reads the latest log without requiring credentials or initiating a scan or fill', () => {
+    vi.mocked(getGeminiSettings).mockRejectedValue(new Error('no key'));
+    vi.mocked(getFillLog).mockReturnValue(null);
+    const response = vi.fn();
+    expect(getListener()({ action: 'GET_FILL_LOG' }, {}, response)).toBe(true);
+    expect(response).toHaveBeenCalledWith(null);
+    expect(getFillLog).toHaveBeenCalledOnce();
+    expect(getGeminiSettings).not.toHaveBeenCalled();
+    expect(scanAutofill).not.toHaveBeenCalled();
+    expect(executeAutofill).not.toHaveBeenCalled();
   });
 
   it('routes AUTOFILL_FILL with mode "merge" through unchanged', async () => {

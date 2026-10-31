@@ -4,6 +4,7 @@ import {
   undoAutofill,
   getLastResult,
   getDebugSession,
+  getFillLog,
 } from '@/src/autofill/index';
 import { getGeminiSettings } from '@/src/utils/storage';
 
@@ -54,7 +55,7 @@ export default defineContentScript({
 
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message.action === 'AUTOFILL_SCAN') {
-        withAISetup(scanAutofill)
+        withAISetup(() => scanAutofill(typeof message.runId === 'string' ? message.runId : undefined))
           .then(sendResponse)
           .catch((err) => {
             console.error('[Job Buddy] AUTOFILL_SCAN failed:', err);
@@ -87,6 +88,11 @@ export default defineContentScript({
 
       if (message.action === 'GET_DEBUG_SESSION') {
         sendResponse(getDebugSession());
+        return true;
+      }
+
+      if (message.action === 'GET_FILL_LOG') {
+        sendResponse(getFillLog());
         return true;
       }
     });

@@ -4,8 +4,7 @@ import { getProfile, getGeminiApiKey } from '@/src/utils/storage';
 import { LOGO_ICON_SRC } from '@/src/utils/branding';
 import { sessionSet } from '@/src/utils/sessionStorage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
-import type { DebugSession } from '@/src/autofill/debug';
-import { DebugPanel } from './DebugPanel';
+import { openFillLog } from '@/src/fill-log/client';
 import { FIELD_DEFS } from '@/src/resume-ai/parser';
 import type { AIAutofillStatus } from '@/src/autofill/ai';
 
@@ -16,6 +15,11 @@ interface AutofillResult {
   noData: number;
   totalScanned: number;
   aiStatus?: AIAutofillStatus | 'unknown';
+  kept?: number;
+  excluded?: number;
+  failed?: number;
+  runId?: string;
+  startedAt?: number;
 }
 
 // Actively (re-)injects the content script into every given frame before
@@ -74,10 +78,12 @@ async function sendToAllFrames(tabId: number, message: object): Promise<unknown[
 // Aggregate every frame; one failed AI pass must remain visible even when
 // another frame completed successfully. Legacy results cannot prove AI success.
 function mergeAutofillResults(results: unknown[]): AutofillResult | null {
-  const valid = results.filter(
+  const available = results.filter(
     (r): r is AutofillResult => !!r && typeof (r as AutofillResult).totalScanned === 'number',
   );
-  if (!valid.length) return null;
+  if (!available.length) return null;
+  const latest = available.filter(r => r.runId && typeof r.startedAt === 'number').reduce<AutofillResult | null>((a, b) => !a || b.startedAt! > a.startedAt! ? b : a, null);
+  const valid = latest ? available.filter(r => r.runId === latest.runId) : available;
   const statuses = valid
     .filter((r) => r.totalScanned > 0)
     .map((r) =>
@@ -99,9 +105,12 @@ function mergeAutofillResults(results: unknown[]): AutofillResult | null {
       lowConfidence: acc.lowConfidence + r.lowConfidence,
       noData: acc.noData + r.noData,
       totalScanned: acc.totalScanned + r.totalScanned,
+      kept: (acc.kept ?? 0) + (r.kept ?? 0),
+      excluded: (acc.excluded ?? 0) + (r.excluded ?? 0),
+      failed: (acc.failed ?? 0) + (r.failed ?? 0),
       aiStatus,
     }),
-    { noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0, aiStatus },
+    { noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0, aiStatus, kept: 0, excluded: 0, failed: 0 },
   );
 }
 
@@ -137,8 +146,8 @@ function App() {
   const [keyLoading, setKeyLoading] = useState(true);
   const [keyReadFailed, setKeyReadFailed] = useState(false);
   const [hasGeminiKey, setHasGeminiKey] = useState<boolean | null>(null);
-  const [debugSession, setDebugSession] = useState<DebugSession | null>(null);
-  const [debugOpen, setDebugOpen] = useState(false);
+  const sourceTabId = useRef<number | null>(null);
+  const [logOpenFailed, setLogOpenFailed] = useState(false);
   const fillButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -183,6 +192,7 @@ function App() {
   const sendToActiveTab = useCallback(async (message: object): Promise<unknown[]> => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error('No active tab found');
+    sourceTabId.current = tab.id;
     return sendToAllFrames(tab.id, message);
   }, []);
 
@@ -213,24 +223,12 @@ function App() {
     }
   };
 
-  // Lazily fetch the debug session from the content script when the user opens
-  // the panel — keeps the popup's initial render cheap.
-  const openDebugPanel = async () => {
+  const openLog = async () => {
+    setLogOpenFailed(false);
     try {
-      const responses = await sendToActiveTab({ action: 'GET_DEBUG_SESSION' });
-      const sessions = responses.filter((s): s is DebugSession => !!s);
-      // Multiple frames can each have their own session (e.g. an ATS iframe
-      // plus the mostly-empty top page) — surface whichever scanned the most
-      // fields, since that's the frame actually holding the form.
-      if (sessions.length > 0) {
-        const total = (s: DebugSession) =>
-          s.summary.green + s.summary.yellow + s.summary.red + s.summary.gray;
-        setDebugSession(sessions.reduce((a, b) => (total(b) > total(a) ? b : a)));
-      }
-    } catch {
-      /* content script absent */
-    }
-    setDebugOpen(true);
+      if (sourceTabId.current === null) throw new Error('No source tab');
+      await openFillLog(sourceTabId.current);
+    } catch { setLogOpenFailed(true); }
   };
 
   // On mount: restore the last fill and load the AI setup state.
@@ -288,6 +286,7 @@ function App() {
       }
       const scanResponses = (await sendToActiveTab({
         action: 'AUTOFILL_SCAN',
+        runId: crypto.randomUUID(),
       })) as AutofillScanResult[];
       if (applySetupError(scanResponses)) {
         setAutofillState(autofillResult ? 'success' : 'idle');
@@ -339,6 +338,7 @@ function App() {
 
   const { percentage, isCoreComplete } = completion;
   const busy = autofillState === 'loading';
+  const unfilledCount = autofillResult ? autofillResult.lowConfidence + autofillResult.noData + (autofillResult.failed ?? 0) : 0;
   const aiWarning =
     autofillResult?.aiStatus === 'unavailable'
       ? 'AI assistance was unavailable. Review the filled details carefully.'
@@ -354,12 +354,12 @@ function App() {
           role={autofillState === 'success' ? 'button' : undefined}
           tabIndex={autofillState === 'success' ? 0 : undefined}
           onClick={(e) => {
-            if (e.shiftKey && autofillState === 'success') openDebugPanel();
+            if (e.shiftKey && autofillState === 'success') void openLog();
           }}
           onKeyDown={(e) => {
             if (e.shiftKey && (e.key === 'Enter' || e.key === ' ') && autofillState === 'success') {
               e.preventDefault();
-              openDebugPanel();
+              void openLog();
             }
           }}
         />
@@ -565,21 +565,13 @@ function App() {
                 </button>
               )}
             </div>
-            {autofillState === 'success' &&
-              !!autofillResult &&
-              autofillResult.noReview + autofillResult.needReview > 0 &&
-              !aiWarning && (
-                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                  Review the filled details before submitting.
-                </p>
-              )}
           </>
         )}
         <p role="status" className="sr-only">
           {busy
             ? 'Filling form…'
             : autofillState === 'success' && autofillResult
-              ? `${autofillResult.noReview + autofillResult.needReview} filled, ${autofillResult.needReview} to review, ${autofillResult.lowConfidence + autofillResult.noData} not filled.`
+              ? `${autofillResult.noReview + autofillResult.needReview} filled, ${autofillResult.needReview} to review, ${autofillResult.lowConfidence + autofillResult.noData + (autofillResult.failed ?? 0)} not filled.`
               : ''}
         </p>
       </div>
@@ -629,52 +621,35 @@ function App() {
                 </a>
               </div>
             ) : (
-              <section
-                aria-label="Fill results"
-                className="rounded-lg border border-gray-200 px-3 dark:border-gray-700"
-              >
-                <p className="flex items-center justify-between pb-1 pt-3 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                  <span>Filled</span>
-                  <span>({autofillResult.noReview + autofillResult.needReview})</span>
+              <section aria-label="Fill results" className="text-sm">
+                <p className="font-semibold">
+                  {autofillResult.noReview + autofillResult.needReview} field{autofillResult.noReview + autofillResult.needReview === 1 ? '' : 's'} filled
                 </p>
-                <ResultRow
-                  symbol="✓"
-                  color="text-green-700 dark:text-green-400"
-                  label="High confidence"
-                  count={autofillResult.noReview}
-                  description="Filled with a confident match."
-                />
-                <ResultRow
-                  symbol="⚠"
-                  color="text-amber-700 dark:text-amber-400"
-                  label="Review value"
-                  count={autofillResult.needReview}
-                  description="Check the yellow fields on the page."
-                />
-                <p className="flex items-center justify-between border-t border-gray-200 pb-1 pt-3 text-xs font-semibold text-gray-600 dark:border-gray-700 dark:text-gray-300">
-                  <span>Not filled</span>
-                  <span>({autofillResult.lowConfidence + autofillResult.noData})</span>
+                <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                  {autofillResult.needReview > 0 && (
+                    <span className="text-amber-700 dark:text-amber-400">
+                      {autofillResult.needReview} filled value{autofillResult.needReview === 1 ? ' needs' : 's need'} review.{' '}
+                    </span>
+                  )}
+                  {unfilledCount > 0
+                    ? `${unfilledCount} field${unfilledCount === 1 ? ' still needs' : 's still need'} your input.`
+                    : 'Review your answers before submitting.'}
                 </p>
-                <ResultRow
-                  symbol="✗"
-                  color="text-red-600 dark:text-red-400"
-                  label="Not matched"
-                  count={autofillResult.lowConfidence}
-                  description="Enter these values manually."
-                />
-                <ResultRow
-                  symbol="○"
-                  color="text-gray-500 dark:text-gray-400"
-                  label="Missing profile data"
-                  count={autofillResult.noData}
-                  description="No saved value. Enter these manually."
-                />
+                {!!autofillResult.kept && (
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    {autofillResult.kept} existing answer{autofillResult.kept === 1 ? '' : 's'} kept.
+                  </p>
+                )}
               </section>
             ))}
+          {autofillState === 'success' && (
+            <button type="button" onClick={() => void openLog()}
+              className="mt-3 rounded-sm text-xs font-medium text-blue-700 hover:underline dark:text-blue-400">
+              View Fill Log →
+            </button>
+          )}
+          {logOpenFailed && <p role="alert" className="mt-2 text-xs text-red-700 dark:text-red-400">Could not open the fill log. Please try again.</p>}
         </div>
-      )}
-      {debugOpen && debugSession && (
-        <DebugPanel session={debugSession} onClose={() => setDebugOpen(false)} />
       )}
     </div>
   );
@@ -684,32 +659,5 @@ const primaryButton =
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50';
 const secondaryButton =
   'inline-flex min-h-11 items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800';
-
-function ResultRow({
-  symbol,
-  color,
-  label,
-  count,
-  description,
-}: {
-  symbol: string;
-  color: string;
-  label: string;
-  count: number;
-  description: string;
-}) {
-  return (
-    <div className="grid grid-cols-[16px_1fr_auto] gap-x-2 py-2 text-xs">
-      <span aria-hidden="true" className={`font-semibold ${color}`}>
-        {symbol}
-      </span>
-      <span className="font-medium">{label}</span>
-      <span className="font-semibold tabular-nums">{count}</span>
-      <p className="col-start-2 col-end-4 mt-1 leading-relaxed text-gray-500 dark:text-gray-400">
-        {description}
-      </p>
-    </div>
-  );
-}
 
 export default App;

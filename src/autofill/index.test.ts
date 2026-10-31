@@ -44,7 +44,7 @@ vi.mock('./ai', () => ({ runAIAutofill: vi.fn().mockResolvedValue(false) }));
 
 import { scanAutofill, executeAutofill, undoAutofill, getLastResult, EMPTY_AUTOFILL_RESULT } from './index';
 import { getProfile, saveLearnedMappings } from '../utils/storage';
-import { scanFields, scanAriaFields, scanCheckboxGroups } from './scanner';
+import { scanFields, scanAriaFields, scanCheckboxGroups, scanRadioGroups } from './scanner';
 import { mapField } from './mapper';
 import { clearFieldValue, fillField, fillCheckboxInput, fillFileField } from './filler';
 import { clearElementHighlight, clearHighlights, applyHighlight } from './highlighter';
@@ -73,6 +73,8 @@ beforeEach(() => {
   vi.mocked(getProfile).mockResolvedValue(makeProfile());
   vi.mocked(scanFields).mockReturnValue([]);
   vi.mocked(scanAriaFields).mockReturnValue([]);
+  vi.mocked(scanCheckboxGroups).mockReturnValue([]);
+  vi.mocked(scanRadioGroups).mockReturnValue([]);
   vi.mocked(mapField).mockReturnValue({ confidence: 0.9, value: 'Jane', fieldPath: 'personal.firstName', matchLayer: 'learned' });
 });
 
