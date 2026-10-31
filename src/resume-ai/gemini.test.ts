@@ -467,3 +467,43 @@ describe('resume model fallback and response validation', () => {
     return expect(extractFromResume('key', 'gemini-3.8-flash', 'pdf', 'application/pdf', {})).rejects.toMatchObject({ code: 'parse' });
   });
 });
+
+it.each(['resume', 'uncertain', undefined, null] as const)(
+  'separates %s document assessment from profile data in the same request',
+  async (documentType) => {
+    fetchMock.mockResolvedValueOnce(
+      geminiTextResponse(JSON.stringify({ documentType, personal: { firstName: 'Jane' } })),
+    );
+    const assessment = vi.fn();
+    const profile = await extractFromResume(
+      'key',
+      'gemini-3.8-flash',
+      'pdf',
+      'application/pdf',
+      {},
+      undefined,
+      [],
+      undefined,
+      assessment,
+    );
+    expect(assessment).toHaveBeenCalledWith(documentType ?? 'uncertain');
+    expect(profile).toMatchObject({ personal: { firstName: 'Jane' } });
+    expect(profile).not.toHaveProperty('documentType');
+    expect(fetchMock).toHaveBeenCalledOnce();
+  },
+);
+it('stops a clear non-resume before validating or returning its personal fields, without model fallback', async () => {
+  fetchMock.mockResolvedValueOnce(
+    geminiTextResponse(JSON.stringify({ documentType: 'other', personal: { email: 42 } })),
+  );
+  await expect(
+    extractFromResume('key', 'gemini-3.8-flash', 'pdf', 'application/pdf', {}),
+  ).rejects.toMatchObject({ code: 'not_resume' });
+  expect(fetchMock).toHaveBeenCalledOnce();
+});
+it('rejects invalid assessment metadata rather than silently assuming a resume', async () => {
+  fetchMock.mockResolvedValueOnce(geminiTextResponse('{"documentType":"probably","personal":{}}'));
+  await expect(
+    extractFromResume('key', 'gemini-3.8-flash', 'pdf', 'application/pdf', {}),
+  ).rejects.toMatchObject({ code: 'parse' });
+});

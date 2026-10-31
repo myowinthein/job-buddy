@@ -8,6 +8,8 @@ import { stripMarkdown } from './normalize';
 import { validateResumeProfile } from './validateResume';
 import { buildAutofillPrompt } from './autofillPrompt';
 import { autofillProfilePayload } from './profilePayload';
+import { resumeDocumentType } from './documentAssessment';
+import type { ResumeDocumentType } from './types';
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -134,6 +136,7 @@ export async function extractFromResume(
   signal?: AbortSignal,
   links: string[] = [],
   onAttempt?: (attempt: ResumeModelAttempt) => void,
+  onDocumentType?: (type: ResumeDocumentType) => void,
 ): Promise<Partial<Profile>> {
   // Review compares against the current profile locally; extraction needs only the selected file.
   const prompt = buildPrompt('{}', links);
@@ -166,10 +169,14 @@ export async function extractFromResume(
         let profile: unknown;
         try { profile = JSON.parse(stripMarkdown(text)); }
         catch { throw importError('parse', "Couldn't read the AI response. Try again."); }
-        try { return { profile: validateResumeProfile(profile) }; }
+        const documentType = resumeDocumentType(profile);
+        try { return { profile: validateResumeProfile(profile), documentType }; }
         catch { throw importError('parse', 'AI returned invalid profile data. Try analyzing the resume again.'); }
       }, RESUME_REQUEST_TIMEOUT_MS);
-      if (result.profile) return result.profile;
+      if (result.profile) {
+        onDocumentType?.(result.documentType!);
+        return result.profile;
+      }
       if (result.error === 'invalid' || result.error === 'permission_denied')
         throw importError('auth', result.error === 'invalid'
           ? 'Your API key is invalid or expired. Check it in Settings.'

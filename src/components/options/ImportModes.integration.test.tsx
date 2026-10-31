@@ -18,6 +18,10 @@ import { DEFAULT_GEMINI_MODEL } from '@/src/resume-ai/types';
 import { extractFromResume } from '@/src/resume-ai/gemini';
 
 vi.mock('@/src/resume-ai/gemini', () => ({ extractFromResume: vi.fn(), validateApiKey: vi.fn() }));
+vi.mock('@/src/resume-ai/validateResumeFile', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/src/resume-ai/validateResumeFile')>()),
+  validateResumeFile: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock('@/src/resume-ai/extractLinks', () => ({ extractLinks: vi.fn().mockResolvedValue([]) }));
 let simulation: DevSimulation | undefined;
 beforeEach(() => {

@@ -230,3 +230,28 @@ describe('inspection and diagnostics', () => {
     expect(log).not.toMatch(/geminiApiKey|driveToken|private|secret|body/);
   });
 });
+
+it('stops a simulated unrelated document through the real extraction path', async () => {
+  start('resume-not-resume');
+  await expect(
+    extractFromResume('simulated-key', DEFAULT_GEMINI_MODEL, 'sample', 'application/pdf', {}),
+  ).rejects.toMatchObject({ code: 'not_resume' });
+});
+it('delivers uncertainty as transient metadata, not as profile content', async () => {
+  start('resume-uncertain');
+  const assessment = vi.fn();
+  const profile = await extractFromResume(
+    'simulated-key',
+    DEFAULT_GEMINI_MODEL,
+    'sample',
+    'application/pdf',
+    {},
+    undefined,
+    [],
+    undefined,
+    assessment,
+  );
+  expect(assessment).toHaveBeenCalledWith('uncertain');
+  expect(profile.personal?.firstName).toBe('Jane');
+  expect(profile).not.toHaveProperty('documentType');
+});

@@ -9,6 +9,10 @@ vi.mock('@/src/utils/storage', () => ({
 vi.mock('@/src/resume-ai/gemini', () => ({
   extractFromResume: vi.fn(),
 }));
+vi.mock('@/src/resume-ai/validateResumeFile', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/src/resume-ai/validateResumeFile')>()),
+  validateResumeFile: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock('@/src/resume-ai/extractLinks', () => ({
   extractLinks: vi.fn().mockResolvedValue([]),
 }));
@@ -17,6 +21,7 @@ import { ToastProvider } from '@/src/components/ui/Toast';
 import { getGeminiApiKey } from '@/src/utils/storage';
 import { extractFromResume } from '@/src/resume-ai/gemini';
 import { extractLinks } from '@/src/resume-ai/extractLinks';
+import { validateResumeFile } from '@/src/resume-ai/validateResumeFile';
 import type { Profile } from '@/src/types/profile';
 
 function renderSection(profile: Partial<Profile> = {}, onSave = vi.fn().mockResolvedValue(undefined)) {
@@ -43,6 +48,7 @@ async function selectFile(file: File) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(validateResumeFile).mockReset().mockResolvedValue(undefined);
   vi.mocked(getGeminiApiKey).mockResolvedValue('fake-key');
 });
 
@@ -383,4 +389,84 @@ it('shows an animated active step without routine model narration', async () => 
   const active = await screen.findByText('Analyzing resume…');
   await waitFor(() => expect(active.parentElement?.querySelector('.animate-spin')).toBeTruthy());
   expect(screen.queryByText(/^Using Gemini/)).toBeNull();
+});
+
+it('blocks renamed text locally before sending a provider request and offers another file', async () => {
+  const real = await vi.importActual<typeof import('@/src/resume-ai/validateResumeFile')>(
+    '@/src/resume-ai/validateResumeFile',
+  );
+  vi.mocked(validateResumeFile).mockImplementationOnce(real.validateResumeFile);
+  vi.mocked(extractFromResume).mockReset();
+  const { onSave } = renderSection();
+  await screen.findByText(/Drop your resume here/);
+  await selectFile(new File(['not a PDF'], 'renamed.pdf', { type: 'application/pdf' }));
+  fireEvent.click(screen.getByText('Analyze Resume'));
+  await screen.findByText('This file could not be read. Choose a valid PDF or DOCX resume.');
+  expect(extractFromResume).not.toHaveBeenCalled();
+  expect(onSave).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Choose Another File' }));
+  expect(screen.getByText(/Drop your resume here/)).toBeTruthy();
+  expect(screen.queryByText('renamed.pdf')).toBeNull();
+});
+it('stops a non-resume document without a review or save action', async () => {
+  vi.mocked(extractFromResume)
+    .mockReset()
+    .mockRejectedValue({
+      code: 'not_resume',
+      message: 'This document doesn’t appear to be a resume. Choose another file.',
+    });
+  const { onSave } = renderSection();
+  await screen.findByText(/Drop your resume here/);
+  await selectFile(pdfFile());
+  fireEvent.click(screen.getByText('Analyze Resume'));
+  await screen.findByText('This document doesn’t appear to be a resume. Choose another file.');
+  expect(screen.queryByText('Try again')).toBeNull();
+  expect(screen.queryByText('Review Changes')).toBeNull();
+  expect(onSave).not.toHaveBeenCalled();
+});
+it('requires confirmation for uncertain documents, then reviews the existing extraction without another request', async () => {
+  vi.mocked(extractFromResume)
+    .mockReset()
+    .mockImplementation(async (...args) => {
+      args[8]?.('uncertain');
+      return { personal: { firstName: 'Alex' } } as Partial<Profile>;
+    });
+  const { onSave } = renderSection();
+  await screen.findByText(/Drop your resume here/);
+  await selectFile(pdfFile());
+  fireEvent.click(screen.getByText('Analyze Resume'));
+  const notice = await screen.findByRole('dialog', { name: 'Check Document' });
+  expect(document.activeElement).toBe(notice);
+  expect(screen.queryByText('Import All')).toBeNull();
+  expect(onSave).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Continue to Review' }));
+  await screen.findByRole('heading', { name: 'Import Resume' });
+  fireEvent.click(screen.getByText('Review Changes'));
+  expect(screen.getByText('Alex')).toBeTruthy();
+  expect(extractFromResume).toHaveBeenCalledOnce();
+});
+it('clears uncertain extraction when choosing another file', async () => {
+  vi.mocked(extractFromResume)
+    .mockReset()
+    .mockImplementationOnce(async (...args) => {
+      args[8]?.('uncertain');
+      return { personal: { firstName: 'Alex' } } as Partial<Profile>;
+    })
+    .mockImplementationOnce(async (...args) => {
+      args[8]?.('resume');
+      return { personal: { firstName: 'Jane' } } as Partial<Profile>;
+    });
+  renderSection();
+  await screen.findByText(/Drop your resume here/);
+  await selectFile(pdfFile('first.pdf'));
+  fireEvent.click(screen.getByText('Analyze Resume'));
+  fireEvent.click(await screen.findByRole('button', { name: 'Choose Another File' }));
+  expect(screen.queryByText('first.pdf')).toBeNull();
+  await selectFile(pdfFile('second.pdf'));
+  fireEvent.click(screen.getByText('Analyze Resume'));
+  await screen.findByRole('heading', { name: 'Import Resume' });
+  fireEvent.click(screen.getByText('Review Changes'));
+  expect(screen.getByText('Jane')).toBeTruthy();
+  expect(screen.queryByText('Alex')).toBeNull();
+  expect(extractFromResume).toHaveBeenCalledTimes(2);
 });

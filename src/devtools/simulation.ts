@@ -230,7 +230,9 @@ export class DevSimulation {
     const text =
       this.scenario.id === 'resume-malformed'
         ? '{"education":"invalid"}'
-        : JSON.stringify(this.extracted);
+        : this.scenario.id === 'resume-not-resume'
+          ? JSON.stringify({ documentType: 'other' })
+          : JSON.stringify({ documentType: this.scenario.id === 'resume-uncertain' ? 'uncertain' : 'resume', ...this.extracted });
     this.lastResponseText = text;
     return json({ candidates: [{ content: { parts: [{ text }] } }] });
   }

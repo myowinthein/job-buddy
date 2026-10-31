@@ -55,6 +55,22 @@ export const SCENARIOS: Scenario[] = [
     action: 'resume',
   },
   {
+    id: 'resume-not-resume',
+    section: 'resume',
+    label: 'Not a resume',
+    description: 'Stop an unrelated document before import review.',
+    page: 'resume',
+    action: 'resume',
+  },
+  {
+    id: 'resume-uncertain',
+    section: 'resume',
+    label: 'Uncertain document',
+    description: 'Confirm review or choose another file when the document purpose is unclear.',
+    page: 'resume',
+    action: 'resume',
+  },
+  {
     id: 'resume-identical',
     section: 'resume',
     label: 'Identical data and file',

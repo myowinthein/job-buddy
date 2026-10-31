@@ -15,6 +15,9 @@ import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 import ImportSummaryDialog from '@/src/components/shared/ImportSummaryDialog';
 import ImportReviewScreen from '@/src/components/shared/ImportReviewScreen';
 import { ImportModeChoice } from '@/src/components/shared/ImportModeChoice';
+import { resumeMimeType as getMimeType, validateResumeFile } from '@/src/resume-ai/validateResumeFile';
+import type { ResumeDocumentType } from '@/src/resume-ai/types';
+import { ResumeDocumentNotice } from './ResumeDocumentNotice';
 import {
   assertImportCurrent,
   initialImportMode,
@@ -37,17 +40,6 @@ const PROGRESS_STEPS: { id: ImportProgressStep; label: string }[] = [
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function getMimeType(file: File): string {
-  if (file.type === 'application/pdf' || file.name.endsWith('.pdf'))
-    return 'application/pdf';
-  if (
-    file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-    file.name.endsWith('.docx')
-  )
-    return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-  throw new Error('Unsupported file type');
-}
-
 function fileToDataUri(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -69,7 +61,7 @@ interface Props {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-type Screen = 'dialog' | 'progress' | 'summary' | 'review' | 'done';
+type Screen = 'dialog' | 'progress' | 'uncertain' | 'summary' | 'review' | 'done';
 
 export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, onClose }: Props) {
   const { showToast }  = useToast();
@@ -157,11 +149,21 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
     onClose();
   }, [onClose]);
 
-  // 'progress' has its own Esc handling above (cancels the in-flight
-  // request); shared summary/review dialogs own their dismissal handlers.
-  // 'dialog' and 'done' reuse the same closeSection
-  // their backdrop click / Done button already use.
-  useEscapeToClose(screen === 'dialog' || screen === 'done' ? closeSection : undefined);
+  const chooseAnotherFile = useCallback(() => {
+    abortControllerRef.current?.abort();
+    setSelectedFile(null);
+    setFileDataUri(null);
+    setExtractedLinks([]);
+    setIncomingProfile({});
+    setChanges([]);
+    setErrorMsg(null);
+    setErrorCode(null);
+    setScreen('dialog');
+  }, []);
+
+  // Progress cancels its request; the upload, document notice, and completion
+  // screens close the import. Shared summary/review dialogs handle dismissal.
+  useEscapeToClose(screen === 'dialog' || screen === 'done' || screen === 'uncertain' ? closeSection : undefined);
 
   const goToSettings = useCallback(() => {
     abortControllerRef.current?.abort();
@@ -199,13 +201,23 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
   const isCurrent = (controller: AbortController) =>
     abortControllerRef.current === controller && !controller.signal.aborted;
 
+  const prepareReview = (incoming: Partial<Profile>) => {
+    const mode = initialImportMode(reviewBase, incoming);
+    setIncomingProfile(incoming);
+    setImportMode(mode);
+    setChanges(buildChanges(reviewBase, incoming, mode));
+    setScreen('summary');
+  };
+
   const runExtractCore = async (dataUri: string, file: File, controller: AbortController, links: string[]) => {
     if (!isCurrent(controller)) return;
     setProgressStep('sending');
+    const assessment: { type: ResumeDocumentType } = { type: 'resume' };
     const extracted = await extractFromResume(
       apiKey!, toGeminiModel(model), dataUri.split(',')[1] ?? '', getMimeType(file),
       profile, controller.signal, links,
       next => { if (isCurrent(controller)) { setAttempt(next); setShowLongWait(false); } },
+      type => { assessment.type = type; },
     );
     if (!isCurrent(controller)) return;
     setProgressStep('processing');
@@ -213,11 +225,10 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
       ...extracted,
       documents: { cv: { file: { name: file.name, size: file.size, base64: dataUri } } },
     };
-    const mode = initialImportMode(reviewBase, incoming);
-    setIncomingProfile(incoming);
-    setImportMode(mode);
-    setChanges(buildChanges(reviewBase, incoming, mode));
-    setScreen('summary');
+    if (assessment.type === 'uncertain') {
+      setIncomingProfile(incoming);
+      setScreen('uncertain');
+    } else prepareReview(incoming);
   };
 
   const analyze = async (reuseFile: boolean) => {
@@ -236,9 +247,14 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
       setProgressStep('reading');
       const dataUri = reuseFile && fileDataUri ? fileDataUri : await fileToDataUri(selectedFile);
       if (!isCurrent(controller)) return;
-      setFileDataUri(dataUri);
+      if (!(reuseFile && fileDataUri)) {
+        const bytes = Uint8Array.from(atob(dataUri.split(',')[1] ?? ''), char => char.charCodeAt(0));
+        await validateResumeFile(selectedFile, bytes, controller.signal);
+        if (!isCurrent(controller)) return;
+      }
       const links = reuseFile && fileDataUri ? extractedLinks : await extractLinks(selectedFile);
       if (!isCurrent(controller)) return;
+      setFileDataUri(dataUri);
       setExtractedLinks(links);
       await runExtractCore(dataUri, selectedFile, controller, links);
     } catch (error) {
@@ -301,6 +317,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
   // ── Render ────────────────────────────────────────────────────────────────────
 
   const currentStepIdx = PROGRESS_STEPS.findIndex((s) => s.id === progressStep);
+  const needsAnotherFile = errorCode === 'invalid_file' || errorCode === 'not_resume';
 
   return (
     <div>
@@ -527,10 +544,10 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
                   </button>
                   <button
                     type="button"
-                    onClick={handleRetry}
+                    onClick={needsAnotherFile ? chooseAnotherFile : handleRetry}
                     className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:scale-95 transition-colors"
                   >
-                    Try again
+                    {needsAnotherFile ? 'Choose Another File' : 'Try again'}
                   </button>
                 </div>
               </div>
@@ -550,6 +567,10 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
             )}
           </div>
         </div>
+      )}
+
+      {screen === 'uncertain' && (
+        <ResumeDocumentNotice onContinue={() => prepareReview(incomingProfile)} onChooseFile={chooseAnotherFile} onDismiss={closeSection} />
       )}
 
       {/* ════════════════════════════════════════════════════════════════════════

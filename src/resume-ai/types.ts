@@ -28,7 +28,8 @@ export function toGeminiModel(stored: string | null | undefined): GeminiModel {
 
 export type ImportProgressStep = 'reading' | 'sending' | 'processing';
 
-export type ImportErrorCode = 'rate_limit' | 'auth' | 'parse' | 'network' | 'timeout' | 'service' | 'file_too_large';
+export type ImportErrorCode = 'rate_limit' | 'auth' | 'parse' | 'network' | 'timeout' | 'service' | 'file_too_large' | 'invalid_file' | 'not_resume';
+export type ResumeDocumentType = 'resume' | 'uncertain';
 
 export interface ResumeModelAttempt {
   model: GeminiModel;

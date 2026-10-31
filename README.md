@@ -73,7 +73,9 @@ check every answer and uploaded document before submitting.
   Keys remain in this browser and are excluded from JSON and Drive backups.
   Use **Replace Key** or **Remove Key** to manage access. Review imported suggestions
   before saving. Updating from a resume keeps saved entries and missing details.
-  Slow, rate-limited, or unavailable models fall back to the next model automatically.
+  Local checks reject unreadable PDF/DOCX files before sending. Gemini also checks
+  document purpose: unrelated documents stop, and uncertain results need confirmation
+  before review. Slow, rate-limited, or unavailable models fall back automatically.
 - **Google Drive:** connect in **Settings** to back up your profile and learned
   mappings. Saved changes update the backup automatically. Use **Back Up Now**
   to check and update it manually. Different Drive data requires review before

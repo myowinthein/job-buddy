@@ -9,6 +9,10 @@ vi.mock('@/src/utils/storage', () => ({
 vi.mock('@/src/resume-ai/gemini', () => ({
   extractFromResume: vi.fn(),
 }));
+vi.mock('@/src/resume-ai/validateResumeFile', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/src/resume-ai/validateResumeFile')>()),
+  validateResumeFile: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock('@/src/resume-ai/extractLinks', () => ({
   extractLinks: vi.fn().mockResolvedValue([]),
 }));
