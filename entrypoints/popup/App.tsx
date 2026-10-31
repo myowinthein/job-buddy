@@ -343,7 +343,7 @@ function App() {
     autofillResult?.aiStatus === 'unavailable'
       ? 'AI assistance was unavailable. Review the filled details carefully.'
       : autofillResult?.aiStatus === 'unknown'
-        ? 'AI assistance could not be confirmed. Review the filled details carefully.'
+        ? 'Refresh this page, then fill again to check AI assistance.'
         : null;
 
   return (
@@ -567,17 +567,14 @@ function App() {
                 </button>
               )}
             </div>
-            {(busy ||
-              (autofillState === 'success' &&
-                !!autofillResult &&
-                autofillResult.noReview + autofillResult.needReview > 0 &&
-                !aiWarning)) && (
-              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                {busy
-                  ? 'Using your saved details to fill this form.'
-                  : 'Review the filled details before submitting.'}
-              </p>
-            )}
+            {autofillState === 'success' &&
+              !!autofillResult &&
+              autofillResult.noReview + autofillResult.needReview > 0 &&
+              !aiWarning && (
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Review the filled details before submitting.
+                </p>
+              )}
           </>
         )}
         <p role="status" className="sr-only">

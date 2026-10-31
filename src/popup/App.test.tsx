@@ -585,7 +585,7 @@ it('treats legacy availability flags as unknown request outcomes', async () => {
   renderApp();
   expect(await screen.findByRole('alert')).toHaveProperty(
     'textContent',
-    'AI assistance could not be confirmed. Review the filled details carefully.',
+    'Refresh this page, then fill again to check AI assistance.',
   );
 });
 
