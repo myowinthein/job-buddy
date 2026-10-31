@@ -163,7 +163,7 @@ export function SearchableProfileFieldSelect({ profile, value, onChange, placeho
       const rows = item.rows;
       return (
         <div key={item.heading}>
-          <p className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-700">
+          <p className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700">
             {item.heading}
           </p>
           {rows.map((r) => renderRow(r, true))}
@@ -179,7 +179,7 @@ export function SearchableProfileFieldSelect({ profile, value, onChange, placeho
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => toggleSubGroup(item.heading)}
-          className="w-full flex items-center justify-between gap-2 px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-700"
+          className="w-full flex items-center justify-between gap-2 px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700"
         >
           <span className="truncate">{item.heading}</span>
           <span className="shrink-0">{expanded ? '▾' : '▸'}</span>
@@ -232,12 +232,12 @@ export function SearchableProfileFieldSelect({ profile, value, onChange, placeho
         {selectedLabel ? (
           <span className="flex-1 min-w-0 truncate text-gray-900 dark:text-gray-100">
             {selectedLabel}{' '}
-            <span className="text-gray-400 dark:text-gray-500 font-mono text-xs">({value})</span>
+            <span className="text-gray-500 dark:text-gray-400 font-mono text-xs">({value})</span>
           </span>
         ) : (
-          <span className="flex-1 text-gray-400 dark:text-gray-500 truncate">{value || placeholder}</span>
+          <span className="flex-1 text-gray-500 dark:text-gray-400 truncate">{value || placeholder}</span>
         )}
-        <span className="text-gray-400 dark:text-gray-500 text-xs shrink-0">▾</span>
+        <span className="text-gray-500 dark:text-gray-400 text-xs shrink-0">▾</span>
       </button>
 
       {open && (
@@ -259,7 +259,7 @@ export function SearchableProfileFieldSelect({ profile, value, onChange, placeho
           </div>
           <div id="spfs-listbox" className="max-h-72 overflow-y-auto py-1" role="listbox">
             {visibleSections.length === 0 ? (
-              <p className="px-3 py-3 text-sm text-gray-400 dark:text-gray-500 text-center select-none">
+              <p className="px-3 py-3 text-sm text-gray-500 dark:text-gray-400 text-center select-none">
                 No matching fields.
               </p>
             ) : (

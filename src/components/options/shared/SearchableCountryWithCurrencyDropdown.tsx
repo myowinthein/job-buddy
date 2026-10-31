@@ -58,7 +58,7 @@ export function SearchableCountryWithCurrencyDropdown({
         <>
           <span className="shrink-0 text-base">{getFlag(c.code)}</span>
           <span className="flex-1 truncate">{c.name}</span>
-          <span className="shrink-0 text-xs font-mono text-gray-400 dark:text-gray-500">{currencyFor(c.code)}</span>
+          <span className="shrink-0 text-xs font-mono text-gray-500 dark:text-gray-400">{currencyFor(c.code)}</span>
         </>
       )}
       trigger={
@@ -77,9 +77,9 @@ export function SearchableCountryWithCurrencyDropdown({
               <span className="shrink-0 text-xs font-mono text-gray-500 dark:text-gray-400">{currencyFor(selected.code)}</span>
             </>
           ) : (
-            <span className="flex-1 text-gray-400 dark:text-gray-500">{placeholder}</span>
+            <span className="flex-1 text-gray-500 dark:text-gray-400">{placeholder}</span>
           )}
-          <span className="text-gray-400 dark:text-gray-500 text-xs shrink-0">▾</span>
+          <span className="text-gray-500 dark:text-gray-400 text-xs shrink-0">▾</span>
         </button>
       }
     />

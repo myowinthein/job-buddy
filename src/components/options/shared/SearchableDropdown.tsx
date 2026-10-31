@@ -89,7 +89,7 @@ export function SearchableDropdown<T>({
           </div>
           <ul id={listId} ref={listRef} role="listbox" className="max-h-56 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <li className="px-3 py-3 text-sm text-gray-400 dark:text-gray-500 text-center select-none">
+              <li className="px-3 py-3 text-sm text-gray-500 dark:text-gray-400 text-center select-none">
                 {emptyText}
               </li>
             ) : (

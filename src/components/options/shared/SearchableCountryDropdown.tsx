@@ -45,7 +45,7 @@ export function SearchableCountryDropdown({ value, onChange, error, placeholder 
       renderRow={(c) => (
         <>
           <span className="shrink-0 text-base">{getFlag(c.code)}</span>
-          <span className="shrink-0 w-8 text-xs text-gray-400 dark:text-gray-500 font-mono uppercase">{c.code}</span>
+          <span className="shrink-0 w-8 text-xs text-gray-500 dark:text-gray-400 font-mono uppercase">{c.code}</span>
           <span className="truncate">{c.name}</span>
         </>
       )}
@@ -64,9 +64,9 @@ export function SearchableCountryDropdown({ value, onChange, error, placeholder 
               <span className="flex-1 text-gray-900 dark:text-gray-100">{selected.name}</span>
             </>
           ) : (
-            <span className="flex-1 text-gray-400 dark:text-gray-500">{value || placeholder}</span>
+            <span className="flex-1 text-gray-500 dark:text-gray-400">{value || placeholder}</span>
           )}
-          <span className="text-gray-400 dark:text-gray-500 text-xs shrink-0">▾</span>
+          <span className="text-gray-500 dark:text-gray-400 text-xs shrink-0">▾</span>
         </button>
       }
     />

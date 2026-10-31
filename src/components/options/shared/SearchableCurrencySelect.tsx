@@ -65,9 +65,9 @@ export function SearchableCurrencySelect({ value, onChange, error, placeholder =
               <span className="flex-1 text-gray-900 dark:text-gray-100">{selected.code}: {selected.name}</span>
             </>
           ) : (
-            <span className="flex-1 text-gray-400 dark:text-gray-500">{placeholder}</span>
+            <span className="flex-1 text-gray-500 dark:text-gray-400">{placeholder}</span>
           )}
-          <span className="text-gray-400 dark:text-gray-500 text-xs shrink-0">▾</span>
+          <span className="text-gray-500 dark:text-gray-400 text-xs shrink-0">▾</span>
         </button>
       }
     />

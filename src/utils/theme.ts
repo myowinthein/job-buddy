@@ -5,6 +5,28 @@ export type ThemePreference = 'system' | 'light' | 'dark';
 // Tracks the last value passed to applyTheme so components can read it
 // synchronously — avoids a storage round-trip on every mount.
 let currentPreference: ThemePreference = 'system';
+let revision = 0;
+const subscribers = new Set<() => void>();
+
+export function subscribeTheme(listener: () => void): () => void {
+  subscribers.add(listener);
+  return () => { subscribers.delete(listener); };
+}
+
+let storageEvents: typeof chrome.storage.onChanged | undefined;
+const onStorageChange = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+  if (area !== 'local' || !('themePreference' in changes)) return;
+  const value: unknown = changes.themePreference.newValue;
+  applyTheme(value === 'light' || value === 'dark' ? value : 'system');
+};
+
+function watchThemePreference(): void {
+  const events = typeof chrome !== 'undefined' ? chrome.storage?.onChanged : undefined;
+  if (events === storageEvents) return;
+  storageEvents?.removeListener(onStorageChange);
+  storageEvents = events;
+  storageEvents?.addListener(onStorageChange);
+}
 
 /** Returns the preference that was last passed to applyTheme. */
 export function getCurrentTheme(): ThemePreference {
@@ -33,8 +55,12 @@ function setDarkClass(dark: boolean): void {
 }
 
 export function applyTheme(preference: ThemePreference): void {
+  revision++;
+  const changed = currentPreference !== preference;
   currentPreference = preference;
   removeMediaListener();
+
+  if (changed) subscribers.forEach(listener => listener());
 
   if (preference === 'dark') {
     setDarkClass(true);
@@ -56,10 +82,12 @@ export function applyTheme(preference: ThemePreference): void {
 }
 
 export async function initTheme(): Promise<void> {
+  watchThemePreference();
+  const startedAt = revision;
   try {
     const preference = await getThemePreference();
-    applyTheme(preference);
+    if (revision === startedAt) applyTheme(preference);
   } catch {
-    applyTheme('system');
+    if (revision === startedAt) applyTheme('system');
   }
 }

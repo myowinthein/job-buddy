@@ -14,8 +14,8 @@ export interface ToastMessage {
 
 const DEFAULT_DURATION: Record<ToastMessage['type'], number> = {
   success: 2000,
-  warning: 2000,
-  error:   3500,
+  warning: 6000,
+  error:   8000,
 };
 
 const TYPE_STYLE = {
@@ -47,6 +47,11 @@ const TYPE_STYLE = {
 function ToastItem({ toast, onRemove }: { toast: ToastMessage; onRemove: () => void }) {
   const [exiting, setExiting] = useState(false);
   const timerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const remainingRef = useRef(toast.duration);
+  const startedRef = useRef(0);
+  const hoveredRef = useRef(false);
+  const focusedRef = useRef(false);
   const exitedRef = useRef(false);
   // Keep onRemove fresh inside stable callbacks
   const onRemoveRef = useRef(onRemove);
@@ -57,39 +62,62 @@ function ToastItem({ toast, onRemove }: { toast: ToastMessage; onRemove: () => v
     exitedRef.current = true;
     if (timerRef.current) clearTimeout(timerRef.current);
     setExiting(true);
-    setTimeout(() => onRemoveRef.current(), 200);
+    exitTimerRef.current = setTimeout(() => onRemoveRef.current(), 200);
   }, []);
 
   const startTimer = useCallback(() => {
-    timerRef.current = setTimeout(dismiss, toast.duration);
-  }, [dismiss, toast.duration]);
+    if (timerRef.current || exitedRef.current || hoveredRef.current || focusedRef.current) return;
+    startedRef.current = Date.now();
+    timerRef.current = setTimeout(dismiss, remainingRef.current);
+  }, [dismiss]);
 
   const stopTimer = useCallback(() => {
-    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+      remainingRef.current = Math.max(0, remainingRef.current - (Date.now() - startedRef.current));
+    }
   }, []);
 
   useEffect(() => {
     startTimer();
-    return stopTimer;
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      stopTimer();
+      if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+    };
+  }, [startTimer, stopTimer]);
 
   const { bg, border, icon, iconCls, textCls } = TYPE_STYLE[toast.type];
 
   return (
     <div
-      onMouseEnter={stopTimer}
-      onMouseLeave={startTimer}
+      onMouseEnter={() => { hoveredRef.current = true; stopTimer(); }}
+      onMouseLeave={() => { hoveredRef.current = false; startTimer(); }}
+      onFocus={() => { focusedRef.current = true; stopTimer(); }}
+      onBlur={(event) => {
+        if (event.currentTarget.contains(event.relatedTarget)) return;
+        focusedRef.current = false;
+        startTimer();
+      }}
       style={{
         animation: exiting ? 'jb-toast-out 200ms ease-in forwards' : 'jb-toast-in 200ms ease-out',
-        minWidth:  '280px',
-        maxWidth:  '400px',
+        minWidth: 'min(280px, calc(100vw - 32px))',
+        maxWidth: 'min(400px, calc(100vw - 32px))',
       }}
       className={`${bg} rounded-lg shadow-lg dark:shadow-black/40 px-4 py-3 flex items-center gap-2 border-l-4 ${border}`}
       role="alert"
       aria-live="polite"
     >
-      <span className={`text-base font-bold shrink-0 w-5 text-center ${iconCls}`}>{icon}</span>
-      <p className={`text-sm break-words ${textCls}`}>{toast.message}</p>
+      <span aria-hidden="true" className={`text-base font-bold shrink-0 w-5 text-center ${iconCls}`}>{icon}</span>
+      <p className={`min-w-0 flex-1 text-sm break-words ${textCls}`}>{toast.message}</p>
+      <button
+        type="button"
+        aria-label="Dismiss notification"
+        onClick={dismiss}
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded text-lg ${textCls}`}
+      >
+        <span aria-hidden="true">×</span>
+      </button>
     </div>
   );
 }

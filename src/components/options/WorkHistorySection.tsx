@@ -288,7 +288,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       />
 
       {errors.general && (
-        <p className="text-sm text-red-500 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
+        <p className="text-sm text-red-700 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
           {errors.general}
         </p>
       )}
@@ -473,7 +473,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       {/* ── Notice Period ────────────────────────────────────────────────────── */}
       <div className="pt-4 mb-4" data-field-error={!!errors.noticePeriod}>
         <p id="notice-period-label" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Notice Period<span className="text-red-500 ml-0.5">*</span>
+          Notice Period<span className="text-red-700 dark:text-red-400 ml-0.5">*</span>
         </p>
         <div
           role="radiogroup"
@@ -513,7 +513,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
         </div>
 
         {errors.noticePeriod && noticeImmediate === null && (
-          <p id="notice-period-error" role="alert" className="text-xs text-red-500 mb-2">
+          <p id="notice-period-error" role="alert" className="text-xs text-red-700 dark:text-red-400 mb-2">
             {errors.noticePeriod}
           </p>
         )}
@@ -568,7 +568,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
               </select>
             </div>
             {errors.noticeValue && (
-              <span className="text-xs text-red-500 dark:text-red-400">{errors.noticeValue}</span>
+              <span className="text-xs text-red-700 dark:text-red-400">{errors.noticeValue}</span>
             )}
           </div>
         )}

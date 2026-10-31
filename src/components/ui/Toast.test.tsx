@@ -63,15 +63,43 @@ describe('ToastProvider — auto-dismiss timing', () => {
     expect(screen.queryByText('Saved!')).toBeNull();
   });
 
-  it('uses a longer 3500ms duration for error toasts', async () => {
+  it('keeps error toasts visible for 8000ms', async () => {
     render(<ToastProvider><Trigger type="error" message="Failed!" /></ToastProvider>);
     act(() => { fireEvent.click(screen.getByText('trigger')); });
 
     await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
     expect(screen.getByText('Failed!')).toBeTruthy(); // still visible past the success duration
 
-    await act(async () => { await vi.advanceTimersByTimeAsync(1700); }); // 3700ms total > 3500 + 200 exit
+    await act(async () => { await vi.advanceTimersByTimeAsync(5999); });
+    expect(screen.getByText('Failed!')).toBeTruthy();
+    await act(async () => { await vi.advanceTimersByTimeAsync(201); });
     expect(screen.queryByText('Failed!')).toBeNull();
+  });
+
+  it('keeps warning toasts visible for 6000ms and lets users dismiss them', async () => {
+    render(<ToastProvider><Trigger type="warning" message="Check your backup" /></ToastProvider>);
+    fireEvent.click(screen.getByText('trigger'));
+    await act(async () => { await vi.advanceTimersByTimeAsync(5999); });
+    expect(screen.getByText('Check your backup')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss notification' }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+    expect(screen.queryByText('Check your backup')).toBeNull();
+  });
+
+  it('pauses while keyboard focus stays inside, even when the pointer leaves', async () => {
+    render(<ToastProvider><Trigger /></ToastProvider>);
+    fireEvent.click(screen.getByText('trigger'));
+    const alert = screen.getByRole('alert');
+    const dismiss = screen.getByRole('button', { name: 'Dismiss notification' });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    fireEvent.mouseEnter(alert);
+    fireEvent.focus(dismiss);
+    fireEvent.mouseLeave(alert);
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+    expect(screen.getByText('Saved!')).toBeTruthy();
+    fireEvent.blur(dismiss, { relatedTarget: screen.getByText('trigger') });
+    await act(async () => { await vi.advanceTimersByTimeAsync(1200); });
+    expect(screen.queryByText('Saved!')).toBeNull();
   });
 
   it('pauses the dismiss timer on hover and resumes it on mouse leave', async () => {
@@ -85,7 +113,7 @@ describe('ToastProvider — auto-dismiss timing', () => {
     expect(screen.getByText('Saved!')).toBeTruthy();
 
     fireEvent.mouseLeave(alert);
-    await act(async () => { await vi.advanceTimersByTimeAsync(2000 + 200); }); // fresh full timer + exit
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000 + 200); }); // remaining timer + exit
     expect(screen.queryByText('Saved!')).toBeNull();
   });
 });

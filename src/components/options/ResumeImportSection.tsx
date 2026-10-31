@@ -408,7 +408,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
                   </div>
 
                   {errorMsg && (
-                    <p className="mt-2 text-sm text-red-500 dark:text-red-400">{errorMsg}</p>
+                    <p className="mt-2 text-sm text-red-700 dark:text-red-400">{errorMsg}</p>
                   )}
 
                   <input
@@ -510,7 +510,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
             )}
             {/* Long wait message */}
             {showLongWait && !errorMsg && (
-              <div className="mt-5 text-xs text-amber-500 dark:text-amber-400 text-center">
+              <div className="mt-5 text-xs text-amber-700 dark:text-amber-400 text-center">
                 <p>Still analyzing. You can cancel at any time.</p>
               </div>
             )}
@@ -519,7 +519,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
             {errorMsg && (
               <div className="mt-6">
                 {errorCode === 'rate_limit' ? (
-                  <p className="text-sm text-red-500 dark:text-red-400 mb-4">
+                  <p className="text-sm text-red-700 dark:text-red-400 mb-4">
                     The AI models reached their usage limits. Try again later or check{' '}
                     <a
                       href="https://aistudio.google.com/rate-limit"
@@ -532,7 +532,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
                     .
                   </p>
                 ) : (
-                  <p className="text-sm text-red-500 dark:text-red-400 mb-4">{errorMsg}</p>
+                  <p className="text-sm text-red-700 dark:text-red-400 mb-4">{errorMsg}</p>
                 )}
                 <div className="flex justify-end gap-3">
                   <button

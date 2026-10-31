@@ -153,7 +153,7 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
       </div>
 
       {/* Single error line spanning the full width of the date row */}
-      {inlineError && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{inlineError}</p>}
+      {inlineError && <p className="text-xs text-red-700 dark:text-red-400 mt-1">{inlineError}</p>}
     </div>
   );
 }

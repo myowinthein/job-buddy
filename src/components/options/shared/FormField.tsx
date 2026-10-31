@@ -45,7 +45,7 @@ export function FormField({ label, required, error, hint, children }: FormFieldP
         className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
       >
         {label}
-        {required && <span className="text-red-500 dark:text-red-400 ml-0.5">*</span>}
+        {required && <span className="text-red-700 dark:text-red-400 ml-0.5">*</span>}
       </label>
       {control}
       {hint && !error && (
@@ -54,7 +54,7 @@ export function FormField({ label, required, error, hint, children }: FormFieldP
         </p>
       )}
       {error && (
-        <p id={messageId} role="alert" className="text-xs text-red-500 dark:text-red-400 mt-1">
+        <p id={messageId} role="alert" className="text-xs text-red-700 dark:text-red-400 mt-1">
           {error}
         </p>
       )}

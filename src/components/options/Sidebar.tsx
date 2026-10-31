@@ -91,7 +91,7 @@ export function Sidebar({
 
       <nav className="flex-1 overflow-y-auto py-2" aria-label="Profile sections">
         {!collapsed && (
-          <p className="hidden sm:block px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+          <p className="hidden sm:block px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Profile
           </p>
         )}
@@ -155,7 +155,7 @@ export function Sidebar({
         className={`border-t border-gray-200 dark:border-gray-800 pt-1 pb-0 ${collapsed ? 'flex flex-col items-center px-2 gap-0' : 'px-0'}`}
       >
         {!collapsed && (
-          <p className="hidden sm:block px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+          <p className="hidden sm:block px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Tools
           </p>
         )}

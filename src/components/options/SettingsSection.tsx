@@ -24,7 +24,7 @@ import {
   clearGeminiSettings,
   saveThemePreference,
 } from '@/src/utils/storage';
-import { applyTheme, getCurrentTheme } from '@/src/utils/theme';
+import { applyTheme, getCurrentTheme, subscribeTheme } from '@/src/utils/theme';
 import type { ThemePreference } from '@/src/utils/theme';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
 import type { InvalidField } from '@/src/utils/profileValidator';
@@ -195,6 +195,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   // getCurrentTheme() is synchronous — initTheme() is awaited before React
   // renders, so the correct preference is already cached in theme.ts.
   const [themePreference, setThemePreference] = useState<ThemePreference>(getCurrentTheme);
+  useEffect(() => subscribeTheme(() => setThemePreference(getCurrentTheme())), []);
 
   const handleThemeChange = async (value: ThemePreference) => {
     const previous = getCurrentTheme();

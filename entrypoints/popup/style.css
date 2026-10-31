@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import '../../src/styles/accessibility.css';
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
@@ -14,11 +15,6 @@
 *::before,
 *::after {
   box-sizing: border-box;
-}
-
-html {
-  /* Lets the browser apply native light/dark defaults (scrollbars, form controls). */
-  color-scheme: light dark;
 }
 
 body {

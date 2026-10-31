@@ -23,6 +23,7 @@ vi.mock('@/src/utils/storage', () => ({
 vi.mock('@/src/utils/theme', () => ({
   applyTheme: vi.fn(),
   getCurrentTheme: vi.fn(() => 'system'),
+  subscribeTheme: vi.fn(() => () => {}),
 }));
 vi.mock('@/src/resume-ai/gemini', () => ({
   validateApiKey: vi.fn(),

@@ -104,7 +104,7 @@ export function EntryComparison({
           )}
           <p aria-live="polite" className="text-sm font-medium text-gray-800 dark:text-gray-200">
             {entry.label}{' '}
-            <span className="text-xs font-normal text-gray-500">
+            <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
               ({safeIndex + 1} of {entries.length})
             </span>
           </p>
@@ -184,13 +184,13 @@ export function EntryComparison({
             <div className="space-y-3 pl-3 border-l-2 border-blue-200 dark:border-blue-800">
               {entry.status !== 'removed' && (
                 <div>
-                  <p className="mb-1 text-xs text-gray-500">{incomingLabel}</p>
+                  <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">{incomingLabel}</p>
                   <ComparedValue value={field.suggested} other={field.current} changed />
                 </div>
               )}
               {entry.status !== 'new' && (
                 <div>
-                  <p className="mb-1 text-xs text-gray-500">Current</p>
+                  <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">Current</p>
                   <ComparedValue value={field.current} other={field.suggested} changed />
                 </div>
               )}

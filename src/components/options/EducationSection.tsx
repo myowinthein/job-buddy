@@ -181,7 +181,7 @@ export function EducationSection({ profile, onSave }: Props) {
       />
 
       {errors.general && (
-        <p className="text-sm text-red-500 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
+        <p className="text-sm text-red-700 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
           {errors.general}
         </p>
       )}

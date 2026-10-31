@@ -225,7 +225,7 @@ function DocUploader({
         />
       </div>
       {[state.sizeError, state.typeError, state.readError, fileActionError].filter(Boolean).map((error) => (
-        <p key={error} role="alert" className="text-xs text-red-500 mt-2">
+        <p key={error} role="alert" className="text-xs text-red-700 dark:text-red-400 mt-2">
           {error}
         </p>
       ))}

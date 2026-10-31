@@ -23,6 +23,7 @@ vi.mock('@/src/utils/storage', () => ({
 vi.mock('@/src/utils/theme', () => ({
   applyTheme: vi.fn(),
   getCurrentTheme: vi.fn(() => 'system'),
+  subscribeTheme: vi.fn(() => () => {}),
 }));
 vi.mock('@/src/resume-ai/gemini', () => ({
   validateApiKey: vi.fn(),
@@ -55,7 +56,7 @@ import { getProfile, saveProfile, getGeminiApiKey, getGeminiSettings, saveGemini
 import { checkApiKey, validateApiKey } from '@/src/resume-ai/gemini';
 import { getFullDriveState, disconnectDrive, connectDrive, syncProfileToDrive, overwriteDriveWithLocal } from '@/src/utils/driveSync';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
-import { applyTheme } from '@/src/utils/theme';
+import { applyTheme, getCurrentTheme, subscribeTheme } from '@/src/utils/theme';
 import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
 import type { Profile } from '@/src/types/profile';
 import type { KeyValidationResult, FieldChange } from '@/src/resume-ai/types';
@@ -231,6 +232,14 @@ describe('SettingsSection — importing into an existing (non-empty) profile', (
 });
 
 describe('SettingsSection — Appearance', () => {
+  it('updates the selected appearance after another page changes it', async () => {
+    renderSection();
+    const changed = vi.mocked(subscribeTheme).mock.calls.at(-1)![0];
+    vi.mocked(getCurrentTheme).mockReturnValueOnce('dark');
+    act(() => changed());
+    expect(screen.getByRole('button', { name: 'Dark' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
   it('restores the previous selection when saving appearance fails', async () => {
     vi.mocked(saveThemePreference).mockRejectedValueOnce(new Error('Storage unavailable'));
     renderSection();

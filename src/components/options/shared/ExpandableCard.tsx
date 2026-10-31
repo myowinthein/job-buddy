@@ -113,7 +113,7 @@ export function ExpandableCard({
               setExpanded(!expanded);
               setConfirmDelete(false);
             }}
-            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 active:scale-95 transition-colors text-xs w-4 text-center"
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 active:scale-95 transition-colors text-xs w-4 text-center"
             aria-expanded={isExpanded}
             aria-label={isExpanded ? 'Collapse' : 'Expand'}
           >

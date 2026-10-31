@@ -139,7 +139,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
       <EntryListHeader id="add-languages" onAdd={addEntry} label="+ Add Language" />
 
       {errors.general && (
-        <p role="alert" className="text-sm text-red-500 mb-4">
+        <p role="alert" className="text-sm text-red-700 dark:text-red-400 mb-4">
           {errors.general}
         </p>
       )}
