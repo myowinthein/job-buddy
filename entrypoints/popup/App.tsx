@@ -489,17 +489,15 @@ function App() {
               {isCoreComplete && !profileLoadFailed && (
                 <Check aria-hidden="true" className="h-3.5 w-3.5" />
               )}
-              {isCoreComplete && !profileLoadFailed
-                ? 'Required details complete'
-                : 'Required profile'}
+              Required profile
               {profileLoadFailed ? (
                 <span aria-label="Unavailable">—</span>
               ) : (
-                !isCoreComplete && (
-                  <span className="font-semibold text-blue-700 dark:text-blue-400">
-                    {percentage}%
-                  </span>
-                )
+                <span
+                  className={`font-semibold ${isCoreComplete ? 'text-green-700 dark:text-green-400' : 'text-blue-700 dark:text-blue-400'}`}
+                >
+                  {percentage}%
+                </span>
               )}
             </span>
           )}
@@ -536,10 +534,10 @@ function App() {
       {confirming && (
         <fieldset className="min-h-0 overflow-y-auto px-5 pt-4">
           <legend className="sr-only">Choose how to fill existing answers</legend>
-          <p className="text-sm font-semibold">This form already has answers.</p>
+          <p className="text-sm font-semibold">This form already has some answers.</p>
           <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-            {preFilledCount} field{preFilledCount === 1 ? ' has' : 's have'} a value. Choose what to
-            keep.
+            {preFilledCount} field
+            {preFilledCount === 1 ? ' already contains an answer' : 's already contain answers'}.
           </p>
           <div className="mt-3 space-y-1">
             <label className="flex cursor-pointer items-start gap-2.5 rounded-lg py-2">
@@ -555,7 +553,7 @@ function App() {
               <span>
                 <span className="block text-sm font-medium">Fill empty fields</span>
                 <span className="block text-xs text-gray-500 dark:text-gray-400">
-                  Keep answers already entered on this page.
+                  Keep existing answers and fill empty fields.
                 </span>
               </span>
             </label>
@@ -569,9 +567,9 @@ function App() {
                 className="mt-0.5 accent-blue-600"
               />
               <span>
-                <span className="block text-sm font-medium">Replace matched values</span>
+                <span className="block text-sm font-medium">Fill all matched fields</span>
                 <span className="block text-xs text-gray-500 dark:text-gray-400">
-                  Use your saved details for matched fields.
+                  Fill empty fields and replace existing answers with your saved details.
                 </span>
               </span>
             </label>

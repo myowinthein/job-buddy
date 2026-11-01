@@ -253,8 +253,8 @@ describe('popup App — handleAutofill scan orchestration', () => {
 
     renderApp();
     fireEvent.click(await readyFill());
-    expect(await screen.findByText('This form already has answers.')).toBeTruthy();
-    expect(screen.getByText(/3 fields have a value/)).toBeTruthy();
+    expect(await screen.findByText('This form already has some answers.')).toBeTruthy();
+    expect(screen.getByText(/3 fields already contain answers/)).toBeTruthy();
   });
 
   it('dispatches an overwrite fill directly when the scan sums to zero pre-filled fields', async () => {
@@ -269,7 +269,7 @@ describe('popup App — handleAutofill scan orchestration', () => {
 
     renderApp();
     fireEvent.click(await readyFill());
-    expect(screen.queryByText('This form already has answers.')).toBeNull();
+    expect(screen.queryByText('This form already has some answers.')).toBeNull();
     await waitFor(() => expect(screen.getByText('4 fields filled')).toBeTruthy());
   });
 
@@ -285,7 +285,7 @@ describe('popup App — handleAutofill scan orchestration', () => {
 
     renderApp();
     fireEvent.click(await readyFill());
-    await screen.findByText('This form already has answers.');
+    await screen.findByText('This form already has some answers.');
     fireEvent.click(screen.getByRole('button', { name: 'Fill Form' })); // default fillMode is 'merge'
 
     await waitFor(() => expect(screen.getByText('2 fields filled')).toBeTruthy());
@@ -421,9 +421,11 @@ describe('popup profile and action presentation', () => {
     expect(progress.firstElementChild?.className).toContain(
       percentage === 100 ? 'bg-green-500' : 'bg-blue-500',
     );
-    expect(
-      screen.getByText(percentage === 100 ? 'Required details complete' : 'Required profile'),
-    ).toBeTruthy();
+    expect(screen.getByText('Required profile')).toBeTruthy();
+    expect(screen.getByText(`${percentage}%`)).toBeTruthy();
+    expect(screen.getByText(`${percentage}%`).className).toContain(
+      percentage === 100 ? 'text-green-700' : 'text-blue-700',
+    );
     expect(screen.queryByText(/ready to apply|Almost there|optional fields available/)).toBeNull();
   });
 
@@ -559,7 +561,7 @@ it('preserves the overwrite choice and fills without rescanning after confirmati
   });
   renderApp();
   fireEvent.click(await readyFill());
-  fireEvent.click(await screen.findByRole('radio', { name: /Replace matched values/ }));
+  fireEvent.click(await screen.findByRole('radio', { name: /Fill all matched fields/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Fill Form' }));
   await screen.findByRole('button', { name: 'Undo' });
   expect(sendMessageMock).toHaveBeenCalledWith(
@@ -670,7 +672,7 @@ it('rechecks the key when confirming existing values', async () => {
   );
   renderApp();
   fireEvent.click(await readyFill());
-  await screen.findByRole('radio', { name: /Fill empty fields/ });
+  await screen.findByRole('radio', { name: /^Fill empty fields/ });
   vi.mocked(getGeminiApiKey).mockResolvedValue(null);
   fireEvent.click(screen.getByRole('button', { name: 'Fill Form' }));
   await screen.findByRole('button', { name: 'Set Up AI Autofill' });

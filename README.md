@@ -50,7 +50,8 @@ Set Up Profile → Set Up AI Autofill → Fill Form → Review answers → Submi
    Save a valid first name and email to enable autofill. Then visit a job application page
    and click **Fill Form** in the popup.
 3. If the form already contains values, choose **Fill empty fields** to keep existing values
-   or **Replace matched values** to use your saved details, then click **Fill Form**.
+   or **Fill all matched fields** to fill empty fields and replace existing answers
+   with your saved details, then click **Fill Form**.
 4. Review the results and type any missing or corrected answers directly into the
    form. Submit the application yourself on the website.
 
