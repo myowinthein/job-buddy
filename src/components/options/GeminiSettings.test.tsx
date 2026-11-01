@@ -141,7 +141,7 @@ describe('Gemini explicit key setup', () => {
     expect((await screen.findByRole('alert')).textContent).toBe(KEY_ERROR_MESSAGES[failure]);
     expect(saveGeminiSettings).not.toHaveBeenCalled();
   });
-  it('links the no-model error to Google AI Studio without changing its explanation', async () => {
+  it('keeps the Studio link in the key help and presents the no-model error as plain text', async () => {
     vi.mocked(validateApiKey).mockResolvedValue({
       valid: false,
       error: KEY_ERROR_MESSAGES.no_model,
@@ -152,7 +152,9 @@ describe('Gemini explicit key setup', () => {
     fireEvent.click(screen.getByText('Save Key'));
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toBe(KEY_ERROR_MESSAGES.no_model);
-    const link = within(alert).getByRole('link', { name: 'Google AI Studio' });
+    expect(within(alert).queryByRole('link')).toBeNull();
+    expect(screen.getAllByRole('link', { name: 'Google AI Studio' })).toHaveLength(1);
+    const link = screen.getByRole('link', { name: 'Google AI Studio' });
     expect(link.getAttribute('href')).toBe('https://aistudio.google.com/api-keys');
     expect(link.getAttribute('rel')).toBe('noopener noreferrer');
     expect(saveGeminiSettings).not.toHaveBeenCalled();

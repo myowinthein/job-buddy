@@ -75,8 +75,6 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
   const busy =
     status === 'checking' || status === 'loading' || status === 'removing' || resetInProgress;
   const replacing = editing || !configured;
-  const studioLabel = 'Google AI Studio';
-  const studioIndex = error.indexOf(studioLabel);
 
   useEffect(() => {
     mounted.current = true;
@@ -398,24 +396,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
             role="alert"
             className="mt-2 text-xs text-red-600 dark:text-red-400"
           >
-            <p className="text-pretty">
-              {studioIndex < 0 ? (
-                error
-              ) : (
-                <>
-                  {error.slice(0, studioIndex)}
-                  <a
-                    href="https://aistudio.google.com/api-keys"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 dark:text-blue-400 underline"
-                  >
-                    {studioLabel}
-                  </a>
-                  {error.slice(studioIndex + studioLabel.length)}
-                </>
-              )}
-            </p>
+            <p className="text-pretty">{error}</p>
           </div>
         )}
         <div className="flex flex-wrap gap-2 mt-3">
