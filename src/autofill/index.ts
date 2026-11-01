@@ -13,7 +13,7 @@ import { adjustEducationMatches, matchCurrentEducationCheckboxes } from './educa
 import { adjustWorkHistoryMatches, matchCurrentWorkHistoryCheckboxes } from './workHistoryResolution';
 import { adjustSalaryMatches } from './salaryResolution';
 import { fillField, fillFileField, fillCheckboxInput, clearFieldValue } from './filler';
-import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
+import { applyHighlight, applyMissingDataHighlight, clearMissingDataHighlights, clearElementHighlight, clearHighlights } from './highlighter';
 import { resolveProfileValue, flattenProfileValues } from './resolver';
 import type { FlatProfileValue } from './resolver';
 import { normalize, similarity } from './normalizer';
@@ -587,7 +587,7 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
 //   noReview      confidence >= 0.85, value present → fill, green highlight
 //   needReview    0.60 <= confidence < 0.85, value present → fill, yellow highlight
 //   lowConfidence confidence < 0.60 (any value) → no fill, red highlight
-//   noData        confidence >= 0.60, value empty → no fill, no highlight
+//   noData        confidence >= 0.60, value empty → no fill, gray outline
 //
 // sessionElements tracks values actually filled during this session. Unfilled
 // red/gray fields become owned only after a real manual edit.
@@ -630,6 +630,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
 
   // Reset the noData registry — silent re-fill will only consider noData
   // fields from this fresh run, not stale ones from a previous session.
+  clearMissingDataHighlights();
   noDataFields = [];
 
   for (const { element, signals, match, hasExistingValue, debugFieldId } of matchesToFill) {
@@ -725,7 +726,8 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       record.rule.outcome = 'missing_data';
       record.outcome = 'missing_data';
       // confidence >= 0.60 but profile value is empty — nothing to write.
-      // No highlight; the user can type the value in directly.
+      // Keep the background unchanged and mark the missing value with a gray outline.
+      applyMissingDataHighlight(element);
       result.noData++;
       if (!isFileInput && !isCheckboxInput) {
         editableFields.push({ element, state: 'noData' });

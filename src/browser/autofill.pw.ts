@@ -167,3 +167,67 @@ test('a removed key blocks a pending fill, while Undo remains available after a 
   await expect(page.locator('[name="firstName"]')).toHaveValue('');
   await expect(page.locator('[name="lastName"]')).toHaveValue('Existing answer');
 });
+
+test('missing profile data gets a neutral outline that yields to focus and clears on edit or Undo', async ({
+  page,
+  extension,
+}, testInfo) => {
+  await page.evaluate(() => {
+    const style = document.createElement('style');
+    style.textContent = '#missing-link:focus { outline: 3px solid rgb(59, 130, 246); }';
+    document.head.appendChild(style);
+    const label = document.createElement('label');
+    label.textContent = 'LinkedIn';
+    const input = document.createElement('input');
+    input.id = 'missing-link';
+    input.name = 'linkedin';
+    input.type = 'url';
+    input.style.backgroundColor = 'rgb(17, 24, 39)';
+    label.appendChild(input);
+    document.querySelector('form')!.appendChild(label);
+    const shadow = document.querySelector('#shadow-host')!.shadowRoot!;
+    const shadowLabel = document.createElement('label');
+    shadowLabel.textContent = 'LinkedIn';
+    const shadowInput = document.createElement('input');
+    shadowInput.id = 'missing-shadow-link';
+    shadowLabel.appendChild(shadowInput);
+    shadow.appendChild(shadowLabel);
+  });
+  await extension.send('AUTOFILL_SCAN');
+  await extension.send('AUTOFILL_FILL', 'merge');
+  const missing = page.locator('#missing-link');
+  const shadowMissing = page.locator('#missing-shadow-link');
+  await expect(missing).toHaveValue('');
+  await expect(missing).toHaveAttribute('data-jb-missing-data', '1');
+  await expect(missing).toHaveCSS('background-color', 'rgb(17, 24, 39)');
+  await expect(missing).toHaveCSS('outline-width', '1px');
+  await expect(shadowMissing).toHaveAttribute('data-jb-missing-data', '1');
+  await expect(page.locator('[name="lastName"]')).not.toHaveAttribute('data-jb-missing-data');
+  await expect(page.locator('#consent-yes')).not.toHaveAttribute('data-jb-highlighted');
+  await missing.focus();
+  await expect(missing).toHaveCSS('outline-width', '3px');
+  await expect(missing).toHaveCSS('outline-color', 'rgb(59, 130, 246)');
+  await page.locator('[name="firstName"]').focus();
+  await expect(missing).toHaveCSS('outline-width', '1px');
+  await page.locator('form').screenshot({ path: testInfo.outputPath('missing-data-outline.png') });
+  await missing.fill('https://www.linkedin.com/in/synthetic-person');
+  await page.locator('[name="firstName"]').focus();
+  await expect(missing).not.toHaveAttribute('data-jb-missing-data');
+  await expect(missing).toHaveCSS('background-color', 'rgba(34, 197, 94, 0.12)');
+  expect(
+    await page.locator('form').evaluate((form) => (form as HTMLFormElement).checkValidity()),
+  ).toBe(true);
+  const events = await page.evaluate(
+    () =>
+      (window as unknown as { events: { name: string; type: string; inputEvent: boolean }[] })
+        .events,
+  );
+  expect(events).toContainEqual(
+    expect.objectContaining({ name: 'linkedin', type: 'input', inputEvent: true }),
+  );
+  await extension.send('CLEAR');
+  await expect(missing).toHaveCSS('background-color', 'rgb(17, 24, 39)');
+  await expect(missing).not.toHaveAttribute('data-jb-highlighted');
+  await expect(shadowMissing).not.toHaveAttribute('data-jb-highlighted');
+  await expect(shadowMissing).toHaveCSS('outline-style', 'none');
+});

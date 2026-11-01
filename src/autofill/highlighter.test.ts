@@ -1,17 +1,23 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { applyHighlight, clearElementHighlight, clearHighlights } from './highlighter';
+import {
+  applyHighlight,
+  applyMissingDataHighlight,
+  clearElementHighlight,
+  clearHighlights,
+} from './highlighter';
 import { CONF_FILL, CONF_GREEN } from './constants';
 
 function makeInput(bg = '', transition = ''): HTMLInputElement {
   const el = document.createElement('input');
   el.style.backgroundColor = bg;
-  el.style.transition      = transition;
+  el.style.transition = transition;
   document.body.appendChild(el);
   return el;
 }
 
 beforeEach(() => {
+  clearHighlights();
   document.body.innerHTML = '';
 });
 
@@ -140,5 +146,91 @@ describe('clearHighlights', () => {
 
   it('is a no-op when no elements are highlighted', () => {
     expect(() => clearHighlights()).not.toThrow();
+  });
+});
+
+describe('missing-data outlines', () => {
+  it('preserves the background and yields to focus without losing the marker', () => {
+    const el = makeInput('rgb(20, 30, 40)', 'opacity 0.3s');
+    el.style.outline = '2px dotted blue';
+    el.style.outlineOffset = '3px';
+    applyMissingDataHighlight(el);
+    expect(el.style.backgroundColor).toBe('rgb(20, 30, 40)');
+    expect(el.style.transition).toBe('opacity 0.3s');
+    expect(el.style.outline).toContain('rgba(148, 163, 184, 0.7)');
+    el.focus();
+    expect(el.style.outline).toBe('2px dotted blue');
+    expect(el.style.outlineOffset).toBe('3px');
+    expect(el.dataset.jbMissingData).toBe('1');
+    el.blur();
+    expect(el.style.outline).toContain('rgba(148, 163, 184, 0.7)');
+    clearElementHighlight(el);
+    expect(el.style.outline).toBe('2px dotted blue');
+    expect(el.style.outlineOffset).toBe('3px');
+    expect(el.dataset.jbMissingData).toBeUndefined();
+    el.focus();
+    el.blur();
+    expect(el.style.outline).toBe('2px dotted blue');
+  });
+
+  it('keeps the site focus style if the missing field is already focused', () => {
+    const el = makeInput();
+    el.focus();
+    applyMissingDataHighlight(el);
+    expect(el.style.outline).toBe('');
+    el.blur();
+    expect(el.style.outline).toContain('rgba(148, 163, 184, 0.7)');
+  });
+
+  it.each([CONF_GREEN, CONF_FILL])(
+    'removes gray styling when filling at confidence %s',
+    (confidence) => {
+      const el = makeInput('white');
+      el.style.outlineColor = 'purple';
+      applyMissingDataHighlight(el);
+      applyHighlight(el, confidence);
+      expect(el.style.outlineColor).toBe('purple');
+      expect(el.style.outlineStyle).toBe('');
+      expect(el.dataset.jbMissingData).toBeUndefined();
+      el.focus();
+      el.blur();
+      expect(el.style.outlineColor).toBe('purple');
+      clearElementHighlight(el);
+      expect(el.style.backgroundColor).toBe('white');
+    },
+  );
+
+  it('restores original important styles after repeated applications and clearing', () => {
+    const el = makeInput();
+    el.style.setProperty('background-color', 'white', 'important');
+    el.style.setProperty('outline-color', 'purple', 'important');
+    applyHighlight(el, CONF_GREEN);
+    applyMissingDataHighlight(el);
+    applyMissingDataHighlight(el);
+    expect(el.style.backgroundColor).toBe('white');
+    expect(el.style.getPropertyPriority('background-color')).toBe('important');
+    clearElementHighlight(el);
+    clearElementHighlight(el);
+    expect(el.style.backgroundColor).toBe('white');
+    expect(el.style.outlineColor).toBe('purple');
+    expect(el.style.getPropertyPriority('outline-color')).toBe('important');
+  });
+
+  it('clears shadow-root and detached missing fields without altering their values', () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const root = host.attachShadow({ mode: 'open' });
+    const shadow = document.createElement('input');
+    root.appendChild(shadow);
+    const detached = makeInput();
+    applyMissingDataHighlight(shadow);
+    applyMissingDataHighlight(detached);
+    detached.value = 'Manually entered';
+    detached.remove();
+    clearHighlights();
+    expect(shadow.style.outline).toBe('');
+    expect(shadow.dataset.jbMissingData).toBeUndefined();
+    expect(detached.style.outline).toBe('');
+    expect(detached.value).toBe('Manually entered');
   });
 });

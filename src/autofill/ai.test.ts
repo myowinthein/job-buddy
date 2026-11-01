@@ -19,7 +19,7 @@ vi.mock('./filler', async (importOriginal) => {
     fillCheckboxInput: vi.fn(),
   };
 });
-vi.mock('./highlighter', () => ({ applyHighlight: vi.fn() }));
+vi.mock('./highlighter', () => ({ applyHighlight: vi.fn(), applyMissingDataHighlight: vi.fn() }));
 vi.mock('../resume-ai/gemini', () => ({ resolveFieldsWithAI: vi.fn() }));
 // Control the radio/checkbox candidate lists independently of the DOM.
 vi.mock('./scanner', () => ({

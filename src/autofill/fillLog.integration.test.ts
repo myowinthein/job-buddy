@@ -186,13 +186,18 @@ describe('shared fill tracking with the real AI and native filling pipeline', ()
   });
 
   it('records missing profile values separately from no match', async () => {
-    vi.mocked(scanFields).mockReturnValue([input('Unknown')]);
+    const missing = input('Unknown');
+    vi.mocked(scanFields).mockReturnValue([missing]);
     vi.mocked(resolveFieldsWithAI).mockResolvedValueOnce([
       { fieldId: 'field_001', confidence: 'high', profilePath: 'personal.lastName' },
     ]);
     await scanAutofill('run');
     expect(await executeAutofill('overwrite')).toMatchObject({ noData: 1, lowConfidence: 0 });
     expect(getFillLog()?.fields[0].ai.outcome).toBe('missing_data');
+    expect(missing.dataset.jbMissingData).toBe('1');
+    expect(missing.style.backgroundColor).toBe('');
+    undoAutofill();
+    expect(missing.style.outline).toBe('');
   });
 
   it('reports an unsuccessful file fill as failed rather than filled or missing data', async () => {

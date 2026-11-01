@@ -26,6 +26,8 @@ vi.mock('./filler', () => ({
 }));
 vi.mock('./highlighter', () => ({
   applyHighlight: vi.fn(),
+  applyMissingDataHighlight: vi.fn(),
+  clearMissingDataHighlights: vi.fn(),
   clearElementHighlight: vi.fn(),
   clearHighlights: vi.fn(),
 }));
@@ -47,7 +49,7 @@ import { getProfile, saveLearnedMappings } from '../utils/storage';
 import { scanFields, scanAriaFields, scanCheckboxGroups, scanRadioGroups } from './scanner';
 import { mapField } from './mapper';
 import { clearFieldValue, fillField, fillCheckboxInput, fillFileField } from './filler';
-import { clearElementHighlight, clearHighlights, applyHighlight } from './highlighter';
+import { clearElementHighlight, clearHighlights, applyHighlight, applyMissingDataHighlight } from './highlighter';
 import { resolveProfileValue } from './resolver';
 import { refreshLearnedLabels, saveElementMappings } from './mappings';
 import { runAIAutofill } from './ai';
@@ -236,7 +238,7 @@ describe('executeAutofill', () => {
     expect(result.noReview).toBe(0);
   });
 
-  it('overwrite: confident match with empty profile value → noData (no fill, no highlight)', async () => {
+  it('overwrite: confident match with empty profile value → noData with a gray outline', async () => {
     const el = makeInput();
     vi.mocked(scanFields).mockReturnValue([el]);
     vi.mocked(mapField).mockReturnValue({ confidence: 0.7, value: '', fieldPath: 'personal.firstName', matchLayer: 'dictionary_exact' });
@@ -244,6 +246,7 @@ describe('executeAutofill', () => {
     const result = await executeAutofill('overwrite');
     expect(result.noData).toBe(1);
     expect(result.noReview).toBe(0);
+    expect(applyMissingDataHighlight).toHaveBeenCalledWith(el);
   });
 
   it('totalScanned equals the number of fields found by the scanner regardless of confidence', async () => {

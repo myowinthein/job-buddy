@@ -57,12 +57,12 @@ Set Up Profile → Set Up AI Autofill → Fill Form → Review answers → Submi
 
 On the application form, colors describe individual field confidence:
 
-| Result                      | Meaning                                                   |
-| --------------------------- | --------------------------------------------------------- |
-| Green / High confidence     | Filled with high confidence; still check the answer.      |
-| Yellow / Review value       | Filled with lower confidence; review and correct it.      |
-| Red / Not matched           | Left unfilled because no confident match was found.       |
-| Gray / Missing profile data | Your profile lacks the value; the field has no highlight. |
+| Result                      | Meaning                                                              |
+| --------------------------- | -------------------------------------------------------------------- |
+| Green / High confidence     | Filled with high confidence; still check the answer.                 |
+| Yellow / Review value       | Filled with lower confidence; review and correct it.                 |
+| Red / Not matched           | Left unfilled because no confident match was found.                  |
+| Gray / Missing profile data | Your profile lacks the value; a subtle gray outline marks the field. |
 
 Popup messages share one area below the main buttons. Blue indicates setup or
 loading, gray an informational outcome, green completed fills, amber a result

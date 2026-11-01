@@ -10,7 +10,7 @@ import { toGeminiModel } from '../resume-ai/types';
 import { scanRadioGroups, scanCheckboxGroups } from './scanner';
 import type { RadioGroup, CheckboxGroup } from './scanner';
 import { fillField, fillRadioInput, fillCheckboxInput, findBestMatch } from './filler';
-import { applyHighlight } from './highlighter';
+import { applyHighlight, applyMissingDataHighlight } from './highlighter';
 import { CONF_CONFIRMED, CONF_AI_YELLOW } from './constants';
 import { getGeminiApiKey, getGeminiModel } from '../utils/storage';
 import { isSkippableOption } from './normalizer';
@@ -245,16 +245,17 @@ export async function runAIAutofill(
       const aiResult =
         isSelect && resp.selectedOption ? resp.selectedOption : (resp.profilePath ?? null);
 
-      if (!value) {
-        recordDebug(candidate, fieldId, aiResult, resp.confidence, 'unchanged', 'missing_data');
-        continue;
-      }
-
       const liveValue = readFieldValue(candidate.element);
       if (liveValue !== valuesAtRequest.get(candidate.element)) {
         if (tracked) { tracked.ai.outcome = 'skipped'; tracked.outcome = liveValue.trim() ? 'manual' : 'not_matched'; tracked.source = 'manual'; tracked.reason = 'value_changed'; }
         continue;
       }
+      if (!value) {
+        if (!liveValue.trim()) applyMissingDataHighlight(candidate.element);
+        recordDebug(candidate, fieldId, aiResult, resp.confidence, 'unchanged', 'missing_data');
+        continue;
+      }
+
       if (options.mode === 'merge' && candidate.originalState !== 'needReview' && liveValue.trim())
         continue;
       const alreadyOwned = sessionElements.includes(candidate.element);
