@@ -400,7 +400,7 @@ function App() {
     message = 'Loading profile…';
   } else if (profileLoadFailed) {
     tone = 'error';
-    message = 'Could not load your profile. Open Profile to try again.';
+    message = 'Your profile could not load; open Profile to retry.';
   } else if (profileSetup) {
     tone = 'info';
     message = hasProfileData
@@ -411,7 +411,7 @@ function App() {
     message = 'Loading AI settings…';
   } else if (keyReadFailed) {
     tone = 'error';
-    message = 'Open AI Settings to retry after a loading error.';
+    message = 'Your saved AI settings could not be loaded.';
   } else if (aiSetup) {
     tone = 'info';
     message = 'Add a Gemini API key to enable autofill.';
@@ -420,10 +420,10 @@ function App() {
     message = 'Filling…';
   } else if (autofillState === 'error') {
     tone = 'error';
-    message = 'Could not finish autofill. Refresh this page and try again.';
+    message = 'Refresh the page to retry after an autofill error.';
   } else if (logOpenFailed && result) {
     tone = 'error';
-    message = 'Could not open Fill Log. Try View Fill Log again.';
+    message = 'Fill Log could not open; please try again.';
   } else if (result)
     tone =
       aiUnavailable || result.needReview > 0 || unfilled > 0
@@ -451,7 +451,7 @@ function App() {
           : handleAutofill;
   const primaryIsAI = !profileLoadFailed && !profileSetup;
   const showFeedback = !confirming && (!!message || !!result);
-  const showReport = autofillState === 'error' || result?.totalScanned === 0;
+  const showReport = autofillState === 'error';
 
   return (
     <div className="flex max-h-[600px] w-[380px] flex-col bg-white font-sans text-gray-900 dark:bg-gray-900 dark:text-gray-100">
@@ -616,7 +616,9 @@ function App() {
                   <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">Last fill</p>
                 )}
                 {result.totalScanned === 0 ? (
-                  <p>No fillable fields found.</p>
+                  <p>
+                    No fillable fields found. <ReportIssueLink />
+                  </p>
                 ) : (
                   <ResultSummary result={result} />
                 )}
@@ -634,21 +636,25 @@ function App() {
                   View Fill Log →
                 </button>
               )}
-              {showReport && (
-                <a
-                  href="https://github.com/myowinthein/job-buddy/issues/new"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ml-auto rounded-sm font-medium text-blue-700 hover:underline dark:text-blue-400"
-                >
-                  Report an issue ↗
-                </a>
-              )}
+              {showReport && <ReportIssueLink />}
             </div>
           )}
         </div>
       )}
     </div>
+  );
+}
+
+function ReportIssueLink() {
+  return (
+    <a
+      href="https://github.com/myowinthein/job-buddy/issues/new"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="ml-auto inline-block rounded-sm font-medium text-blue-700 hover:underline dark:text-blue-400"
+    >
+      Report on GitHub ↗
+    </a>
   );
 }
 
@@ -679,9 +685,7 @@ function ResultSummary({ result }: { result: AutofillResult }) {
             {result.kept} existing answer{result.kept === 1 ? '' : 's'} kept.
           </p>
         ) : null}
-        {result.aiStatus === 'unavailable' && (
-          <p>AI assistance was unavailable. Review the filled answers.</p>
-        )}
+        {result.aiStatus === 'unavailable' && <p>AI was unavailable; basic autofill still ran.</p>}
       </div>
     </section>
   );

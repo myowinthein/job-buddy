@@ -193,8 +193,8 @@ test('an independently scanned empty iframe does not hide form fills, and a fres
     document.body.innerHTML = '<p>No application form</p>';
   });
   await popup.getByRole('button', { name: 'Fill Form', exact: true }).click();
-  await expect(popup.getByText('No fillable fields found.', { exact: true })).toBeVisible();
-  await expect(popup.getByRole('link', { name: 'Report an issue ↗' })).toBeVisible();
+  await expect(popup.getByText('No fillable fields found.')).toBeVisible();
+  await expect(popup.getByRole('link', { name: 'Report on GitHub ↗' })).toBeVisible();
   await expect(popup.getByText(`${count} fields filled`, { exact: true })).toHaveCount(0);
   await popup.locator('#root').screenshot({ path: testInfo.outputPath('empty-result.png') });
 });

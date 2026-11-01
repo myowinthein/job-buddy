@@ -218,7 +218,7 @@ describe('popup App — GET_STATUS frame aggregation on mount', () => {
       return Promise.resolve(statusResult({ totalScanned: 1 }, opts.frameId === 0 ? 'unavailable' : 'succeeded'));
     });
     renderApp();
-    expect(await screen.findByText('AI assistance was unavailable. Review the filled answers.')).toBeTruthy();
+    expect(await screen.findByText('AI was unavailable; basic autofill still ran.')).toBeTruthy();
     expect(screen.getByRole('alert').className).toContain('border-amber-500');
   });
 });
@@ -295,7 +295,7 @@ describe('popup App — handleAutofill scan orchestration', () => {
     tabsQueryMock.mockResolvedValue([]); // no tab.id
     renderApp();
     fireEvent.click(await readyFill());
-    expect(await screen.findByText(/Could not finish autofill/)).toBeTruthy();
+    expect(await screen.findByText(/Refresh the page to retry after an autofill error/)).toBeTruthy();
   });
 
   it('shows an error state when every frame\'s fill response is invalid, distinct from the no-tab case', async () => {
@@ -312,7 +312,7 @@ describe('popup App — handleAutofill scan orchestration', () => {
 
     renderApp();
     fireEvent.click(await readyFill());
-    expect(await screen.findByText(/Could not finish autofill/)).toBeTruthy();
+    expect(await screen.findByText(/Refresh the page to retry after an autofill error/)).toBeTruthy();
   });
 });
 
@@ -330,12 +330,12 @@ describe('popup App — Fill Log access', () => {
     sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }));
     renderApp();
     fireEvent.click(await screen.findByRole('button', { name: 'View Fill Log →' }));
-    expect(await screen.findByText('Could not open Fill Log. Try View Fill Log again.')).toBeTruthy();
+    expect(await screen.findByText('Fill Log could not open; please try again.')).toBeTruthy();
     expect(screen.getByRole('alert').className).toContain('border-red-500');
     expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Fill Form' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'View Fill Log →' }));
-    await waitFor(() => expect(screen.queryByText('Could not open Fill Log. Try View Fill Log again.')).toBeNull());
+    await waitFor(() => expect(screen.queryByText('Fill Log could not open; please try again.')).toBeNull());
     expect(screen.getByText('1 field filled')).toBeTruthy();
   });
 });
@@ -352,7 +352,7 @@ describe('popup message categories', () => {
     renderApp();
     await screen.findByRole('button', { name: 'Open AI Settings' });
     expect(screen.getByRole('alert').className).toContain('border-red-500');
-    expect(screen.getByText('Open AI Settings to retry after a loading error.')).toBeTruthy();
+    expect(screen.getByText('Your saved AI settings could not be loaded.')).toBeTruthy();
   });
 
   it('summarizes an all-kept merge as kept answers rather than a failed fill', async () => {
@@ -502,7 +502,7 @@ describe('popup profile and action presentation', () => {
     renderApp();
     expect(await screen.findByRole('alert')).toHaveProperty(
       'textContent',
-      expect.stringContaining('Could not load your profile'),
+      expect.stringContaining('Your profile could not load'),
     );
     expect(screen.getByRole('button', { name: 'Open Profile' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Set Up Profile' })).toBeNull();
@@ -534,7 +534,7 @@ it('does not ask for another AI key when a saved key exists but the fill did not
   expect(screen.getByText(/2 fields still need your input/)).toBeTruthy();
   expect(screen.queryByText('High confidence')).toBeNull();
   expect(screen.getByRole('button', { name: 'View Fill Log →' })).toBeTruthy();
-  expect(screen.getByRole('alert').textContent).toContain('AI assistance was unavailable.');
+  expect(screen.getByRole('alert').textContent).toContain('AI was unavailable;');
   expect(screen.getAllByRole('alert')).toHaveLength(1);
   expect(screen.queryByText(/choose a value|No Review/)).toBeNull();
 });
@@ -581,7 +581,9 @@ it('shows a no-form explanation without promoting AI or suggesting iframes are u
   renderApp();
   await screen.findByText('No fillable fields found.');
   expect(screen.queryByText('Open the application form, then try Fill Form again.')).toBeNull();
-  expect(screen.getByRole('link', { name: 'Report an issue ↗' })).toHaveProperty('href', 'https://github.com/myowinthein/job-buddy/issues/new');
+  const report = screen.getByRole('link', { name: 'Report on GitHub ↗' });
+  expect(report).toHaveProperty('href', 'https://github.com/myowinthein/job-buddy/issues/new');
+  expect(report.closest('p')?.textContent).toContain('No fillable fields found.');
   expect(screen.queryByRole('button', { name: 'Dismiss AI suggestion' })).toBeNull();
   expect(screen.queryByText(/iframe/)).toBeNull();
 });
@@ -700,7 +702,7 @@ it.each(['succeeded', 'not_needed'] as const)(
     renderApp();
     await screen.findByRole('button', { name: 'Undo' });
     expect(
-      screen.queryByText('AI assistance was unavailable. Review the filled answers.'),
+      screen.queryByText('AI was unavailable; basic autofill still ran.'),
     ).toBeNull();
   },
 );
