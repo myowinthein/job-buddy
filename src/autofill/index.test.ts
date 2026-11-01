@@ -238,7 +238,7 @@ describe('executeAutofill', () => {
     expect(result.noReview).toBe(0);
   });
 
-  it('overwrite: confident match with empty profile value → noData with a gray outline', async () => {
+  it('overwrite: confident match with empty profile value → noData with a gray tint', async () => {
     const el = makeInput();
     vi.mocked(scanFields).mockReturnValue([el]);
     vi.mocked(mapField).mockReturnValue({ confidence: 0.7, value: '', fieldPath: 'personal.firstName', matchLayer: 'dictionary_exact' });

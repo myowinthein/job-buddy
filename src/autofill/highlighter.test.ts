@@ -149,24 +149,27 @@ describe('clearHighlights', () => {
   });
 });
 
-describe('missing-data outlines', () => {
-  it('preserves the background and yields to focus without losing the marker', () => {
+describe('missing-data tints', () => {
+  it('tints the background without changing the field outline, text, or editability', () => {
     const el = makeInput('rgb(20, 30, 40)', 'opacity 0.3s');
     el.style.outline = '2px dotted blue';
     el.style.outlineOffset = '3px';
     applyMissingDataHighlight(el);
-    expect(el.style.backgroundColor).toBe('rgb(20, 30, 40)');
-    expect(el.style.transition).toBe('opacity 0.3s');
-    expect(el.style.outline).toContain('rgba(148, 163, 184, 0.7)');
+    expect(el.style.backgroundColor).toBe('rgba(107, 114, 128, 0.12)');
+    expect(el.style.outline).toBe('2px dotted blue');
+    expect(el.disabled).toBe(false);
+    expect(el.style.color).toBe('');
     el.focus();
     expect(el.style.outline).toBe('2px dotted blue');
     expect(el.style.outlineOffset).toBe('3px');
     expect(el.dataset.jbMissingData).toBe('1');
     el.blur();
-    expect(el.style.outline).toContain('rgba(148, 163, 184, 0.7)');
+    expect(el.style.backgroundColor).toBe('rgba(107, 114, 128, 0.12)');
     clearElementHighlight(el);
     expect(el.style.outline).toBe('2px dotted blue');
     expect(el.style.outlineOffset).toBe('3px');
+    expect(el.style.backgroundColor).toBe('rgb(20, 30, 40)');
+    expect(el.style.transition).toBe('opacity 0.3s');
     expect(el.dataset.jbMissingData).toBeUndefined();
     el.focus();
     el.blur();
@@ -179,7 +182,7 @@ describe('missing-data outlines', () => {
     applyMissingDataHighlight(el);
     expect(el.style.outline).toBe('');
     el.blur();
-    expect(el.style.outline).toContain('rgba(148, 163, 184, 0.7)');
+    expect(el.style.backgroundColor).toBe('rgba(107, 114, 128, 0.12)');
   });
 
   it.each([CONF_GREEN, CONF_FILL])(
@@ -207,8 +210,7 @@ describe('missing-data outlines', () => {
     applyHighlight(el, CONF_GREEN);
     applyMissingDataHighlight(el);
     applyMissingDataHighlight(el);
-    expect(el.style.backgroundColor).toBe('white');
-    expect(el.style.getPropertyPriority('background-color')).toBe('important');
+    expect(el.style.backgroundColor).toBe('rgba(107, 114, 128, 0.12)');
     clearElementHighlight(el);
     clearElementHighlight(el);
     expect(el.style.backgroundColor).toBe('white');

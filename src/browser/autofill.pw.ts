@@ -168,7 +168,7 @@ test('a removed key blocks a pending fill, while Undo remains available after a 
   await expect(page.locator('[name="lastName"]')).toHaveValue('Existing answer');
 });
 
-test('missing profile data gets a neutral outline that yields to focus and clears on edit or Undo', async ({
+test('missing profile data gets a neutral tint that preserves focus and clears on edit or Undo', async ({
   page,
   extension,
 }, testInfo) => {
@@ -199,8 +199,8 @@ test('missing profile data gets a neutral outline that yields to focus and clear
   const shadowMissing = page.locator('#missing-shadow-link');
   await expect(missing).toHaveValue('');
   await expect(missing).toHaveAttribute('data-jb-missing-data', '1');
-  await expect(missing).toHaveCSS('background-color', 'rgb(17, 24, 39)');
-  await expect(missing).toHaveCSS('outline-width', '1px');
+  await expect(missing).toHaveCSS('background-color', 'rgba(107, 114, 128, 0.12)');
+  await expect(missing).toHaveCSS('outline-style', 'none');
   await expect(shadowMissing).toHaveAttribute('data-jb-missing-data', '1');
   await expect(page.locator('[name="lastName"]')).not.toHaveAttribute('data-jb-missing-data');
   await expect(page.locator('#consent-yes')).not.toHaveAttribute('data-jb-highlighted');
@@ -208,8 +208,9 @@ test('missing profile data gets a neutral outline that yields to focus and clear
   await expect(missing).toHaveCSS('outline-width', '3px');
   await expect(missing).toHaveCSS('outline-color', 'rgb(59, 130, 246)');
   await page.locator('[name="firstName"]').focus();
-  await expect(missing).toHaveCSS('outline-width', '1px');
-  await page.locator('form').screenshot({ path: testInfo.outputPath('missing-data-outline.png') });
+  await expect(missing).toHaveCSS('outline-style', 'none');
+  await expect(missing).toHaveCSS('background-color', 'rgba(107, 114, 128, 0.12)');
+  await page.locator('form').screenshot({ path: testInfo.outputPath('missing-data-tint.png') });
   await missing.fill('https://www.linkedin.com/in/synthetic-person');
   await page.locator('[name="firstName"]').focus();
   await expect(missing).not.toHaveAttribute('data-jb-missing-data');

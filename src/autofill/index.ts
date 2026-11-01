@@ -587,7 +587,7 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
 //   noReview      confidence >= 0.85, value present → fill, green highlight
 //   needReview    0.60 <= confidence < 0.85, value present → fill, yellow highlight
 //   lowConfidence confidence < 0.60 (any value) → no fill, red highlight
-//   noData        confidence >= 0.60, value empty → no fill, gray outline
+//   noData        confidence >= 0.60, value empty → no fill, gray tint
 //
 // sessionElements tracks values actually filled during this session. Unfilled
 // red/gray fields become owned only after a real manual edit.
@@ -726,7 +726,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       record.rule.outcome = 'missing_data';
       record.outcome = 'missing_data';
       // confidence >= 0.60 but profile value is empty — nothing to write.
-      // Keep the background unchanged and mark the missing value with a gray outline.
+      // Mark the missing value with a neutral tint, using the same opacity as other statuses.
       applyMissingDataHighlight(element);
       result.noData++;
       if (!isFileInput && !isCheckboxInput) {

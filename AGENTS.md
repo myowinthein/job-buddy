@@ -46,7 +46,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 
 ## Domain Rules
 
-- Confidence thresholds live in `src/autofill/constants.ts`: fill at ≥0.60, green at ≥0.85. Yellow fills need review; red stays unfilled; a matched empty profile value is gray/noData with a subtle gray outline and its original background. The gray outline yields to native focus styling and clears on fill or Undo. Use named constants.
+- Confidence thresholds live in `src/autofill/constants.ts`: fill at ≥0.60, green at ≥0.85. Yellow fills need review; red stays unfilled; a matched empty profile value is gray/noData with a 12% gray background tint, matching the opacity of other statuses. Focus styling stays untouched; the tint changes on fill and clears on Undo. Use named constants.
 - Preserve two phases: scan stores `pendingMatches`; merge/overwrite consumes them without rescanning. Merge skips existing values; overwrite replaces them.
 - Mapper signal order is label, ariaLabel, placeholder, name, id. Layers are learned → autocomplete → exact dictionary → fuzzy → custom-link labels → nearby context. `autocomplete="url"` deliberately has no fixed profile path.
 - `mapField()` sees one field. Sibling-dependent ambiguity belongs in a post-pass: phones use a calling-code sibling; languages and expected salary start at index 0; education/work history use current/latest entry for a single occurrence and sequential indices for repeats.

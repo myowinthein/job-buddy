@@ -195,9 +195,10 @@ describe('shared fill tracking with the real AI and native filling pipeline', ()
     expect(await executeAutofill('overwrite')).toMatchObject({ noData: 1, lowConfidence: 0 });
     expect(getFillLog()?.fields[0].ai.outcome).toBe('missing_data');
     expect(missing.dataset.jbMissingData).toBe('1');
-    expect(missing.style.backgroundColor).toBe('');
+    expect(missing.style.backgroundColor).toBe('rgba(107, 114, 128, 0.12)');
     undoAutofill();
     expect(missing.style.outline).toBe('');
+    expect(missing.style.backgroundColor).toBe('');
   });
 
   it('reports an unsuccessful file fill as failed rather than filled or missing data', async () => {
