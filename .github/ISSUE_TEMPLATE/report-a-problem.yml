@@ -32,7 +32,7 @@ body:
     id: extra-details
     attributes:
       label: Screenshots or extra details
-      description: Add anything that helps explain the problem. For autofill issues, a screenshot of Fill Log can help.
+      description: Add anything that helps explain the problem. For autofill issues, a screenshot of Fill Details can help.
     validations:
       required: false
   - type: input
