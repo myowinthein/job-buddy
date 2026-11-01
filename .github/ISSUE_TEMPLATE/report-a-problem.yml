@@ -1,12 +1,6 @@
 name: Report a problem
 description: Tell us about something that isn't working in Job Buddy.
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Tell us what went wrong so we can investigate.
-
-        **Reports are public.** Don't include API keys, resumes, profile exports, or personal details. Remove private information from links, screenshots, and files before sharing them.
   - type: textarea
     id: what-happened
     attributes:
@@ -38,14 +32,14 @@ body:
     id: extra-details
     attributes:
       label: Screenshots or extra details
-      description: Add anything that helps explain the problem. For autofill issues, a screenshot of Fill Log can help. Remove personal details first.
+      description: Add anything that helps explain the problem. For autofill issues, a screenshot of Fill Log can help.
     validations:
       required: false
   - type: input
     id: version
     attributes:
       label: Job Buddy version
-      description: Filled in when you open this form from Settings. You can also find it at the top of the Job Buddy popup.
+      description: Copy the version shown in the top-right corner of the Job Buddy popup.
       placeholder: e.g. 1.14.3
     validations:
       required: true
@@ -53,6 +47,15 @@ body:
     id: browser-device
     attributes:
       label: Browser and device
+      description: Tell us your browser and operating system, such as Chrome on Windows.
       placeholder: Chrome on Windows, or Chrome on macOS
     validations:
       required: false
+  - type: markdown
+    attributes:
+      value: |
+        ### Before submitting
+
+        Tell us what went wrong so we can investigate.
+
+        **Reports are public.** Don't include API keys, resumes, profile exports, or personal details. Remove private information from links, screenshots, and files before sharing them.
