@@ -305,7 +305,7 @@ export function EducationSection({ profile, onSave }: Props) {
                     placeholder="3.8 / 4.0"
                   />
                 </FormField>
-                <FormField label="Education description" error={errors[`${idx}.description`]}>
+                <FormField label="Description" error={errors[`${idx}.description`]}>
                   <textarea
                     className={`${cls()} min-h-24`}
                     value={row.description ?? ''}

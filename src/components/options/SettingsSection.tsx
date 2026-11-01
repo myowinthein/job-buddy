@@ -317,18 +317,23 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         getApplicationHistory(),
       ]);
 
-      if (!profile) {
-        showToast('warning', 'No profile data to export.');
+      if (
+        isProfileEmpty(profile) &&
+        !Object.keys(learnedMappings).length &&
+        !applicationHistory.length
+      ) {
+        showToast('warning', 'No saved data to export.');
         return;
       }
 
+      const backupProfile = profileData(profile ?? { id: crypto.randomUUID() });
       const exportData = {
         _comment:
           'This is your Job Buddy profile backup. Import it back into the Job Buddy extension to restore your data.',
         version: '1.0',
-        profileId: profile.id,
+        profileId: backupProfile.id,
         exportedAt: new Date().toISOString(),
-        profile: profileData(profile),
+        profile: backupProfile,
         learnedMappings,
         applicationHistory,
       };
@@ -338,7 +343,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `job-buddy-profile-${profile.id.slice(0, 8)}-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `job-buddy-profile-${backupProfile.id.slice(0, 8)}-${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
 
@@ -368,16 +373,16 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       try {
         parsed = JSON.parse(await file.text());
       } catch {
-        showToast('error', 'Invalid file. Please select a valid Job Buddy export file.');
+        showToast('error', 'Select a valid Job Buddy export file.');
         return;
       }
       if (!parsed || typeof parsed !== 'object' || !('profile' in parsed)) {
-        showToast('error', 'Invalid file. Please select a valid Job Buddy export file.');
+        showToast('error', 'Select a valid Job Buddy export file.');
         return;
       }
       const raw = parsed as Record<string, unknown>;
       if (!raw.profile || typeof raw.profile !== 'object' || Array.isArray(raw.profile)) {
-        showToast('error', 'This file does not contain a valid profile.');
+        showToast('error', 'Select a valid Job Buddy export file.');
         return;
       }
       const validation = validateImportedProfile(raw.profile);

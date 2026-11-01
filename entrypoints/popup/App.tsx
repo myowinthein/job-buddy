@@ -1,3 +1,4 @@
+import { DevBadge } from '@/src/components/ui/DevBadge';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Check, Sparkles } from 'lucide-react';
 import { PopupNotice } from '@/src/components/popup/PopupNotice';
@@ -451,7 +452,10 @@ function App() {
             }
           }}
         />
-        <h1 className="flex-1 text-base font-bold">Job Buddy</h1>
+        <div className="flex flex-1 items-center gap-2">
+          <h1 className="text-base font-bold">Job Buddy</h1>
+          <DevBadge />
+        </div>
         <span className="text-xs text-gray-400 dark:text-gray-500">v{EXTENSION_VERSION}</span>
       </header>
 

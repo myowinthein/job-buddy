@@ -141,6 +141,7 @@ it.each([true, false])(
 it('does not drop a partially typed date in an otherwise empty experience row', () => {
   const onSave = save();
   show(<WorkHistorySection profile={{ workHistory: [] }} onSave={onSave} />);
+  fireEvent.click(screen.getByText('+ Add Entry'));
   fireEvent.change(screen.getAllByLabelText('Month')[0], { target: { value: '06' } });
   fireEvent.click(screen.getByText('Save Work History'));
   expect(onSave).not.toHaveBeenCalled();
@@ -215,7 +216,7 @@ it('saves and imports future graduation dates and optional education details', (
   fireEvent.click(screen.getByText('University: BSc'));
   fireEvent.click(screen.getByText('Grade and coursework'));
   fireEvent.change(screen.getByLabelText('Grade / GPA'), { target: { value: '3.9' } });
-  fireEvent.change(screen.getByLabelText('Education description'), {
+  fireEvent.change(screen.getByLabelText('Description'), {
     target: { value: 'Updated thesis' },
   });
   fireEvent.click(screen.getByText('Save Education'));

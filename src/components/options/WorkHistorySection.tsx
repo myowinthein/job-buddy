@@ -96,25 +96,11 @@ const cardSummary = (row: LocalRow, idx: number) =>
 export function WorkHistorySection({ profile, onSave }: Props) {
   // ── Work entries ────────────────────────────────────────────────────────────
   const [entries, setEntries] = useState<LocalRow[]>(() =>
-    profile.workHistory?.length ? profile.workHistory.map(initRow) : [emptyRow()],
+    profile.workHistory?.map(initRow) ?? [],
   );
 
   // ── Career summary ──────────────────────────────────────────────────────────
   const [partialDates, setPartialDates] = useState<Record<string, boolean>>({});
-  const rowStarted = (row: LocalRow) =>
-    !!(
-      row.company.trim() ||
-      row.title.trim() ||
-      row.startDate ||
-      row.endDate ||
-      row.isCurrent ||
-      row.locationCountry ||
-      row.locationCity.trim() ||
-      row.arrangement ||
-      row.description.trim() ||
-      partialDates[`${row.rowId}.startDate`] ||
-      partialDates[`${row.rowId}.endDate`]
-    );
   const [summary, setSummary] = useState(profile.professional?.summary ?? '');
 
   // ── Notice period ────────────────────────────────────────────────────────────
@@ -189,7 +175,6 @@ export function WorkHistorySection({ profile, onSave }: Props) {
 
     if (summary.length > 2000) e.summary = 'Use 2000 characters or fewer';
     entries.forEach((row, idx) => {
-      if (!rowStarted(row)) return;
       for (const key of ['company', 'title'] as const) {
         const err = textFieldError(key, row[key]);
         if (err) e[`${idx}.${key}`] = err;
@@ -225,7 +210,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
     await saveSection(
       saveDraft,
       {
-        workHistory: entries.filter(rowStarted).map((r) => ({
+        workHistory: entries.map((r) => ({
           company: r.company.trim(),
           title: r.title.trim(),
           startDate: r.startDate,
@@ -294,6 +279,9 @@ export function WorkHistorySection({ profile, onSave }: Props) {
       )}
 
       <div ref={entriesContainerRef}>
+        {!entries.length && (
+          <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">No experience added</p>
+        )}
         {entries.map((row, idx) => (
           <ExpandableCard
             id={`entry-workHistory-${idx}`}
@@ -345,7 +333,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
               </FormField>
               <FormField label="City" error={errors[`${idx}.locationCity`]}>
                 <input
-                  className={cls()}
+                  className={cls(errors[`${idx}.locationCity`])}
                   value={row.locationCity}
                   onChange={(e) => updateEntry(idx, 'locationCity', e.target.value)}
                   placeholder="San Francisco"
@@ -449,7 +437,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
               hint={`${row.description.length} / 3000`}
             >
               <textarea
-                className={`${cls()} min-h-[100px] resize-y`}
+                className={`${cls(errors[`${idx}.description`])} min-h-[100px] resize-y`}
                 id={`field-workHistory-${idx}-description`}
                 value={row.description}
                 onChange={(e) => updateEntry(idx, 'description', e.target.value)}

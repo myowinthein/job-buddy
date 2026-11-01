@@ -42,3 +42,26 @@ select:not([multiple]):not([size]) {
 @media (forced-colors: active) {
   select:not([multiple]):not([size]) { appearance: auto; background-image: none; }
 }
+
+/* Give the details list a narrow scrollbar in both themes. */
+.completion-details-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.completion-details-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.completion-details-scroll::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 3px;
+}
+
+.dark .completion-details-scroll::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+.dark .completion-details-scroll::-webkit-scrollbar-thumb {
+  background: #64748b;
+}

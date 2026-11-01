@@ -147,22 +147,25 @@ it('opens Background details on the first click when phone blur adds a validatio
   expect(document.activeElement).toBe(summary);
 });
 
-it('protects partial date inputs even when the section value is still empty', async () => {
+it('protects a newly added experience and its partial dates from navigation', async () => {
   const stored = (await getProfile())!;
   await saveProfile({ ...stored, workHistory: [] });
   const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
   await openPersonal();
   fireEvent.click(screen.getByRole('button', { name: 'Work History' }));
+  fireEvent.click(screen.getByRole('button', { name: '+ Add Entry' }));
   const month = screen.getAllByLabelText('Month')[0];
   act(() => month.focus());
   fireEvent.change(month, { target: { value: '06' } });
-  expect(screen.queryByText('Unsaved changes')).toBeNull();
   fireEvent.blur(month);
   expect(screen.getByText('Unsaved changes')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Address' }));
   expect(confirm).toHaveBeenCalledTimes(1);
   expect(screen.getByRole('heading', { name: 'Work History' })).toBeTruthy();
   fireEvent.change(month, { target: { value: '' } });
+  expect(screen.getByText('Unsaved changes')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Remove entry' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete$/ }));
   expect(screen.queryByText('Unsaved changes')).toBeNull();
 });
 

@@ -1,3 +1,4 @@
+import { DevBadge } from '@/src/components/ui/DevBadge';
 import { useEffect, useState } from 'react';
 import { FileUp, Brain, Menu, Settings, Check, Minus, Sparkles, FlaskConical } from 'lucide-react';
 import { LOGO_ICON_SRC } from '@/src/utils/branding';
@@ -72,7 +73,7 @@ export function Sidebar({
             <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
               Job Buddy
             </span>
-            {import.meta.env.DEV && <span title="Development build" className="shrink-0 rounded px-1 py-0.5 text-[9px] font-semibold tracking-wide text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/40">DEV</span>}
+            <DevBadge />
           </div>
         )}
         <button

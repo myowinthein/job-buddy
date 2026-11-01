@@ -191,7 +191,7 @@ it('rejects invalid profile roots without reporting success or writing a profile
   );
   await screen.findByText('Choose File');
   upload(null);
-  await screen.findByText('This file does not contain a valid profile.');
+  await screen.findByText('Select a valid Job Buddy export file.');
   expect(await getProfile()).toEqual({ id: 'empty-import-test' });
   expect(screen.queryByText('Profile imported successfully')).toBeNull();
 });

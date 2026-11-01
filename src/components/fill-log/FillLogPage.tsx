@@ -1,3 +1,4 @@
+import { DevBadge } from '@/src/components/ui/DevBadge';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ArrowLeft, Check, ChevronDown, Circle, CircleAlert, X } from 'lucide-react';
 import { LOGO_ICON_SRC } from '@/src/utils/branding';
@@ -116,7 +117,10 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
         <div className="flex items-center gap-3">
           <img src={LOGO_ICON_SRC} className="h-8 w-8" alt="" />
           <div>
-            <h1 className="text-xl font-semibold">Fill Details</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-semibold">Fill Details</h1>
+              <DevBadge />
+            </div>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {source && source !== 'null' ? source : 'Job Buddy'}
               {timestamp > 0 && <> · Latest fill at {new Date(timestamp).toLocaleString()}</>}

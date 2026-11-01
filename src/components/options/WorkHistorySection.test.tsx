@@ -66,6 +66,7 @@ describe('WorkHistorySection — initRow location backward-compat loader', () =>
 describe('WorkHistorySection — date validation across the keystroke/blur/save-time paths', () => {
   it('shows a year-range error live while typing, before a month is even chosen (keystroke path)', () => {
     renderSection({ workHistory: [] });
+    fireEvent.click(screen.getByText('+ Add Entry'));
     const yearInputs = screen.getAllByLabelText('Year'); // [0]=start, [1]=end
     fireEvent.change(yearInputs[0], { target: { value: '1800' } });
     expect(screen.getByText(/Year must be between/)).toBeTruthy();
@@ -73,6 +74,7 @@ describe('WorkHistorySection — date validation across the keystroke/blur/save-
 
   it('the direct-update path (onChange with a complete date) independently agrees on an out-of-range year', () => {
     renderSection({ workHistory: [] });
+    fireEvent.click(screen.getByText('+ Add Entry'));
     const yearInputs = screen.getAllByLabelText('Year');
     const monthSelects = screen.getAllByLabelText('Month');
     fireEvent.change(yearInputs[0], { target: { value: '1800' } });
@@ -82,6 +84,7 @@ describe('WorkHistorySection — date validation across the keystroke/blur/save-
 
   it('requires company, title, and start date once an entry is started', () => {
     const { onSave } = renderSection({ workHistory: [] });
+    fireEvent.click(screen.getByText('+ Add Entry'));
     fireEvent.change(screen.getByPlaceholderText('San Francisco'), { target: { value: 'Austin' } });
     fireEvent.click(screen.getByText('Save Work History'));
     expect(onSave).not.toHaveBeenCalled();
@@ -92,6 +95,7 @@ describe('WorkHistorySection — date validation across the keystroke/blur/save-
 
   it('shows a required company-name error on blur even without typing (blur path)', () => {
     renderSection({ workHistory: [] });
+    fireEvent.click(screen.getByText('+ Add Entry'));
     const companyInput = screen.getByPlaceholderText('Acme Inc.');
     fireEvent.blur(companyInput);
     expect(screen.getByText('Company name is required')).toBeTruthy();
@@ -321,4 +325,24 @@ describe('WorkHistorySection — row identity', () => {
     expect((screen.getAllByLabelText('Month')[2] as HTMLSelectElement).value).toBe('');
     expect((screen.getAllByLabelText('Year')[2] as HTMLInputElement).value).toBe('');
   });
+});
+
+
+it('shows required errors for an explicitly added blank experience instead of silently dropping it', () => {
+  const { onSave } = renderSection({ workHistory: [] });
+  expect(screen.queryByLabelText('Company*')).toBeNull();
+  fireEvent.click(screen.getByText('+ Add Entry'));
+  fireEvent.click(screen.getByText('Save Work History'));
+  expect(onSave).not.toHaveBeenCalled();
+  for (const error of ['Company name is required', 'Job title is required', 'Start date is required', 'End date is required']) {
+    expect(screen.getByText(error)).toBeTruthy();
+  }
+});
+
+it('can save a summary and availability with no work experience', () => {
+  const { onSave } = renderSection({ workHistory: [] });
+  fireEvent.change(screen.getByLabelText('Career Summary'), { target: { value: 'Starting my career' } });
+  fireEvent.click(screen.getByText('Save Work History'));
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ workHistory: [] }));
+  expect(screen.queryByRole('alert', { name: /required/ })).toBeNull();
 });

@@ -92,6 +92,7 @@ beforeEach(() => {
   vi.mocked(getGeminiSettings).mockResolvedValue({ apiKey: null, model: null, preference: 'auto', revision: null, verifiedAt: null });
   vi.mocked(getFullDriveState).mockResolvedValue({ connected: false, lastSynced: null, pendingSync: false, error: null });
   vi.mocked(getLearnedMappings).mockResolvedValue({});
+  vi.mocked(getApplicationHistory).mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -606,11 +607,31 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
 });
 
 describe('SettingsSection — Export', () => {
-  it('shows a warning and does not build a download when there is no profile', async () => {
-    vi.mocked(getProfile).mockResolvedValue(null);
+  it.each([null, { id: 'empty-profile', personal: { firstName: '', email: '' }, workHistory: [] }])('does not download an empty backup for %j', async profile => {
+    vi.mocked(getProfile).mockResolvedValue(profile as Profile | null);
+    const download = vi.fn();
+    URL.createObjectURL = download;
     renderSection();
     fireEvent.click(await screen.findByText('Download File'));
-    expect(await screen.findByText('No profile data to export.')).toBeTruthy();
+    expect(await screen.findByText('No saved data to export.')).toBeTruthy();
+    expect(download).not.toHaveBeenCalled();
+  });
+
+  it('still backs up mappings when no profile has been saved', async () => {
+    const mappings = { 'example.test': { sig: 'personal.firstName' } };
+    vi.mocked(getLearnedMappings).mockResolvedValue(mappings);
+    const createURL = vi.fn((_blob: Blob) => 'blob:metadata');
+    URL.createObjectURL = createURL;
+    URL.revokeObjectURL = vi.fn();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    try {
+      renderSection();
+      fireEvent.click(await screen.findByText('Download File'));
+      await waitFor(() => expect(click).toHaveBeenCalledOnce());
+      const data = JSON.parse(await createURL.mock.calls[0][0].text());
+      expect(data.learnedMappings).toEqual(mappings);
+      expect(data.profile.id).toBeTruthy();
+    } finally { click.mockRestore(); }
   });
 
   it('builds the export JSON blob with profile/learnedMappings/applicationHistory and triggers a download', async () => {
@@ -672,4 +693,13 @@ it('excludes credentials hidden in a stored profile from downloaded JSON', async
   fireEvent.click(await screen.findByText('Download File'));
   await waitFor(() => expect(create).toHaveBeenCalled());
   expect(await create.mock.calls[0][0].text()).not.toContain('nested-key-sentinel');
+});
+
+
+it.each(['not json', '{}', '{"profile":[]}'])('uses one sentence for an invalid import (%s)', async content => {
+  renderSection();
+  const file = new File([content], 'invalid.json', { type: 'application/json' });
+  fireEvent.change(document.querySelector('input[type="file"][accept=".json"]')!, { target: { files: [file] } });
+  expect(await screen.findByText('Select a valid Job Buddy export file.')).toBeTruthy();
+  expect(saveProfile).not.toHaveBeenCalled();
 });
