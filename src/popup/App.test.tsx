@@ -296,6 +296,7 @@ describe('popup App — handleAutofill scan orchestration', () => {
     renderApp();
     fireEvent.click(await readyFill());
     expect(await screen.findByText(/Refresh the page to retry after an autofill error/)).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /Report/ })).toBeNull();
   });
 
   it('shows an error state when every frame\'s fill response is invalid, distinct from the no-tab case', async () => {
@@ -618,9 +619,7 @@ it('shows a no-form explanation without promoting AI or suggesting iframes are u
   renderApp();
   await screen.findByText('No fillable fields found.');
   expect(screen.queryByText('Open the application form, then try Fill Form again.')).toBeNull();
-  const report = screen.getByRole('link', { name: 'Report on GitHub ↗' });
-  expect(report).toHaveProperty('href', 'https://github.com/myowinthein/job-buddy/issues/new');
-  expect(report.closest('p')?.textContent).toContain('No fillable fields found.');
+  expect(screen.queryByRole('link', { name: /Report/ })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Dismiss AI suggestion' })).toBeNull();
   expect(screen.queryByText(/iframe/)).toBeNull();
 });

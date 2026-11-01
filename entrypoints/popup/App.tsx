@@ -458,7 +458,6 @@ function App() {
             : handleAutofill;
   const primaryIsAI = !profileLoadFailed && !profileSetup;
   const showFeedback = !confirming && (!!message || !!result);
-  const showReport = autofillState === 'error';
   const aiWarning = aiUnavailable ? 'AI was unavailable, but basic autofill still ran.' : null;
   const noticeMessage = message ?? aiWarning;
 
@@ -625,9 +624,7 @@ function App() {
                   <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">Last fill</p>
                 )}
                 {result.totalScanned === 0 ? (
-                  <p>
-                    No fillable fields found. <ReportIssueLink />
-                  </p>
+                  <p>No fillable fields found.</p>
                 ) : (
                   <>
                     <ResultSummary result={result} />
@@ -637,36 +634,20 @@ function App() {
               </div>
             )}
           </PopupNotice>
-          {(result || showReport) && (
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs">
-              {result && (
-                <button
-                  type="button"
-                  onClick={() => void openLog()}
-                  className="rounded-sm font-medium text-blue-700 hover:underline dark:text-blue-400"
-                >
-                  View Fill Log →
-                </button>
-              )}
-              {showReport && <ReportIssueLink />}
+          {result && (
+            <div className="mt-3 text-xs">
+              <button
+                type="button"
+                onClick={() => void openLog()}
+                className="rounded-sm font-medium text-blue-700 hover:underline dark:text-blue-400"
+              >
+                View Fill Log →
+              </button>
             </div>
           )}
         </div>
       )}
     </div>
-  );
-}
-
-function ReportIssueLink() {
-  return (
-    <a
-      href="https://github.com/myowinthein/job-buddy/issues/new"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="ml-auto inline-block rounded-sm font-medium text-blue-700 hover:underline dark:text-blue-400"
-    >
-      Report on GitHub ↗
-    </a>
   );
 }
 

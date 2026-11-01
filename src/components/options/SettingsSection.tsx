@@ -1031,6 +1031,15 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           </a>
           <span aria-hidden="true">·</span>
           <a
+            href="https://github.com/myowinthein/job-buddy/issues/new"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={footerLinkCls}
+          >
+            Report an issue
+          </a>
+          <span aria-hidden="true">·</span>
+          <a
             href="https://ko-fi.com/myowinthein"
             target="_blank"
             rel="noopener noreferrer"
