@@ -404,10 +404,10 @@ function App() {
     message = 'Loading AI settings…';
   } else if (keyReadFailed) {
     tone = 'error';
-    message = 'Could not load AI settings. Open AI Settings to try again.';
+    message = 'Open AI Settings to retry after a loading error.';
   } else if (aiSetup) {
     tone = 'info';
-    message = 'Add a Gemini API key in AI Features to enable autofill.';
+    message = 'Add a Gemini API key to enable autofill.';
   } else if (busy) {
     tone = 'working';
     message = 'Filling…';
@@ -676,10 +676,8 @@ function ResultSummary({ result }: { result: AutofillResult }) {
             {result.kept} existing answer{result.kept === 1 ? '' : 's'} kept.
           </p>
         ) : null}
-        {result.aiStatus === 'unavailable' ? (
+        {result.aiStatus === 'unavailable' && (
           <p>AI assistance was unavailable. Review the filled answers.</p>
-        ) : (
-          unfilled === 0 && result.needReview === 0 && <p>Review your answers before submitting.</p>
         )}
       </div>
     </section>

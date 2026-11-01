@@ -352,7 +352,7 @@ describe('popup message categories', () => {
     renderApp();
     await screen.findByRole('button', { name: 'Open AI Settings' });
     expect(screen.getByRole('alert').className).toContain('border-red-500');
-    expect(screen.getByText('Could not load AI settings. Open AI Settings to try again.')).toBeTruthy();
+    expect(screen.getByText('Open AI Settings to retry after a loading error.')).toBeTruthy();
   });
 
   it('summarizes an all-kept merge as kept answers rather than a failed fill', async () => {
@@ -503,7 +503,7 @@ it('blocks a new fill without a key instead of showing the old dismissible AI su
   vi.mocked(getGeminiApiKey).mockResolvedValue(null);
   renderApp();
   expect(await screen.findByRole('button', { name: 'Set Up AI Autofill' })).toBeTruthy();
-  expect(screen.getByText('Add a Gemini API key in AI Features to enable autofill.')).toBeTruthy();
+  expect(screen.getByText('Add a Gemini API key to enable autofill.')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Fill Form' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Dismiss AI suggestion' })).toBeNull();
   expect(
@@ -678,7 +678,7 @@ it('keeps legacy fill results available without warning about unknown AI outcome
   renderApp();
   await screen.findByRole('button', { name: 'Undo' });
   expect(screen.queryByRole('alert')).toBeNull();
-  expect(screen.getByText('Review your answers before submitting.')).toBeTruthy();
+  expect(screen.getByText('1 field filled')).toBeTruthy();
 });
 
 it('can undo previous fills after the key is removed', async () => {
