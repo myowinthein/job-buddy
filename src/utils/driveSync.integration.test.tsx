@@ -221,7 +221,7 @@ it('failed lookup never turns into an upload over an unseen backup', async () =>
   lookupFailures = 1;
   mount();
   fireEvent.click(await screen.findByText('Connect Google Drive'));
-  await screen.findAllByText(/A retry is scheduled/);
+  await screen.findAllByText(/Backup failed and will retry/);
   await syncIfConnected();
   expect(writes()).toHaveLength(0);
   expect(remote!.profile.personal.firstName).toBe('Cloud Only');
@@ -447,7 +447,7 @@ it('background status changes update Settings without refreshing', async () => {
       error: 'sync_error',
     });
   });
-  expect(await screen.findByText(/A retry is scheduled/)).toBeTruthy();
+  expect(await screen.findByText(/Backup failed and will retry/)).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Disconnect' })).toBeTruthy();
 });
 it('an expired stored authorization is shown before a failed upload is needed', async () => {
@@ -576,7 +576,7 @@ it('allows an explicit decision when the only remote differences are invalid fie
   mount();
   fireEvent.click(await screen.findByText('Connect Google Drive'));
   await screen.findByRole('dialog', { name: 'Restore Drive Backup' });
-  expect(screen.getByText('1 invalid item will be skipped')).toBeTruthy();
+  expect(screen.getByText('1 item will be skipped')).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Restore All' })).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Keep Current' }));
   await screen.findByText('Profile backed up to Google Drive.');

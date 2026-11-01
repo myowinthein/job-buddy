@@ -487,7 +487,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           err.current, parsedImport.incoming, localMappings, localHistory, parsedImport.backup, mode,
         ));
         setImportScreen('summary');
-        showToast('warning', err.message);
+        showToast('warning', 'Your profile changed in another tab. Review it or import the file again.');
         return;
       }
       console.error('[Job Buddy] Import failed:', err);
@@ -521,7 +521,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             ? 'The Drive backup could not be deleted. Try disconnecting again.'
             : error === 'review_required'
               ? 'Review the Drive backup before continuing.'
-              : 'Backup failed. Your profile is saved in this browser. A retry is scheduled.';
+              : 'Backup failed and will retry. Your profile is saved in this browser.';
 
   const handleDriveBackupResult = async (result: ConnectResult) => {
     if (result.errorCode) {
@@ -548,7 +548,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       const backupData = validateBackupData({ learnedMappings: backup.learnedMappings });
       setDriveImportWarnings(
         [...validation.invalidFields, ...backupData.invalidFields].map(
-          (field) => `${field.path}: ${field.reason}`,
+          (field) => `${FIELD_DEFS.find((def) => def.id === field.path)?.label ?? field.path}: ${field.reason}`,
         ),
       );
       const validatedBackup = {
@@ -900,9 +900,10 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         </p>
 
         {!driveState.connected && !driveConnecting && !isDriveConfigured() && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <span role="status" className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+            <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
             Google Drive backup is unavailable in this build.
-          </p>
+          </span>
         )}
         {!driveState.connected && !driveConnecting && isDriveConfigured() && (
           <button type="button" onClick={handleDriveConnect} className={btnPrimaryCls}>
@@ -910,9 +911,10 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           </button>
         )}
         {driveConnecting && (
-          <p className="text-sm text-gray-500 dark:text-gray-400" role="status">
+          <span role="status" className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
+            <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-full border-2 border-current border-r-transparent animate-spin motion-reduce:animate-none" />
             Checking Drive backup…
-          </p>
+          </span>
         )}
         {driveState.connected && !driveConnecting && (
           <div className="space-y-2">
@@ -1255,8 +1257,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           busy={driveRestoreBusy}
           onDismiss={dismissRestoreDialog}
         >
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Restore your saved profile and learned mappings from Google Drive.
+          <p className="mt-2 text-pretty text-sm text-gray-500 dark:text-gray-400">
+            Restore your profile and learned mappings from Drive.
           </p>
           <ImportWarnings warnings={driveImportWarnings} />
           <div className="mt-6 flex justify-end gap-3">

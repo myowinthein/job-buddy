@@ -396,7 +396,7 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));
 
-    expect(await screen.findByText('Restore your saved profile and learned mappings from Google Drive.')).toBeTruthy();
+    expect(await screen.findByText('Restore your profile and learned mappings from Drive.')).toBeTruthy();
   });
 
   it('restores the Drive backup on Restore, merges learned mappings, and completes the import', async () => {
@@ -419,7 +419,7 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     );
     expect(onImportComplete).toHaveBeenCalled();
     // Wait for the final state update that closes the restore dialog.
-    await waitFor(() => expect(screen.queryByText('Restore your saved profile and learned mappings from Google Drive.')).toBeNull());
+    await waitFor(() => expect(screen.queryByText('Restore your profile and learned mappings from Drive.')).toBeNull());
   });
 
   it('shows a conflict summary dialog when connecting with a non-empty local profile', async () => {
@@ -465,10 +465,10 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     renderSection();
     const connectButton = await screen.findByText('Connect Google Drive');
     await act(async () => { fireEvent.click(connectButton); });
-    await screen.findByText('Restore your saved profile and learned mappings from Google Drive.');
+    await screen.findByText('Restore your profile and learned mappings from Drive.');
 
     fireEvent.keyDown(window, { key: 'Escape' });
-    expect(screen.queryByText('Restore your saved profile and learned mappings from Google Drive.')).toBeNull();
+    expect(screen.queryByText('Restore your profile and learned mappings from Drive.')).toBeNull();
   });
 
   it('ignores Escape on the restore dialog while a restore is actually in flight', async () => {
@@ -489,7 +489,7 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     expect(screen.getByText('Restoring…')).toBeTruthy(); // dialog is still up, mid-restore
 
     resolveSave();
-    await waitFor(() => expect(screen.queryByText('Restore your saved profile and learned mappings from Google Drive.')).toBeNull());
+    await waitFor(() => expect(screen.queryByText('Restore your profile and learned mappings from Drive.')).toBeNull());
   });
 
   it('closes the disconnect dialog on Escape', async () => {
@@ -563,7 +563,7 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
 
     expect(await screen.findByText('The Drive backup contains no valid profile data. Your profile is unchanged.')).toBeTruthy();
     expect(vi.mocked(saveProfile)).not.toHaveBeenCalled();
-    expect(screen.queryByText('Restore your saved profile and learned mappings from Google Drive.')).toBeNull();
+    expect(screen.queryByText('Restore your profile and learned mappings from Drive.')).toBeNull();
   });
 
   it('shows the storage-full error state and its "Manage storage" link, not a retry button', async () => {

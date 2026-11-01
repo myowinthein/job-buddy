@@ -281,13 +281,15 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
           ? 'Ready'
           : status === 'error' && configured && !replacing
             ? 'Needs attention'
-            : configured
-              ? 'Key saved'
-              : '';
+            : configured && replacing
+              ? 'Saved key active'
+              : configured
+                ? 'Key saved'
+                : '';
   const statusIndicator = statusText ? (
     <span
       role="status"
-      className={`inline-flex items-center gap-1.5 text-xs ${status === 'checking' || status === 'loading' || status === 'removing' ? 'text-blue-600 dark:text-blue-400' : status === 'ready' ? 'text-green-700 dark:text-green-400' : status === 'error' ? 'text-amber-700 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'}`}
+      className={`inline-flex items-center gap-1.5 text-xs ${status === 'checking' || status === 'loading' || status === 'removing' ? 'text-blue-600 dark:text-blue-400' : status === 'ready' ? 'text-green-700 dark:text-green-400' : status === 'error' && !replacing ? 'text-amber-700 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'}`}
     >
       {status === 'checking' || status === 'loading' || status === 'removing' ? (
         <span
@@ -394,8 +396,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
             role="alert"
             className="mt-2 text-xs text-red-600 dark:text-red-400"
           >
-            <p>{error}</p>
-            {configured && replacing && <p className="mt-1">Your saved key is still active.</p>}
+            <p className="text-pretty">{error}</p>
           </div>
         )}
         <div className="flex flex-wrap gap-2 mt-3">

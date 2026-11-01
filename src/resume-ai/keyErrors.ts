@@ -6,5 +6,5 @@ export const KEY_ERROR_MESSAGES = {
   network_error: 'Could not connect to Gemini. Check your internet and try again.',
   timeout: 'Gemini took too long to respond. Please try again.',
   cancelled: 'Check cancelled.',
-  no_model: 'No supported model is available for this key. Check your access in Google AI Studio.',
+  no_model: 'No supported model found. Check access in Google AI Studio.',
 } as const;

@@ -84,7 +84,7 @@ export default function ImportSummaryDialog({
           {hasChanges ? title : 'No Changes Found'}
         </h3>
         <p id={descriptionId} className="mt-2 text-pretty text-sm text-gray-500 dark:text-gray-400">
-          {hasChanges ? description : 'No new or changed details were found.'}
+          {hasChanges ? description : 'Your saved details will stay as they are.'}
         </p>
         {hasChanges && replacement && (
           <p className="mt-4 text-xs text-gray-600 dark:text-gray-400">

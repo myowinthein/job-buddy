@@ -207,7 +207,7 @@ it('shows skipped fields before importing a partly invalid backup into an empty 
   const profile = incomingProfile();
   profile.personal.email = 'invalid-email';
   upload(profile);
-  expect(await screen.findByText('1 invalid item will be skipped')).toBeTruthy();
+  expect(await screen.findByText('1 item will be skipped')).toBeTruthy();
   expect(screen.queryByText('Import action')).toBeNull();
   expect(screen.queryByRole('radio', { name: /^(Update|Replace) current profile/ })).toBeNull();
   expect(await getProfile()).toEqual({ id: 'empty-import-test' });
@@ -331,7 +331,7 @@ it('asks for review again if the profile changes while replacement is open', asy
   fireEvent.click(screen.getByRole('radio', { name: /Replace current profile/ }));
   await saveProfile({ ...current, address: { city: 'Concurrent city', country: 'US' } });
   fireEvent.click(screen.getByRole('button', { name: 'Replace Profile' }));
-  await screen.findByText('Your profile changed in another tab. Review the import again.');
+  await screen.findByText('Your profile changed in another tab. Review it or import the file again.');
   expect((await getProfile())?.address.city).toBe('Concurrent city');
   expect((await getProfile())?.personal.email).toBe(current.personal.email);
   expect((screen.getByRole('button', { name: 'Import All' }) as HTMLButtonElement).disabled).toBe(

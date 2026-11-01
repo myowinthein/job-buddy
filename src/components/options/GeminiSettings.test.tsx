@@ -222,7 +222,10 @@ describe('Gemini explicit key setup', () => {
     vi.mocked(checkApiKey).mockResolvedValue('invalid');
     renderSettings();
     await replaceKey();
-    expect(await screen.findByText('Your saved key is still active.')).toBeTruthy();
+    expect(await screen.findByText('Saved key active')).toBeTruthy();
+    expect(screen.getByRole('status').className).not.toContain('amber');
+    expect(screen.queryByText('Your saved key is still active.')).toBeNull();
+    expect(screen.getByRole('alert').textContent).toBe(KEY_ERROR_MESSAGES.invalid);
     expect(clearGeminiSettings).not.toHaveBeenCalled();
     expect(saveGeminiSettings).not.toHaveBeenCalled();
     fireEvent.click(screen.getByText('Cancel'));
