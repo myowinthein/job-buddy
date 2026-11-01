@@ -221,7 +221,7 @@ it('failed lookup never turns into an upload over an unseen backup', async () =>
   lookupFailures = 1;
   mount();
   fireEvent.click(await screen.findByText('Connect Google Drive'));
-  await screen.findAllByText(/We’ll retry the backup/);
+  await screen.findAllByText(/The backup will retry automatically/);
   await syncIfConnected();
   expect(writes()).toHaveLength(0);
   expect(remote!.profile.personal.firstName).toBe('Cloud Only');
@@ -452,7 +452,7 @@ it('background status changes update Settings without refreshing', async () => {
       error: 'sync_error',
     });
   });
-  expect(await screen.findByText(/We’ll retry the backup/)).toBeTruthy();
+  expect(await screen.findByText(/The backup will retry automatically/)).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Disconnect' })).toBeTruthy();
 });
 it('an expired stored authorization is shown before a failed upload is needed', async () => {
