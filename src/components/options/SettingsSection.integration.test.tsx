@@ -226,7 +226,7 @@ it('reports credential settings as skipped rather than importing them from JSON'
     { type: 'application/json' },
   );
   fireEvent.change(document.querySelector('input[accept=".json"]')!, { target: { files: [file] } });
-  expect(await screen.findByText(/API keys and connection settings are not imported/)).toBeTruthy();
+  expect(await screen.findByText(/API keys and connection settings cannot be imported/)).toBeTruthy();
   expect(saveProfile).not.toHaveBeenCalled();
   fireEvent.click(screen.getByText('Import All'));
   await waitFor(() => expect(saveProfile).toHaveBeenCalled());
