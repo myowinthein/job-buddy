@@ -2,7 +2,8 @@ import { readFieldValue as getFieldValue } from './fieldValue';
 import type { Profile } from '../types/profile';
 import { getProfile, getLearnedMappings, saveLearnedMappings } from '../utils/storage';
 import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED, CONF_DICT_EXACT, EDIT_LEARN_SIMILARITY_THRESHOLD, EDIT_LEARN_MIN_VALUE_LENGTH } from './constants';
-import { scanFields, scanAriaFields, scanCheckboxGroups, scanRadioGroups } from './scanner';
+import { scanForm, isChoiceGroupAvailable } from './scanner';
+import { isChoice, isChoiceChecked, isControlAvailable } from './dom';
 import { extractSignals, bestLabel } from './signals';
 import type { FieldSignals } from './signals';
 import { mapField } from './mapper';
@@ -85,7 +86,7 @@ function bindRecord(record: FillLogField, elements: HTMLElement[]): void {
 function recordValue(record: FillLogField): string {
   const elements = recordElements.get(record) ?? [];
   if (record.kind === 'radio' || record.kind === 'checkbox') {
-    return elements.flatMap((e, index) => (e as HTMLInputElement).checked ? [String(index)] : []).join(',');
+    return elements.flatMap((e, index) => isChoiceChecked(e) ? [String(index)] : []).join(',');
   }
   return elements[0] ? getFieldValue(elements[0]).trim() : '';
 }
@@ -449,7 +450,8 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
   // upload. Gating in the scanner keeps file inputs out of pendingMatches
   // entirely when no CV is saved, so they never contribute to result counters.
   const allowFileInputs = !!profile.documents?.cv?.file;
-  const fields = [...scanFields({ allowFileInputs }), ...scanAriaFields()];
+  const snapshot = scanForm({ allowFileInputs, scopeApplication: true });
+  const fields = snapshot.fields;
 
   let preFilledCount = 0;
   let totalMatched   = 0;
@@ -460,7 +462,7 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
   let learnedLabelsDirty = false;
 
   const scanned = fields.map((element, i) => {
-    const signals = extractSignals(element);
+    const signals = snapshot.signals(element);
     return {
       element,
       signals,
@@ -495,14 +497,10 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
   // marker — see salaryResolution.ts.
   adjustSalaryMatches(matches, profile);
 
-  // "Currently studying/working here"-style checkboxes: excluded from
-  // scanFields() entirely (standalone checkboxes are never scanned by the
-  // main pipeline — see EXCLUDED_TYPES in scanner.ts), and matched through a
-  // deliberately narrow, separate path rather than mapper.ts's normal layers
-  // — see matchCurrentEducationCheckboxes for why. Reuses scanCheckboxGroups(),
-  // the same source ai.ts already scans for checkbox groups.
-  const checkboxGroups = scanCheckboxGroups();
-  pendingRadioGroups = scanRadioGroups();
+  // Current-status checkboxes use a narrow rule pass rather than the text
+  // mapper. Other non-consent choices remain available to the AI pass.
+  const checkboxGroups = snapshot.checkboxGroups;
+  pendingRadioGroups = snapshot.radioGroups;
   pendingCheckboxGroups = checkboxGroups;
   for (const { element, signals, match, debugFieldId } of scanned) {
     const record: FillLogField = {
@@ -550,7 +548,7 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
 
   const prefilledRecords = new Set<FillLogField>();
   for (const group of [...pendingRadioGroups, ...checkboxGroups]) {
-    if (!group.isConsent && !isConsentGroup(group)) for (const option of group.options) if (option.element.checked) prefilledRecords.add(fieldRecords.get(option.element)!);
+    if (!group.isConsent && !isConsentGroup(group)) for (const option of group.options) if (isChoiceChecked(option.element)) prefilledRecords.add(fieldRecords.get(option.element)!);
   }
   scanned.forEach(({ element, signals, match, debugFieldId }) => {
     const hasExistingValue = getFieldValue(element).trim() !== '';
@@ -647,6 +645,13 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   for (const { element, signals, match, hasExistingValue, debugFieldId } of matchesToFill) {
     if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
     const record = fieldRecords.get(element)!;
+    const choiceGroup = isChoice(element) ? pendingCheckboxGroups.find(group => group.options.some(option => option.element === element)) : undefined;
+    if (!isControlAvailable(element) || (choiceGroup && !isChoiceGroupAvailable(choiceGroup))) {
+      record.rule.outcome = 'failed';
+      record.outcome = 'failed';
+      record.reason = 'fill_failed';
+      continue;
+    }
     Object.assign(record.rule, { layer: match.matchLayer, confidence: match.confidence, ...(match.fieldPath ? { profilePath: match.fieldPath } : {}) });
     // Merge mode: skip pre-filled fields that would otherwise be overwritten.
     if (mode === 'merge' && (record.outcome === 'kept' || hasExistingValue || getFieldValue(element).trim() !== '')) {
@@ -663,7 +668,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     }
 
     const isFileInput = element instanceof HTMLInputElement && element.type === 'file';
-    const isCheckboxInput = element instanceof HTMLInputElement && element.type === 'checkbox';
+    const isCheckboxInput = isChoice(element);
     let finalState: FieldFinalState;
 
     if (match.confidence >= CONF_FILL && match.value) {
@@ -679,7 +684,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // matchCurrentEducationCheckboxes only ever produces a checkbox match
         // when the underlying entry is current — .value on a checkbox never
         // affects its checked state, so this needs its own dispatch.
-        fillCheckboxInput(element as HTMLInputElement);
+        filled = fillCheckboxInput(element) !== false;
       } else {
         const beforeFill = getFieldValue(element);
         filled = (await fillField(element, match.value, () => isActive() && (mode !== 'merge' || getFieldValue(element) === beforeFill))) !== false;

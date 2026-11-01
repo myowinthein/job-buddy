@@ -1,276 +1,331 @@
 import { isConsentGroup } from './consent';
+import {
+  composedAncestors,
+  composedParent,
+  hasVisibleSurface,
+  isChoiceAvailable,
+  isControlAvailable,
+  isTextEditor,
+} from './dom';
+import { controlName, createLabelContext, ownText } from './labels';
+import type { LabelContext } from './labels';
+import { controlForm, createSignalReader, bestLabel } from './signals';
+import type { FieldSignals } from './signals';
 
-// Recursively discovers the light DOM root plus every *open* shadow root
-// nested within it, in DFS preorder (a root's own subtree before any of its
-// nested shadow roots) — the same order queryAllDeep below has always walked
-// in, extracted so a multi-selector scan can reuse one discovery pass instead
-// of repeating it once per selector. Closed shadow roots have no accessible
-// API from content-script JS, so a form entirely built from closed-shadow
-// components still can't be detected — same limitation as before.
-function collectAllRoots(root: ParentNode = document): ParentNode[] {
-  const roots: ParentNode[] = [root];
-  root.querySelectorAll<HTMLElement>('*').forEach((el) => {
-    if (el.shadowRoot && !el.hasAttribute('data-job-buddy-ui')) roots.push(...collectAllRoots(el.shadowRoot));
-  });
-  return roots;
-}
-
-// Queries every selector in `selectors` across the light DOM and any open
-// shadow roots nested within it, sharing a single shadow-root discovery pass
-// across all of them. Returns one result array per selector, in the same
-// per-selector order collectAllRoots visits roots in (equivalent to calling
-// queryAllDeep separately for each selector, just without repeating the
-// discovery walk). Some design systems (e.g. SmartRecruiters' SPL components
-// — spl-input, spl-textarea, spl-phone-field, spl-dropzone) render their real
-// native <input>/<textarea>/<select> inside a shadow root, which a plain
-// document.querySelectorAll cannot see at all — the scan would silently
-// return zero fields on such a page.
-function queryAllDeepMulti<T extends Element>(selectors: string[], root: ParentNode = document): T[][] {
-  const roots = collectAllRoots(root);
-  return selectors.map((selector) => roots.flatMap((r) => Array.from(r.querySelectorAll<T>(selector))));
-}
-
-function queryAllDeep<T extends Element>(selector: string, root: ParentNode = document): T[] {
-  return queryAllDeepMulti<T>([selector], root)[0];
-}
-
-const EXCLUDED_INPUT_TYPES = new Set([
-  'hidden', 'submit', 'button', 'checkbox',
-  'radio', 'file', 'image', 'reset',
-]);
-
-// Native HTML tags that are already handled by the native scanner —
-// ARIA scanner excludes elements whose tag is in this set to avoid duplicates.
-const NATIVE_FORM_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
-
-interface ScanOptions {
-  // When true, visible `<input type="file">` elements are *not* filtered out.
-  // The caller (executeAutofill) sets this only when the profile actually has a
-  // CV file available, so file inputs never appear in pendingMatches otherwise.
-  allowFileInputs?: boolean;
-}
-
-export function scanFields(options: ScanOptions = {}): HTMLElement[] {
-  const elements = queryAllDeep<HTMLElement>('input, textarea, select');
-
-  return elements.filter((el) => {
-    // Excluded input types (hidden, submit, button, etc.)
-    if (el instanceof HTMLInputElement) {
-      const type = el.type.toLowerCase();
-
-      // ARIA override: an input with aria-haspopup="listbox" acts as a custom
-      // select trigger regardless of its type (e.g. Revolut uses
-      // <input type="button" aria-haspopup="listbox"> for the phone calling-code
-      // picker). Let it through before the type exclusion check.
-      if (el.getAttribute('aria-haspopup') === 'listbox') {
-        // fall through to the remaining visibility checks below
-      } else if (type === 'file') {
-        // 'file' is conditionally allowed; everything else in EXCLUDED stays excluded.
-        if (!options.allowFileInputs) return false;
-        // Custom upload widgets (Fluent UI / Fabric, MUI, Mantine, etc.) render
-        // a styled button as the user-facing surface and hide the real file
-        // input behind it. They almost always set tabindex="-1" on the input
-        // because keyboard focus is meant to live on the button wrapper, not
-        // the input. A genuinely user-facing file input would not have this.
-        if (el.getAttribute('tabindex') === '-1') return false;
-      } else if (EXCLUDED_INPUT_TYPES.has(type)) {
-        return false;
-      }
-    }
-
-    // Skip inputs that live inside a non-native [role="combobox"] container.
-    // The outer combobox element is scanned separately by scanAriaFields() and
-    // receives click-based filling. Letting the inner search input through would
-    // result in a text fill that doesn't actually select an option.
-    if (el instanceof HTMLInputElement) {
-      const ancestor = el.closest('[role="combobox"]');
-      if (ancestor && !NATIVE_FORM_TAGS.has(ancestor.tagName)) return false;
-    }
-
-    // Read-only — not user-editable (disabled is covered by isElementVisible below)
-    if ('readOnly' in el && (el as HTMLInputElement | HTMLTextAreaElement).readOnly) return false;
-
-    return isElementVisible(el);
-  });
-}
-
-// ── Radio / checkbox scanning ─────────────────────────────────────────────────
-
-// Does not handle aria-disabled — that is an ARIA-only concern added by isAriaVisible.
-function isElementVisible(el: HTMLElement): boolean {
-  if ((el as HTMLInputElement).disabled) return false;
-  if (el.closest('[hidden]') !== null) return false;
-  if (el.closest('[aria-hidden="true"]') !== null) return false;
-  if (el.offsetParent === null) return false;
-  const style = window.getComputedStyle(el);
-  if (style.display === 'none' || style.visibility === 'hidden') return false;
-  if (parseFloat(style.opacity) === 0) return false;
-  const rect = el.getBoundingClientRect();
-  return rect.width > 0 && rect.height > 0;
-}
-
-function getOptionLabel(el: HTMLInputElement): string {
-  if (el.id) {
-    try {
-      // A label[for] association only resolves within the same tree scope —
-      // if `el` lives inside a shadow root, its label (if any) must live
-      // there too, not in the top-level document.
-      const root = el.getRootNode() as Document | ShadowRoot;
-      const linked = root.querySelector<HTMLLabelElement>(`label[for="${CSS.escape(el.id)}"]`);
-      if (linked) {
-        const clone = linked.cloneNode(true) as HTMLElement;
-        clone.querySelectorAll('input').forEach((i) => i.remove());
-        return clone.textContent?.trim() ?? '';
-      }
-    } catch { /* skip */ }
-  }
-  const parentLabel = el.closest('label');
-  if (parentLabel) {
-    const clone = parentLabel.cloneNode(true) as HTMLElement;
-    clone.querySelectorAll('input').forEach((i) => i.remove());
-    return clone.textContent?.trim() ?? '';
-  }
-  return el.value || '';
-}
-
-function getGroupLegend(el: HTMLElement): string {
-  const fieldset = el.closest('fieldset');
-  if (fieldset) {
-    const legend = fieldset.querySelector(':scope > legend');
-    if (legend) return legend.textContent?.trim() ?? '';
-  }
-  const group = el.closest('[role="radiogroup"], [role="group"]');
-  if (!group) return '';
-  const label = group.getAttribute('aria-label');
-  if (label) return label;
-  const root = group.getRootNode() as Document | ShadowRoot;
-  return (group.getAttribute('aria-labelledby') ?? '').split(/\s+/)
-    .map((id) => root.getElementById?.(id)?.textContent?.trim() ?? '').filter(Boolean).join(' ');
-}
-
+export type ChoiceElement = HTMLElement & { checked?: boolean; value?: string };
 export interface RadioOption {
-  element: HTMLInputElement;
-  label:   string;
-  value:   string;
+  element: ChoiceElement;
+  label: string;
+  value: string;
 }
-
-export interface RadioGroup {
+export type CheckboxOption = RadioOption;
+interface QuestionScope {
+  question?: Element;
+  form?: Element | null;
+  root?: Node;
+}
+export interface RadioGroup extends QuestionScope {
   isConsent?: boolean;
-  name:       string;
+  name: string;
   groupLabel: string;
-  options:    RadioOption[];
+  options: RadioOption[];
+}
+export interface CheckboxGroup extends RadioGroup {
+  isConsent: boolean;
+}
+export interface ScanOptions {
+  allowFileInputs?: boolean;
+  scopeApplication?: boolean;
+}
+export interface FormScan {
+  fields: HTMLElement[];
+  radioGroups: RadioGroup[];
+  checkboxGroups: CheckboxGroup[];
+  signals: (element: HTMLElement) => FieldSignals;
 }
 
-export interface CheckboxOption {
-  element: HTMLInputElement;
-  label:   string;
-  value:   string;
-}
+const INPUT_TYPES = new Set([
+  'text',
+  'email',
+  'tel',
+  'url',
+  'number',
+  'date',
+  'month',
+  'datetime-local',
+  'time',
+  'week',
+]);
+const CAREER =
+  /\b(resum[eé]|cv|curriculum vitae|cover letter|work authori[sz]ation|employment|job application|apply for|candidate|linkedin|salary|portfolio|education|work history)\b/i;
+const AUXILIARY =
+  /\b(newsletter|subscrib(?:e|ing)|sign[ -]?in|log[ -]?in|search|contact us|feedback)\b/i;
 
-export interface CheckboxGroup {
-  name:       string;
-  groupLabel: string;
-  isConsent:  boolean;
-  options:    CheckboxOption[];
-}
-
-export function scanRadioGroups(): RadioGroup[] {
-  const all = queryAllDeep<HTMLInputElement>('input[type="radio"]')
-    .filter((el) => !!el.name && isElementVisible(el));
-
-  const byName = new Map<string, HTMLInputElement[]>();
-  for (const el of all) {
-    const arr = byName.get(el.name) ?? [];
-    arr.push(el);
-    byName.set(el.name, arr);
-  }
-
-  const groups: RadioGroup[] = [];
-  for (const [name, els] of byName) {
-    if (els.length < 2) continue;
-    const options = els.map((el) => ({ element: el, label: getOptionLabel(el), value: el.value }));
-    const groupLabel = getGroupLegend(els[0]) || name;
-    groups.push({ name, groupLabel, options, isConsent: isConsentGroup({ groupLabel, options }) });
-  }
-  return groups;
-}
-
-export function scanCheckboxGroups(): CheckboxGroup[] {
-  const all = queryAllDeep<HTMLInputElement>('input[type="checkbox"]')
-    .filter((el) => isElementVisible(el));
-
-  const byName = new Map<string, HTMLInputElement[]>();
-  let anonCount = 0;
-  for (const el of all) {
-    const key = el.name || `__cb_anon_${anonCount++}`;
-    const arr = byName.get(key) ?? [];
-    arr.push(el);
-    byName.set(key, arr);
-  }
-
-  const groups: CheckboxGroup[] = [];
-  for (const [, els] of byName) {
-    const options = els.map((el) => ({ element: el, label: getOptionLabel(el), value: el.value }));
-    const groupLabel = getGroupLegend(els[0]) || (els[0].name ?? '');
-    const isConsent = isConsentGroup({ groupLabel, options });
-    groups.push({ name: els[0].name ?? '', groupLabel, isConsent, options });
-  }
-  return groups;
-}
-
-// ── ARIA / custom-component scanning ─────────────────────────────────────────
-//
-// Covers four common patterns used by modern React/Vue job portals:
-//   aria-haspopup="listbox" — trigger button for a custom dropdown/select
-//   role="combobox"         — searchable select wrapper (e.g. React-Select outer div)
-//   role="textbox"          — non-native editable region
-//   contenteditable="true"  — free-edit div/span used as text input
-
-function isAriaVisible(el: HTMLElement): boolean {
-  if (el.getAttribute('aria-disabled') === 'true') return false;
-  return isElementVisible(el);
-}
-
-/** Returns 'text' for custom text fields, 'select' for custom dropdowns, null otherwise. */
-export function getAriaElementType(el: HTMLElement): 'text' | 'select' | null {
-  const role = el.getAttribute('role');
-  if (role === 'textbox' || el.getAttribute('contenteditable') === 'true') return 'text';
-  if (role === 'combobox' || el.getAttribute('aria-haspopup') === 'listbox') return 'select';
-  return null;
-}
-
-/**
- * Scans the page for visible ARIA custom form components that are NOT native
- * input/textarea/select elements. Returns them in document order, deduplicated.
- *
- * These elements go through the same signal extraction and mapping pipeline as
- * native fields. Only the fill phase differs (click-based for listbox/combobox,
- * textContent-based for textbox/contenteditable).
- */
-export function scanAriaFields(): HTMLElement[] {
-  const results: HTMLElement[] = [];
+// One discovery pass, interleaving open shadow roots and assigned slots at their
+// host/slot positions. A snapshot never survives a separate scan invocation.
+function collectElements(root: ParentNode = document): HTMLElement[] {
+  const elements: HTMLElement[] = [];
   const seen = new Set<Element>();
-
-  function addIfEligible(el: HTMLElement): void {
-    if (seen.has(el)) return;
-    if (NATIVE_FORM_TAGS.has(el.tagName)) return; // handled by native scanner
-    if (!isAriaVisible(el)) return;
-    seen.add(el);
-    results.push(el);
+  const excluded = new WeakMap<Element, boolean>();
+  const isOwned = (element: Element): boolean => {
+    const cached = excluded.get(element);
+    if (cached !== undefined) return cached;
+    const parent = composedParent(element);
+    const owned = element.hasAttribute('data-job-buddy-ui') || !!(parent && isOwned(parent));
+    excluded.set(element, owned);
+    return owned;
+  };
+  const stack: Iterator<Element>[] = [root.querySelectorAll('*').values()];
+  while (stack.length) {
+    const next = stack.at(-1)!.next();
+    if (next.done) {
+      stack.pop();
+      continue;
+    }
+    const element = next.value;
+    if (seen.has(element)) continue;
+    seen.add(element);
+    if (isOwned(element)) continue;
+    if (element instanceof HTMLElement) elements.push(element);
+    if (element.shadowRoot) stack.push(element.shadowRoot.querySelectorAll('*').values());
+    if (element instanceof HTMLSlotElement) {
+      const assigned = element.assignedElements({ flatten: true });
+      if (assigned.length)
+        stack.push(assigned.flatMap((node) => [node, ...node.querySelectorAll('*')]).values());
+    }
   }
+  return elements;
+}
 
-  // One shared shadow-root discovery pass for all four selectors below,
-  // instead of each queryAllDeep call repeating it — see queryAllDeepMulti.
-  const [textboxEls, contentEditableEls, listboxEls, comboboxEls] = queryAllDeepMulti<HTMLElement>([
-    '[role="textbox"]',           // Text-input equivalents
-    '[contenteditable="true"]',
-    '[aria-haspopup="listbox"]',  // Select/dropdown equivalents
-    '[role="combobox"]',
-  ]);
-  textboxEls.forEach(addIfEligible);
-  contentEditableEls.forEach(addIfEligible);
-  listboxEls.forEach(addIfEligible);
-  comboboxEls.forEach(addIfEligible);
+function insideWidget(element: HTMLElement): boolean {
+  for (let parent = composedParent(element); parent; parent = composedParent(parent)) {
+    if (!(parent instanceof HTMLElement)) continue;
+    if (
+      parent.getAttribute('role') === 'combobox' ||
+      isTextEditor(parent) ||
+      parent.matches('[role="radio"],[role="checkbox"]')
+    )
+      return true;
+  }
+  return false;
+}
 
-  return results;
+export function getAriaElementType(element: HTMLElement): 'text' | 'select' | null {
+  if (isTextEditor(element)) return 'text';
+  return element.getAttribute('role') === 'combobox' ||
+    element.getAttribute('aria-haspopup') === 'listbox'
+    ? 'select'
+    : null;
+}
+
+function textControl(element: HTMLElement, options: ScanOptions): boolean {
+  if (element instanceof HTMLInputElement) {
+    if (element.type === 'file') return !!options.allowFileInputs && element.tabIndex !== -1;
+    if (INPUT_TYPES.has(element.type)) return true;
+    return ['button', 'search'].includes(element.type) && getAriaElementType(element) === 'select';
+  }
+  if (element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) return true;
+  return getAriaElementType(element) !== null;
+}
+
+function choiceKind(element: HTMLElement): 'radio' | 'checkbox' | null {
+  if (element instanceof HTMLInputElement && ['radio', 'checkbox'].includes(element.type))
+    return element.type as 'radio' | 'checkbox';
+  return element.matches('[role="radio"],[role="checkbox"]')
+    ? (element.getAttribute('role') as 'radio' | 'checkbox')
+    : null;
+}
+
+function questionContainer(element: HTMLElement): Element | undefined {
+  for (const ancestor of composedAncestors(element)) {
+    if (ancestor !== element && ancestor.matches('fieldset,[role="radiogroup"],[role="group"]'))
+      return ancestor;
+  }
+  return undefined;
+}
+
+function questionLabel(element: HTMLElement, context?: LabelContext): string {
+  const question = questionContainer(element);
+  if (!question) return '';
+  if (question instanceof HTMLFieldSetElement) {
+    const legend = question.querySelector(':scope > legend');
+    if (legend) return ownText(legend, context);
+  }
+  return controlName(question as HTMLElement, context);
+}
+
+function optionLabel(element: HTMLElement, context?: LabelContext): string {
+  return (
+    controlName(element, context) ||
+    (element instanceof HTMLInputElement ? element.value : ownText(element, context))
+  );
+}
+
+function scopedControls(
+  elements: HTMLElement[],
+  signals: FormScan['signals'],
+  context: LabelContext,
+): Set<HTMLElement> {
+  const forms = new Map<
+    Element,
+    { elements: HTMLElement[]; career: boolean; auxiliary: boolean }
+  >();
+  for (const element of elements) {
+    const form = controlForm(element);
+    if (!form) continue;
+    let data = forms.get(form);
+    if (!data) forms.set(form, (data = { elements: [], career: false, auxiliary: false }));
+    data.elements.push(element);
+  }
+  for (const [form, data] of forms) {
+    const heading = form.querySelector('h1,h2,h3,legend');
+    const title = [
+      controlName(form as HTMLElement, context),
+      heading ? ownText(heading, context) : '',
+      form.id,
+      form.getAttribute('name') ?? '',
+      form.querySelector('button[type="submit"],input[type="submit"]')?.textContent ?? '',
+    ].join(' ');
+    const clues = data.elements
+      .map((element) => {
+        const s = signals(element);
+        return [bestLabel(s), s.name, s.autocomplete, questionLabel(element, context)].join(' ');
+      })
+      .join(' ');
+    data.career = CAREER.test(`${title} ${clues}`);
+    data.auxiliary =
+      AUXILIARY.test(title) ||
+      data.elements.some((element) => element.closest('[role="search"],nav,footer'));
+  }
+  const hasApplication = [...forms.values()].some((form) => form.career);
+  return new Set(
+    elements.filter((element) => {
+      const form = controlForm(element);
+      if (form) {
+        const data = forms.get(form)!;
+        return data.career || (!hasApplication && !data.auxiliary);
+      }
+      // Formless application builders and shadow controls remain supported.
+      return ![...composedAncestors(element)].some((ancestor) =>
+        ancestor.matches('nav,footer,[role="navigation"],[role="search"]'),
+      );
+    }),
+  );
+}
+
+function groupChoices(
+  elements: HTMLElement[],
+  kind: 'radio' | 'checkbox',
+  context: LabelContext,
+): RadioGroup[] {
+  const groups = new Map<string, RadioGroup>();
+  const ids = new Map<Node, number>();
+  const id = (node: Node) => {
+    if (!ids.has(node)) ids.set(node, ids.size);
+    return ids.get(node)!;
+  };
+  for (const element of elements) {
+    const root = element.getRootNode(),
+      form = controlForm(element),
+      question = questionContainer(element);
+    const name = element.getAttribute('name') ?? '';
+    if (kind === 'radio' && !name && question?.getAttribute('role') !== 'radiogroup') continue;
+    const key = `${id(root)}:${id(form ?? root)}:${id(question ?? form ?? root)}:${question && (kind === 'checkbox' || !name) ? 'question' : name ? `name:${name}` : `anonymous:${id(element)}`}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = {
+        name,
+        groupLabel: questionLabel(element, context) || name,
+        options: [],
+        root,
+        form,
+        ...(question ? { question } : {}),
+      };
+      groups.set(key, group);
+    }
+    const label = optionLabel(element, context);
+    group.options.push({
+      element,
+      label,
+      value: element.getAttribute('value') || element.dataset.value || label,
+    });
+  }
+  return [...groups.values()]
+    .filter((group) => kind === 'checkbox' || group.options.length >= 2)
+    .map((group) => ({ ...group, isConsent: isConsentGroup(group) }));
+}
+
+/** Recheck live labels/scope before acting on a saved group after an AI wait. */
+export function isChoiceGroupAvailable(group: RadioGroup): boolean {
+  return (
+    group.options.length > 0 &&
+    !group.isConsent &&
+    !isConsentGroup(group) &&
+    group.options.every(
+      ({ element }) =>
+        isChoiceAvailable(element) &&
+        (!group.root || group.root === element.getRootNode()) &&
+        (group.form === undefined || group.form === controlForm(element)) &&
+        (!group.question || group.question === questionContainer(element)),
+    ) &&
+    !isConsentGroup({
+      groupLabel: questionLabel(group.options[0].element) || group.groupLabel,
+      options: group.options.map(({ element }) => ({ label: optionLabel(element) })),
+    })
+  );
+}
+
+export function scanForm(options: ScanOptions = {}): FormScan {
+  const all = collectElements();
+  const labels = createLabelContext(all);
+  const signals = createSignalReader(all, labels);
+  const surfaceCache = new WeakMap<Element, boolean>();
+  const candidates = all.filter((element) => {
+    const kind = choiceKind(element);
+    if ((!textControl(element, options) && !kind) || insideWidget(element)) return false;
+    return kind
+      ? isChoiceAvailable(element)
+      : isControlAvailable(element) && hasVisibleSurface(element, surfaceCache);
+  });
+  // File metadata can identify an application even if no saved CV can be filled.
+  const evidence = all.filter(
+    (element) =>
+      element instanceof HTMLInputElement &&
+      element.type === 'file' &&
+      isControlAvailable(element) &&
+      hasVisibleSurface(element, surfaceCache),
+  );
+  const scope = options.scopeApplication
+    ? scopedControls([...candidates, ...evidence], signals, labels)
+    : null;
+  const fields: HTMLElement[] = [],
+    radios: HTMLElement[] = [],
+    checkboxes: HTMLElement[] = [];
+  for (const element of candidates) {
+    if (scope && !scope.has(element)) continue;
+    const kind = choiceKind(element);
+    if (kind) (kind === 'radio' ? radios : checkboxes).push(element);
+    else fields.push(element);
+  }
+  return {
+    fields,
+    radioGroups: groupChoices(radios, 'radio', labels),
+    checkboxGroups: groupChoices(checkboxes, 'checkbox', labels) as CheckboxGroup[],
+    signals,
+  };
+}
+
+// Compatibility entry points for independent callers. The autofill pipeline
+// consumes scanForm once so discovery and label indexing are shared.
+export function scanFields(options: ScanOptions = {}): HTMLElement[] {
+  return scanForm(options).fields.filter((element) => element.matches('input,textarea,select'));
+}
+export function scanAriaFields(): HTMLElement[] {
+  return scanForm().fields.filter((element) => !element.matches('input,textarea,select'));
+}
+export function scanRadioGroups(): RadioGroup[] {
+  return scanForm().radioGroups;
+}
+export function scanCheckboxGroups(): CheckboxGroup[] {
+  return scanForm().checkboxGroups;
 }

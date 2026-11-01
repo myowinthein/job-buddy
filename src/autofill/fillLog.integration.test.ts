@@ -4,6 +4,7 @@ import { executeAutofill, getFillLog, getLastResult, scanAutofill, undoAutofill 
 import { scanFields, scanAriaFields, scanRadioGroups, scanCheckboxGroups } from './scanner';
 import { resolveFieldsWithAI } from '@/src/resume-ai/gemini';
 import { summarizeFillFields } from './fillLog';
+import { extractSignals } from './signals';
 import type { Profile } from '@/src/types/profile';
 
 vi.mock('@/src/utils/storage', () => ({
@@ -13,17 +14,27 @@ vi.mock('@/src/utils/storage', () => ({
   getGeminiApiKey: vi.fn().mockResolvedValue('synthetic-secret-key'),
   getGeminiModel: vi.fn().mockResolvedValue('gemini-3.8-flash'),
 }));
-vi.mock('./scanner', () => ({
-  scanFields: vi.fn(),
-  scanAriaFields: vi.fn(),
-  scanRadioGroups: vi.fn(),
-  scanCheckboxGroups: vi.fn(),
-}));
+vi.mock('./scanner', async (original) => {
+  const actual = await original<typeof import('./scanner')>();
+  const scanners = {
+    scanFields: vi.fn(), scanAriaFields: vi.fn(),
+    scanRadioGroups: vi.fn(), scanCheckboxGroups: vi.fn(),
+  };
+  return {
+    ...actual, ...scanners,
+    scanForm: () => ({
+      fields: [...scanners.scanFields(), ...scanners.scanAriaFields()],
+      radioGroups: scanners.scanRadioGroups(), checkboxGroups: scanners.scanCheckboxGroups(),
+      signals: extractSignals,
+    }),
+  };
+});
 vi.mock('./mappings', () => ({
   refreshLearnedLabels: vi.fn().mockReturnValue(false),
   saveElementMappings: vi.fn(),
 }));
-vi.mock('./signals', () => ({
+vi.mock('./signals', async (original) => ({
+  ...await original<typeof import('./signals')>(),
   bestLabel: (signals: { label: string }) => signals.label,
   extractSignals: (element: HTMLInputElement) => ({
     element,
@@ -96,6 +107,7 @@ beforeEach(() => {
   undoAutofill();
   document.body.innerHTML = '';
   vi.clearAllMocks();
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 100, height: 30 } as DOMRect);
   vi.mocked(getProfile).mockResolvedValue(profile);
   vi.mocked(scanFields).mockReturnValue([]);
   vi.mocked(scanAriaFields).mockReturnValue([]);

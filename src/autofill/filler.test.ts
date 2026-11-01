@@ -896,6 +896,7 @@ describe('fill and clear ownership regressions', () => {
 
   it('preserves files and emits no fill events when base64 decoding fails', async () => {
     const input = document.createElement('input'); input.type = 'file';
+    document.body.appendChild(input);
     const files = input.files;
     const inputEvent = vi.fn(); const change = vi.fn();
     input.addEventListener('input', inputEvent); input.addEventListener('change', change);
@@ -905,6 +906,7 @@ describe('fill and clear ownership regressions', () => {
 
   it('preserves existing files when FileList assignment is rejected', async () => {
     const input = document.createElement('input'); input.type = 'file';
+    document.body.appendChild(input);
     const files = input.files;
     const attempted = vi.fn(() => { throw new Error('synthetic assignment rejection'); });
     Object.defineProperty(input, 'files', { get: () => files, set: attempted });

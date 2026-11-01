@@ -114,7 +114,7 @@ describe('extractSignals', () => {
     expect(extractSignals(el).nearbyText).toBe('City');
   });
 
-  it('excludes a nested <select>\'s option text from nearbyText too', () => {
+  it('does not borrow context from a neighbouring select', () => {
     const wrapper = document.createElement('div');
     wrapper.className = 'form-field';
     const span = document.createElement('span');
@@ -129,7 +129,7 @@ describe('extractSignals', () => {
     const el = document.createElement('input');
     wrapper.append(span, el);
     document.body.appendChild(wrapper);
-    expect(extractSignals(el).nearbyText).toBe('Phone Code');
+    expect(extractSignals(el).nearbyText).toBe('');
   });
 
   it('returns empty nearbyText when no wrapper matches', () => {
@@ -187,14 +187,14 @@ describe('extractSignals — aria-labelledby resolution', () => {
     expect(extractSignals(el).ariaLabel).toBe('');
   });
 
-  it('prefers explicit aria-label over aria-labelledby when both are present', () => {
+  it('prefers aria-labelledby over aria-label when both are present', () => {
     const label = document.createElement('span');
     label.id = 'lbl-x';
     label.textContent = 'Via Labelledby';
     document.body.appendChild(label);
 
     const el = div({ 'aria-label': 'Via Aria-Label', 'aria-labelledby': 'lbl-x' });
-    expect(extractSignals(el).ariaLabel).toBe('Via Aria-Label');
+    expect(extractSignals(el).ariaLabel).toBe('Via Labelledby');
   });
 });
 

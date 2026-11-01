@@ -22,7 +22,8 @@ vi.mock('./filler', async (importOriginal) => {
 vi.mock('./highlighter', () => ({ applyHighlight: vi.fn(), applyMissingDataHighlight: vi.fn() }));
 vi.mock('../resume-ai/gemini', () => ({ resolveFieldsWithAI: vi.fn() }));
 // Control the radio/checkbox candidate lists independently of the DOM.
-vi.mock('./scanner', () => ({
+vi.mock('./scanner', async (original) => ({
+  ...await original<typeof import('./scanner')>(),
   scanRadioGroups:    vi.fn(() => []),
   scanCheckboxGroups: vi.fn(() => []),
 }));
@@ -79,6 +80,7 @@ function mockResponses(responses: AIFieldResponse[]) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 100, height: 30 } as DOMRect);
   vi.mocked(getGeminiApiKey).mockResolvedValue('key-123');
   vi.mocked(getGeminiModel).mockResolvedValue('gemini-1.5-flash' as never);
   vi.mocked(scanRadioGroups).mockReturnValue([]);
@@ -98,6 +100,7 @@ function makeSelect(
     if (disabled) opt.disabled = true;
     sel.add(opt);
   }
+  document.body.appendChild(sel);
   return sel;
 }
 
@@ -468,6 +471,8 @@ describe('runAIAutofill — radio fills', () => {
   function radioGroup(): { group: RadioGroup; el: HTMLInputElement } {
     const el = document.createElement('input');
     el.type = 'radio';
+    document.body.appendChild(el);
+    const other = document.createElement('input'); other.type = 'radio'; document.body.appendChild(other);
     return {
       el,
       group: {
@@ -475,7 +480,7 @@ describe('runAIAutofill — radio fills', () => {
         groupLabel: 'Gender',
         options: [
           { element: el, label: 'Female', value: 'female' },
-          { element: document.createElement('input'), label: 'Male', value: 'male' },
+          { element: other, label: 'Male', value: 'male' },
         ],
       },
     };
@@ -553,6 +558,7 @@ describe('runAIAutofill — checkbox fills', () => {
     const a = document.createElement('input');
     const b = document.createElement('input');
     a.type = 'checkbox'; b.type = 'checkbox';
+    document.body.append(a, b);
     return {
       a, b,
       group: {
@@ -635,6 +641,7 @@ describe('AI candidate ownership and debug identity', () => {
   it('excludes consent radio groups entirely', async () => {
     const yes = document.createElement('input'); yes.type = 'radio'; yes.value = 'yes';
     const no = document.createElement('input'); no.type = 'radio'; no.value = 'no';
+    document.body.append(yes, no);
     vi.mocked(scanRadioGroups).mockReturnValue([{ name: 'privacy', groupLabel: 'Privacy consent', options: [{ element: yes, label: 'Yes', value: 'yes' }, { element: no, label: 'No', value: 'no' }] }]);
     mockResponses([]);
     await runAIAutofill([], PROFILE, freshResult(), []);
@@ -653,6 +660,7 @@ describe('AI candidate ownership and debug identity', () => {
   it('preserves a radio selection made while the AI request is pending in merge mode', async () => {
     const yes = document.createElement('input'); yes.type = 'radio'; yes.value = 'yes';
     const no = document.createElement('input'); no.type = 'radio'; no.value = 'no';
+    document.body.append(yes, no);
     vi.mocked(scanRadioGroups).mockReturnValue([{ name: 'authorization', groupLabel: 'Work authorization', options: [{ element: yes, label: 'Yes', value: 'yes' }, { element: no, label: 'No', value: 'no' }] }]);
     let finish!: (responses: AIFieldResponse[]) => void;
     vi.mocked(resolveFieldsWithAI).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));

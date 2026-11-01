@@ -49,11 +49,11 @@ export function matchCurrentEntryCheckboxes(
   entries: EntryWithRecency[],
   terms: ReadonlySet<string>,
   prefix: string,
-): { element: HTMLInputElement; fieldPath: string }[] {
+): { element: HTMLElement; fieldPath: string }[] {
   const matched = candidates.filter((c) => terms.has(normalize(c.label)));
   if (matched.length === 0) return [];
 
-  const result: { element: HTMLInputElement; fieldPath: string }[] = [];
+  const result: { element: HTMLElement; fieldPath: string }[] = [];
   matched.forEach((c, i) => {
     const idx = matched.length === 1 ? mostRecentIdx(entries) : i;
     if (entries[idx]?.isCurrent) {

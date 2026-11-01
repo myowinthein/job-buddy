@@ -7,12 +7,27 @@ vi.mock('../utils/storage', () => ({
   getLearnedMappings: vi.fn().mockResolvedValue({}),
   saveLearnedMappings: vi.fn().mockResolvedValue(undefined),
 }));
-vi.mock('./scanner', () => ({
-  scanRadioGroups: vi.fn().mockReturnValue([]),
-  scanFields: vi.fn().mockReturnValue([]),
-  scanAriaFields: vi.fn().mockReturnValue([]),
-  scanCheckboxGroups: vi.fn().mockReturnValue([]),
-}));
+vi.mock('./scanner', () => {
+  const scanner = {
+    scanRadioGroups: vi.fn().mockReturnValue([]),
+    scanFields: vi.fn().mockReturnValue([]),
+    scanAriaFields: vi.fn().mockReturnValue([]),
+    scanCheckboxGroups: vi.fn().mockReturnValue([]),
+  };
+  return {
+    ...scanner,
+    isChoiceGroupAvailable: vi.fn().mockReturnValue(true),
+    scanForm: (options: unknown) => {
+      const fields = [...scanner.scanFields(options), ...scanner.scanAriaFields()];
+      const radioGroups = scanner.scanRadioGroups();
+      const checkboxGroups = scanner.scanCheckboxGroups();
+      // A scanner snapshot represents controls attached to the current page.
+      for (const el of [...fields, ...[...radioGroups, ...checkboxGroups].flatMap(group => group.options.map((option: { element: HTMLElement }) => option.element))])
+        if (!el.isConnected) document.body.appendChild(el);
+      return { fields, radioGroups, checkboxGroups, signals: extractSignals };
+    },
+  };
+});
 vi.mock('./signals', () => ({
   extractSignals: vi.fn().mockReturnValue({ label: '', ariaLabel: '', placeholder: '', name: 'field', id: '', type: 'text' }),
   bestLabel: vi.fn().mockReturnValue('Test Field'),
@@ -47,6 +62,7 @@ vi.mock('./ai', () => ({ runAIAutofill: vi.fn().mockResolvedValue(false) }));
 import { scanAutofill, executeAutofill, undoAutofill, getLastResult, EMPTY_AUTOFILL_RESULT } from './index';
 import { getProfile, saveLearnedMappings } from '../utils/storage';
 import { scanFields, scanAriaFields, scanCheckboxGroups, scanRadioGroups } from './scanner';
+import { extractSignals } from './signals';
 import { mapField } from './mapper';
 import { clearFieldValue, fillField, fillCheckboxInput, fillFileField } from './filler';
 import { clearElementHighlight, clearHighlights, applyHighlight, applyMissingDataHighlight } from './highlighter';

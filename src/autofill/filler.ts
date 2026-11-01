@@ -1,3 +1,4 @@
+import { isControlAvailable, isChoiceChecked, isTextEditor } from './dom';
 import type { DocumentFile } from '../types/profile';
 import { normalize, similarity, isSkippableOption, PLACEHOLDER_OPTION_NORMS } from './normalizer';
 import { CONF_FUZZY_THRESHOLD } from './constants';
@@ -170,7 +171,8 @@ async function waitForListboxOptions(
   const findOptions = (): HTMLElement[] => {
     const ctrlId = trigger.getAttribute('aria-controls') ?? trigger.getAttribute('aria-owns');
     if (ctrlId) {
-      const lb = document.getElementById(ctrlId);
+      const root = trigger.getRootNode() as Document | ShadowRoot;
+      const lb = root.getElementById?.(ctrlId);
       if (lb) return Array.from(lb.querySelectorAll<HTMLElement>('[role="option"]'));
     }
     const parent = trigger.closest('[role="combobox"]') ?? trigger.parentElement;
@@ -178,7 +180,8 @@ async function waitForListboxOptions(
       const lb = parent.querySelector<HTMLElement>('[role="listbox"]');
       if (lb) return Array.from(lb.querySelectorAll<HTMLElement>('[role="option"]'));
     }
-    const global = document.querySelector<HTMLElement>('[role="listbox"]:not([aria-hidden="true"])');
+    const root = trigger.getRootNode() as Document | ShadowRoot;
+    const global = root.querySelector<HTMLElement>('[role="listbox"]:not([aria-hidden="true"])') ?? document.querySelector<HTMLElement>('[role="listbox"]:not([aria-hidden="true"])');
     if (global) return Array.from(global.querySelectorAll<HTMLElement>('[role="option"]'));
     return [];
   };
@@ -198,6 +201,7 @@ async function waitForListboxOptions(
 // Never throws — graceful no-op on any failure.
 async function fillAriaListbox(element: HTMLElement, value: string, isActive: () => boolean): Promise<boolean> {
   try {
+    if (!isControlAvailable(element)) return false;
     element.click();
     element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
 
@@ -205,7 +209,7 @@ async function fillAriaListbox(element: HTMLElement, value: string, isActive: ()
     if (options.length === 0) return false;
 
     const best = findBestAriaOption(options, value);
-    if (!best || !isActive()) return false;
+    if (!best || !isActive() || !isControlAvailable(element) || !isControlAvailable(best)) return false;
 
     best.click();
     best.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
@@ -245,10 +249,13 @@ function setEmpty(element: HTMLElement): void {
     else element.value = '';
     dispatchEvents(element, 'deleteContentBackward');
   } else {
+    if (element.matches('[role="radio"],[role="checkbox"]')) {
+      if (isChoiceChecked(element)) element.click();
+      return;
+    }
     // ARIA custom elements: clear text for textbox/contenteditable;
     // no-op for combobox/listbox (cannot reliably reverse dropdown selection).
-    const role = element.getAttribute('role');
-    if (role === 'textbox' || element.getAttribute('contenteditable') === 'true') {
+    if (isTextEditor(element)) {
       element.textContent = '';
       element.dispatchEvent(new Event('input',  { bubbles: true }));
       element.dispatchEvent(new Event('change', { bubbles: true }));
@@ -266,7 +273,7 @@ export function clearFieldValue(element: HTMLElement): void {
 }
 
 export async function fillField(element: HTMLElement, value: string, isActive: () => boolean = () => true): Promise<boolean> {
-  if (!value || !isActive()) return false;
+  if (!value || !isActive() || !isControlAvailable(element)) return false;
   // Native selects may also expose role="combobox". Their native options win.
   if (element instanceof HTMLSelectElement) return fillSelect(element, value);
   const role = element.getAttribute('role');
@@ -287,7 +294,7 @@ export async function fillField(element: HTMLElement, value: string, isActive: (
     dispatchEvents(element, 'insertText', fillValue);
     return true;
   }
-  if (role === 'textbox' || element.getAttribute('contenteditable') === 'true') {
+  if (isTextEditor(element)) {
     fillAriaTextbox(element, value);
     return true;
   }
@@ -303,6 +310,7 @@ export async function fillFileField(
   fileData: DocumentFile,
 ): Promise<boolean> {
   try {
+    if (!isControlAvailable(element)) return false;
     // 1. Parse the data URL — expected shape: "data:<mime>;base64,<payload>"
     const dataUrl = fileData.base64;
     const commaIdx = dataUrl.indexOf(',');
@@ -342,17 +350,24 @@ export async function fillFileField(
   }
 }
 
-function fillCheckedInput(element: HTMLInputElement): void {
-  if (nativeCheckedSetter) nativeCheckedSetter.call(element, true);
-  else element.checked = true;
-  element.dispatchEvent(new Event('change', { bubbles: true }));
-  element.dispatchEvent(new Event('input',  { bubbles: true }));
+function fillCheckedInput(element: HTMLElement): boolean {
+  if (!isControlAvailable(element)) return false;
+  if (element instanceof HTMLInputElement) {
+    if (nativeCheckedSetter) nativeCheckedSetter.call(element, true);
+    else element.checked = true;
+    element.dispatchEvent(new Event('change', { bubbles: true }));
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+    return element.checked;
+  }
+  // Let the widget's own handler update its state and any hidden native input.
+  if (!isChoiceChecked(element)) element.click();
+  return isChoiceChecked(element);
 }
 
-export function fillRadioInput(element: HTMLInputElement): void {
-  fillCheckedInput(element);
+export function fillRadioInput(element: HTMLElement): boolean {
+  return fillCheckedInput(element);
 }
 
-export function fillCheckboxInput(element: HTMLInputElement): void {
-  fillCheckedInput(element);
+export function fillCheckboxInput(element: HTMLElement): boolean {
+  return fillCheckedInput(element);
 }

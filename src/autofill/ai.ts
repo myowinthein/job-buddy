@@ -1,3 +1,4 @@
+import { isChoiceChecked, isControlAvailable } from './dom';
 import { readFieldValue } from './fieldValue';
 import { isConsentGroup } from './consent';
 import type { Profile } from '../types/profile';
@@ -7,7 +8,7 @@ import { resolveProfileValue } from './resolver';
 import { resolveFieldsWithAI } from '../resume-ai/gemini';
 import type { AIFieldPayload, AIFieldResponse, AIOptionPayload } from '../resume-ai/types';
 import { toGeminiModel } from '../resume-ai/types';
-import { scanRadioGroups, scanCheckboxGroups } from './scanner';
+import { scanRadioGroups, scanCheckboxGroups, isChoiceGroupAvailable } from './scanner';
 import type { RadioGroup, CheckboxGroup } from './scanner';
 import { fillField, fillRadioInput, fillCheckboxInput, findBestMatch } from './filler';
 import { applyHighlight, applyMissingDataHighlight } from './highlighter';
@@ -82,9 +83,10 @@ export async function runAIAutofill(
   const model = toGeminiModel(storedModel);
 
   const eligible = (group: RadioGroup | CheckboxGroup) =>
+    isChoiceGroupAvailable(group) &&
     !group.isConsent &&
     !isConsentGroup(group) &&
-    !(options.mode === 'merge' && group.options.some((option) => option.element.checked)) &&
+    !(options.mode === 'merge' && group.options.some((option) => isChoiceChecked(option.element))) &&
     !group.options.some(option => {
       const record = options.fieldRecords?.get(option.element);
       return record && ['high_confidence', 'kept', 'excluded'].includes(record.outcome);
@@ -98,7 +100,7 @@ export async function runAIAutofill(
     | { type: 'checkbox'; group: CheckboxGroup };
 
   const candidates: Candidate[] = [
-    ...textCandidates,
+    ...textCandidates.filter(candidate => isControlAvailable(candidate.element)),
     ...radioGroups.map((g) => ({ type: 'radio' as const, group: g })),
     ...checkboxGroups.map((g) => ({ type: 'checkbox' as const, group: g })),
   ];
@@ -209,10 +211,21 @@ export async function runAIAutofill(
     handled.add(resp.fieldId);
     const candidate = candidateMap.get(resp.fieldId);
     if (!candidate) continue;
+    if (candidate.type === 'text' && !isControlAvailable(candidate.element)) {
+      const record = candidateRecords.get(resp.fieldId);
+      if (record) { record.ai.outcome = 'fill_failed'; record.outcome = 'failed'; record.reason = 'fill_failed'; }
+      continue;
+    }
     const tracked = candidateRecords.get(resp.fieldId);
     if (tracked && resp.profilePath) tracked.ai.profilePath = resp.profilePath;
     if (candidate.type !== 'text' && !eligible(candidate.group)) {
-      if (tracked) { tracked.ai.outcome = 'skipped'; tracked.outcome = 'manual'; tracked.source = 'manual'; tracked.reason = 'value_changed'; }
+      if (tracked) {
+        const available = isChoiceGroupAvailable(candidate.group);
+        tracked.ai.outcome = available ? 'skipped' : 'fill_failed';
+        tracked.outcome = available ? 'manual' : 'failed';
+        tracked.source = available ? 'manual' : null;
+        tracked.reason = available ? 'value_changed' : 'fill_failed';
+      }
       continue;
     }
     const fieldId = resp.fieldId;
@@ -301,7 +314,10 @@ export async function runAIAutofill(
         continue;
       }
 
-      fillRadioInput(option.element);
+      if (fillRadioInput(option.element) === false) {
+        recordDebug(candidate, fieldId, resp.selectedOption, resp.confidence, 'unchanged', 'fill_failed');
+        continue;
+      }
       applyHighlight(option.element, confScore);
       sessionElements.push(option.element);
       if (isHigh) result.noReview++;
@@ -317,9 +333,10 @@ export async function runAIAutofill(
       const group = candidate.group as CheckboxGroup;
       let anyFilled = false;
       for (const label of resp.selectedOptions) {
+        if (!isActive() || !isChoiceGroupAvailable(group)) break;
         const option = findBestOption(group.options, label);
         if (!option) continue;
-        fillCheckboxInput(option.element);
+        if (fillCheckboxInput(option.element) === false) continue;
         applyHighlight(option.element, confScore);
         sessionElements.push(option.element);
         anyFilled = true;

@@ -1,176 +1,121 @@
+import { composedParent, isTextEditor } from './dom';
+import { ariaName, ariaReference, createLabelContext, labelText, ownText } from './labels';
+import type { LabelContext } from './labels';
+
 export interface FieldSignals {
-  element:      HTMLElement;
-  type:         string;
-  name:         string;
-  id:           string;
-  placeholder:  string;
+  element: HTMLElement;
+  type: string;
+  name: string;
+  id: string;
+  placeholder: string;
   autocomplete: string;
-  ariaLabel:    string;
-  label:        string;
-  nearbyText:   string;
+  ariaLabel: string;
+  label: string;
+  nearbyText: string;
 }
 
-const WRAPPER_SELECTORS =
-  '.form-field, .form-group, .field, .input-wrapper, .form-item';
+const WRAPPER_SELECTORS = '.form-field,.form-group,.field,.input-wrapper,.form-item,[role="group"]';
+const CONTROL_SELECTOR =
+  'input,select,textarea,[role="textbox"],[role="combobox"],[contenteditable]';
 
-// Resolves space-separated element IDs from aria-labelledby / aria-describedby
-// into their visible text content, joined by a space.
-function resolveAriaRef(attr: string | null, element: HTMLElement): string {
-  const root = element.getRootNode() as Document | ShadowRoot;
-  if (!attr) return '';
-  return attr.split(/\s+/)
-    .map((id) => root.getElementById?.(id)?.textContent?.trim() ?? '')
-    .filter(Boolean)
-    .join(' ');
-}
-
-// A <label> (or nearby-text wrapper) that wraps its own control — e.g.
-// <label>Phone Code<select>…200 country options…</select></label>, a common
-// accessible-forms pattern — has that control's entire rendered content
-// (every <option>, for a <select>) inside its own textContent, which would
-// otherwise swamp a few words of real prose with hundreds of concatenated
-// option strings. Strip nested form controls before reading text so the
-// result is just the label's own words.
-function ownText(el: Element): string {
-  const clone = el.cloneNode(true) as Element;
-  clone.querySelectorAll('input, select, textarea, button').forEach((n) => n.remove());
-  return clone.textContent?.trim() ?? '';
-}
-
-// Some Web Component design systems (Lit/Stencil-based; confirmed on
-// SmartRecruiters' SPL components — spl-input, spl-phone-field, etc.) render
-// their real native input inside an open shadow root, but carry the
-// human-readable semantic attributes (label, id, aria-label, placeholder) on
-// the *custom element host* itself rather than forwarding them onto the
-// native input — e.g. <spl-input label="First name" id="linkedin-input">
-// wraps a bare, attribute-less <input>. Walk up through any shadow-root
-// boundaries so signal extraction can fall back to each host's attributes.
-function shadowHostChain(element: Element): Element[] {
-  const chain: Element[] = [];
+function shadowHosts(element: HTMLElement): HTMLElement[] {
+  const hosts: HTMLElement[] = [];
   let root = element.getRootNode();
   while (root instanceof ShadowRoot) {
-    chain.push(root.host);
+    hosts.push(root.host as HTMLElement);
     root = root.host.getRootNode();
   }
-  return chain;
+  return hosts;
 }
 
-// Tries `element`'s own value first, then each shadow host up the chain —
-// stops at the first non-empty result.
-function withHostFallback(element: HTMLElement, getValue: (el: Element) => string): string {
-  const own = getValue(element);
-  if (own) return own;
-  for (const host of shadowHostChain(element)) {
-    const fromHost = getValue(host);
-    if (fromHost) return fromHost;
-  }
-  return '';
+function withHostFallback(element: HTMLElement, getValue: (el: HTMLElement) => string): string {
+  return getValue(element) || shadowHosts(element).map(getValue).find(Boolean) || '';
 }
 
-function getLabelText(element: HTMLElement): string {
-  // 1. <label for="id"> within the element's own tree scope — label
-  // association never crosses a shadow boundary, so this must be scoped to
-  // getRootNode(), not always document.
-  if (element.id) {
-    try {
-      const root = element.getRootNode() as Document | ShadowRoot;
-      const linked = root.querySelector<HTMLLabelElement>(
-        `label[for="${CSS.escape(element.id)}"]`,
-      );
-      if (linked) return ownText(linked);
-    } catch { /* invalid selector — skip */ }
-  }
-
-  // 2. element.closest('label'), scoped the same way (closest() never
-  // crosses a shadow boundary either).
-  const parentLabel = element.closest('label');
-  if (parentLabel) return ownText(parentLabel);
-
-  // 3. A shadow host's own label/aria-label attribute (see shadowHostChain).
-  for (const host of shadowHostChain(element)) {
-    const hostLabel = host.getAttribute('label') || host.getAttribute('aria-label');
-    if (hostLabel) return hostLabel.trim();
-  }
-
-  return '';
+function getLabelText(element: HTMLElement, context?: LabelContext): string {
+  return (
+    labelText(element, context) ||
+    shadowHosts(element)
+      .map((host) => labelText(host, context) || host.getAttribute('label') || ariaName(host))
+      .find(Boolean) ||
+    ''
+  );
 }
 
-function getNearbyText(element: HTMLElement): string {
+function getNearbyText(element: HTMLElement, context?: LabelContext): string {
+  const description = ariaReference(element, 'aria-describedby');
   const wrapper = element.closest(WRAPPER_SELECTORS);
-  if (!wrapper) return '';
-  const textEl = wrapper.querySelector('label, span, p');
-  return textEl ? ownText(textEl) : '';
+  if (!wrapper) return description.slice(0, 500);
+  // Shared wrappers are not evidence that another control's label belongs here.
+  const controls = [...wrapper.querySelectorAll<HTMLElement>(CONTROL_SELECTOR)].filter(
+    (control) => !control.parentElement?.closest('[role="combobox"],[contenteditable]'),
+  );
+  if (controls.length !== 1 || controls[0] !== element) return description.slice(0, 500);
+  const text =
+    [...wrapper.querySelectorAll('label,span,p')]
+      .filter(
+        (node) =>
+          !node.hasAttribute('data-jb-field-description') &&
+          (!(node instanceof HTMLLabelElement) || !node.htmlFor || node.control === element) &&
+          !node.closest('[role="combobox"],[role="textbox"],[contenteditable]'),
+      )
+      .map((node) => ownText(node, context))
+      .find(Boolean) ?? '';
+  return [description, text].filter(Boolean).join(' ').slice(0, 500);
 }
 
-// Picks the first non-empty human-readable label from a FieldSignals object:
-// label → ariaLabel → placeholder → name. Returns '' if all are empty so the
-// caller can chain `|| fallback` for further fallbacks (id, 'this field', etc.).
 export function bestLabel(signals: FieldSignals): string {
   return signals.label || signals.ariaLabel || signals.placeholder || signals.name || '';
 }
 
-// Display-only label for UI surfaces like the Learned Mappings page — extends
-// bestLabel with nearbyText as a last resort, for custom-question fields that
-// have visible descriptive text but no proper label/ariaLabel/placeholder/name
-// (only an auto-generated id, e.g. some ATS "Question 3" fields). nearbyText
-// is never used for actual field matching (mapper.ts's Layer 0 only reads
-// label/ariaLabel/placeholder/name/id), so this has no effect on autofill
-// behavior. Capped in length to avoid storing an entire paragraph.
 export function displayLabel(signals: FieldSignals): string | undefined {
   const label = (bestLabel(signals) || signals.nearbyText || '').trim();
   return label ? label.slice(0, 120) : undefined;
 }
 
-export function extractSignals(element: HTMLElement): FieldSignals {
-  const inp = element as HTMLInputElement;
-  const isNative = element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT';
-
-  // For ARIA custom components, derive the semantic type from the role attribute
-  // rather than the HTML tag (which would be 'div', 'span', etc.).
-  let type: string;
-  if (isNative) {
-    type = inp.type ?? element.tagName.toLowerCase();
-  } else {
-    const role = element.getAttribute('role');
-    type = role ?? (element.hasAttribute('contenteditable') ? 'textbox' : element.tagName.toLowerCase());
-  }
-
-  // aria-label: prefer explicit attribute (falling back through the shadow
-  // host chain — see withHostFallback), then resolve aria-labelledby.
-  const explicitAriaLabel = withHostFallback(element, (el) => el.getAttribute('aria-label') ?? '');
-  const labelledByText    = resolveAriaRef(element.getAttribute('aria-labelledby'), element);
-  const ariaLabel         = explicitAriaLabel || labelledByText;
-
-  // placeholder: native property first, then ARIA/plain attribute, each with
-  // shadow-host fallback.
-  const placeholder = withHostFallback(
-    element,
-    (el) => (el as HTMLInputElement).placeholder || el.getAttribute('aria-placeholder') || el.getAttribute('placeholder') || '',
-  );
-
-  // autocomplete: native property, then generic attribute (some frameworks
-  // use it on divs), with shadow-host fallback.
-  const autocomplete = withHostFallback(
-    element,
-    (el) => (el as HTMLInputElement).autocomplete || el.getAttribute('autocomplete') || '',
-  );
-
-  // name/id: native property/attribute, with shadow-host fallback — a
-  // wrapping custom element commonly carries the "real" id (e.g.
-  // <spl-input id="linkedin-input">) while its internal native input is
-  // attribute-sparse.
-  const name = withHostFallback(element, (el) => (el as HTMLInputElement).name || el.getAttribute('name') || '');
-  const id   = withHostFallback(element, (el) => el.id || '');
-
+export function extractSignals(element: HTMLElement, context?: LabelContext): FieldSignals {
+  const native = element.matches('input,textarea,select');
   return {
     element,
-    type,
-    name,
-    id,
-    placeholder,
-    autocomplete,
-    ariaLabel,
-    label:        getLabelText(element),
-    nearbyText:   getNearbyText(element),
+    type: native
+      ? (element as HTMLInputElement).type || element.tagName.toLowerCase()
+      : element.getAttribute('role') ||
+        (isTextEditor(element) ? 'textbox' : element.tagName.toLowerCase()),
+    name: withHostFallback(element, (el) => el.getAttribute('name') || ''),
+    id: withHostFallback(element, (el) => el.id || ''),
+    placeholder: withHostFallback(
+      element,
+      (el) => el.getAttribute('placeholder') || el.getAttribute('aria-placeholder') || '',
+    ),
+    autocomplete: withHostFallback(element, (el) => el.getAttribute('autocomplete') || ''),
+    ariaLabel: withHostFallback(element, ariaName),
+    label: getLabelText(element, context),
+    nearbyText: getNearbyText(element, context),
   };
+}
+
+/** A fresh reader per scan; no cached DOM labels survive into the next run. */
+export function createSignalReader(
+  elements: HTMLElement[],
+  context = createLabelContext(elements),
+): (element: HTMLElement) => FieldSignals {
+  const cache = new WeakMap<HTMLElement, FieldSignals>();
+  return (element) => {
+    let signals = cache.get(element);
+    if (!signals) cache.set(element, (signals = extractSignals(element, context)));
+    return signals;
+  };
+}
+
+/** Find the nearest composed form, including a native control's form owner. */
+export function controlForm(element: HTMLElement): Element | null {
+  if (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLSelectElement ||
+    element instanceof HTMLTextAreaElement
+  )
+    if (element.form) return element.form;
+  for (let current: Element | null = element; current; current = composedParent(current))
+    if (current.matches('form,[role="form"]')) return current;
+  return null;
 }

@@ -45,6 +45,6 @@ const CURRENT_EDUCATION_CHECKBOX_TERMS = new Set([
 export function matchCurrentEducationCheckboxes(
   candidates: CheckboxOption[],
   profile: Profile,
-): { element: HTMLInputElement; fieldPath: string }[] {
+): { element: HTMLElement; fieldPath: string }[] {
   return matchCurrentEntryCheckboxes(candidates, profile.education ?? [], CURRENT_EDUCATION_CHECKBOX_TERMS, 'education.');
 }
