@@ -5,7 +5,7 @@ export function resumeDocumentType(raw: unknown): ResumeDocumentType {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw))
     throw {
       code: 'parse',
-      message: 'AI returned invalid profile data. Try analyzing the resume again.',
+      message: 'AI returned invalid data. Try analyzing again.',
     };
   const type = (raw as Record<string, unknown>).documentType;
   if (type === 'other')
@@ -18,6 +18,6 @@ export function resumeDocumentType(raw: unknown): ResumeDocumentType {
   if (type == null) return 'uncertain';
   throw {
     code: 'parse',
-    message: 'The AI could not assess this document. Try analyzing the resume again.',
+    message: 'AI couldn’t identify the document type. Try again.',
   };
 }

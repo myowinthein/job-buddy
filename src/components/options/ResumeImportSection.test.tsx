@@ -166,8 +166,8 @@ describe('ResumeImportSection — rate_limit error branch', () => {
     await selectFile(pdfFile());
     fireEvent.click(screen.getByText('Analyze Resume'));
 
-    expect(await screen.findByText(/The AI models reached their usage limits/)).toBeTruthy();
-    const link = screen.getByText('Google AI Studio') as HTMLAnchorElement;
+    expect(await screen.findByText(/AI usage limit reached/)).toBeTruthy();
+    const link = screen.getByText('Check limits') as HTMLAnchorElement;
     expect(link.href).toBe('https://aistudio.google.com/rate-limit');
   });
 
@@ -304,7 +304,7 @@ describe('ResumeImportSection — CV invariant on save', () => {
 it('shows the Settings route when the key cannot be loaded instead of remaining blank', async () => {
   vi.mocked(getGeminiApiKey).mockRejectedValueOnce(new Error('Storage unavailable'));
   renderSection();
-  expect(await screen.findByText('Could not load AI settings. Open Settings and try again.')).toBeTruthy();
+  expect(await screen.findByText('Could not load your API key or model.')).toBeTruthy();
   expect(screen.getByRole('button', { name: /Go to Settings/ })).toBeTruthy();
 });
 
@@ -338,7 +338,9 @@ it('shows the active model and the reason for fallback', async () => {
   await screen.findByText(/Drop your resume here/);
   await selectFile(pdfFile());
   fireEvent.click(screen.getByText('Analyze Resume'));
-  expect(await screen.findByText('The previous model took too long. Trying Gemini 3.8 Flash.')).toBeTruthy();
+  const reason = await screen.findByText('The previous model took too long.');
+  expect(screen.getByText('Trying Gemini 3.8 Flash.').parentElement).toBe(reason.parentElement);
+  expect(reason.parentElement?.className).toContain('text-amber-700');
 });
 
 it('closes the import without saving when Keep Current is chosen', async () => {
@@ -401,7 +403,7 @@ it('blocks renamed text locally before sending a provider request and offers ano
   await screen.findByText(/Drop your resume here/);
   await selectFile(new File(['not a PDF'], 'renamed.pdf', { type: 'application/pdf' }));
   fireEvent.click(screen.getByText('Analyze Resume'));
-  await screen.findByText('This file could not be read. Choose a valid PDF or DOCX resume.');
+  await screen.findByText('Unreadable file. Choose a valid PDF or DOCX.');
   expect(extractFromResume).not.toHaveBeenCalled();
   expect(onSave).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Choose Another File' }));

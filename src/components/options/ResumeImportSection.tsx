@@ -113,7 +113,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
       .catch(() => {
         if (!active) return;
         setApiKey('');
-        setErrorMsg('Could not load AI settings. Open Settings and try again.');
+        setErrorMsg('Could not load your API key or model.');
       });
     return () => {
       active = false;
@@ -359,7 +359,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
               {apiKey !== null && (!apiKey || !model) && (
                 <div className="py-6 text-center">
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    {errorMsg || (apiKey ? 'Choose an AI model in Settings to import your resume.' : 'Add a Gemini API key in Settings to import your resume.')}
+                    {errorMsg || (apiKey ? 'Choose an AI model to import your resume.' : 'Add a Gemini API key to import your resume.')}
                   </p>
                   <button
                     type="button"
@@ -501,15 +501,15 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
             </div>
 
             {attempt?.reason && !errorMsg && (
-              <p role="status" className="mt-4 text-xs text-center text-gray-500 dark:text-gray-400">
-                {attempt.reason === 'timeout' ? 'The previous model took too long. '
-                  : attempt.reason === 'rate_limit' ? 'The previous model reached its usage limit. '
-                  : attempt.reason === 'unavailable' ? 'The previous model is unavailable. ' : ''}
-                Trying {MODEL_DISPLAY_NAMES[attempt.model]}.
-              </p>
+              <div role="status" className="mt-5 text-xs text-center text-amber-700 dark:text-amber-400">
+                <p>{attempt.reason === 'timeout' ? 'The previous model took too long.'
+                  : attempt.reason === 'rate_limit' ? 'The previous model reached its usage limit.'
+                  : 'The previous model is unavailable.'}</p>
+                <p>Trying {MODEL_DISPLAY_NAMES[attempt.model]}.</p>
+              </div>
             )}
             {/* Long wait message */}
-            {showLongWait && !errorMsg && (
+            {showLongWait && !attempt?.reason && !errorMsg && (
               <div className="mt-5 text-xs text-amber-700 dark:text-amber-400 text-center">
                 <p>Still analyzing. You can cancel at any time.</p>
               </div>
@@ -520,16 +520,16 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
               <div className="mt-6">
                 {errorCode === 'rate_limit' ? (
                   <p className="text-sm text-red-700 dark:text-red-400 mb-4">
-                    The AI models reached their usage limits. Try again later or check{' '}
+                    AI usage limit reached.{' '}
                     <a
                       href="https://aistudio.google.com/rate-limit"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline hover:text-red-700 dark:hover:text-red-300"
                     >
-                      Google AI Studio
+                      Check limits
                     </a>
-                    .
+                    {' or try later.'}
                   </p>
                 ) : (
                   <p className="text-sm text-red-700 dark:text-red-400 mb-4">{errorMsg}</p>
@@ -618,12 +618,12 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-sm mx-4 px-6 py-8">
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
-              Import Complete
+              {summary.replaced ? 'Profile Replaced' : 'Profile Updated'}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
               {summary.replaced
-                ? `Profile replaced with ${summary.updated + summary.conflicts} selected details.`
-                : `Imported ${summary.updated + summary.conflicts} change${summary.updated + summary.conflicts !== 1 ? 's' : ''}${summary.skipped > 0 ? ` and kept ${summary.skipped}` : ''}.`}
+                ? `${summary.updated + summary.conflicts} selected detail${summary.updated + summary.conflicts !== 1 ? 's' : ''} saved.`
+                : `${summary.updated + summary.conflicts} detail${summary.updated + summary.conflicts !== 1 ? 's' : ''} saved${summary.skipped > 0 ? `, ${summary.skipped} left unchanged` : ''}.`}
             </p>
             <div className="flex justify-end">
               <button

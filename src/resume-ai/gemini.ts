@@ -152,7 +152,7 @@ export async function extractFromResume(
 
   const modelsToTry = [model, ...GEMINI_MODEL_PRIORITY.filter(m => m !== model)];
   let reason: ResumeModelAttempt['reason'];
-  let lastError: ImportError = importError('rate_limit', 'The AI models reached their usage limits. Try again later or check Google AI Studio.');
+  let lastError: ImportError = importError('rate_limit', 'AI usage limit reached. Check limits or try later.');
   for (const tryModel of modelsToTry) {
     if (signal?.aborted) throw signal.reason ?? new DOMException('Cancelled', 'AbortError');
     onAttempt?.({ model: tryModel, reason });
@@ -171,7 +171,7 @@ export async function extractFromResume(
         catch { throw importError('parse', "Couldn't read the AI response. Try again."); }
         const documentType = resumeDocumentType(profile);
         try { return { profile: validateResumeProfile(profile), documentType }; }
-        catch { throw importError('parse', 'AI returned invalid profile data. Try analyzing the resume again.'); }
+        catch { throw importError('parse', 'AI returned invalid data. Try analyzing again.'); }
       }, RESUME_REQUEST_TIMEOUT_MS);
       if (result.profile) {
         onDocumentType?.(result.documentType!);
@@ -179,28 +179,28 @@ export async function extractFromResume(
       }
       if (result.error === 'invalid' || result.error === 'permission_denied')
         throw importError('auth', result.error === 'invalid'
-          ? 'Your API key is invalid or expired. Check it in Settings.'
-          : 'This key does not have permission to use the model. Check Settings.');
+          ? 'Invalid or expired API key. Check Settings.'
+          : 'This key can’t use the model. Check Settings.');
       if (result.status === 429) {
         reason = 'rate_limit';
-        lastError = importError('rate_limit', 'The AI models reached their usage limits. Try again later or check Google AI Studio.');
+        lastError = importError('rate_limit', 'AI usage limit reached. Check limits or try later.');
         continue;
       }
       if (result.status >= 500 || result.error === 'no_model') {
         reason = 'unavailable';
-        lastError = importError('service', 'The AI models are unavailable right now. Try again later.');
+        lastError = importError('service', 'AI is unavailable right now. Try again later.');
         continue;
       }
-      throw importError('service', 'The AI service could not analyze this file. Try again or choose another resume.');
+      throw importError('service', 'Could not analyze this file. Retry or try another.');
     } catch (error) {
       if (signal?.aborted || (error as { name?: string })?.name === 'AbortError') throw error;
       if ((error as { name?: string })?.name === 'TimeoutError') {
         reason = 'timeout';
-        lastError = importError('timeout', 'The AI models took too long to respond. Try again later.');
+        lastError = importError('timeout', 'AI took too long to respond. Try again later.');
         continue;
       }
       if ((error as ImportError)?.code) throw error;
-      throw importError('network', 'Could not connect to Gemini. Check your connection and try again.');
+      throw importError('network', 'Could not reach Gemini. Check your connection.');
     }
   }
   throw lastError;

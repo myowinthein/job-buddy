@@ -3,7 +3,7 @@ import { documentFileSizeError } from '@/src/utils/documentLimits';
 const PDF = 'application/pdf';
 const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const MAX_XML_BYTES = 8 * 1024 * 1024;
-const invalid = (message = 'This file could not be read. Choose a valid PDF or DOCX resume.') =>
+const invalid = (message = 'Unreadable file. Choose a valid PDF or DOCX.') =>
   Object.assign(new Error(message), { code: 'invalid_file' });
 
 export function resumeMimeType(file: Pick<File, 'name' | 'type'>): string {
@@ -38,7 +38,7 @@ async function validateDocx(bytes: Uint8Array) {
         if (++entries > 2048) throw invalid();
         if (!names.includes(entry.name)) return false;
         if (entry.originalSize > MAX_XML_BYTES)
-          throw invalid('This DOCX is too complex to read. Export it as PDF and try again.');
+          throw invalid('This DOCX is too complex. Export it as PDF.');
         return true;
       },
     });
@@ -121,7 +121,7 @@ export async function validateResumeFile(
   } catch (error) {
     signal?.throwIfAborted();
     if ((error as { name?: string }).name === 'PasswordException')
-      throw invalid('This PDF is password-protected. Upload an unlocked copy.');
+      throw invalid('This PDF is locked. Upload an unlocked copy.');
     throw invalid();
   } finally {
     signal?.removeEventListener('abort', abort);

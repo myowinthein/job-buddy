@@ -66,7 +66,7 @@ describe('local resume file validation', () => {
       await expect(validateResumeFile(file('resume.pdf'), bytes)).rejects.toMatchObject({
         code: 'invalid_file',
         ...(name === 'PasswordException' && {
-          message: 'This PDF is password-protected. Upload an unlocked copy.',
+          message: 'This PDF is locked. Upload an unlocked copy.',
         }),
       });
       expect(destroy).toHaveBeenCalledOnce();
