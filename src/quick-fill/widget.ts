@@ -251,7 +251,7 @@ export class QuickFillWidget {
             : 'neutral';
       }
       this.undo.hidden = summary.filled === 0;
-      this.details.hidden = false;
+      this.details.hidden = summary.filled === 0 && !summary.review;
     } else if (run?.stage === 'confirming') {
       this.text.textContent = 'Existing answers will be kept.';
       this.status.dataset.tone = 'neutral';

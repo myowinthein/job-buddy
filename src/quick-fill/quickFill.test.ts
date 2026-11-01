@@ -148,3 +148,23 @@ it.each([
   expect(message.firstElementChild?.textContent).toBe('11 filled');
   widget.destroy();
 });
+
+it.each([
+  ['existing answers kept', { totalScanned: 5, kept: 5 }, true],
+  ['no fillable fields', { totalScanned: 0 }, true],
+  ['no fields filled', { totalScanned: 1 }, true],
+  ['unfilled field needing input', { totalScanned: 1, noData: 1 }, false],
+])('shows details only when useful after %s', (_label, result, hidden) => {
+  const widget = new QuickFillWidget({
+    fill: vi.fn(), undo: vi.fn(), details: vi.fn(), hide: vi.fn(),
+    disableSite: vi.fn(), settings: vi.fn(), position: vi.fn(),
+  });
+  const root = widget.host.shadowRoot!;
+  // A later empty result must also clear details from a previous successful fill.
+  widget.render({ stage: 'completed', results: [{ totalScanned: 1, noReview: 1 }] } as never);
+  expect(root.querySelector<HTMLButtonElement>('.details')!.hidden).toBe(false);
+  widget.render({ stage: 'completed', results: [result] } as never);
+  expect(root.querySelector<HTMLButtonElement>('.details')!.hidden).toBe(hidden);
+  expect(root.querySelector<HTMLButtonElement>('.undo')!.hidden).toBe(true);
+  widget.destroy();
+});
