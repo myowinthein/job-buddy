@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+vi.mock('@/src/devtools/registerContentScript', () => ({
+  registerDevelopmentContentScript: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('@/src/utils/driveSync', () => ({
   DRIVE_AUTH_ALARM: 'jb:drive-authorization-renewal',
   refreshDriveConnection: vi.fn().mockResolvedValue(undefined),

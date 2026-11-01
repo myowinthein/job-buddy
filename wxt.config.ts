@@ -3,6 +3,9 @@ import { defineConfig } from 'wxt';
 // See https://wxt.dev/api/config.html
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
+  // Use one loopback address for Chrome and the dev server. Resolving localhost
+  // to IPv6 alone can leave Chrome's IPv4 connection refused.
+  dev: { server: { host: '127.0.0.1', origin: 'http://127.0.0.1' } },
   manifest: ({ mode }) => ({
     name: 'Job Buddy: Autofill Job Applications',
     description: 'Fill job application forms with AI assistance using your saved profile. Works across supported job sites.',

@@ -8,8 +8,15 @@ import {
 } from '@/src/utils/driveSync';
 import { registerQuickFill } from '@/src/quick-fill/background';
 import { createAutofillCoordinator, RUN_ALARM_PREFIX } from '@/src/autofill/runCoordinator';
+import { registerDevelopmentContentScript } from '@/src/devtools/registerContentScript';
 
 export default defineBackground(() => {
+  // WXT's dev manifest has no static content script. Register it even if the
+  // hot-reload server is offline when this worker starts.
+  if (import.meta.env.DEV)
+    void registerDevelopmentContentScript().catch((error) => {
+      console.warn('[Job Buddy] Development content script registration failed:', error);
+    });
   const autofill = createAutofillCoordinator();
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
     if (

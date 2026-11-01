@@ -159,6 +159,10 @@ See [Project Setup](.github/SETUP.md) for integration configuration.
 
 The extension uses WXT, React, TypeScript, and Tailwind CSS v4, with Vitest for tests.
 
+The dev server uses `127.0.0.1` (port 3000 by default) for a consistent local
+connection. Development page scripts register independently of hot reload, so
+the floating button can appear even if the dev server is temporarily unavailable.
+
 Restart `pnpm dev` after adding a new extension page so WXT discovers and emits
 its HTML file. Already-open forms may keep an earlier content script; refresh
 the form before testing a changed autofill flow. The Fill Details page explains when an
