@@ -330,12 +330,12 @@ describe('popup App — Fill Log access', () => {
     sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }));
     renderApp();
     fireEvent.click(await screen.findByRole('button', { name: 'View Fill Log →' }));
-    expect(await screen.findByText('Fill Log could not open, so please try again.')).toBeTruthy();
+    expect(await screen.findByText('Please try opening Fill Log again.')).toBeTruthy();
     expect(screen.getByRole('alert').className).toContain('border-red-500');
     expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Fill Form' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'View Fill Log →' }));
-    await waitFor(() => expect(screen.queryByText('Fill Log could not open, so please try again.')).toBeNull());
+    await waitFor(() => expect(screen.queryByText('Please try opening Fill Log again.')).toBeNull());
     expect(screen.getByText('1 field filled')).toBeTruthy();
   });
 });

@@ -428,7 +428,7 @@ function App() {
     message = 'Refresh the page to retry after an autofill error.';
   } else if (logOpenFailed && result) {
     tone = 'error';
-    message = 'Fill Log could not open, so please try again.';
+    message = 'Please try opening Fill Log again.';
   } else if (result)
     tone =
       aiUnavailable || result.needReview > 0 || unfilled > 0
