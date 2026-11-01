@@ -6,7 +6,7 @@ export function readFieldValue(element: HTMLElement): string {
   if (isChoice(element)) return isChoiceChecked(element) ? 'checked' : '';
   if (element instanceof HTMLInputElement) {
     if (element.type === 'file') return element.files?.length ? 'selected file' : '';
-    if (!(element.type === 'button' && element.getAttribute('aria-haspopup') === 'listbox'))
+    if (!(element.type === 'button' && (element.getAttribute('aria-haspopup') === 'listbox' || element.getAttribute('role') === 'combobox')))
       return element.value;
   }
   if (element instanceof HTMLTextAreaElement) return element.value;

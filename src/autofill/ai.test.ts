@@ -370,7 +370,7 @@ describe('runAIAutofill — native <select> candidates', () => {
 
     await runAIAutofill([cand], PROFILE, freshResult(), []);
 
-    expect(fillField).toHaveBeenCalledWith(cand.element, 'DE', expect.any(Function));
+    expect(fillField).toHaveBeenCalledWith(cand.element, ['DE'], expect.any(Function));
   });
 
   it('sends an ARIA combobox as type "select" with no options (unavailable until the dropdown opens)', async () => {

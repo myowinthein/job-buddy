@@ -34,8 +34,8 @@ beforeEach(() => {
     height: 30,
   } as DOMRect);
 });
-afterEach(() => {
-  undoAutofill();
+afterEach(async () => {
+  await undoAutofill();
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
@@ -110,7 +110,7 @@ it('rejects an unavailable currency and an incomplete full calendar date', async
   );
   expect(document.querySelector('input')!.value).toBe('');
   expect(result.noReview).toBe(0);
-  undoAutofill();
+  await undoAutofill();
   result = await fill('<label>Employment start date<input type="date" required></label>');
   expect(document.querySelector('input')!.value).toBe('');
   expect(result.noReview).toBe(0);

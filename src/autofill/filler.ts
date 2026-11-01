@@ -1,373 +1,729 @@
-import { isControlAvailable, isChoiceChecked, isTextEditor } from './dom';
+import { isControlAvailable, isChoice, isChoiceChecked, isTextEditor } from './dom';
+import { extractSignals } from './signals';
+import { readFieldValue } from './fieldValue';
+import { captureField, sameFieldState } from './fieldState';
+import type { FieldState } from './fieldState';
+import { ownWriteEvents, performWrite, setWriteConfidence } from './writeSession';
 import type { DocumentFile } from '../types/profile';
 import { normalize, similarity, isSkippableOption, PLACEHOLDER_OPTION_NORMS } from './normalizer';
-import { CONF_FUZZY_THRESHOLD } from './constants';
+import { CONF_FUZZY_THRESHOLD, CONF_AI_YELLOW } from './constants';
 
-// Capture native setters before any framework can shadow them on instances
-const nativeInputSetter    = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,    'value')?.set;
-const nativeTextareaSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
-const nativeCheckedSetter  = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,    'checked')?.set;
-
-// Matches a YYYY-MM-DD ISO date string (the format the resolver always produces).
-const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-// Reformats an ISO date value to match the format expected by a text input,
-// detected from its placeholder attribute. Native date inputs (type="date")
-// always receive YYYY-MM-DD unchanged — that is the spec-required value format.
-// For text inputs the placeholder may hint MM/DD/YYYY or DD/MM/YYYY; if it
-// does, we reformat so masked-input libraries receive the right character order
-// and don't leave placeholder fragments like "dd" or "yyyy" unfilled.
-function reformatDateForInput(value: string, element: HTMLInputElement): string {
-  const m = value.match(ISO_DATE_RE);
-  if (!m) return value; // not an ISO date — pass through unchanged
-  const [, y, mo, d] = m;
-  if (element.type === 'date') return value; // native date input: YYYY-MM-DD is correct
-  const ph = element.placeholder.toLowerCase();
-  // Capture the separator character (/ - .) between the first two components.
-  const mmDd = /mm([/\-.])dd/.exec(ph);
-  if (mmDd) return `${mo}${mmDd[1]}${d}${mmDd[1]}${y}`;
-  const ddMm = /dd([/\-.])mm/.exec(ph);
-  if (ddMm) return `${d}${ddMm[1]}${mo}${ddMm[1]}${y}`;
-  return value; // no recognisable format hint — keep YYYY-MM-DD
+export { getWriteConfidence, resetWriteSession, undoWrites } from './writeSession';
+const nativeInputSetter = Object.getOwnPropertyDescriptor(
+  window.HTMLInputElement.prototype,
+  'value',
+)?.set;
+const nativeTextareaSetter = Object.getOwnPropertyDescriptor(
+  window.HTMLTextAreaElement.prototype,
+  'value',
+)?.set;
+const nativeCheckedSetter = Object.getOwnPropertyDescriptor(
+  window.HTMLInputElement.prototype,
+  'checked',
+)?.set;
+export const DROPDOWN_WAIT_MS = 1_500;
+export const UNBOUND_DROPDOWN_WAIT_MS = 300;
+export const DROPDOWN_RUN_BUDGET_MS = 3_000;
+let dropdownBudget = DROPDOWN_RUN_BUDGET_MS;
+export function resetDropdownBudget(): void {
+  dropdownBudget = DROPDOWN_RUN_BUDGET_MS;
 }
 
-// Focuses an element the way a real click would, without the side effect of
-// scrolling the page — autofill can touch dozens of fields in one run, and
-// each one stealing scroll position would be jarring. Never throws: some
-// elements (already removed from the DOM between scan and fill, or a type
-// browsers refuse to focus) can reject focus() outright.
-function focusElement(element: HTMLElement): void {
-  try { element.focus({ preventScroll: true }); } catch { /* ignore */ }
+const settle = async () => {
+  await Promise.resolve();
+  await Promise.resolve();
+};
+function focus(element: HTMLElement): void {
+  try {
+    ownWriteEvents(() => element.focus({ preventScroll: true }));
+  } catch {
+    /* Some custom controls cannot focus. */
+  }
 }
-
-// Dispatches a real InputEvent (not a plain Event) for 'input', matching
-// what fillAriaTextbox already does and what a genuine keystroke produces.
-// Some stricter form/validation libraries (React Hook Form + Zod schemas,
-// and others) specifically check `event instanceof InputEvent` — or read
-// `inputType` — as a signal that a change is "real," and silently ignore a
-// plain synthetic Event even though the DOM value visibly changed. This
-// can't fix isTrusted (browsers force that false for any JS-dispatched
-// event, regardless of constructor), but it closes the gap for libraries
-// checking event class/inputType instead.
-//
-// blur is dispatched as a real FocusEvent, not a plain Event, for the same
-// reason — a native blur is always a FocusEvent, and libraries that key
-// "touched" state off `event instanceof FocusEvent` (React Hook Form's
-// mode: 'onBlur'/'onTouched' among them) silently no-op on a plain Event.
-// Without a genuine touched flag, the field can look filled on screen while
-// the form's own validation state still marks it missing at submit time.
-function dispatchEvents(
-  element: HTMLElement,
-  inputType: 'insertText' | 'deleteContentBackward' = 'insertText',
-  data: string | null = null,
-): void {
-  element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType, data }));
-  element.dispatchEvent(new Event('change', { bubbles: true }));
-  element.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
-}
-
-
-// Shared matching strategy used by fillSelect (native <option>, primary =
-// raw value, secondary = trimmed text), findBestAriaOption (ARIA elements,
-// primary = trimmed textContent, secondary = trimmed aria-label), and ai.ts's
-// findBestOption (AI-selected radio/checkbox options, primary = value,
-// secondary = label): exact primary match, then exact secondary, then
-// normalized primary, then normalized secondary, then best fuzzy match
-// across both fields (≥ CONF_FUZZY_THRESHOLD).
-export function findBestMatch<T>(
-  eligible: T[],
-  target: string,
-  getPrimary: (item: T) => string,
-  getSecondary: (item: T) => string,
-): T | null {
-  if (!target || eligible.length === 0) return null;
-  const norm = normalize(target);
-
-  const exactPrimary = eligible.find((o) => getPrimary(o) === target);
-  if (exactPrimary) return exactPrimary;
-
-  const exactSecondary = eligible.find((o) => getSecondary(o) === target);
-  if (exactSecondary) return exactSecondary;
-
-  const normPrimary = eligible.find((o) => normalize(getPrimary(o)) === norm);
-  if (normPrimary) return normPrimary;
-
-  const normSecondary = eligible.find((o) => normalize(getSecondary(o)) === norm);
-  if (normSecondary) return normSecondary;
-
-  let best: T | null = null;
-  let bestScore = 0;
-  for (const o of eligible) {
-    const score = Math.max(
-      similarity(normalize(getPrimary(o)),   norm),
-      similarity(normalize(getSecondary(o)), norm),
+function notify(element: HTMLElement, value?: string): void {
+  ownWriteEvents(() => {
+    element.dispatchEvent(
+      value === undefined
+        ? new Event('input', { bubbles: true, composed: true })
+        : new InputEvent('input', {
+            bubbles: true,
+            composed: true,
+            inputType: value ? 'insertText' : 'deleteContentBackward',
+            data: value || null,
+          }),
     );
-    if (score > bestScore) { bestScore = score; best = o; }
+    element.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+  });
+}
+function blur(element: HTMLElement): void {
+  ownWriteEvents(() => {
+    const root = element.getRootNode() as Document | ShadowRoot;
+    if (root.activeElement === element) element.blur();
+    else {
+      element.dispatchEvent(new FocusEvent('blur', { composed: true }));
+      element.dispatchEvent(new FocusEvent('focusout', { bubbles: true, composed: true }));
+    }
+  });
+}
+function setText(element: HTMLElement, value: string): void {
+  ownWriteEvents(() => {
+    if (element instanceof HTMLInputElement) {
+      if (nativeInputSetter) nativeInputSetter.call(element, value);
+      else element.value = value;
+    } else if (element instanceof HTMLTextAreaElement) {
+      if (nativeTextareaSetter) nativeTextareaSetter.call(element, value);
+      else element.value = value;
+    } else element.textContent = value;
+    notify(element, value);
+  });
+}
+function safeClick(element: HTMLElement, pointer = false): void {
+  // Cancel native navigation/submission while allowing the widget's handlers.
+  const blockDefault = (event: Event) => {
+    if (
+      (element instanceof HTMLButtonElement && element.type === 'submit') ||
+      (element instanceof HTMLInputElement && ['submit', 'image'].includes(element.type)) ||
+      element instanceof HTMLAnchorElement
+    )
+      event.preventDefault();
+  };
+  const form = (element as HTMLButtonElement).form ?? element.closest('form');
+  const blockSubmit = (event: Event) => {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  };
+  element.addEventListener('click', blockDefault, true);
+  form?.addEventListener('submit', blockSubmit, true);
+  try {
+    ownWriteEvents(() => {
+      if (pointer) {
+        const mouseDown =
+          typeof PointerEvent === 'undefined' ||
+          element.dispatchEvent(
+            new PointerEvent('pointerdown', {
+              bubbles: true,
+              composed: true,
+              cancelable: true,
+              pointerType: 'mouse',
+              pointerId: 1,
+              isPrimary: true,
+              button: 0,
+              buttons: 1,
+            }),
+          );
+        if (mouseDown && element.isConnected)
+          element.dispatchEvent(
+            new MouseEvent('mousedown', {
+              bubbles: true,
+              composed: true,
+              cancelable: true,
+              button: 0,
+              buttons: 1,
+            }),
+          );
+        if (!element.isConnected) return;
+        if (typeof PointerEvent !== 'undefined')
+          element.dispatchEvent(
+            new PointerEvent('pointerup', {
+              bubbles: true,
+              composed: true,
+              pointerType: 'mouse',
+              pointerId: 1,
+              isPrimary: true,
+              button: 0,
+            }),
+          );
+        element.dispatchEvent(
+          new MouseEvent('mouseup', { bubbles: true, composed: true, cancelable: true, button: 0 }),
+        );
+      }
+      if (element.isConnected) element.click();
+    });
+  } finally {
+    element.removeEventListener('click', blockDefault, true);
+    form?.removeEventListener('submit', blockSubmit, true);
   }
-  return bestScore >= CONF_FUZZY_THRESHOLD ? best : null;
 }
-
-function fillSelect(select: HTMLSelectElement, value: string): boolean {
-  const options  = Array.from(select.options);
-  const eligible = options.filter((opt) => !isSkippableOption(opt));
-  const match = findBestMatch(eligible, value, (o) => o.value, (o) => o.text.trim());
-  if (match) {
-    focusElement(select);
-    select.selectedIndex = options.indexOf(match);
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-    // A "required" select's validation error commonly clears only once the
-    // field is touched (focus+blur), not merely on change — see the
-    // dispatchEvents comment above for the same reasoning applied here.
-    select.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
-    return select.isConnected && select.options[select.selectedIndex] === match && select.validity.valid;
+function dateValue(value: string, element: HTMLInputElement): string {
+  const date = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!date || element.type === 'date') return value;
+  const format = /\b(yyyy|mm|dd)([/.-])(yyyy|mm|dd)\2(yyyy|mm|dd)\b/i.exec(element.placeholder);
+  if (
+    !format ||
+    new Set([format[1], format[3], format[4]].map((part) => part.toLowerCase())).size !== 3
+  )
+    return value;
+  const parts: Record<string, string> = { yyyy: date[1], mm: date[2], dd: date[3] };
+  return [format[1], format[3], format[4]].map((part) => parts[part.toLowerCase()]).join(format[2]);
+}
+function negative(text: string): boolean {
+  return /\b(no|not|never|without|none|decline|neither|cannot|unable|ineligible|unauthorized|unavailable|unwilling|unemployed)\b|n['’]t\b|\bnon[- ]/i.test(
+    text,
+  );
+}
+function compatible(a: string, b: string): boolean {
+  return (
+    negative(a) === negative(b) && (a.match(/\d+/g) ?? []).join() === (b.match(/\d+/g) ?? []).join()
+  );
+}
+export function findBestMatch<T>(
+  items: T[],
+  target: string,
+  primary: (item: T) => string,
+  secondary: (item: T) => string,
+): T | null {
+  if (!target || !normalize(target)) return null;
+  for (const norm of [false, true]) {
+    const equal = (text: string) =>
+      norm ? normalize(text) === normalize(target) : text === target;
+    const matches = items.filter((item) => equal(primary(item)) || equal(secondary(item)));
+    if (matches.length) return matches.length === 1 ? matches[0] : null;
   }
-  return false;
+  const scores = items
+    .map((item) => ({
+      item,
+      score: Math.max(
+        ...[primary(item), secondary(item)]
+          .filter((text) => text && compatible(target, text))
+          .map((text) => similarity(normalize(text), normalize(target))),
+        0,
+      ),
+    }))
+    .sort((a, b) => b.score - a.score);
+  return scores[0]?.score >= CONF_FUZZY_THRESHOLD && scores[0].score > (scores[1]?.score ?? 0)
+    ? scores[0].item
+    : null;
+}
+function optionConfidence(element: HTMLElement, target: string, ...answers: string[]): void {
+  setWriteConfidence(
+    element,
+    answers.some((answer) => normalize(answer) === normalize(target)) ? 1 : CONF_AI_YELLOW,
+  );
+}
+function equivalent(element: HTMLElement, expected: string): boolean {
+  const actual = readFieldValue(element);
+  if (actual === expected) return true;
+  // Accept punctuation-only telephone masks, never missing digits or changed answers.
+  return (
+    element instanceof HTMLInputElement &&
+    element.type === 'tel' &&
+    /^\+?[\d\s().-]+$/.test(actual) &&
+    /^\+?[\d\s().-]+$/.test(expected) &&
+    actual.replace(/\D/g, '') === expected.replace(/\D/g, '')
+  );
+}
+function valid(element: HTMLElement): boolean {
+  if (!isControlAvailable(element)) return false;
+  if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)
+    return (
+      element.validity.valid && (element.maxLength < 0 || element.value.length <= element.maxLength)
+    );
+  return !(element instanceof HTMLSelectElement) || element.validity.valid;
 }
 
-// ── ARIA / custom-component filling ──────────────────────────────────────────
-
-// Fill a contenteditable or role="textbox" element by setting textContent and
-// dispatching the InputEvent that React/Vue listen for.
-function fillAriaTextbox(element: HTMLElement, value: string): void {
-  focusElement(element);
-  element.textContent = value;
-  element.dispatchEvent(new InputEvent('input', { bubbles: true, data: value, inputType: 'insertText' }));
-  element.dispatchEvent(new Event('change', { bubbles: true }));
-  element.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+function boxes(root: Document | ShadowRoot): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>('[role="listbox"]')].filter(isControlAvailable);
 }
-
-// Returns true if an aria option element should be skipped (disabled or placeholder).
-function isSkippableAriaOption(el: HTMLElement): boolean {
-  if (el.getAttribute('aria-disabled') === 'true') return true;
-  const text = el.textContent?.trim() ?? '';
-  if (!text) return true;
-  return PLACEHOLDER_OPTION_NORMS.has(normalize(text));
+function scopedOptions(trigger: HTMLElement, before: Set<HTMLElement>): HTMLElement[] {
+  const root = trigger.getRootNode() as Document | ShadowRoot;
+  const ids =
+    `${trigger.getAttribute('aria-controls') ?? ''} ${trigger.getAttribute('aria-owns') ?? ''}`
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+  if (ids.length)
+    return ids.flatMap((id) => [
+      ...(root.getElementById(id)?.querySelectorAll<HTMLElement>('[role="option"]') ?? []),
+    ]);
+  const parent =
+    trigger.getAttribute('role') === 'combobox' && trigger.querySelector('[role="listbox"]')
+      ? trigger
+      : trigger.parentElement;
+  if (
+    parent &&
+    !parent.matches('body,form') &&
+    parent.querySelectorAll('[role="combobox"],[aria-haspopup="listbox"]').length <= 1
+  ) {
+    const local = parent.querySelectorAll<HTMLElement>('[role="listbox"]');
+    if (local.length === 1) return [...local[0].querySelectorAll<HTMLElement>('[role="option"]')];
+  }
+  const candidates = [...new Set([...boxes(root), ...boxes(document)])].filter(
+    (box) =>
+      !before.has(box) ||
+      (!!trigger.id && box.getAttribute('aria-labelledby')?.split(/\s+/).includes(trigger.id)),
+  );
+  return candidates.length === 1
+    ? [...candidates[0].querySelectorAll<HTMLElement>('[role="option"]')]
+    : [];
 }
-
-// Finds the best matching option element from a list of ARIA option elements,
-// applying the same priority order as fillSelect():
-//   1. Exact text match  2. Exact aria-label match
-//   3. Normalised text   4. Normalised aria-label
-//   5. Fuzzy (≥0.75)     6. No match → null
-function findBestAriaOption(options: HTMLElement[], target: string): HTMLElement | null {
-  const eligible = options.filter((o) => !isSkippableAriaOption(o));
+function ariaOption(
+  options: HTMLElement[],
+  value: string,
+  placeholder = false,
+): HTMLElement | null {
+  const eligible = options.filter(
+    (option) =>
+      isControlAvailable(option) &&
+      (placeholder ||
+        !PLACEHOLDER_OPTION_NORMS.has(
+          normalize(option.getAttribute('aria-label') || option.textContent || ''),
+        )),
+  );
   return findBestMatch(
     eligible,
-    target,
-    (o) => o.textContent?.trim() ?? '',
-    (o) => (o.getAttribute('aria-label') ?? '').trim(),
+    value,
+    (option) => option.textContent?.trim() ?? '',
+    (option) => option.getAttribute('aria-label')?.trim() ?? '',
+  );
+}
+async function waitOption(
+  trigger: HTMLElement,
+  before: Set<HTMLElement>,
+  value: string,
+  active: () => boolean,
+  placeholder: boolean,
+): Promise<HTMLElement | null> {
+  const linked =
+    trigger.hasAttribute('aria-controls') ||
+    trigger.hasAttribute('aria-owns') ||
+    trigger.getAttribute('aria-expanded') === 'true';
+  const limit = Math.min(dropdownBudget, linked ? DROPDOWN_WAIT_MS : UNBOUND_DROPDOWN_WAIT_MS);
+  const start = Date.now();
+  const root = trigger.getRootNode();
+  return new Promise((resolve) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let finished = false;
+    const observer = new MutationObserver(check);
+    function finish(option: HTMLElement | null) {
+      if (finished) return;
+      finished = true;
+      observer.disconnect();
+      clearTimeout(timer);
+      dropdownBudget = Math.max(0, dropdownBudget - (Date.now() - start));
+      resolve(option);
+    }
+    function check() {
+      clearTimeout(timer);
+      if (!active() || !isControlAvailable(trigger)) return finish(null);
+      const options = scopedOptions(trigger, before);
+      const option = ariaOption(options, value, placeholder);
+      if (option) return finish(option);
+      if (
+        Date.now() - start >= limit ||
+        (options.length &&
+          !(trigger instanceof HTMLInputElement) &&
+          trigger.getAttribute('aria-busy') !== 'true')
+      )
+        return finish(null);
+      timer = setTimeout(check, Math.min(50, Math.max(0, limit - (Date.now() - start))));
+    }
+    observer.observe(document, { childList: true, subtree: true, attributes: true });
+    if (root instanceof ShadowRoot)
+      observer.observe(root, { childList: true, subtree: true, attributes: true });
+    check();
+  });
+}
+async function closeDropdown(
+  element: HTMLElement,
+  active: () => boolean = () => true,
+): Promise<void> {
+  ownWriteEvents(() => {
+    element.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true }),
+    );
+    element.dispatchEvent(
+      new KeyboardEvent('keyup', { key: 'Escape', bubbles: true, composed: true }),
+    );
+  });
+  await settle();
+  if (active() && element.getAttribute('aria-expanded') === 'true') safeClick(element, true);
+  await settle();
+}
+async function rawDropdown(
+  element: HTMLElement,
+  value: string,
+  active: () => boolean,
+  placeholder = false,
+): Promise<boolean> {
+  const root = element.getRootNode() as Document | ShadowRoot;
+  const before = new Set([...boxes(root), ...boxes(document)]);
+  const wasOpen = element.getAttribute('aria-expanded') === 'true';
+  try {
+    if (!active() || !isControlAvailable(element)) return false;
+    focus(element);
+    if (!active() || !isControlAvailable(element)) return false;
+    if (!wasOpen) safeClick(element, true);
+    if (
+      element instanceof HTMLInputElement &&
+      !element.readOnly &&
+      !['button', 'submit', 'hidden'].includes(element.type)
+    )
+      setText(element, value);
+    await settle();
+    const option = await waitOption(element, before, value, active, placeholder);
+    if (!option || !active() || !isControlAvailable(option)) return false;
+    const label = option.getAttribute('aria-label') || option.textContent?.trim() || '';
+    const priorValue = readFieldValue(element);
+    const priorExplicit = [
+      element.getAttribute('aria-valuetext'),
+      element.dataset.selected,
+      element.dataset.value,
+    ];
+    safeClick(option, true);
+    await settle();
+    const retained = readFieldValue(element);
+    const selected = option.isConnected && option.getAttribute('aria-selected') === 'true';
+    const knownValue =
+      !!retained &&
+      [value, label, option.getAttribute('data-value')].some(
+        (answer) => answer && normalize(retained) === normalize(answer),
+      );
+    const changedExplicit = [
+      element.getAttribute('aria-valuetext'),
+      element.dataset.selected,
+      element.dataset.value,
+    ].some((answer, i) => answer && answer !== priorExplicit[i]);
+    const accepted =
+      selected ||
+      changedExplicit ||
+      (knownValue &&
+        (retained !== priorValue ||
+          element.getAttribute('aria-expanded') === 'false' ||
+          !(element instanceof HTMLInputElement) ||
+          !option.isConnected));
+    if (accepted) {
+      optionConfidence(element, value, label, option.textContent ?? '');
+      if (!selected && !knownValue) setWriteConfidence(element, CONF_AI_YELLOW);
+    }
+    return accepted && isControlAvailable(element);
+  } finally {
+    if (active() && !wasOpen) await closeDropdown(element, active);
+    if (active()) blur(element);
+  }
+}
+async function rawChoice(element: HTMLElement, checked: boolean): Promise<boolean> {
+  if (element instanceof HTMLInputElement && element.indeterminate)
+    ownWriteEvents(() => {
+      element.indeterminate = false;
+    });
+  if (
+    isChoiceChecked(element) === checked &&
+    !(element instanceof HTMLInputElement && element.indeterminate)
+  )
+    return true;
+  if (element instanceof HTMLInputElement && element.type === 'radio' && !checked) {
+    ownWriteEvents(() => {
+      nativeCheckedSetter?.call(element, false);
+      element.dispatchEvent(new Event('click', { bubbles: true, composed: true }));
+      notify(element);
+    });
+  } else safeClick(element);
+  await settle();
+  if (isChoiceChecked(element) !== checked) {
+    await new Promise<void>((resolve) => {
+      const start = Date.now();
+      const check = () =>
+        isChoiceChecked(element) === checked || Date.now() - start >= 150
+          ? resolve()
+          : setTimeout(check, 15);
+      check();
+    });
+  }
+  return (
+    element.isConnected &&
+    isChoiceChecked(element) === checked &&
+    !(element instanceof HTMLInputElement && element.indeterminate)
+  );
+}
+function clearControl(element: HTMLElement): HTMLElement | null {
+  for (
+    let parent = element.parentElement;
+    parent && !parent.matches('form,body');
+    parent = parent.parentElement
+  ) {
+    if (parent.querySelectorAll('[role="combobox"],[aria-haspopup="listbox"]').length > 1)
+      return null;
+    const controls = [
+      ...parent.querySelectorAll<HTMLElement>(
+        'input,select,textarea,[role="combobox"],[role="textbox"]',
+      ),
+    ].filter(
+      (control) =>
+        control !== element &&
+        !element.contains(control) &&
+        ((control instanceof HTMLInputElement && control.type === 'file') ||
+          (isControlAvailable(control) &&
+            !(control instanceof HTMLInputElement && control.type === 'hidden'))),
+    );
+    if (controls.length) return null;
+    const buttons = parent.querySelectorAll<HTMLElement>(
+      'button[aria-label*="Clear" i],[role="button"][aria-label*="Clear" i]',
+    );
+    if (buttons.length === 1) {
+      const name = buttons[0].getAttribute('aria-label') ?? '';
+      const signals = extractSignals(element);
+      const question = [signals.label, signals.ariaLabel, signals.placeholder].join(' ');
+      const detail = name.replace(/^clear\s*(?:selected\s+)?/i, '').trim();
+      if (
+        !detail ||
+        /^(selection|selected value|value|input|item)$/i.test(detail) ||
+        normalize(question).includes(normalize(detail))
+      )
+        return buttons[0];
+      return null;
+    }
+    if (buttons.length > 1) return null;
+  }
+  return null;
+}
+async function restore(
+  element: HTMLElement,
+  state: FieldState,
+  active: () => boolean,
+): Promise<boolean> {
+  if (!active() || !isControlAvailable(element)) return false;
+  if (state.choices) {
+    for (const item of [...state.choices].sort((a, b) => Number(b.checked) - Number(a.checked))) {
+      if (!active() || !isControlAvailable(item.element)) return false;
+      await rawChoice(item.element, item.checked);
+      if (item.element instanceof HTMLInputElement) item.element.indeterminate = item.indeterminate;
+    }
+  } else if (state.options && element instanceof HTMLSelectElement) {
+    if (state.options.some((item) => !element.contains(item.option))) return false;
+    ownWriteEvents(() => {
+      element.selectedIndex = -1;
+      for (const item of state.options!) item.option.selected = item.selected;
+      notify(element);
+    });
+  } else if (state.files && element instanceof HTMLInputElement) {
+    const transfer = new DataTransfer();
+    state.files.forEach((file) => transfer.items.add(file));
+    ownWriteEvents(() => {
+      element.files = transfer.files;
+      notify(element);
+    });
+  } else if (
+    (element instanceof HTMLInputElement && !['button', 'submit'].includes(element.type)) ||
+    element instanceof HTMLTextAreaElement ||
+    isTextEditor(element)
+  ) {
+    if (state.content)
+      ownWriteEvents(() => {
+        element.replaceChildren(...state.content!.map((node) => node.cloneNode(true)));
+        notify(element, state.value);
+      });
+    else setText(element, state.value);
+  } else {
+    // Restore through the widget's API surface; never fake its visible label.
+    if (state.value) return rawDropdown(element, state.value, active);
+    const clear = clearControl(element);
+    if (clear && isControlAvailable(clear)) {
+      safeClick(clear);
+      await settle();
+    } else {
+      const root = element.getRootNode() as Document | ShadowRoot;
+      const before = new Set([...boxes(root), ...boxes(document)]);
+      safeClick(element, true);
+      const options = scopedOptions(element, before);
+      const placeholder = options.find((option) =>
+        PLACEHOLDER_OPTION_NORMS.has(
+          normalize(option.getAttribute('aria-label') || option.textContent || ''),
+        ),
+      );
+      if (placeholder && isControlAvailable(placeholder)) safeClick(placeholder, true);
+      await closeDropdown(element, active);
+    }
+  }
+  blur(element);
+  await settle();
+  if (state.selection && !state.value && !sameFieldState(state, captureField(element))) {
+    const clear = clearControl(element);
+    if (clear && active() && isControlAvailable(clear)) {
+      safeClick(clear);
+      await settle();
+    }
+  }
+  return sameFieldState(state, captureField(element));
+}
+
+export async function fillField(
+  element: HTMLElement,
+  value: string | string[],
+  active: () => boolean = () => true,
+): Promise<boolean> {
+  if (
+    (!value.length && !(element instanceof HTMLSelectElement && element.multiple)) ||
+    !active() ||
+    !isControlAvailable(element)
+  )
+    return false;
+  setWriteConfidence(element, 1);
+  return performWrite(
+    element,
+    active,
+    async (before, current) => {
+      if (element instanceof HTMLSelectElement) {
+        const eligible = [...element.options].filter((option) => !isSkippableOption(option));
+        const targets = Array.isArray(value)
+          ? value.map((target) => {
+              const matches = eligible.filter((option) => option.value === target);
+              return matches.length === 1 ? matches[0] : null;
+            })
+          : [
+              findBestMatch(
+                eligible,
+                value,
+                (option) => option.value,
+                (option) => option.text.trim(),
+              ),
+            ];
+        if (targets.some((option) => !option) || (!element.multiple && targets.length !== 1))
+          return false;
+        focus(element);
+        if (
+          !current() ||
+          !isControlAvailable(element) ||
+          !sameFieldState(before, captureField(element))
+        )
+          return false;
+        if (typeof value === 'string')
+          optionConfidence(element, value, targets[0]!.value, targets[0]!.text);
+        ownWriteEvents(() => {
+          element.selectedIndex = -1;
+          for (const option of targets) option!.selected = true;
+          notify(element);
+        });
+        blur(element);
+        await settle();
+        return (
+          valid(element) &&
+          [...element.selectedOptions].length === targets.length &&
+          targets.every((option) => option!.selected)
+        );
+      }
+      if (Array.isArray(value)) return false;
+      if (
+        element.getAttribute('role') === 'combobox' ||
+        element.getAttribute('aria-haspopup') === 'listbox'
+      )
+        return rawDropdown(element, value, current);
+      if (
+        !(
+          element instanceof HTMLInputElement ||
+          element instanceof HTMLTextAreaElement ||
+          isTextEditor(element)
+        )
+      )
+        return false;
+      focus(element);
+      if (
+        !current() ||
+        !isControlAvailable(element) ||
+        !sameFieldState(before, captureField(element))
+      )
+        return false;
+      const target = element instanceof HTMLInputElement ? dateValue(value, element) : value;
+      setText(element, target);
+      blur(element);
+      await settle();
+      return valid(element) && equivalent(element, target);
+    },
+    (state, current) => restore(element, state, current),
   );
 }
 
-// Polls for [role="option"] elements that appear after the trigger is opened.
-// Tries aria-controls/aria-owns first, then nearby DOM, then global portal.
-// Returns an empty array if nothing appears within maxMs.
-async function waitForListboxOptions(
-  trigger: HTMLElement,
-  maxMs = 500,
-  pollMs = 50,
-  isActive: () => boolean = () => true,
-): Promise<HTMLElement[]> {
-  const findOptions = (): HTMLElement[] => {
-    const ctrlId = trigger.getAttribute('aria-controls') ?? trigger.getAttribute('aria-owns');
-    if (ctrlId) {
-      const root = trigger.getRootNode() as Document | ShadowRoot;
-      const lb = root.getElementById?.(ctrlId);
-      if (lb) return Array.from(lb.querySelectorAll<HTMLElement>('[role="option"]'));
-    }
-    const parent = trigger.closest('[role="combobox"]') ?? trigger.parentElement;
-    if (parent) {
-      const lb = parent.querySelector<HTMLElement>('[role="listbox"]');
-      if (lb) return Array.from(lb.querySelectorAll<HTMLElement>('[role="option"]'));
-    }
-    const root = trigger.getRootNode() as Document | ShadowRoot;
-    const global = root.querySelector<HTMLElement>('[role="listbox"]:not([aria-hidden="true"])') ?? document.querySelector<HTMLElement>('[role="listbox"]:not([aria-hidden="true"])');
-    if (global) return Array.from(global.querySelectorAll<HTMLElement>('[role="option"]'));
-    return [];
-  };
-
-  const deadline = Date.now() + maxMs;
-  while (isActive()) {
-    const opts = findOptions();
-    if (opts.length > 0) return opts;
-    if (Date.now() >= deadline) return [];
-    await new Promise<void>((resolve) => setTimeout(resolve, pollMs));
-  }
-  return [];
+export async function fillFileField(
+  element: HTMLInputElement,
+  data: DocumentFile,
+): Promise<boolean> {
+  const match = /^data:([^;]+);base64,(.+)$/.exec(data.base64);
+  if (!match || !isControlAvailable(element)) return false;
+  const accept = element.accept
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  if (
+    accept.length &&
+    !accept.some((item) =>
+      item.startsWith('.')
+        ? data.name.toLowerCase().endsWith(item)
+        : item.endsWith('/*')
+          ? match[1].toLowerCase().startsWith(item.slice(0, -1))
+          : item === match[1].toLowerCase(),
+    )
+  )
+    return false;
+  return performWrite(
+    element,
+    () => true,
+    async (before, current) => {
+      focus(element);
+      if (
+        !current() ||
+        !isControlAvailable(element) ||
+        !sameFieldState(before, captureField(element))
+      )
+        return false;
+      const binary = atob(match[2]);
+      const file = new File(
+        [Uint8Array.from(binary, (character) => character.charCodeAt(0))],
+        data.name,
+        { type: match[1] },
+      );
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      ownWriteEvents(() => {
+        element.files = transfer.files;
+        notify(element);
+      });
+      blur(element);
+      await settle();
+      return (
+        valid(element) &&
+        element.files?.length === 1 &&
+        element.files[0].name === file.name &&
+        element.files[0].size === file.size
+      );
+    },
+    (state, active) => restore(element, state, active),
+  );
 }
-
-// Opens a custom listbox/combobox, waits for options, then clicks the best match.
-// Returns true when an option was successfully selected, false otherwise.
-// Never throws — graceful no-op on any failure.
-async function fillAriaListbox(element: HTMLElement, value: string, isActive: () => boolean): Promise<boolean> {
+export async function fillCheckboxInput(element: HTMLElement, checked = true): Promise<boolean> {
+  if (!isControlAvailable(element) || !isChoice(element)) return false;
+  return performWrite(
+    element,
+    () => true,
+    async (_, active) => {
+      focus(element);
+      if (!active() || !isControlAvailable(element)) return false;
+      const result = await rawChoice(element, checked);
+      blur(element);
+      return (
+        result &&
+        isControlAvailable(element) &&
+        (!(element instanceof HTMLInputElement) || element.validity.valid)
+      );
+    },
+    (state, active) => restore(element, state, active),
+  );
+}
+export const fillRadioInput = (element: HTMLElement): Promise<boolean> =>
+  fillCheckboxInput(element);
+export async function clearFieldValue(element: HTMLElement): Promise<boolean> {
   try {
-    if (!isControlAvailable(element)) return false;
-    element.click();
-    element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-
-    const options = await waitForListboxOptions(element, 500, 50, isActive);
-    if (options.length === 0) return false;
-
-    const best = findBestAriaOption(options, value);
-    if (!best || !isActive() || !isControlAvailable(element) || !isControlAvailable(best)) return false;
-
-    best.click();
-    best.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-    return true;
+    const state = captureField(element);
+    if (state.choices)
+      state.choices = state.choices.map((item) => ({
+        ...item,
+        checked: false,
+        indeterminate: false,
+      }));
+    if (state.options) state.options = state.options.map((item) => ({ ...item, selected: false }));
+    if (state.files) state.files = [];
+    state.value = '';
+    if (state.content) state.content = [];
+    return await restore(element, state, () => true);
   } catch {
     return false;
   }
-}
-
-// Sets an element's value to empty and notifies the page's framework.
-function setEmpty(element: HTMLElement): void {
-  if (element instanceof HTMLSelectElement) {
-    element.selectedIndex = 0;
-    element.dispatchEvent(new Event('change', { bubbles: true }));
-  } else if (element instanceof HTMLTextAreaElement) {
-    if (nativeTextareaSetter) nativeTextareaSetter.call(element, '');
-    else element.value = '';
-    dispatchEvents(element, 'deleteContentBackward');
-  } else if (element instanceof HTMLInputElement) {
-    if (element.type === 'file') {
-      // Browsers reject `.value = anything-non-empty` for security; assigning
-      // an empty DataTransfer's FileList is the standards-track way to clear.
-      try { element.files = new DataTransfer().files; } catch { /* ignore */ }
-      element.dispatchEvent(new Event('input',  { bubbles: true }));
-      element.dispatchEvent(new Event('change', { bubbles: true }));
-      return;
-    }
-    if (element.type === 'checkbox' || element.type === 'radio') {
-      // Setting .value on a checkbox never affects its checked state.
-      if (nativeCheckedSetter) nativeCheckedSetter.call(element, false);
-      else element.checked = false;
-      element.dispatchEvent(new Event('change', { bubbles: true }));
-      element.dispatchEvent(new Event('input',  { bubbles: true }));
-      return;
-    }
-    if (nativeInputSetter) nativeInputSetter.call(element, '');
-    else element.value = '';
-    dispatchEvents(element, 'deleteContentBackward');
-  } else {
-    if (element.matches('[role="radio"],[role="checkbox"]')) {
-      if (isChoiceChecked(element)) element.click();
-      return;
-    }
-    // ARIA custom elements: clear text for textbox/contenteditable;
-    // no-op for combobox/listbox (cannot reliably reverse dropdown selection).
-    if (isTextEditor(element)) {
-      element.textContent = '';
-      element.dispatchEvent(new Event('input',  { bubbles: true }));
-      element.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  }
-}
-
-export function clearFieldValue(element: HTMLElement): void {
-  setEmpty(element);
-  // React (and some other frameworks) reconcile synchronously inside the
-  // dispatched input event and can restore the filled value before control
-  // returns here.  A microtask runs after that synchronous re-render and
-  // applies the clear a second time, ensuring the field stays empty.
-  queueMicrotask(() => setEmpty(element));
-}
-
-export async function fillField(element: HTMLElement, value: string, isActive: () => boolean = () => true): Promise<boolean> {
-  if (!value || !isActive() || !isControlAvailable(element)) return false;
-  // Native selects may also expose role="combobox". Their native options win.
-  if (element instanceof HTMLSelectElement) return fillSelect(element, value);
-  const role = element.getAttribute('role');
-  const popup = element.getAttribute('aria-haspopup');
-  if (role === 'combobox' || popup === 'listbox') return fillAriaListbox(element, value, isActive);
-  if (element instanceof HTMLTextAreaElement) {
-    focusElement(element);
-    if (nativeTextareaSetter) nativeTextareaSetter.call(element, value);
-    else element.value = value;
-    dispatchEvents(element, 'insertText', value);
-    return element.isConnected && element.value === value && element.validity.valid && (element.maxLength < 0 || value.length <= element.maxLength);
-  }
-  if (element instanceof HTMLInputElement) {
-    focusElement(element);
-    const fillValue = reformatDateForInput(value, element);
-    if (nativeInputSetter) nativeInputSetter.call(element, fillValue);
-    else element.value = fillValue;
-    dispatchEvents(element, 'insertText', fillValue);
-    return element.isConnected && element.value === fillValue && element.validity.valid && (element.maxLength < 0 || fillValue.length <= element.maxLength);
-  }
-  if (isTextEditor(element)) {
-    fillAriaTextbox(element, value);
-    return true;
-  }
-  return false;
-}
-
-// Reconstructs a real File from the stored {name, size, base64-data-URL}
-// payload and assigns it to a file input via DataTransfer. Returns true on
-// success, false on any reconstruction or assignment failure (so the caller
-// can avoid counting the field as filled). Never throws.
-export async function fillFileField(
-  element: HTMLInputElement,
-  fileData: DocumentFile,
-): Promise<boolean> {
-  try {
-    if (!isControlAvailable(element)) return false;
-    // 1. Parse the data URL — expected shape: "data:<mime>;base64,<payload>"
-    const dataUrl = fileData.base64;
-    const commaIdx = dataUrl.indexOf(',');
-    if (commaIdx < 0) {
-      console.warn('[Job Buddy] CV base64 is not a data URL — cannot reconstruct File');
-      return false;
-    }
-    const prefix  = dataUrl.slice(0, commaIdx);
-    const payload = dataUrl.slice(commaIdx + 1);
-
-    const mimeMatch = prefix.match(/^data:([^;]+);base64$/);
-    if (!mimeMatch || !payload) {
-      console.warn('[Job Buddy] CV data URL prefix unrecognised — cannot reconstruct File');
-      return false;
-    }
-    const mimeType = mimeMatch[1];
-
-    // 2. Decode base64 → Uint8Array
-    const binary = atob(payload);
-    const bytes  = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-
-    // 3. Reconstruct File and attach via DataTransfer
-    const blob = new Blob([bytes], { type: mimeType });
-    const file = new File([blob], fileData.name, { type: mimeType });
-    const dt   = new DataTransfer();
-    dt.items.add(file);
-    element.files = dt.files;
-
-    // 4. Notify the page's framework
-    element.dispatchEvent(new Event('input',  { bubbles: true }));
-    element.dispatchEvent(new Event('change', { bubbles: true }));
-    return true;
-  } catch (err) {
-    console.warn('[Job Buddy] File upload reconstruction failed:', err);
-    return false;
-  }
-}
-
-function fillCheckedInput(element: HTMLElement, checked = true): boolean {
-  if (!isControlAvailable(element)) return false;
-  if (element instanceof HTMLInputElement) {
-    if (nativeCheckedSetter) nativeCheckedSetter.call(element, checked);
-    else element.checked = checked;
-    element.dispatchEvent(new Event('change', { bubbles: true }));
-    element.dispatchEvent(new Event('input', { bubbles: true }));
-    return element.checked === checked;
-  }
-  // Let the widget's own handler update its state and any hidden native input.
-  if (isChoiceChecked(element) !== checked) element.click();
-  return isChoiceChecked(element) === checked;
-}
-
-export function fillRadioInput(element: HTMLElement): boolean {
-  return fillCheckedInput(element);
-}
-
-export function fillCheckboxInput(element: HTMLElement, checked = true): boolean {
-  return fillCheckedInput(element, checked);
 }

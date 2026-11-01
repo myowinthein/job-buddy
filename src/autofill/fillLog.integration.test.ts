@@ -103,8 +103,8 @@ function group(kind: 'radio' | 'checkbox', label: string, consent = false) {
   });
   return { name: label, groupLabel: label, isConsent: consent, options };
 }
-beforeEach(() => {
-  undoAutofill();
+beforeEach(async () => {
+  await undoAutofill();
   document.body.innerHTML = '';
   vi.clearAllMocks();
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 100, height: 30 } as DOMRect);
@@ -208,7 +208,7 @@ describe('shared fill tracking with the real AI and native filling pipeline', ()
     expect(getFillLog()?.fields[0].ai.outcome).toBe('missing_data');
     expect(missing.dataset.jbMissingData).toBe('1');
     expect(missing.style.backgroundColor).toBe('rgba(107, 114, 128, 0.12)');
-    undoAutofill();
+    await undoAutofill();
     expect(missing.style.outline).toBe('');
     expect(missing.style.backgroundColor).toBe('');
   });
@@ -257,7 +257,7 @@ describe('shared fill tracking with the real AI and native filling pipeline', ()
     vi.mocked(scanFields).mockReturnValue([input('Name')]);
     await scanAutofill('run');
     await executeAutofill('overwrite');
-    undoAutofill();
+    await undoAutofill();
     expect(getLastResult()).toBeNull();
     expect(getFillLog()?.status).toBe('undone');
     const serialized = JSON.stringify(getFillLog());

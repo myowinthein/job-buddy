@@ -39,6 +39,7 @@ vi.mock('./filler', () => ({
   fillFileField: vi.fn().mockResolvedValue(true),
   fillCheckboxInput: vi.fn(),
   clearFieldValue: vi.fn(),
+  resetDropdownBudget: vi.fn(),
 }));
 vi.mock('./highlighter', () => ({
   applyHighlight: vi.fn(),
@@ -66,7 +67,7 @@ import { scanFields, scanAriaFields, scanCheckboxGroups, scanRadioGroups } from 
 import { extractSignals } from './signals';
 import { mapField } from './mapper';
 import { clearFieldValue, fillField, fillCheckboxInput, fillFileField } from './filler';
-import { clearElementHighlight, clearHighlights, applyHighlight, applyMissingDataHighlight } from './highlighter';
+import { clearHighlights, applyHighlight, applyMissingDataHighlight } from './highlighter';
 import { resolveProfileValue } from './resolver';
 import { refreshLearnedLabels, saveElementMappings } from './mappings';
 import { runAIAutofill } from './ai';
@@ -86,9 +87,9 @@ function makeInput(value = ''): HTMLInputElement {
   return el;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
-  undoAutofill(); // reset sessionElements, noDataFields, lastResult
+  await undoAutofill(); // reset sessionElements, noDataFields, lastResult
   vi.clearAllMocks(); // clear calls produced by undoAutofill itself
   vi.mocked(getProfile).mockResolvedValue(makeProfile());
   vi.mocked(scanFields).mockReturnValue([]);
@@ -308,24 +309,24 @@ describe('undoAutofill', () => {
     await scanAutofill();
     await executeAutofill('overwrite');
     expect(getLastResult()).not.toBeNull();
-    undoAutofill();
+    await undoAutofill();
     expect(getLastResult()).toBeNull();
   });
 
-  it('calls clearHighlights', () => {
-    undoAutofill();
+  it('calls clearHighlights', async () => {
+    await undoAutofill();
     expect(clearHighlights).toHaveBeenCalledTimes(1);
   });
 
-  it('calls clearFieldValue and clearElementHighlight for each highlighted session element', async () => {
+  it('does not grant Undo ownership to mocked writes', async () => {
     const el = makeInput();
     vi.mocked(scanFields).mockReturnValue([el]);
     // Green field gets pushed to sessionElements during executeAutofill
     await scanAutofill();
     await executeAutofill('overwrite');
-    undoAutofill();
-    expect(clearFieldValue).toHaveBeenCalledWith(el);
-    expect(clearElementHighlight).toHaveBeenCalledWith(el);
+    await undoAutofill();
+    expect(clearFieldValue).not.toHaveBeenCalled(); // Only the real writer's journal grants Undo ownership.
+    expect(clearHighlights).toHaveBeenCalled();
   });
 });
 
@@ -431,7 +432,7 @@ describe('edit-watcher promotion (blur)', () => {
 
     await scanAutofill();
     await executeAutofill('merge');
-    undoAutofill();
+    await undoAutofill();
     vi.mocked(applyHighlight).mockClear();
 
     el.value = 'typed after undo';
@@ -951,7 +952,7 @@ describe('session ownership and asynchronous lifecycle', () => {
     expect((await scanAutofill()).preFilledCount).toBe(3);
     await executeAutofill('merge');
     expect(fillField).not.toHaveBeenCalled();
-    undoAutofill();
+    await undoAutofill();
     expect(clearFieldValue).not.toHaveBeenCalled();
     expect([red.value, gray.value, aria.textContent]).toEqual(['Existing red', 'Existing gray', 'Existing custom']);
   });
@@ -960,7 +961,7 @@ describe('session ownership and asynchronous lifecycle', () => {
     const input = makeInput('Keep me');
     vi.mocked(scanFields).mockReturnValue([input]);
     vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.2, value: null, fieldPath: null, matchLayer: 'none' });
-    await scanAutofill(); await executeAutofill('overwrite'); undoAutofill();
+    await scanAutofill(); await executeAutofill('overwrite'); await undoAutofill();
     expect(clearFieldValue).not.toHaveBeenCalledWith(input);
     expect(input.value).toBe('Keep me');
   });
@@ -1000,7 +1001,7 @@ describe('session ownership and asynchronous lifecycle', () => {
     vi.mocked(getProfile).mockImplementationOnce(() => new Promise<Profile>((resolve) => { finish = resolve; }));
     vi.mocked(resolveProfileValue).mockReturnValue('new@example.test');
     document.dispatchEvent(new Event('visibilitychange'));
-    undoAutofill(); finish(makeProfile());
+    await undoAutofill(); finish(makeProfile());
     await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
     expect(fillField).not.toHaveBeenCalled(); expect(getLastResult()).toBeNull(); input.remove();
   });

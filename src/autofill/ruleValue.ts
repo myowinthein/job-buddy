@@ -1,5 +1,7 @@
 import type { Profile, CurrentSalary, ExpectedSalaryEntry } from '../types/profile';
 import type { FieldSignals } from './signals';
+import { languageName } from '../data/languages';
+import { normalize } from './normalizer';
 import { questionText } from './ruleContext';
 import { resolveProfileValue } from './resolver';
 import { CURRENCIES } from '../data/currencies';
@@ -130,4 +132,17 @@ function mentionedCountries(text: string) {
           other !== country && other.name.toLowerCase().includes(country.name.toLowerCase()),
       ),
   );
+}
+
+/** Resolve all represented languages without splitting comma-bearing labels. */
+export function multiSelectValues(profile: Profile, path: string | null, select: HTMLSelectElement): string[] | null {
+  if (path !== 'languages.formatted') return null;
+  const values: string[] = [];
+  for (const language of profile.languages ?? []) {
+    const names = [language.language, languageName(language.language)].map(normalize);
+    const options = [...select.options].filter(option => !option.disabled && !(option.parentElement instanceof HTMLOptGroupElement && option.parentElement.disabled) && (names.includes(normalize(option.value)) || names.includes(normalize(option.text))));
+    if (options.length !== 1) return null;
+    values.push(options[0].value);
+  }
+  return values.length ? values : null;
 }

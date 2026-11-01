@@ -105,7 +105,7 @@ describe('ordered discovery and supported widgets', () => {
     expect(fields()).toEqual(['empty', 'plain']);
   });
 
-  it('discovers custom choices and lets their own handlers update state', () => {
+  it('discovers custom choices and lets their own handlers update state', async () => {
     document.body.innerHTML =
       '<div role="radiogroup" aria-label="Work authorization"><button role="radio" aria-checked="false">Yes</button><button role="radio" aria-checked="false">No</button></div><button id="check" role="checkbox" aria-label="Currently studying here" aria-checked="false"></button>';
     const scan = scanForm();
@@ -114,7 +114,7 @@ describe('ordered discovery and supported widgets', () => {
     expect(scan.fields).toHaveLength(0);
     const radio = scan.radioGroups[0].options[0].element;
     radio.addEventListener('click', () => radio.setAttribute('aria-checked', 'true'));
-    expect(fillRadioInput(radio)).toBe(true);
+    expect(await fillRadioInput(radio)).toBe(true);
     const checkbox = document.querySelector<HTMLElement>('#check')!;
     checkbox.addEventListener('click', () =>
       checkbox.setAttribute(
@@ -122,7 +122,7 @@ describe('ordered discovery and supported widgets', () => {
         checkbox.getAttribute('aria-checked') === 'true' ? 'false' : 'true',
       ),
     );
-    expect(fillCheckboxInput(checkbox)).toBe(true);
+    expect(await fillCheckboxInput(checkbox)).toBe(true);
     clearFieldValue(checkbox);
     expect(checkbox.getAttribute('aria-checked')).toBe('false');
   });

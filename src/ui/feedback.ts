@@ -84,7 +84,7 @@ export const feedback = {
   resumeNotResume: 'This document doesn’t appear to be a resume.',
   resumeFileEmpty: 'This file is empty. Choose a PDF or DOCX resume.',
   resumeModelDenied: 'This key can’t use the model. Check Settings.',
-  quickFillUndoFailed: 'Undo incomplete. Refresh the form.',
+  quickFillUndoFailed: 'Undo incomplete. Review the remaining answers.',
   resumeFileUnreadable: 'Unreadable file. Choose a valid PDF or DOCX.',
   importReviewExpired: 'Your profile changed in another tab. Review it or import the file again.',
   importIdentityChanged: 'Your profile changed in another tab. Review the import again.',

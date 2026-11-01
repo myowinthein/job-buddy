@@ -171,7 +171,7 @@ describe('popup App — GET_STATUS frame aggregation on mount', () => {
 
   it('requires AI setup without a key while keeping previous results and Undo available', async () => {
     vi.mocked(getGeminiApiKey).mockResolvedValue(null);
-    sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }, 'unavailable'));
+    sendMessageMock.mockImplementation((_tabId, message) => Promise.resolve(message.action === 'CLEAR' ? { success: true } : statusResult({ noReview: 1, totalScanned: 1 }, 'unavailable')));
     renderApp();
     expect(await screen.findByRole('button', { name: 'Set Up AI Autofill' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Fill Form' })).toBeNull();
@@ -346,7 +346,7 @@ describe('popup App — handleAutofill scan orchestration', () => {
 
 describe('popup App — Fill Details access', () => {
   it('opens the full-page log for the original application tab', async () => {
-    sendMessageMock.mockResolvedValue(statusResult({ noReview: 3, totalScanned: 3 }));
+    sendMessageMock.mockImplementation((_tabId, message) => Promise.resolve(message.action === 'CLEAR' ? { success: true } : statusResult({ noReview: 3, totalScanned: 3 })));
     renderApp();
     const details = await screen.findByRole('button', { name: 'View details' });
     expect(details.closest('section')).toBe(screen.getByRole('region', { name: 'Fill results' }));
@@ -356,7 +356,7 @@ describe('popup App — Fill Details access', () => {
   });
 
   it('keeps the logo noninteractive while the public details action remains available', async () => {
-    sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }));
+    sendMessageMock.mockImplementation((_tabId, message) => Promise.resolve(message.action === 'CLEAR' ? { success: true } : statusResult({ noReview: 1, totalScanned: 1 })));
     renderApp();
     const details = await screen.findByRole('button', { name: 'View details' });
     const logo = screen.getByRole('img', { name: 'Job Buddy' });
@@ -369,7 +369,7 @@ describe('popup App — Fill Details access', () => {
 
   it('reports a failed log open without losing Fill Form and Undo', async () => {
     vi.mocked(openFillLog).mockRejectedValueOnce(new Error('could not open'));
-    sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }));
+    sendMessageMock.mockImplementation((_tabId, message) => Promise.resolve(message.action === 'CLEAR' ? { success: true } : statusResult({ noReview: 1, totalScanned: 1 })));
     renderApp();
     fireEvent.click(await screen.findByRole('button', { name: 'View details' }));
     expect(await screen.findByText('Please try opening Fill Details again.')).toBeTruthy();
@@ -399,7 +399,7 @@ describe('popup message categories', () => {
 
   it('retries AI settings in place while retaining previous results and Undo', async () => {
     vi.mocked(getGeminiApiKey).mockRejectedValueOnce(new Error('storage unavailable'));
-    sendMessageMock.mockResolvedValue(statusResult({ noReview: 2, totalScanned: 2 }));
+    sendMessageMock.mockImplementation((_tabId, message) => Promise.resolve(message.action === 'CLEAR' ? { success: true } : statusResult({ noReview: 2, totalScanned: 2 })));
     renderApp();
     const retry = await screen.findByRole('button', { name: 'Retry AI Settings' });
     await screen.findByText('2 fields filled');
@@ -431,7 +431,7 @@ describe('popup message categories', () => {
   });
 
   it('summarizes an all-kept merge as kept answers rather than a failed fill', async () => {
-    sendMessageMock.mockResolvedValue(statusResult({ kept: 4, totalScanned: 4 }));
+    sendMessageMock.mockImplementation((_tabId, message) => Promise.resolve(message.action === 'CLEAR' ? { success: true } : statusResult({ kept: 4, totalScanned: 4 })));
     renderApp();
     expect(await screen.findByText('4 existing answers kept')).toBeTruthy();
     expect(screen.queryByText('0 fields filled')).toBeNull();
@@ -442,7 +442,7 @@ describe('popup message categories', () => {
   it('keeps previous results and Undo accessible after the profile cannot be loaded', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(getProfile).mockRejectedValueOnce(new Error('read failed'));
-    sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }));
+    sendMessageMock.mockImplementation((_tabId, message) => Promise.resolve(message.action === 'CLEAR' ? { success: true } : statusResult({ noReview: 1, totalScanned: 1 })));
     renderApp();
     await screen.findByRole('button', { name: 'Open Profile' });
     expect(screen.getByText('Last fill')).toBeTruthy();
@@ -463,7 +463,7 @@ describe('popup App — Undo', () => {
       if (message.action === 'CLEAR') {
         clearCalledFrames.push(opts.frameId);
         if (opts.frameId === 2) return Promise.reject(new Error('gone'));
-        return Promise.resolve(undefined);
+        return Promise.resolve({ success: true });
       }
       return Promise.reject(new Error('n/a'));
     });
@@ -475,6 +475,15 @@ describe('popup App — Undo', () => {
     expect(screen.queryByText('Undo')).toBeNull();
     expect(clearCalledFrames.sort()).toEqual([0, 2]);
   });
+  it('keeps Undo and the previous results visible after an incomplete restoration', async () => {
+    sendMessageMock.mockImplementation((_tabId, message) => Promise.resolve(message.action === 'CLEAR' ? { success: false } : statusResult({ noReview: 1, totalScanned: 1 })));
+    renderApp();
+    fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
+    await screen.findByText('Undo incomplete. Review the remaining answers.');
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Fill Form' })).toHaveProperty('disabled', false);
+  });
+
 });
 
 // Required progress uses all completion checks; autofill needs a valid first name and email.
@@ -513,7 +522,7 @@ describe('popup profile and action presentation', () => {
     renderApp();
     const setup = await screen.findByRole('button', { name: 'Set Up Profile' });
     expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('0');
-    expect(document.activeElement).toBe(setup);
+    await waitFor(() => expect(document.activeElement).toBe(setup));
     expect(screen.queryByRole('button', { name: 'Fill Form' })).toBeNull();
     expect(screen.getByText('Add your first name and email to enable autofill.')).toBeTruthy();
     fireEvent.click(setup);
@@ -567,7 +576,7 @@ describe('popup profile and action presentation', () => {
     vi.mocked(getProfile).mockResolvedValue(profile as Profile | null);
     renderApp();
     const setup = await screen.findByRole('button', { name: 'Set Up Profile' });
-    expect(document.activeElement).toBe(setup);
+    await waitFor(() => expect(document.activeElement).toBe(setup));
     expect(screen.queryByRole('button', { name: 'Fill Form' })).toBeNull();
   });
 
@@ -656,7 +665,7 @@ it('preserves the overwrite choice and fills without rescanning after confirmati
 
 it('shows a no-form explanation without promoting AI or suggesting iframes are unsupported', async () => {
   vi.mocked(getGeminiApiKey).mockResolvedValue(null);
-  sendMessageMock.mockResolvedValue(statusResult({}, 'unavailable'));
+  sendMessageMock.mockImplementation((_tabId, message) => Promise.resolve(message.action === 'CLEAR' ? { success: true } : statusResult({}, 'unavailable')));
   renderApp();
   await screen.findByText('No fillable fields found.');
   expect(screen.queryByText('Open the application form, then try Fill Form again.')).toBeNull();
@@ -675,7 +684,7 @@ it('stores the Settings focus request before opening the options page', async ()
       }),
   );
   vi.mocked(getGeminiApiKey).mockResolvedValue(null);
-  sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }, 'unavailable'));
+  sendMessageMock.mockImplementation((_tabId, message) => Promise.resolve(message.action === 'CLEAR' ? { success: true } : statusResult({ noReview: 1, totalScanned: 1 }, 'unavailable')));
   renderApp();
   fireEvent.click(await screen.findByRole('button', { name: 'Set Up AI Autofill' }));
   expect(chrome.runtime.openOptionsPage).not.toHaveBeenCalled();
@@ -686,7 +695,7 @@ it('stores the Settings focus request before opening the options page', async ()
 
 it('distinguishes an AI settings read failure from missing-key setup', async () => {
   vi.mocked(getGeminiApiKey).mockRejectedValueOnce(new Error('storage unavailable'));
-  sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }, 'unavailable'));
+  sendMessageMock.mockImplementation((_tabId, message) => Promise.resolve(message.action === 'CLEAR' ? { success: true } : statusResult({ noReview: 1, totalScanned: 1 }, 'unavailable')));
   renderApp();
   await screen.findByRole('button', { name: 'Undo' });
   expect(await screen.findByRole('button', { name: 'Retry AI Settings' })).toBeTruthy();
@@ -775,7 +784,7 @@ it('honors a setup rejection from a content frame without dispatching fill', asy
 it.each(['succeeded', 'not_needed'] as const)(
   'does not warn about a %s AI pass',
   async (aiStatus) => {
-    sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }, aiStatus));
+    sendMessageMock.mockImplementation((_tabId, message) => Promise.resolve(message.action === 'CLEAR' ? { success: true } : statusResult({ noReview: 1, totalScanned: 1 }, aiStatus)));
     renderApp();
     await screen.findByRole('button', { name: 'Undo' });
     expect(

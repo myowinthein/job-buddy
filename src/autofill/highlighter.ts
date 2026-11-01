@@ -5,9 +5,11 @@ import { setFieldFeedback, clearFieldFeedback, clearAllFieldFeedback } from './f
 // Original background-color and transition are saved in data attributes
 // so they can be restored exactly on clear.
 
+const highlightedElements = new Set<HTMLElement>();
 const missingDataElements = new Set<HTMLElement>();
 
 function rememberStyles(element: HTMLElement): void {
+  highlightedElements.add(element);
   element.dataset.jbHighlighted = '1';
 
   if (!('jbOrigBackground' in element.dataset)) {
@@ -58,6 +60,7 @@ export function clearMissingDataHighlights(): void {
 }
 
 export function clearElementHighlight(element: HTMLElement): void {
+  highlightedElements.delete(element);
   clearFieldFeedback(element);
   if (!element.dataset.jbHighlighted) return;
   missingDataElements.delete(element);
@@ -86,5 +89,5 @@ function restoreBackground(element: HTMLElement): void {
 export function clearHighlights(): void {
   clearAllFieldFeedback();
   clearMissingDataHighlights();
-  document.querySelectorAll<HTMLElement>('[data-jb-highlighted]').forEach(clearElementHighlight);
+  for (const element of highlightedElements) clearElementHighlight(element);
 }

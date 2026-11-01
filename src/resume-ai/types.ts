@@ -84,6 +84,7 @@ export interface AIFieldPayload {
   /** Visible question text, excluding internal name/id fallbacks. */
   visibleLabel?: string;
   inputType?: string;
+  multiple?: boolean;
   section?: string;
   entryIndex?: number;
   autocomplete?: string;

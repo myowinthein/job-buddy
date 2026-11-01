@@ -115,7 +115,6 @@ export function registerQuickFill(autofill: AutofillCoordinator): void {
         case 'JB_QUICK_UNDO': {
           const run = await autofill.status(tabId);
           if (!run || run.stage !== 'completed' || run.runId !== message.runId) return false;
-          await autofill.cancel(tabId, run.runId);
           const cleared = await Promise.all(
             run.frames.map(async (frame) => {
               try {
@@ -133,7 +132,8 @@ export function registerQuickFill(autofill: AutofillCoordinator): void {
               }
             }),
           );
-          return cleared.every(Boolean);
+          if (cleared.every(Boolean)) { await autofill.cancel(tabId, run.runId); return true; }
+          return false;
         }
         case 'JB_QUICK_DETAILS':
           await openFillLog(tabId);

@@ -18,7 +18,7 @@ export function isTextEditor(element: HTMLElement): boolean {
 }
 
 export function isChoiceChecked(element: HTMLElement): boolean {
-  return element instanceof HTMLInputElement
+  return element instanceof HTMLInputElement && ['checkbox', 'radio'].includes(element.type)
     ? element.checked
     : element.getAttribute('aria-checked') === 'true';
 }

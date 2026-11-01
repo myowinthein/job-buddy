@@ -65,10 +65,13 @@ export default defineContentScript({
       cancelled?: boolean;
     }
     let run: ContentRun | null = null;
+    let scanRevision = 0;
+    let clearing: { revision: number; task: Promise<boolean> } | undefined;
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message.action === 'AUTOFILL_SCAN') {
         const id = typeof message.runId === 'string' ? message.runId : undefined;
         if (!id || !run || run.id !== id) {
+          scanRevision++;
           const next: ContentRun | null = id ? { id, scan: Promise.resolve(null) } : null;
           run = next;
           const scan = withAISetup<unknown>(() =>
@@ -122,8 +125,12 @@ export default defineContentScript({
 
       if (message.action === 'CLEAR') {
         run = null;
-        undoAutofill();
-        sendResponse({ success: true });
+        if (!clearing || clearing.revision !== scanRevision) {
+          const task = undoAutofill();
+          clearing = { revision: scanRevision, task };
+          void task.finally(() => { if (clearing?.task === task) clearing = undefined; }).catch(() => {});
+        }
+        clearing.task.then(success => sendResponse({ success })).catch(() => sendResponse({ success: false }));
         return true;
       }
 

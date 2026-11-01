@@ -56,8 +56,8 @@ beforeEach(() => {
   fetchMock.mockReset();
   vi.stubGlobal('fetch', fetchMock);
 });
-afterEach(() => {
-  undoAutofill();
+afterEach(async () => {
+  await undoAutofill();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -108,7 +108,12 @@ describe('AI response boundaries', () => {
     ['Desired compensation USD', 'number', 'salary.expected.0.formatted', '6000'],
     ['Employment start date', 'month', 'workHistory.1.startDate.formatted', '2020-01'],
     ['Authorized to work in Thailand', 'text', 'workAuthorization', 'Yes, authorized to work'],
-    ['Authorized to work in Thailand', 'text', 'workAuthorization.0.status', 'Yes, authorized to work'],
+    [
+      'Authorized to work in Thailand',
+      'text',
+      'workAuthorization.0.status',
+      'Yes, authorized to work',
+    ],
   ])('formats %s for its actual input', async (label, type, path, expected) => {
     document.body.innerHTML = `<label>${label}<input type="${type}" required></label>`;
     fetchMock.mockResolvedValue(response(reply(path)));
@@ -126,6 +131,30 @@ describe('AI response boundaries', () => {
     expect(exactAIOption(options, 'option_001')).toBe(options[0]);
   });
 });
+
+it.each([true, false])(
+  'validates every AI option for a native multi-select (valid=%s)',
+  async (valid) => {
+    document.body.innerHTML =
+      '<label>Communication choices<select multiple><option value="en">English</option><option value="my">Burmese</option><option value="fr" selected>French</option></select></label>';
+    fetchMock.mockResolvedValue(
+      response([
+        {
+          fieldId: 'field_001',
+          selectedOptions: ['option_001', valid ? 'option_002' : 'unknown'],
+          confidence: 'high',
+        },
+      ]),
+    );
+    const counts = result();
+    await runAIAutofill([candidate()], profile, counts, [], undefined, { mode: 'overwrite' });
+    expect(sentFields()[0].multiple).toBe(true);
+    expect(
+      [...document.querySelector('select')!.selectedOptions].map((option) => option.value),
+    ).toEqual(valid ? ['en', 'my'] : ['fr']);
+    expect(counts.noReview).toBe(valid ? 1 : 0);
+  },
+);
 
 describe('AI choices and stale requests', () => {
   function choices() {

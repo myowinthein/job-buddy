@@ -309,5 +309,5 @@ test('form feedback stays quiet while keeping tints, accessible descriptions, ta
   await expect(overlay).toHaveCount(0);
   await expect(page.locator('[data-jb-field-description]')).toHaveCount(0);
   await expect(page.locator('#confident')).toHaveAttribute('aria-describedby', 'name-help');
-  await expect(page.locator('#manual')).toHaveValue('');
+  await expect(page.locator('#manual')).toHaveValue('Reference confirmed by the applicant');
 });

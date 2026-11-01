@@ -216,7 +216,7 @@ describe('fillField — select: change event', () => {
 
     await fillField(sel, 'Germany');
 
-    expect(document.activeElement).toBe(sel);
+    expect(document.activeElement).not.toBe(sel);
     expect(captured).toBeInstanceOf(FocusEvent);
   });
 
@@ -399,7 +399,7 @@ describe('fillField — text input (regression)', () => {
 
     await fillField(el, 'Jane Doe');
 
-    expect(document.activeElement).toBe(el);
+    expect(document.activeElement).not.toBe(el);
   });
 
   it('dispatches a real FocusEvent (not a plain Event) for blur', async () => {
@@ -418,7 +418,7 @@ describe('fillField — text input (regression)', () => {
     const el = document.createElement('textarea');
     document.body.appendChild(el);
     await fillField(el, 'A longer message');
-    expect(document.activeElement).toBe(el);
+    expect(document.activeElement).not.toBe(el);
   });
 });
 
@@ -670,7 +670,7 @@ describe('fillField — role="textbox"', () => {
 
     await fillField(el, 'Jane Doe');
 
-    expect(document.activeElement).toBe(el);
+    expect(document.activeElement).not.toBe(el);
   });
 });
 

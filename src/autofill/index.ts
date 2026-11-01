@@ -15,7 +15,9 @@ import { adjustLanguageMatches } from './languageResolution';
 import { adjustEducationMatches, matchCurrentEducationCheckboxes } from './educationResolution';
 import { adjustWorkHistoryMatches, matchCurrentWorkHistoryCheckboxes } from './workHistoryResolution';
 import { adjustSalaryMatches } from './salaryResolution';
-import { fillField, fillFileField, fillCheckboxInput, clearFieldValue } from './filler';
+import { fillField, fillFileField, fillCheckboxInput, resetDropdownBudget } from './filler';
+import { isOwnWriteEvent, getWriteConfidence, resetWriteSession, undoWrites } from './writeSession';
+import { multiSelectValues } from './ruleValue';
 import { applyHighlight, applyMissingDataHighlight, clearMissingDataHighlights, clearElementHighlight, clearHighlights } from './highlighter';
 import { confirmFieldFeedback } from './fieldFeedback';
 import { flattenProfileValues } from './resolver';
@@ -63,9 +65,8 @@ export interface AutofillScanResult {
   totalMatched:   number;
 }
 
-// Every element that should be cleared by undoAutofill(). Populated on each
-// scan/fill cycle: only actual rule/AI fills and subsequent manual edits
-// belong to Undo. Highlighting an unfilled field never grants ownership.
+// Controls used by this fill and its edit watchers. writeSession owns the
+// accepted-write snapshots for Undo; manual edits do not grant Undo ownership.
 let sessionElements: HTMLElement[] = [];
 let sessionGeneration = 0;
 let sessionAbort = new AbortController();
@@ -264,6 +265,7 @@ function attachEditWatchers(fields: EditableField[], result: AutofillResult, dom
     const capturedResult = result;
 
     const handler = () => {
+      if (isOwnWriteEvent()) return;
       // Guard against stale sessions (undo or re-scan resets lastResult).
       if (lastResult !== capturedResult) {
         element.removeEventListener('blur', handler);
@@ -376,7 +378,7 @@ function runSilentRefill(): Promise<void> {
         if (!sessionElements.includes(element)) sessionElements.push(element);
         writingElements.add(element);
         let filled: boolean | void;
-        try { filled = await fillField(element, value, () => isActive() && !getFieldValue(element).trim()); }
+        try { filled = await fillField(element, value, isActive); }
         finally { writingElements.delete(element); }
         if (!isActive()) return;
         if (!noDataFields.includes(entry)) continue; // a manual blur resolved it while awaiting
@@ -414,28 +416,43 @@ function runSilentRefill(): Promise<void> {
   return task;
 }
 
-export function undoAutofill(): void {
+export async function undoAutofill(): Promise<boolean> {
   getFillLog();
   removeReportWatchers();
-  if (fillLog) fillLog.status = 'undone';
   invalidateSession();
+  const generation = sessionGeneration;
   refillInFlight = null;
   pendingReady = false;
   pendingMatches = [];
-  for (const element of sessionElements) {
-    clearFieldValue(element);
-    clearElementHighlight(element);
-    const watcher = editWatchers.get(element);
-    if (watcher) {
-      element.removeEventListener('blur', watcher);
-      editWatchers.delete(element);
-    }
-  }
-  sessionElements = [];
-  noDataFields    = [];
+  noDataFields = [];
   teardownVisibilityListener();
-  lastResult = null;  // also self-invalidates any noData watchers not in sessionElements
+  for (const element of new Set([...sessionElements, ...fieldRecords.keys()])) {
+    const watcher = editWatchers.get(element);
+    if (watcher) element.removeEventListener('blur', watcher);
+    editWatchers.delete(element);
+  }
+  const outcome = await undoWrites(() => generation === sessionGeneration);
+  if (generation !== sessionGeneration) return false;
   clearHighlights();
+  if (outcome.success) {
+    if (fillLog) fillLog.status = 'undone';
+    sessionElements = [];
+    lastResult = null;
+  } else {
+    for (const [record, elements] of recordElements) {
+      if (elements.some(element => outcome.remaining.has(element))) {
+        record.outcome = 'review';
+        for (const element of elements) applyHighlight(element, CONF_FILL);
+      } else if (elements.some(element => outcome.restored.has(element))) {
+        record.outcome = recordValue(record) ? 'kept' : 'not_matched';
+        record.source = null;
+      }
+      recordValues.set(record, recordValue(record));
+    }
+    syncFillLogResult();
+    attachReportWatchers();
+  }
+  return outcome.success;
 }
 
 // Invalidate pending/async work without undoing already filled answers.
@@ -451,6 +468,8 @@ export function cancelAutofillRun(): void {
 // Results are held in pendingMatches for executeAutofill().
 export async function scanAutofill(runId: string = crypto.randomUUID()): Promise<AutofillScanResult> {
   removeReportWatchers();
+  resetWriteSession();
+  resetDropdownBudget();
   fieldRecords = new Map();
   recordElements = new Map();
   recordValues = new Map();
@@ -734,10 +753,10 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // matchCurrentEducationCheckboxes only ever produces a checkbox match
         // when the underlying entry is current — .value on a checkbox never
         // affects its checked state, so this needs its own dispatch.
-        filled = fillCheckboxInput(element) !== false;
+        filled = (await fillCheckboxInput(element)) !== false;
       } else {
-        const beforeFill = getFieldValue(element);
-        filled = (await fillField(element, match.value, () => isActive() && (mode !== 'merge' || getFieldValue(element) === beforeFill))) !== false;
+        const value = element instanceof HTMLSelectElement && element.multiple ? multiSelectValues(profile, match.fieldPath, element) : match.value;
+        filled = value !== null && (await fillField(element, value, isActive)) !== false;
       }
 
       if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
@@ -761,12 +780,14 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         continue;
       }
 
-      applyHighlight(element, match.confidence); // green >=CONF_GREEN, yellow CONF_FILL–0.84
+      const writtenConfidence = Math.min(match.confidence, getWriteConfidence(element));
+      applyHighlight(element, writtenConfidence); // green >=CONF_GREEN, yellow CONF_FILL–0.84
       record.rule.outcome = 'filled';
-      record.outcome = match.confidence >= CONF_GREEN ? 'high_confidence' : 'review';
+      record.rule.confidence = writtenConfidence;
+      record.outcome = writtenConfidence >= CONF_GREEN ? 'high_confidence' : 'review';
       record.source = 'rules';
 
-      if (match.confidence >= CONF_GREEN) {
+      if (writtenConfidence >= CONF_GREEN) {
         result.noReview++;
         finalState = 'green';
       } else {

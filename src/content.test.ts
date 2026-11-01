@@ -42,6 +42,7 @@ function getListener(): (message: object, sender: object, sendResponse: SendResp
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(undoAutofill).mockResolvedValue(true);
   vi.mocked(getGeminiSettings).mockReset().mockResolvedValue(settings);
   // main()'s idempotency guard (see entrypoints/content.ts) sets a flag on
   // globalThis that would otherwise persist across tests in this same file
@@ -164,13 +165,34 @@ describe('content script — message dispatcher', () => {
     await vi.waitFor(() => expect(sendResponse).toHaveBeenCalledWith({ error: 'autofill_failed' }));
   });
 
-  it('routes CLEAR to undoAutofill and responds synchronously with success', () => {
+  it('routes CLEAR to undoAutofill and waits for confirmed success', async () => {
     const sendResponse = vi.fn();
     const handled = getListener()({ action: 'CLEAR' }, {}, sendResponse);
 
     expect(vi.mocked(undoAutofill)).toHaveBeenCalledTimes(1);
-    expect(sendResponse).toHaveBeenCalledWith({ success: true });
+    await vi.waitFor(() => expect(sendResponse).toHaveBeenCalledWith({ success: true }));
     expect(handled).toBe(true);
+  });
+
+  it('reports incomplete or rejected Undo instead of success', async () => {
+    vi.mocked(undoAutofill).mockResolvedValueOnce(false).mockRejectedValueOnce(new Error('restore failed'));
+    for (let i = 0; i < 2; i++) {
+      const response = vi.fn();
+      getListener()({ action: 'CLEAR' }, {}, response);
+      await vi.waitFor(() => expect(response).toHaveBeenCalledWith({ success: false }));
+    }
+  });
+
+  it('coalesces concurrent Undo requests for the same scan', async () => {
+    let finish!: (success: boolean) => void;
+    vi.mocked(undoAutofill).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const first = vi.fn(), second = vi.fn();
+    getListener()({ action: 'CLEAR' }, {}, first);
+    getListener()({ action: 'CLEAR' }, {}, second);
+    expect(undoAutofill).toHaveBeenCalledOnce();
+    expect(first).not.toHaveBeenCalled();
+    finish(true);
+    await vi.waitFor(() => { expect(first).toHaveBeenCalledWith({ success: true }); expect(second).toHaveBeenCalledWith({ success: true }); });
   });
 
   it('routes GET_STATUS to getLastResult synchronously', () => {

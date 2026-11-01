@@ -35,6 +35,18 @@ function harness() {
 }
 beforeEach(() => vi.clearAllMocks());
 describe('quick fill background entry points', () => {
+  it('keeps a completed run available when Undo is incomplete and permits retry', async () => {
+    const h = harness();
+    h.coordinator.status.mockResolvedValue({ stage: 'completed', runId: 'fill', frames: [{ frameId: 0, documentId: 'source' }] } as never);
+    h.api.tabs.sendMessage.mockResolvedValueOnce({ success: false } as never).mockResolvedValueOnce({ success: true } as never);
+    const sender = { id: 'jb', frameId: 0, url: 'https://jobs.test', tab: { id: 12 }, documentId: 'source' };
+    const first = vi.fn(); h.message({ action: 'JB_QUICK_UNDO', runId: 'fill' }, sender, first);
+    await vi.waitFor(() => expect(first).toHaveBeenCalledWith(false));
+    expect(h.coordinator.cancel).not.toHaveBeenCalled();
+    const second = vi.fn(); h.message({ action: 'JB_QUICK_UNDO', runId: 'fill' }, sender, second);
+    await vi.waitFor(() => expect(second).toHaveBeenCalledWith(true));
+    expect(h.coordinator.cancel).toHaveBeenCalledWith(12, 'fill');
+  });
   it('ignores a supplied target tab and pins the click to its sender document', async () => {
     const h = harness();
     const respond = vi.fn();

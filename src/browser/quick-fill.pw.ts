@@ -105,8 +105,8 @@ test('saved overwrite mode fills empty and existing fields, preserves unmatched 
   expect(outcomes.submitted).toBeUndefined();
   await host.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect(page.locator('[name="firstName"]')).toHaveValue('');
-  // Existing Undo behavior clears owned answers, including overwritten ones.
-  await expect(page.locator('[name="lastName"]')).toHaveValue('');
+  // Undo restores the answer that existed before this fill.
+  await expect(page.locator('[name="lastName"]')).toHaveValue('Existing answer');
   await expect(page.locator('[name="zqx"]')).toHaveValue('Keep this answer');
   await expect(page.frameLocator('#application-frame').locator('input')).toHaveValue('');
   // The popup still asks how to handle existing answers, independently of Quick Fill.

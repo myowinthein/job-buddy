@@ -1,4 +1,5 @@
 import { isChoiceChecked, isControlAvailable } from './dom';
+import { getWriteConfidence } from './writeSession';
 import { readFieldValue } from './fieldValue';
 import { isConsentGroup } from './consent';
 import type { Profile } from '../types/profile';
@@ -14,7 +15,7 @@ import { scanRadioGroups, scanCheckboxGroups, isChoiceGroupAvailable, questionLa
 import type { RadioGroup, CheckboxGroup } from './scanner';
 import { fillField, fillRadioInput, fillCheckboxInput } from './filler';
 import { applyHighlight, applyMissingDataHighlight } from './highlighter';
-import { CONF_CONFIRMED, CONF_AI_YELLOW } from './constants';
+import { CONF_CONFIRMED, CONF_AI_YELLOW, CONF_GREEN } from './constants';
 import { getGeminiApiKey, getGeminiModel } from '../utils/storage';
 import { isSkippableOption } from './normalizer';
 import type { DebugAIField } from './debug';
@@ -151,7 +152,7 @@ export async function runAIAutofill(
       };
       if (c.element instanceof HTMLSelectElement) {
         const options = identified(extractSelectOptions(c.element));
-        return { ...base, type: 'select' as const, ...(options.length > 0 && { options }) };
+        return { ...base, type: 'select' as const, multiple: c.element.multiple, ...(options.length > 0 && { options }) };
       }
       // ARIA combobox/listbox: options are not available at scan time (dropdown
       // is closed). Send as 'select' so Gemini returns a profilePath; the fill
@@ -271,7 +272,7 @@ export async function runAIAutofill(
     }
     // Ignore malformed/unsafe answer shapes before touching the DOM.
     if ((resp.profilePath && !allowedAIPath(profile, field, resp.profilePath)) ||
-        (candidate.type === 'text' && (resp.selectedOptions != null || (!(candidate.element instanceof HTMLSelectElement) && resp.selectedOption != null))) ||
+        (candidate.type === 'text' && (resp.selectedOptions != null && !(candidate.element instanceof HTMLSelectElement && candidate.element.multiple) || (!(candidate.element instanceof HTMLSelectElement) && resp.selectedOption != null))) ||
         (candidate.type !== 'text' && resp.profilePath != null) ||
         (candidate.type === 'radio' && resp.selectedOptions != null) ||
         (candidate.type === 'checkbox' && resp.selectedOption != null)) {
@@ -296,34 +297,40 @@ export async function runAIAutofill(
       continue;
     }
 
-    const isHigh = resp.confidence === 'high';
-    const confScore = isHigh ? CONF_CONFIRMED : CONF_AI_YELLOW;
+    let isHigh = resp.confidence === 'high';
+    let confScore = isHigh ? CONF_CONFIRMED : CONF_AI_YELLOW;
 
     if (candidate.type === 'text') {
       const isSelect = candidate.element instanceof HTMLSelectElement;
       // For select elements, Gemini may return selectedOption (chosen from the options list)
       // instead of or in addition to profilePath. Prefer selectedOption for selects.
-      const hasActionable = resp.profilePath || (isSelect && resp.selectedOption);
+      const hasActionable = resp.profilePath || (isSelect && (resp.selectedOption || resp.selectedOptions));
       if (!hasActionable) {
         recordDebug(candidate, fieldId, null, resp.confidence, 'unchanged');
         continue;
       }
 
-      let value: string | null = null;
-      if (isSelect && resp.selectedOption) {
+      let value: string | string[] | null = null;
+      if (candidate.element instanceof HTMLSelectElement && candidate.element.multiple && resp.selectedOptions) {
+        const selected = resp.selectedOptions.map(answer => exactAIOption(field.options ?? [], answer));
+        if (selected.some(option => !option) || selected.some(option => field.options!.filter(item => item.value === option!.value).length !== 1)) {
+          recordDebug(candidate, fieldId, null, resp.confidence, 'unchanged'); continue;
+        }
+        value = [...new Set(selected.map(option => option!.value))];
+      } else if (isSelect && resp.selectedOption) {
         const selected = exactAIOption(field.options ?? [], resp.selectedOption);
         // Duplicate native values cannot identify a particular option reliably.
         if (!selected || field.options!.filter(option => option.value === selected.value).length !== 1) {
           recordDebug(candidate, fieldId, null, resp.confidence, 'unchanged'); continue;
         }
-        value = selected.value;
+        value = [selected.value];
       } else if (resp.profilePath) {
         const signals = extractSignals(candidate.element);
         const path = ruleValuePath(profile, resp.profilePath, signals);
         value = allowedAIPath(profile, field, path) ? resolveRuleValue(profile, /^workAuthorization(?:\.\d+(?:\.status)?)?$/.test(path) ? 'workAuthorization' : path, signals) : '';
         if (isSelect && value) {
           const selected = exactAIOption(field.options ?? [], value);
-          value = selected && field.options!.filter(option => option.value === selected.value).length === 1 ? selected.value : '';
+          value = selected && field.options!.filter(option => option.value === selected.value).length === 1 ? [selected.value] : '';
         }
       }
 
@@ -348,7 +355,7 @@ export async function runAIAutofill(
       const filled = await fillField(
         candidate.element,
         value,
-        () => unchanged(candidate.element) && readFieldValue(candidate.element) === liveValue,
+        isActive,
       );
       if (!isActive()) break;
       if (filled === false) {
@@ -356,6 +363,7 @@ export async function runAIAutofill(
         recordDebug(candidate, fieldId, aiResult, resp.confidence, 'unchanged', 'fill_failed');
         continue;
       }
+      if (getWriteConfidence(candidate.element) < CONF_GREEN) { isHigh = false; confScore = CONF_AI_YELLOW; }
       applyHighlight(candidate.element, confScore);
 
       if (candidate.originalState === 'lowConfidence') {
@@ -387,7 +395,7 @@ export async function runAIAutofill(
         continue;
       }
 
-      if (fillRadioInput(option.element) === false) {
+      if (await fillRadioInput(option.element) === false) {
         recordDebug(candidate, fieldId, resp.selectedOption, resp.confidence, 'unchanged', 'fill_failed');
         continue;
       }
@@ -414,12 +422,13 @@ export async function runAIAutofill(
       const selectedIndices = new Set(selected.map(option => field.options!.indexOf(option!)));
       let allFilled = true;
       const targets = options.mode === 'merge'
-        ? group.options.filter((_, i) => selectedIndices.has(i)) : group.options;
+        ? group.options.filter((_, i) => selectedIndices.has(i)) : [...group.options];
+      targets.sort((a, b) => Number(selectedIndices.has(group.options.indexOf(b))) - Number(selectedIndices.has(group.options.indexOf(a))));
       for (const option of targets) {
         if (!isActive() || !isChoiceGroupAvailable(group)) { allFilled = false; break; }
         const checked = selectedIndices.has(group.options.indexOf(option));
         if (isChoiceChecked(option.element) !== checked) {
-          const filled = checked ? fillCheckboxInput(option.element) : fillCheckboxInput(option.element, false);
+          const filled = checked ? await fillCheckboxInput(option.element) : await fillCheckboxInput(option.element, false);
           if (filled === false) { allFilled = false; continue; }
         }
         applyHighlight(option.element, confScore);

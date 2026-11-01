@@ -127,6 +127,8 @@ function App() {
   const activeRunId = useRef<string | undefined>(undefined);
   const actionRevision = useRef(0);
   const [logOpenFailed, setLogOpenFailed] = useState(false);
+  const [undoing, setUndoing] = useState(false);
+  const [undoFailed, setUndoFailed] = useState(false);
   const fillButtonRef = useRef<HTMLButtonElement>(null);
 
   const checkApiKey = async () => {
@@ -297,6 +299,7 @@ function App() {
   };
 
   const handleAutofill = async () => {
+    setUndoFailed(false);
     const revision = ++actionRevision.current;
     setLogOpenFailed(false);
     setAutofillState('loading');
@@ -332,21 +335,31 @@ function App() {
   };
 
   const handleUndo = async () => {
+    if (undoing) return;
     actionRevision.current++;
     setLogOpenFailed(false);
+    setUndoFailed(false);
+    setUndoing(true);
     try {
       if (sourceTabId.current !== null)
         await requestAutofillRun('CANCEL', sourceTabId.current).catch(() => null);
-      await sendToActiveTab({ action: 'CLEAR' });
+      const responses = await sendToActiveTab({ action: 'CLEAR' });
+      if (!responses.length || responses.some(response => (response as { success?: boolean } | null)?.success !== true)) throw new Error('Undo incomplete');
+      setAutofillState('idle');
+      setResult(null);
     } catch {
-      /* ignore — page may have already been refreshed */
-    }
-    setAutofillState('idle');
-    setResult(null);
+      setUndoFailed(true);
+      // Retain the result and Undo action for widgets that could not restore.
+      try {
+        const statuses = await sendToActiveTab({ action: 'GET_STATUS' });
+        const remaining = mergeAutofillResults(statuses);
+        if (remaining) setResult(remaining);
+      } catch { /* Keep the previous result if a frame is unavailable. */ }
+    } finally { setUndoing(false); }
   };
 
   const { percentage, isCoreComplete } = completion;
-  const busy = autofillState === 'loading';
+  const busy = autofillState === 'loading' || undoing;
   const result = autofillState === 'success' ? autofillResult : null;
   const filled = result ? result.noReview + result.needReview : 0;
   const unfilled = result ? result.lowConfidence + result.noData + (result.failed ?? 0) : 0;
@@ -373,7 +386,10 @@ function App() {
 
   let message: string | null = null;
   let tone: PopupNoticeTone = 'neutral';
-  if (loading) {
+  if (undoFailed) {
+    tone = 'error';
+    message = feedback.quickFillUndoFailed;
+  } else if (loading) {
     tone = 'working';
     message = 'Loading profile…';
   } else if (profileLoadFailed) {
@@ -393,7 +409,7 @@ function App() {
   } else if (aiSetup) {
     tone = 'info';
     message = feedback.autofillKeyRequired;
-  } else if (busy) {
+  } else if (autofillState === 'loading') {
     tone = 'working';
     message = 'Filling…';
   } else if (autofillState === 'error') {
@@ -564,7 +580,7 @@ function App() {
         ) : (
           result && (
             <button type="button" onClick={handleUndo} disabled={busy} className={secondaryButton}>
-              Undo
+              {undoing ? 'Undoing…' : 'Undo'}
             </button>
           )
         )}
