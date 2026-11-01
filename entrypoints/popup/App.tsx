@@ -166,7 +166,6 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [autofillState, setAutofillState] = useState<AutofillState>('idle');
   const [autofillResult, setAutofillResult] = useState<AutofillResult | null>(null);
-  const [preFilledCount, setPreFilledCount] = useState(0);
   const [fillMode, setFillMode] = useState<'merge' | 'overwrite'>('merge');
   const [keyLoading, setKeyLoading] = useState(true);
   const [keyReadFailed, setKeyReadFailed] = useState(false);
@@ -328,7 +327,6 @@ function App() {
       const preFilledCount = scanResponses.reduce((sum, r) => sum + (r?.preFilledCount ?? 0), 0);
       if (preFilledCount > 0) {
         // Form already has data — ask the user how to proceed
-        setPreFilledCount(preFilledCount);
         setFillMode('merge');
         setAutofillState('confirming');
       } else {
@@ -537,10 +535,6 @@ function App() {
         <fieldset className="min-h-0 overflow-y-auto px-5 pt-4">
           <legend className="sr-only">Choose how to fill existing answers</legend>
           <p className="text-sm font-semibold">This form already has some answers.</p>
-          <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-            {preFilledCount} field
-            {preFilledCount === 1 ? ' already contains an answer' : 's already contain answers'}.
-          </p>
           <div className="mt-3 space-y-1">
             <label className="flex cursor-pointer items-start gap-2.5 rounded-lg py-2">
               <input
@@ -571,7 +565,7 @@ function App() {
               <span>
                 <span className="block text-sm font-medium">Fill all matched fields</span>
                 <span className="block text-xs text-gray-500 dark:text-gray-400">
-                  Fill empty fields and replace existing answers with your saved details.
+                  Fill empty fields and update existing answers.
                 </span>
               </span>
             </label>

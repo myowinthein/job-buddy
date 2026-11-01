@@ -254,7 +254,7 @@ describe('popup App — handleAutofill scan orchestration', () => {
     renderApp();
     fireEvent.click(await readyFill());
     expect(await screen.findByText('This form already has some answers.')).toBeTruthy();
-    expect(screen.getByText(/3 fields already contain answers/)).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /^Fill empty fields/ })).toHaveProperty('checked', true);
   });
 
   it('dispatches an overwrite fill directly when the scan sums to zero pre-filled fields', async () => {
