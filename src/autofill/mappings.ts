@@ -24,9 +24,8 @@ export async function saveElementMappings(
   // human-readable — carry a display label through for the Learned Mappings UI
   // instead of showing the raw key there.
   const label = displayLabel(sigs);
-  for (const text of texts) {
-    const norm = normalize(text);
-    if (norm) await saveLearnedMapping(domain, norm, fieldPath, label);
+  for (const norm of new Set(texts.map(normalize).filter(Boolean))) {
+    await saveLearnedMapping(domain, norm, fieldPath, label);
   }
 }
 
@@ -60,7 +59,7 @@ export function refreshLearnedLabels(
     if (!norm) continue;
     const existing = domainMap[norm];
     if (existing === undefined || typeof existing === 'string') continue;
-    if (existing.label === label) continue;
+    if (existing.label) continue;
     domainMap[norm] = { ...existing, label };
     changed = true;
   }

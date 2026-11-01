@@ -1,7 +1,10 @@
 import { distance } from 'fastest-levenshtein';
 
 export function normalize(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return text
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\p{M}]/gu, '');
 }
 
 export function similarity(a: string, b: string): number {
@@ -13,14 +16,22 @@ export function similarity(a: string, b: string): number {
 // Normalised texts of common placeholder / sentinel options that indicate
 // "no selection" and should be skipped when filling or extracting options.
 export const PLACEHOLDER_OPTION_NORMS = new Set([
-  'pleaseselect', 'select', 'selectone', 'choose', 'chooseone',
+  'pleaseselect',
+  'select',
+  'selectone',
+  'choose',
+  'chooseone',
 ]);
 
 // A real, fillable <option> — not disabled, not a blank/empty value, and not
 // a placeholder/sentinel label like "Please select". Shared by filler.ts's
 // fillSelect and ai.ts's extractSelectOptions so the two never drift.
 export function isSkippableOption(opt: HTMLOptionElement): boolean {
-  if (opt.disabled) return true;
+  if (
+    opt.disabled ||
+    (opt.parentElement instanceof HTMLOptGroupElement && opt.parentElement.disabled)
+  )
+    return true;
   if (!opt.value) return true;
   return PLACEHOLDER_OPTION_NORMS.has(normalize(opt.text));
 }

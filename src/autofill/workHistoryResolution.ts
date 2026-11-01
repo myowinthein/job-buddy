@@ -42,6 +42,7 @@ const CURRENT_WORK_HISTORY_CHECKBOX_TERMS = new Set([
 export function matchCurrentWorkHistoryCheckboxes(
   candidates: CheckboxOption[],
   profile: Profile,
+  matches: FieldMatch[] = [],
 ): { element: HTMLElement; fieldPath: string }[] {
-  return matchCurrentEntryCheckboxes(candidates, profile.workHistory ?? [], CURRENT_WORK_HISTORY_CHECKBOX_TERMS, 'workHistory.');
+  return matchCurrentEntryCheckboxes(candidates, profile.workHistory ?? [], CURRENT_WORK_HISTORY_CHECKBOX_TERMS, 'workHistory.', matches);
 }

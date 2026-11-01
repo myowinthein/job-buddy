@@ -142,6 +142,7 @@ describe('SettingsSection — profile import merges learned mappings, never over
     await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
     expect(vi.mocked(saveLearnedMappings)).toHaveBeenCalledWith(
       expect.objectContaining({ 'existing.com': expect.anything(), 'new.com': expect.anything() }),
+      {merge:true},
     );
   });
 });
@@ -422,6 +423,7 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     await waitFor(() => expect(vi.mocked(saveProfile)).toHaveBeenCalledWith({ ...backupProfile, derived: calculateDerivedFields(backupProfile) }));
     expect(vi.mocked(saveLearnedMappings)).toHaveBeenCalledWith(
       expect.objectContaining({ 'a.com': expect.anything(), 'b.com': expect.anything() }),
+      {merge:true},
     );
     expect(onImportComplete).toHaveBeenCalled();
     // Wait for the final state update that closes the restore dialog.

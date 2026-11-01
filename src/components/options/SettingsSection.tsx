@@ -19,7 +19,6 @@ import {
   saveProfile,
   getLearnedMappings,
   saveLearnedMappings,
-  mergeLearnedMappings,
   clearAllStorage,
   clearGeminiSettings,
   saveThemePreference,
@@ -160,8 +159,7 @@ async function saveImportedData(
   }
   await saveProfile(updated);
   if (learnedMappings) {
-    const localMappings = await getLearnedMappings();
-    await saveLearnedMappings(mergeLearnedMappings(localMappings, learnedMappings));
+    await saveLearnedMappings(learnedMappings, { merge: true });
   }
 }
 

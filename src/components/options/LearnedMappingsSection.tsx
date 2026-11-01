@@ -202,7 +202,7 @@ export function LearnedMappingsSection() {
   const persist = async (next: LearnedMappings, message: string) => {
     setMappings(next);
     try {
-      await saveLearnedMappings(next);
+      await saveLearnedMappings(next, { base: mappings });
       showToast('success', message);
     } catch {
       showToast('error', feedback.sectionSaveFailed);

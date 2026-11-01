@@ -28,7 +28,8 @@ vi.mock('./scanner', () => {
     },
   };
 });
-vi.mock('./signals', () => ({
+vi.mock('./signals', async (original) => ({
+  ...await original<typeof import('./signals')>(),
   extractSignals: vi.fn().mockReturnValue({ label: '', ariaLabel: '', placeholder: '', name: 'field', id: '', type: 'text' }),
   bestLabel: vi.fn().mockReturnValue('Test Field'),
 }));
@@ -74,6 +75,7 @@ import { CONF_CONFIRMED } from './constants';
 function makeProfile(): Profile {
   return {
     personal: { firstName: 'Jane', lastName: 'Doe' },
+    derived: { fullName: 'Jane Doe' },
     links: { linkedin: 'https://linkedin.com/in/janedoe', portfolio: 'https://myportfolio.com' },
   } as unknown as Profile;
 }

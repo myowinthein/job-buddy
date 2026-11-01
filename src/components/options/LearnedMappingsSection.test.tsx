@@ -100,7 +100,7 @@ describe('LearnedMappingsSection — domain and signal cleanup', () => {
     fireEvent.click(screen.getByTitle('Remove entry'));
     fireEvent.click(screen.getByText('Delete'));
 
-    await waitFor(() => expect(vi.mocked(saveLearnedMappings)).toHaveBeenCalledWith({}));
+    await waitFor(() => expect(vi.mocked(saveLearnedMappings)).toHaveBeenCalledWith({}, {base:expect.any(Object)}));
   });
 
   it('removes only the deleted signal, keeping its domain when other signals remain', async () => {
@@ -119,7 +119,7 @@ describe('LearnedMappingsSection — domain and signal cleanup', () => {
 
     await waitFor(() => expect(vi.mocked(saveLearnedMappings)).toHaveBeenCalledWith({
       'acme.com': { sig2: { path: 'personal.lastName', count: 2 } },
-    }));
+    }, {base:expect.any(Object)}));
   });
 
   it('removes the whole domain when deleting its last remaining signal', async () => {
@@ -133,7 +133,7 @@ describe('LearnedMappingsSection — domain and signal cleanup', () => {
     fireEvent.click(screen.getByTitle('Delete this learned input'));
     fireEvent.click(screen.getByText('Delete'));
 
-    await waitFor(() => expect(vi.mocked(saveLearnedMappings)).toHaveBeenCalledWith({}));
+    await waitFor(() => expect(vi.mocked(saveLearnedMappings)).toHaveBeenCalledWith({}, {base:expect.any(Object)}));
   });
 });
 
@@ -155,7 +155,7 @@ describe('LearnedMappingsSection — manual edit is trusted immediately', () => 
 
     await waitFor(() => expect(vi.mocked(saveLearnedMappings)).toHaveBeenCalledWith({
       'acme.com': { sig1: { path: 'personal.lastName', count: 2 } },
-    }));
+    }, {base:expect.any(Object)}));
   });
 });
 

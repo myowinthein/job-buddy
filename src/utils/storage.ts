@@ -1,3 +1,4 @@
+import { withLearnedMappingsLock } from './learnedMappingsLock';
 import { devLockName } from '@/src/devtools/context';
 import type { Profile } from '../types/profile';
 import type { LearnedMappings, LearnedMappingValue, DriveBackupState } from '../types/storage';
@@ -134,8 +135,66 @@ export function mergeLearnedMappings(local: LearnedMappings, remote: LearnedMapp
   return merged;
 }
 
-export async function saveLearnedMappings(mappings: LearnedMappings): Promise<void> {
-  await storageSet({ learnedMappings: mappings });
+// Content scripts delegate automatic updates to the extension origin. Web Locks
+// on a job site's origin cannot coordinate other sites or extension pages.
+function contentStorageClient(): boolean {
+  return (
+    typeof location !== 'undefined' &&
+    !['chrome-extension:', 'moz-extension:'].includes(location.protocol) &&
+    typeof chrome.runtime?.sendMessage === 'function' &&
+    typeof chrome.runtime?.getURL === 'function'
+  );
+}
+export async function saveLearnedMappings(
+  mappings: LearnedMappings,
+  options: { labelsOnly?: boolean; base?: LearnedMappings; merge?: boolean } = {},
+): Promise<void> {
+  if (options.labelsOnly && contentStorageClient()) {
+    const response = await chrome.runtime.sendMessage({ action: 'SAVE_LEARNED_LABELS', mappings });
+    if (!response?.ok) throw new Error('Could not save learned labels');
+    return;
+  }
+  await withLearnedMappingsLock(async () => {
+    const current = await getLearnedMappings();
+    if (options.merge) {
+      await storageSet({ learnedMappings: mergeLearnedMappings(current, mappings) });
+      return;
+    }
+    if (options.base) {
+      for (const domain of new Set([...Object.keys(options.base), ...Object.keys(mappings)])) {
+        if (!(domain in mappings)) {
+          delete current[domain];
+          continue;
+        }
+        const before = options.base[domain] ?? {};
+        for (const key of new Set([...Object.keys(before), ...Object.keys(mappings[domain])])) {
+          if (equalJsonValues(before[key], mappings[domain][key])) continue;
+          current[domain] ??= {};
+          if (!(key in mappings[domain])) delete current[domain][key];
+          else current[domain][key] = mappings[domain][key];
+        }
+      }
+      await storageSet({ learnedMappings: current });
+      return;
+    }
+    if (!options.labelsOnly) {
+      await storageSet({ learnedMappings: mappings });
+      return;
+    }
+    for (const [domain, signals] of Object.entries(mappings))
+      for (const [key, value] of Object.entries(signals)) {
+        const stored = current[domain]?.[key];
+        if (
+          typeof stored === 'object' &&
+          typeof value === 'object' &&
+          stored.path === value.path &&
+          !stored.label &&
+          value.label
+        )
+          current[domain][key] = { ...stored, label: value.label };
+      }
+    await storageSet({ learnedMappings: current });
+  });
 }
 
 export async function clearAllStorage(): Promise<void> {
@@ -269,32 +328,59 @@ export async function saveLearnedMapping(
   fieldPath: string,
   label?: string,
 ): Promise<void> {
-  const mappings = await getLearnedMappings();
-  if (!mappings[domain]) mappings[domain] = {};
-  const existing: LearnedMappingValue | undefined = mappings[domain][normalizedSignal];
-
-  if (existing === undefined) {
-    // First confirmation — store with count 1, not yet trusted for Layer 0.
-    mappings[domain][normalizedSignal] = { path: fieldPath, count: 1, label };
-  } else if (typeof existing === 'string') {
-    // Legacy format: already trusted. Leave the path untouched for the same path
-    // (but still attach a label if one wasn't recorded before), reset on conflict.
-    if (existing !== fieldPath) {
-      mappings[domain][normalizedSignal] = { path: fieldPath, count: 1, label };
-    } else if (label) {
-      mappings[domain][normalizedSignal] = { path: existing, count: 2, label };
-    }
-  } else {
-    // New counted format: increment on same path, reset on conflict. Always
-    // refresh the label — it's a display aid, not part of the trust logic.
-    if (existing.path === fieldPath) {
-      mappings[domain][normalizedSignal] = { path: fieldPath, count: existing.count + 1, label: label ?? existing.label };
-    } else {
-      mappings[domain][normalizedSignal] = { path: fieldPath, count: 1, label };
-    }
+  if (contentStorageClient()) {
+    const response = await chrome.runtime.sendMessage({
+      action: 'SAVE_LEARNED_MAPPING',
+      domain,
+      normalizedSignal,
+      fieldPath,
+      label,
+    });
+    if (!response?.ok) throw new Error('Could not save learned mapping');
+    return;
   }
+  return saveLearnedMappingLocally(domain, normalizedSignal, fieldPath, label);
+}
 
-  await saveLearnedMappings(mappings);
+/** Background handler and extension pages share the same lock and fresh read. */
+export async function saveLearnedMappingLocally(
+  domain: string,
+  normalizedSignal: string,
+  fieldPath: string,
+  label?: string,
+): Promise<void> {
+  await withLearnedMappingsLock(async () => {
+    const mappings = await getLearnedMappings();
+    if (!mappings[domain]) mappings[domain] = {};
+    const existing: LearnedMappingValue | undefined = mappings[domain][normalizedSignal];
+
+    if (existing === undefined) {
+      // First confirmation — store with count 1, not yet trusted for Layer 0.
+      mappings[domain][normalizedSignal] = { path: fieldPath, count: 1, label };
+    } else if (typeof existing === 'string') {
+      // Legacy format: already trusted. Leave the path untouched for the same path
+      // (but still attach a label if one wasn't recorded before), reset on conflict.
+      if (existing !== fieldPath) {
+        mappings[domain][normalizedSignal] = { path: fieldPath, count: 1, label };
+      } else if (label) {
+        mappings[domain][normalizedSignal] = { path: existing, count: 2, label };
+      }
+    } else {
+      // New counted format: increment on same path, reset on conflict. Always
+      // refresh the label — it's a display aid, not part of the trust logic.
+      if (existing.path === fieldPath) {
+        mappings[domain][normalizedSignal] = {
+          path: fieldPath,
+          count: existing.count + 1,
+          label: label ?? existing.label,
+        };
+      } else {
+        mappings[domain][normalizedSignal] = { path: fieldPath, count: 1, label };
+      }
+    }
+
+    await storageSet({ learnedMappings: mappings });
+  });
 }
 
 // ── Google Drive Cloud Backup ────────────────────────────────────────────────

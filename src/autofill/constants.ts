@@ -1,5 +1,5 @@
 /** Minimum confidence to fill a field (yellow tier and above). */
-export const CONF_FILL = 0.60;
+export const CONF_FILL = 0.6;
 
 /** Minimum confidence to fill without requiring review (green tier). */
 export const CONF_GREEN = 0.85;
@@ -10,7 +10,7 @@ export const CONF_CONFIRMED = 0.97;
 /** Confidence assigned to AI-resolved fields in the low/needReview tier.
  *  Intentionally equal to CONF_CONTEXT today but conceptually separate — these
  *  represent different pipeline stages and may drift independently. */
-export const CONF_AI_YELLOW = 0.70;
+export const CONF_AI_YELLOW = 0.7;
 
 /** Confidence assigned to an exact dictionary match (Layer 2). Same numeric
  *  value as CONF_GREEN today but kept separate so they can drift if needed. */
@@ -32,15 +32,15 @@ export const CONF_FUZZY_STRONG_MULT = 0.85;
 export const CONF_FUZZY_WEAK_MULT = 0.75;
 
 /** Confidence floor for context-layer (nearbyText) matches. */
-export const CONF_CONTEXT = 0.70;
+export const CONF_CONTEXT = 0.7;
 
-/** Minimum similarity between a manually-typed value and an existing profile
- *  value before an edit-watcher (yellow/red/gray) save is trusted enough to
- *  save a learned mapping. Below this, the edit doesn't look like it
- *  corresponds to anything already in the profile. */
-export const EDIT_LEARN_SIMILARITY_THRESHOLD = 0.5;
+/** Learning requires an exact normalized value and an unambiguous profile path. */
+export const EDIT_LEARN_SIMILARITY_THRESHOLD = 1;
 
 /** Minimum length (after trim) of a manually-typed value before attempting
  *  the profile-value similarity match above. Short strings ("US", "5") can
  *  coincidentally score high against unrelated short profile values. */
 export const EDIT_LEARN_MIN_VALUE_LENGTH = 4;
+
+/** An internal name/id alone cannot make an unexplained visible question green. */
+export const CONF_UNVERIFIED_SIGNAL = 0.5;

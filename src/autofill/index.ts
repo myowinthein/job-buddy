@@ -1,3 +1,5 @@
+import { ruleQuestionBlocked, fieldDomain } from './ruleContext';
+import { resolveRuleValue, ruleValuePath } from './ruleValue';
 import { readFieldValue as getFieldValue } from './fieldValue';
 import type { Profile } from '../types/profile';
 import { getProfile, getLearnedMappings, saveLearnedMappings } from '../utils/storage';
@@ -16,7 +18,7 @@ import { adjustSalaryMatches } from './salaryResolution';
 import { fillField, fillFileField, fillCheckboxInput, clearFieldValue } from './filler';
 import { applyHighlight, applyMissingDataHighlight, clearMissingDataHighlights, clearElementHighlight, clearHighlights } from './highlighter';
 import { confirmFieldFeedback } from './fieldFeedback';
-import { resolveProfileValue, flattenProfileValues } from './resolver';
+import { flattenProfileValues } from './resolver';
 import type { FlatProfileValue } from './resolver';
 import { normalize, similarity } from './normalizer';
 import { refreshLearnedLabels, saveElementMappings } from './mappings';
@@ -201,12 +203,14 @@ function queueMappingSave(domain: string, element: HTMLElement, fieldPath: strin
 // profile? Returns null if flatValues is empty.
 function findBestProfileMatch(flatValues: FlatProfileValue[], value: string): { path: string; score: number } | null {
   const normValue = normalize(value);
+  if (!normValue) return null;
   let best: { path: string; score: number } | null = null;
   for (const candidate of flatValues) {
     const score = similarity(normValue, normalize(candidate.value));
     if (!best || score > best.score) best = { path: candidate.path, score };
+    else if (score === best.score && candidate.path !== best.path) best = { path: '', score };
   }
-  return best;
+  return best?.path ? best : null;
 }
 
 // Attaches a blur listener to each non-green field. On blur, if the value
@@ -263,7 +267,7 @@ function attachEditWatchers(fields: EditableField[], result: AutofillResult, dom
       }
 
       const trimmed = currentValue.trim();
-      if (trimmed.length >= EDIT_LEARN_MIN_VALUE_LENGTH) {
+      if (trimmed.length >= EDIT_LEARN_MIN_VALUE_LENGTH && !ruleQuestionBlocked(extractSignals(element))) {
         const best = findBestProfileMatch(flatProfileValues, trimmed);
         if (best && best.score >= EDIT_LEARN_SIMILARITY_THRESHOLD) {
           queueMappingSave(domain, element, best.path);
@@ -339,7 +343,7 @@ function runSilentRefill(): Promise<void> {
           noDataFields = noDataFields.filter((item) => item !== entry);
           continue;
         }
-        const value = resolveProfileValue(profile, fieldPath);
+        const value = resolveRuleValue(profile, fieldPath, extractSignals(element));
         if (!value) continue;
         if (!sessionElements.includes(element)) sessionElements.push(element);
         writingElements.add(element);
@@ -444,7 +448,7 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
 
   const learnedMappings = await getLearnedMappings();
   if (generation !== sessionGeneration) return { preFilledCount: 0, totalMatched: 0 };
-  const domain = window.location.hostname;
+  const domain = fieldDomain();
 
   // File inputs are only relevant when the user actually has a CV file to
   // upload. Gating in the scanner keeps file inputs out of pendingMatches
@@ -466,7 +470,7 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
     return {
       element,
       signals,
-      match:        mapField(signals, profile, learnedMappings, domain),
+      match:        { ...mapField(signals, profile, learnedMappings, domain), element },
       debugFieldId: `field_${String(i + 1).padStart(3, '0')}`,
     };
   });
@@ -530,14 +534,14 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
     .filter((g) => !g.isConsent && !isConsentGroup(g))
     .flatMap((g) => g.options);
   const checkboxMatches = [
-    ...matchCurrentEducationCheckboxes(checkboxCandidates, profile),
-    ...matchCurrentWorkHistoryCheckboxes(checkboxCandidates, profile),
+    ...matchCurrentEducationCheckboxes(checkboxCandidates, profile, matches),
+    ...matchCurrentWorkHistoryCheckboxes(checkboxCandidates, profile, matches),
   ];
   const checkboxScanned = checkboxMatches.map(({ element, fieldPath }, i) => ({
     element,
     signals: extractSignals(element),
     match: {
-      fieldPath,
+      fieldPath, element,
       confidence: CONF_DICT_EXACT,
       value:      'Yes',
       matchLayer: 'checkbox_status' as const,
@@ -571,7 +575,7 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
     pendingMatches.push({ element, signals, match, hasExistingValue, debugFieldId });
   });
 
-  if (learnedLabelsDirty) void saveLearnedMappings(learnedMappings);
+  if (learnedLabelsDirty) void saveLearnedMappings(learnedMappings, { labelsOnly: true }).catch(() => {});
 
   // Seed an initial debug session — mapping/ai/summary are populated by executeAutofill.
   debugSession = {
@@ -617,7 +621,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
   if (!profile) return { noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0 };
 
-  const domain = window.location.hostname;
+  const domain = fieldDomain();
 
   const result: AutofillResult = {
     noReview: 0, needReview: 0, lowConfidence: 0, noData: 0,
@@ -652,6 +656,10 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       record.reason = 'fill_failed';
       continue;
     }
+    if (match.fieldPath) {
+      match.fieldPath = ruleValuePath(profile,match.fieldPath,signals);
+      match.value = resolveRuleValue(profile, match.fieldPath, signals, match.value) || null;
+    }
     Object.assign(record.rule, { layer: match.matchLayer, confidence: match.confidence, ...(match.fieldPath ? { profilePath: match.fieldPath } : {}) });
     // Merge mode: skip pre-filled fields that would otherwise be overwritten.
     if (mode === 'merge' && (record.outcome === 'kept' || hasExistingValue || getFieldValue(element).trim() !== '')) {
@@ -679,7 +687,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         const fileData = profile.documents?.cv?.file;
         // Scanner gating means fileData should always be present here, but
         // guard defensively — if reconstruction fails, skip without counting.
-        filled = fileData ? await fillFileField(element as HTMLInputElement, fileData) : false;
+        filled = fileData && match.fieldPath === 'documents.cv.file' ? await fillFileField(element as HTMLInputElement, fileData) : false;
       } else if (isCheckboxInput) {
         // matchCurrentEducationCheckboxes only ever produces a checkbox match
         // when the underlying entry is current — .value on a checkbox never
@@ -703,6 +711,11 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
           fieldId: debugFieldId, matchLayer: match.matchLayer, confidence: match.confidence,
           profilePath: match.fieldPath, finalState: 'gray',
         });
+        if (!isFileInput && !isCheckboxInput && !match.ruleBlocked) {
+          applyHighlight(element, 0);
+          editableFields.push({element,state:'lowConfidence'});
+          aiTextCandidates.push({type:'text',element,signals,originalState:'lowConfidence',debugFieldId});
+        }
         continue;
       }
 
@@ -733,7 +746,7 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       applyHighlight(element, 0);
       result.lowConfidence++;
       if (!isFileInput && !isCheckboxInput) editableFields.push({ element, state: 'lowConfidence' });
-      if (!isFileInput && !isCheckboxInput) {
+      if (!isFileInput && !isCheckboxInput && !match.ruleBlocked) {
         aiTextCandidates.push({ type: 'text', element, signals, originalState: 'lowConfidence', debugFieldId });
       }
       finalState = 'red';

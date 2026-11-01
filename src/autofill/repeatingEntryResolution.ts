@@ -3,22 +3,21 @@ import type { FieldMatch } from './mapper';
 import type { CheckboxOption } from './scanner';
 import { resolveProfileValue } from './resolver';
 import { normalize } from './normalizer';
+import { composedParent } from './dom';
+import { scopeRoot, entryIndex, containsControl, sectionFamily } from './ruleContext';
 import { mostRecentIdx } from './entryRecency';
 
 // Shared by education/work-history sibling-detection (see
 // educationResolution.ts / workHistoryResolution.ts) — same reasoning as
 // phoneResolution.ts / languageResolution.ts for why this can't live inside
 // mapper.ts: it needs every field's match already computed.
-const ADJUSTABLE_LAYERS = new Set(['dictionary_exact', 'fuzzy']);
+const ADJUSTABLE_LAYERS = new Set(['dictionary_exact', 'fuzzy', 'context']);
 
 type EntryWithRecency = { startDate?: string; isCurrent?: boolean };
 
-// Mutates `matches` in place: rewrites unindexed "{prefix}field" markers to
-// concrete "{prefix}N.field" paths. A marker appearing once on the page
-// resolves to the applicant's most relevant entry (mostRecentIdx — the same
-// heuristic driving the Learned Mappings picker's default-expanded entry);
-// appearing multiple times, sequential index assignment per occurrence,
-// matching a repeated "Add entry" builder.
+// Resolve a single entry to the most relevant profile entry. Repeated rows
+// share an anchor field so missing fields cannot mix two profile entries.
+// Every form is independent; shadow field components share their composed form. Explicit learned paths stay unchanged.
 export function adjustRepeatingEntryMatches(
   matches: FieldMatch[],
   entries: EntryWithRecency[],
@@ -26,16 +25,39 @@ export function adjustRepeatingEntryMatches(
   prefix: string,
   profile: Profile,
 ): void {
-  for (const marker of markers) {
-    const occurrences = matches.filter((m) => m.fieldPath === marker && ADJUSTABLE_LAYERS.has(m.matchLayer));
-    if (occurrences.length === 0) continue;
-
-    occurrences.forEach((match, i) => {
-      const idx = occurrences.length === 1 ? mostRecentIdx(entries) : i;
-      const fieldPath = `${prefix}${idx}.${marker.slice(prefix.length)}`;
+  const candidates = matches.filter(
+    (match) =>
+      match.fieldPath &&
+      markers.includes(match.fieldPath) &&
+      ADJUSTABLE_LAYERS.has(match.matchLayer),
+  );
+  const scopes = new Map<Node | undefined, FieldMatch[]>();
+  for (const match of candidates) {
+    const scope = match.element ? scopeRoot(match.element) : undefined;
+    const group = scopes.get(scope) ?? [];
+    group.push(match);
+    scopes.set(scope, group);
+  }
+  for (const group of scopes.values()) {
+    const byMarker = markers.map((marker) => group.filter((match) => match.fieldPath === marker));
+    const anchors = byMarker.reduce((a, b) => (a.length >= b.length ? a : b), [] as FieldMatch[]);
+    for (const match of group) {
+      let idx = mostRecentIdx(entries);
+      if (anchors.length > 1) {
+        const own = byMarker.find((items) => items.includes(match))!;
+        idx =
+          match.element && anchors.every((anchor) => anchor.element)
+            ? entryIndex(
+                match.element,
+                anchors.map((anchor) => anchor.element!),
+                group.map((field) => field.element!),
+              )
+            : own.indexOf(match);
+      }
+      const fieldPath = `${prefix}${idx}.${match.fieldPath!.slice(prefix.length)}`;
       match.fieldPath = fieldPath;
       match.value = resolveProfileValue(profile, fieldPath) || null;
-    });
+    }
   }
 }
 
@@ -49,13 +71,38 @@ export function matchCurrentEntryCheckboxes(
   entries: EntryWithRecency[],
   terms: ReadonlySet<string>,
   prefix: string,
+  matches: FieldMatch[] = [],
 ): { element: HTMLElement; fieldPath: string }[] {
-  const matched = candidates.filter((c) => terms.has(normalize(c.label)));
+  const family = prefix.slice(0, -1) as 'education' | 'workHistory';
+  const matched = candidates.filter((c) => {
+    if (!terms.has(normalize(c.label))) return false;
+    const section = sectionFamily(c.element);
+    if (section && section !== family) return false;
+    return normalize(c.label) !== 'noenddate' || section === family;
+  });
   if (matched.length === 0) return [];
 
   const result: { element: HTMLElement; fieldPath: string }[] = [];
   matched.forEach((c, i) => {
-    const idx = matched.length === 1 ? mostRecentIdx(entries) : i;
+    let idx = matched.length === 1 ? mostRecentIdx(entries) : i;
+    const fields = matches.filter((match) => match.element && match.fieldPath?.startsWith(prefix));
+    for (
+      let container =
+        typeof c.element?.getRootNode === 'function' ? composedParent(c.element) : null;
+      container;
+      container = composedParent(container)
+    ) {
+      const indices = new Set(
+        fields
+          .filter((match) => containsControl(container, match.element!))
+          .map((match) => Number(match.fieldPath!.split('.')[1])),
+      );
+      if (indices.size === 1) {
+        idx = [...indices][0];
+        break;
+      }
+      if (indices.size > 1) break;
+    }
     if (entries[idx]?.isCurrent) {
       result.push({ element: c.element, fieldPath: `${prefix}${idx}.isCurrent` });
     }

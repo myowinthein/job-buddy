@@ -5,8 +5,16 @@ describe('mostRecentIdx', () => {
   it.each<{ name: string; entries: Parameters<typeof mostRecentIdx>[0]; expected: number }>([
     { name: 'empty entries', entries: [], expected: 0 },
     {
-      name: 'first current entry wins',
+      name: 'first current entry wins undated ties',
       entries: [{}, { isCurrent: true }, { isCurrent: true }],
+      expected: 1,
+    },
+    {
+      name: 'latest of multiple current entries wins',
+      entries: [
+        { startDate: '2020-01', isCurrent: true },
+        { startDate: '2025-01', isCurrent: true },
+      ],
       expected: 1,
     },
     {

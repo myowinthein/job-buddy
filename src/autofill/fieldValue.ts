@@ -11,7 +11,7 @@ export function readFieldValue(element: HTMLElement): string {
   }
   if (element instanceof HTMLTextAreaElement) return element.value;
   if (element instanceof HTMLSelectElement) {
-    const option = element.selectedOptions[0];
+    const option = element.options[element.selectedIndex];
     return option && !isSkippableOption(option) ? element.value : '';
   }
   if (isTextEditor(element)) {

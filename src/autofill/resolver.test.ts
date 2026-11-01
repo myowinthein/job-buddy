@@ -159,7 +159,8 @@ describe('resolveProfileValue', () => {
 
   // Derived
   it('resolves derived.totalExperience.years as a string', () => {
-    expect(resolveProfileValue(PROFILE, 'derived.totalExperience.years')).toBe('4');
+    vi.useFakeTimers().setSystemTime(new Date(2025,5,1));
+    try { expect(resolveProfileValue(PROFILE, 'derived.totalExperience.years')).toBe('7'); } finally { vi.useRealTimers(); }
   });
 
   it('resolves derived.fullName via generic traversal', () => {
@@ -172,7 +173,8 @@ describe('resolveProfileValue', () => {
   });
 
   it('resolves derived.age (number) as a string', () => {
-    expect(resolveProfileValue(PROFILE, 'derived.age')).toBe('35');
+    vi.useFakeTimers().setSystemTime(new Date(2025,5,1));
+    try { expect(resolveProfileValue(PROFILE, 'derived.age')).toBe('35'); } finally { vi.useRealTimers(); }
   });
 
   // Work authorization

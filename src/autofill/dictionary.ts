@@ -2,6 +2,11 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   'personal.firstName':            ['firstname', 'fname', 'givenname', 'forename', 'firstnm'],
   'personal.lastName':             ['lastname', 'lname', 'familyname', 'surname', 'lastnm'],
   'personal.nickname':             ['nickname', 'preferredname', 'goesby', 'knownas'],
+  'personal.dateOfBirth': ['dateofbirth', 'birthdate', 'birthday', 'dob'],
+  'links.github': ['github', 'githuburl', 'githubprofile'],
+  'links.twitter': ['twitter', 'twitterurl'],
+  'links.dribbble': ['dribbble', 'dribbbleurl'],
+  'links.behance': ['behance', 'behanceurl'],
   'personal.email':                ['email', 'emailaddress', 'workemail', 'contactemail'],
   'personal.phone.full':           ['phone'],
   'personal.phone.number':         ['phonenumber', 'mobile', 'cellphone', 'telephone', 'mobilenumber', 'localnumber'],
@@ -11,7 +16,7 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   'personal.veteranStatus':        ['veteranstatus', 'veteran'],
   'personal.disabilityStatus':     ['disabilitystatus', 'disability'],
   'address.city':                  ['city', 'town', 'cityofresidence', 'currentcity'],
-  'address.country':               ['country', 'countryofresidence', 'nationality', 'countryoforigin'],
+  'address.country':               ['country', 'countryofresidence'],
   'address.street':                ['street', 'streetaddress', 'address', 'addressline1'],
   'address.state':                 ['state', 'province', 'region', 'stateorprovince'],
   'address.postalCode':            ['postalcode', 'zipcode', 'zip', 'postcode'],
@@ -38,7 +43,7 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   // the same pattern phoneResolution.ts uses for ambiguous phone fields.
   'languages.language':            ['language', 'languagespoken', 'languagename'],
   'languages.proficiency':         ['proficiency', 'fluency', 'languageproficiency', 'languagelevel', 'proficiencylevel'],
-  'salary.current.amount':         ['currentsalary', 'currentctc', 'currentcompensation', 'currentsalaryexpectation'],
+  'salary.current.amount':         ['currentsalary', 'currentctc', 'currentcompensation'],
   'salary.expected.formatted':     ['expectedsalary', 'desiredcompensation', 'expectedctc', 'desiredsalary', 'salaryexpectation'],
   'professional.noticePeriod.availableDate': ['dateavailable', 'availablefrom', 'availabledate', 'earlieststartdate', 'availabletostart', 'startavailability', 'availabilitydate'],
   // Distinct from availableDate above — a "Notice Period" duration dropdown
@@ -48,7 +53,7 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   // Also covers a URL/text field sharing the same label wording — mapper.ts's
   // resolveDictionaryHit() redirects to documents.cv.url for a non-file
   // element, so this entry doesn't need duplicate aliases of its own.
-  'documents.cv.file':             ['resume', 'cv', 'curriculumvitae', 'resumeupload', 'uploadresume', 'attachresume', 'document', 'attachment', 'uploadcv', 'myresume'],
+  'documents.cv.file':             ['resume', 'cv', 'curriculumvitae', 'resumeupload', 'uploadresume', 'attachresume', 'uploadcv', 'myresume'],
   // Unindexed markers, same pattern as languages.language/proficiency above —
   // adjustEducationMatches() in educationResolution.ts rewrites these to a
   // concrete education.N.* path (single field on the page → the applicant's
@@ -83,5 +88,5 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   'workHistory.endDate.formatted':   ['employmentenddate', 'jobenddate', 'workenddate', 'enddateofemployment', 'lastdayofwork', 'dateended'],
   'workHistory.isCurrent':         ['currentlyworking', 'currentlyemployed', 'currentjob', 'isthisyourcurrentjob', 'presentlyemployed'],
   'workHistory.description':       ['jobdescription', 'responsibilities', 'roledescription', 'workdescription', 'dutiesandresponsibilities'],
-  'workHistory.arrangement':       ['workarrangement', 'employmenttype', 'workmode', 'worktype', 'remoteoronsite'],
+  'workHistory.arrangement':       ['workarrangement', 'workmode', 'remoteoronsite'],
 };

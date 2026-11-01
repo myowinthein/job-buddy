@@ -119,7 +119,7 @@ function fillSelect(select: HTMLSelectElement, value: string): boolean {
     // field is touched (focus+blur), not merely on change — see the
     // dispatchEvents comment above for the same reasoning applied here.
     select.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
-    return true;
+    return select.isConnected && select.options[select.selectedIndex] === match && select.validity.valid;
   }
   return false;
 }
@@ -284,7 +284,7 @@ export async function fillField(element: HTMLElement, value: string, isActive: (
     if (nativeTextareaSetter) nativeTextareaSetter.call(element, value);
     else element.value = value;
     dispatchEvents(element, 'insertText', value);
-    return true;
+    return element.isConnected && element.value === value && element.validity.valid && (element.maxLength < 0 || value.length <= element.maxLength);
   }
   if (element instanceof HTMLInputElement) {
     focusElement(element);
@@ -292,7 +292,7 @@ export async function fillField(element: HTMLElement, value: string, isActive: (
     if (nativeInputSetter) nativeInputSetter.call(element, fillValue);
     else element.value = fillValue;
     dispatchEvents(element, 'insertText', fillValue);
-    return true;
+    return element.isConnected && element.value === fillValue && element.validity.valid && (element.maxLength < 0 || fillValue.length <= element.maxLength);
   }
   if (isTextEditor(element)) {
     fillAriaTextbox(element, value);

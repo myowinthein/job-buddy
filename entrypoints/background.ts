@@ -1,3 +1,5 @@
+import { saveLearnedMappingLocally, saveLearnedMappings } from '@/src/utils/storage';
+import type { LearnedMappings } from '@/src/types/storage';
 import {
   DRIVE_RETRY_ALARM,
   DRIVE_AUTH_ALARM,
@@ -46,6 +48,47 @@ export default defineBackground(() => {
               : Promise.resolve(null)
             : autofill.cancel(message.tabId, message.runId).then(() => null);
     task.then(respond).catch(() => respond(null));
+    return true;
+  });
+  chrome.runtime.onMessage.addListener((message, sender, respond) => {
+    if (!['SAVE_LEARNED_MAPPING', 'SAVE_LEARNED_LABELS'].includes(message?.action)) return;
+    if (sender.id !== chrome.runtime.id || !sender.tab || !sender.url) return;
+    let domain: string;
+    try {
+      const url = new URL(/^https?:/.test(sender.url) ? sender.url : (sender.origin ?? ''));
+      if (!['http:', 'https:'].includes(url.protocol)) return;
+      domain = url.hostname;
+    } catch {
+      return;
+    }
+    let task: Promise<void>;
+    if (message.action === 'SAVE_LEARNED_MAPPING') {
+      if (
+        [message.normalizedSignal, message.fieldPath].some(
+          (value) => typeof value !== 'string' || !value || value.length > 1000,
+        ) ||
+        (message.label !== undefined && typeof message.label !== 'string')
+      )
+        return;
+      task = saveLearnedMappingLocally(
+        domain,
+        message.normalizedSignal,
+        message.fieldPath,
+        message.label,
+      );
+    } else {
+      const signals = message.mappings?.[domain];
+      if (!signals || typeof signals !== 'object' || Array.isArray(signals)) return;
+      const valid = Object.values(signals).every(
+        (value) =>
+          value &&
+          typeof value === 'object' &&
+          typeof (value as { path?: unknown }).path === 'string',
+      );
+      if (!valid) return;
+      task = saveLearnedMappings({ [domain]: signals } as LearnedMappings, { labelsOnly: true });
+    }
+    task.then(() => respond({ ok: true })).catch(() => respond({ ok: false }));
     return true;
   });
   chrome.webNavigation.onCommitted.addListener((details) => {

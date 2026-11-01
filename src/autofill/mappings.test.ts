@@ -160,7 +160,7 @@ describe('refreshLearnedLabels', () => {
     });
   });
 
-  it('does not touch count or path when refreshing the label', () => {
+  it('preserves the original label and trust when an internal key is reused', () => {
     const el = makeInput({ id: 'field-email' });
     const label = document.createElement('label');
     label.setAttribute('for', 'field-email');
@@ -174,7 +174,7 @@ describe('refreshLearnedLabels', () => {
     refreshLearnedLabels('example.com', signals, mappings);
 
     expect(mappings['example.com']['fieldemail']).toEqual({
-      path: 'personal.email', count: 2, label: 'Updated Label',
+      path: 'personal.email', count: 2, label: 'Old Label',
     });
   });
 

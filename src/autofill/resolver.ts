@@ -1,3 +1,4 @@
+import { calculateDerivedFields } from '../utils/derivedFields';
 import type { Profile } from '../types/profile';
 import { COUNTRIES } from '../data/countries';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
@@ -7,6 +8,13 @@ import { fmtYearMonth, fmtAmount, formatISODate } from '../utils/dateFormat';
 export function resolveProfileValue(profile: Profile, fieldPath: string): string {
   if (!fieldPath) return '';
 
+  if (fieldPath === 'derived.age' || fieldPath.startsWith('derived.totalExperience.')) {
+    try {
+      const derived = calculateDerivedFields(profile);
+      const value = fieldPath.slice(8).split('.').reduce<unknown>((node,key) => node && typeof node === 'object' ? (node as Record<string,unknown>)[key] : undefined,derived);
+      return typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    } catch { return ''; }
+  }
   // Special cases that need non-trivial handling
   switch (fieldPath) {
     case 'personal.phone.number':
@@ -79,7 +87,14 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
       switch (np.unit) {
         case 'day':   target.setDate(target.getDate() + np.value); break;
         case 'week':  target.setDate(target.getDate() + np.value * 7); break;
-        case 'month': target.setMonth(target.getMonth() + np.value); break;
+        case 'month': {
+          const day = target.getDate();
+          target.setDate(1);
+          target.setMonth(target.getMonth() + np.value);
+          const lastDay = new Date(target.getFullYear(),target.getMonth()+1,0).getDate();
+          target.setDate(Math.min(day,lastDay));
+          break;
+        }
       }
       return formatISODate(target);
     }

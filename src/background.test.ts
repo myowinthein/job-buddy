@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+vi.mock('@/src/utils/storage',()=>({saveLearnedMappingLocally:vi.fn().mockResolvedValue(undefined),saveLearnedMappings:vi.fn().mockResolvedValue(undefined)}));
+import { saveLearnedMappingLocally } from './utils/storage';
+
 vi.mock('@/src/devtools/registerContentScript', () => ({
   registerDevelopmentContentScript: vi.fn().mockResolvedValue(undefined),
 }));
@@ -177,4 +180,22 @@ describe('background autofill entry point', () => {
     vi.mocked(chrome.tabs.onRemoved.addListener).mock.calls[0][0](42, { windowId: 1, isWindowClosing: false });
     expect(coordinatorMock.cancel).toHaveBeenCalledWith(42);
   });
+});
+
+describe('background learning writes',()=>{
+ const learningListener = () => vi.mocked(chrome.runtime.onMessage.addListener).mock.calls[1][0];
+ it('derives the domain from the sender, including inherited-origin frames',async()=>{
+  const respond=vi.fn();
+  expect(learningListener()({action:'SAVE_LEARNED_MAPPING',domain:'spoof.test',normalizedSignal:'email',fieldPath:'personal.email'},
+    {id:'job-buddy',url:'about:srcdoc',origin:'https://actual.test',tab:{id:1}} as chrome.runtime.MessageSender,respond)).toBe(true);
+  expect(saveLearnedMappingLocally).toHaveBeenCalledWith('actual.test','email','personal.email',undefined);
+  await Promise.resolve();expect(respond).toHaveBeenCalledWith({ok:true});
+ });
+ it('rejects foreign senders and invalid paths',()=>{
+  learningListener()({action:'SAVE_LEARNED_MAPPING',normalizedSignal:'email',fieldPath:'personal.email'},
+    {id:'foreign',url:'https://actual.test',tab:{id:1}} as chrome.runtime.MessageSender,vi.fn());
+  learningListener()({action:'SAVE_LEARNED_MAPPING',normalizedSignal:'email',fieldPath:null},
+    {id:'job-buddy',url:'https://actual.test',tab:{id:1}} as chrome.runtime.MessageSender,vi.fn());
+  expect(saveLearnedMappingLocally).not.toHaveBeenCalled();
+ });
 });
