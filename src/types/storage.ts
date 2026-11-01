@@ -18,15 +18,6 @@ export interface LearnedMappings {
   [domain: string]: { [signal: string]: LearnedMappingValue };
 }
 
-export interface ApplicationEntry {
-  id: string;
-  jobTitle: string;
-  company: string;
-  url: string;
-  appliedAt: string;
-  status: 'applied' | 'duplicate_warned';
-}
-
 // ── Google Drive Cloud Backup ────────────────────────────────────────────────
 
 export type DriveError =
@@ -65,7 +56,6 @@ export interface DriveBackupFile {
 export interface StorageSchema {
   profile: Profile;
   learnedMappings: LearnedMappings;
-  applicationHistory: ApplicationEntry[];
   driveToken?: string;
   driveBackupState?: DriveBackupState;
   themePreference?: 'system' | 'light' | 'dark';

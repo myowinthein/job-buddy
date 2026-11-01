@@ -10,11 +10,9 @@ import * as previewDrive from '@/src/utils/driveSync';
 import {
   getProfile,
   getLearnedMappings,
-  getApplicationHistory,
   saveProfile,
-  saveApplicationHistory,
 } from '@/src/utils/storage';
-import { settingsReviewProfile, SETTINGS_REVIEW_HISTORY } from './settingsReviewFixture';
+import { settingsReviewProfile } from './settingsReviewFixture';
 
 vi.mock('@/src/utils/driveSync', () => import('@/src/preview/driveSync'));
 vi.mock('@/src/resume-ai/gemini', () => import('@/src/preview/gemini'));
@@ -153,11 +151,10 @@ it('Import All applies every update even after the review draft was cleared', as
   expect((await getProfile())?.professional.noticePeriod?.value).toBe(6);
 });
 
-it('offers explicit choices for a mappings/history-only import', async () => {
+it('offers explicit choices for a mappings-only import', async () => {
   await mountBase();
   upload(baseProfile(), {
     learnedMappings: { 'new.example': { surname: 'personal.lastName' } },
-    applicationHistory: SETTINGS_REVIEW_HISTORY,
   });
   fireEvent.click(await screen.findByText('Review Changes'));
   fireEvent.click(screen.getByText('Clear Selection'));
@@ -167,19 +164,17 @@ it('offers explicit choices for a mappings/history-only import', async () => {
   fireEvent.click(importSelected());
   await screen.findByText('Profile imported successfully');
   expect(await getLearnedMappings()).toEqual({ 'new.example': { surname: 'personal.lastName' } });
-  expect(await getApplicationHistory()).toEqual([]);
 });
 
-it('does not erase application history when a backup contains an empty list', async () => {
+it('ignores unsupported backup metadata without storing it', async () => {
   await mountBase();
-  await saveApplicationHistory(SETTINGS_REVIEW_HISTORY);
   const profile = baseProfile();
   profile.personal.firstName = 'Alex Imported';
-  upload(profile, { applicationHistory: [] });
+  upload(profile, { retiredFeatureData: [{ value: 'not-supported' }] });
   fireEvent.click(await screen.findByText('Import All'));
   await screen.findByText('Profile imported successfully');
   expect((await getProfile())?.personal.firstName).toBe('Alex Imported');
-  expect(await getApplicationHistory()).toEqual(SETTINGS_REVIEW_HISTORY);
+  expect(await new Promise((resolve) => chrome.storage.local.get('retiredFeatureData', resolve))).toEqual({});
 });
 
 it('rejects invalid profile roots without reporting success or writing a profile', async () => {
@@ -318,7 +313,6 @@ it('requires an owner decision, then replaces profile data without retaining the
   expect(saved.address).toBeUndefined();
   expect(saved.documents).toBeUndefined();
   expect(saved.workHistory).toBeUndefined();
-  expect(await getApplicationHistory()).toEqual([]);
 });
 
 it('asks for review again if the profile changes while replacement is open', async () => {

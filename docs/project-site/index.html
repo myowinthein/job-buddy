@@ -113,7 +113,7 @@
           <li><strong>Build tool:</strong> WXT 0.20.26 (Vite under the hood)</li>
           <li><strong>Language:</strong> TypeScript 5.9 (strict mode)</li>
           <li><strong>Framework:</strong> React 19 (UI) + Tailwind CSS v4 (<code>@tailwindcss/postcss</code>, not the v3 config form)</li>
-          <li><strong>Storage API:</strong> <code>chrome.storage.local</code> (profile, learned mappings, application history) + <code>chrome.storage.session</code> (transient UI hints)</li>
+          <li><strong>Storage API:</strong> <code>chrome.storage.local</code> (profile, learned mappings) + <code>chrome.storage.session</code> (transient UI hints)</li>
           <li><strong>Manifest:</strong> Manifest V3 (declared in <code>wxt.config.ts</code>)</li>
           <li><strong>Key config files:</strong> <code>wxt.config.ts</code>, <code>tsconfig.json</code>, <code>eslint.config.js</code>, <code>package.json</code>, <code>.nvmrc</code></li>
           <li><strong>CI/CD:</strong> GitHub Actions — <code>.github/workflows/ci.yml</code> (test/lint) + <code>release.yml</code> (CWS upload on <code>v*.*.*</code> tag push)</li>
@@ -437,7 +437,6 @@
       <li>Profile fields the user entered (personal info, address, salary, work history, education, languages, links, work authorization)</li>
       <li>Resume or CV file, if uploaded, encoded as file data</li>
       <li>Per-domain learned field mappings (signal-to-profile-path only, never the values typed)</li>
-      <li>Application history (records of filled forms)</li>
       <li>AI settings: Gemini API key and selected model (only if AI features are enabled)</li>
       <li>Drive backup state: OAuth token and bookkeeping (only if Drive backup is enabled)</li>
       <li>Theme preference</li>
@@ -485,7 +484,7 @@
         <div>
           <div class="perm-name">Storage</div>
           <div class="perm-why">
-            Used to save the user's profile, learned field mappings, application history, and UI
+            Used to save the user's profile, learned field mappings, and UI
             preferences locally on the device. Required for the core functionality.
           </div>
         </div>
@@ -592,7 +591,6 @@
 
     <ul>
       <li>Firefox support, once the WXT build is configured for it (the framework supports multi-browser builds).</li>
-      <li>Application history dashboard. The data structure exists in storage but is not yet surfaced as a dedicated UI.</li>
       <li>Broader localisation (the UI is currently English-only).</li>
       <li>Expanded support for vendor-specific ATS quirks (custom date pickers, multi-step forms with hidden state).</li>
       <li>Self-hosted or alternative AI model providers, given the BYOK architecture.</li>

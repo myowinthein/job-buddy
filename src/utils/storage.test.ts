@@ -7,8 +7,8 @@ const store: Record<string, unknown> = {};
 vi.stubGlobal('chrome', {
   storage: {
     local: {
-      get(key: string, callback: (result: Record<string, unknown>) => void) {
-        callback({ [key]: store[key] });
+      get(key: string | null, callback: (result: Record<string, unknown>) => void) {
+        callback(key === null ? { ...store } : { [key]: store[key] });
       },
       set(items: Record<string, unknown>, callback: () => void) {
         Object.assign(store, items);
@@ -27,7 +27,6 @@ vi.stubGlobal('chrome', {
 import {
   getProfile, saveProfile,
   getLearnedMappings, saveLearnedMapping, mergeLearnedMappings,
-  getApplicationHistory, saveApplicationHistory,
   getGeminiApiKey, saveGeminiApiKey, clearGeminiSettings,
   getGeminiModel, saveGeminiModel, getGeminiSettings, saveGeminiSettings,
   getThemePreference, saveThemePreference,
@@ -376,12 +375,23 @@ describe('storageGet/storageSet/storageRemove — synchronous throw from chrome.
   });
 
   it('reset rejects when chrome.storage.local.remove throws synchronously', async () => {
+    await saveProfile(MINIMAL_PROFILE);
     vi.spyOn(chrome.storage.local, 'remove').mockImplementation(() => { throw new Error('storage API unavailable'); });
     await expect(clearAllStorage()).rejects.toThrow('storage API unavailable');
+    expect((await getProfile())?.id).toBe(MINIMAL_PROFILE.id);
   });
 });
 
 describe('clearAllStorage', () => {
+  it('retains the credential revision that rejects a key check started before reset', async () => {
+    const { revision } = await getGeminiSettings();
+    await clearGeminiSettings();
+    const cleared = await getGeminiSettings();
+    await clearAllStorage();
+    expect((await getGeminiSettings()).revision).toBe(cleared.revision);
+    expect(await saveGeminiSettings('stale-key', 'gemini-3.8-flash', 'auto', revision)).toBeNull();
+    expect(await getGeminiApiKey()).toBeNull();
+  });
   it('rejects a Chrome removal error and leaves the stored profile available', async () => {
     await saveProfile(MINIMAL_PROFILE);
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -394,27 +404,26 @@ describe('clearAllStorage', () => {
     expect((await getProfile())?.id).toBe(MINIMAL_PROFILE.id);
   });
 
-  it('removes profile, learnedMappings, and applicationHistory', async () => {
-    // Seed all three keys, then confirm every one is removed.
+  it('removes saved data and unknown retired keys while preserving development suppression', async () => {
+    // Reset must also remove data left by older versions.
     await saveProfile(MINIMAL_PROFILE);
     await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
-    await saveApplicationHistory([
-      { id: 'app-1', jobTitle: 'Dev', company: 'Acme', url: 'https://acme.example', appliedAt: '2026-01-01', status: 'applied' },
-    ]);
+    Object.assign(store, { retiredFeatureData: ['obsolete'], geminiDevDisabled: true });
 
     const removeSpy = vi.spyOn(chrome.storage.local, 'remove');
 
     await clearAllStorage();
 
     expect(removeSpy).toHaveBeenCalledWith(
-      expect.arrayContaining(['profile', 'learnedMappings', 'applicationHistory']),
+      expect.arrayContaining(['profile', 'learnedMappings', 'retiredFeatureData']),
       expect.any(Function),
     );
     // Reset suppresses the development fallback as well as removing stored data.
     expect(await getProfile()).toBeNull();
     expect(await getLearnedMappings()).toEqual({});
-    expect(await getApplicationHistory()).toEqual([]);
 
+    expect(store.retiredFeatureData).toBeUndefined();
+    expect(store.geminiDevDisabled).toBe(true);
     removeSpy.mockRestore();
   });
 });

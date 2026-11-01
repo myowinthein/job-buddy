@@ -8,7 +8,6 @@ test('experience validation is visible, and an empty profile cannot download an 
     await chrome.storage.local.set({
       profile: { id: 'empty-feedback' },
       learnedMappings: {},
-      applicationHistory: [],
       themePreference: 'dark',
     });
   });

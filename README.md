@@ -123,9 +123,9 @@ check every answer and uploaded document before submitting.
   mappings. Saved changes update the backup automatically. Use **Back Up Now**
   to check and update it manually. Different Drive data requires review before
   replacement. Temporary failures retry with increasing delays; Google may ask
-  you to reconnect. History, appearance, and Gemini settings stay in this browser.
+  you to reconnect. Appearance and Gemini settings stay in this browser.
 - **JSON backup:** use **Export Profile** and **Import Profile** in **Settings** to
-  transfer your profile, learned mappings, and application history.
+  transfer your profile and learned mappings.
 
 Disconnecting keeps the last successful Drive backup unless you choose to delete
 it. Keeping a backup does not upload unsynced changes first. A failed cloud
@@ -139,10 +139,10 @@ JSON and Drive lists replace supplied lists, while resume updates retain saved
 entries. The shared review lets you select individual jobs, education entries,
 languages, and custom links. New entries show their details; changed entries
 compare current and incoming values in both Update and Replace.
-Updated mappings and JSON application history merge with saved data.
+Imported mappings merge with saved mappings.
 
-Replace starts fresh with the selected incoming details and clears old documents,
-mappings, and history unless imported. Appearance and AI settings stay in this
+Replace starts fresh with the selected incoming details and clears old documents
+and mappings unless imported. Appearance and AI settings stay in this
 browser. Replacing from a resume or JSON pauses connected Drive backups until you
 review the saved backup in Settings.
 

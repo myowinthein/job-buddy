@@ -8,18 +8,12 @@ import { calculateDerivedFields } from '@/src/utils/derivedFields';
 import {
   getProfile,
   getLearnedMappings,
-  getApplicationHistory,
   saveProfile,
   saveLearnedMappings,
-  saveApplicationHistory,
   saveGeminiApiKey,
   getGeminiApiKey,
 } from '@/src/utils/storage';
-import {
-  settingsReviewProfile,
-  SETTINGS_REVIEW_HISTORY,
-  SETTINGS_REVIEW_MAPPINGS,
-} from './settingsReviewFixture';
+import { settingsReviewProfile, SETTINGS_REVIEW_MAPPINGS } from './settingsReviewFixture';
 
 vi.mock('@/src/utils/driveSync', () => import('@/src/preview/driveSync'));
 vi.mock('@/src/resume-ai/gemini', () => import('@/src/preview/gemini'));
@@ -65,7 +59,6 @@ it('exports every saved field, resets immediately, and restores the downloaded J
   profile.derived = calculateDerivedFields(profile);
   await saveProfile(profile);
   await saveLearnedMappings(SETTINGS_REVIEW_MAPPINGS);
-  await saveApplicationHistory(SETTINGS_REVIEW_HISTORY);
   await saveGeminiApiKey('synthetic-key-not-exported');
   const createUrl = vi.fn((_blob: Blob) => 'blob:settings-review');
   vi.stubGlobal(
@@ -87,10 +80,8 @@ it('exports every saved field, resets immediately, and restores the downloaded J
   const backup = JSON.parse(json);
   expect(backup.profile).toEqual(profile);
   expect(backup.learnedMappings).toEqual(SETTINGS_REVIEW_MAPPINGS);
-  expect(backup.applicationHistory).toEqual(SETTINGS_REVIEW_HISTORY);
   expect(Object.keys(backup).sort()).toEqual([
     '_comment',
-    'applicationHistory',
     'exportedAt',
     'learnedMappings',
     'profile',
@@ -109,7 +100,6 @@ it('exports every saved field, resets immediately, and restores the downloaded J
   expect(await getProfile()).toBeNull();
   expect(await new Promise((resolve) => chrome.storage.local.get('profile', resolve))).toEqual({});
   expect(await getLearnedMappings()).toEqual({});
-  expect(await getApplicationHistory()).toEqual([]);
   expect(await getGeminiApiKey()).toBeNull();
 
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
@@ -118,7 +108,6 @@ it('exports every saved field, resets immediately, and restores the downloaded J
   await screen.findByText('Profile imported successfully');
   await waitFor(async () => expect(await getProfile()).toEqual(profile));
   expect(await getLearnedMappings()).toEqual(SETTINGS_REVIEW_MAPPINGS);
-  expect(await getApplicationHistory()).toEqual(SETTINGS_REVIEW_HISTORY);
 
   fireEvent.click(screen.getByRole('button', { name: 'Personal' }));
   for (const key of ['firstName', 'lastName', 'nickname', 'email'] as const)

@@ -14,7 +14,7 @@ export function inspectProfile(raw: unknown): Partial<Profile> {
 export async function readDevSnapshot() {
   const values = await new Promise<Record<string, unknown>>((resolve, reject) => {
     chrome.storage.local.get(
-      ['profile', 'learnedMappings', 'applicationHistory', 'driveBackupState', 'geminiModel'],
+      ['profile', 'learnedMappings', 'driveBackupState', 'geminiModel'],
       (result) => {
         if (chrome.runtime.lastError) reject(new Error('Could not read local data.'));
         else resolve(result);
@@ -48,7 +48,6 @@ export async function readDevSnapshot() {
       values.learnedMappings && typeof values.learnedMappings === 'object'
         ? Object.keys(values.learnedMappings).length
         : 0,
-    applications: Array.isArray(values.applicationHistory) ? values.applicationHistory.length : 0,
     aiModel:
       typeof values.geminiModel === 'string' && /^gemini-[a-z0-9.-]+$/.test(values.geminiModel)
         ? values.geminiModel

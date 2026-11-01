@@ -503,7 +503,7 @@ describe('Drive backup serialized contract', () => {
   it.each([false, true])('uploads only permitted data (existing file: %s)', async (existing) => {
     const profile = makeProfile();
     const mappings = { 'example.test': { email: { path: 'personal.email', count: 2 } } };
-    Object.assign(store, { driveToken: 'token-sentinel', geminiApiKey: 'key-sentinel', geminiModel: 'model-sentinel', applicationHistory: ['history-sentinel'], learnedMappings: mappings });
+    Object.assign(store, { driveToken: 'token-sentinel', geminiApiKey: 'key-sentinel', geminiModel: 'model-sentinel', retiredFeatureData: ['retired-sentinel'], learnedMappings: mappings });
     if (existing) store.driveBackupState = { fileId: 'f1', lastSynced: null, pendingSync: false, error: null };
     mockFetchSequence(existing ? [{ ok: true }] : [{ ok: true, body: { files: [] } }, { ok: true, body: { id: 'created' } }]);
     const result = await syncProfileToDrive(profile);
@@ -515,7 +515,7 @@ describe('Drive backup serialized contract', () => {
     expect(payload.profile).toEqual(profile);
     expect(payload.learnedMappings).toEqual(mappings);
     expect(payload.lastModified).toBe((store.driveBackupState as { lastSynced: string }).lastSynced);
-    for (const excluded of ['token-sentinel', 'key-sentinel', 'model-sentinel', 'history-sentinel']) expect(body).not.toContain(excluded);
+    for (const excluded of ['token-sentinel', 'key-sentinel', 'model-sentinel', 'retired-sentinel']) expect(body).not.toContain(excluded);
   });
 });
 

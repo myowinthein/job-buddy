@@ -23,7 +23,6 @@ const operations = new Set([
 const storageKeys = new Set([
   'profile',
   'learnedMappings',
-  'applicationHistory',
   'themePreference',
   'geminiSettingsMeta',
   'driveBackupState',

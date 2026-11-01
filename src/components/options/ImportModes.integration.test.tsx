@@ -8,8 +8,6 @@ import { DEV_PROFILE } from '@/src/utils/devProfile';
 import {
   getProfile,
   getDriveBackupState,
-  getApplicationHistory,
-  saveApplicationHistory,
   saveProfile,
 } from '@/src/utils/storage';
 import { DevSimulation } from '@/src/devtools/simulation';
@@ -148,18 +146,8 @@ it('Drive person mismatch can be cancelled without uploading or changing either 
   expect(remote.backup).toEqual(before);
   expect((await getDriveBackupState()).reviewRequired).toBe(true);
 });
-it('Drive replacement adopts only the incoming person and clears unrelated local history', async () => {
+it('Drive replacement adopts only the incoming person', async () => {
   const remote = setupDrive();
-  await saveApplicationHistory([
-    {
-      id: 'old',
-      company: 'Old',
-      jobTitle: 'Old',
-      url: 'https://old.example',
-      appliedAt: '2026-01-01',
-      status: 'applied',
-    },
-  ]);
   mount();
   fireEvent.click(await screen.findByText('Connect Google Drive'));
   await screen.findByText('This may be another person’s profile');
@@ -167,7 +155,6 @@ it('Drive replacement adopts only the incoming person and clears unrelated local
   fireEvent.click(screen.getByRole('button', { name: 'Replace Profile' }));
   await waitFor(async () => expect((await getProfile())?.personal.email).toBe('sam@example.com'));
   expect((await getProfile())?.address).toBeUndefined();
-  expect(await getApplicationHistory()).toEqual([]);
   expect((await getDriveBackupState()).reviewRequired).toBe(false);
   expect(remote.backup?.profile.personal.email).toBe('sam@example.com');
 });

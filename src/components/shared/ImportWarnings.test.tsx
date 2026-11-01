@@ -7,19 +7,14 @@ it('makes fields and short reasons scannable while preserving full validation de
   const original = 'Phone: expected object with countryCode, callingCode, number strings';
   const { container } = render(
     <ImportWarnings
-      warnings={[
-        original,
-        'AI settings: API keys and connection settings are not imported.',
-        'Application History: Invalid application at position 1',
-      ]}
+      warnings={[original, 'AI settings: API keys and connection settings are not imported.']}
     />,
   );
-  expect(screen.getByText('3 items will be skipped')).toBeTruthy();
+  expect(screen.getByText('2 items will be skipped')).toBeTruthy();
   expect(screen.getByText('Phone').tagName).toBe('DT');
   expect(screen.getByText('Unsupported format.').tagName).toBe('DD');
-  expect(screen.getByText('Entry 1 has an unsupported format.')).toBeTruthy();
   expect(screen.getByText(original).closest('details')?.open).toBe(false);
-  expect(container.querySelectorAll('dl > div')).toHaveLength(3);
+  expect(container.querySelectorAll('dl > div')).toHaveLength(2);
 });
 it('preserves field-specific explanations and custom summaries', () => {
   render(

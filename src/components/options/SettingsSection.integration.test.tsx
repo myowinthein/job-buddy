@@ -9,10 +9,8 @@ vi.mock('@/src/utils/storage', () => ({
   getProfile: vi.fn().mockResolvedValue(null),
   saveProfile: vi.fn().mockResolvedValue(undefined),
   getLearnedMappings: vi.fn().mockResolvedValue({}),
-  getApplicationHistory: vi.fn().mockResolvedValue([]),
   saveLearnedMappings: vi.fn().mockResolvedValue(undefined),
   mergeLearnedMappings: vi.fn((local: object, remote: object) => ({ ...local, ...remote })),
-  saveApplicationHistory: vi.fn().mockResolvedValue(undefined),
   clearAllStorage: vi.fn().mockResolvedValue(undefined),
   getGeminiSettings: vi.fn().mockResolvedValue({ apiKey: null, model: null, preference: 'auto', revision: null, verifiedAt: null }),
   saveGeminiSettings: vi.fn(async (apiKey, model, preference) => ({ apiKey, model, preference, revision: 'saved-revision', verifiedAt: 1 })),
@@ -48,7 +46,7 @@ vi.mock('@/src/utils/driveSync', () => ({
 
 import { SettingsSection } from './SettingsSection';
 import { ToastProvider } from '@/src/components/ui/Toast';
-import { getProfile, saveProfile, getGeminiApiKey, getLearnedMappings, saveLearnedMappings, saveApplicationHistory } from '@/src/utils/storage';
+import { getProfile, saveProfile, getGeminiApiKey, getLearnedMappings, saveLearnedMappings } from '@/src/utils/storage';
 import { getFullDriveState, connectDrive } from '@/src/utils/driveSync';
 import type { Profile } from '@/src/types/profile';
 
@@ -212,7 +210,6 @@ it.each([false, true])('preserves direct Drive persistence ordering with mapping
     expect(getLearnedMappings).toHaveBeenCalledTimes(1); // read for review; no metadata write needed
     expect(saveLearnedMappings).not.toHaveBeenCalled();
   }
-  expect(saveApplicationHistory).not.toHaveBeenCalled();
 });
 
 

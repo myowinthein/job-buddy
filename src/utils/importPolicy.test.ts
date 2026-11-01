@@ -11,7 +11,6 @@ import { createPreviewChrome } from '@/src/preview/chrome';
 import {
   getProfile,
   getLearnedMappings,
-  getApplicationHistory,
   getDriveBackupState,
   getGeminiApiKey,
   saveProfile,
@@ -115,16 +114,6 @@ describe('import identity and replacement policy', () => {
 });
 
 describe('atomic person replacement', () => {
-  const history = [
-    {
-      id: 'old-job',
-      company: 'Old Company',
-      jobTitle: 'Engineer',
-      url: 'https://jobs.example',
-      appliedAt: '2026-01-01',
-      status: 'applied' as const,
-    },
-  ];
   function setup(failWrite?: (items: Record<string, unknown>) => string | undefined) {
     const current = base();
     vi.stubGlobal(
@@ -132,7 +121,6 @@ describe('atomic person replacement', () => {
       createPreviewChrome(current, undefined, {
         failWrite,
         initialData: {
-          applicationHistory: history,
           learnedMappings: { 'old.example': { name: 'personal.firstName' } },
           geminiApiKey: 'local-test-key',
           geminiDevDisabled: true,
@@ -150,7 +138,7 @@ describe('atomic person replacement', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('No real requests allowed')));
     return current;
   }
-  it('clears old documents, address, pay, lists, mappings and history; retains browser settings; pauses uploads', async () => {
+  it('clears old documents, address, pay, lists, mappings; retains browser settings; pauses uploads', async () => {
     const current = setup();
     const saved = await replaceImportedProfile(current, replacementChanges(current, spouse()));
     expect(saved.id).not.toBe(current.id);
@@ -167,7 +155,6 @@ describe('atomic person replacement', () => {
     ])
       expect(saved).not.toHaveProperty(key);
     expect(await getLearnedMappings()).toEqual({});
-    expect(await getApplicationHistory()).toEqual([]);
     expect(await getGeminiApiKey()).toBe('local-test-key');
     expect(await getDriveBackupState()).toMatchObject({
       fileId: 'old-backup',
@@ -180,14 +167,12 @@ describe('atomic person replacement', () => {
   });
   it('replaces backup metadata with incoming values rather than merging another person’s records', async () => {
     const current = setup();
-    const newHistory = [{ ...history[0], id: 'new-job', company: 'New Company' }];
     const mappings = { 'new.example': { email: 'personal.email' } };
     const changes = [
       ...replacementChanges(current, spouse()),
-      ...backupDataChanges({}, mappings, history, newHistory, 'replace'),
+      ...backupDataChanges({}, mappings, 'replace'),
     ];
     await replaceImportedProfile(current, changes);
-    expect(await getApplicationHistory()).toEqual(newHistory);
     expect(await getLearnedMappings()).toEqual(mappings);
   });
   it('retains only selected incoming fields, never unselected old values', async () => {
@@ -221,7 +206,6 @@ describe('atomic person replacement', () => {
       replaceImportedProfile(current, replacementChanges(current, spouse())),
     ).rejects.toThrow('Storage unavailable');
     expect(await getProfile()).toEqual(current);
-    expect(await getApplicationHistory()).toEqual(history);
     expect((await getDriveBackupState()).reviewRequired).toBeUndefined();
   });
   it('refuses replacement after a concurrent save and preserves that newer profile', async () => {
@@ -232,6 +216,5 @@ describe('atomic person replacement', () => {
       replaceImportedProfile(current, replacementChanges(current, spouse())),
     ).rejects.toThrow(ImportProfileChangedError);
     expect((await getProfile())?.address.city).toBe('Concurrent city');
-    expect(await getApplicationHistory()).toEqual(history);
   });
 });

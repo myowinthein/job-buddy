@@ -5,11 +5,6 @@ function warningDetails(warning: string) {
   const original = warning.slice(separator + 1).trim();
   let reason = original;
   if (/API keys and connection settings are not imported/i.test(original)) reason = 'Not imported.';
-  else if (/^Invalid application at position (\d+)$/i.test(original))
-    reason = original.replace(
-      /^Invalid application at position (\d+)$/i,
-      'Entry $1 has an unsupported format.',
-    );
   else if (/^expected\b/i.test(original)) reason = 'Unsupported format.';
   return { label, reason, technical: reason !== original ? warning : '' };
 }

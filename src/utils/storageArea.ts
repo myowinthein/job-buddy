@@ -16,7 +16,10 @@ export function wrapStorageArea(
   label: string,
   { rejectOnSetError = false }: WrapStorageAreaOptions = {},
 ) {
-  function get(key: string, { rejectOnError = false } = {}): Promise<Record<string, unknown>> {
+  function get(
+    key: string | null,
+    { rejectOnError = false } = {},
+  ): Promise<Record<string, unknown>> {
     return new Promise((resolve, reject) => {
       try {
         getArea().get(key, (result: Record<string, unknown>) => {

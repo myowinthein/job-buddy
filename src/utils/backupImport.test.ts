@@ -1,52 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import {
-  backupDataChanges,
-  mergeApplicationHistory,
-  selectedBackupData,
-  validateBackupData,
-} from './backupImport';
+import { backupDataChanges, selectedBackupData, validateBackupData } from './backupImport';
 import { equalJsonValues } from './equalJsonValues';
-import type { ApplicationEntry } from '@/src/types/storage';
-
-const entry = (id: string, jobTitle = 'Engineer'): ApplicationEntry => ({
-  id,
-  jobTitle,
-  company: 'Example',
-  url: 'https://example.com/jobs/1',
-  appliedAt: '2026-01-01T00:00:00Z',
-  status: 'applied',
-});
 
 describe('backup-only data import', () => {
-  it('adds missing history IDs and preserves local entries on duplicate IDs', () => {
-    const local = [entry('existing')];
-    expect(
-      mergeApplicationHistory(local, [
-        entry('existing', 'Older title'),
-        entry('new'),
-        entry('new'),
-      ]),
-    ).toEqual([entry('existing'), entry('new')]);
-    expect(mergeApplicationHistory(local, [])).toEqual(local);
-  });
   it('never selects unchanged metadata and only returns accepted changes', () => {
     const mappings = { 'example.com': { name: 'personal.firstName' } };
-    const unchanged = backupDataChanges(mappings, mappings, [entry('one')], [entry('one')]);
+    const unchanged = backupDataChanges(mappings, mappings);
     expect(unchanged.every((change) => change.status === 'unchanged' && !change.accepted)).toBe(
       true,
     );
     expect(selectedBackupData(unchanged)).toEqual({
       learnedMappings: undefined,
-      applicationHistory: undefined,
     });
-    const changed = backupDataChanges({}, mappings, [], [entry('one')]);
+    const changed = backupDataChanges({}, mappings);
     expect(selectedBackupData(changed.map((change) => ({ ...change, accepted: false })))).toEqual({
       learnedMappings: undefined,
-      applicationHistory: undefined,
     });
     expect(selectedBackupData(changed)).toEqual({
       learnedMappings: mappings,
-      applicationHistory: [entry('one')],
+    });
+  });
+  it('ignores unrecognized properties in older backups', () => {
+    expect(validateBackupData({ retiredFeatureData: [{ value: 'unused' }] })).toEqual({
+      learnedMappings: undefined,
+      invalidFields: [],
     });
   });
   it('preserves trusted local mappings rather than offering ineffective replacements', () => {
@@ -65,7 +42,6 @@ describe('backup-only data import', () => {
           invalid: { path: 12, count: 'two' },
         },
       },
-      applicationHistory: [entry('valid'), { id: 'bad' }],
     });
     expect(result.learnedMappings).toEqual({
       'example.com': {
@@ -73,13 +49,10 @@ describe('backup-only data import', () => {
         counted: { path: 'personal.lastName', count: 2, label: 'Surname' },
       },
     });
-    expect(result.applicationHistory).toEqual([entry('valid')]);
-    expect(result.invalidFields).toHaveLength(2);
+    expect(result.invalidFields).toHaveLength(1);
   });
   it('rejects malformed metadata containers and unsafe dictionary keys', () => {
-    expect(
-      validateBackupData({ learnedMappings: [], applicationHistory: {} }).invalidFields,
-    ).toHaveLength(2);
+    expect(validateBackupData({ learnedMappings: [] }).invalidFields).toHaveLength(1);
     const raw = JSON.parse(
       '{"learnedMappings":{"__proto__":{"polluted":"yes"},"safe.example":{"constructor":"x"}}}',
     );

@@ -1,12 +1,11 @@
 import { selectChange } from '@/src/resume-ai/entrySelection';
-import type { ApplicationEntry, LearnedMappings, LearnedMappingValue } from '@/src/types/storage';
+import type { LearnedMappings, LearnedMappingValue } from '@/src/types/storage';
 import type { FieldChange } from '@/src/resume-ai/types';
 import type { InvalidField } from './profileValidator';
 import { mergeLearnedMappings } from './storage';
 import { equalJsonValues } from './equalJsonValues';
 
 export const MAPPINGS_CHANGE_ID = 'backup.learnedMappings';
-export const HISTORY_CHANGE_ID = 'backup.applicationHistory';
 
 const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
@@ -17,7 +16,6 @@ const safeKey = (key: string) =>
 export function validateBackupData(raw: Record<string, unknown>) {
   const invalidFields: InvalidField[] = [];
   let learnedMappings: LearnedMappings | undefined;
-  let applicationHistory: ApplicationEntry[] | undefined;
   if (raw.learnedMappings !== undefined) {
     if (!record(raw.learnedMappings))
       invalidFields.push({ path: 'Learned Mappings', reason: 'Expected a mapping object' });
@@ -62,58 +60,7 @@ export function validateBackupData(raw: Record<string, unknown>) {
       }
     }
   }
-  if (raw.applicationHistory !== undefined) {
-    if (!Array.isArray(raw.applicationHistory))
-      invalidFields.push({ path: 'Application History', reason: 'Expected an application list' });
-    else {
-      applicationHistory = [];
-      for (const [index, entry] of raw.applicationHistory.entries()) {
-        let validUrl = false;
-        if (record(entry) && typeof entry.url === 'string') {
-          try {
-            validUrl = ['http:', 'https:'].includes(new URL(entry.url).protocol);
-          } catch {
-            /* Invalid URL. */
-          }
-        }
-        if (
-          !record(entry) ||
-          !['id', 'jobTitle', 'company', 'url', 'appliedAt'].every(
-            (key) => typeof entry[key] === 'string',
-          ) ||
-          !entry.id ||
-          !validUrl ||
-          !Number.isFinite(Date.parse(entry.appliedAt as string)) ||
-          !['applied', 'duplicate_warned'].includes(entry.status as string)
-        ) {
-          invalidFields.push({
-            path: 'Application History',
-            reason: `Invalid application at position ${index + 1}`,
-          });
-          continue;
-        }
-        applicationHistory.push({
-          id: entry.id as string,
-          jobTitle: entry.jobTitle as string,
-          company: entry.company as string,
-          url: entry.url as string,
-          appliedAt: entry.appliedAt as string,
-          status: entry.status as ApplicationEntry['status'],
-        });
-      }
-    }
-  }
-  return { learnedMappings, applicationHistory, invalidFields };
-}
-
-/** Add missing applications without overwriting an existing application ID. */
-export function mergeApplicationHistory(
-  local: ApplicationEntry[],
-  incoming: ApplicationEntry[],
-): ApplicationEntry[] {
-  const merged = new Map(local.map((entry) => [entry.id, entry]));
-  for (const entry of incoming) if (!merged.has(entry.id)) merged.set(entry.id, entry);
-  return [...merged.values()];
+  return { learnedMappings, invalidFields };
 }
 
 function mappingsDisplay(mappings: LearnedMappings): string {
@@ -130,8 +77,6 @@ function mappingsDisplay(mappings: LearnedMappings): string {
 export function backupDataChanges(
   localMappings: LearnedMappings,
   incomingMappings: LearnedMappings | undefined,
-  localHistory: ApplicationEntry[] = [],
-  incomingHistory?: ApplicationEntry[],
   mode: 'update' | 'replace' = 'update',
 ): FieldChange[] {
   const changes: FieldChange[] = [];
@@ -169,47 +114,6 @@ export function backupDataChanges(
           : 'Mappings are merged. Existing mappings are kept when equally trusted.',
     });
   }
-  if (incomingHistory || mode === 'replace') {
-    const merged =
-      mode === 'replace'
-        ? (incomingHistory ?? [])
-        : mergeApplicationHistory(localHistory, incomingHistory!);
-    const display = (rows: ApplicationEntry[]) =>
-      rows
-        .map(
-          (entry) =>
-            `${entry.jobTitle} at ${entry.company}\n${entry.appliedAt} · ${entry.status === 'applied' ? 'Applied' : 'Duplicate warned'}\n${entry.url}`,
-        )
-        .join('\n\n');
-    changes.push({
-      id: HISTORY_CHANGE_ID,
-      label: 'Application History',
-      section: 'Application History',
-      currentValue: localHistory,
-      suggestedValue: merged,
-      displayCurrent: display(localHistory),
-      displaySuggested: display(merged),
-      status:
-        mode === 'replace' && merged.length
-          ? localHistory.length
-            ? 'conflict'
-            : 'new'
-          : equalJsonValues(localHistory, merged)
-            ? 'unchanged'
-            : localHistory.length
-              ? 'conflict'
-              : 'new',
-      accepted:
-        mode === 'replace'
-          ? merged.length > 0 || localHistory.length > 0
-          : !equalJsonValues(localHistory, merged),
-      hasIncomingValue: (incomingHistory?.length ?? 0) > 0,
-      note:
-        mode === 'replace'
-          ? 'Current history will be replaced. Unselected history will be cleared.'
-          : 'Applications are merged by ID. Existing applications are kept.',
-    });
-  }
   return changes;
 }
 
@@ -219,10 +123,6 @@ export function selectedBackupData(changes: FieldChange[]) {
       (change) =>
         change.id === MAPPINGS_CHANGE_ID && change.status !== 'unchanged' && change.accepted,
     )?.suggestedValue as LearnedMappings | undefined,
-    applicationHistory: changes.find(
-      (change) =>
-        change.id === HISTORY_CHANGE_ID && change.status !== 'unchanged' && change.accepted,
-    )?.suggestedValue as ApplicationEntry[] | undefined,
   };
 }
 

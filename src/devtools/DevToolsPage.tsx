@@ -149,7 +149,6 @@ export default function DevToolsPage({
     storageBytes: snapshot?.storageBytes ?? 0,
     completion: completionAvailable ? completion.percentage : null,
     mappingSites: snapshot?.mappings ?? 0,
-    applications: snapshot?.applications ?? 0,
     aiModel: snapshot?.aiModel ?? null,
     drive: snapshot?.drive ?? null,
     events,

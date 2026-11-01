@@ -9,10 +9,8 @@ vi.mock('@/src/utils/storage', () => ({
   getProfile: vi.fn().mockResolvedValue(null),
   saveProfile: vi.fn().mockResolvedValue(undefined),
   getLearnedMappings: vi.fn().mockResolvedValue({}),
-  getApplicationHistory: vi.fn().mockResolvedValue([]),
   saveLearnedMappings: vi.fn().mockResolvedValue(undefined),
   mergeLearnedMappings: vi.fn((local: object, remote: object) => ({ ...local, ...remote })),
-  saveApplicationHistory: vi.fn().mockResolvedValue(undefined),
   clearAllStorage: vi.fn().mockResolvedValue(undefined),
   getGeminiSettings: vi.fn().mockResolvedValue({ apiKey: null, model: null, preference: 'auto', revision: null, verifiedAt: null }),
   saveGeminiSettings: vi.fn(async (apiKey, model, preference) => ({ apiKey, model, preference, revision: 'saved-revision', verifiedAt: 1 })),
@@ -55,7 +53,7 @@ vi.mock('@/src/utils/profileValidator', () => ({
 import { SettingsSection } from './SettingsSection';
 import { calculateDerivedFields } from '@/src/utils/derivedFields';
 import { ToastProvider } from '@/src/components/ui/Toast';
-import { getProfile, saveProfile, getGeminiApiKey, getGeminiSettings, saveGeminiSettings, clearAllStorage, saveLearnedMappings, getLearnedMappings, getApplicationHistory, clearGeminiSettings, saveThemePreference } from '@/src/utils/storage';
+import { getProfile, saveProfile, getGeminiApiKey, getGeminiSettings, saveGeminiSettings, clearAllStorage, saveLearnedMappings, getLearnedMappings, clearGeminiSettings, saveThemePreference } from '@/src/utils/storage';
 import { checkApiKey, validateApiKey } from '@/src/resume-ai/gemini';
 import { getFullDriveState, disconnectDrive, connectDrive, syncProfileToDrive, overwriteDriveWithLocal } from '@/src/utils/driveSync';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
@@ -95,7 +93,6 @@ beforeEach(() => {
   vi.mocked(getGeminiSettings).mockResolvedValue({ apiKey: null, model: null, preference: 'auto', revision: null, verifiedAt: null });
   vi.mocked(getFullDriveState).mockResolvedValue({ connected: false, lastSynced: null, pendingSync: false, error: null });
   vi.mocked(getLearnedMappings).mockResolvedValue({});
-  vi.mocked(getApplicationHistory).mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -637,11 +634,10 @@ describe('SettingsSection — Export', () => {
     } finally { click.mockRestore(); }
   });
 
-  it('builds the export JSON blob with profile/learnedMappings/applicationHistory and triggers a download', async () => {
+  it('builds the export JSON blob with profile and learned mappings and triggers a download', async () => {
     const profile = makeProfile({ id: 'abcdef1234567890' });
     vi.mocked(getProfile).mockResolvedValue(profile);
     vi.mocked(getLearnedMappings).mockResolvedValue({ 'a.com': { sig: { path: 'personal.firstName', count: 2 } } });
-    vi.mocked(getApplicationHistory).mockResolvedValue([]);
 
     const createObjectURL = vi.fn((_blob: Blob) => 'blob:mock-url');
     const revokeObjectURL = vi.fn();
@@ -664,7 +660,6 @@ describe('SettingsSection — Export', () => {
     const parsed = JSON.parse(await blob.text());
     expect(parsed.profile).toEqual(profile);
     expect(parsed.learnedMappings).toEqual({ 'a.com': { sig: { path: 'personal.firstName', count: 2 } } });
-    expect(parsed.applicationHistory).toEqual([]);
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
     expect(await screen.findByText('Profile exported successfully')).toBeTruthy();
 

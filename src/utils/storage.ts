@@ -1,6 +1,6 @@
 import { devLockName } from '@/src/devtools/context';
 import type { Profile } from '../types/profile';
-import type { LearnedMappings, LearnedMappingValue, ApplicationEntry, DriveBackupState } from '../types/storage';
+import type { LearnedMappings, LearnedMappingValue, DriveBackupState } from '../types/storage';
 import { normalizeProfile } from './migrate';
 import { DEV_PROFILE } from './devProfile';
 import { DEFAULT_GEMINI_MODEL, toGeminiModel } from '../resume-ai/types';
@@ -73,12 +73,11 @@ export class ProfileReplacementChangedError extends Error {
   }
 }
 
-/** One write prevents old-person history or mappings surviving a replacement. */
+/** Save the new profile and mappings together during replacement. */
 export async function replaceProfileData(
   profile: Profile,
   expected: Partial<Profile>,
   learnedMappings: LearnedMappings,
-  applicationHistory: ApplicationEntry[],
   pausedDriveState?: DriveBackupState,
 ): Promise<void> {
   // Fail closed on a read error; never interpret a failed read as an empty profile.
@@ -91,7 +90,6 @@ export async function replaceProfileData(
   await storageSet({
     profile: normalizeProfile(profile),
     learnedMappings,
-    applicationHistory,
     ...(pausedDriveState ? { driveBackupState: pausedDriveState } : {}),
   });
 }
@@ -140,20 +138,16 @@ export async function saveLearnedMappings(mappings: LearnedMappings): Promise<vo
   await storageSet({ learnedMappings: mappings });
 }
 
-export async function getApplicationHistory(): Promise<ApplicationEntry[]> {
-  const result = await storageGet('applicationHistory');
-  return (result.applicationHistory as ApplicationEntry[]) ?? [];
-}
-
-export async function saveApplicationHistory(history: ApplicationEntry[]): Promise<void> {
-  await storageSet({ applicationHistory: history });
-}
-
 export async function clearAllStorage(): Promise<void> {
   await withProfileWriteLock(async () => {
     // An explicit reset must not immediately resurrect the development fixture.
     if (import.meta.env.DEV) await storageSet({ devProfileDisabled: true });
-    await local.remove(['profile', 'learnedMappings', 'applicationHistory'], { rejectOnError: true });
+    const stored = await local.get(null, { rejectOnError: true });
+    // Retain reset markers so stale key checks cannot restore credentials.
+    const keys = Object.keys(stored).filter(
+      (key) => !['devProfileDisabled', 'geminiDevDisabled', 'geminiSettingsMeta'].includes(key),
+    );
+    if (keys.length) await local.remove(keys, { rejectOnError: true });
   });
 }
 

@@ -82,7 +82,6 @@ export default function ImportReviewScreen({
     ...new Set([
       ...PROFILE_SECTIONS.map((section) => section.label),
       'Learned Mappings',
-      'Application History',
       ...grouped.keys(),
     ]),
   ].filter((section) => grouped.has(section));

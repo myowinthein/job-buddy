@@ -1,5 +1,5 @@
 import type { Profile } from '@/src/types/profile';
-import type { ApplicationEntry, LearnedMappings } from '@/src/types/storage';
+import type { LearnedMappings } from '@/src/types/storage';
 
 // Synthetic data covering every editable profile field, including document bytes.
 export function settingsReviewProfile(): Profile {
@@ -115,13 +115,3 @@ export const SETTINGS_REVIEW_MAPPINGS: LearnedMappings = {
     surname: 'personal.lastName',
   },
 };
-export const SETTINGS_REVIEW_HISTORY: ApplicationEntry[] = [
-  {
-    id: 'sample-application',
-    jobTitle: 'Engineer',
-    company: 'Sample Employer',
-    url: 'https://example.com/jobs/1',
-    appliedAt: '2026-10-01T00:00:00.000Z',
-    status: 'applied',
-  },
-];

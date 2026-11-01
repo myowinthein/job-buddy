@@ -29,13 +29,7 @@ export async function replaceImportedProfile(
   const backup = selectedBackupData(changes);
   const save = (paused?: import('@/src/types/storage').DriveBackupState) =>
     withProfileWriteLock(() =>
-      replaceProfileData(
-        profile,
-        base,
-        backup.learnedMappings ?? {},
-        backup.applicationHistory ?? [],
-        paused,
-      ),
+      replaceProfileData(profile, base, backup.learnedMappings ?? {}, paused),
     );
   try {
     if (fromDrive)
