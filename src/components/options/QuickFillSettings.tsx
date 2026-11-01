@@ -106,7 +106,6 @@ export function QuickFillSettings() {
           id="quick-fill-mode"
           value={prefs?.fillMode ?? 'merge'}
           disabled={!prefs || saving || !prefs.enabled}
-          aria-describedby="quick-fill-mode-help"
           className={`${fieldCls(undefined, !prefs || saving || !prefs.enabled)} max-w-xs`}
           onChange={(event) =>
             void save({ fillMode: event.target.value === 'overwrite' ? 'overwrite' : 'merge' })
@@ -115,11 +114,6 @@ export function QuickFillSettings() {
           <option value="merge">Empty fields only</option>
           <option value="overwrite">Empty and existing fields</option>
         </select>
-        <p id="quick-fill-mode-help" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          {prefs?.fillMode === 'overwrite'
-            ? 'Replace existing answers where matching profile data is available.'
-            : 'Keep answers already entered in the form.'}
-        </p>
       </div>
       {!!prefs?.disabledSites.length && (
         <details className="mt-4">

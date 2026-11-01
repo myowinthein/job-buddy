@@ -55,9 +55,6 @@ it('saves fill behavior, restores it on remount, and keeps it when turning the b
   fireEvent.change(select, { target: { value: 'overwrite' } });
   await waitFor(() => expect(preferences.fillMode).toBe('overwrite'));
   await waitFor(() => expect((select as HTMLSelectElement).disabled).toBe(false));
-  expect(
-    screen.getByText('Replace existing answers where matching profile data is available.'),
-  ).toBeTruthy();
   view.unmount();
   render(<QuickFillSettings />);
   await waitFor(() =>
