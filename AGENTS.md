@@ -78,6 +78,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 - Read and follow the Git and safety rule files listed under Rules before working on the project.
 - Work directly on main for ordinary tasks; do not create feature branches/PRs. Local commits are automatic; pushes require separate user authorization.
 - Use `useToast` from `src/components/ui/useToast.ts`; `Toast.tsx` owns the provider. Section save flows use `shared/saveSection.ts`; reuse `fieldCls.ts`, dropdown hooks, and `useScrollToNewEntry.ts`.
+- Loading feedback follows the visible action area: when a progress indicator is visible, keep the action label stable and disable it while the indicator reports progress. Without a visible indicator, put progress in the disabled action button. A section indicator behind a dialog does not count. Preserve retry/reconnect labels throughout pending actions, and do not delay fast operations to display loading.
 - Vitest defaults to Node; DOM tests opt in with per-file `// @vitest-environment jsdom`. React Testing Library is installed. Keep tests under `src/`, never under WXT's `entrypoints/`.
 - Autofill-matching changes require a build and live verification in a Playwright-driven Chromium against a throwaway form, in addition to relevant unit tests; verify real filled values and form validation/events.
 - Preserve Tailwind v4's `@tailwindcss/postcss` setup in the extension; the static landing page has its own CDN setup.

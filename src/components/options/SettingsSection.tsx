@@ -169,6 +169,7 @@ async function saveImportedData(
 export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const { showToast } = useToast();
   const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState('');
   const [resetting, setResetting] = useState(false);
@@ -220,6 +221,17 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   });
   const [driveConnecting, setDriveConnecting] = useState(false);
   const [driveSyncing, setDriveSyncing] = useState(false);
+  const [driveActionLabel, setDriveActionLabel] = useState('Back Up Now');
+  const driveIdleLabel = !driveState.connected
+    ? 'Connect Google Drive'
+    : driveState.error === 'token_expired'
+      ? 'Reconnect'
+      : driveState.reviewRequired
+        ? 'Review Backup'
+        : driveState.error
+          ? 'Retry Backup'
+          : 'Back Up Now';
+  const driveButtonLabel = driveConnecting || driveSyncing ? driveActionLabel : driveIdleLabel;
   const driveBackupBusy = driveSyncing || !!driveState.uploadingUntil;
   const [driveDisconnectDialog, setDriveDisconnectDialog] = useState(false);
   const [driveDisconnectBusy, setDriveDisconnectBusy] = useState(false);
@@ -300,6 +312,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   // ── Export ──────────────────────────────────────────────────────────────────
 
   const handleExport = async () => {
+    if (exporting) return;
+    setExporting(true);
     try {
       const [profile, learnedMappings] = await Promise.all([getProfile(), getLearnedMappings()]);
 
@@ -332,6 +346,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     } catch (err) {
       console.error('[Job Buddy] Export failed:', err);
       showToast('error', 'Failed to export profile');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -556,6 +572,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     }
   };
   const handleDriveConnect = async () => {
+    setDriveActionLabel(driveIdleLabel);
     setDriveConnecting(true);
     try {
       await handleDriveBackupResult(await connectDrive());
@@ -566,6 +583,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     }
   };
   const handleDriveCheck = async () => {
+    setDriveActionLabel(driveIdleLabel);
     setDriveConnecting(true);
     try {
       await handleDriveBackupResult(await inspectDriveBackup());
@@ -580,6 +598,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       await handleDriveCheck();
       return;
     }
+    setDriveActionLabel(driveIdleLabel);
     setDriveSyncing(true);
     try {
       const profile = await getProfile();
@@ -831,8 +850,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           Back up your profile as JSON or transfer it to another browser or device.
         </p>
-        <button type="button" onClick={handleExport} className={btnPrimaryCls}>
-          Download File
+        <button type="button" onClick={handleExport} disabled={exporting} className={btnPrimaryCls}>
+          {exporting ? 'Exporting…' : 'Download File'}
         </button>
       </section>
 
@@ -858,7 +877,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           disabled={importing}
           className={btnSecondaryCls}
         >
-          Choose File
+          {importing ? 'Importing…' : 'Choose File'}
         </button>
       </section>
 
@@ -877,18 +896,22 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             Google Drive backup is unavailable in this build.
           </span>
         )}
-        {!driveState.connected && !driveConnecting && isDriveConfigured() && (
-          <button type="button" onClick={handleDriveConnect} className={btnPrimaryCls}>
-            Connect Google Drive
-          </button>
+        {!driveState.connected && isDriveConfigured() && (
+          <div className="space-y-3">
+            {driveConnecting && (
+              <span role="status" className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
+                <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-full border-2 border-current border-r-transparent animate-spin motion-reduce:animate-none" />
+                Checking Drive backup…
+              </span>
+            )}
+            <div>
+              <button type="button" onClick={handleDriveConnect} disabled={driveConnecting} className={btnPrimaryCls}>
+                {driveButtonLabel}
+              </button>
+            </div>
+          </div>
         )}
-        {driveConnecting && (
-          <span role="status" className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
-            <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-full border-2 border-current border-r-transparent animate-spin motion-reduce:animate-none" />
-            Checking Drive backup…
-          </span>
-        )}
-        {driveState.connected && !driveConnecting && (
+        {driveState.connected && (
           <div className="space-y-2">
             <div className="space-y-3">
               <div className="min-w-0 space-y-1">
@@ -898,9 +921,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                   </p>
                   <span
                     role="status"
-                    className={`inline-flex items-center gap-1.5 text-xs ${driveBackupBusy ? 'text-blue-600 dark:text-blue-400' : driveState.error || driveState.reviewRequired || driveState.pendingSync ? 'text-amber-700 dark:text-amber-400' : 'text-green-700 dark:text-green-400'}`}
+                    className={`inline-flex items-center gap-1.5 text-xs ${driveBackupBusy || driveConnecting ? 'text-blue-600 dark:text-blue-400' : driveState.error || driveState.reviewRequired || driveState.pendingSync ? 'text-amber-700 dark:text-amber-400' : 'text-green-700 dark:text-green-400'}`}
                   >
-                    {driveBackupBusy ? (
+                    {driveBackupBusy || driveConnecting ? (
                       <span
                         aria-hidden="true"
                         className="h-3 w-3 shrink-0 rounded-full border-2 border-current border-r-transparent animate-spin motion-reduce:animate-none"
@@ -913,15 +936,17 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                     )}
                     {driveBackupBusy
                       ? 'Backing up…'
-                      : driveState.error === 'token_expired'
-                        ? 'Reconnect needed'
-                        : driveState.error === 'sync_error'
-                          ? 'Backup pending'
-                          : driveState.error || driveState.reviewRequired
-                            ? 'Backup paused'
-                            : driveState.pendingSync
-                              ? 'Backup pending'
-                              : 'Connected'}
+                      : driveConnecting
+                        ? 'Checking Drive backup…'
+                        : driveState.error === 'token_expired'
+                          ? 'Reconnect needed'
+                          : driveState.error === 'sync_error'
+                            ? 'Backup pending'
+                            : driveState.error || driveState.reviewRequired
+                              ? 'Backup paused'
+                              : driveState.pendingSync
+                                ? 'Backup pending'
+                                : 'Connected'}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -930,7 +955,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                     : 'No backup yet'}
                 </p>
               </div>
-              {driveState.error && !driveBackupBusy && (
+              {driveState.error && !driveBackupBusy && !driveConnecting && (
                 <p role="status" className="text-sm text-amber-700 dark:text-amber-400">
                   {driveFailureText(driveState.error)}
                 </p>
@@ -945,23 +970,15 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                         ? handleDriveCheck
                         : handleDriveSyncNow
                   }
-                  disabled={driveBackupBusy || driveDisconnectBusy || driveRestoreBusy}
+                  disabled={driveConnecting || driveBackupBusy || driveDisconnectBusy || driveRestoreBusy}
                   className={btnPrimaryCls}
                 >
-                  {driveBackupBusy
-                    ? 'Back Up Now'
-                    : driveState.error === 'token_expired'
-                      ? 'Reconnect'
-                      : driveState.reviewRequired
-                        ? 'Review Backup'
-                        : driveState.error
-                          ? 'Retry Backup'
-                          : 'Back Up Now'}
+                  {driveButtonLabel}
                 </button>
                 <button
                   type="button"
                   onClick={() => setDriveDisconnectDialog(true)}
-                  disabled={driveBackupBusy || driveDisconnectBusy || driveRestoreBusy}
+                  disabled={driveConnecting || driveBackupBusy || driveDisconnectBusy || driveRestoreBusy}
                   className={btnSecondaryCls}
                 >
                   Disconnect

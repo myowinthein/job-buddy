@@ -55,7 +55,7 @@ import { calculateDerivedFields } from '@/src/utils/derivedFields';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import { getProfile, saveProfile, getGeminiApiKey, getGeminiSettings, saveGeminiSettings, clearAllStorage, saveLearnedMappings, getLearnedMappings, clearGeminiSettings, saveThemePreference } from '@/src/utils/storage';
 import { checkApiKey, validateApiKey } from '@/src/resume-ai/gemini';
-import { getFullDriveState, disconnectDrive, connectDrive, syncProfileToDrive, overwriteDriveWithLocal } from '@/src/utils/driveSync';
+import { getFullDriveState, disconnectDrive, connectDrive, inspectDriveBackup, syncProfileToDrive, overwriteDriveWithLocal } from '@/src/utils/driveSync';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
 import { applyTheme, getCurrentTheme, subscribeTheme } from '@/src/utils/theme';
 import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
@@ -700,4 +700,58 @@ it.each(['not json', '{}', '{"profile":[]}'])('uses one sentence for an invalid 
   fireEvent.change(document.querySelector('input[type="file"][accept=".json"]')!, { target: { files: [file] } });
   expect(await screen.findByText('Select a valid Job Buddy export file.')).toBeTruthy();
   expect(saveProfile).not.toHaveBeenCalled();
+});
+
+describe('Settings loading presentation', () => {
+  it.each([
+    ['Connect Google Drive', false, null, false],
+    ['Reconnect', true, 'token_expired', false],
+    ['Review Backup', true, null, true],
+    ['Retry Backup', true, 'sync_error', false],
+    ['Back Up Now', true, null, false],
+  ] as const)('keeps %s visible during its operation', async (label, connected, error, reviewRequired) => {
+    vi.mocked(getFullDriveState).mockResolvedValue({
+      connected, error, reviewRequired, lastSynced: null, pendingSync: false,
+    });
+    vi.mocked(connectDrive).mockImplementation(() => new Promise(() => {}));
+    vi.mocked(inspectDriveBackup).mockImplementation(() => new Promise(() => {}));
+    vi.mocked(syncProfileToDrive).mockImplementation(() => new Promise(() => {}));
+    vi.mocked(getProfile).mockResolvedValue(makeProfile());
+    renderSection();
+    const button = await screen.findByRole('button', { name: label });
+    fireEvent.click(button);
+    const progress = label === 'Retry Backup' || label === 'Back Up Now'
+      ? 'Backing up…' : 'Checking Drive backup…';
+    await screen.findByText(progress, { selector: '[role="status"]' });
+    expect(screen.getAllByText(progress)).toHaveLength(1);
+    expect((screen.getByRole('button', { name: label }) as HTMLButtonElement).disabled).toBe(true);
+    // Provider state can change before the pending action completes.
+    vi.mocked(getFullDriveState).mockResolvedValue({
+      connected: true, error: null, reviewRequired: false, lastSynced: null, pendingSync: false,
+    });
+    act(() => { window.dispatchEvent(new Event('jb:drive:state-changed')); });
+    await waitFor(() => expect(screen.getByText('Google Drive')).toBeTruthy());
+    expect((screen.getByRole('button', { name: label }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('shows export progress in the button and restores it after completion', async () => {
+    let finish!: (profile: null) => void;
+    vi.mocked(getProfile).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    renderSection();
+    fireEvent.click(screen.getByRole('button', { name: 'Download File' }));
+    expect((screen.getByRole('button', { name: 'Exporting…' }) as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => { finish(null); });
+    expect((screen.getByRole('button', { name: 'Download File' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('shows JSON reading progress in Choose File without adding a second indicator', async () => {
+    let finish!: (text: string) => void;
+    const file = new File(['{}'], 'profile.json', { type: 'application/json' });
+    Object.defineProperty(file, 'text', { value: () => new Promise(resolve => { finish = resolve; }) });
+    renderSection();
+    fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [file] } });
+    expect((screen.getByRole('button', { name: 'Importing…' }) as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => { finish('{}'); });
+    expect((screen.getByRole('button', { name: 'Choose File' }) as HTMLButtonElement).disabled).toBe(false);
+  });
 });

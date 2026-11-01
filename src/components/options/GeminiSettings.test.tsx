@@ -80,6 +80,28 @@ afterEach(() => {
 });
 
 describe('Gemini explicit key setup', () => {
+  it.each(['Save Key', 'Check Key', 'Check again', 'Try Again'])(
+    'keeps %s visible and disabled while the indicator reports checking',
+    async (label) => {
+      if (label !== 'Save Key') {
+        vi.mocked(getGeminiSettings).mockResolvedValue({
+          ...existing, verifiedAt: label === 'Check Key' ? null : Date.now(),
+        });
+      }
+      if (label === 'Try Again') vi.mocked(checkApiKey).mockResolvedValueOnce('network_error');
+      renderSettings();
+      if (label === 'Save Key') await enterKey();
+      if (label === 'Try Again') {
+        fireEvent.click(await screen.findByRole('button', { name: 'Check again' }));
+        await screen.findByText('Needs attention');
+      }
+      vi.mocked(checkApiKey).mockImplementation(() => new Promise(() => {}));
+      fireEvent.click(await screen.findByRole('button', { name: label }));
+      expect(await screen.findByText('Checking…', { selector: '[role="status"]' })).toBeTruthy();
+      expect(screen.getAllByText('Checking…')).toHaveLength(1);
+      expect((screen.getByRole('button', { name: label }) as HTMLButtonElement).disabled).toBe(true);
+    },
+  );
   it('does not send any request while typing, blurring or waiting', async () => {
     renderSettings();
     await enterKey();
