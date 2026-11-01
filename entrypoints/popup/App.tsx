@@ -489,15 +489,17 @@ function App() {
               {isCoreComplete && !profileLoadFailed && (
                 <Check aria-hidden="true" className="h-3.5 w-3.5" />
               )}
-              Required profile
+              {isCoreComplete && !profileLoadFailed
+                ? 'Required details complete'
+                : 'Required profile'}
               {profileLoadFailed ? (
                 <span aria-label="Unavailable">—</span>
               ) : (
-                <span
-                  className={`font-semibold ${isCoreComplete ? 'text-green-700 dark:text-green-400' : 'text-blue-700 dark:text-blue-400'}`}
-                >
-                  {percentage}%
-                </span>
+                !isCoreComplete && (
+                  <span className="font-semibold text-blue-700 dark:text-blue-400">
+                    {percentage}%
+                  </span>
+                )
               )}
             </span>
           )}

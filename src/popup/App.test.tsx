@@ -421,11 +421,11 @@ describe('popup profile and action presentation', () => {
     expect(progress.firstElementChild?.className).toContain(
       percentage === 100 ? 'bg-green-500' : 'bg-blue-500',
     );
-    expect(screen.getByText('Required profile')).toBeTruthy();
-    expect(screen.getByText(`${percentage}%`)).toBeTruthy();
-    expect(screen.getByText(`${percentage}%`).className).toContain(
-      percentage === 100 ? 'text-green-700' : 'text-blue-700',
-    );
+    expect(
+      screen.getByText(percentage === 100 ? 'Required details complete' : 'Required profile'),
+    ).toBeTruthy();
+    if (percentage === 100) expect(screen.queryByText('100%')).toBeNull();
+    else expect(screen.getByText(`${percentage}%`)).toBeTruthy();
     expect(screen.queryByText(/ready to apply|Almost there|optional fields available/)).toBeNull();
   });
 
