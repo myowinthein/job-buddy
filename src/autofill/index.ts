@@ -68,6 +68,34 @@ export interface AutofillScanResult {
 // belong to Undo. Highlighting an unfilled field never grants ownership.
 let sessionElements: HTMLElement[] = [];
 let sessionGeneration = 0;
+let sessionAbort = new AbortController();
+let removeProfileWatcher = () => {};
+
+function invalidateSession(): void {
+  sessionGeneration++;
+  sessionAbort.abort(new DOMException('Autofill cancelled', 'AbortError'));
+  removeProfileWatcher();
+}
+
+function watchRunProfile(): void {
+  removeProfileWatcher();
+  if (typeof chrome === 'undefined' || !chrome.storage?.onChanged) return;
+  const listener = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+    if (
+      area === 'local' &&
+      changes.profile &&
+      JSON.stringify(changes.profile.oldValue) !== JSON.stringify(changes.profile.newValue)
+    )
+      cancelAutofillRun();
+  };
+  chrome.storage.onChanged.addListener(listener);
+  const remove = () => {
+    chrome.storage.onChanged.removeListener(listener);
+    if (removeProfileWatcher === remove) removeProfileWatcher = () => {};
+  };
+  removeProfileWatcher = remove;
+}
+
 let refillInFlight: Promise<void> | null = null;
 let pendingReady = false;
 let fillLog: FrameFillLog | null = null;
@@ -390,7 +418,7 @@ export function undoAutofill(): void {
   getFillLog();
   removeReportWatchers();
   if (fillLog) fillLog.status = 'undone';
-  sessionGeneration++;
+  invalidateSession();
   refillInFlight = null;
   pendingReady = false;
   pendingMatches = [];
@@ -412,7 +440,7 @@ export function undoAutofill(): void {
 
 // Invalidate pending/async work without undoing already filled answers.
 export function cancelAutofillRun(): void {
-  sessionGeneration++;
+  invalidateSession();
   pendingReady = false;
   pendingMatches = [];
   noDataFields = [];
@@ -429,7 +457,9 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
   pendingRadioGroups = [];
   pendingCheckboxGroups = [];
   fillLog = { version: 1, runId, startedAt: Date.now(), origin: location.origin, status: 'scanning', fields: [] };
-  const generation = ++sessionGeneration;
+  invalidateSession();
+  sessionAbort = new AbortController();
+  const generation = sessionGeneration;
   refillInFlight = null;
   pendingReady = false;
   noDataFields = [];
@@ -446,6 +476,7 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
     return { preFilledCount: 0, totalMatched: 0 };
   }
 
+  watchRunProfile();
   const learnedMappings = await getLearnedMappings();
   if (generation !== sessionGeneration) return { preFilledCount: 0, totalMatched: 0 };
   const domain = fieldDomain();
@@ -611,11 +642,22 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
 // with the rule pipeline's fill.
 export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<AutofillResult> {
   if (!pendingReady) return { ...EMPTY_AUTOFILL_RESULT };
+  const stopWatching = removeProfileWatcher;
+  try {
+    return await executePendingAutofill(mode);
+  } finally {
+    stopWatching();
+  }
+}
+
+async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<AutofillResult> {
+  if (!pendingReady) return { ...EMPTY_AUTOFILL_RESULT };
   pendingReady = false;
   const matchesToFill = pendingMatches;
   pendingMatches = [];
   const ownedElements = sessionElements;
   const generation = sessionGeneration;
+  const abortSignal = sessionAbort.signal;
   const isActive = () => generation === sessionGeneration;
   const profile = await getProfile();
   if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
@@ -790,7 +832,13 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   const aiStates = new Map<HTMLElement, 'green' | 'yellow'>();
   let aiStatus: AIAutofillStatus | undefined;
   const aiRan = await runAIAutofill(aiTextCandidates, profile, result, ownedElements, debugAI, {
-    mode, isActive, fieldRecords, radioGroups: pendingRadioGroups, checkboxGroups: pendingCheckboxGroups,
+    mode, isActive, signal: abortSignal, formFields: matchesToFill.map(match => match.signals), fieldRecords, radioGroups: pendingRadioGroups, checkboxGroups: pendingCheckboxGroups,
+    isProfileCurrent: async () => {
+      const current = await getProfile();
+      if (JSON.stringify(current) === JSON.stringify(profile)) return true;
+      cancelAutofillRun();
+      return false;
+    },
     onTextFilled: (element, state) => {
       aiStates.set(element, state);
       const record = fieldRecords.get(element);

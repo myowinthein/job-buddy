@@ -356,20 +356,21 @@ describe('runAIAutofill — native <select> candidates', () => {
       expect.arrayContaining([
         expect.objectContaining({
           type: 'select',
-          options: [{ label: 'Thailand', value: 'TH' }, { label: 'Germany', value: 'DE' }],
+          options: [{ id: 'option_001', label: 'Thailand', value: 'TH' }, { id: 'option_002', label: 'Germany', value: 'DE' }],
         }),
       ]),
       expect.anything(),
+      expect.objectContaining({ signal: undefined }),
     );
   });
 
-  it('fills with the AI-selected option label, not a resolved profile path', async () => {
+  it('fills with the exact AI-selected option value', async () => {
     const cand = selectCandidate([{ text: 'Thailand', value: 'TH' }, { text: 'Germany', value: 'DE' }]);
     mockResponses([{ fieldId: 'field_001', selectedOption: 'Germany', confidence: 'high' }]);
 
     await runAIAutofill([cand], PROFILE, freshResult(), []);
 
-    expect(fillField).toHaveBeenCalledWith(cand.element, 'Germany', expect.any(Function));
+    expect(fillField).toHaveBeenCalledWith(cand.element, 'DE', expect.any(Function));
   });
 
   it('sends an ARIA combobox as type "select" with no options (unavailable until the dropdown opens)', async () => {
@@ -391,6 +392,7 @@ describe('runAIAutofill — native <select> candidates', () => {
         expect.objectContaining({ type: 'select', label: 'Country' }),
       ]),
       expect.anything(),
+      expect.objectContaining({ signal: undefined }),
     );
     const sentPayload = vi.mocked(resolveFieldsWithAI).mock.calls[0][2];
     expect(sentPayload[0]).not.toHaveProperty('options');
@@ -525,8 +527,8 @@ describe('runAIAutofill — radio fills', () => {
     expect(result.noReview).toBe(0);
   });
 
-  it('matches via the fuzzy fallback when the AI response is a close typo, not an exact label match', async () => {
-    const { group, el } = radioGroup();
+  it('rejects close typos instead of guessing a different option', async () => {
+    const { group } = radioGroup();
     vi.mocked(scanRadioGroups).mockReturnValue([group]);
     const result = freshResult();
 
@@ -534,8 +536,8 @@ describe('runAIAutofill — radio fills', () => {
 
     await runAIAutofill([], PROFILE, result, []);
 
-    expect(fillRadioInput).toHaveBeenCalledWith(el);
-    expect(result.noReview).toBe(1);
+    expect(fillRadioInput).not.toHaveBeenCalled();
+    expect(result.noReview).toBe(0);
   });
 
   it('does not fill when the AI response is too dissimilar to any option (below the fuzzy threshold)', async () => {

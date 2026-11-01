@@ -350,24 +350,24 @@ export async function fillFileField(
   }
 }
 
-function fillCheckedInput(element: HTMLElement): boolean {
+function fillCheckedInput(element: HTMLElement, checked = true): boolean {
   if (!isControlAvailable(element)) return false;
   if (element instanceof HTMLInputElement) {
-    if (nativeCheckedSetter) nativeCheckedSetter.call(element, true);
-    else element.checked = true;
+    if (nativeCheckedSetter) nativeCheckedSetter.call(element, checked);
+    else element.checked = checked;
     element.dispatchEvent(new Event('change', { bubbles: true }));
     element.dispatchEvent(new Event('input', { bubbles: true }));
-    return element.checked;
+    return element.checked === checked;
   }
   // Let the widget's own handler update its state and any hidden native input.
-  if (!isChoiceChecked(element)) element.click();
-  return isChoiceChecked(element);
+  if (isChoiceChecked(element) !== checked) element.click();
+  return isChoiceChecked(element) === checked;
 }
 
 export function fillRadioInput(element: HTMLElement): boolean {
   return fillCheckedInput(element);
 }
 
-export function fillCheckboxInput(element: HTMLElement): boolean {
-  return fillCheckedInput(element);
+export function fillCheckboxInput(element: HTMLElement, checked = true): boolean {
+  return fillCheckedInput(element, checked);
 }

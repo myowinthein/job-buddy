@@ -67,6 +67,8 @@ export interface FieldChange {
 // Shared between src/resume-ai/gemini.ts (producer) and src/autofill/ai.ts (consumer).
 
 export interface AIOptionPayload {
+  /** Stable within this request; preferred over ambiguous labels or values. */
+  id?: string;
   label: string;
   value: string;
 }
@@ -79,6 +81,13 @@ export interface AIFieldPayload {
   name?:        string;
   nearbyText?:  string;
   options?:     AIOptionPayload[];
+  /** Visible question text, excluding internal name/id fallbacks. */
+  visibleLabel?: string;
+  inputType?: string;
+  section?: string;
+  entryIndex?: number;
+  autocomplete?: string;
+  constraints?: { min?: string; max?: string; step?: string; pattern?: string; maxLength?: number };
 }
 
 export interface AIFieldResponse {

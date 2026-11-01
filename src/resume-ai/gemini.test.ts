@@ -116,7 +116,7 @@ describe('parseAutofillResponse (via resolveFieldsWithAI)', () => {
   });
 
   it('throws on a non-ok HTTP status', async () => {
-    fetchMock.mockResolvedValueOnce(httpResponse(500));
+    fetchMock.mockResolvedValue(httpResponse(500));
     await expect(
       resolveFieldsWithAI('key', 'gemini-3.8-flash', FIELDS, {}),
     ).rejects.toThrow('AI autofill request failed: 500');
@@ -517,4 +517,119 @@ it('rejects invalid assessment metadata rather than silently assuming a resume',
   await expect(
     extractFromResume('key', 'gemini-3.8-flash', 'pdf', 'application/pdf', {}),
   ).rejects.toMatchObject({ code: 'parse' });
+});
+
+describe('bounded and cancellable autofill requests', () => {
+  const fields: AIFieldPayload[] = [{ fieldId: 'x', type: 'text', label: 'Custom reference' }];
+  afterEach(() => vi.useRealTimers());
+  it.each([404, 408, 429, 500, 502, 503, 504])(
+    'tries the next model after status %s',
+    async (status) => {
+      fetchMock
+        .mockResolvedValueOnce(httpResponse(status))
+        .mockResolvedValueOnce(geminiTextResponse('[]'));
+      expect(await resolveFieldsWithAI('synthetic', 'gemini-3.8-flash', fields, {})).toEqual([]);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    },
+  );
+  it.each([400, 401, 403])('does not retry permanent status %s', async (status) => {
+    fetchMock.mockResolvedValue(httpResponse(status));
+    await expect(resolveFieldsWithAI('synthetic', 'gemini-3.8-flash', fields, {})).rejects.toThrow(
+      String(status),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  it('times out a stalled body and recovers through the next model', async () => {
+    vi.useFakeTimers();
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => new Promise(() => {}) })
+      .mockResolvedValueOnce(geminiTextResponse('[]'));
+    const pending = resolveFieldsWithAI('synthetic', 'gemini-3.8-flash', fields, {});
+    await vi.advanceTimersByTimeAsync(GEMINI_REQUEST_TIMEOUT_MS + 1);
+    expect(await pending).toEqual([]);
+    expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+  it('aborts a stalled response body without starting another model', async () => {
+    const controller = new AbortController();
+    let enteredBody!: () => void;
+    const reading = new Promise<void>((resolve) => {
+      enteredBody = resolve;
+    });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => {
+        enteredBody();
+        return new Promise(() => {});
+      },
+    });
+    const pending = resolveFieldsWithAI(
+      'synthetic',
+      'gemini-3.8-flash',
+      fields,
+      {},
+      { signal: controller.signal },
+    );
+    const rejected = expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    await reading;
+    controller.abort();
+    await rejected;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(true);
+  });
+  it('does not start a fallback when the run is no longer active', async () => {
+    let active = true;
+    fetchMock.mockImplementationOnce(async () => {
+      active = false;
+      return httpResponse(429);
+    });
+    await expect(
+      resolveFieldsWithAI('synthetic', 'gemini-3.8-flash', fields, {}, { isActive: () => active }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  it('never sends a request when already cancelled', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      resolveFieldsWithAI(
+        'synthetic',
+        'gemini-3.8-flash',
+        fields,
+        {},
+        { signal: controller.signal },
+      ),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('batches long forms and bounds unrelated profile prose', async () => {
+    fetchMock.mockResolvedValue(geminiTextResponse('[]'));
+    const many = Array.from({ length: 45 }, (_, i) => ({ ...fields[0], fieldId: `field_${i}` }));
+    await resolveFieldsWithAI('synthetic', 'gemini-3.8-flash', many, {
+      workHistory: [{ description: 'x'.repeat(250_000) }],
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const seen: string[] = [];
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(new TextEncoder().encode(init.body).length).toBeLessThanOrEqual(96_000);
+      const prompt = JSON.parse(init.body).contents[0].parts[0].text as string;
+      const payload = JSON.parse(prompt.slice(prompt.lastIndexOf('\n\n{') + 2));
+      expect(payload.fields.length).toBeLessThanOrEqual(20);
+      expect(payload.profile.workHistory[0].description.length).toBe(2_000);
+      seen.push(...payload.fields.map((field: AIFieldPayload) => field.fieldId));
+    }
+    expect(seen).toEqual(many.map((field) => field.fieldId));
+  });
+  it('preserves completed batches and reports an unavailable later batch', async () => {
+    fetchMock
+      .mockResolvedValueOnce(geminiTextResponse('[{"fieldId":"field_0","confidence":null}]'))
+      .mockResolvedValue(httpResponse(503));
+    const onUnavailable = vi.fn();
+    const many = Array.from({ length: 21 }, (_, i) => ({ ...fields[0], fieldId: `field_${i}` }));
+    expect(
+      await resolveFieldsWithAI('synthetic', 'gemini-3.8-flash', many, {}, { onUnavailable }),
+    ).toHaveLength(1);
+    expect(onUnavailable).toHaveBeenCalledOnce();
+  });
 });

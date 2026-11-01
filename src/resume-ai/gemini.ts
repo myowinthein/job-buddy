@@ -21,8 +21,11 @@ function endpoint(model: string): string {
 export const GEMINI_REQUEST_TIMEOUT_MS = 15_000;
 export const RESUME_REQUEST_TIMEOUT_MS = 30_000;
 async function geminiRequest<T>(
-  url: string, apiKey: string, init: RequestInit,
-  consume: (response: Response) => Promise<T>, timeoutMs = GEMINI_REQUEST_TIMEOUT_MS,
+  url: string,
+  apiKey: string,
+  init: RequestInit,
+  consume: (response: Response) => Promise<T>,
+  timeoutMs = GEMINI_REQUEST_TIMEOUT_MS,
 ): Promise<T> {
   const startedAt = Date.now();
   let responseStatus: number | undefined;
@@ -35,30 +38,51 @@ async function geminiRequest<T>(
     () => controller.abort(new DOMException('Request timed out', 'TimeoutError')),
     timeoutMs,
   );
+  let onAbort: (() => void) | undefined;
   try {
-    const response = await fetch(url, {
-      ...init,
-      signal: controller.signal,
-      headers: { ...init.headers, 'x-goog-api-key': apiKey },
+    if (controller.signal.aborted) throw controller.signal.reason;
+    const aborted = new Promise<never>((_, reject) => {
+      onAbort = () =>
+        reject(controller.signal.reason ?? new DOMException('Cancelled', 'AbortError'));
+      controller.signal.addEventListener('abort', onAbort, { once: true });
     });
-    responseStatus = response.status;
-    if (!response.ok) outcome = 'error';
-    return await consume(response);
+    return await Promise.race([
+      aborted,
+      (async () => {
+        const response = await fetch(url, {
+          ...init,
+          signal: controller.signal,
+          headers: { ...init.headers, 'x-goog-api-key': apiKey },
+        });
+        responseStatus = response.status;
+        if (!response.ok) outcome = 'error';
+        return await consume(response);
+      })(),
+    ]);
   } catch (error) {
     outcome = controller.signal.aborted
-      ? (controller.signal.reason as { name?: string })?.name === 'TimeoutError' ? 'timeout' : 'cancelled'
+      ? (controller.signal.reason as { name?: string })?.name === 'TimeoutError'
+        ? 'timeout'
+        : 'cancelled'
       : 'error';
     if (controller.signal.aborted) throw controller.signal.reason ?? error;
     throw error;
   } finally {
     clearTimeout(timer);
+    if (onAbort) controller.signal.removeEventListener('abort', onAbort);
     init.signal?.removeEventListener('abort', abort);
     if (import.meta.env.DEV && typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('jb:dev:request', { detail: {
-        operation: url.includes(':generateContent') ? 'model-request' : 'key-check',
-        model: /models\/([^:/?]+):generateContent/.exec(url)?.[1],
-        status: responseStatus, outcome, durationMs: Date.now() - startedAt,
-      } }));
+      window.dispatchEvent(
+        new CustomEvent('jb:dev:request', {
+          detail: {
+            operation: url.includes(':generateContent') ? 'model-request' : 'key-check',
+            model: /models\/([^:/?]+):generateContent/.exec(url)?.[1],
+            status: responseStatus,
+            outcome,
+            durationMs: Date.now() - startedAt,
+          },
+        }),
+      );
     }
   }
 }
@@ -209,47 +233,109 @@ export async function extractFromResume(
 
 // ── AI autofill field resolution ─────────────────────────────────────────────
 
+export const MAX_AI_FIELDS_PER_REQUEST = 20;
+export const MAX_AI_FIELDS_PER_RUN = 200;
+export const MAX_AI_REQUEST_BYTES = 96_000;
+const AUTOFILL_OUTPUT_TOKENS = 4_096;
+
 export async function resolveFieldsWithAI(
   apiKey: string,
   model: GeminiModel,
   fields: AIFieldPayload[],
   profile: object,
+  options: { signal?: AbortSignal; isActive?: () => boolean; onUnavailable?: () => void } = {},
 ): Promise<AIFieldResponse[]> {
-  const prompt = buildAutofillPrompt(fields, autofillProfilePayload(profile, fields));
-  const body = JSON.stringify({
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { temperature: 0 },
-  });
-
-  // Start with the configured model, then fall through the priority list on
-  // 429 so a rate-limited model can fall back. The caller preserves rule-based
-  // fills and reports unavailable AI assistance if the request still fails.
-  const modelsToTry = [model, ...GEMINI_MODEL_PRIORITY.filter(m => m !== model)];
-
-  for (const tryModel of modelsToTry) {
-    let resp: Response;
-    try {
-      resp = await geminiFetch(endpoint(tryModel), apiKey, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-      });
-    } catch {
-      throw new Error('Network error during AI autofill');
+  const models = [model, ...GEMINI_MODEL_PRIORITY.filter((m) => m !== model)];
+  const responses: AIFieldResponse[] = [];
+  const encoder = new TextEncoder();
+  const bodyFor = (batch: AIFieldPayload[]) =>
+    JSON.stringify({
+      contents: [
+        { parts: [{ text: buildAutofillPrompt(batch, autofillProfilePayload(profile, batch)) }] },
+      ],
+      generationConfig: { temperature: 0, maxOutputTokens: AUTOFILL_OUTPUT_TOKENS },
+    });
+  if (fields.length > MAX_AI_FIELDS_PER_RUN) options.onUnavailable?.();
+  const batches: AIFieldPayload[][] = [];
+  let batch: AIFieldPayload[] = [];
+  for (const field of fields.slice(0, MAX_AI_FIELDS_PER_RUN)) {
+    if (
+      batch.length &&
+      (batch.length >= MAX_AI_FIELDS_PER_REQUEST ||
+        encoder.encode(bodyFor([...batch, field])).length > MAX_AI_REQUEST_BYTES)
+    ) {
+      batches.push(batch);
+      batch = [];
     }
-
-    if (resp.status === 429) continue;
-    if (!resp.ok) throw new Error(`AI autofill request failed: ${resp.status}`);
-
-    let data: unknown;
-    try { data = await resp.json(); } catch { throw new Error('Invalid AI autofill response'); }
-
-    const text = extractGeminiText(data) ?? '';
-    return parseAutofillResponse(text);
+    // An unusually large option list must not bypass the request budget.
+    if (encoder.encode(bodyFor([field])).length <= MAX_AI_REQUEST_BYTES) batch.push(field);
+    else options.onUnavailable?.();
   }
-
-  // All models in the fallback list returned 429
-  throw new Error('AI autofill request failed: all models rate limited');
+  if (batch.length || !fields.length) batches.push(batch);
+  for (const items of batches) {
+    const body = bodyFor(items);
+    let lastError: unknown = new Error('AI autofill request failed: all models rate limited');
+    for (let i = 0; i < models.length; i++) {
+      options.signal?.throwIfAborted();
+      if (options.isActive && !options.isActive())
+        throw new DOMException('Autofill cancelled', 'AbortError');
+      try {
+        const result = await geminiRequest(
+          endpoint(models[i]),
+          apiKey,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body,
+            signal: options.signal,
+          },
+          async (response) => {
+            if (!response.ok) return { status: response.status, data: undefined };
+            try {
+              return { status: response.status, data: (await response.json()) as unknown };
+            } catch {
+              throw new Error('Invalid AI autofill response');
+            }
+          },
+        );
+        options.signal?.throwIfAborted();
+        if (result.status < 200 || result.status >= 300) {
+          lastError = new Error(
+            result.status === 429
+              ? 'AI autofill request failed: all models rate limited'
+              : `AI autofill request failed: ${result.status}`,
+          );
+          if ([404, 408, 429, 500, 502, 503, 504].includes(result.status)) continue;
+          throw lastError;
+        }
+        responses.push(...parseAutofillResponse(extractGeminiText(result.data) ?? ''));
+        lastError = undefined;
+        break;
+      } catch (error) {
+        options.signal?.throwIfAborted();
+        if ((error as { name?: string })?.name === 'TimeoutError') {
+          lastError = error;
+          continue;
+        }
+        if (responses.length) {
+          options.onUnavailable?.();
+          return responses;
+        }
+        throw error instanceof Error && /^(Invalid AI|AI autofill)/.test(error.message)
+          ? error
+          : new Error('Network error during AI autofill');
+      }
+    }
+    // Retain answers from earlier batches if a later batch cannot be processed.
+    if (lastError) {
+      if (responses.length) {
+        options.onUnavailable?.();
+        return responses;
+      }
+      throw lastError;
+    }
+  }
+  return responses;
 }
 
 function parseAutofillResponse(text: string): AIFieldResponse[] {

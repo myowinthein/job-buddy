@@ -82,7 +82,7 @@ vi.mock('./filler', async (original) => ({
 import { getProfile } from '@/src/utils/storage';
 const profile = {
   id: 'synthetic',
-  personal: { firstName: 'Jane', email: 'private@example.test' },
+  personal: { firstName: 'Jane', lastName: '', email: 'private@example.test' },
   professional: { summary: 'Stored summary' },
   workHistory: [{ company: 'Test', position: 'Engineer', startDate: '2020-01', isCurrent: true }],
 } as unknown as Profile;

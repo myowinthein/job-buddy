@@ -3,14 +3,16 @@ import { readFieldValue } from './fieldValue';
 import { isConsentGroup } from './consent';
 import type { Profile } from '../types/profile';
 import type { FieldSignals } from './signals';
-import { bestLabel } from './signals';
-import { resolveProfileValue } from './resolver';
+import { bestLabel, extractSignals } from './signals';
+import { resolveRuleValue, ruleValuePath } from './ruleValue';
+import { allowedAIPath, exactAIOption, aiQuestionIdentity, aiQuestionAllowed } from './aiSafety';
+import { sectionFamily, scopeRoot } from './ruleContext';
 import { resolveFieldsWithAI } from '../resume-ai/gemini';
 import type { AIFieldPayload, AIFieldResponse, AIOptionPayload } from '../resume-ai/types';
 import { toGeminiModel } from '../resume-ai/types';
-import { scanRadioGroups, scanCheckboxGroups, isChoiceGroupAvailable } from './scanner';
+import { scanRadioGroups, scanCheckboxGroups, isChoiceGroupAvailable, questionLabel } from './scanner';
 import type { RadioGroup, CheckboxGroup } from './scanner';
-import { fillField, fillRadioInput, fillCheckboxInput, findBestMatch } from './filler';
+import { fillField, fillRadioInput, fillCheckboxInput } from './filler';
 import { applyHighlight, applyMissingDataHighlight } from './highlighter';
 import { CONF_CONFIRMED, CONF_AI_YELLOW } from './constants';
 import { getGeminiApiKey, getGeminiModel } from '../utils/storage';
@@ -48,6 +50,9 @@ export type AIAutofillStatus = 'not_needed' | 'succeeded' | 'unavailable';
 export interface AIAutofillOptions {
   mode?: 'merge' | 'overwrite';
   isActive?: () => boolean;
+  signal?: AbortSignal;
+  isProfileCurrent?: () => Promise<boolean>;
+  formFields?: FieldSignals[];
   onTextFilled?: (element: HTMLElement, state: 'green' | 'yellow') => void;
   onStatus?: (status: AIAutofillStatus) => void;
   fieldRecords?: Map<HTMLElement, FillLogField>;
@@ -75,7 +80,7 @@ export async function runAIAutofill(
     options.onStatus?.('unavailable');
     return false;
   } // Storage failures must leave rule-based fills intact.
-  const isActive = options.isActive ?? (() => true);
+  const isActive = () => !options.signal?.aborted && (options.isActive?.() ?? true);
   if (!isActive() || !apiKey || !storedModel) {
     options.onStatus?.('unavailable');
     return false;
@@ -86,6 +91,7 @@ export async function runAIAutofill(
     isChoiceGroupAvailable(group) &&
     !group.isConsent &&
     !isConsentGroup(group) &&
+    !isConsentGroup({ ...group, groupLabel: questionLabel(group.options[0].element) || group.groupLabel }) &&
     !(options.mode === 'merge' && group.options.some((option) => isChoiceChecked(option.element))) &&
     !group.options.some(option => {
       const record = options.fieldRecords?.get(option.element);
@@ -100,7 +106,7 @@ export async function runAIAutofill(
     | { type: 'checkbox'; group: CheckboxGroup };
 
   const candidates: Candidate[] = [
-    ...textCandidates.filter(candidate => isControlAvailable(candidate.element)),
+    ...textCandidates.filter(candidate => isControlAvailable(candidate.element) && aiQuestionAllowed(candidate.element)),
     ...radioGroups.map((g) => ({ type: 'radio' as const, group: g })),
     ...checkboxGroups.map((g) => ({ type: 'checkbox' as const, group: g })),
   ];
@@ -112,8 +118,10 @@ export async function runAIAutofill(
 
   const candidateMap = new Map<string, Candidate>();
   const candidateRecords = new Map<string, FillLogField>();
+  const identified = (items: AIOptionPayload[]) => items.map((item, i) => ({ ...item, id: `option_${String(i + 1).padStart(3, '0')}` }));
   const payload: AIFieldPayload[] = candidates.map((c, i) => {
     const fieldId = `field_${String(i + 1).padStart(3, '0')}`;
+    if (c.type === 'text' && options.formFields) c.signals = extractSignals(c.element);
     candidateMap.set(fieldId, c);
     const record = options.fieldRecords?.get(c.type === 'text' ? c.element : c.group.options[0].element);
     if (record) {
@@ -124,15 +132,25 @@ export async function runAIAutofill(
     if (c.type === 'text') {
       const s = c.signals;
       const baseLabel = bestLabel(s);
+      const family = sectionFamily(c.element);
+      const repeats = (options.formFields ?? textCandidates.map(candidate => candidate.signals)).filter(other =>
+        bestLabel(other) === baseLabel && sectionFamily(other.element) === family && scopeRoot(other.element) === scopeRoot(c.element));
+      const native = c.element instanceof HTMLInputElement ? c.element : undefined;
       const base = {
         fieldId,
+        visibleLabel: [s.label, s.ariaLabel, s.placeholder].filter(Boolean).join(' '),
+        inputType: s.type,
+        ...(family && { section: family }),
+        ...(repeats.length > 1 && { entryIndex: repeats.findIndex(other => other.element === c.element) }),
+        ...(s.autocomplete && { autocomplete: s.autocomplete }),
+        ...(native && { constraints: { min: native.min || undefined, max: native.max || undefined, step: native.step || undefined, pattern: native.pattern || undefined, maxLength: native.maxLength >= 0 ? native.maxLength : undefined } }),
         label: baseLabel,
         ...(s.placeholder && { placeholder: s.placeholder }),
         ...(s.name && { name: s.name }),
         ...(s.nearbyText && { nearbyText: s.nearbyText }),
       };
       if (c.element instanceof HTMLSelectElement) {
-        const options = extractSelectOptions(c.element);
+        const options = identified(extractSelectOptions(c.element));
         return { ...base, type: 'select' as const, ...(options.length > 0 && { options }) };
       }
       // ARIA combobox/listbox: options are not available at scan time (dropdown
@@ -148,21 +166,45 @@ export async function runAIAutofill(
     return {
       fieldId,
       type: c.type,
-      label: c.group.groupLabel,
-      options: c.group.options.map((o) => ({ label: o.label, value: o.value })),
+      label: questionLabel(c.group.options[0].element) || c.group.groupLabel,
+      visibleLabel: questionLabel(c.group.options[0].element),
+      options: identified(c.group.options.map((o) => ({ label: o.label, value: o.value }))),
+      section: sectionFamily(c.group.options[0].element),
     };
   });
 
   const valuesAtRequest = new Map(
     textCandidates.map((candidate) => [candidate.element, readFieldValue(candidate.element)]),
   );
+  const identities = new Map<HTMLElement, string>();
+  const choices = new Map<HTMLElement, boolean>();
+  for (const candidate of candidates) {
+    const elements = candidate.type === 'text' ? [candidate.element] : candidate.group.options.map(option => option.element);
+    for (const element of elements) {
+      identities.set(element, aiQuestionIdentity(element));
+      if (candidate.type !== 'text') choices.set(element, isChoiceChecked(element));
+    }
+  }
+  const unchanged = (element: HTMLElement) => isActive() && isControlAvailable(element) && identities.get(element) === aiQuestionIdentity(element);
+  let requestIncomplete = false;
   let responses: AIFieldResponse[];
   try {
-    responses = await resolveFieldsWithAI(apiKey, model, payload, profile as object);
+    responses = await resolveFieldsWithAI(apiKey, model, payload, profile as object, { signal: options.signal, isActive, onUnavailable: () => { requestIncomplete = true; } });
   } catch {
     for (const record of candidateRecords.values()) record.ai.outcome = 'failed';
     options.onStatus?.('unavailable');
     return true; // Keep the legacy availability result; report failure separately.
+  }
+
+  try {
+    if (!isActive() || (options.isProfileCurrent && !await options.isProfileCurrent())) {
+      for (const record of candidateRecords.values()) record.ai.outcome = 'skipped';
+      return true;
+    }
+  } catch {
+    for (const record of candidateRecords.values()) record.ai.outcome = 'failed';
+    options.onStatus?.('unavailable');
+    return true;
   }
 
   // Debug-only helper: append a debug record for an AI response.
@@ -217,6 +259,25 @@ export async function runAIAutofill(
       continue;
     }
     const tracked = candidateRecords.get(resp.fieldId);
+    const field = payload.find(item => item.fieldId === resp.fieldId)!;
+    const elements = candidate.type === 'text' ? [candidate.element] : candidate.group.options.map(option => option.element);
+    if (elements.some(element => !unchanged(element) || (candidate.type !== 'text' && isChoiceChecked(element) !== choices.get(element)))) {
+      if (tracked) {
+        const hasValue = candidate.type === 'text' ? !!readFieldValue(candidate.element).trim() : candidate.group.options.some(option => isChoiceChecked(option.element));
+        tracked.ai.outcome = 'skipped'; tracked.outcome = hasValue ? 'manual' : 'not_matched';
+        tracked.source = hasValue ? 'manual' : null; tracked.reason = 'value_changed';
+      }
+      continue;
+    }
+    // Ignore malformed/unsafe answer shapes before touching the DOM.
+    if ((resp.profilePath && !allowedAIPath(profile, field, resp.profilePath)) ||
+        (candidate.type === 'text' && (resp.selectedOptions != null || (!(candidate.element instanceof HTMLSelectElement) && resp.selectedOption != null))) ||
+        (candidate.type !== 'text' && resp.profilePath != null) ||
+        (candidate.type === 'radio' && resp.selectedOptions != null) ||
+        (candidate.type === 'checkbox' && resp.selectedOption != null)) {
+      recordDebug(candidate, resp.fieldId, null, resp.confidence, 'unchanged');
+      continue;
+    }
     if (tracked && resp.profilePath) tracked.ai.profilePath = resp.profilePath;
     if (candidate.type !== 'text' && !eligible(candidate.group)) {
       if (tracked) {
@@ -250,9 +311,20 @@ export async function runAIAutofill(
 
       let value: string | null = null;
       if (isSelect && resp.selectedOption) {
-        value = resp.selectedOption;
+        const selected = exactAIOption(field.options ?? [], resp.selectedOption);
+        // Duplicate native values cannot identify a particular option reliably.
+        if (!selected || field.options!.filter(option => option.value === selected.value).length !== 1) {
+          recordDebug(candidate, fieldId, null, resp.confidence, 'unchanged'); continue;
+        }
+        value = selected.value;
       } else if (resp.profilePath) {
-        value = resolveProfileValue(profile, resp.profilePath);
+        const signals = extractSignals(candidate.element);
+        const path = ruleValuePath(profile, resp.profilePath, signals);
+        value = allowedAIPath(profile, field, path) ? resolveRuleValue(profile, /^workAuthorization(?:\.\d+(?:\.status)?)?$/.test(path) ? 'workAuthorization' : path, signals) : '';
+        if (isSelect && value) {
+          const selected = exactAIOption(field.options ?? [], value);
+          value = selected && field.options!.filter(option => option.value === selected.value).length === 1 ? selected.value : '';
+        }
       }
 
       const aiResult =
@@ -276,7 +348,7 @@ export async function runAIAutofill(
       const filled = await fillField(
         candidate.element,
         value,
-        () => isActive() && readFieldValue(candidate.element) === liveValue,
+        () => unchanged(candidate.element) && readFieldValue(candidate.element) === liveValue,
       );
       if (!isActive()) break;
       if (filled === false) {
@@ -308,7 +380,8 @@ export async function runAIAutofill(
       recordDebug(candidate, fieldId, aiResult, resp.confidence, isHigh ? 'green' : 'yellow');
     } else if (candidate.type === 'radio' && resp.selectedOption) {
       const group = candidate.group as RadioGroup;
-      const option = findBestOption(group.options, resp.selectedOption);
+      const selected = exactAIOption(field.options ?? [], resp.selectedOption);
+      const option = selected ? group.options[(field.options ?? []).indexOf(selected)] : null;
       if (!option) {
         recordDebug(candidate, fieldId, resp.selectedOption, resp.confidence, 'unchanged');
         continue;
@@ -331,27 +404,33 @@ export async function runAIAutofill(
       );
     } else if (candidate.type === 'checkbox' && Array.isArray(resp.selectedOptions)) {
       const group = candidate.group as CheckboxGroup;
-      let anyFilled = false;
-      for (const label of resp.selectedOptions) {
-        if (!isActive() || !isChoiceGroupAvailable(group)) break;
-        const option = findBestOption(group.options, label);
-        if (!option) continue;
-        if (fillCheckboxInput(option.element) === false) continue;
-        applyHighlight(option.element, confScore);
-        sessionElements.push(option.element);
-        anyFilled = true;
+      const selected = resp.selectedOptions.map(answer => exactAIOption(field.options ?? [], answer));
+      if (selected.some(option => !option)) {
+        recordDebug(candidate, fieldId, null, resp.confidence, 'unchanged'); continue;
       }
-      if (anyFilled) {
+      if (!selected.length && group.options.some(option => (option.element instanceof HTMLInputElement && option.element.required) || option.element.getAttribute('aria-required') === 'true')) {
+        recordDebug(candidate, fieldId, null, resp.confidence, 'unchanged'); continue;
+      }
+      const selectedIndices = new Set(selected.map(option => field.options!.indexOf(option!)));
+      let allFilled = true;
+      const targets = options.mode === 'merge'
+        ? group.options.filter((_, i) => selectedIndices.has(i)) : group.options;
+      for (const option of targets) {
+        if (!isActive() || !isChoiceGroupAvailable(group)) { allFilled = false; break; }
+        const checked = selectedIndices.has(group.options.indexOf(option));
+        if (isChoiceChecked(option.element) !== checked) {
+          const filled = checked ? fillCheckboxInput(option.element) : fillCheckboxInput(option.element, false);
+          if (filled === false) { allFilled = false; continue; }
+        }
+        applyHighlight(option.element, confScore);
+        if (!sessionElements.includes(option.element)) sessionElements.push(option.element);
+      }
+      if (allFilled) {
         if (isHigh) result.noReview++;
         else result.needReview++;
       }
-      recordDebug(
-        candidate,
-        fieldId,
-        resp.selectedOptions.join(', '),
-        resp.confidence,
-        anyFilled ? (isHigh ? 'green' : 'yellow') : 'unchanged',
-      );
+      recordDebug(candidate, fieldId, resp.selectedOptions.join(', '), resp.confidence,
+        allFilled ? (isHigh ? 'green' : 'yellow') : 'unchanged', allFilled ? undefined : 'fill_failed');
     } else {
       // No actionable response shape (e.g. text without profilePath)
       recordDebug(candidate, fieldId, null, resp.confidence, 'unchanged');
@@ -359,15 +438,6 @@ export async function runAIAutofill(
   }
 
   for (const record of candidateRecords.values()) if (record.ai.outcome === 'sent') record.ai.outcome = 'no_response';
-  options.onStatus?.('succeeded');
+  options.onStatus?.(requestIncomplete ? 'unavailable' : 'succeeded');
   return true;
-}
-
-// Reuses filler.ts's shared matching strategy (exact → normalized → fuzzy,
-// threshold-gated) instead of naive substring inclusion, so an AI-selected
-// option gets the same matching rigor as the rule-pipeline's own
-// select/ARIA-listbox matching — a short generic option label could
-// otherwise substring-match an unrelated longer one.
-function findBestOption<T extends { label: string; value: string }>(options: T[], target: string): T | null {
-  return findBestMatch(options, target, (o) => o.value, (o) => o.label);
 }

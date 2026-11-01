@@ -144,7 +144,7 @@ function questionContainer(element: HTMLElement): Element | undefined {
   return undefined;
 }
 
-function questionLabel(element: HTMLElement, context?: LabelContext): string {
+export function questionLabel(element: HTMLElement, context?: LabelContext): string {
   const question = questionContainer(element);
   if (!question) return '';
   if (question instanceof HTMLFieldSetElement) {

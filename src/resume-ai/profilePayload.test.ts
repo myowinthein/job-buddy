@@ -58,3 +58,44 @@ describe('Minimal Gemini profile payloads', () => {
     }
   });
 });
+
+describe('sensitive context and payload limits', () => {
+  it('does not use internal names to disclose background details', () => {
+    const payload = autofillProfilePayload(profile, [
+      { fieldId: 'x', type: 'text', label: 'Custom reference', name: 'gender' },
+    ]);
+    expect(payload.personal?.gender).toBeUndefined();
+  });
+  it('provides a current age without disclosing the full birth date', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2030-07-01T12:00:00Z'));
+    try {
+      const data = structuredClone(profile);
+      data.personal.dateOfBirth = '2000-06-01';
+      const payload = autofillProfilePayload(data, [{ fieldId: 'x', type: 'text', label: 'Age' }]);
+      expect(payload.personal?.dateOfBirth).toBeUndefined();
+      expect(payload.derived?.age).toBe(30);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it('bounds a very large profile without modifying stored prose or shifting indices', () => {
+    const data = structuredClone(profile);
+    data.workHistory = Array.from({ length: 100 }, (_, i) => ({
+      company: `Company ${i}`,
+      title: 'Engineer',
+      startDate: '2020-01',
+      isCurrent: false,
+      description: 'x'.repeat(10_000),
+    }));
+    const payload = autofillProfilePayload(data, [
+      { fieldId: 'x', type: 'text', label: 'Custom reference' },
+    ]);
+    expect(new TextEncoder().encode(JSON.stringify(payload)).length).toBeLessThanOrEqual(48_000);
+    expect(payload.workHistory?.[0].description?.length).toBe(2_000);
+    expect(data.workHistory[0].description?.length).toBe(10_000);
+    for (const [index, entry] of (payload.workHistory ?? []).entries()) {
+      if (entry?.company) expect(entry.company).toBe(`Company ${index}`);
+    }
+  });
+});
