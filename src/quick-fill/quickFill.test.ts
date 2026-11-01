@@ -104,3 +104,33 @@ it('ignores synthetic page clicks on all privileged widget actions', () => {
   for (const action of Object.values(actions)) expect(action).not.toHaveBeenCalled();
   widget.destroy();
 });
+
+it.each([
+  [1, '1 needs attention'],
+  [2, '2 need attention'],
+])('keeps filled counts separate from %i attention outcomes', (count, wording) => {
+  const result = {
+    stage: 'completed',
+    results: [
+      { totalScanned: 11 + Number(count), noReview: 11, noData: count, aiStatus: 'not_needed' },
+    ],
+  } as never;
+  const summary = quickFillSummary(result);
+  expect(summary.text).toBe(`11 filled, ${wording}`);
+  expect(summary.attentionText).toBe(wording);
+  const widget = new QuickFillWidget({
+    fill() {},
+    undo() {},
+    details() {},
+    hide() {},
+    disableSite() {},
+    settings() {},
+    position() {},
+  });
+  widget.render(result);
+  const message = widget.host.shadowRoot!.querySelector('[role="status"]')!;
+  expect(message.textContent).toBe(`11 filled, ${wording}`);
+  expect(message.querySelector('.attention')?.textContent).toBe(wording);
+  expect(message.firstElementChild?.textContent).toBe('11 filled');
+  widget.destroy();
+});

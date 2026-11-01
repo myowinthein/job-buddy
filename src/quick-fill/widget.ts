@@ -32,12 +32,17 @@ button:disabled { cursor:default; opacity:.65; }
 .more { width:30px; font-size:20px; padding:5px; color:var(--muted); }
 .status { padding:0 12px 10px; font-size:12px; max-width:min(328px,calc(100vw - 24px)); }
 .status p { margin:1px 0 5px; }
+.status[data-complete] { padding:0 10px 6px; }
+.status[data-complete] p { line-height:1.35; margin:0 0 2px; }
+.status[data-tone=neutral] { color:var(--muted); }
+.attention { color:var(--review); }
 .status[data-tone=working],.status[data-tone=setup] { color:var(--brand); }
 .status[data-tone=success] { color:var(--success); }
 .status[data-tone=review] { color:var(--review); }
 .status[data-tone=error] { color:var(--error); }
-.links { display:flex; gap:12px; color:var(--fg); }
-.links button { font-size:12px; padding:2px 0; text-decoration:underline; text-underline-offset:3px; }
+.links { display:flex; gap:10px; color:var(--muted); }
+.links button { font-size:11px; padding:3px 0; text-decoration:none; text-underline-offset:3px; }
+.links button:hover,.links button:focus-visible { color:var(--fg); text-decoration:underline; }
 .menu { position:absolute; right:0; bottom:calc(100% + 8px); width:210px; background:var(--bg); border:1px solid var(--line); border-radius:12px; box-shadow:0 4px 18px #0002; padding:5px; }
 .menu[data-below] { top:calc(100% + 8px); bottom:auto; }
 .menu button { display:block; text-align:left; width:100%; padding:9px 10px; }
@@ -216,12 +221,27 @@ export class QuickFillWidget {
       this.primary.insertBefore(icon, this.label);
     }
     this.status.hidden = !run || this.busy;
+    this.status.toggleAttribute('data-complete', run?.stage === 'completed' && !this.busy);
     this.undo.hidden = true;
     this.details.hidden = true;
     if (run?.stage === 'completed') {
       const summary = quickFillSummary(run);
-      this.text.textContent = summary.text;
-      this.status.dataset.tone = summary.review ? 'review' : summary.filled ? 'success' : 'neutral';
+      if (summary.attentionText) {
+        const filled = document.createElement('span');
+        filled.textContent = `${summary.filled} filled`;
+        const attention = document.createElement('span');
+        attention.className = 'attention';
+        attention.textContent = summary.attentionText;
+        this.text.replaceChildren(filled, document.createTextNode(', '), attention);
+        this.status.dataset.tone = 'neutral';
+      } else {
+        this.text.textContent = summary.text;
+        this.status.dataset.tone = summary.review
+          ? 'review'
+          : summary.filled
+            ? 'success'
+            : 'neutral';
+      }
       this.undo.hidden = summary.filled === 0;
       this.details.hidden = false;
     } else if (run?.stage === 'confirming') {
@@ -247,6 +267,7 @@ export class QuickFillWidget {
     this.primary.querySelector<HTMLElement>('.brand')!.hidden = false;
     this.primary.querySelector('.spin')?.remove();
     this.status.hidden = false;
+    this.status.removeAttribute('data-complete');
     this.status.dataset.tone = 'error';
     this.text.textContent = text;
     this.place();

@@ -262,3 +262,43 @@ test('hidden-site management stays compact with many sites and actions remain be
     true,
   );
 });
+
+test('completed feedback keeps filled counts neutral, accents attention, and exposes quiet actions', async ({
+  page,
+  context,
+  extension,
+}, info) => {
+  await page.evaluate(() => {
+    document.body.innerHTML =
+      '<form aria-label="Job application"><label>First name<input name="firstName" autocomplete="given-name"></label><label>Email<input name="email" type="email" autocomplete="email"></label><label>Zqx identifier<input name="unknown"></label></form>';
+  });
+  await context.route('https://generativelanguage.googleapis.com/**', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ candidates: [{ content: { parts: [{ text: '[]' }] } }] }),
+    }),
+  );
+  const host = page.locator(hostSelector);
+  await expect(host).toHaveCount(1);
+  await host.getByRole('button', { name: 'Fill Form', exact: true }).click();
+  await expect(host.getByRole('status')).toHaveText('2 filled, 1 needs attention');
+  const messageColors = await host.getByRole('status').evaluate((element) => ({
+    filled: getComputedStyle(element.firstElementChild!).color,
+    attention: getComputedStyle(element.querySelector('.attention')!).color,
+  }));
+  expect(messageColors.filled).not.toBe(messageColors.attention);
+  const undo = host.getByRole('button', { name: 'Undo', exact: true });
+  const details = host.getByRole('button', { name: 'View details', exact: true });
+  await page.mouse.move(20, 20);
+  await expect(undo).toHaveCSS('text-decoration-line', 'none');
+  await expect(details).toHaveCSS('text-decoration-line', 'none');
+  await details.hover();
+  await expect(details).toHaveCSS('text-decoration-line', 'underline');
+  await page.mouse.move(20, 20);
+  await extension.worker.evaluate(() => chrome.storage.local.set({ themePreference: 'dark' }));
+  await expect(host).toHaveAttribute('data-dark', '');
+  await host.screenshot({ path: info.outputPath('completed-compact-dark.png') });
+  await undo.click();
+  await expect(page.locator('input[name="firstName"]')).toHaveValue('');
+  await expect(host.getByRole('status')).toBeHidden();
+});
