@@ -1,0 +1,58 @@
+name: Report a problem
+description: Tell us about something that isn't working in Job Buddy.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tell us what went wrong so we can investigate.
+
+        **Reports are public.** Don't include API keys, resumes, profile exports, or personal details. Remove private information from links, screenshots, and files before sharing them.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Tell us what went wrong and what you expected. Include any error message you saw.
+      placeholder: I expected my phone number to be filled, but the field stayed empty.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What did you do before this happened?
+      description: List the steps so we can try the same thing.
+      placeholder: |
+        1. Open a job application.
+        2. Open Job Buddy and click Fill Form.
+        3. The phone number stays empty.
+    validations:
+      required: true
+  - type: input
+    id: page-link
+    attributes:
+      label: Page link
+      description: For problems on a website, paste its public page link. Leave out private or account-specific links.
+      placeholder: https://example.com/careers/job
+    validations:
+      required: false
+  - type: textarea
+    id: extra-details
+    attributes:
+      label: Screenshots or extra details
+      description: Add anything that helps explain the problem. For autofill issues, a screenshot of Fill Log can help. Remove personal details first.
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: Job Buddy version
+      description: Filled in when you open this form from Settings. You can also find it at the top of the Job Buddy popup.
+      placeholder: e.g. 1.14.3
+    validations:
+      required: true
+  - type: input
+    id: browser-device
+    attributes:
+      label: Browser and device
+      placeholder: Chrome on Windows, or Chrome on macOS
+    validations:
+      required: false

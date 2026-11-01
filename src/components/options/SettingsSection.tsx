@@ -105,6 +105,14 @@ const btnSecondaryCls =
 const footerLinkCls =
   'rounded-sm hover:text-blue-600 dark:hover:text-blue-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500 transition-colors';
 
+function issueReportUrl(): string {
+  const url = new URL('https://github.com/myowinthein/job-buddy/issues/new');
+  url.searchParams.set('template', 'report-a-problem.yml');
+  const version = typeof chrome !== 'undefined' ? chrome.runtime?.getManifest?.().version : undefined;
+  if (version) url.searchParams.set('version', version);
+  return url.href;
+}
+
 // ── Drive timestamp formatter ────────────────────────────────────────────────
 // Timestamps are stored as UTC ISO strings. Display converts to local timezone:
 //   "Today at HH:mm" / "Yesterday at HH:mm" / full locale date for older entries.
@@ -1031,7 +1039,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           </a>
           <span aria-hidden="true">·</span>
           <a
-            href="https://github.com/myowinthein/job-buddy/issues/new"
+            href={issueReportUrl()}
             target="_blank"
             rel="noopener noreferrer"
             className={footerLinkCls}
