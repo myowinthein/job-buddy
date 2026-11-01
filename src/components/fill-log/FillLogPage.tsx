@@ -116,7 +116,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
         <div className="flex items-center gap-3">
           <img src={LOGO_ICON_SRC} className="h-8 w-8" alt="" />
           <div>
-            <h1 className="text-xl font-semibold">Fill Log</h1>
+            <h1 className="text-xl font-semibold">Fill Details</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {source && source !== 'null' ? source : 'Job Buddy'}
               {timestamp > 0 && <> · Latest fill at {new Date(timestamp).toLocaleString()}</>}
@@ -149,7 +149,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
       )}
       {loading ? (
         <p role="status" className="text-sm text-gray-600 dark:text-gray-300">
-          Loading fill log…
+          Loading fill details…
         </p>
       ) : unavailable ? (
         <p role="status" className="text-sm text-gray-600 dark:text-gray-300">
@@ -157,18 +157,18 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
         </p>
       ) : snapshot?.needsRefresh ? (
         <p role="status" className="text-sm text-gray-600 dark:text-gray-300">
-          This form was filled with an earlier version. Refresh the form and fill again to create
-          its log.
+          This form was filled with an earlier version. Refresh the form and fill again to view
+          its fill details.
         </p>
       ) : frames.length === 0 ? (
         <p role="status" className="text-sm text-gray-600 dark:text-gray-300">
-          No completed fill log is available. Open the form and fill again to create one.
+          No fill details are available yet. Open the form and fill again to view them.
         </p>
       ) : (
         <>
           {undone && (
             <p role="status" className="mb-4 rounded-lg bg-gray-100 p-3 text-sm dark:bg-gray-800">
-              These fills were undone. The log shows the completed run.
+              These fills were undone. Details show the completed run.
             </p>
           )}
           {aiFailed && (
@@ -183,7 +183,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
           <div
             ref={tabsRef}
             role="tablist"
-            aria-label="Fill log views"
+            aria-label="Fill details views"
             className="mb-6 flex gap-6 border-b border-gray-200 dark:border-gray-700"
           >
             {(['overview', 'fields'] as const).map((tab) => (

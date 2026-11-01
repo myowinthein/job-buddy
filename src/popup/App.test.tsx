@@ -317,26 +317,42 @@ describe('popup App — handleAutofill scan orchestration', () => {
   });
 });
 
-describe('popup App — Fill Log access', () => {
+describe('popup App — Fill Details access', () => {
   it('opens the full-page log for the original application tab', async () => {
     sendMessageMock.mockResolvedValue(statusResult({ noReview: 3, totalScanned: 3 }));
     renderApp();
-    fireEvent.click(await screen.findByRole('button', { name: 'View Fill Log →' }));
+    const details = await screen.findByRole('button', { name: 'View details' });
+    expect(details.closest('section')).toBe(screen.getByRole('region', { name: 'Fill results' }));
+    fireEvent.click(details);
     expect(openFillLog).toHaveBeenCalledWith(123);
     expect(sendMessageMock.mock.calls.some(([, message]) => message.action === 'GET_DEBUG_SESSION')).toBe(false);
+  });
+
+  it('retains the logo shortcut alongside the public details action', async () => {
+    sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }));
+    renderApp();
+    await screen.findByRole('button', { name: 'View details' });
+    const logo = screen.getByRole('button', { name: 'Job Buddy' });
+    fireEvent.click(logo);
+    expect(openFillLog).not.toHaveBeenCalled();
+    fireEvent.click(logo, { shiftKey: true });
+    expect(openFillLog).toHaveBeenCalledWith(123);
+    vi.mocked(openFillLog).mockClear();
+    fireEvent.keyDown(logo, { key: 'Enter', shiftKey: true });
+    expect(openFillLog).toHaveBeenCalledWith(123);
   });
 
   it('reports a failed log open without losing Fill Form and Undo', async () => {
     vi.mocked(openFillLog).mockRejectedValueOnce(new Error('could not open'));
     sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }));
     renderApp();
-    fireEvent.click(await screen.findByRole('button', { name: 'View Fill Log →' }));
-    expect(await screen.findByText('Please try opening Fill Log again.')).toBeTruthy();
+    fireEvent.click(await screen.findByRole('button', { name: 'View details' }));
+    expect(await screen.findByText('Please try opening Fill Details again.')).toBeTruthy();
     expect(screen.getByRole('alert').className).toContain('border-red-500');
     expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Fill Form' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'View Fill Log →' }));
-    await waitFor(() => expect(screen.queryByText('Please try opening Fill Log again.')).toBeNull());
+    fireEvent.click(screen.getByRole('button', { name: 'View details' }));
+    await waitFor(() => expect(screen.queryByText('Please try opening Fill Details again.')).toBeNull());
     expect(screen.getByText('1 field filled')).toBeTruthy();
   });
 });
@@ -510,7 +526,7 @@ describe('popup profile and action presentation', () => {
     await screen.findByRole('button', { name: 'Set Up Profile' });
     expect(await screen.findByText('Last fill')).toBeTruthy();
     expect(screen.getByText('1 field filled')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'View Fill Log →' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'View details' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull());
   });
@@ -567,7 +583,7 @@ it('does not ask for another AI key when a saved key exists but the fill did not
   expect(screen.getByText(/1 filled value needs review/)).toBeTruthy();
   expect(screen.getByText(/2 fields still need your input/)).toBeTruthy();
   expect(screen.queryByText('High confidence')).toBeNull();
-  expect(screen.getByRole('button', { name: 'View Fill Log →' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'View details' })).toBeTruthy();
   expect(screen.getByRole('alert').textContent).toContain('AI was unavailable,');
   expect(screen.getAllByRole('alert')).toHaveLength(1);
   const summary = screen.getByRole('region', { name: 'Fill results' });

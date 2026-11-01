@@ -2,7 +2,7 @@ import { test, expect } from './fixtures';
 import { summarizeFillFields } from '../autofill/fillLog';
 import type { FrameFillLog } from '../autofill/fillLog';
 
-test('the production Fill Log combines frames, reports real outcomes, tracks edits and identifies Undo', async ({
+test('the production Fill Details combines frames, reports real outcomes, tracks edits and identifies Undo', async ({
   page,
   context,
   extension,
@@ -31,7 +31,7 @@ test('the production Fill Log combines frames, reports real outcomes, tracks edi
   const sourceId = extension.sourceTabId;
   const logPage = await context.newPage();
   await logPage.goto(`${new URL('fill-log.html', extension.worker.url()).href}?tabId=${sourceId}`);
-  await expect(logPage.getByRole('heading', { name: 'Fill Log', exact: true })).toBeVisible();
+  await expect(logPage.getByRole('heading', { name: 'Fill Details', exact: true })).toBeVisible();
   await expect(logPage.getByText(/AI assistance was unavailable for part or all/)).toBeVisible();
   const detected = logPage.getByText('Detected', { exact: true }).locator('..');
   await expect(detected).toContainText(String(counts.detected));
@@ -74,6 +74,18 @@ test('the production Fill Log combines frames, reports real outcomes, tracks edi
   await expect(popup.getByText(`${counts.filled} fields filled`, { exact: true })).toBeVisible();
   await expect(popup.getByRole('button', { name: 'Fill Form', exact: true })).toBeVisible();
   await expect(popup.getByRole('button', { name: 'Undo', exact: true })).toBeVisible();
+  const details = popup.getByRole('region', { name: 'Fill results' }).getByRole('button', {
+    name: 'View details',
+    exact: true,
+  });
+  await expect(details).toBeVisible();
+  const summaryBox = await popup
+    .getByText(`${counts.filled} fields filled`, { exact: true })
+    .boundingBox();
+  const detailsBox = await details.boundingBox();
+  expect(Math.abs(summaryBox!.y - detailsBox!.y)).toBeLessThanOrEqual(4);
+  expect(summaryBox!.x + summaryBox!.width).toBeLessThan(detailsBox!.x);
+  await expect(logPage).toHaveTitle('Job Buddy: Fill Details');
   expect(
     await popup.locator('#root').evaluate((element) => element.getBoundingClientRect().height),
   ).toBeLessThanOrEqual(600);
@@ -82,7 +94,7 @@ test('the production Fill Log combines frames, reports real outcomes, tracks edi
   await expect(popup.locator('html')).toHaveClass(/dark/);
   await popup.locator('#root').screenshot({ path: testInfo.outputPath('popup-results-dark.png') });
   const opened = context.waitForEvent('page');
-  await popup.getByRole('button', { name: 'View Fill Log →' }).click();
+  await popup.getByRole('button', { name: 'View details' }).click();
   const openedLog = await opened;
   await expect(openedLog).toHaveURL(
     `${new URL('fill-log.html', extension.worker.url()).href}?tabId=${sourceId}`,
@@ -116,7 +128,7 @@ test('the production Fill Log combines frames, reports real outcomes, tracks edi
 
   await page.reload();
   await logPage.getByRole('button', { name: 'Refresh', exact: true }).click();
-  await expect(logPage.getByText(/No completed fill log is available/)).toBeVisible();
+  await expect(logPage.getByText(/No fill details are available yet/)).toBeVisible();
 });
 
 test('an independently scanned empty iframe does not hide form fills, and a fresh empty run stays empty', async ({
@@ -181,7 +193,7 @@ test('an independently scanned empty iframe does not hide form fills, and a fres
   await expect(popup.getByText(`${count} fields filled`, { exact: true })).toBeVisible();
   await expect(page.locator('[name="firstName"]')).toHaveValue('Jane');
   const opened = context.waitForEvent('page');
-  await popup.getByRole('button', { name: 'View Fill Log →' }).click();
+  await popup.getByRole('button', { name: 'View details' }).click();
   const logPage = await opened;
   await expect(logPage.getByText('Detected', { exact: true }).locator('..')).toContainText('9');
   await expect(logPage.getByText('Filled', { exact: true }).locator('..')).toContainText(
@@ -194,7 +206,10 @@ test('an independently scanned empty iframe does not hide form fills, and a fres
   });
   await popup.getByRole('button', { name: 'Fill Form', exact: true }).click();
   await expect(popup.getByText('No fillable fields found.')).toBeVisible();
-  await expect(popup.getByRole('link', { name: 'Report on GitHub ↗' })).toBeVisible();
+  await expect(popup.getByRole('link', { name: 'Report on GitHub ↗' })).toHaveCount(0);
+  await expect(
+    popup.getByRole('region', { name: 'Fill results' }).getByRole('button', { name: 'View details' }),
+  ).toBeVisible();
   await expect(popup.getByText(`${count} fields filled`, { exact: true })).toHaveCount(0);
   await popup.locator('#root').screenshot({ path: testInfo.outputPath('empty-result.png') });
 });

@@ -428,7 +428,7 @@ function App() {
     message = 'Refresh the page to retry after an autofill error.';
   } else if (logOpenFailed && result) {
     tone = 'error';
-    message = 'Please try opening Fill Log again.';
+    message = 'Please try opening Fill Details again.';
   } else if (result)
     tone =
       aiUnavailable || result.needReview > 0 || unfilled > 0
@@ -623,45 +623,45 @@ function App() {
                 {noticeMessage && (
                   <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">Last fill</p>
                 )}
-                {result.totalScanned === 0 ? (
-                  <p>No fillable fields found.</p>
-                ) : (
-                  <>
-                    <ResultSummary result={result} />
-                    {message && aiWarning && <p className="mt-1">{aiWarning}</p>}
-                  </>
-                )}
+                <ResultSummary result={result} onOpenDetails={() => void openLog()} />
+                {message && aiWarning && <p className="mt-1">{aiWarning}</p>}
               </div>
             )}
           </PopupNotice>
-          {result && (
-            <div className="mt-3 text-xs">
-              <button
-                type="button"
-                onClick={() => void openLog()}
-                className="rounded-sm font-medium text-blue-700 hover:underline dark:text-blue-400"
-              >
-                View Fill Log →
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>
   );
 }
 
-function ResultSummary({ result }: { result: AutofillResult }) {
+function ResultSummary({
+  result,
+  onOpenDetails,
+}: {
+  result: AutofillResult;
+  onOpenDetails: () => void;
+}) {
   const filled = result.noReview + result.needReview;
   const unfilled = result.lowConfidence + result.noData + (result.failed ?? 0);
   const onlyKept = filled === 0 && unfilled === 0 && !!result.kept;
   return (
     <section aria-label="Fill results">
-      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-        {onlyKept
-          ? `${result.kept} existing answer${result.kept === 1 ? '' : 's'} kept`
-          : `${filled} field${filled === 1 ? '' : 's'} filled`}
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="min-w-0 text-sm font-semibold text-gray-900 dark:text-gray-100">
+          {result.totalScanned === 0
+            ? 'No fillable fields found.'
+            : onlyKept
+              ? `${result.kept} existing answer${result.kept === 1 ? '' : 's'} kept`
+              : `${filled} field${filled === 1 ? '' : 's'} filled`}
+        </p>
+        <button
+          type="button"
+          onClick={onOpenDetails}
+          className="-my-1 min-h-7 shrink-0 rounded-sm px-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-gray-300 dark:hover:text-white"
+        >
+          View details
+        </button>
+      </div>
       <div className="mt-1 space-y-1">
         {result.needReview > 0 && (
           <p>

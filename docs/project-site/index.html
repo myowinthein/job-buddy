@@ -625,7 +625,7 @@
 
     <p>
       The codebase includes a background service worker, injected content script, action popup,
-      full-page options editor, and Fill Log page, plus shared modules for the autofill engine,
+      full-page options editor, and Fill Details page, plus shared modules for the autofill engine,
       profile types, storage wrappers, and the AI integrations. Distribution is through
       the Chrome Web Store, with automated uploads triggered by pushing semver tags to GitHub.
     </p>
@@ -676,7 +676,7 @@
           <li><strong>Background service worker</strong> (<code>entrypoints/background.ts</code>) — routes <code>OPEN_OPTIONS</code>, writes session storage for cross-context deep-links, retries pending Drive sync on browser startup</li>
           <li><strong>Content script</strong> (<code>entrypoints/content.ts</code>) — injected on all pages, passive until invoked, routes autofill messages</li>
           <li><strong>Popup</strong> (<code>entrypoints/popup/</code>) — React UI for Fill / Undo and a compact result summary</li>
-          <li><strong>Fill Log</strong> (<code>entrypoints/fill-log/</code>) — latest-run overview and searchable field outcomes across frames, with rule and AI processing stages</li>
+          <li><strong>Fill Details</strong> (<code>entrypoints/fill-log/</code>) — latest-run overview and searchable field outcomes across frames, with rule and AI processing stages</li>
           <li><strong>Options page</strong> (<code>entrypoints/options/</code>) — full React profile editor (9 sections + Settings + Resume Import)</li>
           <li><strong>Autofill core</strong> (<code>src/autofill/</code>) — engine that runs inside the content script context</li>
           <li><strong>Resume AI</strong> (<code>src/resume-ai/</code>) — Gemini integration, isolated so it can fail silently without breaking core autofill</li>

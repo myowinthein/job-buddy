@@ -103,7 +103,7 @@ async function showFields() {
   fireEvent.click(await screen.findByRole('tab', { name: 'Fields' }));
 }
 
-describe('Fill Log page', () => {
+describe('Fill Details page', () => {
   it('shows all-frame totals and explains overlapping rule and AI stages', async () => {
     render(<FillLogPage tabId={10} />);
     const overview = await screen.findByRole('tabpanel', { name: 'Overview' });
@@ -179,7 +179,7 @@ describe('Fill Log page', () => {
   it('shows a clear empty state after the source reloads', async () => {
     vi.mocked(loadFillLog).mockResolvedValue({ tabId: 10, frames: [] });
     render(<FillLogPage tabId={10} />);
-    expect(await screen.findByText(/No completed fill log is available/)).toBeTruthy();
+    expect(await screen.findByText(/No fill details are available yet/)).toBeTruthy();
   });
 
   it('handles closed source tabs', async () => {

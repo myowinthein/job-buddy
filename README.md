@@ -65,7 +65,7 @@ On the application form, colors describe individual field confidence:
 | Gray / Missing profile data | Your profile lacks the value; a subtle gray background tint marks the field. |
 
 The form stays free of floating icons and automatic tooltips. Read textual field
-statuses in **Fill Log** when needed. Screen-reader descriptions supplement existing
+statuses in **Fill Details** when needed. Screen-reader descriptions supplement existing
 site hints without changing keyboard tab order; Undo removes Job Buddy's feedback.
 
 Popup messages share one area below the main buttons. Blue indicates setup or
@@ -76,8 +76,9 @@ Undo or Cancel sits on the right.
 If AI assistance is unavailable during a fill, the popup warns you to review the
 results. Existing rule-based fills remain, and **Undo** is still available.
 
-The popup shows a compact result summary. Choose **View Fill Log** for detected
-fields, rule fills, AI handoffs, and final outcomes across the form's frames.
+The popup shows a compact result summary. Choose **View details** in the result card
+to open **Fill Details** for detected fields, rule fills, AI handoffs, and final
+outcomes across the form's frames.
 Use **Fields** to search, filter, or inspect how an individual answer was handled.
 Processing-stage counts can overlap when AI refines a rule-filled value; final
 totals count each field or question group once. Kept answers and consent questions
@@ -146,7 +147,7 @@ The extension uses WXT, React, TypeScript, and Tailwind CSS v4, with Vitest for 
 
 Restart `pnpm dev` after adding a new extension page so WXT discovers and emits
 its HTML file. Already-open forms may keep an earlier content script; refresh
-the form before testing a changed autofill flow. The Fill Log explains when an
+the form before testing a changed autofill flow. The Fill Details page explains when an
 earlier script cannot supply detailed records.
 
 | Command              | Purpose                                                             |
