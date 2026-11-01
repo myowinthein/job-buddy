@@ -172,8 +172,15 @@ describe('SettingsSection — importing into an existing (non-empty) profile', (
     expect(vi.mocked(saveProfile)).not.toHaveBeenCalled();
   });
 
-  it('Accept All applies every diffed change and saves the merged profile', async () => {
+  it.each([0, 1, 3])('imports accepted changes with a simple success message (%s invalid items)', async (invalidCount) => {
     const existing = makeProfile();
+    vi.mocked(validateImportedProfile).mockReturnValueOnce({
+      valid: invalidCount === 0,
+      sanitized: existing,
+      invalidFields: Array.from({ length: invalidCount }, (_, i) => ({
+        path: `unknown.field${i}`, reason: 'Invalid value',
+      })),
+    });
     vi.mocked(getProfile).mockResolvedValue(existing);
     const changes = [makeFieldChange()];
     vi.mocked(generateDiff).mockReturnValueOnce(changes);
@@ -191,6 +198,8 @@ describe('SettingsSection — importing into an existing (non-empty) profile', (
     await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
     expect(vi.mocked(applyChanges)).toHaveBeenCalledWith(existing, changes);
     expect(vi.mocked(saveProfile)).toHaveBeenCalledWith({ ...merged, derived: calculateDerivedFields(merged) });
+    expect(screen.getByRole('alert').textContent).toContain('Profile imported successfully');
+    expect(screen.getByRole('alert').textContent).not.toMatch(/skipped|invalid/i);
   });
 
   it('Keep Current (reject all) closes the dialog without saving anything', async () => {

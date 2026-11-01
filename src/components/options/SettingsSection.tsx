@@ -455,9 +455,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           await saveImportedData(applied as Profile, backup.learnedMappings);
         });
       }
-      const skipped = parsedImport.invalidFields.length;
-      const suffix = skipped > 0 ? ` (${skipped} item${skipped !== 1 ? 's' : ''} skipped)` : '';
-      showToast('success', `Profile imported successfully${suffix}`);
+      showToast('success', 'Profile imported successfully');
       setImportScreen('idle');
       setImportChanges([]);
       setImportBaseProfile({});
@@ -1124,8 +1122,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               id="reset-data-description"
               className="mt-2 text-pretty text-sm text-gray-500 dark:text-gray-400"
             >
-              This will permanently delete your profile, mappings, and settings from this browser.
-              {driveState.connected && ' Drive will also be disconnected.'}
+              Permanently delete this browser’s profile, mappings, and settings.
+              {driveState.connected && ' Drive will disconnect.'}
             </p>
 
             {driveState.connected && (
