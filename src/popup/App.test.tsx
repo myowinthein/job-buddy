@@ -218,7 +218,7 @@ describe('popup App — GET_STATUS frame aggregation on mount', () => {
       return Promise.resolve(statusResult({ totalScanned: 1 }, opts.frameId === 0 ? 'unavailable' : 'succeeded'));
     });
     renderApp();
-    expect(await screen.findByText('AI was unavailable; basic autofill still ran.')).toBeTruthy();
+    expect(await screen.findByText('AI was unavailable, but basic autofill still ran.')).toBeTruthy();
     expect(screen.getByRole('alert').className).toContain('border-amber-500');
   });
 });
@@ -330,12 +330,12 @@ describe('popup App — Fill Log access', () => {
     sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }));
     renderApp();
     fireEvent.click(await screen.findByRole('button', { name: 'View Fill Log →' }));
-    expect(await screen.findByText('Fill Log could not open; please try again.')).toBeTruthy();
+    expect(await screen.findByText('Fill Log could not open, so please try again.')).toBeTruthy();
     expect(screen.getByRole('alert').className).toContain('border-red-500');
     expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Fill Form' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'View Fill Log →' }));
-    await waitFor(() => expect(screen.queryByText('Fill Log could not open; please try again.')).toBeNull());
+    await waitFor(() => expect(screen.queryByText('Fill Log could not open, so please try again.')).toBeNull());
     expect(screen.getByText('1 field filled')).toBeTruthy();
   });
 });
@@ -350,9 +350,42 @@ describe('popup message categories', () => {
     cleanup();
     vi.mocked(getGeminiApiKey).mockRejectedValue(new Error('read failed'));
     renderApp();
-    await screen.findByRole('button', { name: 'Open AI Settings' });
+    await screen.findByRole('button', { name: 'Retry AI Settings' });
     expect(screen.getByRole('alert').className).toContain('border-red-500');
     expect(screen.getByText('Your saved AI settings could not be loaded.')).toBeTruthy();
+  });
+
+  it('retries AI settings in place while retaining previous results and Undo', async () => {
+    vi.mocked(getGeminiApiKey).mockRejectedValueOnce(new Error('storage unavailable'));
+    sendMessageMock.mockResolvedValue(statusResult({ noReview: 2, totalScanned: 2 }));
+    renderApp();
+    const retry = await screen.findByRole('button', { name: 'Retry AI Settings' });
+    await screen.findByText('2 fields filled');
+    let finishRead!: (value: string | null) => void;
+    vi.mocked(getGeminiApiKey).mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishRead = resolve;
+      }),
+    );
+    fireEvent.click(retry);
+    expect(await screen.findByText('Loading AI settings…')).toBeTruthy();
+    expect(retry).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
+    finishRead('saved-key');
+    await readyFill();
+    expect(screen.queryByText('Your saved AI settings could not be loaded.')).toBeNull();
+    expect(screen.getByText('2 fields filled')).toBeTruthy();
+    expect(chrome.runtime.openOptionsPage).not.toHaveBeenCalled();
+  });
+
+  it('offers key setup when retry finds no saved key', async () => {
+    vi.mocked(getGeminiApiKey).mockRejectedValueOnce(new Error('storage unavailable'));
+    renderApp();
+    const retry = await screen.findByRole('button', { name: 'Retry AI Settings' });
+    vi.mocked(getGeminiApiKey).mockResolvedValueOnce(null);
+    fireEvent.click(retry);
+    await screen.findByRole('button', { name: 'Set Up AI Autofill' });
+    expect(screen.queryByRole('button', { name: 'Fill Form' })).toBeNull();
   });
 
   it('summarizes an all-kept merge as kept answers rather than a failed fill', async () => {
@@ -502,7 +535,7 @@ describe('popup profile and action presentation', () => {
     renderApp();
     expect(await screen.findByRole('alert')).toHaveProperty(
       'textContent',
-      expect.stringContaining('Your profile could not load'),
+      expect.stringContaining('Open Profile to retry loading'),
     );
     expect(screen.getByRole('button', { name: 'Open Profile' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Set Up Profile' })).toBeNull();
@@ -534,8 +567,12 @@ it('does not ask for another AI key when a saved key exists but the fill did not
   expect(screen.getByText(/2 fields still need your input/)).toBeTruthy();
   expect(screen.queryByText('High confidence')).toBeNull();
   expect(screen.getByRole('button', { name: 'View Fill Log →' })).toBeTruthy();
-  expect(screen.getByRole('alert').textContent).toContain('AI was unavailable;');
+  expect(screen.getByRole('alert').textContent).toContain('AI was unavailable,');
   expect(screen.getAllByRole('alert')).toHaveLength(1);
+  const summary = screen.getByRole('region', { name: 'Fill results' });
+  expect(summary.parentElement?.className).toContain('border-t');
+  expect(summary.parentElement?.textContent).toContain('Last fill');
+  expect(summary.textContent).not.toContain('AI was unavailable');
   expect(screen.queryByText(/choose a value|No Review/)).toBeNull();
 });
 
@@ -612,7 +649,7 @@ it('distinguishes an AI settings read failure from missing-key setup', async () 
   sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }, 'unavailable'));
   renderApp();
   await screen.findByRole('button', { name: 'Undo' });
-  expect(await screen.findByRole('button', { name: 'Open AI Settings' })).toBeTruthy();
+  expect(await screen.findByRole('button', { name: 'Retry AI Settings' })).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Fill Form' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Dismiss AI suggestion' })).toBeNull();
 });
@@ -702,7 +739,7 @@ it.each(['succeeded', 'not_needed'] as const)(
     renderApp();
     await screen.findByRole('button', { name: 'Undo' });
     expect(
-      screen.queryByText('AI was unavailable; basic autofill still ran.'),
+      screen.queryByText('AI was unavailable, but basic autofill still ran.'),
     ).toBeNull();
   },
 );

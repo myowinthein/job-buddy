@@ -190,6 +190,11 @@ function App() {
     }
   };
 
+  const retryAISettings = async () => {
+    setKeyLoading(true);
+    await checkApiKey();
+  };
+
   useEffect(() => {
     getProfile()
       .then((p) => {
@@ -400,7 +405,7 @@ function App() {
     message = 'Loading profile…';
   } else if (profileLoadFailed) {
     tone = 'error';
-    message = 'Your profile could not load; open Profile to retry.';
+    message = 'Open Profile to retry loading your saved details.';
   } else if (profileSetup) {
     tone = 'info';
     message = hasProfileData
@@ -423,7 +428,7 @@ function App() {
     message = 'Refresh the page to retry after an autofill error.';
   } else if (logOpenFailed && result) {
     tone = 'error';
-    message = 'Fill Log could not open; please try again.';
+    message = 'Fill Log could not open, so please try again.';
   } else if (result)
     tone =
       aiUnavailable || result.needReview > 0 || unfilled > 0
@@ -437,21 +442,25 @@ function App() {
     : profileSetup
       ? 'Set Up Profile'
       : keyReadFailed
-        ? 'Open AI Settings'
+        ? 'Retry AI Settings'
         : aiSetup
           ? 'Set Up AI Autofill'
           : 'Fill Form';
   const primaryAction =
     profileLoadFailed || profileSetup
       ? openOptions
-      : keyReadFailed || aiSetup
-        ? goToSettingsKey
-        : confirming
-          ? handleConfirmFill
-          : handleAutofill;
+      : keyReadFailed
+        ? retryAISettings
+        : aiSetup
+          ? goToSettingsKey
+          : confirming
+            ? handleConfirmFill
+            : handleAutofill;
   const primaryIsAI = !profileLoadFailed && !profileSetup;
   const showFeedback = !confirming && (!!message || !!result);
   const showReport = autofillState === 'error';
+  const aiWarning = aiUnavailable ? 'AI was unavailable, but basic autofill still ran.' : null;
+  const noticeMessage = message ?? aiWarning;
 
   return (
     <div className="flex max-h-[600px] w-[380px] flex-col bg-white font-sans text-gray-900 dark:bg-gray-900 dark:text-gray-100">
@@ -605,14 +614,14 @@ function App() {
           className="min-h-0 overflow-y-auto px-5 pb-5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-500"
         >
           <PopupNotice tone={tone} urgent={aiUnavailable && !message}>
-            {message && <p>{message}</p>}
+            {noticeMessage && <p>{noticeMessage}</p>}
             {result && (
               <div
                 className={
-                  message ? 'mt-3 border-t border-gray-200/70 pt-3 dark:border-gray-700' : ''
+                  noticeMessage ? 'mt-3 border-t border-gray-200/70 pt-3 dark:border-gray-700' : ''
                 }
               >
-                {message && (
+                {noticeMessage && (
                   <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">Last fill</p>
                 )}
                 {result.totalScanned === 0 ? (
@@ -620,7 +629,10 @@ function App() {
                     No fillable fields found. <ReportIssueLink />
                   </p>
                 ) : (
-                  <ResultSummary result={result} />
+                  <>
+                    <ResultSummary result={result} />
+                    {message && aiWarning && <p className="mt-1">{aiWarning}</p>}
+                  </>
                 )}
               </div>
             )}
@@ -685,7 +697,6 @@ function ResultSummary({ result }: { result: AutofillResult }) {
             {result.kept} existing answer{result.kept === 1 ? '' : 's'} kept.
           </p>
         ) : null}
-        {result.aiStatus === 'unavailable' && <p>AI was unavailable; basic autofill still ran.</p>}
       </div>
     </section>
   );
