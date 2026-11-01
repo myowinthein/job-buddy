@@ -64,10 +64,9 @@ On the application form, colors describe individual field confidence:
 | Red / Not matched           | Left unfilled because no confident match was found.                          |
 | Gray / Missing profile data | Your profile lacks the value; a subtle gray background tint marks the field. |
 
-Small symbols repeat each status beside fields where space allows. Focus a field,
-or hover over or select its symbol, to read a short explanation. Press Escape to
-dismiss it. Manually resolved fields show “Confirmed by you.” Existing site hints,
-focus styling, and keyboard tab order are preserved; Undo removes the feedback.
+The form stays free of floating icons and automatic tooltips. Read textual field
+statuses in **Fill Log** when needed. Screen-reader descriptions supplement existing
+site hints without changing keyboard tab order; Undo removes Job Buddy's feedback.
 
 Popup messages share one area below the main buttons. Blue indicates setup or
 loading, gray an informational outcome, green completed fills, amber a result

@@ -210,15 +210,10 @@ test('missing profile data gets a neutral tint that preserves focus and clears o
   await expect(missing).toHaveCSS('background-color', 'rgba(107, 114, 128, 0.12)');
   await expect(missing).toHaveCSS('outline-style', 'none');
   await expect(shadowMissing).toHaveAttribute('data-jb-missing-data', '1');
-  const shadowMarker = page.locator('[data-jb-feedback-root] [data-jb-field-status="gray"]').last();
-  await expect(shadowMarker).toBeVisible();
-  const originalMarkerY = (await shadowMarker.boundingBox())!.y;
   await page.locator('#feedback-scroll').evaluate((el) => {
     el.scrollTop = 12;
   });
-  await expect
-    .poll(async () => (await shadowMarker.boundingBox())!.y)
-    .toBeLessThan(originalMarkerY - 10);
+  await expect(shadowMissing).toHaveAttribute('aria-describedby', /jb-feedback-/);
   await expect(page.locator('[name="lastName"]')).not.toHaveAttribute('data-jb-missing-data');
   await expect(page.locator('#consent-yes')).not.toHaveAttribute('data-jb-highlighted');
   await missing.focus();
@@ -250,7 +245,7 @@ test('missing profile data gets a neutral tint that preserves focus and clears o
   await expect(shadowMissing).toHaveCSS('outline-style', 'none');
 });
 
-test('field symbols explain real autofill outcomes without changing tab order, hints, or values', async ({
+test('form feedback stays quiet while keeping tints, accessible descriptions, tab order, and Undo', async ({
   page,
   extension,
 }, testInfo) => {
@@ -271,77 +266,47 @@ test('field symbols explain real autofill outcomes without changing tab order, h
   });
   await extension.send('AUTOFILL_SCAN');
   await extension.send('AUTOFILL_FILL', 'merge');
-  const root = page.locator('[data-jb-feedback-root]');
-  for (const state of ['green', 'yellow', 'red', 'gray']) {
-    await expect(root.locator(`[data-jb-field-status="${state}"]`).first()).toBeVisible();
-  }
+  const overlay = page.locator('[data-jb-feedback-root], [data-jb-field-status], [role="tooltip"]');
+  await expect(overlay).toHaveCount(0);
+  await expect(page.locator('#confident')).toHaveCSS('background-color', 'rgba(34, 197, 94, 0.12)');
+  await expect(page.locator('#review')).toHaveCSS('background-color', 'rgba(234, 179, 8, 0.12)');
+  await expect(page.locator('#unmatched')).toHaveCSS('background-color', 'rgba(239, 68, 68, 0.12)');
+  await expect(page.locator('#missing')).toHaveCSS('background-color', 'rgba(107, 114, 128, 0.12)');
   await expect(page.locator('#confident')).toHaveValue('Jane');
   await expect(page.locator('#review')).toHaveValue('Jane');
   await expect(page.locator('#unmatched')).toHaveValue('');
   await expect(page.locator('#missing')).toHaveValue('');
-  await expect(page.locator('[role="tooltip"]')).toBeHidden();
   await expect(page.locator('#confident')).toHaveAttribute(
     'aria-describedby',
     /name-help jb-feedback-/,
   );
-  const namePosition = await page.locator('#confident').boundingBox();
-  const greenPosition = await root.locator('[data-jb-field-status="green"]').boundingBox();
-  expect(greenPosition!.x).toBeGreaterThan(namePosition!.x + namePosition!.width);
+  await expect(page.locator('#missing')).toHaveAccessibleDescription(
+    'Job Buddy: No saved answer in your profile.',
+  );
+  const originalPosition = await page.locator('#review').boundingBox();
   await page.locator('#confident').focus();
-  await expect(root.getByRole('tooltip')).toHaveText('Job Buddy: Filled with high confidence.');
   await page.keyboard.press('Tab');
   await expect(page.locator('#review')).toBeFocused();
-  await expect(root.getByRole('tooltip')).toHaveText('Job Buddy: Review this answer.');
-  await page.keyboard.press('Escape');
-  await expect(root.getByRole('tooltip')).toBeHidden();
-  await expect(page.locator('#review')).toBeFocused();
   await page.locator('#unmatched').hover();
-  await expect(root.getByRole('tooltip')).toHaveText('Job Buddy: No confident match found.');
-  await root.getByRole('tooltip').hover();
-  await page.waitForTimeout(180);
-  await expect(root.getByRole('tooltip')).toBeVisible();
-  await page.mouse.move(720, 650);
-  await expect(root.getByRole('tooltip')).toBeHidden();
-  await root.locator('[data-jb-field-status="gray"]').click();
-  await expect(page.locator('#missing')).toBeFocused();
-  await expect(root.getByRole('tooltip')).toHaveText('Job Buddy: No saved answer in your profile.');
+  await expect(overlay).toHaveCount(0);
+  expect(await page.locator('#review').boundingBox()).toEqual(originalPosition);
   await page.locator('#manual').fill('Reference confirmed by the applicant');
   await page.locator('#confident').focus();
-  await expect(root.locator('[data-jb-field-status="confirmed"]')).toBeVisible();
-  await page.locator('#manual').focus();
-  await expect(root.getByRole('tooltip')).toHaveText('Job Buddy: Confirmed by you.');
+  await expect(page.locator('#manual')).toHaveCSS('background-color', 'rgba(34, 197, 94, 0.12)');
+  await expect(page.locator('#manual')).toHaveAccessibleDescription('Job Buddy: Confirmed by you.');
   expect(
     await page.locator('form').evaluate((form) => (form as HTMLFormElement).checkValidity()),
   ).toBe(true);
-  await page.screenshot({ path: testInfo.outputPath('field-feedback-dark.png'), fullPage: true });
-  await page.keyboard.press('Escape');
-  const before = await page.locator('#missing').boundingBox();
-  await page.evaluate(() =>
-    document.querySelector('h1')!.setAttribute('style', 'margin-bottom:100px'),
-  );
-  await expect
-    .poll(async () => (await root.locator('[data-jb-field-status="gray"]').boundingBox())!.y)
-    .toBeGreaterThan(before!.y);
+  await page.screenshot({ path: testInfo.outputPath('form-tints-dark.png'), fullPage: true });
   await page.setViewportSize({ width: 375, height: 812 });
   await page.locator('#review').focus();
-  await expect(root.getByRole('tooltip')).toBeVisible();
-  const tip = await root.getByRole('tooltip').boundingBox();
-  expect(tip!.x).toBeGreaterThanOrEqual(0);
-  expect(tip!.x + tip!.width).toBeLessThanOrEqual(375);
+  await page.locator('#missing').hover();
+  await page.evaluate(() => window.scrollBy(0, 100));
+  await expect(overlay).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: testInfo.outputPath('field-feedback-narrow.png'), fullPage: true });
-  await page.evaluate(() => {
-    document.body.style.padding = '0';
-    const form = document.querySelector('form')!;
-    form.style.width = '100%';
-    form.style.maxWidth = 'none';
-  });
-  await expect(root.locator('[data-jb-field-status="gray"]')).toBeHidden();
-  await page.locator('#missing').focus();
-  await expect(root.getByRole('tooltip')).toHaveText('Job Buddy: No saved answer in your profile.');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('form-tints-narrow.png'), fullPage: true });
   await extension.send('CLEAR');
-  await expect(root).toHaveCount(0);
+  await expect(overlay).toHaveCount(0);
   await expect(page.locator('[data-jb-field-description]')).toHaveCount(0);
   await expect(page.locator('#confident')).toHaveAttribute('aria-describedby', 'name-help');
   await expect(page.locator('#manual')).toHaveValue('');

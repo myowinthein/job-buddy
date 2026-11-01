@@ -1,7 +1,6 @@
 import type { DocumentFile } from '../types/profile';
 import { normalize, similarity, isSkippableOption, PLACEHOLDER_OPTION_NORMS } from './normalizer';
 import { CONF_FUZZY_THRESHOLD } from './constants';
-import { withoutFieldFeedback } from './fieldFeedback';
 
 // Capture native setters before any framework can shadow them on instances
 const nativeInputSetter    = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,    'value')?.set;
@@ -37,7 +36,7 @@ function reformatDateForInput(value: string, element: HTMLInputElement): string 
 // elements (already removed from the DOM between scan and fill, or a type
 // browsers refuse to focus) can reject focus() outright.
 function focusElement(element: HTMLElement): void {
-  try { withoutFieldFeedback(() => element.focus({ preventScroll: true })); } catch { /* ignore */ }
+  try { element.focus({ preventScroll: true }); } catch { /* ignore */ }
 }
 
 // Dispatches a real InputEvent (not a plain Event) for 'input', matching
