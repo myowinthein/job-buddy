@@ -355,17 +355,15 @@ describe('popup App — Fill Details access', () => {
     expect(sendMessageMock.mock.calls.some(([, message]) => message.action === 'GET_DEBUG_SESSION')).toBe(false);
   });
 
-  it('retains the logo shortcut alongside the public details action', async () => {
+  it('keeps the logo noninteractive while the public details action remains available', async () => {
     sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }));
     renderApp();
-    await screen.findByRole('button', { name: 'View details' });
-    const logo = screen.getByRole('button', { name: 'Job Buddy' });
+    const details = await screen.findByRole('button', { name: 'View details' });
+    const logo = screen.getByRole('img', { name: 'Job Buddy' });
+    expect(logo.getAttribute('tabindex')).toBeNull();
     fireEvent.click(logo);
     expect(openFillLog).not.toHaveBeenCalled();
-    fireEvent.click(logo, { shiftKey: true });
-    expect(openFillLog).toHaveBeenCalledWith(123);
-    vi.mocked(openFillLog).mockClear();
-    fireEvent.keyDown(logo, { key: 'Enter', shiftKey: true });
+    fireEvent.click(details);
     expect(openFillLog).toHaveBeenCalledWith(123);
   });
 

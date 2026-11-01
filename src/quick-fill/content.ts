@@ -14,7 +14,6 @@ export function installQuickFill(): void {
   let prefs: QuickFillPreferences = { enabled: true, disabledSites: [] };
   let ready = false,
     hidden = false,
-    forced = false,
     disposed = false;
   let widget: QuickFillWidget | undefined;
   let run: AutofillRun | null = null;
@@ -23,8 +22,7 @@ export function installQuickFill(): void {
     statusReading = false,
     detecting = false,
     detectAgain = false;
-  let theme = 'system',
-    shortcut = '';
+  let theme = 'system';
   let timer: ReturnType<typeof setTimeout> | undefined;
   let poll: ReturnType<typeof setInterval> | undefined;
   const media = matchMedia('(prefers-color-scheme: dark)');
@@ -36,7 +34,7 @@ export function installQuickFill(): void {
   const allowed = () => ready && prefs.enabled && !prefs.disabledSites.includes(location.hostname);
   const paint = () => {
     if (!main || disposed) return;
-    if (!allowed() || hidden || (!candidate && !forced)) {
+    if (!allowed() || hidden || !candidate) {
       widget?.destroy();
       widget = undefined;
       return;
@@ -100,7 +98,6 @@ export function installQuickFill(): void {
           );
         },
       });
-      widget.shortcut(shortcut);
     }
     widget.preferences(prefs, theme === 'dark' || (theme !== 'light' && media.matches));
     widget.render(run, starting);
@@ -212,12 +209,6 @@ export function installQuickFill(): void {
     if (!main) return;
     if (message.action === 'JB_QUICK_REFRESH') schedule();
     if (message.action === 'JB_QUICK_RUN_CHANGED') void readStatus();
-    if (message.action === 'JB_QUICK_REVEAL') {
-      hidden = false;
-      forced = true;
-      paint();
-      respond(true);
-    }
   };
   chrome.runtime.onMessage.addListener(messages);
   const storage = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
@@ -250,11 +241,7 @@ export function installQuickFill(): void {
       );
       ready = true;
       schedule();
-      if (main) {
-        shortcut = await request('SHORTCUT');
-        widget?.shortcut(shortcut);
-        await readStatus();
-      }
+      if (main) await readStatus();
     } catch {
       /* Fail closed: a storage error must not enable disabled page UI. */
     }

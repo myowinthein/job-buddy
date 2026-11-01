@@ -26,6 +26,7 @@ test('dev quick fill starts without the hot-reload server or popup, including af
 }, info) => {
   const manifest = JSON.parse(await readFile(resolve(extensionPath, 'manifest.json'), 'utf8'));
   expect(manifest.content_scripts).toBeUndefined();
+  expect(manifest.commands).toBeUndefined();
   const profileDirectory = await mkdtemp(join(tmpdir(), 'jb-dev-startup-'));
   const html = await readFile(resolve('src/browser/fixtures/application.html'), 'utf8');
   let context: BrowserContext | undefined;
@@ -59,7 +60,7 @@ test('dev quick fill starts without the hot-reload server or popup, including af
     let page = await context!.newPage();
     await page.goto('http://127.0.0.1/application');
     await expect(page.locator('[data-job-buddy-ui]')).toHaveCount(1);
-    await expect(page.getByRole('button', { name: 'DEV Fill Form', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Fill Form', exact: true })).toBeVisible();
     const frameReplies = await worker.evaluate(async () => {
       const [tab] = await chrome.tabs.query({ url: 'http://127.0.0.1/application' });
       const frames = await chrome.webNavigation.getAllFrames({ tabId: tab.id! });
@@ -78,6 +79,21 @@ test('dev quick fill starts without the hot-reload server or popup, including af
     expect(frameReplies.every(Boolean)).toBe(true);
     await page.screenshot({ path: info.outputPath('dev-automatic-quick-fill.png') });
 
+    const grip = page.getByRole('button', { name: 'Move Job Buddy' });
+    const handle = await grip.boundingBox();
+    await page.mouse.move(handle!.x + handle!.width / 2, handle!.y + handle!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(300, 280, { steps: 8 });
+    await page.mouse.up();
+    await expect
+      .poll(() =>
+        worker.evaluate(
+          async () => (await chrome.storage.local.get('quickFillPreferences')).quickFillPreferences,
+        ),
+      )
+      .toMatchObject({ position: { x: expect.any(Number), y: expect.any(Number) } });
+    const savedPosition = await page.locator('[data-job-buddy-ui]').boundingBox();
+
     // Prove a new startup can recreate the registration without WXT's server.
     await worker.evaluate(() =>
       chrome.scripting.unregisterContentScripts({ ids: ['wxt:content-scripts/content.js'] }),
@@ -88,7 +104,10 @@ test('dev quick fill starts without the hot-reload server or popup, including af
     page = await context!.newPage();
     await page.goto('http://127.0.0.1/application-after-restart');
     await expect(page.locator('[data-job-buddy-ui]')).toHaveCount(1);
-    await expect(page.getByRole('button', { name: 'DEV Fill Form', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Fill Form', exact: true })).toBeVisible();
+    const restoredPosition = await page.locator('[data-job-buddy-ui]').boundingBox();
+    expect(Math.abs(restoredPosition!.x - savedPosition!.x)).toBeLessThan(1);
+    expect(Math.abs(restoredPosition!.y - savedPosition!.y)).toBeLessThan(1);
   } finally {
     await context?.close();
     await rm(profileDirectory, { recursive: true, force: true });

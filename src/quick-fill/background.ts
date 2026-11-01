@@ -141,11 +141,6 @@ export function registerQuickFill(autofill: AutofillCoordinator): void {
           await sessionSet({ 'jb:focusOnLoad': 'quick-fill-enabled' });
           await chrome.runtime.openOptionsPage();
           return true;
-        case 'JB_QUICK_SHORTCUT':
-          return (
-            (await chrome.commands.getAll()).find((command) => command.name === 'quick-fill')
-              ?.shortcut ?? ''
-          );
       }
       return null;
     };
@@ -153,40 +148,6 @@ export function registerQuickFill(autofill: AutofillCoordinator): void {
       .then(respond)
       .catch(() => respond({ quickFillError: true }));
     return true;
-  });
-  chrome.commands.onCommand.addListener((command, tab) => {
-    if (command !== 'quick-fill') return;
-    void (async () => {
-      const source = tab ?? (await chrome.tabs.query({ active: true, currentWindow: true }))[0];
-      if (source?.id === undefined || !/^https?:\/\//.test(source.url ?? '')) {
-        await chrome.action.openPopup();
-        return;
-      }
-      // A browser command grants activeTab. Reuse idempotent injection if site
-      // access was restricted to invocation or this tab predates installation.
-      await chrome.scripting.executeScript({
-        target: { tabId: source.id },
-        files: ['content-scripts/content.js'],
-      });
-      await chrome.tabs.sendMessage(source.id, { action: 'JB_QUICK_REVEAL' }, { frameId: 0 });
-      const current = await autofill.status(source.id);
-      const run =
-        current?.stage === 'confirming'
-          ? await autofill.confirm(source.id, current.runId, 'merge')
-          : await autofill.start(source.id, true);
-      if (
-        run?.error &&
-        [
-          'profile_setup_required',
-          'profile_unavailable',
-          'ai_setup_required',
-          'ai_settings_unavailable',
-        ].includes(run.error)
-      )
-        await openSetup(run.error);
-    })().catch(() => {
-      void chrome.action.openPopup().catch(() => {});
-    });
   });
   // Content scripts cannot read session storage. Relay only a change signal;
   // they request sanitized run metadata through the authenticated handler.

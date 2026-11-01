@@ -440,17 +440,6 @@ function App() {
           src={LOGO_ICON_SRC}
           alt="Job Buddy"
           className="h-8 w-8 shrink-0"
-          role={result ? 'button' : undefined}
-          tabIndex={result ? 0 : undefined}
-          onClick={(event) => {
-            if (event.shiftKey && result) void openLog();
-          }}
-          onKeyDown={(event) => {
-            if (event.shiftKey && (event.key === 'Enter' || event.key === ' ') && result) {
-              event.preventDefault();
-              void openLog();
-            }
-          }}
         />
         <div className="flex flex-1 items-center gap-2">
           <h1 className="text-base font-bold">Job Buddy</h1>

@@ -6,6 +6,9 @@ test('one click preserves existing answers across frames and keeps details and U
   context,
   extension,
 }, info) => {
+  expect(
+    await extension.worker.evaluate(() => chrome.runtime.getManifest().commands),
+  ).toBeUndefined();
   const host = page.locator(hostSelector);
   await expect(host).toHaveCount(1);
   await host.getByRole('button', { name: 'Fill Form', exact: true }).click();
@@ -134,17 +137,21 @@ test('settings changes update open forms and a hidden site can be restored', asy
   const settings = await opening;
   const toggle = settings.locator('#quick-fill-enabled');
   await expect(toggle).toBeFocused();
-  await expect(toggle).toBeChecked();
-  await toggle.uncheck();
+  await expect(toggle.getByRole('button', { name: 'On', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await toggle.getByRole('button', { name: 'Off', exact: true }).click();
   await expect(host).toHaveCount(0);
-  await toggle.check();
+  await toggle.getByRole('button', { name: 'On', exact: true }).click();
   await page.bringToFront();
   await expect(host).toBeVisible();
   await host.getByRole('button', { name: 'Quick fill options' }).click();
   await host.getByRole('button', { name: 'Disable on this site' }).click();
   await expect(host).toHaveCount(0);
   await settings.bringToFront();
-  await settings.getByRole('button', { name: 'Show Button', exact: true }).click();
+  await settings.getByText('Hidden sites (1)', { exact: true }).click();
+  await settings.getByRole('button', { name: 'Show button on 127.0.0.1', exact: true }).click();
   await page.bringToFront();
   await expect(host).toBeVisible();
   expect(
@@ -209,4 +216,49 @@ test('hiding the button during AI leaves the background fill running', async ({
   expect(
     await page.evaluate(() => (window as unknown as { submitted?: unknown }).submitted),
   ).toBeUndefined();
+});
+
+test('hidden-site management stays compact with many sites and actions remain beside their labels', async ({
+  context,
+  extension,
+}, info) => {
+  await extension.worker.evaluate(() =>
+    chrome.storage.local.set({
+      themePreference: 'dark',
+      quickFillPreferences: {
+        enabled: true,
+        disabledSites: Array.from(
+          { length: 13 },
+          (_, i) => `site${String(i).padStart(2, '0')}.example`,
+        ),
+      },
+    }),
+  );
+  const settings = await context.newPage();
+  await settings.addInitScript(() => sessionStorage.setItem('jb:ui:section', 'settings'));
+  await settings.goto(new URL('options.html', extension.worker.url()).href);
+  const section = settings
+    .locator('section')
+    .filter({ has: settings.getByRole('heading', { name: 'Quick Fill', exact: true }) });
+  await section.getByText('Hidden sites (13)', { exact: true }).click();
+  await expect(section.getByRole('listitem')).toHaveCount(5);
+  const label = await section.getByText('site00.example', { exact: true }).boundingBox();
+  const action = await section
+    .getByRole('button', { name: 'Show button on site00.example' })
+    .boundingBox();
+  expect(action!.x - (label!.x + label!.width)).toBeLessThanOrEqual(16);
+  await section.screenshot({ path: info.outputPath('quick-fill-settings-dark.png') });
+  await section.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(section.getByText('6–10 of 13', { exact: true })).toBeVisible();
+  await section.getByRole('searchbox', { name: 'Search hidden sites' }).fill('SITE12');
+  await expect(section.getByRole('listitem')).toHaveCount(1);
+  await section.getByRole('button', { name: 'Show button on site12.example' }).click();
+  await expect(section.getByText('No sites match your search.', { exact: true })).toBeVisible();
+  await section.getByRole('searchbox').fill('');
+  await settings.setViewportSize({ width: 390, height: 844 });
+  await expect(section.getByRole('listitem')).toHaveCount(5);
+  await section.screenshot({ path: info.outputPath('quick-fill-settings-narrow.png') });
+  expect(await settings.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+    true,
+  );
 });

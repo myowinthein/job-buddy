@@ -77,10 +77,10 @@ or disable it for a site. Manage this in **Settings → Quick Fill**. The popup 
 offers the choice to replace existing answers. Form detection stays local and may
 miss unusual layouts; the popup remains available.
 
-Use **Alt+Shift+J** (**Option+Shift+J** on macOS) to fill empty fields without opening
-the popup. Change the shortcut at `chrome://extensions/shortcuts` if Chrome has not
-assigned it or it conflicts with another app. Moving or hiding the button does not
-stop a fill already running.
+Moving or hiding the button does not stop a fill already running. Its position is
+saved in this browser across restarts and shared across sites. Use **On / Off** in
+Settings to control visibility. Hidden sites can be searched and managed in pages
+of five.
 
 Popup messages share one area below the main buttons. Blue indicates setup or
 loading, gray an informational outcome, green completed fills, amber a result

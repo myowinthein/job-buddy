@@ -14,8 +14,6 @@ interface Actions {
 }
 const ICON =
   '<svg aria-hidden="true" viewBox="0 0 128 128"><rect width="128" height="128" rx="32" fill="var(--brand)"/><rect x="36" y="28" width="22" height="22" rx="3" fill="white"/><path d="M80 28H102V69C102 91 86 104 65 104C48 104 33 96 26 84L42 70C47 79 54 84 65 84C74 84 80 78 80 68V28Z" fill="white"/></svg>';
-const SPARKLE =
-  '<svg aria-hidden="true" class="sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m12 3 2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6Z"/><path d="M20 1v5m-2.5-2.5h5"/></svg>';
 const CSS = `
 :host { all:initial; position:fixed!important; z-index:2147483646!important; display:block; width:max-content; max-width:calc(100vw - 24px); color-scheme:light; --brand:#4b79f7; --bg:#fff; --fg:#182231; --muted:#596477; --line:#d8dee8; --hover:#eef2f9; --review:#946200; --success:#15803d; --error:#b91c1c; }
 :host([data-dev]) { --brand:#d99b12; }
@@ -28,9 +26,7 @@ button:hover { background:var(--hover); }
 button:focus-visible { outline:2px solid var(--brand); outline-offset:1px; }
 button:disabled { cursor:default; opacity:.65; }
 .fill { display:flex; align-items:center; gap:8px; font-weight:600; padding:7px 10px 7px 6px; white-space:nowrap; }
-.fill>svg { width:26px; height:26px; flex:none; }
-.dev { font-size:9px; letter-spacing:.05em; color:#b77908; background:#fbbf2426; border-radius:4px; padding:2px 3px; }
-.fill>svg.sparkle { width:15px; height:15px; color:var(--muted); }
+.brand,.brand svg { display:block; width:22px; height:22px; flex:none; }
 .grip { cursor:grab; touch-action:none; padding:9px 3px; color:var(--muted); letter-spacing:-2px; }
 .grip:active { cursor:grabbing; }
 .more { width:30px; font-size:20px; padding:5px; color:var(--muted); }
@@ -45,9 +41,8 @@ button:disabled { cursor:default; opacity:.65; }
 .menu { position:absolute; right:0; bottom:calc(100% + 8px); width:210px; background:var(--bg); border:1px solid var(--line); border-radius:12px; box-shadow:0 4px 18px #0002; padding:5px; }
 .menu[data-below] { top:calc(100% + 8px); bottom:auto; }
 .menu button { display:block; text-align:left; width:100%; padding:9px 10px; }
-.shortcut { color:var(--muted); font-size:11px; padding:7px 10px; border-top:1px solid var(--line); margin-top:3px; }
 [hidden] { display:none!important; }
-.spin { display:inline-block; width:13px; height:13px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin 1s linear infinite; }
+.spin { display:inline-block; width:22px; height:22px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:spin 1s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
 @media(prefers-reduced-motion:reduce) { .spin { animation:none; border-style:dotted; } }
 `;
@@ -77,9 +72,10 @@ export class QuickFillWidget {
     if (import.meta.env.DEV) this.host.setAttribute('data-dev', '');
     this.root = this.host.attachShadow({ mode: 'open' });
     // Static markup only. Page text and stored data always use textContent.
-    this.root.innerHTML = `<style>${CSS}</style><div class="shell"><div class="controls"><button type="button" class="grip" aria-label="Move Job Buddy" title="Drag to move. Use arrow keys when focused.">⠿</button><button type="button" class="fill">${ICON}${import.meta.env.DEV ? '<span class="dev">DEV</span>' : ''}<span class="label">Fill Form</span>${SPARKLE}</button><button type="button" class="more" aria-label="Quick fill options" aria-expanded="false" aria-controls="quick-menu">⋯</button></div><div class="status" hidden><p role="status" aria-live="polite"></p><div class="links"><button type="button" class="undo" hidden>Undo</button><button type="button" class="details" hidden>View details</button></div></div><div id="quick-menu" class="menu" hidden><button type="button" data-action="hide">Hide until refresh</button><button type="button" data-action="disableSite">Disable on this site</button><button type="button" data-action="settings">Quick fill settings</button><div class="shortcut">Shortcut available in Chrome settings</div></div></div>`;
+    this.root.innerHTML = `<style>${CSS}</style><div class="shell"><div class="controls"><button type="button" class="grip" aria-label="Move Job Buddy" title="Drag to move. Use arrow keys when focused.">⠿</button><button type="button" class="fill"><span class="brand" aria-hidden="true">${ICON}</span><span class="label">Fill Form</span></button><button type="button" class="more" aria-label="Quick fill options" aria-expanded="false" aria-controls="quick-menu">⋯</button></div><div class="status" hidden><p role="status" aria-live="polite"></p><div class="links"><button type="button" class="undo" hidden>Undo</button><button type="button" class="details" hidden>View details</button></div></div><div id="quick-menu" class="menu" hidden><button type="button" data-action="hide">Hide until refresh</button><button type="button" data-action="disableSite">Disable on this site</button><button type="button" data-action="settings">Quick fill settings</button></div></div>`;
     const get = <T extends HTMLElement>(selector: string) => this.root.querySelector<T>(selector)!;
     this.primary = get('.fill');
+    this.primary.title = 'Fill empty fields with your Job Buddy profile.';
     this.label = get('.label');
     this.status = get('.status');
     this.text = get('.status p');
@@ -202,12 +198,6 @@ export class QuickFillWidget {
     this.host.toggleAttribute('data-dark', dark);
     this.place();
   }
-  shortcut(value: string) {
-    this.primary.title = `Fill empty fields with your saved profile.${value ? ` Shortcut: ${value}.` : ''}`;
-    this.root.querySelector('.shortcut')!.textContent = value
-      ? `Keyboard shortcut: ${value}`
-      : 'Assign a shortcut in Chrome extension settings';
-  }
   render(run: AutofillRun | null, starting = false) {
     this.busy = starting || run?.stage === 'scanning' || run?.stage === 'filling';
     this.primary.disabled = this.busy;
@@ -218,13 +208,12 @@ export class QuickFillWidget {
         : 'Fill Form';
     const spinner = this.primary.querySelector('.spin');
     spinner?.remove();
-    const sparkle = this.primary.querySelector<HTMLElement>('.sparkle')!;
-    sparkle.style.display = this.busy ? 'none' : '';
+    this.primary.querySelector<HTMLElement>('.brand')!.hidden = this.busy;
     if (this.busy) {
       const icon = document.createElement('span');
       icon.className = 'spin';
       icon.setAttribute('aria-hidden', 'true');
-      this.primary.append(icon);
+      this.primary.insertBefore(icon, this.label);
     }
     this.status.hidden = !run || this.busy;
     this.undo.hidden = true;
@@ -255,6 +244,7 @@ export class QuickFillWidget {
     this.busy = false;
     this.primary.disabled = false;
     this.label.textContent = 'Try Again';
+    this.primary.querySelector<HTMLElement>('.brand')!.hidden = false;
     this.primary.querySelector('.spin')?.remove();
     this.status.hidden = false;
     this.status.dataset.tone = 'error';

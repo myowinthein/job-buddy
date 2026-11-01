@@ -5,17 +5,23 @@ export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   // Use one loopback address for Chrome and the dev server. Resolving localhost
   // to IPv6 alone can leave Chrome's IPv4 connection refused.
-  dev: { server: { host: '127.0.0.1', origin: 'http://127.0.0.1' } },
+  dev: { reloadCommand: false, server: { host: '127.0.0.1', origin: 'http://127.0.0.1' } },
+  vite: () => ({
+    plugins: [{
+      name: 'job-buddy-disabled-dev-command',
+      enforce: 'pre',
+      transform(code, id) {
+        // WXT 0.20.26 attaches this listener even with reloadCommand disabled.
+        // Chrome omits the commands API when no commands are declared.
+        if (!id.startsWith('\0virtual:wxt-background-entrypoint?')) return;
+        return code.replace(/browser\.commands\.onCommand\.addListener\(\(command\) => \{[\s\S]*?\n\s*\}\);/, '');
+      },
+    }],
+  }),
   manifest: ({ mode }) => ({
     name: 'Job Buddy: Autofill Job Applications',
     description: 'Fill job application forms with AI assistance using your saved profile. Works across supported job sites.',
     permissions: ['storage', 'identity', 'activeTab', 'webNavigation', 'scripting', 'alarms'],
-    commands: {
-      'quick-fill': {
-        suggested_key: { default: 'Alt+Shift+J', mac: 'Alt+Shift+J' },
-        description: 'Fill empty fields with Job Buddy',
-      },
-    },
     host_permissions: [
       'https://generativelanguage.googleapis.com/*',
       'https://www.googleapis.com/*',
