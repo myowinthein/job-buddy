@@ -66,14 +66,28 @@ it('rejects forged and child-frame tab control and derives the real source tab',
   expect(quickFillSenderTab({ ...sender, url: 'chrome://extensions' })).toBeNull();
 });
 it('bounds positions and preserves disabled preferences without accepting invalid data', () => {
-  expect(normalizePreferences(undefined)).toEqual({ enabled: true, disabledSites: [] });
+  expect(normalizePreferences(undefined)).toEqual({
+    enabled: true,
+    fillMode: 'merge',
+    disabledSites: [],
+  });
   expect(
     normalizePreferences({
       enabled: false,
       disabledSites: ['example.test', 2, 'example.test'],
       position: { x: 99, y: -1 },
     }),
-  ).toEqual({ enabled: false, disabledSites: ['example.test'], position: { x: 1, y: 0 } });
+  ).toEqual({
+    enabled: false,
+    fillMode: 'merge',
+    disabledSites: ['example.test'],
+    position: { x: 1, y: 0 },
+  });
+});
+it('uses empty fields only for missing or invalid modes and preserves an explicit overwrite choice', () => {
+  for (const fillMode of [undefined, null, '', 'all', true])
+    expect(normalizePreferences({ fillMode }).fillMode).toBe('merge');
+  expect(normalizePreferences({ fillMode: 'overwrite' }).fillMode).toBe('overwrite');
 });
 it('reports partial AI failure and counts review outcomes without counting kept answers as fills', () => {
   const summary = quickFillSummary({

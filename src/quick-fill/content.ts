@@ -11,7 +11,7 @@ import { QuickFillWidget } from './widget';
 export function installQuickFill(): void {
   const main = window === window.top;
   let candidate = false;
-  let prefs: QuickFillPreferences = { enabled: true, disabledSites: [] };
+  let prefs: QuickFillPreferences = normalizePreferences(undefined);
   let ready = false,
     hidden = false,
     disposed = false;

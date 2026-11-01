@@ -65,7 +65,7 @@ export function QuickFillSettings() {
     <section className="mb-8 border-b border-gray-200 pb-8 dark:border-gray-700">
       <h3 className="mb-1 text-base font-semibold text-gray-800 dark:text-gray-200">Quick Fill</h3>
       <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-        Fill empty fields using a floating button on job application forms.
+        Fill fields using a floating button on job application forms.
       </p>
       <div
         id="quick-fill-enabled"
@@ -94,6 +94,32 @@ export function QuickFillSettings() {
             {enabled ? 'On' : 'Off'}
           </button>
         ))}
+      </div>
+      <div className="mt-4">
+        <label
+          htmlFor="quick-fill-mode"
+          className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+        >
+          Fields to fill
+        </label>
+        <select
+          id="quick-fill-mode"
+          value={prefs?.fillMode ?? 'merge'}
+          disabled={!prefs || saving || !prefs.enabled}
+          aria-describedby="quick-fill-mode-help"
+          className={`${fieldCls(undefined, !prefs || saving || !prefs.enabled)} max-w-xs`}
+          onChange={(event) =>
+            void save({ fillMode: event.target.value === 'overwrite' ? 'overwrite' : 'merge' })
+          }
+        >
+          <option value="merge">Empty fields only</option>
+          <option value="overwrite">Empty and existing fields</option>
+        </select>
+        <p id="quick-fill-mode-help" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          {prefs?.fillMode === 'overwrite'
+            ? 'Replace existing answers where matching profile data is available.'
+            : 'Keep answers already entered in the form.'}
+        </p>
       </div>
       {!!prefs?.disabledSites.length && (
         <details className="mt-4">

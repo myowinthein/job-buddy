@@ -4,8 +4,10 @@ import type { AutofillCoordinator } from '@/src/autofill/runCoordinator';
 
 vi.mock('@/src/utils/sessionStorage', () => ({ sessionSet: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('@/src/quick-fill/preferences', () => ({
+  getQuickFillPreferences: vi.fn().mockResolvedValue({ fillMode: 'merge' }),
   updateQuickFillPreferences: vi.fn().mockResolvedValue(undefined),
 }));
+import { getQuickFillPreferences } from './preferences';
 import { sessionSet } from '@/src/utils/sessionStorage';
 
 function harness() {
@@ -42,7 +44,59 @@ describe('quick fill background entry points', () => {
       respond,
     );
     await vi.waitFor(() => expect(respond).toHaveBeenCalled());
-    expect(h.coordinator.start).toHaveBeenCalledWith(12, true, 'source');
+    expect(h.coordinator.start).toHaveBeenCalledWith(12, 'merge', 'source');
+  });
+  it.each(['merge', 'overwrite'] as const)(
+    'uses saved %s mode for a new fill and a pending popup choice',
+    async (mode) => {
+      vi.mocked(getQuickFillPreferences).mockResolvedValueOnce({
+        enabled: true,
+        disabledSites: [],
+        fillMode: mode,
+      });
+      const h = harness();
+      const sender = {
+        id: 'jb',
+        frameId: 0,
+        url: 'https://jobs.test',
+        tab: { id: 12 },
+        documentId: 'source',
+      };
+      const respond = vi.fn();
+      h.message(
+        { action: 'JB_QUICK_START', mode: mode === 'merge' ? 'overwrite' : 'merge' },
+        sender,
+        respond,
+      );
+      await vi.waitFor(() => expect(respond).toHaveBeenCalled());
+      expect(h.coordinator.start).toHaveBeenCalledWith(12, mode, 'source');
+      h.coordinator.status.mockResolvedValueOnce({
+        stage: 'confirming',
+        runId: 'pending',
+      } as never);
+      vi.mocked(getQuickFillPreferences).mockResolvedValueOnce({
+        enabled: true,
+        disabledSites: [],
+        fillMode: mode,
+      });
+      respond.mockClear();
+      h.message({ action: 'JB_QUICK_START' }, sender, respond);
+      await vi.waitFor(() => expect(respond).toHaveBeenCalled());
+      expect(h.coordinator.confirm).toHaveBeenCalledWith(12, 'pending', mode);
+      expect(h.coordinator.start).toHaveBeenCalledTimes(1);
+    },
+  );
+  it('does not start a fill when its saved mode cannot be read', async () => {
+    const h = harness();
+    vi.mocked(getQuickFillPreferences).mockRejectedValueOnce(new Error('storage unavailable'));
+    const respond = vi.fn();
+    h.message(
+      { action: 'JB_QUICK_START' },
+      { id: 'jb', frameId: 0, url: 'https://jobs.test', tab: { id: 12 } },
+      respond,
+    );
+    await vi.waitFor(() => expect(respond).toHaveBeenCalledWith({ quickFillError: true }));
+    expect(h.coordinator.start).not.toHaveBeenCalled();
   });
   it('routes missing Gemini setup to the key input', async () => {
     const h = harness();

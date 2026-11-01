@@ -65,7 +65,11 @@ export class AutofillCoordinator {
     });
   }
 
-  async start(tabId: number, emptyOnly = false, sourceDocumentId?: string): Promise<AutofillRun | null> {
+  async start(
+    tabId: number,
+    mode?: 'merge' | 'overwrite',
+    sourceDocumentId?: string,
+  ): Promise<AutofillRun | null> {
     const run = await this.exclusive(tabId, async () => {
       const existing = await this.deps.read(tabId);
       if (existing && (pending(existing) || existing.stage === 'confirming')) return existing;
@@ -81,7 +85,7 @@ export class AutofillCoordinator {
         expiresAt: Date.now() + RUN_LIMIT_MS,
         stage: error ? 'error' : 'scanning',
         frames,
-        ...(emptyOnly ? { mode: 'merge' as const } : {}),
+        ...(mode ? { mode } : {}),
         ...(error ? { error } : {}),
       };
       await this.deps.write(tabId, run);
@@ -206,7 +210,7 @@ export class AutofillCoordinator {
             typeof (reply as { preFilledCount?: unknown })?.preFilledCount === 'number',
         );
         if (!scanned.length) throw new Error('autofill_failed');
-        const needsChoice = run.mode !== 'merge' && scanned.some(
+        const needsChoice = run.mode === undefined && scanned.some(
           ({ reply }) => (reply as { preFilledCount: number }).preFilledCount > 0,
         );
         run = {

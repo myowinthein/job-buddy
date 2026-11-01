@@ -42,6 +42,102 @@ test('one click preserves existing answers across frames and keeps details and U
   await expect(page.frameLocator('#application-frame').locator('input')).toHaveValue('');
 });
 
+test('saved overwrite mode fills empty and existing fields, preserves unmatched answers, and can be undone', async ({
+  page,
+  context,
+  extension,
+}, info) => {
+  const settings = await context.newPage();
+  await settings.addInitScript(() => sessionStorage.setItem('jb:ui:section', 'settings'));
+  await settings.goto(new URL('options.html', extension.worker.url()).href);
+  const mode = settings.getByRole('combobox', { name: 'Fields to fill' });
+  await expect(mode).toHaveValue('merge');
+  await mode.selectOption('overwrite');
+  await expect(mode).toBeEnabled();
+  await settings.reload();
+  await expect(mode).toHaveValue('overwrite');
+  const section = settings.locator('section').filter({ has: mode });
+  await section.screenshot({ path: info.outputPath('quick-fill-mode-settings.png') });
+  await page.bringToFront();
+  await page.reload();
+  await page.evaluate(() => {
+    const label = document.createElement('label');
+    label.textContent = 'Zqx reference';
+    const input = document.createElement('input');
+    input.name = 'zqx';
+    input.value = 'Keep this answer';
+    label.append(input);
+    document.querySelector('form')!.append(label);
+  });
+  await context.route('https://generativelanguage.googleapis.com/**', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ candidates: [{ content: { parts: [{ text: '[]' }] } }] }),
+    }),
+  );
+  const host = page.locator(hostSelector);
+  const fill = host.getByRole('button', { name: 'Fill Form', exact: true });
+  await expect(fill).toHaveAttribute(
+    'title',
+    'Fill empty and existing fields with your Job Buddy profile.',
+  );
+  await fill.click();
+  await expect(page.locator('[name="firstName"]')).toHaveValue('Jane');
+  await expect(page.locator('[name="lastName"]')).toHaveValue('Doe');
+  await expect(page.locator('[name="email"]')).toHaveValue('jane@example.test');
+  await expect(page.locator('[name="zqx"]')).toHaveValue('Keep this answer');
+  await expect(page.frameLocator('#application-frame').locator('input')).toHaveValue(
+    'jane@example.test',
+  );
+  await expect(host.getByRole('button', { name: 'View details' })).toBeVisible();
+  const outcomes = await page.evaluate(() => ({
+    events: (window as unknown as { events: { name: string; type: string; inputEvent: boolean }[] })
+      .events,
+    valid: ['firstName', 'lastName', 'email'].every((name) =>
+      document.querySelector<HTMLInputElement>(`[name="${name}"]`)!.checkValidity(),
+    ),
+    submitted: (window as unknown as { submitted?: unknown }).submitted,
+  }));
+  expect(outcomes.valid).toBe(true);
+  expect(outcomes.events).toContainEqual(
+    expect.objectContaining({ name: 'lastName', type: 'input', inputEvent: true }),
+  );
+  expect(outcomes.submitted).toBeUndefined();
+  await host.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect(page.locator('[name="firstName"]')).toHaveValue('');
+  // Existing Undo behavior clears owned answers, including overwritten ones.
+  await expect(page.locator('[name="lastName"]')).toHaveValue('');
+  await expect(page.locator('[name="zqx"]')).toHaveValue('Keep this answer');
+  await expect(page.frameLocator('#application-frame').locator('input')).toHaveValue('');
+  // The popup still asks how to handle existing answers, independently of Quick Fill.
+  await page.locator('[name="lastName"]').fill('Existing answer');
+  const popup = await context.newPage();
+  await popup.goto(new URL('popup.html', extension.worker.url()).href);
+  await popup.evaluate(async (tabId) => {
+    const run = await chrome.runtime.sendMessage({ action: 'AUTOFILL_RUN_START', tabId });
+    if (run?.stage !== 'confirming') throw new Error('Popup should still ask how to fill');
+  }, extension.sourceTabId);
+  await popup.close();
+  await settings.bringToFront();
+  await settings.getByRole('button', { name: 'Reset Now', exact: true }).click();
+  const reset = settings.getByRole('dialog', { name: 'Reset All Data', exact: true });
+  await reset.getByPlaceholder('DELETE', { exact: true }).fill('DELETE');
+  await reset.getByRole('button', { name: 'Reset All Data', exact: true }).click();
+  await expect(reset).toHaveCount(0);
+  await settings.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(mode).toHaveValue('merge');
+  expect(
+    await extension.worker.evaluate(
+      async () =>
+        (
+          (await chrome.storage.local.get('quickFillPreferences')).quickFillPreferences as {
+            fillMode: string;
+          }
+        ).fillMode,
+    ),
+  ).toBe('merge');
+});
+
 test('stays fixed when scrolling, can be moved, and can be hidden per page, site or globally', async ({
   page,
   extension,

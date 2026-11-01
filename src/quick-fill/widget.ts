@@ -63,6 +63,7 @@ export class QuickFillWidget {
   private menu: HTMLElement;
   private more: HTMLButtonElement;
   private position?: QuickFillPreferences['position'];
+  private fillMode: QuickFillPreferences['fillMode'] = 'merge';
   private drag?: { x: number; y: number; left: number; top: number; moved: boolean };
   private busy = false;
   private resize = () => this.place();
@@ -200,6 +201,11 @@ export class QuickFillWidget {
   }
   preferences(prefs: QuickFillPreferences, dark: boolean) {
     this.position = prefs.position;
+    this.fillMode = prefs.fillMode;
+    this.primary.title =
+      prefs.fillMode === 'overwrite'
+        ? 'Fill empty and existing fields with your Job Buddy profile.'
+        : 'Fill empty fields with your Job Buddy profile.';
     this.host.toggleAttribute('data-dark', dark);
     this.place();
   }
@@ -209,7 +215,9 @@ export class QuickFillWidget {
     this.label.textContent = this.busy
       ? 'Filling…'
       : run?.stage === 'confirming'
-        ? 'Fill Empty Fields'
+        ? this.fillMode === 'overwrite'
+          ? 'Fill All Fields'
+          : 'Fill Empty Fields'
         : 'Fill Form';
     const spinner = this.primary.querySelector('.spin');
     spinner?.remove();

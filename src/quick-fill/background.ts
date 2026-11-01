@@ -1,6 +1,6 @@
 import type { AutofillCoordinator } from '@/src/autofill/runCoordinator';
 import { openFillLog } from '@/src/fill-log/client';
-import { updateQuickFillPreferences } from './preferences';
+import { getQuickFillPreferences, updateQuickFillPreferences } from './preferences';
 import { sessionSet } from '@/src/utils/sessionStorage';
 
 async function openSetup(error?: string) {
@@ -94,11 +94,12 @@ export function registerQuickFill(autofill: AutofillCoordinator): void {
         case 'JB_QUICK_STATUS':
           return autofill.status(tabId);
         case 'JB_QUICK_START': {
+          const { fillMode } = await getQuickFillPreferences();
           const current = await autofill.status(tabId);
           const run =
             current?.stage === 'confirming'
-              ? await autofill.confirm(tabId, current.runId, 'merge')
-              : await autofill.start(tabId, true, sender.documentId);
+              ? await autofill.confirm(tabId, current.runId, fillMode)
+              : await autofill.start(tabId, fillMode, sender.documentId);
           if (
             run?.error &&
             [

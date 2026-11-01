@@ -3,6 +3,7 @@ import { wrapStorageArea } from '@/src/utils/storageArea';
 export const QUICK_FILL_KEY = 'quickFillPreferences';
 export interface QuickFillPreferences {
   enabled: boolean;
+  fillMode: 'merge' | 'overwrite';
   disabledSites: string[];
   position?: { x: number; y: number };
 }
@@ -12,6 +13,7 @@ export function normalizePreferences(value: unknown): QuickFillPreferences {
   const position = source.position;
   return {
     enabled: source.enabled !== false,
+    fillMode: source.fillMode === 'overwrite' ? 'overwrite' : 'merge',
     disabledSites: Array.isArray(source.disabledSites)
       ? [
           ...new Set(

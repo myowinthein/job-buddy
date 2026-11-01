@@ -781,7 +781,12 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       await clearGeminiSettings();
       await clearAllStorage();
       await saveThemePreference('system');
-      await updateQuickFillPreferences({ enabled: true, disabledSites: [], position: undefined });
+      await updateQuickFillPreferences({
+        enabled: true,
+        fillMode: 'merge',
+        disabledSites: [],
+        position: undefined,
+      });
       setThemePreference('system');
       applyTheme('system');
       setAiResetVersion((version) => version + 1);

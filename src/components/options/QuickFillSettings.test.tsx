@@ -18,7 +18,7 @@ vi.mock('@/src/quick-fill/preferences', () => ({
 let preferences: QuickFillPreferences;
 beforeEach(() => {
   vi.clearAllMocks();
-  preferences = { enabled: true, disabledSites: [] };
+  preferences = { enabled: true, fillMode: 'merge', disabledSites: [] };
   vi.stubGlobal('chrome', {
     storage: { onChanged: { addListener: vi.fn(), removeListener: vi.fn() } },
   });
@@ -46,6 +46,31 @@ it('saves On/Off immediately and restores the saved state after a failed write',
     expect(toast).toHaveBeenCalledWith('error', 'Could not save quick fill settings. Try again.'),
   );
   expect(off.getAttribute('aria-pressed')).toBe('true');
+});
+it('saves fill behavior, restores it on remount, and keeps it when turning the button off', async () => {
+  const view = render(<QuickFillSettings />);
+  const select = await screen.findByRole('combobox', { name: 'Fields to fill' });
+  await waitFor(() => expect((select as HTMLSelectElement).disabled).toBe(false));
+  expect((select as HTMLSelectElement).value).toBe('merge');
+  fireEvent.change(select, { target: { value: 'overwrite' } });
+  await waitFor(() => expect(preferences.fillMode).toBe('overwrite'));
+  await waitFor(() => expect((select as HTMLSelectElement).disabled).toBe(false));
+  expect(
+    screen.getByText('Replace existing answers where matching profile data is available.'),
+  ).toBeTruthy();
+  view.unmount();
+  render(<QuickFillSettings />);
+  await waitFor(() =>
+    expect(
+      (screen.getByRole('combobox', { name: 'Fields to fill' }) as HTMLSelectElement).value,
+    ).toBe('overwrite'),
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Off' }));
+  await waitFor(() => expect(preferences.enabled).toBe(false));
+  expect(preferences.fillMode).toBe('overwrite');
+  expect(
+    (screen.getByRole('combobox', { name: 'Fields to fill' }) as HTMLSelectElement).disabled,
+  ).toBe(true);
 });
 it('shows five hidden sites per page, searches all sites, and restores only the chosen site', async () => {
   preferences.disabledSites = Array.from(
