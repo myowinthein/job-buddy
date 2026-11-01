@@ -113,6 +113,33 @@ export function QuickFillSettings() {
                 className={`${fieldCls()} max-w-sm`}
               />
             )}
+            {sites.length > SITES_PER_PAGE && (
+              <div
+                role="group"
+                aria-label="Hidden sites pagination"
+                className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400"
+              >
+                <span role="status" className="w-24 shrink-0 whitespace-nowrap tabular-nums">
+                  {start + 1}–{Math.min(start + SITES_PER_PAGE, sites.length)} of {sites.length}
+                </span>
+                <button
+                  type="button"
+                  disabled={currentPage === 0}
+                  onClick={() => setPage(currentPage - 1)}
+                  className="rounded px-1 py-1 text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline dark:text-blue-400 dark:disabled:text-gray-600"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  disabled={currentPage === lastPage}
+                  onClick={() => setPage(currentPage + 1)}
+                  className="rounded px-1 py-1 text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline dark:text-blue-400 dark:disabled:text-gray-600"
+                >
+                  Next
+                </button>
+              </div>
+            )}
             {sites.length ? (
               <ul className="space-y-2.5">
                 {sites.slice(start, start + SITES_PER_PAGE).map((site) => (
@@ -138,29 +165,6 @@ export function QuickFillSettings() {
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 No sites match your search.
               </p>
-            )}
-            {sites.length > SITES_PER_PAGE && (
-              <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-                <span role="status">
-                  {start + 1}–{Math.min(start + SITES_PER_PAGE, sites.length)} of {sites.length}
-                </span>
-                <button
-                  type="button"
-                  disabled={currentPage === 0}
-                  onClick={() => setPage(currentPage - 1)}
-                  className="rounded px-1 py-1 text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline dark:text-blue-400 dark:disabled:text-gray-600"
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  disabled={currentPage === lastPage}
-                  onClick={() => setPage(currentPage + 1)}
-                  className="rounded px-1 py-1 text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline dark:text-blue-400 dark:disabled:text-gray-600"
-                >
-                  Next
-                </button>
-              </div>
             )}
           </div>
         </details>
