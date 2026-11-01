@@ -12,8 +12,8 @@ body:
   - type: textarea
     id: steps
     attributes:
-      label: What did you do before this happened?
-      description: List the steps so we can try the same thing.
+      label: Steps to reproduce
+      description: List the steps that led to the problem.
       placeholder: |
         1. Open a job application.
         2. Open Job Buddy and click Fill Form.
@@ -47,15 +47,14 @@ body:
     id: browser-device
     attributes:
       label: Browser and device
-      description: Tell us your browser and operating system, such as Chrome on Windows.
+      description: Include version numbers if you know them.
       placeholder: Chrome on Windows, or Chrome on macOS
     validations:
       required: false
   - type: markdown
     attributes:
       value: |
-        ### Before submitting
+        **Before submitting**
 
-        Tell us what went wrong so we can investigate.
-
-        **Reports are public.** Don't include API keys, resumes, profile exports, or personal details. Remove private information from links, screenshots, and files before sharing them.
+        - **Reports are public.** Don't include API keys, resumes, profile exports, or personal details.
+        - Remove private information from links, screenshots, and files before sharing them.
