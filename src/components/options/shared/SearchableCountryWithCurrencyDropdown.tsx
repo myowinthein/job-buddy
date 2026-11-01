@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import { COUNTRIES, getFlag, findCountry } from '@/src/data/countries';
 import { COUNTRY_TO_CURRENCY } from '@/src/data/currencies';
 import type { Country } from '@/src/data/countries';
@@ -51,7 +52,7 @@ export function SearchableCountryWithCurrencyDropdown({
       dropdown={dropdown}
       panelClassName="w-full min-w-[min(280px,calc(100vw-6rem))]"
       searchPlaceholder="Search country, code, or currency…"
-      emptyText="No countries found."
+      emptyText={feedback.noCountriesFound}
       getKey={(c) => c.code}
       isSelected={(c) => c.code === value}
       renderRow={(c) => (

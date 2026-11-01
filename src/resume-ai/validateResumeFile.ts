@@ -1,9 +1,10 @@
+import { feedback } from '@/src/ui/feedback';
 import { documentFileSizeError } from '@/src/utils/documentLimits';
 
 const PDF = 'application/pdf';
 const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const MAX_XML_BYTES = 8 * 1024 * 1024;
-const invalid = (message = 'Unreadable file. Choose a valid PDF or DOCX.') =>
+const invalid = (message: string = feedback.resumeFileUnreadable) =>
   Object.assign(new Error(message), { code: 'invalid_file' });
 
 export function resumeMimeType(file: Pick<File, 'name' | 'type'>): string {
@@ -11,7 +12,7 @@ export function resumeMimeType(file: Pick<File, 'name' | 'type'>): string {
   if (name.endsWith('.pdf')) return PDF;
   if (name.endsWith('.docx')) return DOCX;
   if (file.type === PDF || file.type === DOCX) return file.type;
-  throw invalid('Only PDF and DOCX files are supported.');
+  throw invalid(feedback.resumeUnsupportedFile);
 }
 
 function xml(bytes: Uint8Array): XMLDocument {
@@ -38,7 +39,7 @@ async function validateDocx(bytes: Uint8Array) {
         if (++entries > 2048) throw invalid();
         if (!names.includes(entry.name)) return false;
         if (entry.originalSize > MAX_XML_BYTES)
-          throw invalid('This DOCX is too complex. Export it as PDF.');
+          throw invalid(feedback.resumeDocxTooComplex);
         return true;
       },
     });
@@ -88,7 +89,7 @@ export async function validateResumeFile(
   const sizeError = documentFileSizeError(Math.max(file.size, bytes.byteLength));
   if (sizeError) throw invalid(sizeError);
   if (!file.size || !bytes.length)
-    throw invalid('This file is empty. Choose a PDF or DOCX resume.');
+    throw invalid(feedback.resumeFileEmpty);
   const mime = resumeMimeType(file);
   if (mime === DOCX) {
     try {
@@ -121,7 +122,7 @@ export async function validateResumeFile(
   } catch (error) {
     signal?.throwIfAborted();
     if ((error as { name?: string }).name === 'PasswordException')
-      throw invalid('This PDF is locked. Upload an unlocked copy.');
+      throw invalid(feedback.resumePdfLocked);
     throw invalid();
   } finally {
     signal?.removeEventListener('abort', abort);

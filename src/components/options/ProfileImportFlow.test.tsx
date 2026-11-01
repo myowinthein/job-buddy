@@ -207,7 +207,8 @@ it('shows skipped fields before importing a partly invalid backup into an empty 
   expect(screen.queryByRole('radio', { name: /^(Update|Replace) current profile/ })).toBeNull();
   expect(await getProfile()).toEqual({ id: 'empty-import-test' });
   fireEvent.click(screen.getByText('Import All'));
-  await screen.findByText('Profile imported successfully (1 item skipped)');
+  await screen.findByText('Profile imported successfully');
+  expect(screen.queryByText(/successfully.*skipped/)).toBeNull();
   expect((await getProfile())?.personal.firstName).toBe('Alex Imported');
   expect((await getProfile())?.personal.email).toBeUndefined();
 });

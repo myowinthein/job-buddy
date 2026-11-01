@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { feedback } from '@/src/ui/feedback';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 
@@ -166,7 +167,8 @@ describe('ResumeImportSection — rate_limit error branch', () => {
     await selectFile(pdfFile());
     fireEvent.click(screen.getByText('Analyze Resume'));
 
-    expect(await screen.findByText(/AI usage limit reached/)).toBeTruthy();
+    const notice = await screen.findByText(/AI usage limit reached/);
+    expect(notice.textContent).toBe(feedback.resumeUsageLimit);
     const link = screen.getByText('Check limits') as HTMLAnchorElement;
     expect(link.href).toBe('https://aistudio.google.com/rate-limit');
   });

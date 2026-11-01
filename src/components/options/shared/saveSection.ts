@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import type { Profile } from '@/src/types/profile';
 import type { ToastMessage } from '@/src/components/ui/Toast';
 
@@ -5,7 +6,7 @@ import type { ToastMessage } from '@/src/components/ui/Toast';
 export class ReportedSaveError extends Error {}
 
 // Shared error copy across every section's save flow.
-const SAVE_FAILED_MESSAGE = 'Failed to save. Please try again.';
+const SAVE_FAILED_MESSAGE = feedback.sectionSaveFailed;
 
 type ToastFn = (type: ToastMessage['type'], message: string, duration?: number) => void;
 type SaveFn  = (patch: Partial<Profile>) => Promise<void>;

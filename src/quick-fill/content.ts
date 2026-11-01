@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import type { AutofillRun } from '@/src/autofill/runCoordinator';
 import { likelyApplicationForm, QUICK_FILL_HOST } from './detect';
 import {
@@ -56,7 +57,7 @@ export function installQuickFill(): void {
             .catch(() => {
               if (currentRevision !== revision) return;
               starting = false;
-              widget?.error('Open the Job Buddy popup to try again.');
+              widget?.error(feedback.quickFillStartFailed);
             });
         },
         undo: () => {
@@ -69,12 +70,12 @@ export function installQuickFill(): void {
               paint();
             })
             .catch(() =>
-              widget?.error('Undo incomplete. Refresh the form.'),
+              widget?.error(feedback.quickFillUndoFailed),
             );
         },
         details: () => {
           void request('DETAILS').catch(() =>
-            widget?.error('Please try opening Fill Details again.'),
+            widget?.error(feedback.fillDetailsOpenFailed),
           );
         },
         hide: () => {
@@ -83,18 +84,18 @@ export function installQuickFill(): void {
         },
         disableSite: () => {
           void request('DISABLE_SITE').catch(() =>
-            widget?.error('Could not save this site preference. Try again.'),
+            widget?.error(feedback.quickFillSiteSaveFailed),
           );
         },
         settings: () => {
           void request('SETTINGS').catch(() =>
-            widget?.error('Open Settings from the Job Buddy popup.'),
+            widget?.error(feedback.quickFillSettingsOpenFailed),
           );
         },
         position: (position) => {
           prefs = { ...prefs, position };
           void request('POSITION', { position }).catch(() =>
-            widget?.error('Could not save the button position.'),
+            widget?.error(feedback.quickFillPositionSaveFailed),
           );
         },
       });

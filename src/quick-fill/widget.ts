@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import type { AutofillRun } from '@/src/autofill/runCoordinator';
 import { quickFillSummary } from './status';
 import { QUICK_FILL_HOST } from './detect';
@@ -81,7 +82,7 @@ export class QuickFillWidget {
     this.root.innerHTML = `<style>${CSS}</style><div class="shell"><div class="controls"><button type="button" class="grip" aria-label="Move Job Buddy" title="Drag to move. Use arrow keys when focused.">⠿</button><button type="button" class="fill"><span class="brand" aria-hidden="true">${ICON}</span><span class="label">Fill Form</span></button><button type="button" class="more" aria-label="Quick fill options" aria-expanded="false" aria-controls="quick-menu">⋯</button></div><div class="status" hidden><p role="status" aria-live="polite"></p><div class="links"><button type="button" class="undo" hidden>Undo</button><button type="button" class="details" hidden>View details</button></div></div><div id="quick-menu" class="menu" hidden><button type="button" data-action="hide">Hide until refresh</button><button type="button" data-action="disableSite">Disable on this site</button><button type="button" data-action="settings">Quick fill settings</button></div></div>`;
     const get = <T extends HTMLElement>(selector: string) => this.root.querySelector<T>(selector)!;
     this.primary = get('.fill');
-    this.primary.title = 'Fill empty fields with your Job Buddy profile.';
+    this.primary.title = feedback.quickFillEmptyFieldsHint;
     this.label = get('.label');
     this.status = get('.status');
     this.text = get('.status p');
@@ -205,7 +206,7 @@ export class QuickFillWidget {
     this.primary.title =
       prefs.fillMode === 'overwrite'
         ? 'Fill empty and existing fields with your Job Buddy profile.'
-        : 'Fill empty fields with your Job Buddy profile.';
+        : feedback.quickFillEmptyFieldsHint;
     this.host.toggleAttribute('data-dark', dark);
     this.place();
   }
@@ -263,8 +264,8 @@ export class QuickFillWidget {
       this.text.textContent = profile
         ? 'Add your first name and email to start.'
         : ai
-          ? 'Add a Gemini API key to enable autofill.'
-          : 'Refresh the page to retry after an autofill error.';
+          ? feedback.autofillKeyRequired
+          : feedback.autofillFailed;
     }
     this.place();
   }

@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import { DevBadge } from '@/src/components/ui/DevBadge';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Check, Sparkles } from 'lucide-react';
@@ -391,16 +392,16 @@ function App() {
     message = 'Your saved AI settings could not be loaded.';
   } else if (aiSetup) {
     tone = 'info';
-    message = 'Add a Gemini API key to enable autofill.';
+    message = feedback.autofillKeyRequired;
   } else if (busy) {
     tone = 'working';
     message = 'Filling…';
   } else if (autofillState === 'error') {
     tone = 'error';
-    message = 'Refresh the page to retry after an autofill error.';
+    message = feedback.autofillFailed;
   } else if (logOpenFailed && result) {
     tone = 'error';
-    message = 'Please try opening Fill Details again.';
+    message = feedback.fillDetailsOpenFailed;
   } else if (result)
     tone =
       aiUnavailable || result.needReview > 0 || unfilled > 0
@@ -613,7 +614,7 @@ function ResultSummary({
       <div className="flex items-start justify-between gap-2">
         <p className="min-w-0 text-sm font-semibold text-gray-900 dark:text-gray-100">
           {result.totalScanned === 0
-            ? 'No fillable fields found.'
+            ? feedback.autofillNoFields
             : onlyKept
               ? `${result.kept} existing answer${result.kept === 1 ? '' : 's'} kept`
               : `${filled} field${filled === 1 ? '' : 's'} filled`}

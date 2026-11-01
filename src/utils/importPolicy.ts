@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import { selectedEntryValue } from '@/src/resume-ai/entrySelection';
 import type { Profile } from '@/src/types/profile';
 import type { FieldChange } from '@/src/resume-ai/types';
@@ -66,7 +67,7 @@ export function replacementChanges(
 
 export class ImportProfileChangedError extends Error {
   constructor(public current: Partial<Profile>) {
-    super('Your profile changed in another tab. Review the import again.');
+    super(feedback.importIdentityChanged);
   }
 }
 export function assertImportCurrent(

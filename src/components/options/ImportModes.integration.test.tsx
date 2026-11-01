@@ -95,7 +95,7 @@ it.each(['update', 'replace'] as const)(
     fireEvent.click(
       screen.getByRole('button', { name: mode === 'replace' ? 'Replace Profile' : 'Import All' }),
     );
-    await screen.findByText('Import Complete');
+    await screen.findByText(mode === 'replace' ? 'Profile Replaced' : 'Profile Updated');
     const saved = (await getProfile())!;
     expect(saved.personal.email).toBe('sam@example.com');
     expect(saved.documents.cv.file?.name).toBe('sam.pdf');
@@ -190,7 +190,7 @@ it.each(['empty', 'matching'] as const)(
       false,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Import All' }));
-    await screen.findByText('Import Complete');
+    await screen.findByText('Profile Updated');
     const saved = (await getProfile())!;
     expect(saved.personal.email).toBe(DEV_PROFILE.personal.email);
     expect(saved.workHistory).toHaveLength(

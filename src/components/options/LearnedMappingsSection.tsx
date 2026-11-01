@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import { useEffect, useMemo, useState } from 'react';
 import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings, LearnedMappingValue } from '@/src/types/storage';
@@ -176,7 +177,7 @@ export function LearnedMappingsSection() {
   useEffect(() => {
     Promise.all([getLearnedMappings(), getProfile()])
       .then(([m, p]) => { setMappings(m); setProfile(p ?? {}); })
-      .catch(() => showToast('error', 'Failed to load learned inputs.'))
+      .catch(() => showToast('error', feedback.mappingsLoadFailed))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -204,7 +205,7 @@ export function LearnedMappingsSection() {
       await saveLearnedMappings(next);
       showToast('success', message);
     } catch {
-      showToast('error', 'Failed to save. Please try again.');
+      showToast('error', feedback.sectionSaveFailed);
     }
   };
 

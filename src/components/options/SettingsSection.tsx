@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import { documentFileSizeError } from '@/src/utils/documentLimits';
 import { QuickFillSettings } from './QuickFillSettings';
 import { updateQuickFillPreferences } from '@/src/quick-fill/preferences';
@@ -206,7 +207,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     } catch {
       setThemePreference(previous);
       applyTheme(previous);
-      showToast('error', 'Could not save appearance. Please try again.');
+      showToast('error', feedback.appearanceSaveFailed);
     }
   };
 
@@ -318,7 +319,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       const [profile, learnedMappings] = await Promise.all([getProfile(), getLearnedMappings()]);
 
       if (isProfileEmpty(profile) && !Object.keys(learnedMappings).length) {
-        showToast('warning', 'No saved data to export.');
+        showToast('warning', feedback.profileExportEmpty);
         return;
       }
 
@@ -342,10 +343,10 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       a.click();
       URL.revokeObjectURL(url);
 
-      showToast('success', 'Profile exported successfully');
+      showToast('success', feedback.profileExportSucceeded);
     } catch (err) {
       console.error('[Job Buddy] Export failed:', err);
-      showToast('error', 'Failed to export profile');
+      showToast('error', feedback.profileExportFailed);
     } finally {
       setExporting(false);
     }
@@ -370,16 +371,16 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       try {
         parsed = JSON.parse(await file.text());
       } catch {
-        showToast('error', 'Select a valid Job Buddy export file.');
+        showToast('error', feedback.profileImportInvalidFile);
         return;
       }
       if (!parsed || typeof parsed !== 'object' || !('profile' in parsed)) {
-        showToast('error', 'Select a valid Job Buddy export file.');
+        showToast('error', feedback.profileImportInvalidFile);
         return;
       }
       const raw = parsed as Record<string, unknown>;
       if (!raw.profile || typeof raw.profile !== 'object' || Array.isArray(raw.profile)) {
-        showToast('error', 'Select a valid Job Buddy export file.');
+        showToast('error', feedback.profileImportInvalidFile);
         return;
       }
       const validation = validateImportedProfile(raw.profile);
@@ -411,7 +412,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             if (!isProfileEmpty(latest)) throw new ImportProfileChangedError(latest);
             await saveImportedData(validation.sanitized as Profile, backup.learnedMappings);
           });
-          showToast('success', 'Profile imported successfully');
+          showToast('success', feedback.profileImportSucceeded);
           onImportComplete();
           return;
         } catch (error) {
@@ -432,7 +433,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       setImportScreen('summary');
     } catch (err) {
       console.error('[Job Buddy] Import failed:', err);
-      showToast('error', 'Import failed. Please try again.');
+      showToast('error', feedback.profileImportFailed);
     } finally {
       setImporting(false);
     }
@@ -455,7 +456,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           await saveImportedData(applied as Profile, backup.learnedMappings);
         });
       }
-      showToast('success', 'Profile imported successfully');
+      showToast('success', feedback.profileImportSucceeded);
       setImportScreen('idle');
       setImportChanges([]);
       setImportBaseProfile({});
@@ -472,11 +473,11 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           err.current, parsedImport.incoming, localMappings, parsedImport.backup, mode,
         ));
         setImportScreen('summary');
-        showToast('warning', 'Your profile changed in another tab. Review it or import the file again.');
+        showToast('warning', feedback.importReviewExpired);
         return;
       }
       console.error('[Job Buddy] Import failed:', err);
-      showToast('error', 'Import failed. Please try again.');
+      showToast('error', feedback.profileImportFailed);
     } finally {
       setImporting(false);
     }
@@ -497,16 +498,16 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
   const driveFailureText = (error: DriveError) =>
     error === 'token_expired'
-      ? 'Reconnect Google Drive to continue backups.'
+      ? feedback.driveReconnectRequired
       : error === 'storage_full'
-        ? 'Google Drive is full. Free up space and retry.'
+        ? feedback.driveStorageFull
         : error === 'invalid_backup'
-          ? 'The Drive backup could not be read. Your profile is unchanged.'
+          ? feedback.driveBackupInvalid
           : error === 'delete_failed'
-            ? 'The Drive backup could not be deleted. Try disconnecting again.'
+            ? feedback.driveBackupDeleteFailed
             : error === 'review_required'
-              ? 'Review the Drive backup before continuing.'
-              : 'Backup failed and will retry. Your profile is saved in this browser.';
+              ? feedback.driveReviewRequired
+              : feedback.driveRetryPending;
 
   const handleDriveBackupResult = async (result: ConnectResult) => {
     if (result.errorCode) {
@@ -523,7 +524,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       if (Object.keys(validation.sanitized).length === 0) {
         showToast(
           'error',
-          'The Drive backup contains no valid profile data. Your profile is unchanged.',
+          feedback.driveBackupEmpty,
         );
         return;
       }
@@ -553,7 +554,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           backupData.invalidFields.length === 0
         ) {
           await finishDriveReview(result.reviewId);
-          showToast('success', 'Drive backup is up to date.');
+          showToast('success', feedback.driveBackupCurrent);
           return;
         }
         setDriveConflictChanges(diff);
@@ -565,7 +566,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       const synced = await syncProfileToDrive(localProfile);
       showToast(
         synced.success ? 'success' : 'warning',
-        synced.success ? 'Profile backed up to Google Drive.' : driveFailureText(synced.errorCode),
+        synced.success ? feedback.driveBackupSucceeded : driveFailureText(synced.errorCode),
       );
     }
   };
@@ -575,7 +576,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     try {
       await handleDriveBackupResult(await connectDrive());
     } catch {
-      showToast('error', 'Could not connect to Drive. Try again.');
+      showToast('error', feedback.driveConnectFailed);
     } finally {
       setDriveConnecting(false);
     }
@@ -586,7 +587,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     try {
       await handleDriveBackupResult(await inspectDriveBackup());
     } catch {
-      showToast('error', 'Could not check the Drive backup. Try again.');
+      showToast('error', feedback.driveCheckFailed);
     } finally {
       setDriveConnecting(false);
     }
@@ -601,14 +602,14 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     try {
       const profile = await getProfile();
       if (!profile) {
-        showToast('warning', 'No profile data to back up.');
+        showToast('warning', feedback.driveNoProfile);
         return;
       }
       const result = await syncProfileToDrive(profile);
-      if (result.success) showToast('success', 'Profile backed up to Google Drive.');
+      if (result.success) showToast('success', feedback.driveBackupSucceeded);
       else if (result.errorCode) showToast('warning', driveFailureText(result.errorCode));
     } catch {
-      showToast('error', 'Backup failed. Your profile is saved locally.');
+      showToast('error', feedback.driveBackupFailedLocalSafe);
     } finally {
       setDriveSyncing(false);
     }
@@ -622,15 +623,15 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       showToast(
         'success',
         deleteFile
-          ? 'Drive disconnected and backup deleted.'
-          : 'Google Drive disconnected. Your last backup was kept.',
+          ? feedback.driveDisconnectedDeleted
+          : feedback.driveDisconnectedKept,
       );
     } catch {
       showToast(
         'error',
         deleteFile
-          ? 'Could not delete the Drive backup. Reconnect or try again.'
-          : 'Could not disconnect Drive. Try again.',
+          ? feedback.driveDisconnectDeleteFailed
+          : feedback.driveDisconnectFailed,
       );
     } finally {
       setDriveDisconnectBusy(false);
@@ -698,7 +699,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         driveReviewId,
       );
       if (res.success) {
-        showToast('success', 'Profile backed up to Google Drive.');
+        showToast('success', feedback.driveBackupSucceeded);
       } else if (res.errorCode) {
         showToast('warning', driveFailureText(res.errorCode));
         return;
@@ -708,7 +709,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       if (error instanceof ImportProfileChangedError) {
         await refreshDriveImport(error.current);
         showToast('warning', error.message);
-      } else showToast('error', 'Backup failed. Please try again.');
+      } else showToast('error', feedback.driveBackupFailed);
     } finally {
       setDriveRestoreBusy(false);
     }
@@ -737,14 +738,14 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           });
         }
       });
-      showToast('success', 'Profile restored from Google Drive.');
+      showToast('success', feedback.driveRestoreSucceeded);
       onImportComplete();
       closeRestoreDialog();
     } catch (error) {
       if (error instanceof ImportProfileChangedError) {
         await refreshDriveImport(error.current);
         showToast('warning', error.message);
-      } else showToast('error', 'Restore failed. Please try again.');
+      } else showToast('error', feedback.driveRestoreFailed);
     } finally {
       setDriveRestoreBusy(false);
     }
@@ -777,11 +778,11 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       setShowResetDialog(false);
       setResetConfirmText('');
       setResetScope('device');
-      showToast('success', 'All data has been reset.');
+      showToast('success', feedback.resetSucceeded);
       onResetComplete();
     } catch (err) {
       console.error('[Job Buddy] Reset failed:', err);
-      showToast('error', 'Reset failed. Please try again.');
+      showToast('error', feedback.resetFailed);
     } finally {
       setResetting(false);
     }
@@ -899,7 +900,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             {driveConnecting && (
               <span role="status" className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
                 <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-full border-2 border-current border-r-transparent animate-spin motion-reduce:animate-none" />
-                Checking Drive backup…
+                {feedback.driveChecking}
               </span>
             )}
             <div>
@@ -935,7 +936,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                     {driveBackupBusy
                       ? 'Backing up…'
                       : driveConnecting
-                        ? 'Checking Drive backup…'
+                        ? feedback.driveChecking
                         : driveState.error === 'token_expired'
                           ? 'Reconnect needed'
                           : driveState.error === 'sync_error'

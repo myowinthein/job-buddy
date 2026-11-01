@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import { selectedEntryValue } from './entrySelection';
 import type { DocumentFile, Profile } from '@/src/types/profile';
 import { normalizeProfile } from '@/src/utils/migrate';
@@ -49,7 +50,7 @@ export function resumeChanges(
 
 export class ResumeReviewChangedError extends Error {
   constructor(public changes: FieldChange[]) {
-    super('Your profile changed in another tab. Review the updated comparison.');
+    super(feedback.resumeReviewChanged);
   }
 }
 

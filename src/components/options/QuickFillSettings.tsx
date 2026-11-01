@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/src/components/ui/useToast';
@@ -25,7 +26,7 @@ export function QuickFillSettings() {
         if (active) setPrefs(value);
       })
       .catch(() => {
-        if (active) showToast('error', 'Could not load quick fill settings.');
+        if (active) showToast('error', feedback.quickFillLoadFailed);
       });
     const listener = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
       if (area === 'local' && QUICK_FILL_KEY in changes)
@@ -50,7 +51,7 @@ export function QuickFillSettings() {
       setPrefs(await getQuickFillPreferences());
     } catch {
       setPrefs(await getQuickFillPreferences().catch(() => previous));
-      showToast('error', 'Could not save quick fill settings. Try again.');
+      showToast('error', feedback.quickFillSaveFailed);
     } finally {
       setSaving(false);
     }

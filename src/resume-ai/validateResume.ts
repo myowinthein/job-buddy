@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import type { Profile } from '@/src/types/profile';
 import { findCountryByNameOrCode } from '@/src/data/countries';
 import { normalizeProfile } from '@/src/utils/migrate';
@@ -68,7 +69,7 @@ const shape: Shape = {
 };
 
 const invalid = () =>
-  new Error('AI returned invalid profile data. Try analyzing the resume again.');
+  new Error(feedback.resumeInvalidData);
 function read(value: unknown, expected: Shape): unknown {
   if (value == null) return undefined;
   if (typeof expected === 'string') {

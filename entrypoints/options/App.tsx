@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
 import { devContext } from '@/src/devtools/context';
 import type { Profile } from '@/src/types/profile';
@@ -322,7 +323,7 @@ function App() {
         // restore all complete before calling this) — only the reload failed,
         // so the wording must not imply the save itself failed.
         console.error('[Job Buddy] Failed to reload profile after import:', err);
-        showToast('warning', "Saved, but the profile view couldn't refresh. Reload the page.");
+        showToast('warning', feedback.profileViewRefreshFailed);
       });
   };
 
@@ -330,7 +331,7 @@ function App() {
     // Keep changes saved by another Options tab in other profile sections.
     const latest = await getProfile({ rejectOnError: true });
     if (typeof update !== 'function' && latest?.id !== profile.id) {
-      showToast('warning', 'Your profile was replaced in another tab. Reload before saving.');
+      showToast('warning', feedback.profileReplacedElsewhere);
       throw new ReportedSaveError('Profile replaced in another tab');
     }
     const base = latest ?? (typeof update === 'function' ? {} : profile);
@@ -348,8 +349,8 @@ function App() {
     } catch (err) {
       if (import.meta.env.DEV) window.dispatchEvent(new CustomEvent('jb:dev:request', { detail: { operation: 'profile-save', status: 500, section: activeSection } }));
       console.error('[Job Buddy] Failed to save profile:', err);
-      showToast('error', 'Failed to save: storage may be full.');
-      throw new ReportedSaveError('Failed to save: storage may be full.');
+      showToast('error', feedback.profileStorageSaveFailed);
+      throw new ReportedSaveError(feedback.profileStorageSaveFailed);
     }
     if (import.meta.env.DEV) window.dispatchEvent(new CustomEvent('jb:dev:request', { detail: { operation: 'profile-save', status: 200, section: activeSection } }));
     setProfile(synced);

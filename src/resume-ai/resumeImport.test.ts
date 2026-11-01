@@ -38,7 +38,7 @@ describe('validated resume data', () => {
     { personal: { email: 'bad' } },
     { education: [{ ...school, startDate: '2024-15' }] },
   ])('rejects malformed extraction: %j', (raw) => {
-    expect(() => validateResumeProfile(raw)).toThrow('invalid profile data');
+    expect(() => validateResumeProfile(raw)).toThrow('invalid data');
   });
 
   it('accepts missing dates without inventing them or keeping nulls', () => {

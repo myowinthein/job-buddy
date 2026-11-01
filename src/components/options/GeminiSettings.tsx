@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import { useEffect, useRef, useState } from 'react';
 import { checkApiKey, validateApiKey, KEY_ERROR_MESSAGES } from '@/src/resume-ai/gemini';
 import { MODEL_DISPLAY_NAMES, GEMINI_MODEL_PRIORITY } from '@/src/resume-ai/types';
@@ -105,7 +106,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
       } catch {
         if (mounted.current && id === sequence.current) {
           setStatus('error');
-          setError('Could not load AI settings. Please try again.');
+          setError(feedback.geminiLoadFailed);
         }
       }
     }
@@ -157,7 +158,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
     const trimmed = key.trim();
     if (!trimmed) {
       setStatus('error');
-      setError('Enter your Gemini API key.');
+      setError(feedback.geminiKeyRequired);
       setKeyInvalid(true);
       keyInput.current?.focus();
       return;
@@ -169,13 +170,13 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
       trimmed.length > 4096
     ) {
       setStatus('error');
-      setError('Paste the API key only, without spaces or extra text.');
+      setError(feedback.geminiKeyFormatInvalid);
       setKeyInvalid(true);
       return;
     }
     if (!saved) {
       setStatus('error');
-      setError('Could not load AI settings. Reload this page and try again.');
+      setError(feedback.geminiReloadRequired);
       return;
     }
     request.current?.abort();
@@ -226,19 +227,19 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
         setSaved(latest);
         setPreference(latest.preference);
         setStatus('error');
-        setError('AI settings changed in another tab. Review them and try again.');
+        setError(feedback.geminiChangedInAnotherTab);
         return;
       }
       setSaved(updated);
       setPreference(updated.preference);
       setEditing(false);
       setDraft('');
-      if (save) showToast('success', replacing ? 'API key saved.' : 'AI model saved.');
+      if (save) showToast('success', replacing ? feedback.geminiKeySaved : feedback.geminiModelSaved);
       setStatus('ready');
     } catch {
       if (current()) {
         setStatus('error');
-        setError('Could not save AI settings. Please try again.');
+        setError(feedback.geminiSaveFailed);
         setPreference(saved.preference);
       }
     } finally {
@@ -267,11 +268,11 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
       setError('');
       focusEmptyKey.current = true;
       setRemoveDialog(false);
-      showToast('success', 'API key removed.');
+      showToast('success', feedback.geminiKeyRemoved);
     } catch {
       if (mounted.current) {
         setStatus(status);
-        setRemoveError('Could not remove the API key. Please try again.');
+        setRemoveError(feedback.geminiRemoveFailed);
       }
     } finally {
       writing.current--;

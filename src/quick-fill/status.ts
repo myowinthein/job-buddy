@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import type { AutofillRun } from '@/src/autofill/runCoordinator';
 
 export function quickFillSummary(run: AutofillRun): {
@@ -29,7 +30,7 @@ export function quickFillSummary(run: AutofillRun): {
     text: aiUnavailable
       ? 'AI was unavailable. Basic autofill ran.'
       : !scanned
-        ? 'No fillable fields found.'
+        ? feedback.autofillNoFields
         : attention
           ? `${filled} filled, ${attentionText}`
           : filled

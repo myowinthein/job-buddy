@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import { KEY_ERROR_MESSAGES } from './keyErrors';
 export { KEY_ERROR_MESSAGES } from './keyErrors';
 import type { Profile } from '@/src/types/profile';
@@ -152,7 +153,7 @@ export async function extractFromResume(
 
   const modelsToTry = [model, ...GEMINI_MODEL_PRIORITY.filter(m => m !== model)];
   let reason: ResumeModelAttempt['reason'];
-  let lastError: ImportError = importError('rate_limit', 'AI usage limit reached. Check limits or try later.');
+  let lastError: ImportError = importError('rate_limit', feedback.resumeUsageLimit);
   for (const tryModel of modelsToTry) {
     if (signal?.aborted) throw signal.reason ?? new DOMException('Cancelled', 'AbortError');
     onAttempt?.({ model: tryModel, reason });
@@ -163,15 +164,15 @@ export async function extractFromResume(
         if (!response.ok) return { status: response.status, error: await responseError(response) };
         let data: unknown;
         try { data = await response.json(); }
-        catch { throw importError('parse', "Couldn't read the AI response. Try again."); }
+        catch { throw importError('parse', feedback.resumeUnreadableResponse); }
         const text = extractGeminiText(data);
-        if (typeof text !== 'string' || !text) throw importError('parse', "Couldn't read the AI response. Try again.");
+        if (typeof text !== 'string' || !text) throw importError('parse', feedback.resumeUnreadableResponse);
         let profile: unknown;
         try { profile = JSON.parse(stripMarkdown(text)); }
-        catch { throw importError('parse', "Couldn't read the AI response. Try again."); }
+        catch { throw importError('parse', feedback.resumeUnreadableResponse); }
         const documentType = resumeDocumentType(profile);
         try { return { profile: validateResumeProfile(profile), documentType }; }
-        catch { throw importError('parse', 'AI returned invalid data. Try analyzing again.'); }
+        catch { throw importError('parse', feedback.resumeInvalidData); }
       }, RESUME_REQUEST_TIMEOUT_MS);
       if (result.profile) {
         onDocumentType?.(result.documentType!);
@@ -179,28 +180,28 @@ export async function extractFromResume(
       }
       if (result.error === 'invalid' || result.error === 'permission_denied')
         throw importError('auth', result.error === 'invalid'
-          ? 'Invalid or expired API key. Check Settings.'
-          : 'This key can’t use the model. Check Settings.');
+          ? feedback.resumeKeyInvalid
+          : feedback.resumeModelDenied);
       if (result.status === 429) {
         reason = 'rate_limit';
-        lastError = importError('rate_limit', 'AI usage limit reached. Check limits or try later.');
+        lastError = importError('rate_limit', feedback.resumeUsageLimit);
         continue;
       }
       if (result.status >= 500 || result.error === 'no_model') {
         reason = 'unavailable';
-        lastError = importError('service', 'AI is unavailable right now. Try again later.');
+        lastError = importError('service', feedback.resumeServiceUnavailable);
         continue;
       }
-      throw importError('service', 'Could not analyze this file. Retry or try another.');
+      throw importError('service', feedback.resumeAnalysisFailed);
     } catch (error) {
       if (signal?.aborted || (error as { name?: string })?.name === 'AbortError') throw error;
       if ((error as { name?: string })?.name === 'TimeoutError') {
         reason = 'timeout';
-        lastError = importError('timeout', 'AI took too long to respond. Try again later.');
+        lastError = importError('timeout', feedback.resumeTimedOut);
         continue;
       }
       if ((error as ImportError)?.code) throw error;
-      throw importError('network', 'Could not reach Gemini. Check your connection.');
+      throw importError('network', feedback.resumeConnectionFailed);
     }
   }
   throw lastError;

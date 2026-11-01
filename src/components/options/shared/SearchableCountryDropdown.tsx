@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import { COUNTRIES, getFlag, findCountryByNameOrCode } from '@/src/data/countries';
 import type { Country } from '@/src/data/countries';
 import { useSearchableDropdown } from './useSearchableDropdown';
@@ -38,8 +39,8 @@ export function SearchableCountryDropdown({ value, onChange, error, placeholder 
     <SearchableDropdown
       dropdown={dropdown}
       panelClassName="w-full min-w-[min(240px,calc(100vw-6rem))]"
-      searchPlaceholder="Search country or code…"
-      emptyText="No countries found."
+      searchPlaceholder={feedback.countrySearchPlaceholder}
+      emptyText={feedback.noCountriesFound}
       getKey={(c) => c.code}
       isSelected={(c) => c.code === value}
       renderRow={(c) => (

@@ -1,3 +1,4 @@
+import { feedback, resumeUsageLimitNotice } from '@/src/ui/feedback';
 import { reviewCounts } from '@/src/resume-ai/entrySelection';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Profile } from '@/src/types/profile';
@@ -113,7 +114,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
       .catch(() => {
         if (!active) return;
         setApiKey('');
-        setErrorMsg('Could not load your API key or model.');
+        setErrorMsg(feedback.resumeSetupLoadFailed);
       });
     return () => {
       active = false;
@@ -174,7 +175,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
   const handleFileSelect = (file: File) => {
     try { getMimeType(file); } catch {
       setSelectedFile(null);
-      setErrorMsg('Only PDF and DOCX files are supported.');
+      setErrorMsg(feedback.resumeUnsupportedFile);
       return;
     }
     const sizeError = documentFileSizeError(file.size);
@@ -261,7 +262,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
       if (!isCurrent(controller) || (error as { name?: string })?.name === 'AbortError') return;
       const failure = error as { message?: string; code?: ImportErrorCode };
       setErrorCode(failure.code ?? null);
-      setErrorMsg(failure.message ?? 'Something went wrong. Try again.');
+      setErrorMsg(failure.message ?? feedback.resumeUnexpectedFailure);
     } finally {
       if (isCurrent(controller)) {
         if (longWaitTimerRef.current) clearTimeout(longWaitTimerRef.current);
@@ -308,7 +309,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
         setChanges(error.changes);
         setScreen('review');
         showToast('warning', error.message);
-      } else if (!(error instanceof ReportedSaveError)) showToast('error', 'Save failed. Please try again.');
+      } else if (!(error instanceof ReportedSaveError)) showToast('error', feedback.resumeSaveFailed);
     } finally {
       setSaving(false);
     }
@@ -520,16 +521,16 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
               <div className="mt-6">
                 {errorCode === 'rate_limit' ? (
                   <p className="text-sm text-red-700 dark:text-red-400 mb-4">
-                    AI usage limit reached.{' '}
+                    {resumeUsageLimitNotice.before}
                     <a
-                      href="https://aistudio.google.com/rate-limit"
+                      href={resumeUsageLimitNotice.href}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline hover:text-red-700 dark:hover:text-red-300"
                     >
-                      Check limits
+                      {resumeUsageLimitNotice.linkLabel}
                     </a>
-                    {' or try later.'}
+                    {resumeUsageLimitNotice.after}
                   </p>
                 ) : (
                   <p className="text-sm text-red-700 dark:text-red-400 mb-4">{errorMsg}</p>

@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import { COUNTRIES, getFlag, findCountry } from '@/src/data/countries';
 import type { Country } from '@/src/data/countries';
 import { useSearchableDropdown } from './useSearchableDropdown';
@@ -36,8 +37,8 @@ export function SearchableCallingCodeSelect({ value, onChange }: Props) {
       dropdown={dropdown}
       containerClassName="relative shrink-0"
       panelClassName="w-72 max-w-[calc(100vw-6rem)]"
-      searchPlaceholder="Search country or code…"
-      emptyText="No countries found."
+      searchPlaceholder={feedback.countrySearchPlaceholder}
+      emptyText={feedback.noCountriesFound}
       getKey={(c) => c.code}
       isSelected={(c) => c.code === value}
       renderRow={(c) => (
