@@ -53,12 +53,19 @@ Set Up Profile → Set Up AI Autofill → Fill Form → Review answers → Submi
 4. Review the results and type any missing or corrected answers directly into the
    form. Submit the application yourself on the website.
 
+On the application form, colors describe individual field confidence:
+
 | Result                      | Meaning                                                   |
 | --------------------------- | --------------------------------------------------------- |
 | Green / High confidence     | Filled with high confidence; still check the answer.      |
 | Yellow / Review value       | Filled with lower confidence; review and correct it.      |
 | Red / Not matched           | Left unfilled because no confident match was found.       |
 | Gray / Missing profile data | Your profile lacks the value; the field has no highlight. |
+
+Popup messages share one area below the main buttons. Blue indicates setup or
+loading, gray an informational outcome, green completed fills, amber a result
+needing review or input, and red a failed action. Fill Form stays on the left;
+Undo or Cancel sits on the right.
 
 If AI assistance is unavailable during a fill, the popup warns you to review the
 results. Existing rule-based fills remain, and **Undo** is still available.

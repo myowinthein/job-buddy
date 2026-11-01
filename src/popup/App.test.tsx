@@ -61,6 +61,11 @@ function renderApp() {
   render(<App />);
 }
 
+async function readyFill() {
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Fill Form' })).toHaveProperty('disabled', false));
+  return screen.getByRole('button', { name: 'Fill Form' });
+}
+
 // A "scan"/"status" response shape as returned by content.ts's AUTOFILL_SCAN
 // or GET_STATUS handlers, keyed per frame.
 function statusResult(overrides: Partial<Record<string, number>> = {}, aiStatus: AIAutofillStatus = 'not_needed') {
@@ -162,7 +167,7 @@ describe('popup App — GET_STATUS frame aggregation on mount', () => {
   it('stays idle (no crash) when every frame rejects', async () => {
     sendMessageMock.mockRejectedValue(new Error('no listener anywhere'));
     renderApp();
-    await screen.findByRole('button', { name: 'Fill Form' });
+    await readyFill();
     expect(screen.queryByText('Undo')).toBeNull();
   });
 
@@ -213,7 +218,8 @@ describe('popup App — GET_STATUS frame aggregation on mount', () => {
       return Promise.resolve(statusResult({ totalScanned: 1 }, opts.frameId === 0 ? 'unavailable' : 'succeeded'));
     });
     renderApp();
-    expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'AI assistance was unavailable. Review the filled details carefully.');
+    expect(await screen.findByText('AI assistance was unavailable. Review the filled answers.')).toBeTruthy();
+    expect(screen.getByRole('alert').className).toContain('border-amber-500');
   });
 });
 
@@ -230,7 +236,7 @@ describe('popup App — handleAutofill scan orchestration', () => {
       return Promise.resolve(null);
     });
     renderApp();
-    fireEvent.click(await screen.findByRole('button', { name: 'Fill Form' }));
+    fireEvent.click(await readyFill());
     expect(await screen.findByText('No fillable fields found.')).toBeTruthy();
     expect(screen.queryByText('4 fields filled')).toBeNull();
   });
@@ -246,9 +252,9 @@ describe('popup App — handleAutofill scan orchestration', () => {
     });
 
     renderApp();
-    fireEvent.click(await screen.findByRole('button', { name: 'Fill Form' }));
-    expect(await screen.findByText('This form already has data filled in.')).toBeTruthy();
-    expect(screen.getByText(/3 fields already have a value/)).toBeTruthy();
+    fireEvent.click(await readyFill());
+    expect(await screen.findByText('This form already has answers.')).toBeTruthy();
+    expect(screen.getByText(/3 fields have a value/)).toBeTruthy();
   });
 
   it('dispatches an overwrite fill directly when the scan sums to zero pre-filled fields', async () => {
@@ -262,8 +268,8 @@ describe('popup App — handleAutofill scan orchestration', () => {
     });
 
     renderApp();
-    fireEvent.click(await screen.findByRole('button', { name: 'Fill Form' }));
-    expect(screen.queryByText('This form already has data filled in.')).toBeNull();
+    fireEvent.click(await readyFill());
+    expect(screen.queryByText('This form already has answers.')).toBeNull();
     await waitFor(() => expect(screen.getByText('4 fields filled')).toBeTruthy());
   });
 
@@ -278,8 +284,8 @@ describe('popup App — handleAutofill scan orchestration', () => {
     });
 
     renderApp();
-    fireEvent.click(await screen.findByRole('button', { name: 'Fill Form' }));
-    await screen.findByText('This form already has data filled in.');
+    fireEvent.click(await readyFill());
+    await screen.findByText('This form already has answers.');
     fireEvent.click(screen.getByRole('button', { name: 'Fill Form' })); // default fillMode is 'merge'
 
     await waitFor(() => expect(screen.getByText('2 fields filled')).toBeTruthy());
@@ -288,8 +294,8 @@ describe('popup App — handleAutofill scan orchestration', () => {
   it('shows an error state when no active tab can be found', async () => {
     tabsQueryMock.mockResolvedValue([]); // no tab.id
     renderApp();
-    fireEvent.click(await screen.findByRole('button', { name: 'Fill Form' }));
-    expect(await screen.findByText(/Could not connect to page/)).toBeTruthy();
+    fireEvent.click(await readyFill());
+    expect(await screen.findByText(/Could not finish autofill/)).toBeTruthy();
   });
 
   it('shows an error state when every frame\'s fill response is invalid, distinct from the no-tab case', async () => {
@@ -305,8 +311,8 @@ describe('popup App — handleAutofill scan orchestration', () => {
     });
 
     renderApp();
-    fireEvent.click(await screen.findByRole('button', { name: 'Fill Form' }));
-    expect(await screen.findByText(/Could not connect to page/)).toBeTruthy();
+    fireEvent.click(await readyFill());
+    expect(await screen.findByText(/Could not finish autofill/)).toBeTruthy();
   });
 });
 
@@ -324,9 +330,52 @@ describe('popup App — Fill Log access', () => {
     sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }));
     renderApp();
     fireEvent.click(await screen.findByRole('button', { name: 'View Fill Log →' }));
-    expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'Could not open the fill log. Please try again.');
+    expect(await screen.findByText('Could not open Fill Log. Try View Fill Log again.')).toBeTruthy();
+    expect(screen.getByRole('alert').className).toContain('border-red-500');
     expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Fill Form' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'View Fill Log →' }));
+    await waitFor(() => expect(screen.queryByText('Could not open Fill Log. Try View Fill Log again.')).toBeNull());
+    expect(screen.getByText('1 field filled')).toBeTruthy();
+  });
+});
+
+describe('popup message categories', () => {
+  it('treats missing AI setup as information and failed settings reads as errors', async () => {
+    vi.mocked(getGeminiApiKey).mockResolvedValue(null);
+    renderApp();
+    await screen.findByRole('button', { name: 'Set Up AI Autofill' });
+    expect(screen.getByRole('status').className).toContain('border-blue-500');
+    expect(screen.queryByRole('alert')).toBeNull();
+    cleanup();
+    vi.mocked(getGeminiApiKey).mockRejectedValue(new Error('read failed'));
+    renderApp();
+    await screen.findByRole('button', { name: 'Open AI Settings' });
+    expect(screen.getByRole('alert').className).toContain('border-red-500');
+    expect(screen.getByText('Could not load AI settings. Open AI Settings to try again.')).toBeTruthy();
+  });
+
+  it('summarizes an all-kept merge as kept answers rather than a failed fill', async () => {
+    sendMessageMock.mockResolvedValue(statusResult({ kept: 4, totalScanned: 4 }));
+    renderApp();
+    expect(await screen.findByText('4 existing answers kept')).toBeTruthy();
+    expect(screen.queryByText('0 fields filled')).toBeNull();
+    expect(screen.getByRole('status').className).toContain('border-gray-300');
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
+  });
+
+  it('keeps previous results and Undo accessible after the profile cannot be loaded', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(getProfile).mockRejectedValueOnce(new Error('read failed'));
+    sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }));
+    renderApp();
+    await screen.findByRole('button', { name: 'Open Profile' });
+    expect(screen.getByText('Last fill')).toBeTruthy();
+    expect(screen.getByText('1 field filled')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull());
+    expect(sendMessageMock).toHaveBeenCalledWith(123, { action: 'CLEAR' }, { frameId: 0 });
+    error.mockRestore();
   });
 });
 
@@ -386,7 +435,7 @@ describe('popup profile and action presentation', () => {
   ])('offers Fill Form at 0%% when optional profile data exists: %j', async (profile) => {
     vi.mocked(getProfile).mockResolvedValue(profile as unknown as Profile);
     renderApp();
-    const fill = await screen.findByRole('button', { name: 'Fill Form' });
+    const fill = await readyFill();
     expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('0');
     expect(document.activeElement).toBe(fill);
     expect(screen.queryByRole('button', { name: 'Set Up Profile' })).toBeNull();
@@ -422,7 +471,7 @@ describe('popup profile and action presentation', () => {
 
   it('does not show an empty details region before filling', async () => {
     renderApp();
-    await screen.findByRole('button', { name: 'Fill Form' });
+    await readyFill();
     expect(screen.queryByRole('region', { name: 'Autofill details' })).toBeNull();
     expect(screen.queryByText('Open a job application form, then select Fill Form.')).toBeNull();
   });
@@ -445,7 +494,8 @@ it('does not ask for another AI key when a saved key exists but the fill did not
   expect(screen.getByText(/2 fields still need your input/)).toBeTruthy();
   expect(screen.queryByText('High confidence')).toBeNull();
   expect(screen.getByRole('button', { name: 'View Fill Log →' })).toBeTruthy();
-  expect(screen.getByRole('status').textContent).toBe('3 filled, 1 to review, 2 not filled.');
+  expect(screen.getByRole('alert').textContent).toContain('AI assistance was unavailable.');
+  expect(screen.getAllByRole('alert')).toHaveLength(1);
   expect(screen.queryByText(/choose a value|No Review/)).toBeNull();
 });
 
@@ -453,7 +503,7 @@ it('blocks a new fill without a key instead of showing the old dismissible AI su
   vi.mocked(getGeminiApiKey).mockResolvedValue(null);
   renderApp();
   expect(await screen.findByRole('button', { name: 'Set Up AI Autofill' })).toBeTruthy();
-  expect(screen.getByText('Add a Gemini API key to enable AI-assisted autofill.')).toBeTruthy();
+  expect(screen.getByText('Add a Gemini API key in AI Features to enable autofill.')).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Fill Form' })).toBeNull();
   expect(screen.queryByRole('button', { name: 'Dismiss AI suggestion' })).toBeNull();
   expect(
@@ -470,7 +520,7 @@ it('preserves the overwrite choice and fills without rescanning after confirmati
     return null;
   });
   renderApp();
-  fireEvent.click(await screen.findByRole('button', { name: 'Fill Form' }));
+  fireEvent.click(await readyFill());
   fireEvent.click(await screen.findByRole('radio', { name: /Replace matched values/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Fill Form' }));
   await screen.findByRole('button', { name: 'Undo' });
@@ -515,7 +565,7 @@ it('stores the Settings focus request before opening the options page', async ()
   expect(sessionSet).toHaveBeenCalledWith({ 'jb:focusOnLoad': 'gemini-api-key' });
 });
 
-it('keeps AI setup neutral when the saved key cannot be read', async () => {
+it('distinguishes an AI settings read failure from missing-key setup', async () => {
   vi.mocked(getGeminiApiKey).mockRejectedValueOnce(new Error('storage unavailable'));
   sendMessageMock.mockResolvedValue(statusResult({ noReview: 1, totalScanned: 1 }, 'unavailable'));
   renderApp();
@@ -536,10 +586,11 @@ it('announces a pending fill, prevents duplicate actions, and returns focus afte
     return null;
   });
   renderApp();
-  fireEvent.click(await screen.findByRole('button', { name: 'Fill Form' }));
-  expect(await screen.findByRole('button', { name: 'Filling…' })).toHaveProperty('disabled', true);
+  fireEvent.click(await readyFill());
+  await screen.findByText('Filling…');
+  expect(screen.getByRole('button', { name: 'Fill Form' })).toHaveProperty('disabled', true);
   expect(screen.getByRole('button', { name: 'Complete Profile' })).toHaveProperty('disabled', true);
-  expect(screen.getByRole('status').textContent).toBe('Filling form…');
+  expect(screen.getByRole('status').textContent).toBe('Filling…');
   await waitFor(() => expect(complete).toBeTypeOf('function'));
   complete(statusResult({ noReview: 1, totalScanned: 1 }));
   await screen.findByRole('button', { name: 'Undo' });
@@ -556,7 +607,7 @@ it('waits for key loading before offering setup or filling', async () => {
   );
   renderApp();
   await screen.findByText('Loading AI settings…');
-  expect(screen.queryByRole('button', { name: 'Fill Form' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Fill Form' })).toHaveProperty('disabled', true);
   expect(screen.queryByRole('button', { name: 'Set Up AI Autofill' })).toBeNull();
   finish(null);
   await screen.findByRole('button', { name: 'Set Up AI Autofill' });
@@ -564,7 +615,7 @@ it('waits for key loading before offering setup or filling', async () => {
 
 it('rechecks a key removed after opening without sending scan or fill messages', async () => {
   renderApp();
-  const fill = await screen.findByRole('button', { name: 'Fill Form' });
+  const fill = await readyFill();
   vi.mocked(getGeminiApiKey).mockResolvedValue(null);
   fireEvent.click(fill);
   await screen.findByRole('button', { name: 'Set Up AI Autofill' });
@@ -580,7 +631,7 @@ it('rechecks the key when confirming existing values', async () => {
     message.action === 'AUTOFILL_SCAN' ? { preFilledCount: 1 } : null,
   );
   renderApp();
-  fireEvent.click(await screen.findByRole('button', { name: 'Fill Form' }));
+  fireEvent.click(await readyFill());
   await screen.findByRole('radio', { name: /Fill empty fields/ });
   vi.mocked(getGeminiApiKey).mockResolvedValue(null);
   fireEvent.click(screen.getByRole('button', { name: 'Fill Form' }));
@@ -595,7 +646,7 @@ it('honors a setup rejection from a content frame without dispatching fill', asy
     message.action === 'AUTOFILL_SCAN' ? { error: 'ai_setup_required' } : null,
   );
   renderApp();
-  fireEvent.click(await screen.findByRole('button', { name: 'Fill Form' }));
+  fireEvent.click(await readyFill());
   await screen.findByRole('button', { name: 'Set Up AI Autofill' });
   expect(sendMessageMock.mock.calls.some(([, message]) => message.action === 'AUTOFILL_FILL')).toBe(
     false,
@@ -609,7 +660,7 @@ it.each(['succeeded', 'not_needed'] as const)(
     renderApp();
     await screen.findByRole('button', { name: 'Undo' });
     expect(
-      screen.queryByText('AI assistance was unavailable. Review the filled details carefully.'),
+      screen.queryByText('AI assistance was unavailable. Review the filled answers.'),
     ).toBeNull();
   },
 );

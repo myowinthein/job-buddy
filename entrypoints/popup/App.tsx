@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Check, LoaderCircle, Sparkles } from 'lucide-react';
+import { Check, Sparkles } from 'lucide-react';
+import { PopupNotice } from '@/src/components/popup/PopupNotice';
+import type { PopupNoticeTone } from '@/src/components/popup/PopupNotice';
 import { getProfile, getGeminiApiKey } from '@/src/utils/storage';
 import { LOGO_ICON_SRC } from '@/src/utils/branding';
 import { sessionSet } from '@/src/utils/sessionStorage';
@@ -91,7 +93,7 @@ function mergeAutofillResults(results: unknown[], requestedRunId?: string): Auto
   const runId = requestedRunId ?? latestFillRunId(runs);
   // Older content scripts cannot report run IDs. Preserve their actual fill
   // replies, and do not let an empty upgraded iframe hide their saved result.
-  const includeLegacy = !!requestedRunId || !runs.some(r => r.totalScanned > 0);
+  const includeLegacy = !!requestedRunId || !runs.some((r) => r.totalScanned > 0);
   const valid = runId
     ? available.filter((r) => r.runId === runId || (includeLegacy && !r.runId))
     : available;
@@ -122,7 +124,17 @@ function mergeAutofillResults(results: unknown[], requestedRunId?: string): Auto
       failed: (acc.failed ?? 0) + (r.failed ?? 0),
       aiStatus,
     }),
-    { noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0, aiStatus, kept: 0, excluded: 0, failed: 0 },
+    {
+      noReview: 0,
+      needReview: 0,
+      lowConfidence: 0,
+      noData: 0,
+      totalScanned: 0,
+      aiStatus,
+      kept: 0,
+      excluded: 0,
+      failed: 0,
+    },
   );
 }
 
@@ -162,11 +174,6 @@ function App() {
   const activeRunId = useRef<string | undefined>(undefined);
   const [logOpenFailed, setLogOpenFailed] = useState(false);
   const fillButtonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (autofillState !== 'loading' && autofillState !== 'confirming')
-      fillButtonRef.current?.focus({ preventScroll: true });
-  }, [autofillState]);
 
   const checkApiKey = async () => {
     try {
@@ -241,7 +248,9 @@ function App() {
     try {
       if (sourceTabId.current === null) throw new Error('No source tab');
       await openFillLog(sourceTabId.current);
-    } catch { setLogOpenFailed(true); }
+    } catch {
+      setLogOpenFailed(true);
+    }
   };
 
   // On mount: restore the last fill and load the AI setup state.
@@ -291,6 +300,7 @@ function App() {
   };
 
   const handleAutofill = async () => {
+    setLogOpenFailed(false);
     setAutofillState('loading');
     try {
       if (!(await checkApiKey())) {
@@ -336,11 +346,13 @@ function App() {
   };
 
   const handleCancelFill = () => {
+    setLogOpenFailed(false);
     setAutofillState('idle');
     setAutofillResult(null);
   };
 
   const handleUndo = async () => {
+    setLogOpenFailed(false);
     try {
       await sendToActiveTab({ action: 'CLEAR' });
     } catch {
@@ -352,11 +364,87 @@ function App() {
 
   const { percentage, isCoreComplete } = completion;
   const busy = autofillState === 'loading';
-  const unfilledCount = autofillResult ? autofillResult.lowConfidence + autofillResult.noData + (autofillResult.failed ?? 0) : 0;
-  const aiWarning =
-    autofillResult?.aiStatus === 'unavailable'
-      ? 'AI assistance was unavailable. Review the filled details carefully.'
-      : null;
+  const result = autofillState === 'success' ? autofillResult : null;
+  const filled = result ? result.noReview + result.needReview : 0;
+  const unfilled = result ? result.lowConfidence + result.noData + (result.failed ?? 0) : 0;
+  const aiUnavailable = !!result && result.totalScanned > 0 && result.aiStatus === 'unavailable';
+  const profileSetup = !loading && !profileLoadFailed && !hasProfileData;
+  const aiSetup = !loading && !profileLoadFailed && hasProfileData && !keyLoading && !hasGeminiKey;
+  const waitingForKey = !loading && !profileLoadFailed && hasProfileData && keyLoading;
+  const confirming = autofillState === 'confirming' && !profileSetup && !aiSetup && !keyReadFailed;
+  const primaryDisabled = loading || waitingForKey || busy;
+
+  // Setup actions occupy the same place as Fill Form. Restore focus only when
+  // the action becomes available, leaving the confirmation radios in control.
+  useEffect(() => {
+    if (!primaryDisabled && !confirming) fillButtonRef.current?.focus({ preventScroll: true });
+  }, [
+    primaryDisabled,
+    confirming,
+    autofillState,
+    profileLoadFailed,
+    profileSetup,
+    aiSetup,
+    keyReadFailed,
+  ]);
+
+  let message: string | null = null;
+  let tone: PopupNoticeTone = 'neutral';
+  if (loading) {
+    tone = 'working';
+    message = 'Loading profile…';
+  } else if (profileLoadFailed) {
+    tone = 'error';
+    message = 'Could not load your profile. Open Profile to try again.';
+  } else if (profileSetup) {
+    tone = 'info';
+    message = 'Add your profile details to start using autofill.';
+  } else if (waitingForKey) {
+    tone = 'working';
+    message = 'Loading AI settings…';
+  } else if (keyReadFailed) {
+    tone = 'error';
+    message = 'Could not load AI settings. Open AI Settings to try again.';
+  } else if (aiSetup) {
+    tone = 'info';
+    message = 'Add a Gemini API key in AI Features to enable autofill.';
+  } else if (busy) {
+    tone = 'working';
+    message = 'Filling…';
+  } else if (autofillState === 'error') {
+    tone = 'error';
+    message = 'Could not finish autofill. Refresh this page and try again.';
+  } else if (logOpenFailed && result) {
+    tone = 'error';
+    message = 'Could not open Fill Log. Try View Fill Log again.';
+  } else if (result)
+    tone =
+      aiUnavailable || result.needReview > 0 || unfilled > 0
+        ? 'review'
+        : filled > 0
+          ? 'success'
+          : 'neutral';
+
+  const primaryLabel = profileLoadFailed
+    ? 'Open Profile'
+    : profileSetup
+      ? 'Set Up Profile'
+      : keyReadFailed
+        ? 'Open AI Settings'
+        : aiSetup
+          ? 'Set Up AI Autofill'
+          : 'Fill Form';
+  const primaryAction =
+    profileLoadFailed || profileSetup
+      ? openOptions
+      : keyReadFailed || aiSetup
+        ? goToSettingsKey
+        : confirming
+          ? handleConfirmFill
+          : handleAutofill;
+  const primaryIsAI = !profileLoadFailed && !profileSetup;
+  const showFeedback = !confirming && (!!message || !!result);
+  const showReport = autofillState === 'error' || result?.totalScanned === 0;
 
   return (
     <div className="flex max-h-[600px] w-[380px] flex-col bg-white font-sans text-gray-900 dark:bg-gray-900 dark:text-gray-100">
@@ -365,14 +453,14 @@ function App() {
           src={LOGO_ICON_SRC}
           alt="Job Buddy"
           className="h-8 w-8 shrink-0"
-          role={autofillState === 'success' ? 'button' : undefined}
-          tabIndex={autofillState === 'success' ? 0 : undefined}
-          onClick={(e) => {
-            if (e.shiftKey && autofillState === 'success') void openLog();
+          role={result ? 'button' : undefined}
+          tabIndex={result ? 0 : undefined}
+          onClick={(event) => {
+            if (event.shiftKey && result) void openLog();
           }}
-          onKeyDown={(e) => {
-            if (e.shiftKey && (e.key === 'Enter' || e.key === ' ') && autofillState === 'success') {
-              e.preventDefault();
+          onKeyDown={(event) => {
+            if (event.shiftKey && (event.key === 'Enter' || event.key === ' ') && result) {
+              event.preventDefault();
               void openLog();
             }
           }}
@@ -382,287 +470,219 @@ function App() {
       </header>
 
       <div className="shrink-0 px-5">
-        {loading ? (
-          <div className="h-10 animate-pulse rounded-lg bg-gray-100 motion-reduce:animate-none dark:bg-gray-800" />
-        ) : profileLoadFailed ? (
-          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-            Could not load your profile. Reopen the popup or open your profile to try again.
-          </p>
-        ) : (
-          <>
-            <div className="flex min-h-8 items-center justify-between gap-2 text-xs">
-              <span
-                className={`flex items-center gap-1.5 font-medium ${isCoreComplete ? 'text-green-700 dark:text-green-400' : 'text-gray-600 dark:text-gray-300'}`}
-              >
-                {isCoreComplete && <Check aria-hidden="true" className="h-3.5 w-3.5" />}
-                {isCoreComplete ? 'Required details complete' : 'Required profile'}
-                {!isCoreComplete && (
+        <div className="flex min-h-8 items-center justify-between gap-2 text-xs">
+          {loading ? (
+            <span className="h-3 w-28 animate-pulse rounded bg-gray-100 motion-reduce:animate-none dark:bg-gray-800" />
+          ) : (
+            <span
+              className={`flex items-center gap-1.5 font-medium ${isCoreComplete && !profileLoadFailed ? 'text-green-700 dark:text-green-400' : 'text-gray-600 dark:text-gray-300'}`}
+            >
+              {isCoreComplete && !profileLoadFailed && (
+                <Check aria-hidden="true" className="h-3.5 w-3.5" />
+              )}
+              {isCoreComplete && !profileLoadFailed
+                ? 'Required details complete'
+                : 'Required profile'}
+              {profileLoadFailed ? (
+                <span aria-label="Unavailable">—</span>
+              ) : (
+                !isCoreComplete && (
                   <span className="font-semibold text-blue-700 dark:text-blue-400">
                     {percentage}%
                   </span>
-                )}
-              </span>
-              {hasProfileData && (
-                <button
-                  type="button"
-                  onClick={openOptions}
-                  disabled={busy}
-                  className="min-h-8 shrink-0 rounded px-1 font-medium text-blue-700 hover:underline focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50 dark:text-blue-400"
-                >
-                  {isCoreComplete ? 'Edit Profile' : 'Complete Profile'}
-                </button>
+                )
               )}
-            </div>
-            <div
-              role="progressbar"
-              aria-label="Saved required profile details"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={percentage}
-              className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
-            >
-              <div
-                className={`h-full rounded-full transition-all motion-reduce:transition-none ${isCoreComplete ? 'bg-green-500' : 'bg-blue-500'}`}
-                style={{ width: `${percentage}%` }}
-              />
-            </div>
-          </>
-        )}
-      </div>
-
-      <div className="shrink-0 px-5 pb-4 pt-4">
-        {loading ? (
-          <div
-            role="status"
-            className="h-11 animate-pulse rounded-lg bg-gray-100 motion-reduce:animate-none dark:bg-gray-800"
-          >
-            <span className="sr-only">Loading profile…</span>
-          </div>
-        ) : profileLoadFailed || !hasProfileData ? (
-          <>
-            {!profileLoadFailed && (
-              <p className="mb-3 text-sm text-gray-600 dark:text-gray-300">
-                Add your details to fill job application forms.
-              </p>
-            )}
+            </span>
+          )}
+          {hasProfileData && !loading && !profileLoadFailed && (
             <button
               type="button"
-              autoFocus
               onClick={openOptions}
-              className={`${primaryButton} w-full`}
+              disabled={busy}
+              className="min-h-8 shrink-0 rounded px-1 font-medium text-blue-700 hover:underline disabled:opacity-50 dark:text-blue-400"
             >
-              {profileLoadFailed ? 'Open Profile' : 'Set Up Profile'}
+              {isCoreComplete ? 'Edit Profile' : 'Complete Profile'}
             </button>
-          </>
-        ) : keyLoading ? (
-          <div role="status" className="h-11 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800">
-            <span className="sr-only">Loading AI settings…</span>
-          </div>
-        ) : keyReadFailed || !hasGeminiKey ? (
-          <>
-            <p
-              role={keyReadFailed ? 'alert' : undefined}
-              className="mb-3 text-sm text-gray-600 dark:text-gray-300"
-            >
-              {keyReadFailed
-                ? 'Could not read your AI settings. Open Settings to try again.'
-                : 'Add a Gemini API key to enable AI-assisted autofill.'}
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                autoFocus
-                onClick={goToSettingsKey}
-                className={`${primaryButton} flex-1`}
-              >
-                {keyReadFailed ? 'Open AI Settings' : 'Set Up AI Autofill'}
-                <Sparkles aria-hidden="true" className="h-4 w-4" />
-              </button>
-              {autofillState === 'success' && (
-                <button type="button" onClick={handleUndo} className={secondaryButton}>
-                  Undo
-                </button>
-              )}
-            </div>
-          </>
-        ) : autofillState === 'confirming' ? (
-          <div>
-            <fieldset>
-              <legend className="mb-1 text-sm font-semibold">
-                This form already has data filled in.
-              </legend>
-              <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                {preFilledCount} field{preFilledCount !== 1 ? 's' : ''} already{' '}
-                {preFilledCount !== 1 ? 'have' : 'has'} a value. Choose how to fill the form.
-              </p>
-              <div className="space-y-1">
-                <label className="flex cursor-pointer items-start gap-2.5 rounded-lg py-2">
-                  <input
-                    type="radio"
-                    name="fillMode"
-                    value="merge"
-                    autoFocus
-                    checked={fillMode === 'merge'}
-                    onChange={() => setFillMode('merge')}
-                    className="mt-0.5 accent-blue-600"
-                  />
-                  <span>
-                    <span className="block text-sm font-medium">Fill empty fields</span>
-                    <span className="block text-xs text-gray-500 dark:text-gray-400">
-                      Keep values already entered on this page.
-                    </span>
-                  </span>
-                </label>
-                <label className="flex cursor-pointer items-start gap-2.5 rounded-lg py-2">
-                  <input
-                    type="radio"
-                    name="fillMode"
-                    value="overwrite"
-                    checked={fillMode === 'overwrite'}
-                    onChange={() => setFillMode('overwrite')}
-                    className="mt-0.5 accent-blue-600"
-                  />
-                  <span>
-                    <span className="block text-sm font-medium">Replace matched values</span>
-                    <span className="block text-xs text-gray-500 dark:text-gray-400">
-                      Use your saved details for matched fields.
-                    </span>
-                  </span>
-                </label>
-              </div>
-            </fieldset>
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                onClick={handleCancelFill}
-                className={`${secondaryButton} flex-1`}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmFill}
-                className={`${primaryButton} flex-1`}
-              >
-                Fill Form <Sparkles aria-hidden="true" className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
+          )}
+        </div>
+        {loading || profileLoadFailed ? (
+          <div className="mt-1 h-1.5 rounded-full bg-gray-100 dark:bg-gray-800" />
         ) : (
-          <>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                autoFocus
-                ref={fillButtonRef}
-                onClick={handleAutofill}
-                disabled={busy}
-                className={`${primaryButton} flex-1`}
-              >
-                {busy ? (
-                  <>
-                    <LoaderCircle
-                      aria-hidden="true"
-                      className="h-4 w-4 animate-spin motion-reduce:animate-none"
-                    />
-                    Filling…
-                  </>
-                ) : (
-                  <>
-                    Fill Form <Sparkles aria-hidden="true" className="h-4 w-4" />
-                  </>
-                )}
-              </button>
-              {autofillState === 'success' && (
-                <button type="button" onClick={handleUndo} className={secondaryButton}>
-                  Undo
-                </button>
-              )}
-            </div>
-          </>
+          <div
+            role="progressbar"
+            aria-label="Saved required profile details"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={percentage}
+            className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
+          >
+            <div
+              className={`h-full rounded-full transition-all motion-reduce:transition-none ${isCoreComplete ? 'bg-green-500' : 'bg-blue-500'}`}
+              style={{ width: `${percentage}%` }}
+            />
+          </div>
         )}
-        <p role="status" className="sr-only">
-          {busy
-            ? 'Filling form…'
-            : autofillState === 'success' && autofillResult
-              ? `${autofillResult.noReview + autofillResult.needReview} filled, ${autofillResult.needReview} to review, ${autofillResult.lowConfidence + autofillResult.noData + (autofillResult.failed ?? 0)} not filled.`
-              : ''}
-        </p>
       </div>
 
-      {hasProfileData && !loading && (autofillState === 'success' || autofillState === 'error') && (
+      {confirming && (
+        <fieldset className="min-h-0 overflow-y-auto px-5 pt-4">
+          <legend className="sr-only">Choose how to fill existing answers</legend>
+          <p className="text-sm font-semibold">This form already has answers.</p>
+          <p className="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+            {preFilledCount} field{preFilledCount === 1 ? ' has' : 's have'} a value. Choose what to
+            keep.
+          </p>
+          <div className="mt-3 space-y-1">
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-lg py-2">
+              <input
+                type="radio"
+                name="fillMode"
+                value="merge"
+                autoFocus
+                checked={fillMode === 'merge'}
+                onChange={() => setFillMode('merge')}
+                className="mt-0.5 accent-blue-600"
+              />
+              <span>
+                <span className="block text-sm font-medium">Fill empty fields</span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400">
+                  Keep answers already entered on this page.
+                </span>
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-lg py-2">
+              <input
+                type="radio"
+                name="fillMode"
+                value="overwrite"
+                checked={fillMode === 'overwrite'}
+                onChange={() => setFillMode('overwrite')}
+                className="mt-0.5 accent-blue-600"
+              />
+              <span>
+                <span className="block text-sm font-medium">Replace matched values</span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400">
+                  Use your saved details for matched fields.
+                </span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+      )}
+
+      <div className="flex shrink-0 gap-2 px-5 pb-4 pt-4">
+        <button
+          type="button"
+          ref={fillButtonRef}
+          onClick={primaryAction}
+          disabled={primaryDisabled}
+          className={`${primaryButton} flex-1`}
+        >
+          {primaryLabel}
+          {primaryIsAI && <Sparkles aria-hidden="true" className="h-4 w-4" />}
+        </button>
+        {confirming ? (
+          <button type="button" onClick={handleCancelFill} className={secondaryButton}>
+            Cancel
+          </button>
+        ) : (
+          result && (
+            <button type="button" onClick={handleUndo} disabled={busy} className={secondaryButton}>
+              Undo
+            </button>
+          )
+        )}
+      </div>
+
+      {showFeedback && (
         <div
           role="region"
           aria-label="Autofill details"
           tabIndex={0}
           className="min-h-0 overflow-y-auto px-5 pb-5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-500"
         >
-          {autofillState === 'error' && (
-            <p
-              role="alert"
-              className="rounded-lg bg-red-50 p-3 text-xs leading-relaxed text-red-600 dark:bg-red-900/20 dark:text-red-400"
-            >
-              Could not connect to page. Open a job application page, or refresh this page and try
-              again.
-            </p>
-          )}
-          {autofillState === 'success' &&
-            autofillResult &&
-            autofillResult.totalScanned > 0 &&
-            aiWarning && (
-              <p
-                role="alert"
-                className="mb-3 rounded-lg bg-amber-50 p-3 text-xs leading-relaxed text-amber-800 dark:bg-amber-900/20 dark:text-amber-300"
+          <PopupNotice tone={tone} urgent={aiUnavailable && !message}>
+            {message && <p>{message}</p>}
+            {result && (
+              <div
+                className={
+                  message ? 'mt-3 border-t border-gray-200/70 pt-3 dark:border-gray-700' : ''
+                }
               >
-                {aiWarning}
-              </p>
+                {message && (
+                  <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">Last fill</p>
+                )}
+                {result.totalScanned === 0 ? (
+                  <p>No fillable fields found.</p>
+                ) : (
+                  <ResultSummary result={result} />
+                )}
+              </div>
             )}
-          {autofillState === 'success' &&
-            autofillResult &&
-            (autofillResult.totalScanned === 0 ? (
-              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
-                <p className="text-gray-600 dark:text-gray-300">No fillable fields found.</p>
+          </PopupNotice>
+          {(result || showReport) && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+              {result && (
+                <button
+                  type="button"
+                  onClick={() => void openLog()}
+                  className="rounded-sm font-medium text-blue-700 hover:underline dark:text-blue-400"
+                >
+                  View Fill Log →
+                </button>
+              )}
+              {showReport && (
                 <a
                   href="https://github.com/myowinthein/job-buddy/issues/new"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex min-h-6 items-center font-medium text-blue-700 hover:underline dark:text-blue-400"
+                  className="ml-auto rounded-sm font-medium text-blue-700 hover:underline dark:text-blue-400"
                 >
                   Report an issue ↗
                 </a>
-              </div>
-            ) : (
-              <section aria-label="Fill results" className="text-sm">
-                <p className="font-semibold">
-                  {autofillResult.noReview + autofillResult.needReview} field{autofillResult.noReview + autofillResult.needReview === 1 ? '' : 's'} filled
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
-                  {autofillResult.needReview > 0 && (
-                    <span className="text-amber-700 dark:text-amber-400">
-                      {autofillResult.needReview} filled value{autofillResult.needReview === 1 ? ' needs' : 's need'} review.{' '}
-                    </span>
-                  )}
-                  {unfilledCount > 0
-                    ? `${unfilledCount} field${unfilledCount === 1 ? ' still needs' : 's still need'} your input.`
-                    : 'Review your answers before submitting.'}
-                </p>
-                {!!autofillResult.kept && (
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {autofillResult.kept} existing answer{autofillResult.kept === 1 ? '' : 's'} kept.
-                  </p>
-                )}
-              </section>
-            ))}
-          {autofillState === 'success' && (
-            <button type="button" onClick={() => void openLog()}
-              className="mt-3 rounded-sm text-xs font-medium text-blue-700 hover:underline dark:text-blue-400">
-              View Fill Log →
-            </button>
+              )}
+            </div>
           )}
-          {logOpenFailed && <p role="alert" className="mt-2 text-xs text-red-700 dark:text-red-400">Could not open the fill log. Please try again.</p>}
         </div>
       )}
     </div>
+  );
+}
+
+function ResultSummary({ result }: { result: AutofillResult }) {
+  const filled = result.noReview + result.needReview;
+  const unfilled = result.lowConfidence + result.noData + (result.failed ?? 0);
+  const onlyKept = filled === 0 && unfilled === 0 && !!result.kept;
+  return (
+    <section aria-label="Fill results">
+      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+        {onlyKept
+          ? `${result.kept} existing answer${result.kept === 1 ? '' : 's'} kept`
+          : `${filled} field${filled === 1 ? '' : 's'} filled`}
+      </p>
+      <div className="mt-1 space-y-1">
+        {result.needReview > 0 && (
+          <p>
+            {result.needReview} filled value{result.needReview === 1 ? ' needs' : 's need'} review.
+          </p>
+        )}
+        {unfilled > 0 && (
+          <p>
+            {unfilled} field{unfilled === 1 ? ' still needs' : 's still need'} your input.
+          </p>
+        )}
+        {result.kept && !onlyKept ? (
+          <p>
+            {result.kept} existing answer{result.kept === 1 ? '' : 's'} kept.
+          </p>
+        ) : null}
+        {result.aiStatus === 'unavailable' ? (
+          <p>AI assistance was unavailable. Review the filled answers.</p>
+        ) : (
+          unfilled === 0 && result.needReview === 0 && <p>Review your answers before submitting.</p>
+        )}
+      </div>
+    </section>
   );
 }
 
