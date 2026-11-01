@@ -191,7 +191,15 @@ test('missing profile data gets a neutral tint that preserves focus and clears o
     const shadowInput = document.createElement('input');
     shadowInput.id = 'missing-shadow-link';
     shadowLabel.appendChild(shadowInput);
-    shadow.appendChild(shadowLabel);
+    const scroll = document.createElement('div');
+    scroll.id = 'feedback-scroll';
+    scroll.style.cssText =
+      'height:100px;overflow:auto;width:320px;padding-top:20px;box-sizing:border-box';
+    scroll.appendChild(shadowLabel);
+    const spacer = document.createElement('div');
+    spacer.style.height = '200px';
+    scroll.appendChild(spacer);
+    shadow.appendChild(scroll);
   });
   await extension.send('AUTOFILL_SCAN');
   await extension.send('AUTOFILL_FILL', 'merge');
@@ -202,6 +210,15 @@ test('missing profile data gets a neutral tint that preserves focus and clears o
   await expect(missing).toHaveCSS('background-color', 'rgba(107, 114, 128, 0.12)');
   await expect(missing).toHaveCSS('outline-style', 'none');
   await expect(shadowMissing).toHaveAttribute('data-jb-missing-data', '1');
+  const shadowMarker = page.locator('[data-jb-feedback-root] [data-jb-field-status="gray"]').last();
+  await expect(shadowMarker).toBeVisible();
+  const originalMarkerY = (await shadowMarker.boundingBox())!.y;
+  await page.locator('#feedback-scroll').evaluate((el) => {
+    el.scrollTop = 12;
+  });
+  await expect
+    .poll(async () => (await shadowMarker.boundingBox())!.y)
+    .toBeLessThan(originalMarkerY - 10);
   await expect(page.locator('[name="lastName"]')).not.toHaveAttribute('data-jb-missing-data');
   await expect(page.locator('#consent-yes')).not.toHaveAttribute('data-jb-highlighted');
   await missing.focus();
@@ -231,4 +248,101 @@ test('missing profile data gets a neutral tint that preserves focus and clears o
   await expect(missing).not.toHaveAttribute('data-jb-highlighted');
   await expect(shadowMissing).not.toHaveAttribute('data-jb-highlighted');
   await expect(shadowMissing).toHaveCSS('outline-style', 'none');
+});
+
+test('field symbols explain real autofill outcomes without changing tab order, hints, or values', async ({
+  page,
+  extension,
+}, testInfo) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.evaluate(() => {
+    document.body.innerHTML = `<style>
+      body{margin:0;padding:40px;background:#111827;color:#f3f4f6;font:14px system-ui}
+      form{width:360px;max-width:calc(100vw - 80px)}h1{font-size:21px;margin:0 0 26px}
+      .entry{margin:24px 0}label{display:block;margin:0 0 8px;font-weight:600}
+      input{box-sizing:border-box;width:100%;height:40px;border:1px solid #64748b;border-radius:6px;background:#1f2937;color:#f9fafb;padding:8px 10px;font:inherit}
+      input:focus{outline:2px solid #60a5fa;outline-offset:2px}small{display:block;margin-top:6px;color:#cbd5e1}
+      </style><form><h1>Sample application</h1>
+      <div class="entry"><label for="confident">First name</label><input id="confident" name="firstName" autocomplete="given-name" required aria-describedby="name-help"><small id="name-help">Use your preferred name.</small></div>
+      <div class="entry"><label for="review">Firstnam</label><input id="review" name="firstnam"></div>
+      <div class="entry"><label for="unmatched">Zqx reference</label><input id="unmatched" name="zqxReference"></div>
+      <div class="entry"><label for="missing">Street address</label><input id="missing" name="streetAddress"></div>
+      <div class="entry"><label for="manual">Custom reference</label><input id="manual" name="zqxCustom"></div></form>`;
+  });
+  await extension.send('AUTOFILL_SCAN');
+  await extension.send('AUTOFILL_FILL', 'merge');
+  const root = page.locator('[data-jb-feedback-root]');
+  for (const state of ['green', 'yellow', 'red', 'gray']) {
+    await expect(root.locator(`[data-jb-field-status="${state}"]`).first()).toBeVisible();
+  }
+  await expect(page.locator('#confident')).toHaveValue('Jane');
+  await expect(page.locator('#review')).toHaveValue('Jane');
+  await expect(page.locator('#unmatched')).toHaveValue('');
+  await expect(page.locator('#missing')).toHaveValue('');
+  await expect(page.locator('[role="tooltip"]')).toBeHidden();
+  await expect(page.locator('#confident')).toHaveAttribute(
+    'aria-describedby',
+    /name-help jb-feedback-/,
+  );
+  const namePosition = await page.locator('#confident').boundingBox();
+  const greenPosition = await root.locator('[data-jb-field-status="green"]').boundingBox();
+  expect(greenPosition!.x).toBeGreaterThan(namePosition!.x + namePosition!.width);
+  await page.locator('#confident').focus();
+  await expect(root.getByRole('tooltip')).toHaveText('Job Buddy: Filled with high confidence.');
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#review')).toBeFocused();
+  await expect(root.getByRole('tooltip')).toHaveText('Job Buddy: Review this answer.');
+  await page.keyboard.press('Escape');
+  await expect(root.getByRole('tooltip')).toBeHidden();
+  await expect(page.locator('#review')).toBeFocused();
+  await page.locator('#unmatched').hover();
+  await expect(root.getByRole('tooltip')).toHaveText('Job Buddy: No confident match found.');
+  await root.getByRole('tooltip').hover();
+  await page.waitForTimeout(180);
+  await expect(root.getByRole('tooltip')).toBeVisible();
+  await page.mouse.move(720, 650);
+  await expect(root.getByRole('tooltip')).toBeHidden();
+  await root.locator('[data-jb-field-status="gray"]').click();
+  await expect(page.locator('#missing')).toBeFocused();
+  await expect(root.getByRole('tooltip')).toHaveText('Job Buddy: No saved answer in your profile.');
+  await page.locator('#manual').fill('Reference confirmed by the applicant');
+  await page.locator('#confident').focus();
+  await expect(root.locator('[data-jb-field-status="confirmed"]')).toBeVisible();
+  await page.locator('#manual').focus();
+  await expect(root.getByRole('tooltip')).toHaveText('Job Buddy: Confirmed by you.');
+  expect(
+    await page.locator('form').evaluate((form) => (form as HTMLFormElement).checkValidity()),
+  ).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('field-feedback-dark.png'), fullPage: true });
+  await page.keyboard.press('Escape');
+  const before = await page.locator('#missing').boundingBox();
+  await page.evaluate(() =>
+    document.querySelector('h1')!.setAttribute('style', 'margin-bottom:100px'),
+  );
+  await expect
+    .poll(async () => (await root.locator('[data-jb-field-status="gray"]').boundingBox())!.y)
+    .toBeGreaterThan(before!.y);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.locator('#review').focus();
+  await expect(root.getByRole('tooltip')).toBeVisible();
+  const tip = await root.getByRole('tooltip').boundingBox();
+  expect(tip!.x).toBeGreaterThanOrEqual(0);
+  expect(tip!.x + tip!.width).toBeLessThanOrEqual(375);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('field-feedback-narrow.png'), fullPage: true });
+  await page.evaluate(() => {
+    document.body.style.padding = '0';
+    const form = document.querySelector('form')!;
+    form.style.width = '100%';
+    form.style.maxWidth = 'none';
+  });
+  await expect(root.locator('[data-jb-field-status="gray"]')).toBeHidden();
+  await page.locator('#missing').focus();
+  await expect(root.getByRole('tooltip')).toHaveText('Job Buddy: No saved answer in your profile.');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await extension.send('CLEAR');
+  await expect(root).toHaveCount(0);
+  await expect(page.locator('[data-jb-field-description]')).toHaveCount(0);
+  await expect(page.locator('#confident')).toHaveAttribute('aria-describedby', 'name-help');
+  await expect(page.locator('#manual')).toHaveValue('');
 });

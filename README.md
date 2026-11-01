@@ -64,6 +64,11 @@ On the application form, colors describe individual field confidence:
 | Red / Not matched           | Left unfilled because no confident match was found.                          |
 | Gray / Missing profile data | Your profile lacks the value; a subtle gray background tint marks the field. |
 
+Small symbols repeat each status beside fields where space allows. Focus a field,
+or hover over or select its symbol, to read a short explanation. Press Escape to
+dismiss it. Manually resolved fields show “Confirmed by you.” Existing site hints,
+focus styling, and keyboard tab order are preserved; Undo removes the feedback.
+
 Popup messages share one area below the main buttons. Blue indicates setup or
 loading, gray an informational outcome, green completed fills, amber a result
 needing review or input, and red a failed action. Fill Form stays on the left;

@@ -1,4 +1,5 @@
 import { CONF_FILL, CONF_GREEN } from './constants';
+import { setFieldFeedback, clearFieldFeedback, clearAllFieldFeedback } from './fieldFeedback';
 
 // Confidence-based and missing-data background tints on form elements.
 // Original background-color and transition are saved in data attributes
@@ -18,7 +19,7 @@ function rememberStyles(element: HTMLElement): void {
   }
 }
 
-export function applyHighlight(element: HTMLElement, confidence: number): void {
+export function applyHighlight(element: HTMLElement, confidence: number, confirmed = false): void {
   missingDataElements.delete(element);
   delete element.dataset.jbMissingData;
   rememberStyles(element);
@@ -30,6 +31,16 @@ export function applyHighlight(element: HTMLElement, confidence: number): void {
       : confidence >= CONF_FILL
         ? 'rgba(234, 179, 8, 0.12)'
         : 'rgba(239, 68, 68, 0.12)';
+  setFieldFeedback(
+    element,
+    confirmed
+      ? 'confirmed'
+      : confidence >= CONF_GREEN
+        ? 'green'
+        : confidence >= CONF_FILL
+          ? 'yellow'
+          : 'red',
+  );
 }
 
 export function applyMissingDataHighlight(element: HTMLElement): void {
@@ -38,6 +49,7 @@ export function applyMissingDataHighlight(element: HTMLElement): void {
   element.dataset.jbMissingData = '1';
   element.style.transition = 'background-color 0.2s ease';
   element.style.backgroundColor = 'rgba(107, 114, 128, 0.12)';
+  setFieldFeedback(element, 'gray');
 }
 
 export function clearMissingDataHighlights(): void {
@@ -46,6 +58,7 @@ export function clearMissingDataHighlights(): void {
 }
 
 export function clearElementHighlight(element: HTMLElement): void {
+  clearFieldFeedback(element);
   if (!element.dataset.jbHighlighted) return;
   missingDataElements.delete(element);
   delete element.dataset.jbMissingData;
@@ -71,6 +84,7 @@ function restoreBackground(element: HTMLElement): void {
 }
 
 export function clearHighlights(): void {
+  clearAllFieldFeedback();
   clearMissingDataHighlights();
   document.querySelectorAll<HTMLElement>('[data-jb-highlighted]').forEach(clearElementHighlight);
 }

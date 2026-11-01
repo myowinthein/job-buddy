@@ -343,7 +343,7 @@ describe('edit-watcher promotion (blur)', () => {
     el.value = 'user typed this';
     el.dispatchEvent(new Event('blur'));
 
-    expect(applyHighlight).toHaveBeenCalledWith(el, CONF_CONFIRMED);
+    expect(applyHighlight).toHaveBeenCalledWith(el, CONF_CONFIRMED, true);
     const live = getLastResult();
     expect(live?.noReview).toBe(1);
     expect(live?.lowConfidence).toBe(0);
@@ -636,7 +636,7 @@ describe('AI green-filled elements are excluded from edit-watching', () => {
     el.value = 'Jane Smith';
     el.dispatchEvent(new Event('blur'));
 
-    expect(applyHighlight).toHaveBeenCalledWith(el, CONF_CONFIRMED);
+    expect(applyHighlight).toHaveBeenCalledWith(el, CONF_CONFIRMED, true);
   });
 });
 

@@ -14,6 +14,7 @@ import { adjustWorkHistoryMatches, matchCurrentWorkHistoryCheckboxes } from './w
 import { adjustSalaryMatches } from './salaryResolution';
 import { fillField, fillFileField, fillCheckboxInput, clearFieldValue } from './filler';
 import { applyHighlight, applyMissingDataHighlight, clearMissingDataHighlights, clearElementHighlight, clearHighlights } from './highlighter';
+import { confirmFieldFeedback } from './fieldFeedback';
 import { resolveProfileValue, flattenProfileValues } from './resolver';
 import type { FlatProfileValue } from './resolver';
 import { normalize, similarity } from './normalizer';
@@ -112,6 +113,7 @@ function refreshTrackedField(element: HTMLElement): void {
   record.outcome = value ? 'manual' : 'not_matched';
   record.source = 'manual';
   record.reason = value ? 'manual_edit' : 'manual_clear';
+  if (value) for (const item of elements) confirmFieldFeedback(item);
   if (!value) for (const item of elements) clearElementHighlight(item);
   syncFillLogResult();
 }
@@ -242,7 +244,7 @@ function attachEditWatchers(fields: EditableField[], result: AutofillResult, dom
       refreshTrackedField(element);
 
       // User has handled this field — promote to No Review (green).
-      if (currentValue.trim()) applyHighlight(element, CONF_CONFIRMED);
+      if (currentValue.trim()) applyHighlight(element, CONF_CONFIRMED, true);
       else clearElementHighlight(element);
 
       // Register a real manual edit; unfilled red/gray fields were not owned yet.
