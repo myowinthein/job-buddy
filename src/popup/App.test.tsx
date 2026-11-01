@@ -402,8 +402,7 @@ describe('popup App — Undo', () => {
   });
 });
 
-// Presentation uses the real completion checks, independently of whether saved
-// optional details are enough to offer autofill.
+// Required progress uses all completion checks; autofill needs a valid first name and email.
 describe('popup profile and action presentation', () => {
   it.each([
     [0, {}],
@@ -432,13 +431,52 @@ describe('popup profile and action presentation', () => {
     { links: { linkedin: 'https://linkedin.com/in/jane' } },
     { personal: { lastName: 'Doe' } },
     { professional: { summary: 'Frontend engineer' } },
-  ])('offers Fill Form at 0%% when optional profile data exists: %j', async (profile) => {
+  ])('requires identity setup at 0%% even when optional profile data exists: %j', async (profile) => {
     vi.mocked(getProfile).mockResolvedValue(profile as unknown as Profile);
     renderApp();
-    const fill = await readyFill();
+    const setup = await screen.findByRole('button', { name: 'Set Up Profile' });
     expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('0');
-    expect(document.activeElement).toBe(fill);
+    expect(document.activeElement).toBe(setup);
+    expect(screen.queryByRole('button', { name: 'Fill Form' })).toBeNull();
+    expect(screen.getByText('Add your first name and email to enable autofill.')).toBeTruthy();
+    fireEvent.click(setup);
+    expect(chrome.runtime.openOptionsPage).toHaveBeenCalled();
+    expect(sendMessageMock.mock.calls.some(([, message]) => message.action === 'AUTOFILL_SCAN')).toBe(false);
+  });
+
+  it.each([
+    [{ firstName: 'Jane' }, 'email'],
+    [{ email: 'jane@example.test' }, 'first name'],
+    [{ firstName: '  ', email: 'jane@example.test' }, 'first name'],
+    [{ firstName: 'Jane', email: 'invalid' }, 'email'],
+    [{ firstName: 'J'.repeat(101), email: 'jane@example.test' }, 'first name'],
+  ])('requires a valid missing identity field: %j', async (personal, missing) => {
+    vi.mocked(getProfile).mockResolvedValue({ personal } as Profile);
+    renderApp();
+    await screen.findByRole('button', { name: 'Set Up Profile' });
+    expect(screen.queryByRole('button', { name: 'Fill Form' })).toBeNull();
+    expect(screen.getByText(`Add your ${missing} to enable autofill.`)).toBeTruthy();
+  });
+
+  it('enables Fill Form with a valid first name and email at 20% completion', async () => {
+    renderApp();
+    await readyFill();
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('20');
     expect(screen.queryByRole('button', { name: 'Set Up Profile' })).toBeNull();
+  });
+
+  it('retains previous results and Undo when identity setup is needed', async () => {
+    vi.mocked(getProfile).mockResolvedValue({ personal: { firstName: 'Jane' } } as Profile);
+    sendMessageMock.mockImplementation(async (_id, message) =>
+      message.action === 'GET_STATUS' ? statusResult({ noReview: 1, totalScanned: 1 }) : { success: true },
+    );
+    renderApp();
+    await screen.findByRole('button', { name: 'Set Up Profile' });
+    expect(await screen.findByText('Last fill')).toBeTruthy();
+    expect(screen.getByText('1 field filled')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'View Fill Log →' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull());
   });
 
   it.each([

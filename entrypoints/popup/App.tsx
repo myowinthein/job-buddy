@@ -161,6 +161,7 @@ function App() {
     isCoreComplete: false,
   });
   const [hasProfileData, setHasProfileData] = useState(false);
+  const [missingAutofillFields, setMissingAutofillFields] = useState(['first name', 'email']);
   const [profileLoadFailed, setProfileLoadFailed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [autofillState, setAutofillState] = useState<AutofillState>('idle');
@@ -199,6 +200,12 @@ function App() {
           isCoreComplete: r.isCoreComplete,
         });
         setHasProfileData(!!p && FIELD_DEFS.some((field) => !field.isEmpty(field.getValue(p))));
+        // Reuse required-profile validation without making every completion check a fill gate.
+        setMissingAutofillFields(
+          r.missingFields
+            .filter((field) => field === 'First Name' || field === 'Email')
+            .map((field) => field.toLowerCase()),
+        );
       })
       .catch((err) => {
         console.error('[Job Buddy] Failed to load profile:', err);
@@ -368,9 +375,9 @@ function App() {
   const filled = result ? result.noReview + result.needReview : 0;
   const unfilled = result ? result.lowConfidence + result.noData + (result.failed ?? 0) : 0;
   const aiUnavailable = !!result && result.totalScanned > 0 && result.aiStatus === 'unavailable';
-  const profileSetup = !loading && !profileLoadFailed && !hasProfileData;
-  const aiSetup = !loading && !profileLoadFailed && hasProfileData && !keyLoading && !hasGeminiKey;
-  const waitingForKey = !loading && !profileLoadFailed && hasProfileData && keyLoading;
+  const profileSetup = !loading && !profileLoadFailed && missingAutofillFields.length > 0;
+  const aiSetup = !loading && !profileLoadFailed && !profileSetup && !keyLoading && !hasGeminiKey;
+  const waitingForKey = !loading && !profileLoadFailed && !profileSetup && keyLoading;
   const confirming = autofillState === 'confirming' && !profileSetup && !aiSetup && !keyReadFailed;
   const primaryDisabled = loading || waitingForKey || busy;
 
@@ -398,7 +405,9 @@ function App() {
     message = 'Could not load your profile. Open Profile to try again.';
   } else if (profileSetup) {
     tone = 'info';
-    message = 'Add your profile details to start using autofill.';
+    message = hasProfileData
+      ? `Add your ${missingAutofillFields.join(' and ')} to enable autofill.`
+      : 'Add your profile details to start using autofill.';
   } else if (waitingForKey) {
     tone = 'working';
     message = 'Loading AI settings…';

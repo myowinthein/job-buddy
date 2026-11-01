@@ -47,7 +47,8 @@ Set Up Profile → Set Up AI Autofill → Fill Form → Review answers → Submi
    The top bar tracks 10 required checks after saving; select a remaining detail
    to go to its input. Optional details do not affect the percentage.
 2. Choose **Set Up AI Autofill** and save a Gemini key in **Settings → AI Features**.
-   Then visit a job application page and click **Fill Form** in the popup.
+   Save a valid first name and email to enable autofill. Then visit a job application page
+   and click **Fill Form** in the popup.
 3. If the form already contains values, choose **Fill empty fields** to keep existing values
    or **Replace matched values** to use your saved details, then click **Fill Form**.
 4. Review the results and type any missing or corrected answers directly into the
