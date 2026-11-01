@@ -938,7 +938,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                       : driveConnecting
                         ? feedback.driveChecking
                         : driveState.error === 'token_expired'
-                          ? 'Reconnect needed'
+                          ? feedback.driveSignInNeeded
                           : driveState.error === 'sync_error'
                             ? 'Backup pending'
                             : driveState.error || driveState.reviewRequired
@@ -956,7 +956,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               </div>
               {driveState.error && !driveBackupBusy && !driveConnecting && (
                 <p role="status" className="text-sm text-amber-700 dark:text-amber-400">
-                  {driveFailureText(driveState.error)}
+                  {driveState.error === 'token_expired'
+                    ? feedback.driveSessionExpired
+                    : driveFailureText(driveState.error)}
                 </p>
               )}
               <div className="flex flex-wrap items-center gap-2">

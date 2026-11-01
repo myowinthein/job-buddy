@@ -221,7 +221,7 @@ it('failed lookup never turns into an upload over an unseen backup', async () =>
   lookupFailures = 1;
   mount();
   fireEvent.click(await screen.findByText('Connect Google Drive'));
-  await screen.findAllByText(/Backup failed and will retry/);
+  await screen.findAllByText(/Backup will retry/);
   await syncIfConnected();
   expect(writes()).toHaveLength(0);
   expect(remote!.profile.personal.firstName).toBe('Cloud Only');
@@ -352,7 +352,10 @@ it('clears interrupted activity in an open Settings view even after authorizatio
   });
   mount();
   await screen.findByText('Backing up…', { selector: '[role="status"]' });
-  await screen.findByText('Reconnect needed');
+  await screen.findByText('Sign-in needed');
+  expect(screen.getByText('Your Drive session expired.')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Reconnect' })).toBeTruthy();
+  expect(screen.queryByText('Reconnect Google Drive to continue backups.')).toBeNull();
   expect(screen.queryByText('Backing up…')).toBeNull();
 });
 it('disconnect waits for an in-flight upload and leaves no resurrected connection state', async () => {
@@ -449,7 +452,7 @@ it('background status changes update Settings without refreshing', async () => {
       error: 'sync_error',
     });
   });
-  expect(await screen.findByText(/Backup failed and will retry/)).toBeTruthy();
+  expect(await screen.findByText(/Backup will retry/)).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Disconnect' })).toBeTruthy();
 });
 it('an expired stored authorization is shown before a failed upload is needed', async () => {
