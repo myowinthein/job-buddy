@@ -138,7 +138,23 @@ describe('Gemini explicit key setup', () => {
     renderSettings();
     await enterKey();
     fireEvent.click(screen.getByText('Save Key'));
-    expect(await screen.findByText(KEY_ERROR_MESSAGES[failure])).toBeTruthy();
+    expect((await screen.findByRole('alert')).textContent).toBe(KEY_ERROR_MESSAGES[failure]);
+    expect(saveGeminiSettings).not.toHaveBeenCalled();
+  });
+  it('links the no-model error to Google AI Studio without changing its explanation', async () => {
+    vi.mocked(validateApiKey).mockResolvedValue({
+      valid: false,
+      error: KEY_ERROR_MESSAGES.no_model,
+      keyValidNoModel: true,
+    });
+    renderSettings();
+    await enterKey();
+    fireEvent.click(screen.getByText('Save Key'));
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toBe(KEY_ERROR_MESSAGES.no_model);
+    const link = within(alert).getByRole('link', { name: 'Google AI Studio' });
+    expect(link.getAttribute('href')).toBe('https://aistudio.google.com/api-keys');
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer');
     expect(saveGeminiSettings).not.toHaveBeenCalled();
   });
   it('preserves the draft for retry after a network failure', async () => {

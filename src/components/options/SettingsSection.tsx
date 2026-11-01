@@ -485,7 +485,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     error === 'token_expired'
       ? 'Reconnect Google Drive to continue backups.'
       : error === 'storage_full'
-        ? 'Google Drive is full. Free up space, then try again.'
+        ? 'Google Drive is full. Free up space and retry.'
         : error === 'invalid_backup'
           ? 'The Drive backup could not be read. Your profile is unchanged.'
           : error === 'delete_failed'
@@ -560,7 +560,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     try {
       await handleDriveBackupResult(await connectDrive());
     } catch {
-      showToast('error', 'Could not connect to Google Drive. Please try again.');
+      showToast('error', 'Could not connect to Drive. Try again.');
     } finally {
       setDriveConnecting(false);
     }
@@ -570,7 +570,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     try {
       await handleDriveBackupResult(await inspectDriveBackup());
     } catch {
-      showToast('error', 'Could not check the Drive backup. Please try again.');
+      showToast('error', 'Could not check the Drive backup. Try again.');
     } finally {
       setDriveConnecting(false);
     }
@@ -591,7 +591,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       if (result.success) showToast('success', 'Profile backed up to Google Drive.');
       else if (result.errorCode) showToast('warning', driveFailureText(result.errorCode));
     } catch {
-      showToast('error', 'Backup failed. Your profile is saved in this browser.');
+      showToast('error', 'Backup failed. Your profile is saved locally.');
     } finally {
       setDriveSyncing(false);
     }
@@ -605,7 +605,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       showToast(
         'success',
         deleteFile
-          ? 'Drive backup deleted. Google Drive disconnected.'
+          ? 'Drive disconnected and backup deleted.'
           : 'Google Drive disconnected. Your last backup was kept.',
       );
     } catch {
@@ -613,7 +613,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         'error',
         deleteFile
           ? 'Could not delete the Drive backup. Reconnect or try again.'
-          : 'Could not disconnect Google Drive. Please try again.',
+          : 'Could not disconnect Drive. Try again.',
       );
     } finally {
       setDriveDisconnectBusy(false);
@@ -949,7 +949,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                   className={btnPrimaryCls}
                 >
                   {driveBackupBusy
-                    ? 'Backing up…'
+                    ? 'Back Up Now'
                     : driveState.error === 'token_expired'
                       ? 'Reconnect'
                       : driveState.reviewRequired

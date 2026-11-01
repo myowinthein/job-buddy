@@ -449,7 +449,7 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));
 
-    expect(await screen.findByText('Could not connect to Google Drive. Please try again.')).toBeTruthy();
+    expect(await screen.findByText('Could not connect to Drive. Try again.')).toBeTruthy();
   });
 
   it('closes the restore dialog on Escape', async () => {
@@ -567,7 +567,7 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     vi.mocked(getFullDriveState).mockResolvedValue({ connected: true, lastSynced: null, pendingSync: false, error: 'storage_full' });
 
     renderSection();
-    expect(await screen.findByText('Google Drive is full. Free up space, then try again.')).toBeTruthy();
+    expect(await screen.findByText('Google Drive is full. Free up space and retry.')).toBeTruthy();
     expect(screen.getByText('Manage Storage')).toBeTruthy();
   });
 
@@ -591,7 +591,7 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     renderSection();
     fireEvent.click(await screen.findByText('Back Up Now'));
 
-    expect(await screen.findByText('Google Drive is full. Free up space, then try again.')).toBeTruthy();
+    expect(await screen.findByText('Google Drive is full. Free up space and retry.')).toBeTruthy();
   });
 
   it('Sync Now shows a reconnect-prompt toast when the token has expired', async () => {

@@ -69,7 +69,7 @@ export function installQuickFill(): void {
               paint();
             })
             .catch(() =>
-              widget?.error('Some fields could not be undone. Refresh the form to clear them.'),
+              widget?.error('Undo incomplete. Refresh the form.'),
             );
         },
         details: () => {

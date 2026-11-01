@@ -314,6 +314,8 @@ it.each([false, true])(
     });
     expect((await getFullDriveState()).uploadingUntil).toBeGreaterThan(Date.now());
     expect(screen.getByText('Backing up…', { selector: '[role="status"]' })).toBeTruthy();
+    expect(screen.getAllByText('Backing up…')).toHaveLength(1);
+    expect((screen.getByRole('button', { name: 'Back Up Now' }) as HTMLButtonElement).disabled).toBe(true);
     if (conflict) remoteVersion++;
     await act(async () => {
       pendingUploads[0]();
