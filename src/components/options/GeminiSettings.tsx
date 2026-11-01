@@ -58,6 +58,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [draft, setDraft] = useState('');
   const [editing, setEditing] = useState(false);
+  const [modelOptionsOpen, setModelOptionsOpen] = useState(false);
   const [preference, setPreference] = useState<GeminiModelPreference>('auto');
   const [status, setStatus] = useState<Status>('loading');
   const [error, setError] = useState('');
@@ -501,11 +502,28 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
         </SettingsDialog>
       )}
       {configured && (
-        <details className="mt-3 max-w-md">
-          <summary className="text-xs text-blue-600 dark:text-blue-400 cursor-pointer hover:underline">
-            Model options
-          </summary>
-          <div className="mt-3">
+        <div className="mt-3 max-w-md">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+            <button
+              type="button"
+              aria-expanded={modelOptionsOpen}
+              aria-controls="gemini-model-options"
+              onClick={() => setModelOptionsOpen((open) => !open)}
+              className="text-blue-600 dark:text-blue-400 hover:underline rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+            >
+              <span aria-hidden="true">{modelOptionsOpen ? '▾' : '▸'} </span>
+              Model options
+            </button>
+            <a
+              href="https://aistudio.google.com/rate-limit"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 dark:text-blue-400 hover:underline rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+            >
+              View usage and limits <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+          <div id="gemini-model-options" hidden={!modelOptionsOpen} className="mt-3">
             <label
               htmlFor="gemini-model"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
@@ -531,7 +549,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
               ))}
             </select>
           </div>
-        </details>
+        </div>
       )}
     </section>
   );
