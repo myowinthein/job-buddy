@@ -238,3 +238,21 @@ it('starts a confirmed fill even if scan coordination is still finishing', async
     h.send.mock.calls.filter(([, , message]) => message.action === 'AUTOFILL_FILL'),
   ).toHaveLength(1);
 });
+
+it('quick fill skips the prefilled choice and uses merge in every frame without rescanning', async () => {
+  const h = harness();
+  h.deps.frames.mockResolvedValue([{ frameId: 0, documentId: 'original-document' }, { frameId: 3, documentId: 'child' }]);
+  h.send.mockResolvedValueOnce({ preFilledCount: 2 }).mockResolvedValueOnce({ preFilledCount: 1 });
+  expect((await h.coordinator.start(10, true))?.stage).toBe('completed');
+  const messages = h.send.mock.calls.map(([, , m]) => m);
+  expect(messages.filter((m) => m.action === 'AUTOFILL_SCAN')).toHaveLength(2);
+  expect(messages.filter((m) => m.action === 'AUTOFILL_FILL')).toEqual([
+    expect.objectContaining({ mode: 'merge' }), expect.objectContaining({ mode: 'merge' }),
+  ]);
+});
+
+it('rejects a floating-button click delivered after its source document navigated away', async () => {
+  const h = harness();
+  expect((await h.coordinator.start(10, true, 'stale-document'))?.error).toBe('page_changed');
+  expect(h.send).not.toHaveBeenCalled();
+});

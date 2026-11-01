@@ -2,6 +2,9 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 
+vi.mock('@/src/components/options/QuickFillSettings', () => ({ QuickFillSettings: () => null }));
+vi.mock('@/src/quick-fill/preferences', () => ({ updateQuickFillPreferences: vi.fn().mockResolvedValue(undefined) }));
+
 vi.mock('@/src/utils/storage', () => ({
   getProfile: vi.fn().mockResolvedValue(null),
   saveProfile: vi.fn().mockResolvedValue(undefined),

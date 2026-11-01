@@ -177,11 +177,13 @@ function App() {
       if (target == null) return;
       void sessionRemove('jb:focusOnLoad');
 
+      if (target === 'quick-fill-enabled') navigateAndFocus('settings', 'quick-fill-enabled');
+      if (target === 'field-firstName') navigateAndFocus('personal', 'field-firstName');
       if (target === 'gemini-api-key') {
         focusGeminiKey();
       }
     });
-  }, [focusGeminiKey]);
+  }, [focusGeminiKey, navigateAndFocus]);
 
   useEffect(() => {
     if (loading) return;

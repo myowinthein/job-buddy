@@ -1,0 +1,37 @@
+import type { AutofillRun } from '@/src/autofill/runCoordinator';
+
+export function quickFillSummary(run: AutofillRun): {
+  text: string;
+  review: boolean;
+  filled: number;
+} {
+  let filled = 0,
+    attention = 0,
+    kept = 0,
+    scanned = 0,
+    aiUnavailable = false;
+  for (const result of run.results ?? []) {
+    const r = result as Record<string, number | string>;
+    const count = (key: string) => (typeof r[key] === 'number' ? (r[key] as number) : 0);
+    filled += count('noReview') + count('needReview');
+    attention += count('needReview') + count('lowConfidence') + count('noData') + count('failed');
+    scanned += count('totalScanned');
+    kept += count('kept');
+    aiUnavailable ||= count('totalScanned') > 0 && r.aiStatus === 'unavailable';
+  }
+  return {
+    filled,
+    review: attention > 0 || aiUnavailable || !!run.error,
+    text: aiUnavailable
+      ? 'AI was unavailable. Basic autofill ran.'
+      : !scanned
+        ? 'No fillable fields found.'
+        : attention
+          ? `${filled} filled, ${attention} need attention`
+          : filled
+            ? `${filled} ${filled === 1 ? 'field' : 'fields'} filled`
+            : kept
+              ? 'Existing answers kept.'
+              : 'No fields filled.',
+  };
+}

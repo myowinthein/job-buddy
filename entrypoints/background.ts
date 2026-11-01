@@ -6,6 +6,7 @@ import {
   retryPendingDriveSync,
   syncIfConnected,
 } from '@/src/utils/driveSync';
+import { registerQuickFill } from '@/src/quick-fill/background';
 import { createAutofillCoordinator, RUN_ALARM_PREFIX } from '@/src/autofill/runCoordinator';
 
 export default defineBackground(() => {
@@ -82,4 +83,5 @@ export default defineBackground(() => {
       void syncIfConnected();
     }, 5000);
   });
+  registerQuickFill(autofill);
 });

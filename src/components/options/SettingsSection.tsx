@@ -1,4 +1,6 @@
 import { documentFileSizeError } from '@/src/utils/documentLimits';
+import { QuickFillSettings } from './QuickFillSettings';
+import { updateQuickFillPreferences } from '@/src/quick-fill/preferences';
 import { GeminiSettings } from './GeminiSettings';
 import { profileData, hasCredentialSettings } from '@/src/utils/profileData';
 import { SettingsDialog } from './shared/SettingsDialog';
@@ -779,6 +781,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       await clearGeminiSettings();
       await clearAllStorage();
       await saveThemePreference('system');
+      await updateQuickFillPreferences({ enabled: true, disabledSites: [], position: undefined });
       setThemePreference('system');
       applyTheme('system');
       setAiResetVersion((version) => version + 1);
@@ -843,6 +846,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           ))}
         </div>
       </section>
+
+      <QuickFillSettings />
 
       <GeminiSettings key={aiResetVersion} resetInProgress={resetting} />
 

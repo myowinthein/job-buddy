@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('@/src/quick-fill/content', () => ({ installQuickFill: vi.fn() }));
+
 vi.mock('@/src/utils/storage', () => ({ getGeminiSettings: vi.fn() }));
 
 vi.mock('@/src/autofill/index', () => ({

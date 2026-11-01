@@ -7,6 +7,7 @@ import {
   getFillLog,
   cancelAutofillRun,
 } from '@/src/autofill/index';
+import { installQuickFill } from '@/src/quick-fill/content';
 import { getGeminiSettings } from '@/src/utils/storage';
 
 // Check fresh settings in each frame before an explicit scan or fill. Undo and
@@ -53,6 +54,7 @@ export default defineContentScript({
     const g = globalThis as unknown as { __jobBuddyInjected?: boolean };
     if (g.__jobBuddyInjected) return;
     g.__jobBuddyInjected = true;
+    installQuickFill();
 
     // Retries after a worker restart must reuse the same scan and fill, never
     // reset pending matches or make a second AI request for the same run.

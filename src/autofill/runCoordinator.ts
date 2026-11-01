@@ -1,5 +1,6 @@
 import { wrapStorageArea } from '@/src/utils/storageArea';
-import { getGeminiSettings } from '@/src/utils/storage';
+import { getGeminiSettings, getProfile } from '@/src/utils/storage';
+import { calculateCompletion } from '@/src/utils/profileCompletion';
 
 export const RUN_PREFIX = 'jb:autofill-run:';
 export const RUN_ALARM_PREFIX = 'jb:autofill-recover:';
@@ -64,12 +65,14 @@ export class AutofillCoordinator {
     });
   }
 
-  async start(tabId: number): Promise<AutofillRun | null> {
+  async start(tabId: number, emptyOnly = false, sourceDocumentId?: string): Promise<AutofillRun | null> {
     const run = await this.exclusive(tabId, async () => {
       const existing = await this.deps.read(tabId);
       if (existing && (pending(existing) || existing.stage === 'confirming')) return existing;
-      const error = await this.deps.setup?.();
+      let error = await this.deps.setup?.();
       const frames = error ? [] : await this.deps.frames(tabId);
+      if (!error && sourceDocumentId && frames.find((frame) => frame.frameId === 0)?.documentId !== sourceDocumentId)
+        error = 'page_changed';
       const run: AutofillRun = {
         sourceDocumentId: frames.find((frame) => frame.frameId === 0)?.documentId,
         tabId,
@@ -78,6 +81,7 @@ export class AutofillCoordinator {
         expiresAt: Date.now() + RUN_LIMIT_MS,
         stage: error ? 'error' : 'scanning',
         frames,
+        ...(emptyOnly ? { mode: 'merge' as const } : {}),
         ...(error ? { error } : {}),
       };
       await this.deps.write(tabId, run);
@@ -202,14 +206,14 @@ export class AutofillCoordinator {
             typeof (reply as { preFilledCount?: unknown })?.preFilledCount === 'number',
         );
         if (!scanned.length) throw new Error('autofill_failed');
-        const needsChoice = scanned.some(
+        const needsChoice = run.mode !== 'merge' && scanned.some(
           ({ reply }) => (reply as { preFilledCount: number }).preFilledCount > 0,
         );
         run = {
           ...run,
           frames: scanned.map(({ frame }) => frame),
           stage: needsChoice ? 'confirming' : 'filling',
-          ...(needsChoice ? {} : { mode: 'overwrite' }),
+          ...(needsChoice ? {} : { mode: run.mode ?? 'overwrite' }),
         };
         if (!(await this.update(run))) return null;
       }
@@ -269,6 +273,13 @@ export function createAutofillCoordinator() {
   });
   return new AutofillCoordinator({
     setup: async () => {
+      try {
+        const completion = calculateCompletion((await getProfile()) ?? {});
+        if (completion.missingFields.some((field) => field === 'First Name' || field === 'Email'))
+          return 'profile_setup_required';
+      } catch {
+        return 'profile_unavailable';
+      }
       try {
         const settings = await getGeminiSettings();
         return settings.apiKey && settings.model ? undefined : 'ai_setup_required';

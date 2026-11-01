@@ -38,6 +38,7 @@ const { onStartupAddListener, storageOnChangedAddListener, onAlarmAddListener } 
   vi.stubGlobal('chrome', {
     alarms: { onAlarm: { addListener: onAlarmAddListener } },
     runtime: { id: 'job-buddy', getURL: (path: string) => `chrome-extension://job-buddy/${path}`, onStartup: { addListener: onStartupAddListener }, onMessage: { addListener: vi.fn() } },
+    commands: { onCommand: { addListener: vi.fn() } },
     tabs: { onRemoved: { addListener: vi.fn() } },
     webNavigation: { onCommitted: { addListener: vi.fn() } },
     storage: { onChanged: { addListener: storageOnChangedAddListener } },

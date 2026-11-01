@@ -67,9 +67,20 @@ On the application form, colors describe individual field confidence:
 | Red / Not matched           | Left unfilled because no confident match was found.                          |
 | Gray / Missing profile data | Your profile lacks the value; a subtle gray background tint marks the field. |
 
-The form stays free of floating icons and automatic tooltips. Read textual field
+The form stays free of per-field icons and automatic tooltips. Read textual field
 statuses in **Fill Details** when needed. Screen-reader descriptions supplement existing
 site hints without changing keyboard tab order; Undo removes Job Buddy's feedback.
+
+**Quick Fill** adds a movable **Fill Form** button to likely application pages. It fills
+empty fields and keeps existing answers. Its menu can hide the button until refresh
+or disable it for a site. Manage this in **Settings → Quick Fill**. The popup still
+offers the choice to replace existing answers. Form detection stays local and may
+miss unusual layouts; the popup remains available.
+
+Use **Alt+Shift+J** (**Option+Shift+J** on macOS) to fill empty fields without opening
+the popup. Change the shortcut at `chrome://extensions/shortcuts` if Chrome has not
+assigned it or it conflicts with another app. Moving or hiding the button does not
+stop a fill already running.
 
 Popup messages share one area below the main buttons. Blue indicates setup or
 loading, gray an informational outcome, green completed fills, amber a result

@@ -10,7 +10,7 @@ import { isConsentGroup } from './consent';
 function collectAllRoots(root: ParentNode = document): ParentNode[] {
   const roots: ParentNode[] = [root];
   root.querySelectorAll<HTMLElement>('*').forEach((el) => {
-    if (el.shadowRoot) roots.push(...collectAllRoots(el.shadowRoot));
+    if (el.shadowRoot && !el.hasAttribute('data-job-buddy-ui')) roots.push(...collectAllRoots(el.shadowRoot));
   });
   return roots;
 }

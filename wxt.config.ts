@@ -7,6 +7,12 @@ export default defineConfig({
     name: 'Job Buddy: Autofill Job Applications',
     description: 'Fill job application forms with AI assistance using your saved profile. Works across supported job sites.',
     permissions: ['storage', 'identity', 'activeTab', 'webNavigation', 'scripting', 'alarms'],
+    commands: {
+      'quick-fill': {
+        suggested_key: { default: 'Alt+Shift+J', mac: 'Alt+Shift+J' },
+        description: 'Fill empty fields with Job Buddy',
+      },
+    },
     host_permissions: [
       'https://generativelanguage.googleapis.com/*',
       'https://www.googleapis.com/*',
