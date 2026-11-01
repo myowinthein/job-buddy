@@ -255,9 +255,9 @@ test('hidden-site management stays compact with many sites and actions remain be
   const firstSite = await section.getByRole('listitem').first().boundingBox();
   expect(initialNext!.y).toBeLessThan(firstSite!.y);
   await next.click();
-  await expect(section.getByText('6–10 of 13', { exact: true })).toBeVisible();
+  await expect(section.getByText('6–10 of 13 sites', { exact: true })).toBeVisible();
   await next.click();
-  await expect(section.getByText('11–13 of 13', { exact: true })).toBeVisible();
+  await expect(section.getByText('11–13 of 13 sites', { exact: true })).toBeVisible();
   await expect(next).toBeDisabled();
   const lastNext = await next.boundingBox();
   const lastPrevious = await previous.boundingBox();
@@ -266,7 +266,7 @@ test('hidden-site management stays compact with many sites and actions remain be
   expect(lastPrevious!.x).toBeCloseTo(initialPrevious!.x, 1);
   expect(lastPrevious!.y).toBeCloseTo(initialPrevious!.y, 1);
   await previous.click();
-  await expect(section.getByText('6–10 of 13', { exact: true })).toBeVisible();
+  await expect(section.getByText('6–10 of 13 sites', { exact: true })).toBeVisible();
   await section.getByRole('searchbox', { name: 'Search hidden sites' }).fill('SITE12');
   await expect(section.getByRole('listitem')).toHaveCount(1);
   await section.getByRole('button', { name: 'Show button on site12.example' }).click();

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/src/components/ui/useToast';
 import { fieldCls } from './shared/fieldCls';
 import {
@@ -110,7 +111,7 @@ export function QuickFillSettings() {
                   setQuery(event.target.value);
                   setPage(0);
                 }}
-                className={`${fieldCls()} max-w-sm`}
+                className={`${fieldCls()} max-w-xs`}
               />
             )}
             {sites.length > SITES_PER_PAGE && (
@@ -119,24 +120,27 @@ export function QuickFillSettings() {
                 aria-label="Hidden sites pagination"
                 className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400"
               >
-                <span role="status" className="w-24 shrink-0 whitespace-nowrap tabular-nums">
-                  {start + 1}–{Math.min(start + SITES_PER_PAGE, sites.length)} of {sites.length}
+                <span role="status" className="w-28 shrink-0 whitespace-nowrap tabular-nums">
+                  {start + 1}–{Math.min(start + SITES_PER_PAGE, sites.length)} of {sites.length}{' '}
+                  sites
                 </span>
                 <button
                   type="button"
                   disabled={currentPage === 0}
                   onClick={() => setPage(currentPage - 1)}
-                  className="rounded px-1 py-1 text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline dark:text-blue-400 dark:disabled:text-gray-600"
+                  className="inline-flex items-center gap-0.5 rounded px-1 py-1 text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline dark:text-blue-400 dark:disabled:text-gray-600"
                 >
+                  <ChevronLeft aria-hidden="true" className="h-3 w-3" />
                   Previous
                 </button>
                 <button
                   type="button"
                   disabled={currentPage === lastPage}
                   onClick={() => setPage(currentPage + 1)}
-                  className="rounded px-1 py-1 text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline dark:text-blue-400 dark:disabled:text-gray-600"
+                  className="inline-flex items-center gap-0.5 rounded px-1 py-1 text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline dark:text-blue-400 dark:disabled:text-gray-600"
                 >
                   Next
+                  <ChevronRight aria-hidden="true" className="h-3 w-3" />
                 </button>
               </div>
             )}

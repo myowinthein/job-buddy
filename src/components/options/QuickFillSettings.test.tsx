@@ -56,7 +56,7 @@ it('shows five hidden sites per page, searches all sites, and restores only the 
   fireEvent.click(await screen.findByText('Hidden sites (13)'));
   expect(screen.getAllByRole('listitem')).toHaveLength(5);
   fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-  expect(screen.getByText('6–10 of 13')).toBeTruthy();
+  expect(screen.getByText('6–10 of 13 sites')).toBeTruthy();
   const search = screen.getByRole('searchbox', { name: 'Search hidden sites' });
   fireEvent.change(search, { target: { value: 'SITE12' } });
   expect(screen.getAllByRole('listitem')).toHaveLength(1);
@@ -68,7 +68,7 @@ it('shows five hidden sites per page, searches all sites, and restores only the 
   fireEvent.change(search, { target: { value: '' } });
   fireEvent.click(screen.getByRole('button', { name: 'Next' }));
   fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-  expect(screen.getByText('11–12 of 12')).toBeTruthy();
+  expect(screen.getByText('11–12 of 12 sites')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Show button on site11.example' }));
   await waitFor(() => expect(preferences.disabledSites).toHaveLength(11));
   await waitFor(() =>
@@ -78,6 +78,6 @@ it('shows five hidden sites per page, searches all sites, and restores only the 
     ).toBe(false),
   );
   fireEvent.click(screen.getByRole('button', { name: 'Show button on site10.example' }));
-  await screen.findByText('6–10 of 10');
+  await screen.findByText('6–10 of 10 sites');
   expect(screen.getAllByRole('listitem')).toHaveLength(5);
 });
