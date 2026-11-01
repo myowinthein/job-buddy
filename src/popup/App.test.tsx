@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react';
 
 vi.mock('@/src/fill-log/client', () => ({ openFillLog: vi.fn().mockResolvedValue(undefined) }));
 
@@ -17,17 +17,19 @@ vi.mock('@/src/utils/sessionStorage', () => ({
 // plain `vi.stubGlobal` call textually preceding the import would execute,
 // per real ESM import evaluation order. `vi.hoisted` forces this to run
 // first, same as `vi.mock` factories.
-const { sendMessageMock, getAllFramesMock, tabsQueryMock, executeScriptMock } = vi.hoisted(() => {
+const { sendMessageMock, getAllFramesMock, tabsQueryMock, executeScriptMock, runtimeSendMock } = vi.hoisted(() => {
   const sendMessageMock = vi.fn();
   const getAllFramesMock = vi.fn();
   const tabsQueryMock = vi.fn();
   const executeScriptMock = vi.fn().mockResolvedValue(undefined);
+  const runtimeSendMock = vi.fn();
 
   vi.stubGlobal('chrome', {
     runtime: {
       getManifest: () => ({ version: '9.9.9' }),
       openOptionsPage: vi.fn(),
       lastError: null,
+      sendMessage: runtimeSendMock,
     },
     tabs: {
       query: tabsQueryMock,
@@ -47,7 +49,7 @@ const { sendMessageMock, getAllFramesMock, tabsQueryMock, executeScriptMock } = 
     },
   });
 
-  return { sendMessageMock, getAllFramesMock, tabsQueryMock, executeScriptMock };
+  return { sendMessageMock, getAllFramesMock, tabsQueryMock, executeScriptMock, runtimeSendMock };
 });
 
 import App from '@/entrypoints/popup/App';
@@ -56,6 +58,7 @@ import { getProfile, getGeminiApiKey } from '@/src/utils/storage';
 import type { Profile } from '@/src/types/profile';
 import type { AIAutofillStatus } from '@/src/autofill/ai';
 import { DEV_PROFILE } from '@/src/utils/devProfile';
+import { AutofillCoordinator, type AutofillRun } from '@/src/autofill/runCoordinator';
 
 function renderApp() {
   render(<App />);
@@ -84,6 +87,30 @@ beforeEach(() => {
   getAllFramesMock.mockRejectedValue(new Error('unavailable')); // single top frame by default
   sendMessageMock.mockRejectedValue(new Error('no listener')); // idle by default
   executeScriptMock.mockResolvedValue(undefined); // injection succeeds by default
+  const records = new Map<number, AutofillRun>();
+  const coordinator = new AutofillCoordinator({
+    read: async tabId => records.get(tabId) ?? null,
+    write: async (tabId, run) => { if (run) records.set(tabId, run); else records.delete(tabId); },
+    setup: async () => {
+      try { return await getGeminiApiKey() ? undefined : 'ai_setup_required'; }
+      catch { return 'ai_settings_unavailable'; }
+    },
+    frames: async () => {
+      try { return await getAllFramesMock(); } catch { return [{ frameId: 0 }]; }
+    },
+    send: async (run, frame, message) => {
+      await executeScriptMock({ target: { tabId: run.tabId, frameIds: [frame.frameId] }, files: ['content-scripts/content.js'] });
+      return sendMessageMock(run.tabId, message, { frameId: frame.frameId });
+    },
+    alarm: async () => {},
+  });
+  runtimeSendMock.mockImplementation(async message => {
+    if (message.action === 'AUTOFILL_RUN_START') return coordinator.start(message.tabId);
+    if (message.action === 'AUTOFILL_RUN_STATUS') return coordinator.status(message.tabId);
+    if (message.action === 'AUTOFILL_RUN_CONFIRM') return coordinator.confirm(message.tabId, message.runId, message.mode);
+    if (message.action === 'AUTOFILL_RUN_CANCEL') { await coordinator.cancel(message.tabId, message.runId); return null; }
+    return null;
+  });
 });
 
 afterEach(cleanup);
@@ -620,7 +647,7 @@ it('preserves the overwrite choice and fills without rescanning after confirmati
   await screen.findByRole('button', { name: 'Undo' });
   expect(sendMessageMock).toHaveBeenCalledWith(
     123,
-    { action: 'AUTOFILL_FILL', mode: 'overwrite' },
+    expect.objectContaining({ action: 'AUTOFILL_FILL', mode: 'overwrite', runId: expect.any(String) }),
     { frameId: 0 },
   );
   expect(
@@ -787,4 +814,28 @@ it('can undo previous fills after the key is removed', async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
   await waitFor(() => expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull());
   expect(sendMessageMock).toHaveBeenCalledWith(123, { action: 'CLEAR' }, { frameId: 0 });
+});
+
+
+it('does not restore a cancelled choice from a delayed startup reply', async () => {
+  let release!: () => void;
+  const route = runtimeSendMock.getMockImplementation()!;
+  runtimeSendMock.mockImplementation(async message => {
+    const result = await route(message);
+    if (message.action === 'AUTOFILL_RUN_START') await new Promise<void>(resolve => { release = resolve; });
+    return result;
+  });
+  sendMessageMock.mockImplementation(async (_tabId, message) => {
+    if (message.action === 'AUTOFILL_SCAN') return { preFilledCount: 1 };
+    return null;
+  });
+  renderApp();
+  fireEvent.click(await readyFill());
+  // Polling discovers the choice while the original message is still pending.
+  await screen.findByRole('radio', { name: /^Fill empty fields/ });
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  await act(async () => { release(); });
+  expect(screen.queryByRole('radio')).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Fill Form' })).toHaveProperty('disabled', false);
 });

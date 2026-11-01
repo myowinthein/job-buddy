@@ -9,6 +9,7 @@ vi.mock('@/src/autofill/index', () => ({
   getLastResult: vi.fn(),
   getDebugSession: vi.fn(),
   getFillLog: vi.fn(),
+  cancelAutofillRun: vi.fn(),
 }));
 
 // entrypoints/content.ts calls the WXT-auto-imported `defineContentScript` at
@@ -25,7 +26,7 @@ const { onMessageAddListener } = vi.hoisted(() => {
 
 import contentScript from '@/entrypoints/content';
 import {
-  scanAutofill, executeAutofill, undoAutofill, getLastResult, getDebugSession, getFillLog,
+  scanAutofill, executeAutofill, undoAutofill, getLastResult, getDebugSession, getFillLog, cancelAutofillRun,
 } from '@/src/autofill/index';
 
 import { getGeminiSettings } from '@/src/utils/storage';
@@ -48,6 +49,53 @@ beforeEach(() => {
 });
 
 describe('content script — message dispatcher', () => {
+  it('reuses a scan and fill when a background worker retries the same run', async () => {
+    vi.mocked(scanAutofill).mockResolvedValue({ preFilledCount: 0, totalMatched: 1 });
+    vi.mocked(executeAutofill).mockResolvedValue({ noReview: 1, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 1 });
+    const responses = [vi.fn(), vi.fn(), vi.fn(), vi.fn()];
+    getListener()({ action: 'AUTOFILL_SCAN', runId: 'durable-run' }, {}, responses[0]);
+    getListener()({ action: 'AUTOFILL_SCAN', runId: 'durable-run' }, {}, responses[1]);
+    await vi.waitFor(() => expect(responses[1]).toHaveBeenCalled());
+    getListener()({ action: 'AUTOFILL_FILL', runId: 'durable-run', mode: 'merge' }, {}, responses[2]);
+    getListener()({ action: 'AUTOFILL_FILL', runId: 'durable-run', mode: 'merge' }, {}, responses[3]);
+    await vi.waitFor(() => expect(responses[3]).toHaveBeenCalled());
+    expect(scanAutofill).toHaveBeenCalledOnce();
+    expect(executeAutofill).toHaveBeenCalledOnce();
+  });
+
+  it('rejects a stale fill request and invalidates cancelled runs without clearing answers', async () => {
+    vi.mocked(scanAutofill).mockResolvedValue({ preFilledCount: 1, totalMatched: 1 });
+    const scanned = vi.fn();
+    getListener()({ action: 'AUTOFILL_SCAN', runId: 'current-run' }, {}, scanned);
+    await vi.waitFor(() => expect(scanned).toHaveBeenCalled());
+    const stale = vi.fn();
+    getListener()({ action: 'AUTOFILL_FILL', runId: 'other-run' }, {}, stale);
+    expect(stale).toHaveBeenCalledWith({ error: 'autofill_failed' });
+    getListener()({ action: 'AUTOFILL_CANCEL', runId: 'current-run' }, {}, vi.fn());
+    expect(cancelAutofillRun).toHaveBeenCalledOnce();
+    getListener()({ action: 'AUTOFILL_FILL', runId: 'current-run' }, {}, stale);
+    expect(executeAutofill).not.toHaveBeenCalled();
+    expect(undoAutofill).not.toHaveBeenCalled();
+  });
+
+  it.each(['AUTOFILL_SCAN', 'AUTOFILL_FILL'])('cancels %s even while its settings check is pending', async action => {
+    vi.mocked(scanAutofill).mockResolvedValue({ preFilledCount: 0, totalMatched: 1 });
+    const scanned = vi.fn();
+    getListener()({ action: 'AUTOFILL_SCAN', runId: 'cancel-during-settings' }, {}, scanned);
+    await vi.waitFor(() => expect(scanned).toHaveBeenCalled());
+    vi.mocked(scanAutofill).mockClear();
+    let release!: (value: typeof settings) => void;
+    vi.mocked(getGeminiSettings).mockReturnValueOnce(new Promise(resolve => { release = resolve; }));
+    const response = vi.fn();
+    const runId = action === 'AUTOFILL_SCAN' ? 'new-run' : 'cancel-during-settings';
+    getListener()({ action, runId }, {}, response);
+    getListener()({ action: 'AUTOFILL_CANCEL', runId }, {}, vi.fn());
+    release(settings);
+    await vi.waitFor(() => expect(response).toHaveBeenCalledWith({ error: 'autofill_failed' }));
+    expect(scanAutofill).not.toHaveBeenCalled();
+    expect(executeAutofill).not.toHaveBeenCalled();
+  });
+
   it('declares allFrames: true and matches all URLs', () => {
     expect(contentScript.matches).toEqual(['*://*/*']);
     expect(contentScript.allFrames).toBe(true);

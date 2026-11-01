@@ -7,6 +7,8 @@ import { LOGO_ICON_SRC } from '@/src/utils/branding';
 import { sessionSet } from '@/src/utils/sessionStorage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import { openFillLog } from '@/src/fill-log/client';
+import { sendToAllFrames } from '@/src/autofill/frameMessaging';
+import { requestAutofillRun, type AutofillRun } from '@/src/autofill/runCoordinator';
 import { latestFillRunId } from '@/src/autofill/fillLog';
 import { FIELD_DEFS } from '@/src/resume-ai/parser';
 import type { AIAutofillStatus } from '@/src/autofill/ai';
@@ -23,59 +25,6 @@ interface AutofillResult {
   failed?: number;
   runId?: string;
   startedAt?: number;
-}
-
-// Actively (re-)injects the content script into every given frame before
-// messaging it. Chrome's declarative content_scripts injection (matches +
-// allFrames + matchAboutBlank + matchOriginAsFallback, see content.ts) does
-// NOT reliably re-run for a frame whose document was populated
-// asynchronously via document.write() after the frame was created — a known
-// Chromium quirk. HubSpot's embedded-form iframe pattern hits this exactly:
-// an empty iframe is created up front, then its form HTML is fetched and
-// document.write()-ten in well after (confirmed on moroku.com/designer).
-// Re-injecting here is idempotent (see content.ts's __jobBuddyInjected
-// guard) so it's safe to call unconditionally rather than only retrying
-// frames that failed to respond. Best-effort per frame: frames that reject
-// (chrome:// pages, frames that detached, etc.) are silently skipped.
-async function ensureContentScriptInjected(tabId: number, frameIds: number[]): Promise<void> {
-  await Promise.all(
-    frameIds.map((frameId) =>
-      chrome.scripting
-        .executeScript({
-          target: { tabId, frameIds: [frameId] },
-          files: ['content-scripts/content.js'],
-        })
-        .catch(() => undefined),
-    ),
-  );
-}
-
-// Sends `message` to every frame of the tab (content.ts runs in all frames —
-// see its allFrames flag — since job forms are frequently embedded in a
-// cross-origin iframe rather than living on the top-level page).
-// chrome.tabs.sendMessage only reaches the top frame unless a frameId is
-// given explicitly, so frames are enumerated first. Frames with no content
-// script listening even after the active re-injection above (blocked
-// cross-origin frames without host permissions, chrome:// pages, etc.)
-// reject and are silently dropped — that's expected for most iframes on a
-// page (ads, trackers, unrelated widgets), not an error condition.
-async function sendToAllFrames(tabId: number, message: object): Promise<unknown[]> {
-  let frameIds = [0]; // always include the top frame, even if enumeration fails
-  try {
-    const frames = await chrome.webNavigation.getAllFrames({ tabId });
-    if (frames) frameIds = [...new Set([0, ...frames.map((f) => f.frameId)])];
-  } catch {
-    // webNavigation unavailable or the call failed — fall back to top frame only.
-  }
-
-  await ensureContentScriptInjected(tabId, frameIds);
-
-  const responses = await Promise.all(
-    frameIds.map((frameId) =>
-      chrome.tabs.sendMessage(tabId, message, { frameId }).catch(() => undefined),
-    ),
-  );
-  return responses.filter((r) => r !== undefined);
 }
 
 // Aggregate every frame; one failed AI pass must remain visible even when
@@ -138,10 +87,6 @@ function mergeAutofillResults(results: unknown[], requestedRunId?: string): Auto
   );
 }
 
-interface AutofillScanResult {
-  preFilledCount: number;
-}
-
 // Read once from the manifest rather than hardcoded, so it can never drift
 // out of sync with what's actually installed.
 const EXTENSION_VERSION = chrome.runtime.getManifest().version;
@@ -166,12 +111,19 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [autofillState, setAutofillState] = useState<AutofillState>('idle');
   const [autofillResult, setAutofillResult] = useState<AutofillResult | null>(null);
+  const resultRef = useRef<AutofillResult | null>(null);
+  const setResult = useCallback((result: AutofillResult | null) => {
+    resultRef.current = result;
+    setAutofillResult(result);
+  }, []);
+  const [sourceResolved, setSourceResolved] = useState(false);
   const [fillMode, setFillMode] = useState<'merge' | 'overwrite'>('merge');
   const [keyLoading, setKeyLoading] = useState(true);
   const [keyReadFailed, setKeyReadFailed] = useState(false);
   const [hasGeminiKey, setHasGeminiKey] = useState<boolean | null>(null);
   const sourceTabId = useRef<number | null>(null);
   const activeRunId = useRef<string | undefined>(undefined);
+  const actionRevision = useRef(0);
   const [logOpenFailed, setLogOpenFailed] = useState(false);
   const fillButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -221,13 +173,13 @@ function App() {
   }, []);
 
   const sendToActiveTab = useCallback(async (message: object): Promise<unknown[]> => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true }).finally(() => setSourceResolved(true));
     if (!tab?.id) throw new Error('No active tab found');
     sourceTabId.current = tab.id;
     return sendToAllFrames(tab.id, message);
   }, []);
 
-  const applySetupError = (responses: unknown[]) => {
+  const applySetupError = useCallback((responses: unknown[]) => {
     const errors = responses.map((r) => (r as { error?: string } | null)?.error);
     if (errors.includes('ai_settings_unavailable')) {
       setKeyReadFailed(true);
@@ -240,19 +192,46 @@ function App() {
       return true;
     }
     return false;
-  };
+  }, []);
 
-  const dispatchFill = async (mode: 'merge' | 'overwrite') => {
-    const responses = await sendToActiveTab({ action: 'AUTOFILL_FILL', mode });
-    const setupError = applySetupError(responses);
-    const merged = mergeAutofillResults(responses, activeRunId.current);
-    if (merged) {
-      setAutofillResult(setupError ? { ...merged, aiStatus: 'unavailable' } : merged);
-      setAutofillState('success');
+  const applyRun = useCallback((run: AutofillRun | null) => {
+    if (!run) return;
+    if (activeRunId.current !== run.runId) setFillMode('merge');
+    activeRunId.current = run.runId;
+    if (run.stage === 'scanning' || run.stage === 'filling') {
+      setAutofillState('loading');
+    } else if (run.stage === 'confirming') {
+      setAutofillState('confirming');
+    } else if (run.stage === 'completed') {
+      const setupError = applySetupError(run.error ? [{ error: run.error }] : []);
+      const merged = mergeAutofillResults(run.results ?? [], run.runId);
+      if (merged) {
+        setResult(setupError ? { ...merged, aiStatus: 'unavailable' } : merged);
+        setAutofillState('success');
+      } else setAutofillState('error');
     } else {
-      setAutofillState(setupError ? (autofillResult ? 'success' : 'idle') : 'error');
+      const setupError = applySetupError([{ error: run.error }]);
+      setAutofillState(setupError ? (resultRef.current ? 'success' : 'idle') : 'error');
     }
-  };
+  }, [applySetupError, setResult]);
+
+  // Reopening a popup observes the existing run; it never starts another one.
+  useEffect(() => {
+    if (autofillState !== 'loading') return;
+    let cancelled = false;
+    const revision = actionRevision.current;
+    let polling = false;
+    const timer = setInterval(async () => {
+      if (polling || sourceTabId.current === null) return;
+      polling = true;
+      try {
+        const run = await requestAutofillRun('STATUS', sourceTabId.current);
+        if (!cancelled && revision === actionRevision.current) applyRun(run);
+      } catch { /* The start request still supplies its final response. */ }
+      finally { polling = false; }
+    }, 300);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [autofillState, applyRun]);
 
   const openLog = async () => {
     setLogOpenFailed(false);
@@ -267,13 +246,18 @@ function App() {
   // On mount: restore the last fill and load the AI setup state.
   useEffect(() => {
     let cancelled = false;
+    const revision = actionRevision.current;
     (async () => {
       try {
         const responses = await sendToActiveTab({ action: 'GET_STATUS' });
         const merged = mergeAutofillResults(responses);
-        if (!cancelled && merged) {
-          setAutofillResult(merged);
+        if (!cancelled && revision === actionRevision.current && merged) {
+          setResult(merged);
           setAutofillState('success');
+        }
+        if (sourceTabId.current !== null) {
+          const run = await requestAutofillRun('STATUS', sourceTabId.current);
+          if (!cancelled && revision === actionRevision.current && run && run.stage !== 'completed') applyRun(run);
         }
       } catch {
         // Content script not loaded on this page — stay in idle state.
@@ -298,7 +282,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [sendToActiveTab]);
+  }, [sendToActiveTab, applyRun, setResult]);
 
   const openOptions = () => chrome.runtime.openOptionsPage();
 
@@ -311,65 +295,52 @@ function App() {
   };
 
   const handleAutofill = async () => {
+    const revision = ++actionRevision.current;
     setLogOpenFailed(false);
     setAutofillState('loading');
     try {
-      if (!(await checkApiKey())) {
-        setAutofillState(autofillResult ? 'success' : 'idle');
-        return;
-      }
-      activeRunId.current = crypto.randomUUID();
-      const scanResponses = (await sendToActiveTab({
-        action: 'AUTOFILL_SCAN',
-        runId: activeRunId.current,
-      })) as AutofillScanResult[];
-      if (applySetupError(scanResponses)) {
-        setAutofillState(autofillResult ? 'success' : 'idle');
-        return;
-      }
-      if (scanResponses.some((r) => (r as { error?: string })?.error))
-        throw new Error('Scan failed');
-      const preFilledCount = scanResponses.reduce((sum, r) => sum + (r?.preFilledCount ?? 0), 0);
-      if (preFilledCount > 0) {
-        // Form already has data — ask the user how to proceed
-        setFillMode('merge');
-        setAutofillState('confirming');
-      } else {
-        await dispatchFill('overwrite');
-      }
-    } catch {
-      setAutofillState('error');
-    }
+      if (sourceTabId.current === null) throw new Error('No source tab');
+      // Hand off before awaiting settings, scanning, or any other popup work.
+      const run = await requestAutofillRun('START', sourceTabId.current);
+      if (!run) throw new Error('Could not start autofill');
+      if (revision === actionRevision.current) applyRun(run);
+    } catch { if (revision === actionRevision.current) setAutofillState('error'); }
   };
 
   const handleConfirmFill = async () => {
+    const revision = ++actionRevision.current;
     setAutofillState('loading');
     try {
-      if (!(await checkApiKey())) {
-        setAutofillState(autofillResult ? 'success' : 'idle');
-        return;
-      }
-      await dispatchFill(fillMode);
-    } catch {
-      setAutofillState('error');
-    }
+      if (sourceTabId.current === null || !activeRunId.current) throw new Error('No pending run');
+      const run = await requestAutofillRun('CONFIRM', sourceTabId.current, {
+        runId: activeRunId.current, mode: fillMode,
+      });
+      if (!run) throw new Error('The pending run changed');
+      if (revision === actionRevision.current) applyRun(run);
+    } catch { if (revision === actionRevision.current) setAutofillState('error'); }
   };
 
   const handleCancelFill = () => {
+    actionRevision.current++;
+    if (sourceTabId.current !== null)
+      void requestAutofillRun('CANCEL', sourceTabId.current, { runId: activeRunId.current }).catch(() => {});
     setLogOpenFailed(false);
     setAutofillState('idle');
-    setAutofillResult(null);
+    setResult(null);
   };
 
   const handleUndo = async () => {
+    actionRevision.current++;
     setLogOpenFailed(false);
     try {
+      if (sourceTabId.current !== null)
+        await requestAutofillRun('CANCEL', sourceTabId.current).catch(() => null);
       await sendToActiveTab({ action: 'CLEAR' });
     } catch {
       /* ignore — page may have already been refreshed */
     }
     setAutofillState('idle');
-    setAutofillResult(null);
+    setResult(null);
   };
 
   const { percentage, isCoreComplete } = completion;
@@ -382,7 +353,7 @@ function App() {
   const aiSetup = !loading && !profileLoadFailed && !profileSetup && !keyLoading && !hasGeminiKey;
   const waitingForKey = !loading && !profileLoadFailed && !profileSetup && keyLoading;
   const confirming = autofillState === 'confirming' && !profileSetup && !aiSetup && !keyReadFailed;
-  const primaryDisabled = loading || waitingForKey || busy;
+  const primaryDisabled = loading || waitingForKey || busy || !sourceResolved;
 
   // Setup actions occupy the same place as Fill Form. Restore focus only when
   // the action becomes available, leaving the confirmation radios in control.

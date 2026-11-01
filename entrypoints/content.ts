@@ -5,6 +5,7 @@ import {
   getLastResult,
   getDebugSession,
   getFillLog,
+  cancelAutofillRun,
 } from '@/src/autofill/index';
 import { getGeminiSettings } from '@/src/utils/storage';
 
@@ -27,7 +28,7 @@ export default defineContentScript({
   // widgets, embedded application flows) rather than living on the top-level
   // page. all_frames injects this script into every matching frame, not just
   // the top one, so scanAutofill/executeAutofill can find fields there too.
-  // The popup's messaging layer is frame-aware to match (see popup/App.tsx).
+  // The background coordinator sends to each captured frame and document.
   allFrames: true,
   // Some ATS widgets render their application form inside an about:blank (or
   // srcdoc/data:) iframe rather than one with a real http(s) src (confirmed
@@ -53,9 +54,31 @@ export default defineContentScript({
     if (g.__jobBuddyInjected) return;
     g.__jobBuddyInjected = true;
 
+    // Retries after a worker restart must reuse the same scan and fill, never
+    // reset pending matches or make a second AI request for the same run.
+    interface ContentRun {
+      id: string;
+      scan: Promise<unknown>;
+      fill?: Promise<unknown>;
+      cancelled?: boolean;
+    }
+    let run: ContentRun | null = null;
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       if (message.action === 'AUTOFILL_SCAN') {
-        withAISetup(() => scanAutofill(typeof message.runId === 'string' ? message.runId : undefined))
+        const id = typeof message.runId === 'string' ? message.runId : undefined;
+        if (!id || !run || run.id !== id) {
+          const next: ContentRun | null = id ? { id, scan: Promise.resolve(null) } : null;
+          run = next;
+          const scan = withAISetup<unknown>(() =>
+            next && (run !== next || next.cancelled)
+              ? Promise.resolve({ error: 'autofill_failed' })
+              : scanAutofill(id),
+          );
+          if (next) next.scan = scan;
+          scan.then(sendResponse).catch(() => sendResponse({ error: 'autofill_failed' }));
+          return true;
+        }
+        (run.cancelled ? Promise.resolve({ error: 'autofill_failed' }) : run.scan)
           .then(sendResponse)
           .catch((err) => {
             console.error('[Job Buddy] AUTOFILL_SCAN failed:', err);
@@ -65,17 +88,38 @@ export default defineContentScript({
       }
 
       if (message.action === 'AUTOFILL_FILL') {
+        if (message.runId && (message.runId !== run?.id || run?.cancelled)) {
+          sendResponse({ error: 'autofill_failed' });
+          return true;
+        }
         const mode: 'merge' | 'overwrite' = message.mode === 'merge' ? 'merge' : 'overwrite';
-        withAISetup(() => executeAutofill(mode))
-          .then(sendResponse)
-          .catch((err) => {
-            console.error('[Job Buddy] AUTOFILL_FILL failed:', err);
-            sendResponse({ error: 'autofill_failed' });
-          });
+        const current = run;
+        const fill =
+          current?.fill ??
+          withAISetup<unknown>(() =>
+            current && (run !== current || current.cancelled)
+              ? Promise.resolve({ error: 'autofill_failed' })
+              : executeAutofill(mode),
+          );
+        if (run) run.fill = fill;
+        fill.then(sendResponse).catch((err) => {
+          console.error('[Job Buddy] AUTOFILL_FILL failed:', err);
+          sendResponse({ error: 'autofill_failed' });
+        });
+        return true;
+      }
+
+      if (message.action === 'AUTOFILL_CANCEL') {
+        if (run && run.id === message.runId) {
+          run.cancelled = true;
+          cancelAutofillRun();
+        }
+        sendResponse({ success: true });
         return true;
       }
 
       if (message.action === 'CLEAR') {
+        run = null;
         undoAutofill();
         sendResponse({ success: true });
         return true;

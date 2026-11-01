@@ -52,6 +52,9 @@ Set Up Profile → Set Up AI Autofill → Fill Form → Review answers → Submi
 3. If the form already contains values, choose **Fill empty fields** to keep existing values
    or **Fill all matched fields** to fill empty fields and replace existing answers
    with your saved details, then click **Fill Form**.
+   After you start a fill, you can close the popup while it continues on that page.
+   Reopen it to see progress or results. If existing answers need a choice, filling
+   waits until you choose and confirm. Reloading or leaving the page stops the run.
 4. Review the results and type any missing or corrected answers directly into the
    form. Submit the application yourself on the website.
 

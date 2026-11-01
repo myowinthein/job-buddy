@@ -9,6 +9,19 @@ vi.mock('@/src/utils/driveSync', () => ({
   syncIfConnected: vi.fn().mockResolvedValue(undefined),
 }));
 
+const coordinatorMock = vi.hoisted(() => ({
+  start: vi.fn().mockResolvedValue({ stage: 'completed' }),
+  status: vi.fn().mockResolvedValue(null),
+  confirm: vi.fn().mockResolvedValue(null),
+  cancel: vi.fn().mockResolvedValue(undefined),
+  navigated: vi.fn().mockResolvedValue(undefined),
+  recover: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('@/src/autofill/runCoordinator', () => ({
+  RUN_ALARM_PREFIX: 'jb:autofill-recover:',
+  createAutofillCoordinator: () => coordinatorMock,
+}));
+
 // `entrypoints/background.ts` calls the real (auto-imported-by-WXT-at-build-time)
 // `defineBackground` at module top level (`export default defineBackground(...)`).
 // Vitest doesn't run WXT's auto-import plugin, so this global must be stubbed
@@ -24,7 +37,9 @@ const { onStartupAddListener, storageOnChangedAddListener, onAlarmAddListener } 
 
   vi.stubGlobal('chrome', {
     alarms: { onAlarm: { addListener: onAlarmAddListener } },
-    runtime: { onStartup: { addListener: onStartupAddListener } },
+    runtime: { id: 'job-buddy', getURL: (path: string) => `chrome-extension://job-buddy/${path}`, onStartup: { addListener: onStartupAddListener }, onMessage: { addListener: vi.fn() } },
+    tabs: { onRemoved: { addListener: vi.fn() } },
+    webNavigation: { onCommitted: { addListener: vi.fn() } },
     storage: { onChanged: { addListener: storageOnChangedAddListener } },
   });
   vi.stubGlobal('defineBackground', (arg: unknown) =>
@@ -132,4 +147,30 @@ it('does not back up removals during reset', async () => {
   await vi.advanceTimersByTimeAsync(6000);
   expect(markDriveBackupPending).not.toHaveBeenCalled();
   expect(syncIfConnected).not.toHaveBeenCalled();
+});
+
+
+describe('background autofill entry point', () => {
+  const sender = { id: 'job-buddy', url: 'chrome-extension://job-buddy/popup.html' };
+  const listener = () => vi.mocked(chrome.runtime.onMessage.addListener).mock.calls[0][0];
+  it('keeps the response channel open while owning the popup request', async () => {
+    const respond = vi.fn();
+    expect(listener()({ action: 'AUTOFILL_RUN_START', tabId: 42 }, sender, respond)).toBe(true);
+    expect(coordinatorMock.start).toHaveBeenCalledWith(42);
+    await Promise.resolve();
+    expect(respond).toHaveBeenCalledWith({ stage: 'completed' });
+  });
+  it('rejects content-page senders and invalid tab IDs', () => {
+    listener()({ action: 'AUTOFILL_RUN_START', tabId: 42 }, { ...sender, url: 'https://example.test/' }, vi.fn());
+    listener()({ action: 'AUTOFILL_RUN_START', tabId: -1 }, sender, vi.fn());
+    expect(coordinatorMock.start).not.toHaveBeenCalled();
+  });
+  it('routes worker recovery and source navigation to the coordinator', () => {
+    onAlarmAddListener.mock.calls[0][0]({ name: 'jb:autofill-recover:42' });
+    expect(coordinatorMock.recover).toHaveBeenCalledWith(42);
+    vi.mocked(chrome.webNavigation.onCommitted.addListener).mock.calls[0][0]({ tabId: 42, frameId: 0, documentId: 'new-document' } as chrome.webNavigation.WebNavigationTransitionCallbackDetails);
+    expect(coordinatorMock.navigated).toHaveBeenCalledWith(42, 'new-document');
+    vi.mocked(chrome.tabs.onRemoved.addListener).mock.calls[0][0](42, { windowId: 1, isWindowClosing: false });
+    expect(coordinatorMock.cancel).toHaveBeenCalledWith(42);
+  });
 });

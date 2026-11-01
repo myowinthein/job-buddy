@@ -405,6 +405,15 @@ export function undoAutofill(): void {
   clearHighlights();
 }
 
+// Invalidate pending/async work without undoing already filled answers.
+export function cancelAutofillRun(): void {
+  sessionGeneration++;
+  pendingReady = false;
+  pendingMatches = [];
+  noDataFields = [];
+  teardownVisibilityListener();
+}
+
 // Phase 1: scan and map all fields; detect which matched fields already have values.
 // Results are held in pendingMatches for executeAutofill().
 export async function scanAutofill(runId: string = crypto.randomUUID()): Promise<AutofillScanResult> {
