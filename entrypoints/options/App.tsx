@@ -28,6 +28,8 @@ import type { CompletionTarget } from '@/src/utils/profileCompletion';
 import { DraftStatusContext, SectionSaveStatusContext } from '@/src/components/options/shared/draftStatus';
 import { replaceImportedProfile } from '@/src/utils/replaceImportedProfile';
 import { withProfileWriteLock } from '@/src/utils/profileWriteLock';
+import { FillLogPage } from '@/src/components/fill-log/FillLogPage';
+import { FILL_DETAILS_REQUEST, takeFillDetailsRequest, lastFillDetailsSource, sourceFromQuery, sourceTabId } from '@/src/fill-log/navigation';
 
 const DevToolsPage = import.meta.env.DEV ? lazy(() => import('@/src/devtools/DevToolsPage')) : null;
 
@@ -43,26 +45,37 @@ type SectionId =
   | 'documents'
   | 'resume'
   | 'learnedMappings'
+  | 'fillDetails'
   | 'settings'
   | 'devTools';
 
 // ── UI state persistence keys (sessionStorage) ───────────────────────────────
 const UI_SECTION_KEY  = 'jb:ui:section';
 const UI_SIDEBAR_KEY  = 'jb:ui:sidebar';
+const UI_DETAILS_SOURCE_KEY = 'jb:ui:fill-details-source';
 const UI_SCROLL_KEY   = (section: SectionId) => `jb:ui:scroll:${section}`;
 
 const VALID_SECTIONS = new Set<SectionId>([
   'personal', 'address', 'salary', 'workAuthorization',
-  'workHistory', 'education', 'languages', 'links', 'documents', 'resume', 'learnedMappings', 'settings',
+  'workHistory', 'education', 'languages', 'links', 'documents', 'resume', 'learnedMappings', 'fillDetails', 'settings',
   ...(import.meta.env.DEV ? ['devTools' as const] : []),
 ]);
 
 function readSection(): SectionId {
   try {
+    if (new URLSearchParams(location.search).get('section') === 'fillDetails') return 'fillDetails';
     if (import.meta.env.DEV && new URLSearchParams(location.search).has('devTools')) return 'devTools';
     const s = sessionStorage.getItem(UI_SECTION_KEY) as SectionId | null;
     return s && VALID_SECTIONS.has(s) ? s : 'personal';
   } catch { return 'personal'; }
+}
+
+function readDetailsSource(): number | null {
+  if (new URLSearchParams(location.search).has('tabId')) return sourceFromQuery(location.search);
+  try {
+    const saved = sessionStorage.getItem(UI_DETAILS_SOURCE_KEY);
+    return saved !== null && /^\d+$/.test(saved) ? sourceTabId(Number(saved)) : null;
+  } catch { return null; }
 }
 
 function readSidebar(): boolean {
@@ -86,6 +99,9 @@ function App() {
   const { showToast } = useToast();
   const [profile, setProfile] = useState<Partial<Profile>>({});
   const [activeSection, setActiveSection] = useState<SectionId>(readSection);
+  const [fillDetailsTabId, setFillDetailsTabId] = useState<number | null>(readDetailsSource);
+  const detailsQuery = useRef(new URLSearchParams(location.search).has('tabId'));
+  const initialTitle = useRef(document.title);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(readSidebar);
   const [loading, setLoading] = useState(true);
   const [focusTarget, setFocusTarget] = useState<CompletionTarget | null>(null);
@@ -120,6 +136,72 @@ function App() {
     setActiveSection(section);
     return true;
   }, [activeSection, hasUnsavedChanges]);
+
+  const detailsNavigate = useRef(navigateSection);
+  useEffect(() => { detailsNavigate.current = navigateSection; }, [navigateSection]);
+  const detailsLive = useRef(false);
+  const detailsBusy = useRef(false);
+  const detailsAgain = useRef(false);
+  useEffect(() => {
+    if (loading) return;
+    detailsLive.current = true;
+    const applyDetailsRequest = async () => {
+      if (document.visibilityState !== 'visible') return;
+      if (detailsBusy.current) { detailsAgain.current = true; return; }
+      detailsBusy.current = true;
+      detailsAgain.current = false;
+      try {
+        while (detailsLive.current && document.visibilityState === 'visible') {
+          const request = await takeFillDetailsRequest();
+          if (!request || !detailsLive.current) break;
+          if (detailsNavigate.current('fillDetails')) setFillDetailsTabId(request.tabId);
+        }
+      } catch {
+        if (detailsLive.current) showToast('error', feedback.fillDetailsOpenFailed);
+      } finally {
+        detailsBusy.current = false;
+        if (detailsAgain.current && detailsLive.current) void applyDetailsRequest();
+      }
+    };
+    const visible = () => { if (document.visibilityState === 'visible') void applyDetailsRequest(); };
+    const changed = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      if (area === 'session' && changes[FILL_DETAILS_REQUEST]?.newValue != null) void applyDetailsRequest();
+    };
+    chrome.storage.onChanged.addListener(changed);
+    document.addEventListener('visibilitychange', visible);
+    void applyDetailsRequest();
+    return () => {
+      detailsLive.current = false;
+      chrome.storage.onChanged.removeListener(changed);
+      document.removeEventListener('visibilitychange', visible);
+    };
+  }, [loading, showToast]);
+
+  useEffect(() => {
+    // A fresh options tab can still open the last explicitly requested form from Tools.
+    if (detailsQuery.current || fillDetailsTabId !== null) return;
+    let live = true;
+    void lastFillDetailsSource().then(id => { if (live) setFillDetailsTabId(current => current ?? id); });
+    return () => { live = false; };
+  }, [fillDetailsTabId]);
+  useEffect(() => {
+    try {
+      if (fillDetailsTabId === null) sessionStorage.removeItem(UI_DETAILS_SOURCE_KEY);
+      else sessionStorage.setItem(UI_DETAILS_SOURCE_KEY, String(fillDetailsTabId));
+    } catch { /* Navigation remains usable when sessionStorage is blocked. */ }
+  }, [fillDetailsTabId]);
+  useEffect(() => {
+    // Consume legacy/deep-link parameters once; later reloads keep the selected section/source.
+    const url = new URL(location.href);
+    if (url.searchParams.get('section') === 'fillDetails') {
+      url.searchParams.delete('section');
+      url.searchParams.delete('tabId');
+      history.replaceState(null, '', url.href);
+    }
+  }, []);
+  useEffect(() => {
+    document.title = activeSection === 'fillDetails' ? 'Job Buddy: Fill Details' : initialTitle.current;
+  }, [activeSection]);
 
   useEffect(() => {
     if (savedFeedbackAt === null) return;
@@ -410,6 +492,7 @@ function App() {
       case 'documents':         return <DocumentsSection key={`documents-${sectionSeq}`} {...sectionProps} />;
       case 'resume':            return <ResumeImportSection key="resume" profile={profile} onSave={handleSave} onReplace={async (base, changes) => { setProfile(await replaceImportedProfile(base, changes)); }} onGoToApiKey={handleGoToApiKey} onClose={handleCloseResumeImport} />;
       case 'learnedMappings':   return <LearnedMappingsSection key="learnedMappings" />;
+      case 'fillDetails':       return <FillLogPage key={`fillDetails-${fillDetailsTabId}`} tabId={fillDetailsTabId} />;
       case 'devTools': return DevToolsPage ? <Suspense fallback={<p>Loading development tools…</p>}><DevToolsPage onFocusField={handleFocusField} /></Suspense> : null;
       case 'settings':          return <SettingsSection key="settings" onImportComplete={handleImportComplete} onResetComplete={handleResetComplete} />;
     }
@@ -425,7 +508,7 @@ function App() {
         sectionCompletion={sectionCompletion}
       />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <CompletionBanner
+        {activeSection !== 'fillDetails' && <CompletionBanner
           percentage={completion.percentage}
           isCoreComplete={completion.isCoreComplete}
           optionalFieldsRemaining={completion.optionalFieldsRemaining}
@@ -433,10 +516,10 @@ function App() {
           missingGroups={completion.missingGroups}
           onNavigate={(sectionId) => { navigateAndFocus(sectionId as SectionId, getSectionStartTarget(sectionId)); }}
           onFocusField={handleFocusField}
-        />
+        />}
         <main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-8">
           {/* Settings uses max-w-none so long subtitles can flow to one line */}
-          <div data-profile-section={activeSection} className={['settings', 'devTools'].includes(activeSection) ? 'max-w-none' : 'max-w-2xl'}
+          <div data-profile-section={activeSection} className={['settings', 'devTools', 'fillDetails'].includes(activeSection) ? 'max-w-none' : 'max-w-2xl'}
             onBlurCapture={() => {
               if (dirtyInputsRef.current.size > 0) setUnsavedStatusVisible(true);
             }}>

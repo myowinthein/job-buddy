@@ -1,5 +1,6 @@
 import { latestFillLogFrames } from '@/src/autofill/fillLog';
 import type { FillLogFrame, FillLogSnapshot, FrameFillLog } from '@/src/autofill/fillLog';
+import { requestFillDetails } from './navigation';
 
 /** Read only: never scan, fill, or switch the source tab while opening its log. */
 export async function loadFillLog(tabId: number): Promise<FillLogSnapshot> {
@@ -49,9 +50,10 @@ export async function loadFillLog(tabId: number): Promise<FillLogSnapshot> {
 }
 
 export async function openFillLog(tabId: number): Promise<void> {
-  await chrome.tabs.create({ url: `${chrome.runtime.getURL('fill-log.html')}?tabId=${tabId}` });
+  await requestFillDetails(tabId);
 }
 
 export async function returnToForm(tabId: number): Promise<void> {
-  await chrome.tabs.update(tabId, { active: true });
+  const tab = await chrome.tabs.update(tabId, { active: true });
+  if (typeof tab?.windowId === 'number') await chrome.windows.update(tab.windowId, { focused: true });
 }

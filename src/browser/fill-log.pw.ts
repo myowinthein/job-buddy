@@ -37,12 +37,14 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   await expect(detected).toContainText(String(counts.detected));
   await logPage.screenshot({
     path: testInfo.outputPath('fill-log-overview-light.png'),
+    animations: 'disabled',
     fullPage: true,
   });
   await logPage.emulateMedia({ colorScheme: 'dark' });
   await expect(logPage.locator('html')).toHaveClass(/dark/);
   await logPage.screenshot({
     path: testInfo.outputPath('fill-log-overview-dark.png'),
+    animations: 'disabled',
     fullPage: true,
   });
   await logPage.getByRole('tab', { name: 'Fields', exact: true }).click();
@@ -55,13 +57,24 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   await logPage.locator('summary').first().click();
   await logPage.screenshot({
     path: testInfo.outputPath('fill-log-fields-dark.png'),
+    animations: 'disabled',
     fullPage: true,
   });
   await logPage.setViewportSize({ width: 375, height: 812 });
+  await expect
+    .poll(() => logPage.locator('aside').evaluate((el) => el.getBoundingClientRect().width))
+    .toBe(64);
   expect(await logPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
     true,
   );
-  await logPage.screenshot({ path: testInfo.outputPath('fill-log-narrow.png'), fullPage: true });
+  expect(await logPage.locator('main').evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+    true,
+  );
+  await logPage.screenshot({
+    path: testInfo.outputPath('fill-log-narrow.png'),
+    fullPage: true,
+    animations: 'disabled',
+  });
 
   const popup = await context.newPage();
   // A full-page popup test has its own active tab. Pin its query to the source
@@ -93,13 +106,22 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   await popup.emulateMedia({ colorScheme: 'dark' });
   await expect(popup.locator('html')).toHaveClass(/dark/);
   await popup.locator('#root').screenshot({ path: testInfo.outputPath('popup-results-dark.png') });
-  const opened = context.waitForEvent('page');
+  const pageCount = context.pages().length;
   await popup.getByRole('button', { name: 'View details' }).click();
-  const openedLog = await opened;
-  await expect(openedLog).toHaveURL(
-    `${new URL('fill-log.html', extension.worker.url()).href}?tabId=${sourceId}`,
+  await expect(logPage.getByRole('button', { name: 'Fill Details', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
   );
-  await openedLog.close();
+  await expect(logPage).toHaveURL(new URL('options.html', extension.worker.url()).href);
+  await expect
+    .poll(() =>
+      extension.worker.evaluate(
+        async () => (await chrome.tabs.query({ active: true, currentWindow: true }))[0]?.url,
+      ),
+    )
+    .toBe(new URL('options.html', extension.worker.url()).href);
+  expect(context.pages()).toHaveLength(pageCount);
+  await expect(logPage.getByRole('heading', { name: 'Required details complete' })).toHaveCount(0);
   await popup.close();
 
   // A manual clear must stop counting as a filled value in both consumers.
@@ -117,7 +139,7 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   await logPage.getByRole('button', { name: 'Refresh', exact: true }).click();
   await expect(logPage.getByText(/These fills were undone/)).toBeVisible();
   await expect(page.locator('[name="lastName"]')).toHaveValue('Existing answer');
-  await logPage.getByRole('button', { name: 'Back to Form', exact: true }).click();
+  await logPage.getByRole('button', { name: 'Return to Form', exact: true }).click();
   await expect
     .poll(async () =>
       extension.worker.evaluate(async () => {
@@ -208,8 +230,54 @@ test('an independently scanned empty iframe does not hide form fills, and a fres
   await expect(popup.getByText('No fillable fields found.')).toBeVisible();
   await expect(popup.getByRole('link', { name: 'Report on GitHub ↗' })).toHaveCount(0);
   await expect(
-    popup.getByRole('region', { name: 'Fill results' }).getByRole('button', { name: 'View details' }),
+    popup
+      .getByRole('region', { name: 'Fill results' })
+      .getByRole('button', { name: 'View details' }),
   ).toBeVisible();
   await expect(popup.getByText(`${count} fields filled`, { exact: true })).toHaveCount(0);
   await popup.locator('#root').screenshot({ path: testInfo.outputPath('empty-result.png') });
+});
+
+test('View details reuses options without discarding an unsaved profile until the user agrees', async ({
+  page,
+  context,
+  extension,
+}) => {
+  await extension.send('AUTOFILL_FILL', 'merge');
+  const options = await context.newPage();
+  const optionsUrl = new URL('options.html', extension.worker.url()).href;
+  await options.goto(optionsUrl);
+  await options.getByLabel('First Name*', { exact: true }).fill('Unsaved draft');
+  const popup = await context.newPage();
+  await popup.addInitScript((id) => {
+    chrome.tabs.query = async () => [{ id } as chrome.tabs.Tab];
+  }, extension.sourceTabId);
+  await popup.goto(new URL('popup.html', extension.worker.url()).href);
+  const count = context.pages().length;
+  const dismissed = new Promise<void>((resolve) =>
+    options.once('dialog', async (dialog) => {
+      await dialog.dismiss();
+      resolve();
+    }),
+  );
+  await popup.getByRole('button', { name: 'View details' }).click();
+  await dismissed;
+  await expect(options.getByLabel('First Name*', { exact: true })).toHaveValue('Unsaved draft');
+  await expect(options.getByRole('heading', { name: 'Fill Details', exact: true })).toHaveCount(0);
+  expect(context.pages()).toHaveLength(count);
+  const accepted = new Promise<void>((resolve) =>
+    options.once('dialog', async (dialog) => {
+      await dialog.accept();
+      resolve();
+    }),
+  );
+  await popup.getByRole('button', { name: 'View details' }).click();
+  await accepted;
+  await expect(options.getByRole('heading', { name: 'Fill Details', exact: true })).toBeVisible();
+  await expect(options.getByRole('button', { name: 'Return to Form', exact: true })).toBeVisible();
+  await expect(
+    options.getByRole('progressbar', { name: 'Saved required profile details' }),
+  ).toHaveCount(0);
+  expect(context.pages()).toHaveLength(count);
+  await expect(page.locator('[name="firstName"]')).toHaveValue('Jane');
 });

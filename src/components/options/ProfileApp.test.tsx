@@ -195,9 +195,11 @@ it('protects a draft on navigation and closing, then clears the guard after savi
   await screen.findByText('Saved');
   expect(screen.queryByText('Unsaved changes')).toBeNull();
   expect((await getProfile())?.personal.firstName).toBe('Draft Jane');
-  const savedClosing = new Event('beforeunload', { cancelable: true });
-  window.dispatchEvent(savedClosing);
-  expect(savedClosing.defaultPrevented).toBe(false);
+  await waitFor(() => {
+    const savedClosing = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(savedClosing);
+    expect(savedClosing.defaultPrevented).toBe(false);
+  });
   fireEvent.click(screen.getByRole('button', { name: 'Address' }));
   expect(screen.getByRole('heading', { name: 'Address' })).toBeTruthy();
   expect(confirm).toHaveBeenCalledTimes(1);

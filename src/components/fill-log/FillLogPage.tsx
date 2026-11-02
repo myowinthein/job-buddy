@@ -1,7 +1,5 @@
-import { DevBadge } from '@/src/components/ui/DevBadge';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ArrowLeft, Check, ChevronDown, Circle, CircleAlert, X } from 'lucide-react';
-import { LOGO_ICON_SRC } from '@/src/utils/branding';
 import { loadFillLog, returnToForm } from '@/src/fill-log/client';
 import {
   summarizeFillFields,
@@ -112,25 +110,30 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
   };
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-6 text-gray-900 dark:text-gray-100 sm:px-8 sm:py-10">
+    <section aria-label="Fill Details" className="min-w-0 text-gray-900 dark:text-gray-100">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <img src={LOGO_ICON_SRC} className="h-8 w-8" alt="" />
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-semibold">Fill Details</h1>
-              <DevBadge />
-            </div>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {source && source !== 'null' ? source : 'Job Buddy'}
-              {timestamp > 0 && <> · Latest fill at {new Date(timestamp).toLocaleString()}</>}
+        <div className="min-w-0">
+          <h2 className="text-xl font-semibold">Fill Details</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            See how Job Buddy filled your form
+          </p>
+          {source && source !== 'null' && (
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              <span className="break-all">{source}</span>
+              {timestamp > 0 && (
+                <>
+                  {' '}
+                  · Latest fill at{' '}
+                  <span className="whitespace-nowrap">{new Date(timestamp).toLocaleString()}</span>
+                </>
+              )}
             </p>
-          </div>
+          )}
         </div>
         <div className="flex gap-2">
           {tabId !== null && (
             <button type="button" className={buttonCls} onClick={() => void openSource()}>
-              <ArrowLeft aria-hidden="true" className="h-4 w-4" /> Back to Form
+              <ArrowLeft aria-hidden="true" className="h-4 w-4" /> Return to Form
             </button>
           )}
           <button
@@ -161,12 +164,14 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
         </p>
       ) : snapshot?.needsRefresh ? (
         <p role="status" className="text-sm text-gray-600 dark:text-gray-300">
-          This form was filled with an earlier version. Refresh the form and fill again to view
-          its fill details.
+          This form was filled with an earlier version. Refresh the form and fill again to view its
+          fill details.
         </p>
       ) : frames.length === 0 ? (
         <p role="status" className="text-sm text-gray-600 dark:text-gray-300">
-          No fill details are available yet. Open the form and fill again to view them.
+          {tabId === null
+            ? 'Fill a form, then select View details to see its results.'
+            : 'No fill details are available yet. Open the form and fill again to view them.'}
         </p>
       ) : (
         <>
@@ -366,7 +371,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
           </footer>
         </>
       )}
-    </main>
+    </section>
   );
 }
 

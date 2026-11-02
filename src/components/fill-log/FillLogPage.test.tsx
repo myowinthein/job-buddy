@@ -148,7 +148,7 @@ describe('Fill Details page', () => {
     await showFields();
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'does not exist' } });
     expect(screen.getByText('No fields match this search or filter.')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Back to Form' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Return to Form' })).toBeTruthy();
   });
 
   it('supports keyboard tab navigation', async () => {
@@ -162,14 +162,14 @@ describe('Fill Details page', () => {
 
   it('uses the original source when returning to the form', async () => {
     render(<FillLogPage tabId={10} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Back to Form' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Return to Form' }));
     expect(returnToForm).toHaveBeenCalledWith(10);
   });
 
   it('reports return failures', async () => {
     vi.mocked(returnToForm).mockRejectedValueOnce(new Error('closed'));
     render(<FillLogPage tabId={10} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Back to Form' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Return to Form' }));
     expect(await screen.findByRole('alert')).toHaveProperty(
       'textContent',
       expect.stringContaining('Could not open the source form'),
@@ -193,13 +193,13 @@ describe('Fill Details page', () => {
     render(<FillLogPage tabId={10} />);
     expect(await screen.findByText(/This form was filled with an earlier version/)).toBeTruthy();
     expect(screen.queryByText('Detected')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Back to Form' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Return to Form' })).toBeTruthy();
   });
 
   it('does not query an unrelated active tab without a source ID', () => {
     render(<FillLogPage tabId={null} />);
     expect(loadFillLog).not.toHaveBeenCalled();
-    expect(screen.queryByRole('button', { name: 'Back to Form' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Return to Form' })).toBeNull();
   });
 
   it('keeps AI-failure feedback visible with preserved results', async () => {

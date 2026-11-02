@@ -6,6 +6,11 @@ vi.mock('@/src/utils/storage', () => ({
   getProfile: vi.fn(),
   saveProfile: vi.fn().mockResolvedValue(undefined),
 }));
+vi.mock('@/src/fill-log/navigation', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/src/fill-log/navigation')>(),
+  lastFillDetailsSource: vi.fn().mockResolvedValue(null),
+  takeFillDetailsRequest: vi.fn().mockResolvedValue(null),
+}));
 vi.mock('@/src/utils/sessionStorage', () => ({
   sessionGet: vi.fn().mockResolvedValue({}),
   sessionRemove: vi.fn().mockResolvedValue(undefined),
