@@ -188,6 +188,44 @@ describe('Fill Details page', () => {
     );
   });
 
+  it('explains the root outcomes on hover, focus and click without changing filters', async () => {
+    await showFields();
+    const help = screen.getByRole('button', { name: 'Explain fill outcomes' });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    fireEvent.mouseEnter(help.parentElement!);
+    const tooltip = screen.getByRole('tooltip');
+    for (const explanation of [
+      'Green or yellow fields.',
+      'Red or gray fields.',
+      'Existing answers preserved.',
+      'Consent questions left for you.',
+    ])
+      expect(within(tooltip).getByText(explanation)).toBeTruthy();
+    expect(help.getAttribute('aria-describedby')).toBe(tooltip.id);
+    fireEvent.mouseLeave(help.parentElement!);
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    fireEvent.focus(help);
+    expect(screen.getByRole('tooltip')).toBeTruthy();
+    fireEvent.keyDown(help, { key: 'Escape' });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    fireEvent.click(help);
+    expect(screen.getByRole('tooltip')).toBeTruthy();
+    fireEvent.mouseLeave(help.parentElement!);
+    expect(screen.getByRole('tooltip')).toBeTruthy();
+    fireEvent.click(help);
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    fireEvent.click(help);
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    fireEvent.focus(help);
+    fireEvent.blur(help, { relatedTarget: screen.getByRole('searchbox') });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    expect(screen.getByText('7 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Detected (7)' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+  });
+
   it('keeps AI handoff independent from the final source and resets refinements on a new outcome group', async () => {
     await showFields();
     fireEvent.click(screen.getByRole('button', { name: 'Sent to AI (3)' }));

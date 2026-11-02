@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { ArrowLeft, ChevronDown, ListChecks } from 'lucide-react';
+import { OutcomeFilterHelp } from './OutcomeFilterHelp';
 import { loadFillLog, returnToForm } from '@/src/fill-log/client';
 import { RETAINED_FILL_DETAILS } from '@/src/fill-log/retention';
 import { defaultStage, fillStages, type StageId } from '@/src/fill-log/stages';
@@ -289,39 +290,42 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
             aria-label="Fill summary"
             className="mb-5 border-b border-gray-200 pb-5 dark:border-gray-800"
           >
-            <div
-              className="grid grid-cols-3 gap-2 sm:grid-cols-5"
-              role="group"
-              aria-label="Outcome filters"
-            >
-              {(
-                [
-                  ['all', 'Detected', counts.detected],
-                  ['filled', 'Filled', counts.filled],
-                  ['notFilled', 'Not filled', counts.notFilled],
-                  ['kept', 'Kept current', counts.kept],
-                  ['skipped', 'Skipped', counts.excluded],
-                ] as [OutcomeFilter, string, number][]
-              ).map(([id, label, count]) => (
-                <button
-                  key={id}
-                  type="button"
-                  aria-label={label + ' (' + count + ')'}
-                  aria-pressed={outcome === id}
-                  onClick={() => selectOutcome(id)}
-                  className={[
-                    'rounded-lg px-3 py-2 text-left transition-colors',
-                    outcome === id
-                      ? 'bg-blue-50 dark:bg-blue-950/40'
-                      : 'hover:bg-gray-100 dark:hover:bg-gray-800',
-                  ].join(' ')}
-                >
-                  <span className="block text-2xl font-semibold tabular-nums">{count}</span>
-                  <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
-                    {label}
-                  </span>
-                </button>
-              ))}
+            <div className="relative">
+              <OutcomeFilterHelp />
+              <div
+                className="grid grid-cols-3 gap-2 pr-8 sm:grid-cols-5"
+                role="group"
+                aria-label="Outcome filters"
+              >
+                {(
+                  [
+                    ['all', 'Detected', counts.detected],
+                    ['filled', 'Filled', counts.filled],
+                    ['notFilled', 'Not filled', counts.notFilled],
+                    ['kept', 'Kept current', counts.kept],
+                    ['skipped', 'Skipped', counts.excluded],
+                  ] as [OutcomeFilter, string, number][]
+                ).map(([id, label, count]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-label={label + ' (' + count + ')'}
+                    aria-pressed={outcome === id}
+                    onClick={() => selectOutcome(id)}
+                    className={[
+                      'rounded-lg px-3 py-2 text-left transition-colors',
+                      outcome === id
+                        ? 'bg-blue-50 dark:bg-blue-950/40'
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-800',
+                    ].join(' ')}
+                  >
+                    <span className="block text-2xl font-semibold tabular-nums">{count}</span>
+                    <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
+                      {label}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
             <div
               className="mt-4 flex flex-wrap items-center gap-2"

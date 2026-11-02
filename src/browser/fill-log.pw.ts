@@ -49,6 +49,18 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
     animations: 'disabled',
     fullPage: false,
   });
+  const outcomeHelp = logPage.getByRole('button', { name: 'Explain fill outcomes' });
+  await outcomeHelp.hover();
+  await expect(logPage.getByRole('tooltip')).toContainText('Consent questions left for you.');
+  await logPage.screenshot({ path: testInfo.outputPath('fill-log-filter-help-dark.png') });
+  await logPage.keyboard.press('Escape');
+  await expect(logPage.getByRole('tooltip')).toHaveCount(0);
+  await outcomeHelp.focus();
+  await expect(logPage.getByRole('tooltip')).toBeVisible();
+  await outcomeHelp.click();
+  await expect(logPage.getByRole('tooltip')).toBeVisible();
+  await outcomeHelp.click();
+  await expect(logPage.getByRole('tooltip')).toHaveCount(0);
   await expect(
     logPage.getByRole('button', { name: `Detected (${counts.detected})`, exact: true }),
   ).toBeVisible();
@@ -139,6 +151,12 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
     fullPage: false,
     animations: 'disabled',
   });
+  await outcomeHelp.click();
+  const helpBox = await logPage.getByRole('tooltip').boundingBox();
+  expect(helpBox!.x).toBeGreaterThanOrEqual(64);
+  expect(helpBox!.x + helpBox!.width).toBeLessThanOrEqual(375);
+  await logPage.screenshot({ path: testInfo.outputPath('fill-log-filter-help-narrow.png') });
+  await logPage.keyboard.press('Escape');
 
   await logPage
     .locator('details')
