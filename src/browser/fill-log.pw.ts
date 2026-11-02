@@ -126,7 +126,7 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
 
   // A manual clear must stop counting as a filled value in both consumers.
   await page.locator('[name="firstName"]').fill('');
-  await logPage.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await logPage.bringToFront();
   await expect(logPage.getByText('Cleared manually', { exact: true }).first()).toBeVisible();
   const edited = (await extension.send('GET_FILL_LOG')) as unknown as FrameFillLog[];
   expect(summarizeFillFields(edited.flatMap((log) => log.fields)).filled).toBe(counts.filled - 1);
@@ -136,7 +136,7 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   );
 
   await extension.send('CLEAR');
-  await logPage.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await logPage.bringToFront();
   await expect(logPage.getByText(/These fills were undone/)).toBeVisible();
   await expect(page.locator('[name="lastName"]')).toHaveValue('Existing answer');
   await logPage.getByRole('button', { name: 'Return to Form', exact: true }).click();
@@ -149,7 +149,7 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
     .toBe(sourceId);
 
   await page.reload();
-  await logPage.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await logPage.bringToFront();
   await expect(logPage.getByText(/No fill details are available yet/)).toBeVisible();
 });
 

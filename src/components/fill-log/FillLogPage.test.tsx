@@ -110,7 +110,8 @@ describe('Fill Details page', () => {
     expect(within(overview).getByText('7')).toBeTruthy();
     expect(within(overview).getByText('Refined by AI')).toBeTruthy();
     expect(within(overview).getByText(/Processing-stage counts can overlap/)).toBeTruthy();
-    expect(screen.getByText(/https:\/\/example.test/, { selector: 'header p' })).toBeTruthy();
+    expect(screen.getByText('https://example.test', { selector: 'header span' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Refresh' })).toBeNull();
   });
 
   it('shows fields from multiple frames with stable qualified IDs', async () => {

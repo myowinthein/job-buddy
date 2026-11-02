@@ -37,7 +37,6 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
   const [snapshot, setSnapshot] = useState<FillLogSnapshot | null>(null);
   const [loading, setLoading] = useState(tabId !== null);
   const [unavailable, setUnavailable] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [view, setView] = useState<'overview' | 'fields'>('overview');
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
@@ -63,7 +62,6 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
     } finally {
       if (live.current && request === sequence.current) {
         setLoading(false);
-        setRefreshing(false);
       }
     }
   }, [tabId]);
@@ -130,24 +128,11 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
             </p>
           )}
         </div>
-        <div className="flex gap-2">
-          {tabId !== null && (
-            <button type="button" className={buttonCls} onClick={() => void openSource()}>
-              <ArrowLeft aria-hidden="true" className="h-4 w-4" /> Return to Form
-            </button>
-          )}
-          <button
-            type="button"
-            className={buttonCls}
-            onClick={() => {
-              setRefreshing(true);
-              void reload();
-            }}
-            disabled={refreshing || tabId === null}
-          >
-            {refreshing ? 'Refreshing…' : 'Refresh'}
+        {tabId !== null && (
+          <button type="button" className={buttonCls} onClick={() => void openSource()}>
+            <ArrowLeft aria-hidden="true" className="h-4 w-4" /> Return to Form
           </button>
-        </div>
+        )}
       </header>
       {returnError && (
         <p role="alert" className="mb-4 text-sm text-red-700 dark:text-red-400">
