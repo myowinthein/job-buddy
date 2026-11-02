@@ -448,6 +448,7 @@ function ReportTime({ timestamp }: { timestamp: number }) {
       {date.toLocaleString(undefined, {
         month: 'short',
         day: 'numeric',
+        year: 'numeric',
         hour: 'numeric',
         minute: '2-digit',
       })}

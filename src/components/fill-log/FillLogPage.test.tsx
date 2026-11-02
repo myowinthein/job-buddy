@@ -141,7 +141,8 @@ describe('Fill Details page', () => {
     expect(times[0].getAttribute('datetime')).toBe(filled.toISOString());
     expect(times[1].getAttribute('datetime')).toBe(modified.toISOString());
     expect(times[0].title).toContain('2026');
-    expect(times[0].textContent).not.toContain('2026');
+    expect(times[0].textContent).toContain('2026');
+    expect(times[1].textContent).toContain('2026');
     expect(times[0].textContent).not.toContain(':05');
     expect(times[1].textContent).not.toContain(':42');
     expect(screen.getByRole('button', { name: 'Return to Form' })).toBeTruthy();
