@@ -170,6 +170,6 @@ it('populates the open empty Tools section from a completed fill without a View 
       DEV_PROFILE.id,
     ),
   );
-  await screen.findByRole('button', { name: 'All (1)' });
+  await screen.findByRole('button', { name: 'Detected (1)' });
   expect(chrome.runtime.openOptionsPage).not.toHaveBeenCalled();
 });

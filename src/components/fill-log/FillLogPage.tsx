@@ -13,7 +13,9 @@ import {
   ruleMethods,
   sourceNames,
   statusLabel,
-  type FilterId,
+  type ColorFilter,
+  type OutcomeFilter,
+  type SourceFilter,
 } from '@/src/fill-log/presentation';
 import {
   AI_OUTCOME_LABELS,
@@ -26,7 +28,8 @@ import {
 
 const buttonCls =
   'inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800';
-const chipCls = 'rounded-md border px-2.5 py-1.5 text-xs transition-colors';
+const chipCls =
+  'rounded-md border px-2.5 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40';
 const tones = {
   green:
     'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950/40 dark:text-green-300',
@@ -35,13 +38,13 @@ const tones = {
   red: 'border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300',
   gray: 'border-gray-300 bg-gray-100 text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300',
 };
-const colorFilters: [FilterId, string, keyof typeof tones, string][] = [
+const colorFilters: [ColorFilter, string, keyof typeof tones, string][] = [
   ['green', 'Green', 'green', 'High confidence or confirmed by you'],
   ['yellow', 'Yellow', 'yellow', 'Filled answers that need review'],
   ['red', 'Red', 'red', 'No safe fill or the form rejected the value'],
   ['gray', 'Gray', 'gray', 'A profile match has no usable saved data'],
 ];
-const sourceFilters: [FilterId, string][] = [
+const sourceFilters: [SourceFilter, string][] = [
   ['learned', 'Learned mappings'],
   ['rules', 'Rules'],
   ['ai', 'AI'],
@@ -60,7 +63,10 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
   const [snapshot, setSnapshot] = useState<FillLogSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [unavailable, setUnavailable] = useState(false);
-  const [filter, setFilter] = useState<FilterId>('all');
+  const [outcome, setOutcome] = useState<OutcomeFilter>('all');
+  const [color, setColor] = useState<ColorFilter | null>(null);
+  const [source, setSource] = useState<SourceFilter | null>(null);
+  const [sentToAI, setSentToAI] = useState(false);
   const [search, setSearch] = useState('');
   const [returnError, setReturnError] = useState(false);
   const currentReport = useRef<string | null>(null);
@@ -76,7 +82,10 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
         const key = reportIdentity(next);
         if (currentReport.current !== key) {
           currentReport.current = key;
-          setFilter('all');
+          setOutcome('all');
+          setColor(null);
+          setSource(null);
+          setSentToAI(false);
           setSearch('');
           setReturnError(false);
         }
@@ -132,11 +141,33 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
     });
   });
   const counts = summarizeFillFields(fields.map((row) => row.field));
-  const shown = fields.filter(
-    (row) => filterMatches[filter](row.field) && matchesSearch(row.field, search),
+  const groupFields = fields.filter(
+    (row) => filterMatches[outcome](row.field) && matchesSearch(row.field, search),
   );
-  const countFor = (id: FilterId) => fields.filter((row) => filterMatches[id](row.field)).length;
-  const visibleSources = sourceFilters.filter(([id]) => countFor(id) > 0 || filter === id);
+  // Each facet counts the candidates available with the other facets applied.
+  const sourceMatches = (field: FillLogField) => !source || filterMatches[source](field);
+  const colorMatches = (field: FillLogField) => !color || filterMatches[color](field);
+  const stageMatches = (field: FillLogField) => !sentToAI || filterMatches.sentAI(field);
+  const shown = groupFields.filter(
+    ({ field }) => sourceMatches(field) && colorMatches(field) && stageMatches(field),
+  );
+  const sourceCount = (id: SourceFilter) =>
+    groupFields.filter(
+      ({ field }) => colorMatches(field) && stageMatches(field) && filterMatches[id](field),
+    ).length;
+  const colorCount = (id: ColorFilter) =>
+    groupFields.filter(
+      ({ field }) => sourceMatches(field) && stageMatches(field) && filterMatches[id](field),
+    ).length;
+  const sentCount = groupFields.filter(
+    ({ field }) => sourceMatches(field) && colorMatches(field) && filterMatches.sentAI(field),
+  ).length;
+  const selectOutcome = (id: OutcomeFilter) => {
+    setOutcome(id);
+    setColor(null);
+    setSource(null);
+    setSentToAI(false);
+  };
   const filledAt = Math.max(
     0,
     ...frames.map((frame) => frame.log.completedAt ?? frame.log.startedAt),
@@ -159,12 +190,12 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
       setReturnError(true);
     }
   };
-  const neutralChip = (id: FilterId) =>
+  const neutralChip = (selected: boolean) =>
     [
       chipCls,
-      filter === id
+      selected
         ? 'border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-950/60 dark:text-blue-300'
-        : 'border-gray-300 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800',
+        : 'border-gray-300 text-gray-600 enabled:hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:enabled:hover:bg-gray-800',
     ].join(' ');
 
   return (
@@ -259,7 +290,11 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
             aria-label="Fill summary"
             className="mb-5 border-b border-gray-200 pb-5 dark:border-gray-800"
           >
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+            <div
+              className="grid grid-cols-3 gap-2 sm:grid-cols-5"
+              role="group"
+              aria-label="Outcome filters"
+            >
               {(
                 [
                   ['all', 'Detected', counts.detected],
@@ -267,17 +302,17 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
                   ['notFilled', 'Not filled', counts.notFilled],
                   ['kept', 'Kept current', counts.kept],
                   ['skipped', 'Skipped', counts.excluded],
-                ] as [FilterId, string, number][]
+                ] as [OutcomeFilter, string, number][]
               ).map(([id, label, count]) => (
                 <button
                   key={id}
                   type="button"
                   aria-label={label + ' (' + count + ')'}
-                  aria-pressed={filter === id}
-                  onClick={() => setFilter(id)}
+                  aria-pressed={outcome === id}
+                  onClick={() => selectOutcome(id)}
                   className={[
                     'rounded-lg px-3 py-2 text-left transition-colors',
-                    filter === id
+                    outcome === id
                       ? 'bg-blue-50 dark:bg-blue-950/40'
                       : 'hover:bg-gray-100 dark:hover:bg-gray-800',
                   ].join(' ')}
@@ -289,35 +324,37 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
                 </button>
               ))}
             </div>
-            <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Fill sources">
-              {visibleSources.length > 0 && (
-                <span className="mr-1 text-xs text-gray-500 dark:text-gray-400">Filled by</span>
-              )}
-              {visibleSources.map(([id, label]) => (
+            <div
+              className="mt-4 flex flex-wrap items-center gap-2"
+              role="group"
+              aria-label="Fill sources"
+            >
+              <span className="mr-1 text-xs text-gray-500 dark:text-gray-400">Filled by</span>
+              {sourceFilters.map(([id, label]) => (
                 <button
                   type="button"
                   key={id}
-                  className={neutralChip(id)}
-                  aria-pressed={filter === id}
-                  onClick={() => setFilter(id)}
+                  className={neutralChip(source === id)}
+                  aria-pressed={source === id}
+                  disabled={sourceCount(id) === 0 && source !== id}
+                  onClick={() => setSource(source === id ? null : id)}
                 >
-                  {label} ({countFor(id)})
+                  {label} ({sourceCount(id)})
                 </button>
               ))}
-              {visibleSources.length > 0 && (
-                <span
-                  aria-hidden="true"
-                  className="mx-1 h-4 border-l border-gray-300 dark:border-gray-700"
-                />
-              )}
+              <span
+                aria-hidden="true"
+                className="mx-1 h-4 border-l border-gray-300 dark:border-gray-700"
+              />
               <button
                 type="button"
-                className={neutralChip('sentAI')}
-                aria-pressed={filter === 'sentAI'}
-                onClick={() => setFilter('sentAI')}
+                className={neutralChip(sentToAI)}
+                aria-pressed={sentToAI}
+                disabled={sentCount === 0 && !sentToAI}
+                onClick={() => setSentToAI(!sentToAI)}
                 title="AI can also review rule-filled answers, so this count can overlap with the final fill sources."
               >
-                Sent to AI ({counts.sentToAI})
+                Sent to AI ({sentCount})
               </button>
             </div>
           </section>
@@ -333,31 +370,24 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
               placeholder="Search field or profile names"
               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800"
             />
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                className={neutralChip('all')}
-                aria-pressed={filter === 'all'}
-                onClick={() => setFilter('all')}
-              >
-                All ({counts.detected})
-              </button>
+            <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Field colors">
               {colorFilters.map(([id, label, tone, help]) => (
                 <button
                   key={id}
                   type="button"
-                  aria-pressed={filter === id}
+                  aria-pressed={color === id}
+                  disabled={colorCount(id) === 0 && color !== id}
                   title={help}
-                  onClick={() => setFilter(id)}
+                  onClick={() => setColor(color === id ? null : id)}
                   className={[
                     chipCls,
                     tones[tone],
-                    filter === id
+                    color === id
                       ? 'ring-2 ring-blue-500 ring-offset-2 dark:ring-blue-400 dark:ring-offset-gray-900'
-                      : 'hover:brightness-95 dark:hover:brightness-125',
+                      : 'enabled:hover:brightness-95 dark:enabled:hover:brightness-125',
                   ].join(' ')}
                 >
-                  {label} ({countFor(id)})
+                  {label} ({colorCount(id)})
                 </button>
               ))}
             </div>

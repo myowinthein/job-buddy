@@ -124,21 +124,10 @@ export function statusLabel(field: FillLogField): string {
     manual: 'Confirmed by you',
   }[field.outcome];
 }
-export type FilterId =
-  | 'all'
-  | 'filled'
-  | 'notFilled'
-  | 'kept'
-  | 'skipped'
-  | 'green'
-  | 'yellow'
-  | 'red'
-  | 'gray'
-  | 'learned'
-  | 'rules'
-  | 'ai'
-  | 'manual'
-  | 'sentAI';
+export type OutcomeFilter = 'all' | 'filled' | 'notFilled' | 'kept' | 'skipped';
+export type ColorFilter = 'green' | 'yellow' | 'red' | 'gray';
+export type SourceFilter = 'learned' | 'rules' | 'ai' | 'manual';
+export type FilterId = OutcomeFilter | ColorFilter | SourceFilter | 'sentAI';
 export const filterMatches: Record<FilterId, (field: FillLogField) => boolean> = {
   all: () => true,
   filled: (field) => ['high_confidence', 'review', 'manual'].includes(field.outcome),

@@ -105,7 +105,7 @@ afterEach(() => {
 });
 async function showFields() {
   render(<FillLogPage tabId={10} />);
-  await screen.findByRole('button', { name: 'All (7)' });
+  await screen.findByRole('button', { name: 'Detected (7)' });
 }
 async function notify() {
   await act(
@@ -142,6 +142,125 @@ describe('Fill Details page', () => {
     expect(screen.queryByRole('tab')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Refresh' })).toBeNull();
     expect(screen.getByText('Full name').closest('details')?.open).toBe(false);
+  });
+
+  it('uses top-level outcomes with stable totals and contextual source and color counts', async () => {
+    await showFields();
+    fireEvent.click(screen.getByRole('button', { name: 'Filled (3)' }));
+    expect(screen.getByRole('button', { name: 'Filled (3)' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Detected (7)' }).getAttribute('aria-pressed')).toBe(
+      'false',
+    );
+    expect(screen.queryByRole('button', { name: /^All / })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Red (0)' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Learned mappings (0)' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    expect(screen.getByText('3 of 7 fields shown')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'AI (1)' }));
+    expect(screen.getByRole('button', { name: 'Yellow (1)' })).toHaveProperty('disabled', false);
+    expect(screen.getByRole('button', { name: 'Green (0)' })).toHaveProperty('disabled', true);
+    fireEvent.click(screen.getByRole('button', { name: 'Yellow (1)' }));
+    expect(screen.getByText('Summary')).toBeTruthy();
+    expect(screen.queryByText('Full name')).toBeNull();
+    expect(screen.getByText('1 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Rules (0)' })).toHaveProperty('disabled', true);
+    // Counts in the top row always describe the full report.
+    for (const name of [
+      'Detected (7)',
+      'Filled (3)',
+      'Not filled (2)',
+      'Kept current (1)',
+      'Skipped (1)',
+    ])
+      expect(screen.getByRole('button', { name })).toBeTruthy();
+    // Clicking active refinements removes them without leaving the Filled group.
+    fireEvent.click(screen.getByRole('button', { name: 'Yellow (1)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'AI (1)' }));
+    expect(screen.getByText('3 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Filled (3)' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+  });
+
+  it('keeps AI handoff independent from the final source and resets refinements on a new outcome group', async () => {
+    await showFields();
+    fireEvent.click(screen.getByRole('button', { name: 'Sent to AI (3)' }));
+    expect(screen.getByText('3 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Rules (0)' })).toHaveProperty('disabled', true);
+    fireEvent.click(screen.getByRole('button', { name: 'AI (1)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yellow (1)' }));
+    expect(
+      screen.getByRole('button', { name: 'Sent to AI (1)' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(screen.getByText('1 of 7 fields shown')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Not filled (2)' }));
+    expect(screen.getByText('2 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByText('Location')).toBeTruthy();
+    expect(screen.getByText('Resume')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Sent to AI (2)' }).getAttribute('aria-pressed'),
+    ).toBe('false');
+    expect(screen.getByRole('button', { name: 'AI (0)' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Yellow (0)' }).getAttribute('aria-pressed')).toBe(
+      'false',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Detected (7)' }));
+    expect(screen.getByText('7 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'AI (1)' })).toHaveProperty('disabled', false);
+  });
+
+  it('narrows available counts with search while retaining the overall totals', async () => {
+    await showFields();
+    fireEvent.click(screen.getByRole('button', { name: 'Filled (3)' }));
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'summary' } });
+    expect(screen.getByRole('button', { name: 'Yellow (1)' })).toHaveProperty('disabled', false);
+    expect(screen.getByRole('button', { name: 'Green (0)' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Rules (0)' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Sent to AI (1)' })).toHaveProperty(
+      'disabled',
+      false,
+    );
+    expect(screen.getByRole('button', { name: 'Detected (7)' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Filled (3)' })).toBeTruthy();
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: '' } });
+    expect(screen.getByRole('button', { name: 'Green (2)' })).toHaveProperty('disabled', false);
+  });
+
+  it('keeps active zero-count refinements clearable after an edit and resets them for a new report', async () => {
+    await showFields();
+    fireEvent.click(screen.getByRole('button', { name: 'Filled (3)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'AI (1)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yellow (1)' }));
+    const data = snapshot();
+    data.frames[0].log.fields[1].outcome = 'manual';
+    data.frames[0].log.fields[1].source = 'manual';
+    vi.mocked(loadFillLog).mockResolvedValue(data);
+    await notify();
+    expect(screen.getByText('No fields match this search or filter.')).toBeTruthy();
+    for (const name of ['AI (0)', 'Yellow (0)']) {
+      const chip = screen.getByRole('button', { name });
+      expect(chip).toHaveProperty('disabled', false);
+      expect(chip.getAttribute('aria-pressed')).toBe('true');
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Yellow (0)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'AI (0)' }));
+    expect(screen.getByText('3 of 7 fields shown')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Manual (2)' }));
+    const next = snapshot();
+    next.tabId = 20;
+    vi.mocked(loadFillLog).mockResolvedValue(next);
+    await notify();
+    expect(screen.getByRole('button', { name: 'Detected (7)' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Manual (1)' }).getAttribute('aria-pressed')).toBe(
+      'false',
+    );
+    expect(screen.getByText('7 of 7 fields shown')).toBeTruthy();
   });
 
   it('keeps core results collapsed and combines frame, control and per-type numbering in technical details', async () => {
@@ -196,6 +315,7 @@ describe('Fill Details page', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Learned mappings (1)' }));
     expect(screen.getByText('Full name')).toBeTruthy();
     expect(screen.queryByText('Summary')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Learned mappings (1)' }));
     fireEvent.click(screen.getByRole('button', { name: 'Gray (1)' }));
     expect(screen.getByText('Profile field: Links → LinkedIn')).toBeTruthy();
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'links linkedin' } });
@@ -257,7 +377,7 @@ describe('Fill Details page', () => {
     expect(screen.queryByRole('button', { name: 'Return to Form' })).toBeNull();
     vi.mocked(loadFillLog).mockResolvedValue(snapshot());
     await notify();
-    expect(await screen.findByRole('button', { name: 'All (7)' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Detected (7)' })).toBeTruthy();
   });
 
   it('handles a closed source with no retained report', async () => {

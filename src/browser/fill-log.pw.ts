@@ -48,11 +48,56 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
     fullPage: false,
   });
   await expect(
-    logPage.getByRole('button', { name: `All (${counts.detected})`, exact: true }),
+    logPage.getByRole('button', { name: `Detected (${counts.detected})`, exact: true }),
   ).toBeVisible();
   await expect(
     logPage.getByRole('button', { name: `Kept current (${counts.kept})`, exact: true }),
   ).toBeVisible();
+  // Outcomes scope the refinements; counts at the top stay global.
+  await logPage.getByRole('button', { name: `Filled (${counts.filled})`, exact: true }).click();
+  await expect(logPage.getByRole('button', { name: 'Red (0)', exact: true })).toBeDisabled();
+  await expect(logPage.getByRole('button', { name: 'Gray (0)', exact: true })).toBeDisabled();
+  await expect(
+    logPage.getByRole('button', { name: `Rules (${counts.finalRuleFilled})`, exact: true }),
+  ).toBeEnabled();
+  await logPage
+    .getByRole('button', { name: `Rules (${counts.finalRuleFilled})`, exact: true })
+    .click();
+  await expect(logPage.locator('summary')).toHaveCount(counts.finalRuleFilled);
+  await expect(
+    logPage.getByRole('button', { name: `Filled (${counts.filled})`, exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(
+    logPage.getByRole('button', { name: `Detected (${counts.detected})`, exact: true }),
+  ).toBeVisible();
+  await logPage
+    .getByRole('button', { name: `Not filled (${counts.notFilled})`, exact: true })
+    .click();
+  await expect(logPage.getByRole('button', { name: 'Rules (0)', exact: true })).toBeDisabled();
+  await expect(logPage.getByRole('button', { name: 'Rules (0)', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  await expect(logPage.locator('summary')).toHaveCount(counts.notFilled);
+  const sentUnfilled = fields.filter(
+    (field) =>
+      ['not_matched', 'missing_data', 'failed'].includes(field.outcome) &&
+      field.ai.outcome !== 'not_sent',
+  ).length;
+  expect(sentUnfilled).toBeGreaterThan(0);
+  await logPage.getByRole('button', { name: `Sent to AI (${sentUnfilled})`, exact: true }).click();
+  await expect(logPage.locator('summary')).toHaveCount(sentUnfilled);
+  await expect(
+    logPage.getByRole('button', { name: `Not filled (${counts.notFilled})`, exact: true }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await logPage.screenshot({
+    path: testInfo.outputPath('fill-log-filtered-dark.png'),
+    fullPage: false,
+    animations: 'disabled',
+  });
+  await logPage.getByRole('button', { name: `Detected (${counts.detected})`, exact: true }).click();
+  await expect(logPage.locator('summary')).toHaveCount(counts.detected);
+  await expect(logPage.getByRole('button', { name: /^All \(/ })).toHaveCount(0);
   await logPage.locator('summary').first().click();
   await logPage.screenshot({
     path: testInfo.outputPath('fill-log-fields-dark.png'),
@@ -370,7 +415,7 @@ test('an open empty report populates automatically and explicit actions select t
   await page.bringToFront();
   await extension.send('AUTOFILL_FILL', 'merge');
   await options.bringToFront();
-  await expect(options.getByRole('button', { name: /^All \(/ })).toBeVisible();
+  await expect(options.getByRole('button', { name: /^Detected \(/ })).toBeVisible();
   await expect(options.getByRole('tab')).toHaveCount(0);
   await expect(options.getByText('http://127.0.0.1/application', { exact: true })).toBeVisible();
   const firstRow = options.locator('summary').filter({ hasText: 'First name' }).first();
@@ -406,7 +451,7 @@ test('an open empty report populates automatically and explicit actions select t
   await sendB('AUTOFILL_FILL');
   await options.bringToFront();
   await expect(options.getByText('http://127.0.0.1/application-b', { exact: true })).toBeVisible();
-  await expect(options.getByRole('button', { name: 'All (2)', exact: true })).toBeVisible();
+  await expect(options.getByRole('button', { name: 'Detected (2)', exact: true })).toBeVisible();
   await expect(options.getByRole('button', { name: 'Gray (1)', exact: true })).toBeVisible();
 
   // A manual edit in the older form does not replace the selected B report.
