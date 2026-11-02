@@ -79,14 +79,16 @@ afterEach(() => {
   history.replaceState(null, '', '/');
 });
 
-it('embeds a wide, empty details section in Tools without duplicate branding or profile progress', async () => {
+it('embeds a wide, empty details section in Tools with the shared profile progress bar', async () => {
   mount();
   await screen.findByLabelText('First Name*');
   expect(screen.getByRole('progressbar', { name: 'Saved required profile details' })).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Fill Details' }));
   expect(await screen.findByRole('heading', { name: 'Fill Details' })).toBeTruthy();
   expect(await screen.findByText('No fill details yet')).toBeTruthy();
-  expect(screen.queryByRole('progressbar')).toBeNull();
+  expect(
+    screen.getAllByRole('progressbar', { name: 'Saved required profile details' }),
+  ).toHaveLength(1);
   expect(document.querySelector('[data-profile-section="fillDetails"]')?.className).toContain(
     'max-w-none',
   );

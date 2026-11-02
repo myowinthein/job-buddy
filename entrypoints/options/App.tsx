@@ -514,7 +514,7 @@ function App() {
         sectionCompletion={sectionCompletion}
       />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        {activeSection !== 'fillDetails' && <CompletionBanner
+        <CompletionBanner
           percentage={completion.percentage}
           isCoreComplete={completion.isCoreComplete}
           optionalFieldsRemaining={completion.optionalFieldsRemaining}
@@ -522,7 +522,7 @@ function App() {
           missingGroups={completion.missingGroups}
           onNavigate={(sectionId) => { navigateAndFocus(sectionId as SectionId, getSectionStartTarget(sectionId)); }}
           onFocusField={handleFocusField}
-        />}
+        />
         <main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-8">
           {/* Settings uses max-w-none so long subtitles can flow to one line */}
           <div data-profile-section={activeSection} className={['settings', 'devTools', 'fillDetails'].includes(activeSection) ? 'max-w-none' : 'max-w-2xl'}

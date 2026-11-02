@@ -323,7 +323,7 @@ test('View details reuses options without discarding an unsaved profile until th
   await expect(options.getByRole('button', { name: 'Return to Form', exact: true })).toBeVisible();
   await expect(
     options.getByRole('progressbar', { name: 'Saved required profile details' }),
-  ).toHaveCount(0);
+  ).toBeVisible();
   expect(context.pages()).toHaveLength(count);
   await expect(page.locator('[name="firstName"]')).toHaveValue('Jane');
 });
