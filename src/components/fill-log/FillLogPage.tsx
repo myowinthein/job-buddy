@@ -1,5 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { ArrowLeft, ChevronDown, ListChecks } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ChevronDown,
+  Info,
+  ListChecks,
+  LoaderCircle,
+} from 'lucide-react';
 import { OutcomeFilterHelp } from './OutcomeFilterHelp';
 import { loadFillLog, returnToForm } from '@/src/fill-log/client';
 import { RETAINED_FILL_DETAILS } from '@/src/fill-log/retention';
@@ -256,18 +263,43 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
         </p>
       )}
       {loading ? (
-        <p role="status" className="text-sm text-gray-600 dark:text-gray-300">
+        <p
+          role="status"
+          className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300"
+        >
+          <LoaderCircle
+            aria-hidden="true"
+            className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
+          />
           Loading fill details…
         </p>
       ) : unavailable ? (
-        <p role="status" className="text-sm text-gray-600 dark:text-gray-300">
-          The source form is unavailable. Its tab may have closed.
-        </p>
+        <div
+          role="status"
+          className="rounded-xl border border-dashed border-gray-300 px-6 py-10 text-center dark:border-gray-700"
+        >
+          <Info
+            aria-hidden="true"
+            className="mx-auto mb-3 h-7 w-7 text-gray-400 dark:text-gray-500"
+          />
+          <p className="mx-auto max-w-md text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+            The source form is unavailable. Its tab may have closed.
+          </p>
+        </div>
       ) : snapshot?.needsRefresh ? (
-        <p role="status" className="text-sm text-gray-600 dark:text-gray-300">
-          This form was filled with an earlier version. Refresh the form and fill again to view its
-          fill details.
-        </p>
+        <div
+          role="status"
+          className="rounded-xl border border-amber-200 bg-amber-50/60 px-6 py-10 text-center dark:border-amber-900 dark:bg-amber-950/20"
+        >
+          <AlertTriangle
+            aria-hidden="true"
+            className="mx-auto mb-3 h-7 w-7 text-amber-600 dark:text-amber-400"
+          />
+          <p className="mx-auto max-w-md text-sm leading-relaxed text-amber-800 dark:text-amber-200">
+            This form was filled with an earlier version. Refresh the form and fill again to view
+            its fill details.
+          </p>
+        </div>
       ) : fields.length === 0 ? (
         <div
           role="status"
@@ -580,15 +612,18 @@ function StageDetails({ field }: { field: FillLogField }) {
           aria-label={active.label + ' stage details'}
           className="mt-4"
         >
-          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-left">
-            <dt className="text-gray-500 dark:text-gray-400">Result</dt>
-            <dd>{active.result}</dd>
-            {active.details.map((detail) => (
+          <dl className="grid grid-cols-1 gap-x-8 gap-y-3 text-left lg:grid-cols-2">
+            <Attribute label="Result" value={active.result} fullWidth />
+            {[
+              ...active.details.filter((detail) => detail.label !== 'Profile field'),
+              ...active.details.filter((detail) => detail.label === 'Profile field'),
+            ].map((detail) => (
               <Attribute
                 key={detail.label}
                 label={detail.label}
                 value={detail.value}
                 mono={detail.mono}
+                fullWidth={detail.label === 'Profile field'}
               />
             ))}
           </dl>
@@ -598,11 +633,23 @@ function StageDetails({ field }: { field: FillLogField }) {
   );
 }
 
-function Attribute({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function Attribute({
+  label,
+  value,
+  mono,
+  fullWidth,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  fullWidth?: boolean;
+}) {
   return (
-    <>
+    <div
+      className={`grid min-w-0 grid-cols-[7rem_minmax(0,1fr)] gap-x-4 ${fullWidth ? 'lg:col-span-2' : ''}`}
+    >
       <dt className="text-gray-500 dark:text-gray-400">{label}</dt>
-      <dd className={mono ? 'break-all font-mono' : undefined}>{value}</dd>
-    </>
+      <dd className={mono ? 'break-all font-mono' : 'break-words'}>{value}</dd>
+    </div>
   );
 }

@@ -129,6 +129,21 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   await expect(logPage.locator('summary')).toHaveCount(counts.detected);
   await expect(logPage.getByRole('button', { name: /^All \(/ })).toHaveCount(0);
   await logPage.locator('summary').first().click();
+  const rulePanel = logPage
+    .locator('details')
+    .first()
+    .getByRole('region', { name: 'Rules stage details' });
+  const methodRow = rulePanel.getByText('Method', { exact: true }).locator('..');
+  const scoreRow = rulePanel.getByText('Match score', { exact: true }).locator('..');
+  const methodBox = await methodRow.boundingBox();
+  const scoreBox = await scoreRow.boundingBox();
+  expect(Math.abs(methodBox!.y - scoreBox!.y)).toBeLessThanOrEqual(1);
+  expect(scoreBox!.x).toBeGreaterThan(methodBox!.x + methodBox!.width);
+  const pathBox = await rulePanel
+    .getByText('Profile field', { exact: true })
+    .locator('..')
+    .boundingBox();
+  expect(pathBox!.width).toBeGreaterThan(methodBox!.width * 1.8);
   await logPage.screenshot({
     path: testInfo.outputPath('fill-log-fields-dark.png'),
     animations: 'disabled',
@@ -142,6 +157,9 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
       animations: 'disabled',
     });
   await logPage.setViewportSize({ width: 375, height: 812 });
+  const narrowMethod = await methodRow.boundingBox();
+  const narrowScore = await scoreRow.boundingBox();
+  expect(narrowScore!.y).toBeGreaterThan(narrowMethod!.y);
   await expect
     .poll(() => logPage.locator('aside').evaluate((el) => el.getBoundingClientRect().width))
     .toBe(64);
