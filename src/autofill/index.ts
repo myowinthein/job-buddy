@@ -50,6 +50,7 @@ import type { FillLogField, FrameFillLog } from './fillLog';
 import type { RadioGroup, CheckboxGroup } from './scanner';
 import { isConsentGroup } from './consent';
 import { aiQuestionIdentity } from './aiSafety';
+import { publishFillLog } from '@/src/fill-log/retention';
 
 export { clearHighlights } from './highlighter';
 
@@ -172,12 +173,15 @@ function refreshTrackedField(element: HTMLElement): void {
   const value = recordValue(record);
   if (recordValues.get(record) === value) return;
   recordValues.set(record, value);
+  const reportChanged = record.outcome !== (value ? 'manual' : 'not_matched') ||
+    record.source !== 'manual' || record.reason !== (value ? 'manual_edit' : 'manual_clear');
   record.outcome = value ? 'manual' : 'not_matched';
   record.source = 'manual';
   record.reason = value ? 'manual_edit' : 'manual_clear';
   if (value) for (const item of elements) confirmFieldFeedback(item);
   if (!value) for (const item of elements) clearElementHighlight(item);
   syncFillLogResult();
+  if (reportChanged) void publishFillLog(fillLog, completedProfileId);
 }
 
 function attachReportWatchers(): void {
@@ -410,6 +414,7 @@ function runSilentRefill(): Promise<void> {
       }
       if (noDataFields.length === 0) teardownVisibilityListener();
       syncFillLogResult(result);
+      await publishFillLog(fillLog, completedProfileId);
     } catch {
       // Keep unresolved entries for the next visibility event.
     } finally {
@@ -422,6 +427,7 @@ function runSilentRefill(): Promise<void> {
 }
 
 export async function undoAutofill(): Promise<boolean> {
+  const reportProfileId = completedProfileId;
   getFillLog();
   removeReportWatchers();
   invalidateSession();
@@ -447,6 +453,7 @@ export async function undoAutofill(): Promise<boolean> {
     sessionElements = [];
     lastResult = null;
   } else {
+    completedProfileId = reportProfileId;
     for (const [record, elements] of recordElements) {
       if (elements.some((element) => outcome.remaining.has(element))) {
         record.outcome = 'review';
@@ -460,6 +467,7 @@ export async function undoAutofill(): Promise<boolean> {
     syncFillLogResult();
     attachReportWatchers();
   }
+  await publishFillLog(fillLog, reportProfileId);
   return outcome.success;
 }
 
@@ -754,6 +762,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       completedProfileId = profile.id;
       syncFillLogResult(result);
       attachReportWatchers();
+      void publishFillLog(runLog, completedProfileId);
       return result;
     }
     throw new Error('autofill_failed');
@@ -1044,5 +1053,6 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       },
     );
 
+  await publishFillLog(fillLog, completedProfileId);
   return result;
 }

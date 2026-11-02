@@ -1,6 +1,7 @@
 import { wrapStorageArea } from '@/src/utils/storageArea';
 import { devLockName } from '@/src/devtools/context';
 import { RUN_PREFIX, type AutofillRun } from '@/src/autofill/runCoordinator';
+import { readRetainedFillLog } from './retention';
 
 export const FILL_DETAILS_REQUEST = 'jb:fillDetailsRequest';
 const SOURCE = 'jb:fillDetailsSource';
@@ -57,6 +58,8 @@ export async function takeFillDetailsRequest(): Promise<{ tabId: number } | null
   });
 }
 export async function lastFillDetailsSource(): Promise<number | null> {
+  const retained = await readRetainedFillLog();
+  if (retained) return retained.tabId;
   const explicit = sourceTabId((await session.get(SOURCE))[SOURCE]);
   if (explicit !== null) return explicit;
   // Reuse existing transient run metadata when the sidebar is opened first.

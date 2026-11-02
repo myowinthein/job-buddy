@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadFillLog, openFillLog, returnToForm } from './client';
 import { createPreviewChrome } from '@/src/preview/chrome';
+import { RETAINED_FILL_DETAILS, clearRetainedFillLog } from './retention';
 import {
   FILL_DETAILS_REQUEST,
   takeFillDetailsRequest,
@@ -67,6 +68,51 @@ describe('reading a source form log', () => {
     tabs.get.mockRejectedValueOnce(new Error('closed'));
     await expect(loadFillLog(10)).rejects.toThrow('closed');
     expect(tabs.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('retains the completed snapshot after closing its source tab', async () => {
+    const retained = {
+      tabId: 10,
+      frames: [
+        {
+          frameId: 0,
+          log: { ...log('retained', 5), origin: 'https://form.test', status: 'completed' },
+        },
+      ],
+    };
+    await new Promise<void>((resolve) =>
+      chrome.storage.session.set({ [RETAINED_FILL_DETAILS]: retained }, resolve),
+    );
+    tabs.get.mockRejectedValue(new Error('Closed tab'));
+    expect(await loadFillLog(10)).toMatchObject({
+      tabId: 10,
+      sourceClosed: true,
+      frames: [{ log: { runId: 'retained' } }],
+    });
+    expect(tabs.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('does not resurface a pre-reset report from a still-open form', async () => {
+    tabs.sendMessage.mockResolvedValue(log('old-person', 1));
+    await clearRetainedFillLog();
+    expect((await loadFillLog(10)).frames).toEqual([]);
+  });
+
+  it('follows a newer fill on another tab and uses its live details and source', async () => {
+    const retained = {
+      tabId: 20,
+      frames: [{ frameId: 0, log: { ...log('new', 5), status: 'completed' } }],
+    };
+    await new Promise<void>((resolve) =>
+      chrome.storage.session.set({ [RETAINED_FILL_DETAILS]: retained }, resolve),
+    );
+    tabs.sendMessage.mockImplementation((id) =>
+      Promise.resolve(log(id === 20 ? 'new' : 'old', id === 20 ? 5 : 1)),
+    );
+    const result = await loadFillLog(10);
+    expect(result.tabId).toBe(20);
+    expect(result.frames.every((frame) => frame.log.runId === 'new')).toBe(true);
+    expect(result.sourceClosed).toBeUndefined();
   });
 
   it('requests a form refresh when an earlier script has fill results but no detailed log', async () => {

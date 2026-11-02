@@ -152,6 +152,14 @@ describe('Fill Details page', () => {
     expect(screen.getByRole('button', { name: 'Return to Form' })).toBeTruthy();
   });
 
+  it('keeps closed-form details visible with a neutral notice and no Return to Form action', async () => {
+    vi.mocked(loadFillLog).mockResolvedValue({ ...snapshot(), sourceClosed: true });
+    await showFields();
+    expect(screen.getByText('This form is closed. Showing its last fill details.')).toBeTruthy();
+    expect(screen.getByText('Full name')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Return to Form' })).toBeNull();
+  });
+
   it('supports keyboard tab navigation', async () => {
     render(<FillLogPage tabId={10} />);
     const overview = await screen.findByRole('tab', { name: 'Overview' });

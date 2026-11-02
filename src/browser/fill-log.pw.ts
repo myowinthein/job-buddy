@@ -281,3 +281,79 @@ test('View details reuses options without discarding an unsaved profile until th
   expect(context.pages()).toHaveLength(count);
   await expect(page.locator('[name="firstName"]')).toHaveValue('Jane');
 });
+
+test('keeps one session report after the form closes and replaces it on a new fill', async ({
+  page,
+  context,
+  extension,
+}) => {
+  // No details page needs to be open when the form completes or is edited.
+  await extension.send('AUTOFILL_FILL', 'merge');
+  await page.locator('[name="firstName"]').fill('Changed manually');
+  await expect
+    .poll(() =>
+      extension.worker.evaluate(async () => {
+        const cached = (await chrome.storage.session.get('jb:last-fill-details'))[
+          'jb:last-fill-details'
+        ] as { frames: { log: FrameFillLog }[] } | undefined;
+        return cached?.frames.some((frame: { log: FrameFillLog }) =>
+          frame.log.fields.some((field) => field.reason === 'manual_edit'),
+        );
+      }),
+    )
+    .toBe(true);
+  await page.close();
+  const options = await context.newPage();
+  const optionsUrl = new URL('options.html', extension.worker.url()).href;
+  await options.goto(optionsUrl);
+  await options.getByRole('button', { name: 'Fill Details', exact: true }).click();
+  await expect(
+    options.getByText('This form is closed. Showing its last fill details.'),
+  ).toBeVisible();
+  await expect(options.getByRole('button', { name: 'Return to Form', exact: true })).toHaveCount(0);
+  await options.getByRole('tab', { name: 'Fields', exact: true }).click();
+  await expect(options.getByText('First name', { exact: true }).first()).toBeVisible();
+  await options.reload();
+  await expect(
+    options.getByText('This form is closed. Showing its last fill details.'),
+  ).toBeVisible();
+
+  const nextForm = await context.newPage();
+  await nextForm.goto('http://127.0.0.1/next-application');
+  await nextForm.bringToFront();
+  const nextId = await extension.worker.evaluate(
+    async () => (await chrome.tabs.query({ active: true, currentWindow: true }))[0].id!,
+  );
+  const send = (action: string) =>
+    extension.worker.evaluate(
+      async ({ tabId, action }) => chrome.tabs.sendMessage(tabId, { action, mode: 'overwrite' }),
+      { tabId: nextId, action },
+    );
+  await expect
+    .poll(async () => {
+      try {
+        return Boolean(await send('AUTOFILL_SCAN'));
+      } catch {
+        return false;
+      }
+    })
+    .toBe(true);
+  await send('AUTOFILL_FILL');
+  await options.bringToFront();
+  await expect(
+    options.getByText('This form is closed. Showing its last fill details.'),
+  ).toHaveCount(0);
+  await options.getByRole('button', { name: 'Return to Form', exact: true }).click();
+  await expect
+    .poll(() =>
+      extension.worker.evaluate(
+        async () => (await chrome.tabs.query({ active: true, currentWindow: true }))[0].id,
+      ),
+    )
+    .toBe(nextId);
+  const retained = await extension.worker.evaluate(
+    async () => (await chrome.storage.session.get('jb:last-fill-details'))['jb:last-fill-details'],
+  );
+  expect((retained as { tabId: number }).tabId).toBe(nextId);
+  expect((retained as { frames: unknown[] }).frames).toHaveLength(1);
+});

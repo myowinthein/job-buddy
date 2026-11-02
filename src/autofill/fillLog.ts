@@ -67,6 +67,7 @@ export interface FillLogSnapshot {
   tabId: number;
   frames: FillLogFrame[];
   needsRefresh?: boolean;
+  sourceClosed?: boolean;
 }
 
 export function summarizeFillFields(fields: FillLogField[]) {

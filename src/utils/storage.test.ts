@@ -6,6 +6,7 @@ const store: Record<string, unknown> = {};
 
 vi.stubGlobal('chrome', {
   storage: {
+    session: { set: (_items: Record<string, unknown>, callback: () => void) => callback() },
     local: {
       get(key: string | null, callback: (result: Record<string, unknown>) => void) {
         callback(key === null ? { ...store } : { [key]: store[key] });

@@ -15,6 +15,7 @@ import {
 import { registerQuickFill } from '@/src/quick-fill/background';
 import { createAutofillCoordinator, RUN_ALARM_PREFIX } from '@/src/autofill/runCoordinator';
 import { registerDevelopmentContentScript } from '@/src/devtools/registerContentScript';
+import { retainFrameFillLog } from '@/src/fill-log/retention';
 
 export default defineBackground(() => {
   // WXT's dev manifest has no static content script. Register it even if the
@@ -83,6 +84,20 @@ export default defineBackground(() => {
       task = saveLearnedMappings({ [domain]: signals } as LearnedMappings, { labelsOnly: true });
     }
     task.then(() => respond({ ok: true })).catch(() => respond({ ok: false }));
+    return true;
+  });
+  chrome.runtime.onMessage.addListener((message, sender, respond) => {
+    if (message?.action !== 'FILL_DETAILS_UPDATED') return;
+    if (
+      sender.id !== chrome.runtime.id ||
+      !sender.tab ||
+      !sender.url ||
+      (!/^https?:/.test(sender.url) && !/^https?:/.test(sender.origin ?? ''))
+    )
+      return;
+    retainFrameFillLog(sender, message.log, message.profileId)
+      .then(() => respond({ ok: true }))
+      .catch(() => respond({ ok: false }));
     return true;
   });
   chrome.webNavigation.onCommitted.addListener((details) => {

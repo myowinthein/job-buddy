@@ -17,6 +17,7 @@ import { equalJsonValues } from './equalJsonValues';
 import { profileData } from './profileData';
 import { rebaseLearnedMappings, reviewedIncomingMappings } from './learnedMappingProfile';
 import { withProfileWriteLock } from './profileWriteLock';
+import { clearRetainedFillLog } from '@/src/fill-log/retention';
 import {
   readableMappings,
   safeMappingKey,
@@ -141,6 +142,7 @@ export async function replaceProfileData(
       learnedMappingsRevision: crypto.randomUUID(),
       ...(pausedDriveState ? { driveBackupState: pausedDriveState } : {}),
     });
+    await clearRetainedFillLog();
   });
 }
 
@@ -312,6 +314,7 @@ export async function clearAllStorage(): Promise<void> {
           ].includes(key),
       );
       if (keys.length) await local.remove(keys, { rejectOnError: true });
+      await clearRetainedFillLog();
     }),
   );
 }

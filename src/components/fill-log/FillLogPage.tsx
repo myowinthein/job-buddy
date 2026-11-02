@@ -101,7 +101,8 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
   const openSource = async () => {
     setReturnError(false);
     try {
-      if (tabId !== null) await returnToForm(tabId);
+      const sourceTab = snapshot?.tabId ?? tabId;
+      if (sourceTab !== null) await returnToForm(sourceTab);
     } catch {
       setReturnError(true);
     }
@@ -128,7 +129,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
             </p>
           )}
         </div>
-        {tabId !== null && (
+        {tabId !== null && !snapshot?.sourceClosed && (
           <button type="button" className={buttonCls} onClick={() => void openSource()}>
             <ArrowLeft aria-hidden="true" className="h-4 w-4" /> Return to Form
           </button>
@@ -160,6 +161,14 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
         </p>
       ) : (
         <>
+          {snapshot?.sourceClosed && (
+            <p
+              role="status"
+              className="mb-4 rounded-lg bg-gray-100 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+            >
+              This form is closed. Showing its last fill details.
+            </p>
+          )}
           {undone && (
             <p role="status" className="mb-4 rounded-lg bg-gray-100 p-3 text-sm dark:bg-gray-800">
               These fills were undone. Details show the completed run.
