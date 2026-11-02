@@ -126,10 +126,15 @@ export function statusLabel(field: FillLogField): string {
     manual: 'Confirmed by you',
   }[field.outcome];
 }
+export function wasCheckedByRules(field: FillLogField): boolean {
+  return (
+    field.rule.layer !== 'learned' && (field.rule.ran ?? field.rule.outcome !== 'not_applicable')
+  );
+}
 export type OutcomeFilter = 'all' | 'filled' | 'notFilled' | 'kept' | 'skipped';
 export type ColorFilter = 'green' | 'yellow' | 'red' | 'gray';
 export type SourceFilter = 'learned' | 'rules' | 'ai' | 'manual';
-export type FilterId = OutcomeFilter | ColorFilter | SourceFilter | 'sentAI';
+export type FilterId = OutcomeFilter | ColorFilter | SourceFilter | 'sentAI' | 'checkedRules';
 export const filterMatches: Record<FilterId, (field: FillLogField) => boolean> = {
   all: () => true,
   filled: (field) => ['high_confidence', 'review', 'manual'].includes(field.outcome),
@@ -145,6 +150,7 @@ export const filterMatches: Record<FilterId, (field: FillLogField) => boolean> =
   ai: (field) => finalFillSource(field) === 'ai',
   manual: (field) => finalFillSource(field) === 'manual',
   sentAI: (field) => field.ai.outcome !== 'not_sent',
+  checkedRules: wasCheckedByRules,
 };
 export function matchesSearch(field: FillLogField, query: string): boolean {
   const text = [

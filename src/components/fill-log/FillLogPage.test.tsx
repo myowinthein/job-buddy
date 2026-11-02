@@ -137,6 +137,7 @@ describe('Fill Details page', () => {
       'Rules (1)',
       'AI (1)',
       'Manual (1)',
+      'Checked by rules (6)',
       'Sent to AI (3)',
     ])
       expect(screen.getByRole('button', { name: label })).toBeTruthy();
@@ -212,6 +213,66 @@ describe('Fill Details page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Detected (7)' }));
     expect(screen.getByText('7 of 7 fields shown')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'AI (1)' })).toHaveProperty('disabled', false);
+  });
+
+  it('filters rule checks separately from final sources and intersects them with AI handoffs', async () => {
+    const data = snapshot();
+    data.frames[0].log.fields[0].rule.layer = 'learned';
+    data.frames[0].log.fields[2].rule.ran = false;
+    data.frames[1].log.fields[1].rule.ran = false;
+    vi.mocked(loadFillLog).mockResolvedValue(data);
+    await showFields();
+    fireEvent.click(screen.getByRole('button', { name: 'Checked by rules (3)' }));
+    expect(screen.getByText('3 of 7 fields shown')).toBeTruthy();
+    expect(screen.queryByText('Full name')).toBeNull();
+    expect(screen.queryByText('Email')).toBeNull();
+    expect(screen.queryByText('Resume')).toBeNull();
+    expect(screen.getByText('Summary')).toBeTruthy();
+    expect(screen.getByText('Pronouns')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Sent to AI (2)' }));
+    expect(screen.getByText('2 of 7 fields shown')).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Checked by rules (2)' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'summary' } });
+    expect(screen.getByRole('button', { name: 'Checked by rules (1)' })).toHaveProperty(
+      'disabled',
+      false,
+    );
+    expect(screen.getByText('1 of 7 fields shown')).toBeTruthy();
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: '' } });
+    // An edited report can leave both selected stages with no intersection.
+    data.frames[0].log.fields[1].rule.ran = false;
+    data.frames[1].log.fields[0].rule.ran = false;
+    vi.mocked(loadFillLog).mockResolvedValue(structuredClone(data));
+    await notify();
+    expect(screen.getByText('No fields match this search or filter.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Checked by rules (0)' })).toHaveProperty(
+      'disabled',
+      false,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Not filled (2)' }));
+    expect(
+      screen.getByRole('button', { name: 'Checked by rules (0)' }).getAttribute('aria-pressed'),
+    ).toBe('false');
+    expect(screen.getByRole('button', { name: 'Checked by rules (0)' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    expect(screen.getByText('2 of 7 fields shown')).toBeTruthy();
+  });
+
+  it('clears the rule-check filter when a different report is selected', async () => {
+    await showFields();
+    fireEvent.click(screen.getByRole('button', { name: 'Checked by rules (6)' }));
+    const next = snapshot();
+    next.frames[0].log.runId = 'next-run';
+    vi.mocked(loadFillLog).mockResolvedValue(next);
+    await notify();
+    expect(
+      screen.getByRole('button', { name: 'Checked by rules (6)' }).getAttribute('aria-pressed'),
+    ).toBe('false');
+    expect(screen.getByText('7 of 7 fields shown')).toBeTruthy();
   });
 
   it('narrows available counts with search while retaining the overall totals', async () => {

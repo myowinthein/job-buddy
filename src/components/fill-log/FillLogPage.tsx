@@ -63,6 +63,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
   const [color, setColor] = useState<ColorFilter | null>(null);
   const [source, setSource] = useState<SourceFilter | null>(null);
   const [sentToAI, setSentToAI] = useState(false);
+  const [checkedRules, setCheckedRules] = useState(false);
   const [search, setSearch] = useState('');
   const [returnError, setReturnError] = useState(false);
   const currentReport = useRef<string | null>(null);
@@ -82,6 +83,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
           setColor(null);
           setSource(null);
           setSentToAI(false);
+          setCheckedRules(false);
           setSearch('');
           setReturnError(false);
         }
@@ -130,7 +132,9 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
   // Each facet counts the candidates available with the other facets applied.
   const sourceMatches = (field: FillLogField) => !source || filterMatches[source](field);
   const colorMatches = (field: FillLogField) => !color || filterMatches[color](field);
-  const stageMatches = (field: FillLogField) => !sentToAI || filterMatches.sentAI(field);
+  const rulesMatch = (field: FillLogField) => !checkedRules || filterMatches.checkedRules(field);
+  const aiMatches = (field: FillLogField) => !sentToAI || filterMatches.sentAI(field);
+  const stageMatches = (field: FillLogField) => rulesMatch(field) && aiMatches(field);
   const shown = groupFields.filter(
     ({ field }) => sourceMatches(field) && colorMatches(field) && stageMatches(field),
   );
@@ -143,13 +147,25 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
       ({ field }) => sourceMatches(field) && stageMatches(field) && filterMatches[id](field),
     ).length;
   const sentCount = groupFields.filter(
-    ({ field }) => sourceMatches(field) && colorMatches(field) && filterMatches.sentAI(field),
+    ({ field }) =>
+      sourceMatches(field) &&
+      colorMatches(field) &&
+      rulesMatch(field) &&
+      filterMatches.sentAI(field),
+  ).length;
+  const checkedCount = groupFields.filter(
+    ({ field }) =>
+      sourceMatches(field) &&
+      colorMatches(field) &&
+      aiMatches(field) &&
+      filterMatches.checkedRules(field),
   ).length;
   const selectOutcome = (id: OutcomeFilter) => {
     setOutcome(id);
     setColor(null);
     setSource(null);
     setSentToAI(false);
+    setCheckedRules(false);
   };
   const filledAt = Math.max(
     0,
@@ -329,6 +345,16 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
                 aria-hidden="true"
                 className="mx-1 h-4 border-l border-gray-300 dark:border-gray-700"
               />
+              <button
+                type="button"
+                className={neutralChip(checkedRules)}
+                aria-pressed={checkedRules}
+                disabled={checkedCount === 0 && !checkedRules}
+                onClick={() => setCheckedRules(!checkedRules)}
+                title="Fields checked by rules, including those later handled by AI or edited by you."
+              >
+                Checked by rules ({checkedCount})
+              </button>
               <button
                 type="button"
                 className={neutralChip(sentToAI)}

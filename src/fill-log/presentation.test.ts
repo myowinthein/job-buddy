@@ -1,6 +1,12 @@
 import { expect, it } from 'vitest';
 import type { FillLogField } from '@/src/autofill/fillLog';
-import { confidenceText, fieldExplanation, profileFieldName, matchesSearch } from './presentation';
+import {
+  confidenceText,
+  fieldExplanation,
+  profileFieldName,
+  matchesSearch,
+  filterMatches,
+} from './presentation';
 const field: FillLogField = {
   id: 'field_1',
   label: 'Website',
@@ -28,4 +34,23 @@ it('explains rule retention after AI failure and distinguishes unavailable optio
   expect(
     fieldExplanation({ ...field, source: null, outcome: 'failed', reason: 'option_unavailable' }),
   ).toBe('Your saved value has no matching option on this form.');
+});
+
+it('counts actual rule checks independently from final fills and AI handoffs', () => {
+  expect(filterMatches.checkedRules(field)).toBe(true);
+  expect(filterMatches.rules(field)).toBe(false);
+  expect(filterMatches.sentAI(field)).toBe(true);
+  expect(
+    filterMatches.checkedRules({ ...field, rule: { outcome: 'not_applicable', ran: true } }),
+  ).toBe(true);
+  expect(
+    filterMatches.checkedRules({ ...field, rule: { outcome: 'not_matched', ran: false } }),
+  ).toBe(false);
+  expect(
+    filterMatches.checkedRules({
+      ...field,
+      rule: { outcome: 'filled', layer: 'learned', ran: true },
+    }),
+  ).toBe(false);
+  expect(filterMatches.checkedRules({ ...field, rule: { outcome: 'not_applicable' } })).toBe(false);
 });

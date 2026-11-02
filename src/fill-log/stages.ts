@@ -5,7 +5,7 @@ import {
   finalFillSource,
   type FillLogField,
 } from '@/src/autofill/fillLog';
-import { ruleMethods } from './presentation';
+import { ruleMethods, wasCheckedByRules } from './presentation';
 
 export type StageId = 'learned' | 'rules' | 'ai';
 export interface StageDetail {
@@ -87,7 +87,7 @@ export function fillStages(field: FillLogField): FillStage[] {
   )
     learnedDetails.push({ label: 'Option matching', value: 'Needs review' });
 
-  const ranRules = !learnedMatch && (field.rule.ran ?? field.rule.outcome !== 'not_applicable');
+  const ranRules = wasCheckedByRules(field);
   const ruleDetails: StageDetail[] = [];
   if (ranRules) {
     if (field.rule.layer)

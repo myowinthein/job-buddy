@@ -55,6 +55,17 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   await expect(
     logPage.getByRole('button', { name: `Kept current (${counts.kept})`, exact: true }),
   ).toBeVisible();
+  const ruleChecks = fields.filter((field) => field.rule.ran === true).length;
+  expect(ruleChecks).toBeGreaterThan(0);
+  const checkedChip = logPage.getByRole('button', {
+    name: `Checked by rules (${ruleChecks})`,
+    exact: true,
+  });
+  await checkedChip.click();
+  await expect(logPage.locator('summary')).toHaveCount(ruleChecks);
+  await expect(checkedChip).toHaveAttribute('aria-pressed', 'true');
+  await checkedChip.click();
+  await expect(logPage.locator('summary')).toHaveCount(counts.detected);
   // Outcomes scope the refinements; counts at the top stay global.
   await logPage.getByRole('button', { name: `Filled (${counts.filled})`, exact: true }).click();
   await expect(logPage.getByRole('button', { name: 'Red (0)', exact: true })).toBeDisabled();
