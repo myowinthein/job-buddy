@@ -544,7 +544,7 @@ function StageDetails({ field, control }: { field: FillLogField; control: string
           id={panelId}
           role="region"
           aria-label={active.label + ' stage details'}
-          className="mt-4 border-l-2 border-gray-200 pl-4 dark:border-gray-700"
+          className="mt-4"
         >
           <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2">
             <dt className="text-gray-500 dark:text-gray-400">Result</dt>
@@ -560,7 +560,7 @@ function StageDetails({ field, control }: { field: FillLogField; control: string
           </dl>
         </div>
       )}
-      <dl className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 border-t border-gray-200 pt-3 dark:border-gray-800">
+      <dl className="mt-5 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4">
         <dt className="text-gray-500 dark:text-gray-400">Control</dt>
         <dd className="break-words font-mono">{control}</dd>
       </dl>
