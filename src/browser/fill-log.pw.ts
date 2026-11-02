@@ -137,13 +137,18 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   const scoreRow = rulePanel.getByText('Match score', { exact: true }).locator('..');
   const methodBox = await methodRow.boundingBox();
   const scoreBox = await scoreRow.boundingBox();
-  expect(Math.abs(methodBox!.y - scoreBox!.y)).toBeLessThanOrEqual(1);
+  const resultBox = await rulePanel
+    .getByText('Result', { exact: true })
+    .locator('..')
+    .boundingBox();
+  expect(Math.abs(resultBox!.y - scoreBox!.y)).toBeLessThanOrEqual(1);
   expect(scoreBox!.x).toBeGreaterThan(methodBox!.x + methodBox!.width);
   const pathBox = await rulePanel
     .getByText('Profile field', { exact: true })
     .locator('..')
     .boundingBox();
-  expect(pathBox!.width).toBeGreaterThan(methodBox!.width * 1.8);
+  expect(Math.abs(methodBox!.y - pathBox!.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(pathBox!.width - methodBox!.width)).toBeLessThanOrEqual(1);
   await logPage.screenshot({
     path: testInfo.outputPath('fill-log-fields-dark.png'),
     animations: 'disabled',

@@ -296,8 +296,9 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
             className="mx-auto mb-3 h-7 w-7 text-amber-600 dark:text-amber-400"
           />
           <p className="mx-auto max-w-md text-sm leading-relaxed text-amber-800 dark:text-amber-200">
-            This form was filled with an earlier version. Refresh the form and fill again to view
-            its fill details.
+            This form was filled with an earlier version.
+            <br />
+            Refresh the form and fill again to view its fill details.
           </p>
         </div>
       ) : fields.length === 0 ? (
@@ -554,6 +555,10 @@ function StageDetails({ field }: { field: FillLogField }) {
       ? selected
       : defaultStage(field, stages);
   const active = stages.find((stage) => stage.id === activeId);
+  const attributes = active
+    ? [{ label: 'Result', value: active.result, mono: false }, ...active.details]
+    : [];
+  const split = Math.ceil(attributes.length / 2);
   return (
     <div className="mt-4 text-xs">
       {explanation && (
@@ -612,42 +617,31 @@ function StageDetails({ field }: { field: FillLogField }) {
           aria-label={active.label + ' stage details'}
           className="mt-4"
         >
-          <dl className="grid grid-cols-1 gap-x-8 gap-y-3 text-left lg:grid-cols-2">
-            <Attribute label="Result" value={active.result} fullWidth />
-            {[
-              ...active.details.filter((detail) => detail.label !== 'Profile field'),
-              ...active.details.filter((detail) => detail.label === 'Profile field'),
-            ].map((detail) => (
-              <Attribute
-                key={detail.label}
-                label={detail.label}
-                value={detail.value}
-                mono={detail.mono}
-                fullWidth={detail.label === 'Profile field'}
-              />
-            ))}
-          </dl>
+          <div className="grid grid-cols-1 gap-x-8 gap-y-3 text-left lg:grid-cols-2">
+            {[attributes.slice(0, split), attributes.slice(split)].map((column, index) =>
+              column.length > 0 ? (
+                <dl key={index} className="space-y-3">
+                  {column.map((detail) => (
+                    <Attribute
+                      key={detail.label}
+                      label={detail.label}
+                      value={detail.value}
+                      mono={detail.mono}
+                    />
+                  ))}
+                </dl>
+              ) : null,
+            )}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function Attribute({
-  label,
-  value,
-  mono,
-  fullWidth,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-  fullWidth?: boolean;
-}) {
+function Attribute({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div
-      className={`grid min-w-0 grid-cols-[7rem_minmax(0,1fr)] gap-x-4 ${fullWidth ? 'lg:col-span-2' : ''}`}
-    >
+    <div className="grid min-w-0 grid-cols-[7rem_minmax(0,1fr)] gap-x-4">
       <dt className="text-gray-500 dark:text-gray-400">{label}</dt>
       <dd className={mono ? 'break-all font-mono' : 'break-words'}>{value}</dd>
     </div>
