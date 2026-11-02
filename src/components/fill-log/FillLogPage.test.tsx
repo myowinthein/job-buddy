@@ -355,12 +355,15 @@ describe('Fill Details page', () => {
 
   it('combines a selected outcome filter with searches over field titles', async () => {
     await showFields();
+    expect(within(screen.getByText('Location').closest('summary')!).getByText('5.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Red (2)' }));
     expect(screen.queryByText('Full name')).toBeNull();
     expect(screen.getByText('Location')).toBeTruthy();
+    expect(within(screen.getByText('Location').closest('summary')!).getByText('5.')).toBeTruthy();
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'location' } });
     expect(screen.getByText('Location')).toBeTruthy();
     expect(screen.queryByText('Resume')).toBeNull();
+    expect(within(screen.getByText('Location').closest('summary')!).getByText('5.')).toBeTruthy();
     expect(screen.getByText('1 of 7 fields shown')).toBeTruthy();
   });
 

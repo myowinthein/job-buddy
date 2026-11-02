@@ -122,12 +122,14 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
   }, [tabId]);
   const frames = snapshot?.frames.filter((frame) => frame.log.status !== 'scanning') ?? [];
   const reportKey = reportIdentity(snapshot);
+  let fieldNumber = 0;
   const fields = frames.flatMap((frame) => {
     const indices: Record<string, number> = {};
     return frame.log.fields.map((field) => {
       indices[field.kind] = (indices[field.kind] ?? 0) + 1;
       return {
         field,
+        number: ++fieldNumber,
         frameId: frame.frameId,
         control:
           (frame.frameId === 0 ? 'Main page' : 'Embedded frame ' + frame.frameId) +
@@ -399,11 +401,12 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
             </p>
           )}
           <div aria-label="Field results" className="divide-y divide-gray-200 dark:divide-gray-800">
-            {shown.map(({ field, frameId, control }) => (
+            {shown.map(({ field, frameId, control, number }) => (
               <FieldRow
                 key={reportKey + ':' + frameId + ':' + field.id}
                 field={field}
                 control={control}
+                number={number}
               />
             ))}
           </div>
@@ -413,7 +416,15 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
   );
 }
 
-function FieldRow({ field, control }: { field: FillLogField; control: string }) {
+function FieldRow({
+  field,
+  control,
+  number,
+}: {
+  field: FillLogField;
+  control: string;
+  number: number;
+}) {
   const source = finalFillSource(field);
   const confidence = confidenceText(field);
   const explanation = fieldExplanation(field);
@@ -434,7 +445,8 @@ function FieldRow({ field, control }: { field: FillLogField; control: string }) 
       <summary className="grid cursor-pointer grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-x-3 gap-y-2 rounded-sm">
         <span className="col-span-2 row-start-1 min-w-0 sm:col-span-1">
           <span className="block break-words text-sm font-medium">
-            {field.label}
+            <span className="mr-1.5 tabular-nums text-gray-500 dark:text-gray-400">{number}.</span>
+            <span>{field.label}</span>
             {field.required && (
               <>
                 <span aria-hidden="true" className="ml-1 text-red-600 dark:text-red-400">
