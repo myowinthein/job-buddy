@@ -45,6 +45,8 @@ const VALID_ETHNICITIES = new Set<string>([...ETHNICITIES, 'prefer_not_to_say'])
 const VALID_AUTH_STATUS = new Set(Object.keys(WORK_AUTH_STATUS_LABELS));
 const VALID_PROFICIENCY = new Set(Object.keys(LANGUAGE_PROFICIENCY_LABELS));
 
+export type EntryIndexMap = Record<string, Record<number, number>>;
+type AcceptedEntry = (originalIndex: number, keptIndex: number) => void;
 type ErrFn = (path: string, reason: string) => void;
 
 // Shared shape validation for documents.cv and documents.coverLetter —
@@ -221,7 +223,7 @@ function validateProfessional(
   return sp;
 }
 
-function validateSalary(data: Record<string, unknown>, err: ErrFn): Profile['salary'] | undefined {
+function validateSalary(data: Record<string, unknown>, err: ErrFn, accepted?: AcceptedEntry): Profile['salary'] | undefined {
   if (!('salary' in data) || typeof data.salary !== 'object' || data.salary === null)
     return undefined;
   const sal = data.salary as Record<string, unknown>;
@@ -263,6 +265,7 @@ function validateSalary(data: Record<string, unknown>, err: ErrFn): Profile['sal
           (e.amount === undefined || (typeof e.amount === 'number' && isValidAmount(e.amount)))
         ) {
           // Current shape: { country?, currency, amount?, period? }
+          accepted?.(index, expected.length);
           expected.push({
             country: typeof e.country === 'string' ? e.country : undefined,
             currency: e.currency,
@@ -285,6 +288,7 @@ function validateSalary(data: Record<string, unknown>, err: ErrFn): Profile['sal
 function validateWorkAuthorization(
   data: Record<string, unknown>,
   err: ErrFn,
+  accepted?: AcceptedEntry,
 ): Profile['workAuthorization'] | undefined {
   if (!('workAuthorization' in data) || !Array.isArray(data.workAuthorization)) return undefined;
   const valid: Profile['workAuthorization'] = [];
@@ -305,7 +309,6 @@ function validateWorkAuthorization(
           );
           return;
         }
-        countries.add(country.code);
         if (typeof e.visaType === 'string' && e.visaType.length > 100) {
           err(`workAuthorization[${i}].visaType`, 'max 100 chars');
           return;
@@ -317,6 +320,8 @@ function validateWorkAuthorization(
           err(`workAuthorization[${i}].expiryDate`, 'invalid calendar date');
           return;
         }
+        countries.add(country.code);
+        accepted?.(i, valid.length);
         valid.push({
           country: country.code,
           status: e.status as Profile['workAuthorization'][0]['status'],
@@ -335,6 +340,7 @@ function validateWorkHistory(
   data: Record<string, unknown>,
   err: ErrFn,
   allowMissingDates = false,
+  accepted?: AcceptedEntry,
 ): Profile['workHistory'] | undefined {
   if (!('workHistory' in data) || !Array.isArray(data.workHistory)) return undefined;
   const valid: Profile['workHistory'] = [];
@@ -365,6 +371,7 @@ function validateWorkHistory(
           err(`workHistory[${i}]`, 'text exceeds editor limits');
           return;
         }
+        accepted?.(i, valid.length);
         valid.push({
           company: e.company,
           title: e.title,
@@ -396,6 +403,7 @@ function validateEducation(
   data: Record<string, unknown>,
   err: ErrFn,
   allowMissingDates = false,
+  accepted?: AcceptedEntry,
 ): Profile['education'] | undefined {
   if (!('education' in data) || !Array.isArray(data.education)) return undefined;
   const valid: Profile['education'] = [];
@@ -435,6 +443,7 @@ function validateEducation(
           typeof e.endDate === 'string' && RE_YYYY_OR_YYYYMM.test(e.endDate)
             ? e.endDate
             : undefined;
+        accepted?.(i, valid.length);
         valid.push({
           institution: e.institution,
           degree: e.degree,
@@ -459,6 +468,7 @@ function validateEducation(
 function validateLanguages(
   data: Record<string, unknown>,
   err: ErrFn,
+  accepted?: AcceptedEntry,
 ): Profile['languages'] | undefined {
   if (!('languages' in data) || !Array.isArray(data.languages)) return undefined;
   const valid: Profile['languages'] = [];
@@ -478,6 +488,7 @@ function validateLanguages(
           return;
         }
         languages.add(key);
+        accepted?.(i, valid.length);
         valid.push({
           language: e.language,
           proficiency: e.proficiency as Profile['languages'][0]['proficiency'],
@@ -490,7 +501,7 @@ function validateLanguages(
   return valid.length > 0 ? valid : undefined;
 }
 
-function validateLinks(data: Record<string, unknown>, err: ErrFn): Profile['links'] | undefined {
+function validateLinks(data: Record<string, unknown>, err: ErrFn, accepted?: AcceptedEntry): Profile['links'] | undefined {
   if (!('links' in data) || typeof data.links !== 'object' || data.links === null) return undefined;
   const lnk = data.links as Record<string, unknown>;
   const sl: Partial<Profile['links']> = {};
@@ -547,6 +558,7 @@ function validateLinks(data: Record<string, unknown>, err: ErrFn): Profile['link
           typeof e.url === 'string' &&
           isValidProfileUrl(e.url)
         ) {
+          accepted?.(i, validCustom.length);
           validCustom.push({ label: e.label, url: e.url });
         } else {
           err(`links.custom[${i}]`, 'missing label string or url string');
@@ -587,7 +599,7 @@ function validateDocuments(
 
 export function validateImportedProfile(
   raw: unknown,
-  options: { allowMissingDates?: boolean } = {},
+  options: { allowMissingDates?: boolean; entryIndices?: EntryIndexMap } = {},
 ): ValidationResult {
   if (typeof raw !== 'object' || raw === null) {
     return {
@@ -601,6 +613,10 @@ export function validateImportedProfile(
   const err: ErrFn = (path, reason) => errors.push({ path, reason });
   const data = raw as Record<string, unknown>;
   const s: Partial<Profile> = {};
+  const kept = (family: string): AcceptedEntry => {
+    const indices = options.entryIndices ? (options.entryIndices[family] = {} as Record<number, number>) : undefined;
+    return (original, index) => { if (indices) indices[original] = index; };
+  };
   if (data.id !== undefined) {
     if (typeof data.id === 'string' && data.id.trim() && data.id.length <= 200) s.id = data.id;
     else err('id', 'expected a non-empty profile ID, max 200 chars');
@@ -615,22 +631,22 @@ export function validateImportedProfile(
   const professional = validateProfessional(data, err);
   if (professional) s.professional = professional;
 
-  const salary = validateSalary(data, err);
+  const salary = validateSalary(data, err, kept('salary.expected'));
   if (salary) s.salary = salary;
 
-  const workAuthorization = validateWorkAuthorization(data, err);
+  const workAuthorization = validateWorkAuthorization(data, err, kept('workAuthorization'));
   if (workAuthorization) s.workAuthorization = workAuthorization;
 
-  const workHistory = validateWorkHistory(data, err, options.allowMissingDates);
+  const workHistory = validateWorkHistory(data, err, options.allowMissingDates, kept('workHistory'));
   if (workHistory) s.workHistory = workHistory;
 
-  const education = validateEducation(data, err, options.allowMissingDates);
+  const education = validateEducation(data, err, options.allowMissingDates, kept('education'));
   if (education) s.education = education;
 
-  const languages = validateLanguages(data, err);
+  const languages = validateLanguages(data, err, kept('languages'));
   if (languages) s.languages = languages;
 
-  const links = validateLinks(data, err);
+  const links = validateLinks(data, err, kept('links.custom'));
   if (links) s.links = links;
 
   const documents = validateDocuments(data, err);

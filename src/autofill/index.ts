@@ -49,6 +49,7 @@ import { summarizeFillFields } from './fillLog';
 import type { FillLogField, FrameFillLog } from './fillLog';
 import type { RadioGroup, CheckboxGroup } from './scanner';
 import { isConsentGroup } from './consent';
+import { aiQuestionIdentity } from './aiSafety';
 
 export { clearHighlights } from './highlighter';
 
@@ -90,6 +91,9 @@ let sessionGeneration = 0;
 let sessionAbort = new AbortController();
 let removeProfileWatcher = () => {};
 let removeLearningWatchers = () => {};
+let pendingCancelled = false;
+let cancelledRunLog: FrameFillLog | null = null;
+let completedProfileId: string | null = null;
 
 function invalidateSession(): void {
   removeLearningWatchers();
@@ -208,6 +212,8 @@ export function getFillLog(): FrameFillLog | null {
 interface NoDataEntry {
   element:   HTMLElement;
   fieldPath: string;
+  confidence: number;
+  identity: string;
 }
 let noDataFields: NoDataEntry[] = [];
 
@@ -329,8 +335,7 @@ interface PendingMatch {
 let pendingMatches: PendingMatch[] = [];
 
 // Re-resolves every tracked noData field's profile path against a freshly-read
-// profile. Fields whose value is now non-empty get filled silently (green
-// highlight, no popup notification) and removed from the noData registry.
+// profile. Filled fields retain their match/write confidence and leave the registry.
 // Fields still empty remain in the registry for the next refocus.
 //
 // Important: this does NOT re-run scanner / signals / mapper / confidence
@@ -345,13 +350,25 @@ function runSilentRefill(): Promise<void> {
   const entries = [...noDataFields];
   const isActive = () => generation === sessionGeneration && result === lastResult;
   const task = (async () => {
+    watchRunProfile();
+    const stopWatching = removeProfileWatcher;
     try {
       const profile = await getProfile();
       if (!profile || !isActive()) return;
+      if (profile.id !== completedProfileId) {
+        noDataFields = [];
+        teardownVisibilityListener();
+        return;
+      }
       for (const entry of entries) {
         if (!isActive()) return;
         if (!noDataFields.includes(entry)) continue;
         const { element, fieldPath } = entry;
+        if (entry.identity !== aiQuestionIdentity(element)) {
+          noDataFields = noDataFields.filter(item => item !== entry);
+          clearElementHighlight(element);
+          continue;
+        }
         if (!element.isConnected || getFieldValue(element).trim()) {
           noDataFields = noDataFields.filter((item) => item !== entry);
           continue;
@@ -370,17 +387,20 @@ function runSilentRefill(): Promise<void> {
           if (index >= 0) sessionElements.splice(index, 1);
           continue;
         }
-        applyHighlight(element, CONF_CONFIRMED);
+        const confidence = Math.min(entry.confidence, getWriteConfidence(element));
+        const green = confidence >= CONF_GREEN;
+        applyHighlight(element, confidence);
         const record = fieldRecords.get(element);
         if (record) {
           record.rule.outcome = 'filled';
-          record.outcome = 'high_confidence';
+          record.outcome = green ? 'high_confidence' : 'review';
           record.source = 'rules';
           record.reason = 'profile_updated';
           recordValues.set(record, recordValue(record));
         }
         result.noData = Math.max(0, result.noData - 1);
-        result.noReview++;
+        if (green) result.noReview++;
+        else result.needReview++;
         noDataFields = noDataFields.filter((item) => item !== entry);
         const watcher = editWatchers.get(element);
         if (watcher) {
@@ -392,6 +412,8 @@ function runSilentRefill(): Promise<void> {
       syncFillLogResult(result);
     } catch {
       // Keep unresolved entries for the next visibility event.
+    } finally {
+      stopWatching();
     }
   })();
   refillInFlight = task;
@@ -403,6 +425,9 @@ export async function undoAutofill(): Promise<boolean> {
   getFillLog();
   removeReportWatchers();
   invalidateSession();
+  cancelledRunLog = null;
+  pendingCancelled = false;
+  completedProfileId = null;
   const generation = sessionGeneration;
   refillInFlight = null;
   pendingReady = false;
@@ -440,6 +465,8 @@ export async function undoAutofill(): Promise<boolean> {
 
 // Invalidate pending/async work without undoing already filled answers.
 export function cancelAutofillRun(): void {
+  pendingCancelled = true;
+  cancelledRunLog = fillLog;
   invalidateSession();
   pendingReady = false;
   pendingMatches = [];
@@ -452,6 +479,9 @@ export function cancelAutofillRun(): void {
 export async function scanAutofill(
   runId: string = crypto.randomUUID(),
 ): Promise<AutofillScanResult> {
+  pendingCancelled = false;
+  cancelledRunLog = null;
+  completedProfileId = null;
   removeReportWatchers();
   resetWriteSession();
   resetDropdownBudget();
@@ -679,6 +709,7 @@ export async function scanAutofill(
 // needReview, which AI can overwrite with a different value if it disagrees
 // with the rule pipeline's fill.
 export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<AutofillResult> {
+  if (!pendingReady && pendingCancelled) throw new Error('autofill_failed');
   if (!pendingReady) return { ...EMPTY_AUTOFILL_RESULT };
   const stopWatching = removeProfileWatcher;
   try {
@@ -695,19 +726,37 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   pendingMatches = [];
   const ownedElements = sessionElements;
   const generation = sessionGeneration;
+  const runLog = fillLog;
   const abortSignal = sessionAbort.signal;
   const isActive = () => generation === sessionGeneration;
   const profile = await getProfile();
-  if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
-  if (!profile) return { noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0 };
+  if (!isActive()) throw new Error('autofill_failed');
+  if (!profile) throw new Error('autofill_failed');
 
   const domain = fieldDomain();
   const learningContext = await getLearningContext(profile).catch(() => null);
-  if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
+  if (!isActive()) throw new Error('autofill_failed');
 
   const result: AutofillResult = {
     noReview: 0, needReview: 0, lowConfidence: 0, noData: 0,
     totalScanned: matchesToFill.length,
+  };
+  const interrupted = (): AutofillResult => {
+    // Keep accepted writes and their Undo path; never overwrite a newer scan or Undo.
+    if (runLog && runLog === fillLog && cancelledRunLog === runLog &&
+      runLog.fields.some(record => (record.source === 'rules' || record.source === 'ai') &&
+        ['high_confidence','review'].includes(record.outcome))) {
+      runLog.status = 'completed';
+      runLog.completedAt = Date.now();
+      runLog.aiStatus = 'unavailable';
+      result.aiStatus = 'unavailable';
+      lastResult = result;
+      completedProfileId = profile.id;
+      syncFillLogResult(result);
+      attachReportWatchers();
+      return result;
+    }
+    throw new Error('autofill_failed');
   };
   const editableFields: EditableField[] = [];
   const aiTextCandidates: AITextCandidate[] = [];
@@ -729,7 +778,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   noDataFields = [];
 
   for (const { element, signals, match, hasExistingValue, debugFieldId } of matchesToFill) {
-    if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
+    if (!isActive()) return interrupted();
     const record = fieldRecords.get(element)!;
     const choiceGroup = isChoice(element)
       ? pendingCheckboxGroups.find((group) =>
@@ -788,7 +837,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         filled = value !== null && (await fillField(element, value, isActive)) !== false;
       }
 
-      if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
+      if (!isActive()) return interrupted();
       if (!filled) {
         record.rule.outcome = 'failed';
         record.outcome = 'failed';
@@ -874,7 +923,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // "no signal matched" branch leaves it null, and that takes the
         // lowConfidence path above), but check explicitly for type safety.
         if (match.fieldPath) {
-          noDataFields.push({ element, fieldPath: match.fieldPath });
+          noDataFields.push({ element, fieldPath: match.fieldPath, confidence: match.confidence, identity: aiQuestionIdentity(element) });
           aiTextCandidates.push({
             type: 'text',
             element,
@@ -930,7 +979,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       aiStatus = status;
     },
   });
-  if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
+  if (!isActive()) return interrupted();
   for (const field of editableFields) {
     if (aiStates.get(field.element) === 'yellow') field.state = 'needReview';
   }
@@ -974,6 +1023,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   // Store before attaching edit watchers — the result object is mutated in
   // place by those callbacks, so the reference remains accurate after they run.
   lastResult = result;
+  completedProfileId = profile.id;
 
   attachReportWatchers();
   attachEditWatchers(editableFields, result);

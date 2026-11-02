@@ -26,6 +26,18 @@ function shadow(id: string, html: string): HTMLElement {
 }
 
 describe('question boundaries and consent', () => {
+  it.each(['gdpr_consent', 'terms_accepted', 'marketingOptIn'])(
+    'excludes consent identified by %s without a fieldset', name => {
+      document.body.innerHTML = radioPair(name);
+      expect(scanForm().radioGroups[0].isConsent).toBe(true);
+    },
+  );
+  it('finds a preceding question without crossing another form control', () => {
+    document.body.innerHTML = `<p>Preferred location?</p>${radioPair('location')}<input name="other">${radioPair('unlabelled')}`;
+    const groups = scanForm().radioGroups;
+    expect(groups[0].groupLabel).toBe('Preferred location?');
+    expect(groups[1].groupLabel).toBe('unlabelled');
+  });
   it('isolates identical radio names by form, explicit question and shadow root', () => {
     document.body.innerHTML = `<form><fieldset><legend>Work authorization</legend>${radioPair()}</fieldset><fieldset><legend>Privacy consent</legend>${radioPair()}</fieldset></form><form>${radioPair()}</form>`;
     shadow('one', radioPair());

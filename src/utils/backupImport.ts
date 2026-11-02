@@ -5,6 +5,8 @@ import type { InvalidField } from './profileValidator';
 import { mergeLearnedMappings } from './storage';
 import { equalJsonValues } from './equalJsonValues';
 import { safeMappingKey as safeKey, validMapping, inactiveMapping } from './learnedMappingData';
+import { validatedMappingIndices } from './learnedMappingProfile';
+import type { EntryIndexMap } from './profileValidator';
 
 export const MAPPINGS_CHANGE_ID = 'backup.learnedMappings';
 
@@ -12,7 +14,7 @@ const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 
 /** Validate backup-only data separately from the profile schema. */
-export function validateBackupData(raw: Record<string, unknown>) {
+export function validateBackupData(raw: Record<string, unknown>, indices?: EntryIndexMap) {
   const invalidFields: InvalidField[] = [];
   let learnedMappings: LearnedMappings | undefined;
   if (raw.learnedMappings !== undefined) {
@@ -53,7 +55,7 @@ export function validateBackupData(raw: Record<string, unknown>) {
       }
     }
   }
-  return { learnedMappings, invalidFields };
+  return { learnedMappings: learnedMappings && indices ? validatedMappingIndices(learnedMappings, indices) : learnedMappings, invalidFields };
 }
 
 function mappingsDisplay(mappings: LearnedMappings): string {

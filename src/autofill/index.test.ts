@@ -213,6 +213,11 @@ describe('scanAutofill', () => {
 });
 
 describe('executeAutofill', () => {
+  it('reports a missing profile after scan as failure, even before its storage event arrives', async () => {
+    await scanAutofill();
+    vi.mocked(getProfile).mockResolvedValue(null);
+    await expect(executeAutofill('overwrite')).rejects.toThrow('autofill_failed');
+  });
   it('returns zero result when profile is not found', async () => {
     vi.mocked(getProfile).mockResolvedValue(null);
     await scanAutofill();
@@ -715,10 +720,11 @@ describe('silent re-fill on visibilitychange', () => {
     document.dispatchEvent(new Event('visibilitychange'));
     await vi.waitFor(() => expect(fillField).toHaveBeenCalledWith(el, 'jane@example.com', expect.any(Function)));
 
-    expect(applyHighlight).toHaveBeenCalledWith(el, CONF_CONFIRMED);
+    expect(applyHighlight).toHaveBeenCalledWith(el, 0.7);
     const live = getLastResult();
     expect(live?.noData).toBe(0);
-    expect(live?.noReview).toBe(1);
+    expect(live?.noReview).toBe(0);
+    expect(live?.needReview).toBe(1);
 
     // The blur watcher was torn down as part of the silent refill — a later
     // edit must not re-fire the promotion logic a second time.
@@ -726,7 +732,7 @@ describe('silent re-fill on visibilitychange', () => {
     el.value = 'something else the user typed';
     el.dispatchEvent(new Event('blur'));
     expect(applyHighlight).not.toHaveBeenCalled();
-    expect(getLastResult()?.noReview).toBe(1); // unchanged, not double-counted
+    expect(getLastResult()?.noReview).toBe(1); // now confirmed manually, counted once
 
     el.remove();
   });

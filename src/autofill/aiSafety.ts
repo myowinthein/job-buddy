@@ -1,4 +1,5 @@
 import type { Profile } from '../types/profile';
+import { questionLabel } from './scanner';
 import type { AIFieldPayload, AIOptionPayload } from '../resume-ai/types';
 import { autofillProfilePayload } from '../resume-ai/profilePayload';
 import { composedParent } from './dom';
@@ -70,6 +71,7 @@ export function aiQuestionIdentity(element: HTMLElement): string {
     element: undefined,
     section: sectionFamily(element),
     headings,
+    question: questionLabel(element),
     role: element.getAttribute('role'),
     constraints: ['min', 'max', 'step', 'pattern', 'maxlength'].map((key) =>
       element.getAttribute(key),

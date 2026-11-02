@@ -306,7 +306,7 @@ describe('Gemini explicit key setup', () => {
     expect(screen.queryByText('Not configured')).toBeNull();
     expect((screen.getByLabelText('Gemini API Key') as HTMLInputElement).value).toBe('');
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(document.activeElement).toBe(screen.getByLabelText('Gemini API Key'));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Gemini API Key')));
   });
   it('does not save a pending model result after the edit is cancelled', async () => {
     vi.mocked(getGeminiSettings).mockResolvedValue(existing);

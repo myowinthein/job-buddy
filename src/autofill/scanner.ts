@@ -146,7 +146,29 @@ function questionContainer(element: HTMLElement): Element | undefined {
 
 export function questionLabel(element: HTMLElement, context?: LabelContext): string {
   const question = questionContainer(element);
-  if (!question) return '';
+  if (!question) {
+    if (!choiceKind(element)) return '';
+    // Many builders use a paragraph followed by option labels, without a fieldset.
+    // Read the closest preceding prompt, never another control's label or a form title.
+    let branch: Element = element;
+    for (let parent = composedParent(branch); parent; branch = parent, parent = composedParent(parent)) {
+      for (let sibling = branch.previousElementSibling; sibling; sibling = sibling.previousElementSibling) {
+        const controls = [sibling, ...sibling.querySelectorAll('input,select,textarea,[role="radio"],[role="checkbox"],[role="combobox"]')]
+          .filter(node => node.matches('input,select,textarea,[role="radio"],[role="checkbox"],[role="combobox"]'));
+        if (controls.length) {
+          if (controls.every(node => node instanceof HTMLElement && controlForm(node) === controlForm(element) && choiceKind(node) === choiceKind(element) &&
+            node.getAttribute('name') === element.getAttribute('name'))) continue;
+          return '';
+        }
+        if (sibling.matches('p,label,legend,span,div,h3,h4,h5,h6')) {
+          const text = ownText(sibling, context).trim();
+          if (text && text.length <= 500) return text;
+        }
+      }
+      if (parent === controlForm(element) || parent === element.ownerDocument.body) break;
+    }
+    return '';
+  }
   if (question instanceof HTMLFieldSetElement) {
     const legend = question.querySelector(':scope > legend');
     if (legend) return ownText(legend, context);

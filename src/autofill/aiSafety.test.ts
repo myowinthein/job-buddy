@@ -249,12 +249,30 @@ describe('AI choices and stale requests', () => {
         await new Promise<void>((resolve) =>
           chrome.storage.local.set({ profile: { ...profile, id: 'replacement-person' } }, resolve),
         );
-      await pending;
+      await expect(pending).rejects.toThrow('autofill_failed');
       expect(signal.aborted).toBe(true);
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(document.querySelector('input')!.value).toBe('');
     },
   );
+  it('rejects a stale mode confirmation instead of returning a zero-field success', async () => {
+    document.body.innerHTML = '<label>First name<input value="Existing"></label>';
+    await scanAutofill('stale-confirmation');
+    await new Promise<void>(resolve => chrome.storage.local.set({ profile: { ...profile, id: 'new-person' } }, resolve));
+    await expect(executeAutofill('overwrite')).rejects.toThrow('autofill_failed');
+    expect(document.querySelector('input')!.value).toBe('Existing');
+  });
+  it('does not apply an AI choice after an unstructured prompt changes', async () => {
+    document.body.innerHTML = '<p id="prompt">Preferred work location?</p><label><input type="radio" name="location" value="remote">Remote</label><label><input type="radio" name="location" value="onsite">Onsite</label>';
+    let release!: (value: unknown) => void;
+    fetchMock.mockImplementation(() => new Promise(resolve => { release = resolve; }));
+    const pending = runAIAutofill([], profile, result(), []);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    document.querySelector('#prompt')!.textContent = 'Preferred interview location?';
+    release(response([{ fieldId: 'field_001', selectedOption: 'option_001', confidence: 'high' }]));
+    await pending;
+    expect([...document.querySelectorAll<HTMLInputElement>('input')].some(element => element.checked)).toBe(false);
+  });
   it('sends native types, section context, repeated indices and constraints', async () => {
     document.body.innerHTML =
       '<fieldset><legend>Education</legend><label>Start Date<input type="month"></label><label>Start Date<input type="month"></label></fieldset><fieldset><legend>Work History</legend><label>Start Date<input type="date" min="2000-01-01"></label></fieldset>';

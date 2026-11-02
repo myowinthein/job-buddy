@@ -41,6 +41,7 @@ export function adjustPhoneMatches(matches: FieldMatch[], profile: Profile): voi
         const codes = matches.filter(
           (item) =>
             item.element &&
+            scopeRoot(item.element) === scopeRoot(match.element!) &&
             containsControl(container, item.element) &&
             item.fieldPath === 'personal.phone.callingCode',
         );

@@ -8,6 +8,7 @@ import { applyChanges, generateDiff } from '@/src/resume-ai/parser';
 import { applyReviewedResumeChanges, resumeChanges } from '@/src/resume-ai/resumeImport';
 import { selectEntry } from '@/src/resume-ai/entrySelection';
 import { validateBackupData } from './backupImport';
+import { validateImportedProfile } from './profileValidator';
 import { rebaseLearnedMappings } from './learnedMappingProfile';
 import { replaceImportedProfile } from './replaceImportedProfile';
 import {
@@ -282,4 +283,33 @@ it('does not transfer trust or activation between active and inactive snapshots'
   };
   expect(mergeLearnedMappings(active, inactive)).toEqual(active);
   expect(mergeLearnedMappings(inactive, active)).toEqual(inactive);
+});
+
+it.each([
+  ['education', 'institution', { education: [null, RULE_PROFILE.education[0]] }],
+  ['workHistory', 'company', { workHistory: [null, RULE_PROFILE.workHistory[0]] }],
+  ['languages', 'language', { languages: [null, RULE_PROFILE.languages[0]] }],
+  ['workAuthorization', 'country', { workAuthorization: [null, { country: 'US', status: 'citizen_or_pr' }] }],
+  ['salary.expected', 'amount', { salary: { expected: [null, RULE_PROFILE.salary.expected[0]] } }],
+  ['links.custom', 'url', { links: { custom: [null, { label: 'Site', url: 'https://example.test' }] } }],
+] as const)('tracks discarded rows before rebasing %s mappings', (family, property, raw) => {
+  const entryIndices = {};
+  validateImportedProfile(raw, { entryIndices });
+  const backup = validateBackupData({ learnedMappings: { 'a.test': {
+    dropped: { path: `${family}.0.${property}`, count: 2, scope: 'entry' },
+    kept: { path: `${family}.1.${property}`, count: 2, scope: 'entry' },
+    generic: { path: `${family}.1.${property}`, count: 2, scope: 'field' },
+  } } }, entryIndices);
+  expect(backup.learnedMappings?.['a.test'].dropped).toMatchObject({ inactive: true });
+  expect(backup.learnedMappings?.['a.test'].kept).toMatchObject({ path: `${family}.0.${property}` });
+  expect(backup.learnedMappings?.['a.test'].generic).toMatchObject({ path: `${family}.0.${property}` });
+});
+it('does not let an invalid work authorization reserve its country before a valid entry', () => {
+  const entryIndices = {};
+  const result = validateImportedProfile({ workAuthorization: [
+    { country: 'US', status: 'work_visa', expiryDate: 'bad-date' },
+    { country: 'US', status: 'citizen_or_pr' },
+  ] }, { entryIndices });
+  expect(result.sanitized.workAuthorization).toHaveLength(1);
+  expect(entryIndices).toMatchObject({ workAuthorization: { 1: 0 } });
 });

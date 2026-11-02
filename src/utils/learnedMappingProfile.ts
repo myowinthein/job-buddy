@@ -3,6 +3,34 @@ import type { LearnedMappings, LearnedMappingValue } from '@/src/types/storage';
 import { matchedEntryIndex } from '@/src/resume-ai/entryComparison';
 import { equalJsonValues } from './equalJsonValues';
 import { readableMappings } from './learnedMappingData';
+import type { EntryIndexMap } from './profileValidator';
+
+/** Backup paths use raw indices; validation may have discarded or deduplicated rows. */
+export function validatedMappingIndices(
+  mappings: LearnedMappings,
+  indices: EntryIndexMap,
+): LearnedMappings {
+  const result = readableMappings(mappings, true);
+  for (const group of Object.values(result))
+    for (const [signal, mapping] of Object.entries(group)) {
+      if (typeof mapping !== 'string' && mapping.inactive) continue;
+      const path = typeof mapping === 'string' ? mapping : mapping.path;
+      const match =
+        /^(education|workHistory|languages|workAuthorization|links\.custom|salary\.expected)\.(\d+)(\..*)?$/.exec(
+          path,
+        );
+      if (!match || !Object.hasOwn(indices, match[1])) continue;
+      const index =
+        indices[match[1]][Number(match[2])] ??
+        (typeof mapping !== 'string' && mapping.scope === 'field' ? 0 : undefined);
+      if (index === Number(match[2])) continue;
+      const value = typeof mapping === 'string' ? { path, count: 2 } : { ...mapping };
+      if (index === undefined) Object.assign(value, { inactive: true });
+      else value.path = `${match[1]}.${index}${match[3] ?? ''}`;
+      group[signal] = value;
+    }
+  return result;
+}
 
 type Entry = Record<string, unknown>;
 function entries(profile: Partial<Profile>, family: string): Entry[] {

@@ -7,7 +7,7 @@ import type { FieldSignals } from './signals';
 import { bestLabel, extractSignals } from './signals';
 import { resolveRuleValue, ruleValuePath } from './ruleValue';
 import { allowedAIPath, exactAIOption, aiQuestionIdentity, aiQuestionAllowed } from './aiSafety';
-import { sectionFamily, scopeRoot } from './ruleContext';
+import { sectionFamily, scopeRoot, ruleQuestionBlocked } from './ruleContext';
 import { resolveFieldsWithAI } from '../resume-ai/gemini';
 import type { AIFieldPayload, AIFieldResponse, AIOptionPayload } from '../resume-ai/types';
 import { toGeminiModel } from '../resume-ai/types';
@@ -90,6 +90,8 @@ export async function runAIAutofill(
 
   const eligible = (group: RadioGroup | CheckboxGroup) =>
     isChoiceGroupAvailable(group) &&
+    !ruleQuestionBlocked({ ...extractSignals(group.options[0].element),
+      label: questionLabel(group.options[0].element) || group.groupLabel }) &&
     !group.isConsent &&
     !isConsentGroup(group) &&
     !isConsentGroup({ ...group, groupLabel: questionLabel(group.options[0].element) || group.groupLabel }) &&

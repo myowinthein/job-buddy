@@ -179,6 +179,45 @@ it('Drive Update keeps concurrent local corrections and uploads the final merged
   expect(await getLearnedMappings()).toEqual(merged);
   await waitFor(() => expect(remote.backup!.learnedMappings).toEqual(merged));
 });
+
+it.each(['json-update', 'json-replace', 'drive-empty', 'drive-replace'] as const)(
+  '%s preserves mapping provenance when validation removes a raw entry', async flow => {
+    const replace = flow.endsWith('replace');
+    const profile = {
+      ...DEV_PROFILE,
+      personal: replace ? { ...DEV_PROFILE.personal, firstName: 'Sam', lastName: 'Lee', email: 'sam@example.com' } : DEV_PROFILE.personal,
+      education: [
+        { institution: 'Dropped school', degree: 123, fieldOfStudy: 'Design', startDate: '2010', endDate: '2014' },
+        { institution: 'Kept school', degree: 'BSc', fieldOfStudy: 'Computing', startDate: '2015', endDate: '2019' },
+      ],
+    };
+    const mappings = { 'example.test': {
+      dropped: { path: 'education.0.institution', count: 2, scope: 'entry' as const },
+      kept: { path: 'education.1.institution', count: 2, scope: 'entry' as const },
+    } };
+    if (flow.startsWith('drive')) {
+      const remote = setupDrive(profile as unknown as typeof DEV_PROFILE);
+      remote.backup!.learnedMappings = mappings;
+      if (flow === 'drive-empty') await saveProfile({ id: 'empty' } as typeof DEV_PROFILE);
+    } else {
+      sessionStorage.setItem('jb:ui:section', 'settings');
+      vi.stubGlobal('chrome', createPreviewChrome(DEV_PROFILE, undefined, { initialData: { learnedMappings: {} } }));
+    }
+    mount();
+    if (flow.startsWith('drive')) fireEvent.click(await screen.findByText('Connect Google Drive'));
+    else {
+      await screen.findByText('Choose File');
+      fireEvent.change(document.querySelector('input[accept=".json"]')!, { target: { files: [
+        new File([JSON.stringify({ profile, learnedMappings: mappings })], 'validated.json', { type: 'application/json' }),
+      ] } });
+    }
+    if (replace) fireEvent.click(await screen.findByRole('radio', { name: /Replace current profile/ }));
+    fireEvent.click(await screen.findByRole('button', { name: replace ? 'Replace Profile' : flow.startsWith('drive') ? 'Restore All' : 'Import All' }));
+    await waitFor(async () => expect((await getLearnedMappings())['example.test']?.kept).toMatchObject({ path: 'education.0.institution' }));
+    expect((await getLearnedMappings())['example.test'].dropped).toMatchObject({ inactive: true });
+    expect((await getProfile())?.education.map(row => row.institution)).toEqual(['Kept school']);
+  },
+);
 it('Drive person mismatch can be cancelled without uploading or changing either profile', async () => {
   const remote = setupDrive();
   const before = structuredClone(remote.backup);

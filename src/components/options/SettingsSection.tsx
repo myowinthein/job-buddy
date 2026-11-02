@@ -26,7 +26,7 @@ import {
 import { applyTheme, getCurrentTheme, subscribeTheme } from '@/src/utils/theme';
 import type { ThemePreference } from '@/src/utils/theme';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
-import type { InvalidField } from '@/src/utils/profileValidator';
+import type { InvalidField, EntryIndexMap } from '@/src/utils/profileValidator';
 import { useToast } from '@/src/components/ui/useToast';
 import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 import {
@@ -378,8 +378,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         showToast('error', feedback.profileImportInvalidFile);
         return;
       }
-      const validation = validateImportedProfile(raw.profile);
-      const backup = validateBackupData(raw);
+      const entryIndices: EntryIndexMap = {};
+      const validation = validateImportedProfile(raw.profile, { entryIndices });
+      const backup = validateBackupData(raw, entryIndices);
       const invalidFields = [...validation.invalidFields, ...backup.invalidFields];
       if (hasCredentialSettings(raw))
         invalidFields.push({
@@ -520,7 +521,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     setDriveLocalProfile(localProfile);
     setDriveLocalMappings(localMappings);
     if (backup) {
-      const validation = validateImportedProfile(backup.profile);
+      const entryIndices: EntryIndexMap = {};
+      const validation = validateImportedProfile(backup.profile, { entryIndices });
       if (Object.keys(validation.sanitized).length === 0) {
         showToast(
           'error',
@@ -528,7 +530,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         );
         return;
       }
-      const backupData = validateBackupData({ learnedMappings: backup.learnedMappings });
+      const backupData = validateBackupData({ learnedMappings: backup.learnedMappings }, entryIndices);
       setDriveImportWarnings(
         [...validation.invalidFields, ...backupData.invalidFields].map(
           (field) => `${FIELD_DEFS.find((def) => def.id === field.path)?.label ?? field.path}: ${field.reason}`,

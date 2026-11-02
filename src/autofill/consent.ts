@@ -2,16 +2,18 @@
 // marketing, privacy or agreements. Ambiguous consent remains a user decision.
 export function isConsentGroup(group: {
   groupLabel: string;
+  name?: string;
   options: { label: string }[];
 }): boolean {
+  const words = (text: string) => text.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim();
   if (
-    /^(?:terms|privacy|marketing)(?:\s+(?:agreement|permission|acceptance|preferences))?[?*: ]*$/i.test(
-      group.groupLabel.trim(),
+    /^(?:terms|privacy|marketing)(?:\s+(?:agreement|permission|acceptance|preferences|opt\s+in))?[?*: ]*$/i.test(
+      words(group.groupLabel),
     )
   )
     return true;
-  return [group.groupLabel, ...group.options.map((option) => option.label)].some((text) => {
-    const value = text.toLowerCase();
+  return [group.groupLabel, group.name ?? '', ...group.options.map((option) => option.label)].some((text) => {
+    const value = words(text).toLowerCase();
     return (
       /\b(consent|gdpr|agree|agreement|terms)\b/.test(value) ||
       /^privacy[?*: ]*$/.test(value.trim()) ||
