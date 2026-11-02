@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, ChevronDown, ListChecks } from 'lucide-react';
 import { loadFillLog, returnToForm } from '@/src/fill-log/client';
 import { RETAINED_FILL_DETAILS } from '@/src/fill-log/retention';
@@ -479,58 +479,105 @@ function FieldRow({ field, control }: { field: FillLogField; control: string }) 
           className="col-start-3 row-start-1 mt-1 h-3.5 w-3.5 text-gray-400 transition-transform group-open:rotate-180"
         />
       </summary>
-      <dl className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 border-l-2 border-gray-200 pl-4 text-xs dark:border-gray-700">
-        <dt className="text-gray-500 dark:text-gray-400">Learned mapping</dt>
-        <dd>
-          {field.rule.layer === 'learned'
-            ? RULE_OUTCOME_LABELS[field.rule.outcome]
-            : field.rule.outcome === 'not_applicable'
-              ? 'Not applicable'
-              : 'No trusted match'}
-        </dd>
-        <dt className="text-gray-500 dark:text-gray-400">Rule result</dt>
-        <dd>
-          {field.rule.layer === 'learned'
-            ? 'Not run after learned mapping'
-            : RULE_OUTCOME_LABELS[field.rule.outcome]}
-        </dd>
-        <dt className="text-gray-500 dark:text-gray-400">AI result</dt>
-        <dd>{AI_OUTCOME_LABELS[field.ai.outcome]}</dd>
-        {field.rule.layer && (
-          <>
-            <dt className="text-gray-500 dark:text-gray-400">Rule method</dt>
-            <dd>{ruleMethods[field.rule.layer]}</dd>
-          </>
-        )}
-        {typeof field.rule.confidence === 'number' && (
-          <>
-            <dt className="text-gray-500 dark:text-gray-400">
-              {field.rule.layer === 'learned' ? 'Learned match score' : 'Rule match score'}
-            </dt>
-            <dd>{Math.round(field.rule.confidence * 100)}%</dd>
-          </>
-        )}
-        {field.ai.confidence && (
-          <>
-            <dt className="text-gray-500 dark:text-gray-400">AI confidence</dt>
-            <dd className="capitalize">{field.ai.confidence}</dd>
-          </>
-        )}
-        {field.rule.profilePath && (
-          <>
-            <dt className="text-gray-500 dark:text-gray-400">Rule profile field</dt>
-            <dd className="break-all font-mono">{field.rule.profilePath}</dd>
-          </>
-        )}
-        {field.ai.profilePath && (
-          <>
-            <dt className="text-gray-500 dark:text-gray-400">AI profile field</dt>
-            <dd className="break-all font-mono">{field.ai.profilePath}</dd>
-          </>
-        )}
-        <dt className="text-gray-500 dark:text-gray-400">Control</dt>
-        <dd className="break-words font-mono">{control}</dd>
-      </dl>
+      <div className="mt-4 border-l-2 border-gray-200 pl-4 text-xs dark:border-gray-700">
+        <ol aria-label="Matching stages" className="space-y-4">
+          <li>
+            <StageResult label="Learned mappings" final={source === 'learned'}>
+              {field.rule.layer === 'learned'
+                ? RULE_OUTCOME_LABELS[field.rule.outcome]
+                : field.rule.outcome === 'not_applicable'
+                  ? 'Not applicable'
+                  : 'No trusted match'}
+            </StageResult>
+            {field.rule.layer === 'learned' && <RuleDetails field={field} />}
+          </li>
+          <li>
+            <StageResult label="Rules" final={source === 'rules'}>
+              {field.rule.layer === 'learned'
+                ? 'Not run after learned mapping'
+                : RULE_OUTCOME_LABELS[field.rule.outcome]}
+            </StageResult>
+            {field.rule.layer !== 'learned' && <RuleDetails field={field} />}
+          </li>
+          <li>
+            <StageResult label="AI" final={source === 'ai'}>
+              {AI_OUTCOME_LABELS[field.ai.outcome]}
+            </StageResult>
+            {(field.ai.confidence || field.ai.profilePath) && (
+              <dl className="ml-3 mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2">
+                {field.ai.confidence && (
+                  <>
+                    <dt className="text-gray-500 dark:text-gray-400">Confidence</dt>
+                    <dd className="capitalize">{field.ai.confidence}</dd>
+                  </>
+                )}
+                {field.ai.profilePath && (
+                  <>
+                    <dt className="text-gray-500 dark:text-gray-400">Profile field</dt>
+                    <dd className="break-all font-mono">{field.ai.profilePath}</dd>
+                  </>
+                )}
+              </dl>
+            )}
+          </li>
+        </ol>
+        <dl className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 border-t border-gray-200 pt-3 dark:border-gray-800">
+          <dt className="text-gray-500 dark:text-gray-400">Control</dt>
+          <dd className="break-words font-mono">{control}</dd>
+        </dl>
+      </div>
     </details>
+  );
+}
+
+function StageResult({
+  label,
+  final,
+  children,
+}: {
+  label: string;
+  final: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <p className="grid grid-cols-[minmax(0,8rem)_minmax(0,1fr)] gap-x-4 gap-y-1">
+      <span
+        className={
+          final
+            ? 'font-semibold text-gray-900 dark:text-gray-100'
+            : 'text-gray-500 dark:text-gray-400'
+        }
+      >
+        {label}
+      </span>
+      <span className={final ? 'font-medium' : undefined}>{children}</span>
+    </p>
+  );
+}
+
+function RuleDetails({ field }: { field: FillLogField }) {
+  const { layer, confidence, profilePath } = field.rule;
+  if (!layer && typeof confidence !== 'number' && !profilePath) return null;
+  return (
+    <dl className="ml-3 mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2">
+      {layer && layer !== 'learned' && (
+        <>
+          <dt className="text-gray-500 dark:text-gray-400">Method</dt>
+          <dd>{ruleMethods[layer]}</dd>
+        </>
+      )}
+      {typeof confidence === 'number' && (
+        <>
+          <dt className="text-gray-500 dark:text-gray-400">Match score</dt>
+          <dd>{Math.round(confidence * 100)}%</dd>
+        </>
+      )}
+      {profilePath && (
+        <>
+          <dt className="text-gray-500 dark:text-gray-400">Profile field</dt>
+          <dd className="break-all font-mono">{profilePath}</dd>
+        </>
+      )}
+    </dl>
   );
 }

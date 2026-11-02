@@ -104,6 +104,10 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
     animations: 'disabled',
     fullPage: false,
   });
+  await logPage.locator('details').first().screenshot({
+    path: testInfo.outputPath('fill-log-stage-details-dark.png'),
+    animations: 'disabled',
+  });
   await logPage.setViewportSize({ width: 375, height: 812 });
   await expect
     .poll(() => logPage.locator('aside').evaluate((el) => el.getBoundingClientRect().width))
@@ -117,6 +121,11 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   await logPage.screenshot({
     path: testInfo.outputPath('fill-log-narrow.png'),
     fullPage: false,
+    animations: 'disabled',
+  });
+
+  await logPage.locator('details').first().screenshot({
+    path: testInfo.outputPath('fill-log-stage-details-narrow.png'),
     animations: 'disabled',
   });
 

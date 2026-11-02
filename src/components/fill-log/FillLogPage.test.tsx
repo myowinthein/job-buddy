@@ -276,6 +276,46 @@ describe('Fill Details page', () => {
     expect(within(row).getByText('Exact dictionary match')).toBeTruthy();
   });
 
+  it('keeps rule and AI match details under their own stages after a refinement', async () => {
+    const data = snapshot();
+    data.frames[0].log.fields[1].rule.profilePath = 'professional.summary';
+    vi.mocked(loadFillLog).mockResolvedValue(data);
+    await showFields();
+    const row = screen.getByText('Summary').closest('details')!;
+    fireEvent.click(row.querySelector('summary')!);
+    const stages = within(row).getByRole('list', { name: 'Matching stages' });
+    const [learned, rules, ai] = within(stages).getAllByRole('listitem');
+    expect(within(learned).getByText('No trusted match')).toBeTruthy();
+    expect(within(learned).queryByText('Match score')).toBeNull();
+    expect(within(rules).getByText('Matched and filled')).toBeTruthy();
+    expect(within(rules).getByText('Exact dictionary match')).toBeTruthy();
+    expect(within(rules).getByText('90%')).toBeTruthy();
+    expect(within(rules).getByText('professional.summary')).toBeTruthy();
+    expect(within(ai).getByText('Refined a rule-filled value')).toBeTruthy();
+    expect(within(ai).getByText('low')).toBeTruthy();
+    expect(within(ai).getByText('professional.summary')).toBeTruthy();
+    expect(within(ai).queryByText('90%')).toBeNull();
+    expect(within(stages).queryByText('Control')).toBeNull();
+    expect(within(row).getByText('Control')).toBeTruthy();
+  });
+
+  it('keeps learned match metadata in its stage and shows unused stages as a single line', async () => {
+    const data = snapshot();
+    data.frames[0].log.fields[0].rule.layer = 'learned';
+    vi.mocked(loadFillLog).mockResolvedValue(data);
+    await showFields();
+    const row = screen.getByText('Full name').closest('details')!;
+    fireEvent.click(row.querySelector('summary')!);
+    const [learned, rules, ai] = within(row).getAllByRole('listitem');
+    expect(within(learned).getByText('Matched and filled')).toBeTruthy();
+    expect(within(learned).getByText('90%')).toBeTruthy();
+    expect(within(learned).getByText('personal.firstName')).toBeTruthy();
+    expect(within(rules).getByText('Not run after learned mapping')).toBeTruthy();
+    expect(within(rules).queryByText('Match score')).toBeNull();
+    expect(within(ai).getByText('Not sent')).toBeTruthy();
+    expect(within(ai).queryByText('Profile field')).toBeNull();
+  });
+
   it('combines a selected outcome filter with searches over field titles', async () => {
     await showFields();
     fireEvent.click(screen.getByRole('button', { name: 'Red (2)' }));
