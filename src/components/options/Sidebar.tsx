@@ -191,6 +191,19 @@ export function Sidebar({
         </button>
         <button
           type="button"
+          onClick={() => onSelect('fillDetails')}
+          title="Fill Details"
+          aria-label="Fill Details"
+          aria-current={activeSection === 'fillDetails' ? 'page' : undefined}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center sm:justify-start'} ${activeSection === 'fillDetails'
+            ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+        >
+          <span className="shrink-0"><ListChecks aria-hidden="true" className="w-5 h-5" /></span>
+          {!collapsed && <span className="hidden sm:block text-sm font-medium truncate">Fill Details</span>}
+        </button>
+        <button
+          type="button"
           onClick={() => onSelect('learnedMappings')}
           title="Learned Mappings"
           aria-label="Learned Mappings"
@@ -207,19 +220,6 @@ export function Sidebar({
           {!collapsed && (
             <span className="hidden sm:block text-sm font-medium truncate">Learned Mappings</span>
           )}
-        </button>
-        <button
-          type="button"
-          onClick={() => onSelect('fillDetails')}
-          title="Fill Details"
-          aria-label="Fill Details"
-          aria-current={activeSection === 'fillDetails' ? 'page' : undefined}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center sm:justify-start'} ${activeSection === 'fillDetails'
-            ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
-        >
-          <span className="shrink-0"><ListChecks aria-hidden="true" className="w-5 h-5" /></span>
-          {!collapsed && <span className="hidden sm:block text-sm font-medium truncate">Fill Details</span>}
         </button>
         <button
           type="button"
