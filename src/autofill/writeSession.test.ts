@@ -106,6 +106,48 @@ describe('verified field writes', () => {
     expect(await fillField(element, '2025550100')).toBe(true);
     expect(element.value).toBe('(202) 555-0100');
   });
+  it('accepts regenerated DOM IDs when the same named and labelled question retains its value', async () => {
+    const element = input(
+      '<label for="generated-1">Address</label><input id="generated-1" name="streetAddress.value">',
+    );
+    const label = document.querySelector('label')!;
+    let revision = 1;
+    element.oninput = () => {
+      element.id = `generated-${++revision}`;
+      label.htmlFor = element.id;
+    };
+    expect(await fillField(element, '88 Sample Street')).toBe(true);
+    expect(element.value).toBe('88 Sample Street');
+    expect(element.id).not.toBe('generated-1');
+    expect((await undoWrites()).success).toBe(true);
+    expect(element.value).toBe('');
+  });
+
+  it.each(['name', 'label'])(
+    'still rejects a regenerated ID when the question %s changes',
+    async (changed) => {
+      const element = input(
+        '<label for="generated-1">Address</label><input id="generated-1" name="streetAddress.value">',
+      );
+      const label = document.querySelector('label')!;
+      element.oninput = () => {
+        element.id = 'generated-2';
+        label.htmlFor = element.id;
+        if (changed === 'name') element.name = 'emergencyContact.address';
+        else label.textContent = 'Emergency contact address';
+      };
+      expect(await fillField(element, '88 Sample Street')).toBe(false);
+    },
+  );
+
+  it('retains the ID check without both a name and an accessible label', async () => {
+    const element = input('<input id="address" name="unknown">');
+    element.oninput = () => {
+      element.id = 'another-question';
+    };
+    expect(await fillField(element, '88 Sample Street')).toBe(false);
+  });
+
   it('rechecks availability after focus', async () => {
     const element = input('<input value="Existing">');
     element.onfocus = () => {

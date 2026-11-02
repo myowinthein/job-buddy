@@ -18,7 +18,9 @@ export function fieldIdentity(element: HTMLElement): string {
   return JSON.stringify({
     type,
     name,
-    id,
+    // Controlled inputs can regenerate IDs on each render. A stable name and
+    // accessible label still identify the question on the same DOM node.
+    id: name && (label || ariaLabel) ? undefined : id,
     label,
     ariaLabel,
     placeholder,

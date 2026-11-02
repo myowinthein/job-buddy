@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
+import type { FrameFillLog } from '../autofill/fillLog';
 import { build } from 'vite';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -288,4 +289,79 @@ test('fills and restores native multi-selects and clears shadow feedback', async
       .evaluate((select) => [...(select as HTMLSelectElement).selectedOptions].map((o) => o.value)),
   ).toEqual(['fr']);
   await expect(page.locator('#unmatched')).not.toHaveAttribute('data-jb-highlighted');
+});
+
+test('reports retained values as rule fills when controlled inputs regenerate their IDs', async ({
+  page,
+  context,
+  extension,
+}) => {
+  const profile = structuredClone(RULE_PROFILE);
+  profile.address = {
+    street: '88 Sample Street',
+    city: 'Seattle',
+    state: 'Washington',
+    postalCode: '98109',
+    country: 'US',
+  };
+  profile.professional.noticePeriod = { immediate: true };
+  await extension.worker.evaluate(async (profile) => {
+    await chrome.storage.local.set({ profile, learnedMappings: {} });
+  }, profile);
+  await page.evaluate(() => {
+    document.body.innerHTML = '<div id="react-root" data-regenerated-ids></div>';
+  });
+  await page.addScriptTag({ content: reactBundle });
+  const oldIds = await page
+    .locator('input')
+    .evaluateAll((inputs) => inputs.map((input) => input.id));
+  await extension.send('AUTOFILL_SCAN');
+  const results = await extension.send('AUTOFILL_FILL', 'overwrite');
+  const expected = {
+    'streetAddress.value': '88 Sample Street',
+    'city.value': 'Seattle',
+    'province.value': 'Washington',
+    'postalCode.value': '98109',
+  };
+  for (const [name, value] of Object.entries(expected)) {
+    const input = page.locator(`[name="${name}"]`);
+    await expect(input).toHaveValue(value);
+    await expect(input).toHaveAttribute('data-blurred', 'true');
+    expect(await input.evaluate((element: HTMLInputElement) => element.checkValidity())).toBe(true);
+  }
+  await expect(page.locator('[name="dateAvailable"]')).toHaveValue(/^\d{2}\/\d{2}\/\d{4}$/);
+  const newIds = await page
+    .locator('input')
+    .evaluateAll((inputs) => inputs.map((input) => input.id));
+  expect(newIds.slice(0, 5).every((id, index) => id !== oldIds[index])).toBe(true);
+  const logs = (await extension.send('GET_FILL_LOG')) as unknown as FrameFillLog[];
+  const fields = logs.flatMap((log) => log.fields);
+  for (const label of ['Address', 'City', 'Province', 'Postal Code', 'Date Available']) {
+    expect(fields.find((field) => field.label === label)).toMatchObject({
+      outcome: 'high_confidence',
+      source: 'rules',
+      rule: { outcome: 'filled', confidence: 0.85 },
+      ai: { outcome: 'not_sent' },
+    });
+  }
+  const pay = fields.find((field) => field.label === 'Desired Pay')!;
+  expect(pay).toMatchObject({
+    outcome: 'not_matched',
+    source: null,
+    rule: { outcome: 'not_matched' },
+  });
+  expect(pay.rule.confidence).toBeLessThan(0.6);
+  await expect(page.locator('[name="desiredPay"]')).toHaveValue('');
+  expect(results.reduce((count, result) => count + Number(result.noReview), 0)).toBe(5);
+  const details = await context.newPage();
+  await details.goto(new URL('options.html', extension.worker.url()).href);
+  await details.getByRole('button', { name: 'Fill Details', exact: true }).click();
+  await expect(details.getByRole('button', { name: 'Filled (5)', exact: true })).toBeVisible();
+  await expect(details.getByRole('button', { name: 'Not filled (1)', exact: true })).toBeVisible();
+  await details.getByRole('button', { name: 'Filled (5)', exact: true }).click();
+  await expect(details.locator('summary')).toHaveCount(5);
+  await expect(details.locator('summary').filter({ hasText: 'High confidence' })).toHaveCount(5);
+  await extension.send('CLEAR');
+  for (const name of [...Object.keys(expected), 'dateAvailable'])
+    await expect(page.locator(`[name="${name}"]`)).toHaveValue('');
 });
