@@ -276,7 +276,7 @@ describe('Fill Details page', () => {
     expect(within(row).getByText('Exact dictionary match')).toBeTruthy();
   });
 
-  it('keeps rule and AI match details under their own stages after a refinement', async () => {
+  it('separates processing results from rule and AI match details after a refinement', async () => {
     const data = snapshot();
     data.frames[0].log.fields[1].rule.profilePath = 'professional.summary';
     vi.mocked(loadFillLog).mockResolvedValue(data);
@@ -288,18 +288,21 @@ describe('Fill Details page', () => {
     expect(within(learned).getByText('No trusted match')).toBeTruthy();
     expect(within(learned).queryByText('Match score')).toBeNull();
     expect(within(rules).getByText('Matched and filled')).toBeTruthy();
-    expect(within(rules).getByText('Exact dictionary match')).toBeTruthy();
-    expect(within(rules).getByText('90%')).toBeTruthy();
-    expect(within(rules).getByText('professional.summary')).toBeTruthy();
     expect(within(ai).getByText('Refined a rule-filled value')).toBeTruthy();
-    expect(within(ai).getByText('low')).toBeTruthy();
-    expect(within(ai).getByText('professional.summary')).toBeTruthy();
-    expect(within(ai).queryByText('90%')).toBeNull();
+    expect(within(stages).queryByText('Profile field')).toBeNull();
+    const ruleDetails = within(row).getByRole('group', { name: 'Rules match details' });
+    const aiDetails = within(row).getByRole('group', { name: 'AI match details' });
+    expect(within(ruleDetails).getByText('Exact dictionary match')).toBeTruthy();
+    expect(within(ruleDetails).getByText('90%')).toBeTruthy();
+    expect(within(ruleDetails).getByText('professional.summary')).toBeTruthy();
+    expect(within(aiDetails).getByText('low')).toBeTruthy();
+    expect(within(aiDetails).getByText('professional.summary')).toBeTruthy();
+    expect(within(aiDetails).queryByText('90%')).toBeNull();
     expect(within(stages).queryByText('Control')).toBeNull();
     expect(within(row).getByText('Control')).toBeTruthy();
   });
 
-  it('keeps learned match metadata in its stage and shows unused stages as a single line', async () => {
+  it('keeps learned match metadata separate and shows unused stages as a single line', async () => {
     const data = snapshot();
     data.frames[0].log.fields[0].rule.layer = 'learned';
     vi.mocked(loadFillLog).mockResolvedValue(data);
@@ -308,8 +311,9 @@ describe('Fill Details page', () => {
     fireEvent.click(row.querySelector('summary')!);
     const [learned, rules, ai] = within(row).getAllByRole('listitem');
     expect(within(learned).getByText('Matched and filled')).toBeTruthy();
-    expect(within(learned).getByText('90%')).toBeTruthy();
-    expect(within(learned).getByText('personal.firstName')).toBeTruthy();
+    const matchDetails = within(row).getByRole('group', { name: 'Learned mappings match details' });
+    expect(within(matchDetails).getByText('90%')).toBeTruthy();
+    expect(within(matchDetails).getByText('personal.firstName')).toBeTruthy();
     expect(within(rules).getByText('Not run after learned mapping')).toBeTruthy();
     expect(within(rules).queryByText('Match score')).toBeNull();
     expect(within(ai).getByText('Not sent')).toBeTruthy();

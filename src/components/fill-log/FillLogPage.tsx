@@ -421,6 +421,11 @@ function FieldRow({ field, control }: { field: FillLogField; control: string }) 
   const explanation = fieldExplanation(field);
   const match = profileFieldName(profileMatch(field));
   const filled = source !== null;
+  const hasRuleDetails =
+    !!field.rule.layer || typeof field.rule.confidence === 'number' || !!field.rule.profilePath;
+  const hasAIDetails = !!field.ai.confidence || !!field.ai.profilePath;
+  const multipleMatches = hasRuleDetails && hasAIDetails;
+  const ruleSource = field.rule.layer === 'learned' ? 'Learned mappings' : 'Rules';
   const tone =
     field.outcome === 'review'
       ? 'yellow'
@@ -479,48 +484,67 @@ function FieldRow({ field, control }: { field: FillLogField; control: string }) 
           className="col-start-3 row-start-1 mt-1 h-3.5 w-3.5 text-gray-400 transition-transform group-open:rotate-180"
         />
       </summary>
-      <div className="mt-4 border-l-2 border-gray-200 pl-4 text-xs dark:border-gray-700">
-        <ol aria-label="Matching stages" className="space-y-4">
-          <li>
-            <StageResult label="Learned mappings" final={source === 'learned'}>
-              {field.rule.layer === 'learned'
-                ? RULE_OUTCOME_LABELS[field.rule.outcome]
-                : field.rule.outcome === 'not_applicable'
-                  ? 'Not applicable'
-                  : 'No trusted match'}
-            </StageResult>
-            {field.rule.layer === 'learned' && <RuleDetails field={field} />}
-          </li>
-          <li>
-            <StageResult label="Rules" final={source === 'rules'}>
-              {field.rule.layer === 'learned'
-                ? 'Not run after learned mapping'
-                : RULE_OUTCOME_LABELS[field.rule.outcome]}
-            </StageResult>
-            {field.rule.layer !== 'learned' && <RuleDetails field={field} />}
-          </li>
-          <li>
-            <StageResult label="AI" final={source === 'ai'}>
-              {AI_OUTCOME_LABELS[field.ai.outcome]}
-            </StageResult>
-            {(field.ai.confidence || field.ai.profilePath) && (
-              <dl className="ml-3 mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2">
-                {field.ai.confidence && (
-                  <>
-                    <dt className="text-gray-500 dark:text-gray-400">Confidence</dt>
-                    <dd className="capitalize">{field.ai.confidence}</dd>
-                  </>
+      <div className="mt-4 text-xs">
+        <div className="grid min-w-0 gap-x-8 gap-y-5 lg:grid-cols-2">
+          <section aria-label="Processing stages" className="min-w-0">
+            <h3 className="mb-3 font-medium text-gray-500 dark:text-gray-400">Processing stages</h3>
+            <ol aria-label="Matching stages" className="space-y-3">
+              <li>
+                <StageResult label="Learned mappings" final={source === 'learned'}>
+                  {field.rule.layer === 'learned'
+                    ? RULE_OUTCOME_LABELS[field.rule.outcome]
+                    : field.rule.outcome === 'not_applicable'
+                      ? 'Not applicable'
+                      : 'No trusted match'}
+                </StageResult>
+              </li>
+              <li>
+                <StageResult label="Rules" final={source === 'rules'}>
+                  {field.rule.layer === 'learned'
+                    ? 'Not run after learned mapping'
+                    : RULE_OUTCOME_LABELS[field.rule.outcome]}
+                </StageResult>
+              </li>
+              <li>
+                <StageResult label="AI" final={source === 'ai'}>
+                  {AI_OUTCOME_LABELS[field.ai.outcome]}
+                </StageResult>
+              </li>
+            </ol>
+          </section>
+          {(hasRuleDetails || hasAIDetails) && (
+            <section aria-label="Match details" className="min-w-0">
+              <h3 className="mb-3 font-medium text-gray-500 dark:text-gray-400">Match details</h3>
+              <div className="space-y-4">
+                {hasRuleDetails && (
+                  <div role="group" aria-label={ruleSource + ' match details'}>
+                    {multipleMatches && <h4 className="mb-2 font-medium">{ruleSource}</h4>}
+                    <RuleDetails field={field} />
+                  </div>
                 )}
-                {field.ai.profilePath && (
-                  <>
-                    <dt className="text-gray-500 dark:text-gray-400">Profile field</dt>
-                    <dd className="break-all font-mono">{field.ai.profilePath}</dd>
-                  </>
+                {hasAIDetails && (
+                  <div role="group" aria-label="AI match details">
+                    {multipleMatches && <h4 className="mb-2 font-medium">AI</h4>}
+                    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2">
+                      {field.ai.confidence && (
+                        <>
+                          <dt className="text-gray-500 dark:text-gray-400">Confidence</dt>
+                          <dd className="capitalize">{field.ai.confidence}</dd>
+                        </>
+                      )}
+                      {field.ai.profilePath && (
+                        <>
+                          <dt className="text-gray-500 dark:text-gray-400">Profile field</dt>
+                          <dd className="break-all font-mono">{field.ai.profilePath}</dd>
+                        </>
+                      )}
+                    </dl>
+                  </div>
                 )}
-              </dl>
-            )}
-          </li>
-        </ol>
+              </div>
+            </section>
+          )}
+        </div>
         <dl className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 border-t border-gray-200 pt-3 dark:border-gray-800">
           <dt className="text-gray-500 dark:text-gray-400">Control</dt>
           <dd className="break-words font-mono">{control}</dd>
@@ -559,7 +583,7 @@ function RuleDetails({ field }: { field: FillLogField }) {
   const { layer, confidence, profilePath } = field.rule;
   if (!layer && typeof confidence !== 'number' && !profilePath) return null;
   return (
-    <dl className="ml-3 mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2">
+    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2">
       {layer && layer !== 'learned' && (
         <>
           <dt className="text-gray-500 dark:text-gray-400">Method</dt>
