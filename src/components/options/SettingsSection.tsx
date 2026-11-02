@@ -1053,7 +1053,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             rel="noopener noreferrer"
             className={`${footerLinkCls} inline-flex items-center gap-1 font-normal`}
           >
-            Support on Ko-fi <span aria-hidden="true">↗</span>
+            Support on Ko-fi
           </a>
           <span aria-hidden="true">·</span>
           <a
