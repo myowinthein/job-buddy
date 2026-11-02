@@ -34,6 +34,11 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   const logPage = await context.newPage();
   await logPage.goto(`${new URL('fill-log.html', extension.worker.url()).href}?tabId=${sourceId}`);
   await expect(logPage.getByRole('heading', { name: 'Fill Details', exact: true })).toBeVisible();
+  const sourceLink = logPage.getByRole('link', { name: /127\.0\.0\.1.*application/ });
+  await expect(sourceLink).toHaveAttribute('href', page.url());
+  await expect(sourceLink).toHaveAttribute('title', page.url());
+  await expect(sourceLink).toHaveAttribute('target', '_blank');
+  await expect(sourceLink).not.toContainText('http://');
   await expect(logPage.getByText(/AI assistance was unavailable for part or all/)).toBeVisible();
   const detected = logPage.getByText('Detected', { exact: true }).locator('..');
   await expect(detected).toContainText(String(counts.detected));
@@ -146,6 +151,9 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   expect(await logPage.locator('main').evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
     true,
   );
+  await logPage
+    .getByRole('heading', { name: 'Fill Details', exact: true })
+    .scrollIntoViewIfNeeded();
   await logPage.screenshot({
     path: testInfo.outputPath('fill-log-narrow.png'),
     fullPage: false,
@@ -471,7 +479,9 @@ test('an open empty report populates automatically and explicit actions select t
   await options.bringToFront();
   await expect(options.getByRole('button', { name: /^Detected \(/ })).toBeVisible();
   await expect(options.getByRole('tab')).toHaveCount(0);
-  await expect(options.getByText('http://127.0.0.1/application', { exact: true })).toBeVisible();
+  await expect(
+    options.getByRole('link', { name: '127.0.0.1/application (opens in a new tab)', exact: true }),
+  ).toBeVisible();
   const firstRow = options.locator('summary').filter({ hasText: 'First name' }).first();
   await expect(firstRow.locator('.sr-only')).toHaveText(' required');
   await firstRow.focus();
@@ -505,14 +515,24 @@ test('an open empty report populates automatically and explicit actions select t
     .toBe(true);
   await sendB('AUTOFILL_FILL');
   await options.bringToFront();
-  await expect(options.getByText('http://127.0.0.1/application-b', { exact: true })).toBeVisible();
+  await expect(
+    options.getByRole('link', {
+      name: '127.0.0.1/application-b (opens in a new tab)',
+      exact: true,
+    }),
+  ).toBeVisible();
   await expect(options.getByRole('button', { name: 'Detected (2)', exact: true })).toBeVisible();
   await expect(options.getByRole('button', { name: 'Gray (1)', exact: true })).toBeVisible();
 
   // A manual edit in the older form does not replace the selected B report.
   await page.locator('[name="firstName"]').fill('Changed in A');
   await options.bringToFront();
-  await expect(options.getByText('http://127.0.0.1/application-b', { exact: true })).toBeVisible();
+  await expect(
+    options.getByRole('link', {
+      name: '127.0.0.1/application-b (opens in a new tab)',
+      exact: true,
+    }),
+  ).toBeVisible();
 
   // View details is an explicit selection of A, with no rescan or fill.
   const popup = await context.newPage();
@@ -521,7 +541,9 @@ test('an open empty report populates automatically and explicit actions select t
   }, extension.sourceTabId);
   await popup.goto(new URL('popup.html', extension.worker.url()).href);
   await popup.getByRole('button', { name: 'View details', exact: true }).click();
-  await expect(options.getByText('http://127.0.0.1/application', { exact: true })).toBeVisible();
+  await expect(
+    options.getByRole('link', { name: '127.0.0.1/application (opens in a new tab)', exact: true }),
+  ).toBeVisible();
   await expect(options.getByText('Confirmed by you').first()).toBeVisible();
   await expect(options.getByText(/^Modified/)).toBeVisible();
 
@@ -529,7 +551,12 @@ test('an open empty report populates automatically and explicit actions select t
   await sendB('AUTOFILL_SCAN');
   await sendB('AUTOFILL_FILL');
   await options.bringToFront();
-  await expect(options.getByText('http://127.0.0.1/application-b', { exact: true })).toBeVisible();
+  await expect(
+    options.getByRole('link', {
+      name: '127.0.0.1/application-b (opens in a new tab)',
+      exact: true,
+    }),
+  ).toBeVisible();
   await options.emulateMedia({ colorScheme: 'dark' });
   await expect(options.locator('html')).toHaveClass(/dark/);
   await options.screenshot({

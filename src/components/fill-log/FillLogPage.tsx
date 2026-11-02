@@ -18,6 +18,7 @@ import {
 } from '@/src/fill-log/presentation';
 import {
   finalFillSource,
+  safeFormUrl,
   summarizeFillFields,
   type FillLogField,
   type FillLogSnapshot,
@@ -173,11 +174,16 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
     ...frames.map((frame) => frame.log.completedAt ?? frame.log.startedAt),
   );
   const modifiedAt = Math.max(0, ...frames.map((frame) => frame.log.modifiedAt ?? 0));
-  const sourceUrl =
+  const sourceUrl = safeFormUrl(
     snapshot?.pageUrl ??
-    frames.find((frame) => frame.frameId === 0)?.log.url ??
-    frames[0]?.log.url ??
-    frames[0]?.log.origin;
+      frames.find((frame) => frame.frameId === 0)?.log.url ??
+      frames[0]?.log.url ??
+      frames[0]?.log.origin,
+  );
+  const sourceAddress = sourceUrl ? new URL(sourceUrl) : null;
+  const sourceLabel = sourceAddress
+    ? sourceAddress.host + (sourceAddress.pathname === '/' ? '' : sourceAddress.pathname)
+    : null;
   const sourceTab = snapshot?.tabId ?? tabId;
   const hasReport = fields.length > 0 || snapshot?.needsRefresh;
   const undone = frames.length > 0 && frames.every((frame) => frame.log.status === 'undone');
@@ -204,25 +210,36 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
       className="min-w-0 max-w-6xl text-gray-900 dark:text-gray-100"
     >
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
+        <div className="min-w-0 max-w-full sm:flex-1">
           <h2 className="text-xl font-semibold">Fill Details</h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             See how Job Buddy filled your form
           </p>
-          {sourceUrl && hasReport && (
-            <p className="mt-3 break-all text-xs text-gray-500 dark:text-gray-400">{sourceUrl}</p>
-          )}
-          {filledAt > 0 && (
-            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-              <span>
-                Filled{' '}
-                <time className="whitespace-nowrap">{new Date(filledAt).toLocaleString()}</time>
-              </span>
-              {modifiedAt > filledAt && (
-                <span>
-                  Modified{' '}
-                  <time className="whitespace-nowrap">{new Date(modifiedAt).toLocaleString()}</time>
-                </span>
+          {hasReport && (sourceUrl || filledAt > 0) && (
+            <div className="mt-3 space-y-0.5 text-xs text-gray-500 dark:text-gray-400">
+              {sourceUrl && (
+                <a
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={sourceUrl}
+                  aria-label={sourceLabel + ' (opens in a new tab)'}
+                  className="block w-fit max-w-full truncate rounded-sm underline decoration-gray-300 underline-offset-2 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:decoration-gray-600 dark:hover:text-blue-300"
+                >
+                  {sourceLabel}
+                </a>
+              )}
+              {filledAt > 0 && (
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+                  <span>
+                    Filled <ReportTime timestamp={filledAt} />
+                  </span>
+                  {modifiedAt > filledAt && (
+                    <span>
+                      Modified <ReportTime timestamp={modifiedAt} />
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -421,6 +438,20 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
         </>
       )}
     </section>
+  );
+}
+
+function ReportTime({ timestamp }: { timestamp: number }) {
+  const date = new Date(timestamp);
+  return (
+    <time dateTime={date.toISOString()} title={date.toLocaleString()} className="whitespace-nowrap">
+      {date.toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })}
+    </time>
   );
 }
 

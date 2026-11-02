@@ -118,6 +118,35 @@ async function notify() {
 }
 
 describe('Fill Details page', () => {
+  it('shows a compact source link and minute-level times while retaining the full metadata', async () => {
+    const data = snapshot();
+    data.pageUrl = 'https://example.test/careers/101?source=LinkedIn';
+    const filled = new Date(2026, 10, 2, 21, 8, 5);
+    const modified = new Date(2026, 10, 2, 21, 10, 42);
+    data.frames.forEach((frame) => {
+      frame.log.completedAt = filled.getTime();
+      frame.log.modifiedAt = modified.getTime();
+    });
+    vi.mocked(loadFillLog).mockResolvedValue(data);
+    await showFields();
+    const link = screen.getByRole('link', {
+      name: 'example.test/careers/101 (opens in a new tab)',
+    });
+    expect(link.getAttribute('href')).toBe(data.pageUrl);
+    expect(link.getAttribute('title')).toBe(data.pageUrl);
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toContain('noopener');
+    const times = document.querySelectorAll('time');
+    expect(times).toHaveLength(2);
+    expect(times[0].getAttribute('datetime')).toBe(filled.toISOString());
+    expect(times[1].getAttribute('datetime')).toBe(modified.toISOString());
+    expect(times[0].title).toContain('2026');
+    expect(times[0].textContent).not.toContain('2026');
+    expect(times[0].textContent).not.toContain(':05');
+    expect(times[1].textContent).not.toContain(':42');
+    expect(screen.getByRole('button', { name: 'Return to Form' })).toBeTruthy();
+  });
+
   it('shows one page with reconciled totals, colors, final sources and a separate AI handoff count', async () => {
     await showFields();
     const summary = screen.getByRole('region', { name: 'Fill summary' });
