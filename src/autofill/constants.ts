@@ -34,9 +34,6 @@ export const CONF_FUZZY_WEAK_MULT = 0.75;
 /** Confidence floor for context-layer (nearbyText) matches. */
 export const CONF_CONTEXT = 0.7;
 
-/** Learning requires an exact normalized value and an unambiguous profile path. */
-export const EDIT_LEARN_SIMILARITY_THRESHOLD = 1;
-
 /** Minimum length (after trim) of a manually-typed value before attempting
  *  the profile-value similarity match above. Short strings ("US", "5") can
  *  coincidentally score high against unrelated short profile values. */

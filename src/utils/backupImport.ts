@@ -4,13 +4,12 @@ import type { FieldChange } from '@/src/resume-ai/types';
 import type { InvalidField } from './profileValidator';
 import { mergeLearnedMappings } from './storage';
 import { equalJsonValues } from './equalJsonValues';
+import { safeMappingKey as safeKey, validMapping } from './learnedMappingData';
 
 export const MAPPINGS_CHANGE_ID = 'backup.learnedMappings';
 
 const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
-const safeKey = (key: string) =>
-  key.trim() && !['__proto__', 'constructor', 'prototype'].includes(key);
 
 /** Validate backup-only data separately from the profile schema. */
 export function validateBackupData(raw: Record<string, unknown>) {
@@ -31,16 +30,7 @@ export function validateBackupData(raw: Record<string, unknown>) {
         }
         const group: Record<string, LearnedMappingValue> = {};
         for (const [signal, entry] of Object.entries(entries)) {
-          const valid =
-            safeKey(signal) &&
-            ((typeof entry === 'string' && !!entry.trim()) ||
-              (record(entry) &&
-                typeof entry.path === 'string' &&
-                !!entry.path.trim() &&
-                typeof entry.count === 'number' &&
-                Number.isFinite(entry.count) &&
-                entry.count >= 0 &&
-                (entry.label === undefined || typeof entry.label === 'string')));
+          const valid = safeKey(signal) && validMapping(entry);
           if (!valid)
             invalidFields.push({
               path: 'Learned Mappings',
@@ -48,11 +38,13 @@ export function validateBackupData(raw: Record<string, unknown>) {
             });
           else if (typeof entry === 'string') group[signal] = entry;
           else {
-            const value = entry as Record<string, unknown>;
+            const value = entry;
             group[signal] = {
               path: value.path as string,
               count: value.count as number,
               ...(typeof value.label === 'string' ? { label: value.label } : {}),
+              ...(typeof value.question === 'string' ? { question: value.question } : {}),
+              ...(value.scope === 'field' || value.scope === 'entry' ? { scope: value.scope } : {}),
             };
           }
         }
@@ -111,7 +103,7 @@ export function backupDataChanges(
       note:
         mode === 'replace'
           ? 'Current mappings will be replaced. Unselected mappings will be cleared.'
-          : 'Mappings are merged. Existing mappings are kept when equally trusted.',
+          : 'Mappings are merged. Existing choices are kept when paths conflict.',
     });
   }
   return changes;

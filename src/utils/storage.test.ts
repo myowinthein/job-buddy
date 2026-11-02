@@ -215,11 +215,11 @@ describe('mergeLearnedMappings', () => {
     expect(mergeLearnedMappings(local, remote)).toEqual(remote);
   });
 
-  it('keeps the higher-count entry when the same signal conflicts', () => {
+  it('keeps the local correction when an older backup has a higher count', () => {
     const local: LearnedMappings = { 'example.com': { 'firstname': { path: 'personal.firstName', count: 1 } } };
     const remote: LearnedMappings = { 'example.com': { 'firstname': { path: 'personal.lastName', count: 2 } } };
     const merged = mergeLearnedMappings(local, remote);
-    expect(merged['example.com']['firstname']).toEqual({ path: 'personal.lastName', count: 2 });
+    expect(merged['example.com']['firstname']).toEqual({ path: 'personal.firstName', count: 1 });
   });
 
   it('keeps the local entry on a count tie', () => {
@@ -229,24 +229,24 @@ describe('mergeLearnedMappings', () => {
     expect(merged['example.com']['firstname']).toEqual({ path: 'personal.firstName', count: 1, label: 'Local' });
   });
 
-  it('a legacy string entry always outranks a counted entry, from either side', () => {
+  it('keeps the local decision rather than giving remote legacy entries unlimited trust', () => {
     const local: LearnedMappings = { 'example.com': { 'firstname': 'personal.firstName' } };
     const remote: LearnedMappings = { 'example.com': { 'firstname': { path: 'personal.lastName', count: 5 } } };
     expect(mergeLearnedMappings(local, remote)['example.com']['firstname']).toBe('personal.firstName');
-    expect(mergeLearnedMappings(remote, local)['example.com']['firstname']).toBe('personal.firstName');
+    expect(mergeLearnedMappings(remote, local)['example.com']['firstname']).toEqual(remote['example.com'].firstname);
   });
 
   it('merges independently per domain, not just per top-level object', () => {
     const local: LearnedMappings = {
-      'a.com': { 'x': { path: 'p1', count: 1 } },
+      'a.com': { 'x': { path: 'personal.firstName', count: 1 } },
     };
     const remote: LearnedMappings = {
-      'b.com': { 'y': { path: 'p2', count: 1 } },
+      'b.com': { 'y': { path: 'personal.lastName', count: 1 } },
     };
     const merged = mergeLearnedMappings(local, remote);
     expect(Object.keys(merged).sort()).toEqual(['a.com', 'b.com']);
-    expect(merged['a.com']['x']).toEqual({ path: 'p1', count: 1 });
-    expect(merged['b.com']['y']).toEqual({ path: 'p2', count: 1 });
+    expect(merged['a.com']['x']).toEqual({ path: 'personal.firstName', count: 1 });
+    expect(merged['b.com']['y']).toEqual({ path: 'personal.lastName', count: 1 });
   });
 
   it('returns an empty object when both sides are empty', () => {

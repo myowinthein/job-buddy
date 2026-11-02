@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-vi.mock('@/src/utils/storage',()=>({saveLearnedMappingLocally:vi.fn().mockResolvedValue(undefined),saveLearnedMappings:vi.fn().mockResolvedValue(undefined)}));
-import { saveLearnedMappingLocally } from './utils/storage';
+vi.mock('@/src/utils/storage', async (original) => ({
+  ...(await original<typeof import('./utils/storage')>()),
+  saveLearnedObservationLocally: vi.fn().mockResolvedValue(undefined),
+  saveLearnedMappings: vi.fn().mockResolvedValue(undefined),
+}));
+import { saveLearnedObservationLocally, saveLearnedMappings } from './utils/storage';
 
 vi.mock('@/src/devtools/registerContentScript', () => ({
   registerDevelopmentContentScript: vi.fn().mockResolvedValue(undefined),
@@ -44,7 +48,12 @@ const { onStartupAddListener, storageOnChangedAddListener, onAlarmAddListener } 
 
   vi.stubGlobal('chrome', {
     alarms: { onAlarm: { addListener: onAlarmAddListener } },
-    runtime: { id: 'job-buddy', getURL: (path: string) => `chrome-extension://job-buddy/${path}`, onStartup: { addListener: onStartupAddListener }, onMessage: { addListener: vi.fn() } },
+    runtime: {
+      id: 'job-buddy',
+      getURL: (path: string) => `chrome-extension://job-buddy/${path}`,
+      onStartup: { addListener: onStartupAddListener },
+      onMessage: { addListener: vi.fn() },
+    },
     tabs: { onRemoved: { addListener: vi.fn() } },
     webNavigation: { onCommitted: { addListener: vi.fn() } },
     storage: { onChanged: { addListener: storageOnChangedAddListener } },
@@ -156,7 +165,6 @@ it('does not back up removals during reset', async () => {
   expect(syncIfConnected).not.toHaveBeenCalled();
 });
 
-
 describe('background autofill entry point', () => {
   const sender = { id: 'job-buddy', url: 'chrome-extension://job-buddy/popup.html' };
   const listener = () => vi.mocked(chrome.runtime.onMessage.addListener).mock.calls[0][0];
@@ -168,34 +176,115 @@ describe('background autofill entry point', () => {
     expect(respond).toHaveBeenCalledWith({ stage: 'completed' });
   });
   it('rejects content-page senders and invalid tab IDs', () => {
-    listener()({ action: 'AUTOFILL_RUN_START', tabId: 42 }, { ...sender, url: 'https://example.test/' }, vi.fn());
+    listener()(
+      { action: 'AUTOFILL_RUN_START', tabId: 42 },
+      { ...sender, url: 'https://example.test/' },
+      vi.fn(),
+    );
     listener()({ action: 'AUTOFILL_RUN_START', tabId: -1 }, sender, vi.fn());
     expect(coordinatorMock.start).not.toHaveBeenCalled();
   });
   it('routes worker recovery and source navigation to the coordinator', () => {
     onAlarmAddListener.mock.calls[0][0]({ name: 'jb:autofill-recover:42' });
     expect(coordinatorMock.recover).toHaveBeenCalledWith(42);
-    vi.mocked(chrome.webNavigation.onCommitted.addListener).mock.calls[0][0]({ tabId: 42, frameId: 0, documentId: 'new-document' } as chrome.webNavigation.WebNavigationTransitionCallbackDetails);
+    vi.mocked(chrome.webNavigation.onCommitted.addListener).mock.calls[0][0]({
+      tabId: 42,
+      frameId: 0,
+      documentId: 'new-document',
+    } as chrome.webNavigation.WebNavigationTransitionCallbackDetails);
     expect(coordinatorMock.navigated).toHaveBeenCalledWith(42, 'new-document');
-    vi.mocked(chrome.tabs.onRemoved.addListener).mock.calls[0][0](42, { windowId: 1, isWindowClosing: false });
+    vi.mocked(chrome.tabs.onRemoved.addListener).mock.calls[0][0](42, {
+      windowId: 1,
+      isWindowClosing: false,
+    });
     expect(coordinatorMock.cancel).toHaveBeenCalledWith(42);
   });
 });
 
-describe('background learning writes',()=>{
- const learningListener = () => vi.mocked(chrome.runtime.onMessage.addListener).mock.calls[1][0];
- it('derives the domain from the sender, including inherited-origin frames',async()=>{
-  const respond=vi.fn();
-  expect(learningListener()({action:'SAVE_LEARNED_MAPPING',domain:'spoof.test',normalizedSignal:'email',fieldPath:'personal.email'},
-    {id:'job-buddy',url:'about:srcdoc',origin:'https://actual.test',tab:{id:1}} as chrome.runtime.MessageSender,respond)).toBe(true);
-  expect(saveLearnedMappingLocally).toHaveBeenCalledWith('actual.test','email','personal.email',undefined);
-  await Promise.resolve();expect(respond).toHaveBeenCalledWith({ok:true});
- });
- it('rejects foreign senders and invalid paths',()=>{
-  learningListener()({action:'SAVE_LEARNED_MAPPING',normalizedSignal:'email',fieldPath:'personal.email'},
-    {id:'foreign',url:'https://actual.test',tab:{id:1}} as chrome.runtime.MessageSender,vi.fn());
-  learningListener()({action:'SAVE_LEARNED_MAPPING',normalizedSignal:'email',fieldPath:null},
-    {id:'job-buddy',url:'https://actual.test',tab:{id:1}} as chrome.runtime.MessageSender,vi.fn());
-  expect(saveLearnedMappingLocally).not.toHaveBeenCalled();
- });
+describe('background learning writes', () => {
+  const learningListener = () => vi.mocked(chrome.runtime.onMessage.addListener).mock.calls[1][0];
+  it('derives the domain from the sender, including inherited-origin frames', async () => {
+    const respond=vi.fn();
+    expect(
+      learningListener()(
+        {
+          action: 'SAVE_LEARNED_OBSERVATION',
+          domain: 'spoof.test',
+          observation: {
+            signals: ['email'],
+            path: 'personal.email',
+            context: { profileId: 'profile', revision: null },
+          },
+        },
+        {
+          id: 'job-buddy',
+          url: 'about:srcdoc',
+          origin: 'https://actual.test',
+          tab: { id: 1 },
+        } as chrome.runtime.MessageSender,
+        respond,
+      ),
+    ).toBe(true);
+    expect(saveLearnedObservationLocally).toHaveBeenCalledWith('actual.test', {
+      signals: ['email'],
+      path: 'personal.email',
+      context: { profileId: 'profile', revision: null },
+    });
+    await Promise.resolve();
+    expect(respond).toHaveBeenCalledWith({ok:true});
+  });
+  it('accepts label patches containing legacy strings without touching their trust', async () => {
+    const respond=vi.fn();
+    const mappings = {
+      'actual.test': {
+        legacy: 'personal.email',
+        q: { path: 'personal.firstName', count: 1, label: 'Novel response' },
+      },
+    };
+    expect(
+      learningListener()(
+        { action: 'SAVE_LEARNED_LABELS', mappings },
+        {
+          id: 'job-buddy',
+          url: 'https://actual.test',
+          tab: { id: 1 },
+        } as chrome.runtime.MessageSender,
+        respond,
+      ),
+    ).toBe(true);
+    expect(saveLearnedMappings).toHaveBeenCalledWith(mappings, { labelsOnly: true });
+    await Promise.resolve();
+    expect(respond).toHaveBeenCalledWith({ok:true});
+  });
+  it('rejects foreign senders and invalid paths', () => {
+    learningListener()(
+      {
+        action: 'SAVE_LEARNED_OBSERVATION',
+        observation: {
+          signals: ['email'],
+          path: 'personal.email',
+          context: { profileId: 'profile', revision: null },
+        },
+      },
+      { id: 'foreign', url: 'https://actual.test', tab: { id: 1 } } as chrome.runtime.MessageSender,
+      vi.fn(),
+    );
+    learningListener()(
+      {
+        action: 'SAVE_LEARNED_OBSERVATION',
+        observation: {
+          signals: ['email'],
+          path: null,
+          context: { profileId: 'profile', revision: null },
+        },
+      },
+      {
+        id: 'job-buddy',
+        url: 'https://actual.test',
+        tab: { id: 1 },
+      } as chrome.runtime.MessageSender,
+      vi.fn(),
+    );
+    expect(saveLearnedObservationLocally).not.toHaveBeenCalled();
+  });
 });

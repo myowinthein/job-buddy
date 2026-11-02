@@ -1,9 +1,14 @@
-import { ruleQuestionBlocked, fieldDomain } from './ruleContext';
+import { fieldDomain } from './ruleContext';
 import { resolveRuleValue, ruleValuePath } from './ruleValue';
 import { readFieldValue as getFieldValue } from './fieldValue';
-import type { Profile } from '../types/profile';
-import { getProfile, getLearnedMappings, saveLearnedMappings } from '../utils/storage';
-import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED, CONF_DICT_EXACT, EDIT_LEARN_SIMILARITY_THRESHOLD, EDIT_LEARN_MIN_VALUE_LENGTH } from './constants';
+import type { LearnedMappings } from '../types/storage';
+import {
+  getProfile,
+  getLearnedMappings,
+  saveLearnedMappings,
+  getLearningContext,
+} from '../utils/storage';
+import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED, CONF_DICT_EXACT } from './constants';
 import { scanForm, isChoiceGroupAvailable } from './scanner';
 import { isChoice, isChoiceChecked, isControlAvailable } from './dom';
 import { extractSignals, bestLabel } from './signals';
@@ -13,20 +18,33 @@ import type { FieldMatch } from './mapper';
 import { adjustPhoneMatches } from './phoneResolution';
 import { adjustLanguageMatches } from './languageResolution';
 import { adjustEducationMatches, matchCurrentEducationCheckboxes } from './educationResolution';
-import { adjustWorkHistoryMatches, matchCurrentWorkHistoryCheckboxes } from './workHistoryResolution';
+import {
+  adjustWorkHistoryMatches,
+  matchCurrentWorkHistoryCheckboxes,
+} from './workHistoryResolution';
 import { adjustSalaryMatches } from './salaryResolution';
 import { fillField, fillFileField, fillCheckboxInput, resetDropdownBudget } from './filler';
 import { isOwnWriteEvent, getWriteConfidence, resetWriteSession, undoWrites } from './writeSession';
 import { multiSelectValues } from './ruleValue';
-import { applyHighlight, applyMissingDataHighlight, clearMissingDataHighlights, clearElementHighlight, clearHighlights } from './highlighter';
+import {
+  applyHighlight,
+  applyMissingDataHighlight,
+  clearMissingDataHighlights,
+  clearElementHighlight,
+  clearHighlights,
+} from './highlighter';
 import { confirmFieldFeedback } from './fieldFeedback';
-import { flattenProfileValues } from './resolver';
-import type { FlatProfileValue } from './resolver';
-import { normalize, similarity } from './normalizer';
-import { refreshLearnedLabels, saveElementMappings } from './mappings';
+import { refreshLearnedLabels } from './mappings';
+import { watchLearning } from './learning';
 import { runAIAutofill } from './ai';
 import type { AITextCandidate, AIAutofillStatus } from './ai';
-import type { DebugSession, DebugScanField, DebugMappingField, DebugAIField, FieldFinalState } from './debug';
+import type {
+  DebugSession,
+  DebugScanField,
+  DebugMappingField,
+  DebugAIField,
+  FieldFinalState,
+} from './debug';
 import { summarizeFillFields } from './fillLog';
 import type { FillLogField, FrameFillLog } from './fillLog';
 import type { RadioGroup, CheckboxGroup } from './scanner';
@@ -71,8 +89,10 @@ let sessionElements: HTMLElement[] = [];
 let sessionGeneration = 0;
 let sessionAbort = new AbortController();
 let removeProfileWatcher = () => {};
+let removeLearningWatchers = () => {};
 
 function invalidateSession(): void {
+  removeLearningWatchers();
   sessionGeneration++;
   sessionAbort.abort(new DOMException('Autofill cancelled', 'AbortError'));
   removeProfileWatcher();
@@ -117,7 +137,7 @@ function bindRecord(record: FillLogField, elements: HTMLElement[]): void {
 function recordValue(record: FillLogField): string {
   const elements = recordElements.get(record) ?? [];
   if (record.kind === 'radio' || record.kind === 'checkbox') {
-    return elements.flatMap((e, index) => isChoiceChecked(e) ? [String(index)] : []).join(',');
+    return elements.flatMap((e, index) => (isChoiceChecked(e) ? [String(index)] : [])).join(',');
   }
   return elements[0] ? getFieldValue(elements[0]).trim() : '';
 }
@@ -131,14 +151,20 @@ function syncFillLogResult(result: AutofillResult | null = lastResult): void {
     kept: counts.kept, excluded: counts.excluded, failed: counts.failed, manual: counts.manual,
     runId: fillLog.runId, startedAt: fillLog.startedAt,
   });
-  if (debugSession) debugSession.summary = { green: result.noReview, yellow: result.needReview, red: result.lowConfidence, gray: result.noData };
+  if (debugSession)
+    debugSession.summary   = {
+      green:  result.noReview,
+      yellow: result.needReview,
+      red:    result.lowConfidence,
+      gray:   result.noData,
+    };
 }
 
 function refreshTrackedField(element: HTMLElement): void {
   const record = fieldRecords.get(element);
   if (!record || record.outcome === 'excluded' || fillLog?.status !== 'completed') return;
   const elements = recordElements.get(record) ?? [];
-  if (elements.some(e => writingElements.has(e))) return;
+  if (elements.some((e) => writingElements.has(e))) return;
   const value = recordValue(record);
   if (recordValues.get(record) === value) return;
   recordValues.set(record, value);
@@ -162,7 +188,9 @@ function attachReportWatchers(): void {
       removals.push(() => { for (const name of ['input', 'change', 'blur']) element.removeEventListener(name, handler); });
     }
   }
-  removeReportWatchers = () => { removals.forEach(remove => remove()); };
+  removeReportWatchers = () => {
+    removals.forEach((remove) => remove());
+  };
 }
 
 export function getFillLog(): FrameFillLog | null {
@@ -214,49 +242,12 @@ interface EditableField {
 // can remove stale handlers on re-run and during undo.
 const editWatchers = new WeakMap<HTMLElement, () => void>();
 
-// Serializes learned-mapping writes triggered by edit watchers. saveLearnedMapping
-// does a read-modify-write against chrome.storage.local, so two blur events firing
-// close together (e.g. tabbing quickly through fields) could otherwise race and
-// silently lose one write — the same class of bug fixed in ai.ts's sequential save loop.
-let mappingSaveChain: Promise<void> = Promise.resolve();
-function queueMappingSave(domain: string, element: HTMLElement, fieldPath: string): void {
-  mappingSaveChain = mappingSaveChain
-    .then(() => saveElementMappings(domain, element, fieldPath))
-    .catch(() => { /* best-effort — mapping will be re-learned on a future edit */ });
-}
-
-// Finds the profile value most similar to a manually-typed value. Used to
-// link an edit to learned mappings without depending on any prior field-match
-// guess — the guess (when one even exists) may be entirely wrong, so instead
-// we ask independently: does this typed text resemble anything already in the
-// profile? Returns null if flatValues is empty.
-function findBestProfileMatch(flatValues: FlatProfileValue[], value: string): { path: string; score: number } | null {
-  const normValue = normalize(value);
-  if (!normValue) return null;
-  let best: { path: string; score: number } | null = null;
-  for (const candidate of flatValues) {
-    const score = similarity(normValue, normalize(candidate.value));
-    if (!best || score > best.score) best = { path: candidate.path, score };
-    else if (score === best.score && candidate.path !== best.path) best = { path: '', score };
-  }
-  return best?.path ? best : null;
-}
-
 // Attaches a blur listener to each non-green field. On blur, if the value
 // changed since autofill ran, the field transitions to No Review (green) and
 // the popup counts are updated.
 //
-// Every tier (yellow/red/gray) also feeds learned mappings, gated by content
-// rather than by whichever field-match guess (if any) put the field in this
-// list: the typed value is compared against every value already in the
-// profile, and if the best match is similar enough, that path is saved —
-// even if it differs from what the mapper originally guessed. This avoids
-// trusting a weak or wrong guess just because the user typed something into
-// that field; a wildly different value simply finds no good match and is
-// left unlearned.
-function attachEditWatchers(fields: EditableField[], result: AutofillResult, domain: string, profile: Profile): void {
-  const flatProfileValues = flattenProfileValues(profile);
-
+// Learning is independently observed across all tiers by watchLearning().
+function attachEditWatchers(fields: EditableField[], result: AutofillResult): void {
   for (const { element, state } of fields) {
     const prev = editWatchers.get(element);
     if (prev) element.removeEventListener('blur', prev);
@@ -294,14 +285,6 @@ function attachEditWatchers(fields: EditableField[], result: AutofillResult, dom
         // registry so a later profile update doesn't overwrite the user's typing.
         noDataFields = noDataFields.filter((e) => e.element !== element);
         if (noDataFields.length === 0) teardownVisibilityListener();
-      }
-
-      const trimmed = currentValue.trim();
-      if (trimmed.length >= EDIT_LEARN_MIN_VALUE_LENGTH && !ruleQuestionBlocked(extractSignals(element))) {
-        const best = findBestProfileMatch(flatProfileValues, trimmed);
-        if (best && best.score >= EDIT_LEARN_SIMILARITY_THRESHOLD) {
-          queueMappingSave(domain, element, best.path);
-        }
       }
 
       // Field is resolved — tear down the edit watcher so it doesn't fire again.
@@ -440,10 +423,10 @@ export async function undoAutofill(): Promise<boolean> {
     lastResult = null;
   } else {
     for (const [record, elements] of recordElements) {
-      if (elements.some(element => outcome.remaining.has(element))) {
+      if (elements.some((element) => outcome.remaining.has(element))) {
         record.outcome = 'review';
         for (const element of elements) applyHighlight(element, CONF_FILL);
-      } else if (elements.some(element => outcome.restored.has(element))) {
+      } else if (elements.some((element) => outcome.restored.has(element))) {
         record.outcome = recordValue(record) ? 'kept' : 'not_matched';
         record.source = null;
       }
@@ -466,7 +449,9 @@ export function cancelAutofillRun(): void {
 
 // Phase 1: scan and map all fields; detect which matched fields already have values.
 // Results are held in pendingMatches for executeAutofill().
-export async function scanAutofill(runId: string = crypto.randomUUID()): Promise<AutofillScanResult> {
+export async function scanAutofill(
+  runId: string = crypto.randomUUID(),
+): Promise<AutofillScanResult> {
   removeReportWatchers();
   resetWriteSession();
   resetDropdownBudget();
@@ -475,7 +460,14 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
   recordValues = new Map();
   pendingRadioGroups = [];
   pendingCheckboxGroups = [];
-  fillLog = { version: 1, runId, startedAt: Date.now(), origin: location.origin, status: 'scanning', fields: [] };
+  fillLog = {
+    version: 1,
+    runId,
+    startedAt: Date.now(),
+    origin: location.origin,
+    status: 'scanning',
+    fields: [],
+  };
   invalidateSession();
   sessionAbort = new AbortController();
   const generation = sessionGeneration;
@@ -483,7 +475,7 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
   pendingReady = false;
   noDataFields = [];
   teardownVisibilityListener();
-  pendingMatches  = [];
+  pendingMatches = [];
   sessionElements = [];
   lastResult      = null;
   debugSession    = null;
@@ -514,6 +506,7 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
   // refreshLearnedLabels. Batched into one write after the loop rather than
   // one per field.
   let learnedLabelsDirty = false;
+  const learnedLabelsPatch: LearnedMappings = {};
 
   const scanned = fields.map((element, i) => {
     const signals = snapshot.signals(element);
@@ -558,26 +551,50 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
   pendingCheckboxGroups = checkboxGroups;
   for (const { element, signals, match, debugFieldId } of scanned) {
     const record: FillLogField = {
-      id: debugFieldId, label: bestLabel(signals) || 'Unlabelled field',
-      kind: element instanceof HTMLInputElement && element.type === 'file' ? 'file'
-        : element instanceof HTMLSelectElement || element.getAttribute('role') === 'combobox' || element.getAttribute('aria-haspopup') === 'listbox' ? 'select' : 'text',
-      rule: { outcome: 'not_applicable', layer: match.matchLayer, confidence: match.confidence, ...(match.fieldPath ? { profilePath: match.fieldPath } : {}) },
-      ai: { outcome: 'not_sent' }, outcome: 'not_matched', source: null,
+      id: debugFieldId,
+      label: bestLabel(signals) || 'Unlabelled field',
+      kind:
+        element instanceof HTMLInputElement && element.type === 'file'
+          ? 'file'
+          : element instanceof HTMLSelectElement ||
+              element.getAttribute('role') === 'combobox' ||
+              element.getAttribute('aria-haspopup') === 'listbox'
+            ? 'select'
+            : 'text',
+      rule: {
+        outcome: 'not_applicable',
+        layer: match.matchLayer,
+        confidence: match.confidence,
+        ...(match.fieldPath ? { profilePath: match.fieldPath } : {}),
+      },
+      ai: { outcome: 'not_sent' },
+      outcome: 'not_matched',
+      source: null,
     };
     fillLog!.fields.push(record);
     bindRecord(record, [element]);
   }
-  for (const [kind, groups] of [['radio', pendingRadioGroups], ['checkbox', checkboxGroups]] as const) {
+  for (const [kind, groups] of [
+    ['radio', pendingRadioGroups],
+    ['checkbox', checkboxGroups],
+  ] as const) {
     groups.forEach((group, index) => {
       const excluded = !!group.isConsent || isConsentGroup(group);
       const record: FillLogField = {
-        id: `${kind}_${index + 1}`, label: group.groupLabel || group.name || `Unlabelled ${kind} group`, kind,
-        rule: { outcome: 'not_applicable' }, ai: { outcome: 'not_sent' },
-        outcome: excluded ? 'excluded' : 'not_matched', source: null,
+        id: `${kind}_${index + 1}`,
+        label: group.groupLabel || group.name || `Unlabelled ${kind} group`,
+        kind,
+        rule: { outcome: 'not_applicable' },
+        ai: { outcome: 'not_sent' },
+        outcome: excluded ? 'excluded' : 'not_matched',
+        source: null,
         ...(excluded ? { reason: 'consent' as const } : {}),
       };
       fillLog!.fields.push(record);
-      bindRecord(record, group.options.map(option => option.element));
+      bindRecord(
+        record,
+        group.options.map((option) => option.element),
+      );
     });
   }
   const checkboxCandidates = checkboxGroups
@@ -612,7 +629,8 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
       totalMatched++;
     }
 
-    if (refreshLearnedLabels(domain, signals, learnedMappings)) learnedLabelsDirty = true;
+    if (refreshLearnedLabels(domain, signals, learnedMappings, learnedLabelsPatch))
+      learnedLabelsDirty = true;
 
     debugScanner.push({
       fieldId: debugFieldId,
@@ -625,7 +643,8 @@ export async function scanAutofill(runId: string = crypto.randomUUID()): Promise
     pendingMatches.push({ element, signals, match, hasExistingValue, debugFieldId });
   });
 
-  if (learnedLabelsDirty) void saveLearnedMappings(learnedMappings, { labelsOnly: true }).catch(() => {});
+  if (learnedLabelsDirty)
+    void saveLearnedMappings(learnedLabelsPatch, { labelsOnly: true }).catch(() => {});
 
   // Seed an initial debug session — mapping/ai/summary are populated by executeAutofill.
   debugSession = {
@@ -683,6 +702,8 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   if (!profile) return { noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0 };
 
   const domain = fieldDomain();
+  const learningContext = await getLearningContext(profile).catch(() => null);
+  if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
 
   const result: AutofillResult = {
     noReview: 0, needReview: 0, lowConfidence: 0, noData: 0,
@@ -710,7 +731,11 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   for (const { element, signals, match, hasExistingValue, debugFieldId } of matchesToFill) {
     if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
     const record = fieldRecords.get(element)!;
-    const choiceGroup = isChoice(element) ? pendingCheckboxGroups.find(group => group.options.some(option => option.element === element)) : undefined;
+    const choiceGroup = isChoice(element)
+      ? pendingCheckboxGroups.find((group) =>
+          group.options.some((option) => option.element === element),
+        )
+      : undefined;
     if (!isControlAvailable(element) || (choiceGroup && !isChoiceGroupAvailable(choiceGroup))) {
       record.rule.outcome = 'failed';
       record.outcome = 'failed';
@@ -721,7 +746,11 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       match.fieldPath = ruleValuePath(profile,match.fieldPath,signals);
       match.value = resolveRuleValue(profile, match.fieldPath, signals, match.value) || null;
     }
-    Object.assign(record.rule, { layer: match.matchLayer, confidence: match.confidence, ...(match.fieldPath ? { profilePath: match.fieldPath } : {}) });
+    Object.assign(record.rule, {
+      layer: match.matchLayer,
+      confidence: match.confidence,
+      ...(match.fieldPath ? { profilePath: match.fieldPath } : {}),
+    });
     // Merge mode: skip pre-filled fields that would otherwise be overwritten.
     if (mode === 'merge' && (record.outcome === 'kept' || hasExistingValue || getFieldValue(element).trim() !== '')) {
       record.outcome = 'kept';
@@ -774,8 +803,14 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         });
         if (!isFileInput && !isCheckboxInput && !match.ruleBlocked) {
           applyHighlight(element, 0);
-          editableFields.push({element,state:'lowConfidence'});
-          aiTextCandidates.push({type:'text',element,signals,originalState:'lowConfidence',debugFieldId});
+          editableFields.push({ element, state: 'lowConfidence' });
+          aiTextCandidates.push({
+            type: 'text',
+            element,
+            signals,
+            originalState: 'lowConfidence',
+            debugFieldId,
+          });
         }
         continue;
       }
@@ -797,11 +832,16 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // not manual typing.
         if (!isFileInput && !isCheckboxInput) editableFields.push({ element, state: 'needReview' });
         if (!isFileInput && !isCheckboxInput) {
-          aiTextCandidates.push({ type: 'text', element, signals, originalState: 'needReview', debugFieldId });
+          aiTextCandidates.push({
+            type: 'text',
+            element,
+            signals,
+            originalState: 'needReview',
+            debugFieldId,
+          });
         }
         finalState = 'yellow';
       }
-
     } else if (match.confidence < CONF_FILL) {
       record.rule.outcome = 'not_matched';
       record.outcome = 'not_matched';
@@ -810,10 +850,15 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       result.lowConfidence++;
       if (!isFileInput && !isCheckboxInput) editableFields.push({ element, state: 'lowConfidence' });
       if (!isFileInput && !isCheckboxInput && !match.ruleBlocked) {
-        aiTextCandidates.push({ type: 'text', element, signals, originalState: 'lowConfidence', debugFieldId });
+        aiTextCandidates.push({
+          type: 'text',
+          element,
+          signals,
+          originalState: 'lowConfidence',
+          debugFieldId,
+        });
       }
       finalState = 'red';
-
     } else {
       record.rule.outcome = 'missing_data';
       record.outcome = 'missing_data';
@@ -830,7 +875,13 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // lowConfidence path above), but check explicitly for type safety.
         if (match.fieldPath) {
           noDataFields.push({ element, fieldPath: match.fieldPath });
-          aiTextCandidates.push({ type: 'text', element, signals, originalState: 'noData', debugFieldId });
+          aiTextCandidates.push({
+            type: 'text',
+            element,
+            signals,
+            originalState: 'noData',
+            debugFieldId,
+          });
         }
       }
       finalState = 'gray';
@@ -853,7 +904,13 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   const aiStates = new Map<HTMLElement, 'green' | 'yellow'>();
   let aiStatus: AIAutofillStatus | undefined;
   const aiRan = await runAIAutofill(aiTextCandidates, profile, result, ownedElements, debugAI, {
-    mode, isActive, signal: abortSignal, formFields: matchesToFill.map(match => match.signals), fieldRecords, radioGroups: pendingRadioGroups, checkboxGroups: pendingCheckboxGroups,
+    mode,
+    isActive,
+    signal: abortSignal,
+    formFields: matchesToFill.map((match) => match.signals),
+    fieldRecords,
+    radioGroups: pendingRadioGroups,
+    checkboxGroups: pendingCheckboxGroups,
     isProfileCurrent: async () => {
       const current = await getProfile();
       if (JSON.stringify(current) === JSON.stringify(profile)) return true;
@@ -869,7 +926,9 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         record.source = 'ai';
       }
     },
-    onStatus: status => { aiStatus = status; },
+    onStatus: (status) => {
+      aiStatus = status;
+    },
   });
   if (!isActive()) return { ...EMPTY_AUTOFILL_RESULT };
   for (const field of editableFields) {
@@ -891,7 +950,9 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   // user edits it further. AI's high-confidence decision is final; the field
   // should behave like any rule-pipeline green.
   if ([...aiStates.values()].includes('green')) {
-    const filteredEditableFields = editableFields.filter((ef) => aiStates.get(ef.element) !== 'green');
+    const filteredEditableFields = editableFields.filter(
+      (ef) => aiStates.get(ef.element) !== 'green',
+    );
     editableFields.length = 0;
     editableFields.push(...filteredEditableFields);
   }
@@ -915,8 +976,23 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   lastResult = result;
 
   attachReportWatchers();
-  attachEditWatchers(editableFields, result, domain, profile);
+  attachEditWatchers(editableFields, result);
+  if (learningContext)
+    removeLearningWatchers = watchLearning(
+      matchesToFill
+        .filter(
+          ({ element }) =>
+            !isChoice(element) && !(element instanceof HTMLInputElement && element.type === 'file'),
+        )
+        .map(({ element }) => element),
+      profile,
+      domain,
+      learningContext,
+      (element) => {
+        noDataFields = noDataFields.filter((entry) => entry.element !== element);
+        if (!noDataFields.length) teardownVisibilityListener();
+      },
+    );
 
   return result;
 }
-

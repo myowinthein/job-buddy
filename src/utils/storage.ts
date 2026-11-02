@@ -1,7 +1,13 @@
 import { withLearnedMappingsLock } from './learnedMappingsLock';
 import { devLockName } from '@/src/devtools/context';
 import type { Profile } from '../types/profile';
-import type { LearnedMappings, LearnedMappingValue, DriveBackupState } from '../types/storage';
+import type {
+  LearnedMappings,
+  LearnedMappingValue,
+  LearnedObservation,
+  LearningContext,
+  DriveBackupState,
+} from '../types/storage';
 import { normalizeProfile } from './migrate';
 import { DEV_PROFILE } from './devProfile';
 import { DEFAULT_GEMINI_MODEL, toGeminiModel } from '../resume-ai/types';
@@ -10,6 +16,12 @@ import { wrapStorageArea } from './storageArea';
 import { equalJsonValues } from './equalJsonValues';
 import { profileData } from './profileData';
 import { withProfileWriteLock } from './profileWriteLock';
+import {
+  readableMappings,
+  safeMappingKey,
+  validMapping,
+  isLearnedPath,
+} from './learnedMappingData';
 
 // Rejects on a set() failure (e.g. quota exceeded) so callers can surface an
 // error instead of silently losing data — unlike sessionStorage.ts, where
@@ -24,7 +36,9 @@ function storageSet(items: Record<string, unknown>): Promise<void> {
   return local.set(items);
 }
 
-export async function getProfile(options: { rejectOnError?: boolean } = {}): Promise<Profile | null> {
+export async function getProfile(
+  options: { rejectOnError?: boolean } = {},
+): Promise<Profile | null> {
   const result = await local.get('profile', options);
   const raw = (result.profile as Profile) ?? null;
   if (!raw) {
@@ -57,7 +71,15 @@ export async function getProfile(options: { rejectOnError?: boolean } = {}): Pro
     migrated = true;
   }
 
-  if (migrated) await storageSet({ profile });
+  if (migrated) {
+    const saved = await withLearnedMappingsLock(async () => {
+      const current = await local.get('profile', { rejectOnError: true });
+      if (!equalJsonValues(current.profile, raw)) return false;
+      await storageSet({ profile, learnedMappingsRevision: crypto.randomUUID() });
+      return true;
+    });
+    if (!saved) return getProfile(options);
+  }
   return profile;
 }
 
@@ -65,7 +87,12 @@ export async function saveProfile(profile: Profile): Promise<void> {
   // Belt-and-braces: normalise on every write so callers cannot persist a
   // salary entry without a valid period, even via Drive restore or resume
   // import paths that bypass validateImportedProfile.
-  await storageSet({ profile: normalizeProfile(profile) });
+  await withLearnedMappingsLock(() =>
+    storageSet({
+      profile: normalizeProfile(profile),
+      learnedMappingsRevision: crypto.randomUUID(),
+    }),
+  );
 }
 
 export class ProfileReplacementChangedError extends Error {
@@ -81,58 +108,98 @@ export async function replaceProfileData(
   learnedMappings: LearnedMappings,
   pausedDriveState?: DriveBackupState,
 ): Promise<void> {
-  // Fail closed on a read error; never interpret a failed read as an empty profile.
-  const stored = await local.get('profile', { rejectOnError: true });
-  const current = stored.profile
-    ? normalizeProfile(stored.profile as Profile)
-    : (await getProfile({ rejectOnError: true })) ?? {};
-  if (!equalJsonValues(profileData(current), profileData(expected)))
-    throw new ProfileReplacementChangedError(current);
-  await storageSet({
-    profile: normalizeProfile(profile),
-    learnedMappings,
-    ...(pausedDriveState ? { driveBackupState: pausedDriveState } : {}),
+  await withLearnedMappingsLock(async () => {
+    const stored = await local.get('profile', { rejectOnError: true });
+    const current = stored.profile
+      ? normalizeProfile(stored.profile as Profile)
+      : import.meta.env.DEV &&
+          !(await local.get('devProfileDisabled', { rejectOnError: true })).devProfileDisabled
+        ? normalizeProfile(DEV_PROFILE)
+        : {};
+    if (!equalJsonValues(profileData(current), profileData(expected)))
+      throw new ProfileReplacementChangedError(current);
+    await storageSet({
+      profile: normalizeProfile(profile),
+      learnedMappings: readableMappings(learnedMappings),
+      learnedMappingsRevision: crypto.randomUUID(),
+      ...(pausedDriveState ? { driveBackupState: pausedDriveState } : {}),
+    });
   });
 }
 
 export async function getLearnedMappings(): Promise<LearnedMappings> {
-  const result = await storageGet('learnedMappings');
-  return (result.learnedMappings as LearnedMappings) ?? {};
+  const result = await local.get('learnedMappings', { rejectOnError: true });
+  return readableMappings(result.learnedMappings, true);
 }
 
-// How trustworthy an entry is, for conflict resolution during a merge. A
-// legacy string entry was always unconditionally trusted, so it outranks any
-// counted entry regardless of count.
-function trustRank(value: LearnedMappingValue): number {
-  return typeof value === 'string' ? Infinity : value.count;
+/** Conflicting historical counts cannot establish which answer is current.
+ * Update keeps the local decision; Replace remains the explicit adoption path. */
+export function mergeLearnedMappings(
+  local: LearnedMappings,
+  remote: LearnedMappings,
+): LearnedMappings {
+  const left = readableMappings(local, true),
+    right = readableMappings(remote);
+  return Object.fromEntries(
+    [...new Set([...Object.keys(left), ...Object.keys(right)])].map((domain) => {
+      const a = left[domain] ?? {},
+        b = right[domain] ?? {};
+      return [
+        domain,
+        Object.fromEntries(
+          [...new Set([...Object.keys(a), ...Object.keys(b)])].map((key) => {
+            const l = a[key],
+              r = b[key];
+            if (!l) return [key, r];
+            if (!r) return [key, l];
+            const lp = typeof l === 'string' ? l : l.path,
+              rp = typeof r === 'string' ? r : r.path;
+            if (lp !== rp) return [key, l];
+            if (typeof l === 'string') return [key, l];
+            if (typeof r === 'string') return [key, { ...l, count: Math.max(l.count, 2) }];
+            // Same-path backups are snapshots, not independent confirmations.
+            return [
+              key,
+              {
+                ...r,
+                ...l,
+                count: Math.max(l.count, r.count),
+                ...(l.label || r.label ? { label: l.label || r.label } : {}),
+              },
+            ];
+          }),
+        ),
+      ];
+    }),
+  );
 }
 
-// Merges two LearnedMappings snapshots without losing data from either side —
-// used when restoring from a Drive backup, since a blind overwrite could
-// silently discard local learning that hadn't been synced to Drive yet.
-// Signals present on only one side are kept as-is. For a signal present on
-// both sides, keeps whichever entry is more trusted (higher count, or a
-// legacy string entry); ties keep the local entry.
-export function mergeLearnedMappings(local: LearnedMappings, remote: LearnedMappings): LearnedMappings {
-  const merged: LearnedMappings = {};
-  const domains = new Set([...Object.keys(local), ...Object.keys(remote)]);
+async function learningState(): Promise<{
+  profile: Profile | null;
+  context: LearningContext;
+}> {
+  const stored = await local.get(['profile', 'learnedMappingsRevision', 'devProfileDisabled'], {
+    rejectOnError: true,
+  });
+  const profile = stored.profile
+    ? normalizeProfile(stored.profile as Profile)
+    : import.meta.env.DEV && !stored.devProfileDisabled
+      ? normalizeProfile(DEV_PROFILE)
+      : null;
+  return {
+    profile,
+    context: {
+      profileId: profile?.id ?? '',
+      revision: typeof stored.learnedMappingsRevision === 'string' ? stored.learnedMappingsRevision : null,
+    },
+  };
+}
 
-  for (const domain of domains) {
-    const localSignals  = local[domain]  ?? {};
-    const remoteSignals = remote[domain] ?? {};
-    const signals = new Set([...Object.keys(localSignals), ...Object.keys(remoteSignals)]);
-    const mergedSignals: Record<string, LearnedMappingValue> = {};
-
-    for (const signal of signals) {
-      const l = localSignals[signal];
-      const r = remoteSignals[signal];
-      if (l === undefined)      mergedSignals[signal] = r;
-      else if (r === undefined) mergedSignals[signal] = l;
-      else                      mergedSignals[signal] = trustRank(l) >= trustRank(r) ? l : r;
-    }
-    merged[domain] = mergedSignals;
-  }
-  return merged;
+export async function getLearningContext(profile: Profile | null): Promise<LearningContext | null> {
+  const current = await learningState();
+  return equalJsonValues(profileData(current.profile ?? {}), profileData(profile ?? {}))
+    ? current.context
+    : null;
 }
 
 // Content scripts delegate automatic updates to the extension origin. Web Locks
@@ -147,7 +214,7 @@ function contentStorageClient(): boolean {
 }
 export async function saveLearnedMappings(
   mappings: LearnedMappings,
-  options: { labelsOnly?: boolean; base?: LearnedMappings; merge?: boolean } = {},
+  options: { labelsOnly?: boolean; base?: LearnedMappings; merge?: boolean; context?: LearningContext } = {},
 ): Promise<void> {
   if (options.labelsOnly && contentStorageClient()) {
     const response = await chrome.runtime.sendMessage({ action: 'SAVE_LEARNED_LABELS', mappings });
@@ -155,7 +222,10 @@ export async function saveLearnedMappings(
     return;
   }
   await withLearnedMappingsLock(async () => {
+    if (options.context && !equalJsonValues((await learningState()).context, options.context)) throw new Error('Profile changed before saving learned mappings');
     const current = await getLearnedMappings();
+    mappings = readableMappings(mappings, !!options.base);
+    const initial = structuredClone(current);
     if (options.merge) {
       await storageSet({ learnedMappings: mergeLearnedMappings(current, mappings) });
       return;
@@ -163,15 +233,21 @@ export async function saveLearnedMappings(
     if (options.base) {
       for (const domain of new Set([...Object.keys(options.base), ...Object.keys(mappings)])) {
         if (!(domain in mappings)) {
+          if (!current[domain]) continue;
           delete current[domain];
           continue;
         }
         const before = options.base[domain] ?? {};
         for (const key of new Set([...Object.keys(before), ...Object.keys(mappings[domain])])) {
           if (equalJsonValues(before[key], mappings[domain][key])) continue;
+          if (Object.hasOwn(before, key) && !Object.hasOwn(current[domain] ?? {}, key))
+            throw new Error('Learned mapping changed before saving');
           current[domain] ??= {};
           if (!(key in mappings[domain])) delete current[domain][key];
-          else current[domain][key] = mappings[domain][key];
+          else {
+            const value = mappings[domain][key];
+            current[domain][key] = typeof value === 'string' ? value : { ...value, scope: 'entry' };
+          }
         }
       }
       await storageSet({ learnedMappings: current });
@@ -193,21 +269,31 @@ export async function saveLearnedMappings(
         )
           current[domain][key] = { ...stored, label: value.label };
       }
-    await storageSet({ learnedMappings: current });
+    if (!equalJsonValues(current, initial)) await storageSet({ learnedMappings: current });
   });
 }
 
 export async function clearAllStorage(): Promise<void> {
-  await withProfileWriteLock(async () => {
-    // An explicit reset must not immediately resurrect the development fixture.
-    if (import.meta.env.DEV) await storageSet({ devProfileDisabled: true });
-    const stored = await local.get(null, { rejectOnError: true });
-    // Retain reset markers so stale key checks cannot restore credentials.
-    const keys = Object.keys(stored).filter(
-      (key) => !['devProfileDisabled', 'geminiDevDisabled', 'geminiSettingsMeta'].includes(key),
-    );
-    if (keys.length) await local.remove(keys, { rejectOnError: true });
-  });
+  await withProfileWriteLock(() =>
+    withLearnedMappingsLock(async () => {
+      // Advance the learning revision before removal to invalidate old form observations.
+      await storageSet({ learnedMappingsRevision: crypto.randomUUID() });
+      // An explicit reset must not immediately resurrect the development fixture.
+      if (import.meta.env.DEV) await storageSet({ devProfileDisabled: true });
+      const stored = await local.get(null, { rejectOnError: true });
+      // Retain reset markers so stale key checks cannot restore credentials.
+      const keys = Object.keys(stored).filter(
+        (key) =>
+          ![
+            'devProfileDisabled',
+            'geminiDevDisabled',
+            'geminiSettingsMeta',
+            'learnedMappingsRevision',
+          ].includes(key),
+      );
+      if (keys.length) await local.remove(keys, { rejectOnError: true });
+    }),
+  );
 }
 
 // ── Gemini AI settings ──────────────────────────────────────────────────────
@@ -329,14 +415,15 @@ export async function saveLearnedMapping(
   label?: string,
 ): Promise<void> {
   if (contentStorageClient()) {
-    const response = await chrome.runtime.sendMessage({
-      action: 'SAVE_LEARNED_MAPPING',
-      domain,
-      normalizedSignal,
-      fieldPath,
-      label,
-    });
-    if (!response?.ok) throw new Error('Could not save learned mapping');
+    const profile = await getProfile();
+    const context = profile ? await getLearningContext(profile) : null;
+    if (context)
+      await saveLearnedObservation(domain, {
+        signals: [normalizedSignal],
+        path: fieldPath,
+        ...(label ? { label, question: label } : {}),
+        context,
+      });
     return;
   }
   return saveLearnedMappingLocally(domain, normalizedSignal, fieldPath, label);
@@ -349,6 +436,8 @@ export async function saveLearnedMappingLocally(
   fieldPath: string,
   label?: string,
 ): Promise<void> {
+  if (!safeMappingKey(domain) || !safeMappingKey(normalizedSignal) || !isLearnedPath(fieldPath))
+    throw new Error('Invalid learned mapping');
   await withLearnedMappingsLock(async () => {
     const mappings = await getLearnedMappings();
     if (!mappings[domain]) mappings[domain] = {};
@@ -371,7 +460,9 @@ export async function saveLearnedMappingLocally(
       if (existing.path === fieldPath) {
         mappings[domain][normalizedSignal] = {
           path: fieldPath,
-          count: existing.count + 1,
+          count: Math.min(Number.MAX_SAFE_INTEGER, existing.count + 1),
+          ...(existing.question ? { question: existing.question } : {}),
+          ...(existing.scope ? { scope: existing.scope } : {}),
           label: label ?? existing.label,
         };
       } else {
@@ -381,6 +472,81 @@ export async function saveLearnedMappingLocally(
 
     await storageSet({ learnedMappings: mappings });
   });
+}
+
+/** One user observation saves all of its aliases in one storage transaction. */
+export async function saveLearnedObservation(
+  domain: string,
+  observation: LearnedObservation,
+): Promise<void> {
+  if (contentStorageClient()) {
+    const response = await chrome.runtime.sendMessage({
+      action: 'SAVE_LEARNED_OBSERVATION',
+      observation,
+    });
+    if (!response?.ok) throw new Error('Could not save learned mapping');
+  } else await saveLearnedObservationLocally(domain, observation);
+}
+
+export async function saveLearnedObservationLocally(
+  domain: string,
+  observation: LearnedObservation,
+): Promise<void> {
+  if (!safeMappingKey(domain) || !validObservation(observation))
+    throw new Error('Invalid learned observation');
+  await withLearnedMappingsLock(async () => {
+    const { context } = await learningState();
+    if (!context.profileId || !equalJsonValues(context, observation.context)) return;
+    const mappings = await getLearnedMappings();
+    mappings[domain] ??= {};
+    for (const key of new Set(observation.signals)) {
+      const previous = mappings[domain][key];
+      const samePath =
+        previous && (typeof previous === 'string' ? previous : previous.path) === observation.path;
+      const sameQuestion =
+        typeof previous !== 'object' ||
+        !previous.question ||
+        previous.question === observation.question;
+      mappings[domain][key] = {
+        path: observation.path,
+        count:
+          samePath && sameQuestion
+            ? Math.min(
+                Number.MAX_SAFE_INTEGER,
+                (typeof previous === 'string' ? 2 : previous.count) + 1,
+              )
+            : 1,
+        ...(observation.label ? { label: observation.label } : {}),
+        ...(observation.question ? { question: observation.question } : {}),
+        ...(observation.scope ? { scope: observation.scope } : {}),
+      };
+    }
+    if (observation.signals.length) await storageSet({ learnedMappings: mappings });
+  });
+}
+
+export function validObservation(value: unknown): value is LearnedObservation {
+  if (!value || typeof value !== 'object') return false;
+  const entry = value as LearnedObservation;
+  return (
+    Array.isArray(entry.signals) &&
+    entry.signals.length > 0 &&
+    entry.signals.length <= 5 &&
+    entry.signals.every((key) => typeof key === 'string' && safeMappingKey(key)) &&
+    validMapping({
+      path: entry.path,
+      count: 1,
+      label: entry.label,
+      question: entry.question,
+      scope: entry.scope,
+    }) &&
+    !!entry.context &&
+    typeof entry.context.profileId === 'string' &&
+    !!entry.context.profileId &&
+    entry.context.profileId.length <= 200 &&
+    (entry.context.revision === null ||
+      (typeof entry.context.revision === 'string' && entry.context.revision.length <= 200))
+  );
 }
 
 // ── Google Drive Cloud Backup ────────────────────────────────────────────────

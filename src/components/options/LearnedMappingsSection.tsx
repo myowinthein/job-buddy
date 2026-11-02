@@ -2,7 +2,7 @@ import { feedback } from '@/src/ui/feedback';
 import { useEffect, useMemo, useState } from 'react';
 import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings, LearnedMappingValue } from '@/src/types/storage';
-import { getProfile, getLearnedMappings, saveLearnedMappings } from '@/src/utils/storage';
+import { getProfile, getLearnedMappings, saveLearnedMappings, getLearningContext } from '@/src/utils/storage';
 import { resolveProfileValue } from '@/src/autofill/resolver';
 import { useToast } from '@/src/components/ui/useToast';
 import { InfoTooltip } from '@/src/components/ui/InfoTooltip';
@@ -202,10 +202,18 @@ export function LearnedMappingsSection() {
   const persist = async (next: LearnedMappings, message: string) => {
     setMappings(next);
     try {
-      await saveLearnedMappings(next, { base: mappings });
+      const context = await getLearningContext(profile.id ? profile as Profile : null);
+      if (!context) throw new Error('Profile changed before saving learned mappings');
+      await saveLearnedMappings(next, { base: mappings, context });
       showToast('success', message);
     } catch {
       showToast('error', feedback.sectionSaveFailed);
+      // Reload the saved state after a failed optimistic write or person switch.
+      try {
+        const [saved, currentProfile] = await Promise.all([getLearnedMappings(), getProfile()]);
+        setMappings(saved);
+        setProfile(currentProfile ?? {});
+      } catch { /* Keep the failure visible. */ }
     }
   };
 

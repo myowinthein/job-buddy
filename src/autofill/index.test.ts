@@ -5,9 +5,11 @@ import type { Profile } from '../types/profile';
 vi.mock('../utils/storage', () => ({
   getProfile: vi.fn(),
   getLearnedMappings: vi.fn().mockResolvedValue({}),
+  getLearningContext: vi.fn().mockResolvedValue({profileId:'test-profile',revision:null}),
   saveLearnedMappings: vi.fn().mockResolvedValue(undefined),
 }));
-vi.mock('./scanner', () => {
+vi.mock('./scanner', async (original) => {
+  const actual = await original<typeof import('./scanner')>();
   const scanner = {
     scanRadioGroups: vi.fn().mockReturnValue([]),
     scanFields: vi.fn().mockReturnValue([]),
@@ -15,7 +17,7 @@ vi.mock('./scanner', () => {
     scanCheckboxGroups: vi.fn().mockReturnValue([]),
   };
   return {
-    ...scanner,
+    ...actual, ...scanner,
     isChoiceGroupAvailable: vi.fn().mockReturnValue(true),
     scanForm: (options: unknown) => {
       const fields = [...scanner.scanFields(options), ...scanner.scanAriaFields()];
@@ -84,7 +86,16 @@ function makeProfile(): Profile {
 function makeInput(value = ''): HTMLInputElement {
   const el = document.createElement('input');
   el.value = value;
+  vi.spyOn(el, 'addEventListener');
   return el;
+}
+
+// jsdom cannot generate trusted input; invoke registered handlers with a
+// trusted event. Chromium tests cover actual browser input events as well.
+function userBlur(el: HTMLInputElement): void {
+  for (const [type, listener] of vi.mocked(el.addEventListener).mock.calls)
+    if (type === 'input' && typeof listener === 'function') listener.call(el, {isTrusted:true} as Event);
+  el.dispatchEvent(new Event('blur'));
 }
 
 beforeEach(async () => {
@@ -454,10 +465,10 @@ describe('learned-mapping linking on blur (content-based, all tiers)', () => {
     await executeAutofill('merge');
 
     el.value = 'https://linkedin.com/in/janedoe';
-    el.dispatchEvent(new Event('blur'));
+    userBlur(el);
 
     await vi.waitFor(() =>
-      expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, el, 'links.linkedin'),
+      expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, expect.objectContaining({element:el}), 'links.linkedin', expect.any(Object)),
     );
   });
 
@@ -475,15 +486,15 @@ describe('learned-mapping linking on blur (content-based, all tiers)', () => {
     await executeAutofill('merge');
 
     elYellow.value = 'Jane Doe';
-    elYellow.dispatchEvent(new Event('blur'));
+    userBlur(elYellow);
     elRed.value = 'https://myportfolio.com';
-    elRed.dispatchEvent(new Event('blur'));
+    userBlur(elRed);
     elGray.value = 'https://linkedin.com/in/janedoe';
-    elGray.dispatchEvent(new Event('blur'));
+    userBlur(elGray);
 
     await vi.waitFor(() => expect(saveElementMappings).toHaveBeenCalledTimes(3));
-    expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, elRed, 'links.portfolio');
-    expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, elGray, 'links.linkedin');
+    expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, expect.objectContaining({element:elRed}), 'links.portfolio', expect.any(Object));
+    expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, expect.objectContaining({element:elGray}), 'links.linkedin', expect.any(Object));
   });
 
   it('matches an edited value against a profile value in a different case', async () => {
@@ -499,10 +510,10 @@ describe('learned-mapping linking on blur (content-based, all tiers)', () => {
     await executeAutofill('merge');
 
     el.value = 'JANE';
-    el.dispatchEvent(new Event('blur'));
+    userBlur(el);
 
     await vi.waitFor(() =>
-      expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, el, 'personal.firstName'),
+      expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, expect.objectContaining({element:el}), 'personal.firstName', expect.any(Object)),
     );
   });
 
@@ -515,7 +526,7 @@ describe('learned-mapping linking on blur (content-based, all tiers)', () => {
     await executeAutofill('merge');
 
     el.value = 'I want to work here because of the great company culture';
-    el.dispatchEvent(new Event('blur'));
+    userBlur(el);
 
     await Promise.resolve();
     await Promise.resolve();
@@ -531,7 +542,7 @@ describe('learned-mapping linking on blur (content-based, all tiers)', () => {
     await executeAutofill('merge');
 
     el.value = 'Doe'; // 3 chars, below EDIT_LEARN_MIN_VALUE_LENGTH
-    el.dispatchEvent(new Event('blur'));
+    userBlur(el);
 
     await Promise.resolve();
     await Promise.resolve();
@@ -547,7 +558,7 @@ describe('learned-mapping linking on blur (content-based, all tiers)', () => {
     await executeAutofill('overwrite');
 
     el.value = '';
-    el.dispatchEvent(new Event('blur'));
+    userBlur(el);
 
     await Promise.resolve();
     await Promise.resolve();
@@ -576,9 +587,9 @@ describe('queueMappingSave serialization', () => {
     });
 
     el1.value = 'Jane Doe'; // similar to profile firstName — qualifies
-    el1.dispatchEvent(new Event('blur'));
+    userBlur(el1);
     el2.value = 'https://linkedin.com/in/janedoe'; // similar to profile linkedin — qualifies
-    el2.dispatchEvent(new Event('blur'));
+    userBlur(el2);
 
     // Both blur handlers ran synchronously, but the second save must not have
     // started yet — it's chained behind the still-pending first save.
@@ -606,9 +617,9 @@ describe('queueMappingSave serialization', () => {
       .mockResolvedValueOnce(undefined);
 
     el1.value = 'Jane Doe';
-    el1.dispatchEvent(new Event('blur'));
+    userBlur(el1);
     el2.value = 'https://linkedin.com/in/janedoe';
-    el2.dispatchEvent(new Event('blur'));
+    userBlur(el2);
 
     await vi.waitFor(() => expect(saveElementMappings).toHaveBeenCalledTimes(2));
   });

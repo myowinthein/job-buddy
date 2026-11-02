@@ -29,7 +29,8 @@ export function adjustRepeatingEntryMatches(
     (match) =>
       match.fieldPath &&
       markers.includes(match.fieldPath) &&
-      ADJUSTABLE_LAYERS.has(match.matchLayer),
+      (ADJUSTABLE_LAYERS.has(match.matchLayer) ||
+        (match.matchLayer === 'learned' && match.learnedScope === 'field')),
   );
   const scopes = new Map<Node | undefined, FieldMatch[]>();
   for (const match of candidates) {

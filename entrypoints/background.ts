@@ -1,4 +1,8 @@
-import { saveLearnedMappingLocally, saveLearnedMappings } from '@/src/utils/storage';
+import {
+  saveLearnedObservationLocally,
+  saveLearnedMappings,
+  validObservation,
+} from '@/src/utils/storage';
 import type { LearnedMappings } from '@/src/types/storage';
 import {
   DRIVE_RETRY_ALARM,
@@ -51,7 +55,7 @@ export default defineBackground(() => {
     return true;
   });
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
-    if (!['SAVE_LEARNED_MAPPING', 'SAVE_LEARNED_LABELS'].includes(message?.action)) return;
+    if (!['SAVE_LEARNED_OBSERVATION', 'SAVE_LEARNED_LABELS'].includes(message?.action)) return;
     if (sender.id !== chrome.runtime.id || !sender.tab || !sender.url) return;
     let domain: string;
     try {
@@ -62,28 +66,18 @@ export default defineBackground(() => {
       return;
     }
     let task: Promise<void>;
-    if (message.action === 'SAVE_LEARNED_MAPPING') {
-      if (
-        [message.normalizedSignal, message.fieldPath].some(
-          (value) => typeof value !== 'string' || !value || value.length > 1000,
-        ) ||
-        (message.label !== undefined && typeof message.label !== 'string')
-      )
-        return;
-      task = saveLearnedMappingLocally(
-        domain,
-        message.normalizedSignal,
-        message.fieldPath,
-        message.label,
-      );
+    if (message.action === 'SAVE_LEARNED_OBSERVATION') {
+      if (!validObservation(message.observation)) return;
+      task = saveLearnedObservationLocally(domain, message.observation);
     } else {
       const signals = message.mappings?.[domain];
       if (!signals || typeof signals !== 'object' || Array.isArray(signals)) return;
       const valid = Object.values(signals).every(
         (value) =>
-          value &&
-          typeof value === 'object' &&
-          typeof (value as { path?: unknown }).path === 'string',
+          typeof value === 'string' ||
+          (value &&
+            typeof value === 'object' &&
+            typeof (value as { path?: unknown }).path === 'string'),
       );
       if (!valid) return;
       task = saveLearnedMappings({ [domain]: signals } as LearnedMappings, { labelsOnly: true });

@@ -2,10 +2,19 @@ import type { Profile } from '../types/profile';
 import type { LearnedMappings, LearnedMappingValue } from '../types/storage';
 import type { FieldSignals } from './signals';
 import { normalize, similarity } from './normalizer';
-import { ruleQuestionBlocked, visibleQuestion } from './ruleContext';
+import { ruleQuestionBlocked } from './ruleContext';
 import { FIELD_DICTIONARY } from './dictionary';
 import { resolveProfileValue } from './resolver';
 import type { MatchLayer } from './debug';
+import { validMapping } from '../utils/learnedMappingData';
+import { sectionFamily } from './ruleContext';
+import {
+  genericLearnedSignal,
+  hasGenericEntryLabel,
+  learningQuestion,
+  repeatedLearnedMarker,
+  learnedSensitiveQuestion,
+} from './learnedContext';
 import {
   CONF_FILL,
   CONF_CONFIRMED,
@@ -25,6 +34,7 @@ export interface FieldMatch {
   matchLayer: MatchLayer;
   element?: HTMLElement;
   ruleBlocked?: boolean;
+  learnedScope?: 'field' | 'entry';
 }
 
 // Minimum number of confirmations before a learned mapping is trusted for Layer 0.
@@ -182,48 +192,48 @@ export function mapField(
   // ── Layer 0: Learned mappings ──────────────────────────────────────────────
   for (const n of normed) {
     const learned: LearnedMappingValue | undefined = domainMappings[n];
-    if (!learned) continue;
-
-    let fieldPath: string;
-    if (typeof learned === 'string') {
-      // Legacy format written by older versions — trust unconditionally.
-      fieldPath = learned;
-    } else if (learned.count >= LEARNED_MAPPING_THRESHOLD) {
-      // New counted format — only promote once the threshold is reached.
-      fieldPath = learned.path;
-    } else {
-      // Below threshold: keep accumulating, but don't use yet.
-      continue;
+    if (!validMapping(learned) || genericLearnedSignal(n)) continue;
+    const fieldPath = typeof learned === 'string' ? learned : learned.path;
+    if (typeof learned !== 'string' && learned.count < LEARNED_MAPPING_THRESHOLD) continue;
+    if (!learnedSensitiveQuestion(fieldPath, signals)) continue;
+    const section = signals.element ? sectionFamily(signals.element) : undefined;
+    const pathSection = /^(education|workHistory)\./.exec(fieldPath)?.[1];
+    if (section && pathSection && section !== pathSection) continue;
+    const primary = [signals.label, signals.ariaLabel].map(normalize).filter(Boolean);
+    const question = learningQuestion(signals);
+    const storedQuestion =
+      typeof learned === 'string' ? '' : learned.question || learned.label || '';
+    const compatible =
+      storedQuestion &&
+      (typeof learned !== 'string' && learned.question
+        ? normalize(storedQuestion) === normalize(question)
+        : normalize(storedQuestion) === normalize(question.slice(0, 120)));
+    if (typeof learned !== 'string' && learned.question && !compatible) continue;
+    // Secondary/internal keys cannot carry an answer into a different question.
+    if (question && !primary.includes(n) && !compatible) {
+      const visibleHit = dictionaryExact(normalize(signals.label || signals.ariaLabel));
+      const family = (path: string) =>
+        path
+          .replace(/\.\d+(?=\.)/g, '')
+          .replace(/personal\.phone\.(?:number|full)/, 'personal.phone.number');
+      if (!visibleHit || family(visibleHit) !== family(fieldPath)) continue;
     }
-
-    // A learned internal key may have been reused for a different question.
-    if (
-      typeof learned !== 'string' &&
-      learned.label &&
-      visibleQuestion(signals) &&
-      normalize(learned.label) !==
-        normalize(signals.label || signals.ariaLabel || signals.placeholder) &&
-      ![signals.label, signals.ariaLabel, signals.placeholder].map(normalize).includes(n)
-    )
-      continue;
-    const visibleHit = dictionaryExact(normalize(signals.label || signals.ariaLabel));
-    const familyPath = (path: string) =>
-      path
-        .replace(/\.\d+(?=\.)/g, '')
-        .replace(/personal\.phone\.(?:full|number)/, 'personal.phone.number');
-    if (
-      typeof learned !== 'string' &&
-      visibleHit &&
-      ![signals.label, signals.ariaLabel].map(normalize).includes(n) &&
-      familyPath(visibleHit) !== familyPath(fieldPath)
-    )
-      continue;
+    if (storedQuestion && question && !compatible && !primary.includes(n)) continue;
+    const scope =
+      typeof learned !== 'string' && learned.scope === 'entry'
+        ? 'entry'
+        : (typeof learned !== 'string' && learned.scope === 'field') ||
+            hasGenericEntryLabel(fieldPath, signals)
+          ? 'field'
+          : 'entry';
     const resolved = resolveDictionaryHit(profile, fieldPath, signals);
+    const marker = scope === 'field' && resolved.value ? repeatedLearnedMarker(fieldPath) : null;
     return {
-      fieldPath: resolved.fieldPath,
+      fieldPath: marker || resolved.fieldPath,
       confidence: CONF_CONFIRMED,
-      value: resolved.value,
+      value: marker ? null : resolved.value,
       matchLayer: 'learned',
+      learnedScope: scope,
     };
   }
 

@@ -8,6 +8,24 @@ export interface LearnedMappingEntry {
   // normalized (lowercased, punctuation/spaces stripped) and unreadable on its own.
   // Absent on entries written before this field existed.
   label?: string;
+  /** Full question context, separate from the shortened display label. */
+  question?: string;
+  /** Generic repeated fields follow their row; explicit editor choices keep an entry. */
+  scope?: 'field' | 'entry';
+}
+
+export interface LearningContext {
+  profileId: string;
+  revision: string | null;
+}
+
+export interface LearnedObservation {
+  signals: string[];
+  path: string;
+  label?: string;
+  question?: string;
+  scope?: 'field' | 'entry';
+  context: LearningContext;
 }
 
 // A mapping value is either the legacy plain-string format (trusted as-is,

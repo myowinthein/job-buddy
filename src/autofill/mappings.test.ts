@@ -23,9 +23,14 @@ vi.mock('../utils/storage', async (importOriginal) => {
   const original = await importOriginal<typeof import('../utils/storage')>();
   return {
     ...original,
-    saveLearnedMapping: vi.fn(async (domain: string, signal: string, path: string, label?: string) => {
-      savedMappings.push({ domain, signal, path, label });
-    }),
+    getProfile: vi.fn().mockResolvedValue({ id: 'test-profile' }),
+    getLearningContext: vi.fn().mockResolvedValue({ profileId: 'test-profile', revision: null }),
+    saveLearnedObservation: vi.fn(
+      async (domain: string, observation: import('../types/storage').LearnedObservation) => {
+        for (const signal of observation.signals)
+          savedMappings.push({ domain, signal, path: observation.path, label: observation.label });
+      },
+    ),
   };
 });
 
@@ -117,7 +122,9 @@ describe('saveElementMappings', () => {
 
     await saveElementMappings('example.com', el, 'links.portfolio');
     expect(savedMappings.length).toBeGreaterThan(0);
-    expect(savedMappings.every((m) => m.label === 'Question 3: describe your experience')).toBe(true);
+    expect(savedMappings.every((m) => m.label === 'Question 3: describe your experience')).toBe(
+      true,
+    );
   });
 
   it('saves to the correct domain', async () => {
@@ -150,7 +157,7 @@ describe('refreshLearnedLabels', () => {
     const signals = extractSignals(el);
 
     const mappings: LearnedMappings = {
-      'example.com': { 'fieldemail': { path: 'personal.email', count: 1 } },
+      'example.com': { fieldemail: { path: 'personal.email', count: 1 } },
     };
     const changed = refreshLearnedLabels('example.com', signals, mappings);
 
@@ -169,7 +176,7 @@ describe('refreshLearnedLabels', () => {
     const signals = extractSignals(el);
 
     const mappings: LearnedMappings = {
-      'example.com': { 'fieldemail': { path: 'personal.email', count: 2, label: 'Old Label' } },
+      'example.com': { fieldemail: { path: 'personal.email', count: 2, label: 'Old Label' } },
     };
     refreshLearnedLabels('example.com', signals, mappings);
 
@@ -187,7 +194,7 @@ describe('refreshLearnedLabels', () => {
     const signals = extractSignals(el);
 
     const mappings: LearnedMappings = {
-      'example.com': { 'fieldemail': { path: 'personal.email', count: 2, label: 'Email Address' } },
+      'example.com': { fieldemail: { path: 'personal.email', count: 2, label: 'Email Address' } },
     };
     expect(refreshLearnedLabels('example.com', signals, mappings)).toBe(false);
   });
@@ -200,7 +207,7 @@ describe('refreshLearnedLabels', () => {
     document.body.appendChild(label);
     const signals = extractSignals(el);
 
-    const mappings: LearnedMappings = { 'example.com': { 'fieldemail': 'personal.email' } };
+    const mappings: LearnedMappings = { 'example.com': { fieldemail: 'personal.email' } };
     expect(refreshLearnedLabels('example.com', signals, mappings)).toBe(false);
     expect(mappings['example.com']['fieldemail']).toBe('personal.email');
   });
@@ -216,7 +223,7 @@ describe('refreshLearnedLabels', () => {
     const el = makeInput({ name: 'unrelatedfield' });
     const signals = extractSignals(el);
     const mappings: LearnedMappings = {
-      'example.com': { 'fieldemail': { path: 'personal.email', count: 2 } },
+      'example.com': { fieldemail: { path: 'personal.email', count: 2 } },
     };
     expect(refreshLearnedLabels('example.com', signals, mappings)).toBe(false);
   });

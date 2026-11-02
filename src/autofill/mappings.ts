@@ -1,8 +1,10 @@
 import type { FieldSignals } from './signals';
 import { extractSignals, displayLabel } from './signals';
 import { normalize } from './normalizer';
-import { saveLearnedMapping } from '../utils/storage';
-import type { LearnedMappings } from '../types/storage';
+import { getProfile, getLearningContext, saveLearnedObservation } from '../utils/storage';
+import type { LearnedMappings, LearningContext } from '../types/storage';
+import { genericLearnedSignal, hasGenericEntryLabel, learningQuestion } from './learnedContext';
+import { isLearnedPath, safeMappingKey } from '../utils/learnedMappingData';
 
 // Saves a learned field→profilePath mapping for every normalised signal text
 // extracted from an element (name, id, placeholder, ariaLabel, label).
@@ -13,21 +15,41 @@ import type { LearnedMappings } from '../types/storage';
 // Best-effort — callers may wrap in try/catch or fire-and-forget with void.
 export async function saveElementMappings(
   domain: string,
-  element: HTMLElement,
+  element: HTMLElement | FieldSignals,
   fieldPath: string,
+  context?: LearningContext,
 ): Promise<void> {
-  const sigs = extractSignals(element);
-  const texts = [
-    sigs.name, sigs.id, sigs.placeholder, sigs.ariaLabel, sigs.label,
-  ].filter(Boolean);
+  const sigs = element instanceof HTMLElement ? extractSignals(element) : element;
+  const texts = [sigs.name, sigs.id, sigs.placeholder, sigs.ariaLabel, sigs.label].filter(Boolean);
   // The normalized signal key (lowercased, punctuation/spaces stripped) is not
   // human-readable — carry a display label through for the Learned Mappings UI
   // instead of showing the raw key there.
   const label = displayLabel(sigs);
-  for (const norm of new Set(texts.map(normalize).filter(Boolean))) {
-    await saveLearnedMapping(domain, norm, fieldPath, label);
-  }
+  const signals = [
+    ...new Set(
+      texts.map(normalize).filter((key) => safeMappingKey(key) && !genericLearnedSignal(key)),
+    ),
+  ];
+  if (!signals.length || !isLearnedPath(fieldPath)) return;
+  const profile = context ? null : await getProfile();
+  const captured = context ?? (profile ? await getLearningContext(profile) : null);
+  if (!captured) return;
+  const question = learningQuestion(sigs);
+  if (question.length > 1000) return;
+  await saveLearnedObservation(domain, {
+    signals,
+    path: fieldPath,
+    ...(label ? { label } : {}),
+    ...(question ? { question } : {}),
+    context: captured,
+    ...(repeatedLearnedPath(fieldPath)
+      ? { scope: hasGenericEntryLabel(fieldPath, sigs) ? 'field' : 'entry' }
+      : {}),
+  });
 }
+
+const repeatedLearnedPath = (path: string) =>
+  /^(education|workHistory|languages)\.\d+\.|^salary\.expected\.\d+\./.test(path);
 
 // Opportunistically backfills a missing/stale display label on an *existing*
 // learned-mapping entry when the same field is scanned again later — covers
@@ -42,6 +64,7 @@ export function refreshLearnedLabels(
   domain: string,
   signals: FieldSignals,
   mappings: LearnedMappings,
+  patch?: LearnedMappings,
 ): boolean {
   const domainMap = mappings[domain];
   if (!domainMap) return false;
@@ -50,7 +73,11 @@ export function refreshLearnedLabels(
   if (!label) return false;
 
   const texts = [
-    signals.name, signals.id, signals.placeholder, signals.ariaLabel, signals.label,
+    signals.name,
+    signals.id,
+    signals.placeholder,
+    signals.ariaLabel,
+    signals.label,
   ].filter(Boolean);
 
   let changed = false;
@@ -61,6 +88,10 @@ export function refreshLearnedLabels(
     if (existing === undefined || typeof existing === 'string') continue;
     if (existing.label) continue;
     domainMap[norm] = { ...existing, label };
+    if (patch) {
+      patch[domain] ??= {};
+      patch[domain][norm] = domainMap[norm];
+    }
     changed = true;
   }
   return changed;

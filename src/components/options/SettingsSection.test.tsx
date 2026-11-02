@@ -127,12 +127,12 @@ describe('SettingsSection — explicit Gemini saves', () => {
 describe('SettingsSection — profile import merges learned mappings, never overwrites', () => {
   it('reviews existing learned mappings even when the profile is empty, then merges on update', async () => {
     vi.mocked(getProfile).mockResolvedValue(null); // mappings still require review
-    vi.mocked(getLearnedMappings).mockResolvedValue({ 'existing.com': { sig: { path: 'a.b', count: 2 } } });
+    vi.mocked(getLearnedMappings).mockResolvedValue({ 'existing.com': { sig: { path: 'personal.firstName', count: 2 } } });
 
     const { onImportComplete } = renderSection();
 
     const file = new File(
-      [JSON.stringify({ profile: makeProfile(), learnedMappings: { 'new.com': { sig2: { path: 'c.d', count: 1 } } } })],
+      [JSON.stringify({ profile: makeProfile(), learnedMappings: { 'new.com': { sig2: { path: 'personal.email', count: 1 } } } })],
       'export.json', { type: 'application/json' },
     );
     const fileInput = document.querySelector('input[type="file"][accept=".json"]') as HTMLInputElement;
@@ -412,9 +412,9 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     vi.mocked(applyChanges).mockReturnValueOnce(backupProfile);
     vi.mocked(connectDrive).mockResolvedValue({
       token: 't', fileId: 'f1',
-      backup: { profile: backupProfile, learnedMappings: { 'a.com': { sig: { path: 'a.b', count: 2 } } }, lastModified: '2026-01-01T00:00:00.000Z' },
+      backup: { profile: backupProfile, learnedMappings: { 'a.com': { sig: { path: 'personal.firstName', count: 2 } } }, lastModified: '2026-01-01T00:00:00.000Z' },
     });
-    vi.mocked(getLearnedMappings).mockResolvedValue({ 'b.com': { sig2: { path: 'c.d', count: 2 } } });
+    vi.mocked(getLearnedMappings).mockResolvedValue({ 'b.com': { sig2: { path: 'personal.email', count: 2 } } });
 
     const { onImportComplete } = renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));

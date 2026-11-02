@@ -10,6 +10,7 @@ import type { Profile } from '@/src/types/profile';
 vi.mock('@/src/utils/storage', () => ({
   getProfile: vi.fn(),
   getLearnedMappings: vi.fn().mockResolvedValue({}),
+  getLearningContext: vi.fn().mockResolvedValue({profileId:'test-profile',revision:null}),
   saveLearnedMappings: vi.fn(),
   getGeminiApiKey: vi.fn().mockResolvedValue('synthetic-secret-key'),
   getGeminiModel: vi.fn().mockResolvedValue('gemini-3.8-flash'),
