@@ -9,8 +9,6 @@ import {
   fieldExplanation,
   filterMatches,
   matchesSearch,
-  profileFieldName,
-  profileMatch,
   sourceNames,
   statusLabel,
   type ColorFilter,
@@ -399,8 +397,6 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
 function FieldRow({ field }: { field: FillLogField }) {
   const source = finalFillSource(field);
   const confidence = confidenceText(field);
-  const explanation = fieldExplanation(field);
-  const match = profileFieldName(profileMatch(field));
   const filled = source !== null;
   const tone =
     field.outcome === 'review'
@@ -435,17 +431,6 @@ function FieldRow({ field }: { field: FillLogField }) {
             ) : null}
             {confidence && source !== 'ai' && <span>{confidence}</span>}
           </span>
-          {explanation && (
-            <span className="mt-1 block text-xs leading-relaxed text-gray-600 dark:text-gray-300">
-              {explanation}
-            </span>
-          )}
-          {!filled && match && field.outcome !== 'kept' && field.outcome !== 'excluded' && (
-            <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
-              {field.outcome === 'missing_data' ? 'Profile field: ' : 'Possible profile field: '}
-              {match}
-            </span>
-          )}
         </span>
         <span
           className={[
@@ -468,6 +453,7 @@ function FieldRow({ field }: { field: FillLogField }) {
 function StageDetails({ field }: { field: FillLogField }) {
   const [selected, setSelected] = useState<StageId | null>(null);
   const panelId = useId();
+  const explanation = fieldExplanation(field);
   const stages = fillStages(field);
   const activeId =
     selected && stages.some((stage) => stage.id === selected && stage.enabled)
@@ -476,6 +462,9 @@ function StageDetails({ field }: { field: FillLogField }) {
   const active = stages.find((stage) => stage.id === activeId);
   return (
     <div className="mt-4 text-xs">
+      {explanation && (
+        <p className="mb-4 leading-relaxed text-gray-600 dark:text-gray-300">{explanation}</p>
+      )}
       <ol aria-label="Matching stages" className="grid grid-cols-3">
         {stages.map((stage) => (
           <li

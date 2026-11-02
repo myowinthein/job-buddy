@@ -369,14 +369,20 @@ describe('Fill Details page', () => {
     await showFields();
     fireEvent.click(screen.getByRole('button', { name: 'Skipped (1)' }));
     expect(screen.getByText('Privacy consent')).toBeTruthy();
-    expect(screen.getByText('Consent is left for you to decide.')).toBeTruthy();
+    const consent = screen.getByText('Privacy consent').closest('details')!;
+    expect(consent.querySelector('summary')!.textContent).not.toContain('Consent is left');
+    fireEvent.click(consent.querySelector('summary')!);
+    expect(within(consent).getByText('Consent is left for you to decide.')).toBeTruthy();
     expect(screen.queryByText('Location')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Kept current (1)' }));
     expect(screen.getByText('Email')).toBeTruthy();
-    expect(screen.getByText('Kept your existing answer.')).toBeTruthy();
+    const kept = screen.getByText('Email').closest('details')!;
+    expect(kept.querySelector('summary')!.textContent).not.toContain('Kept your existing answer.');
+    fireEvent.click(kept.querySelector('summary')!);
+    expect(within(kept).getByText('Kept your existing answer.')).toBeTruthy();
   });
 
-  it('identifies learned fills separately and explains gray matches with readable profile names', async () => {
+  it('keeps gray match details in the expansion and searchable by readable profile names', async () => {
     const data = snapshot();
     data.frames[0].log.fields[0].rule.layer = 'learned';
     data.frames[0].log.fields.push({
@@ -395,9 +401,38 @@ describe('Fill Details page', () => {
     expect(screen.queryByText('Summary')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Learned mappings (1)' }));
     fireEvent.click(screen.getByRole('button', { name: 'Gray (1)' }));
-    expect(screen.getByText('Profile field: Links → LinkedIn')).toBeTruthy();
+    const row = screen.getByText('Website').closest('details')!;
+    const summary = row.querySelector('summary')!;
+    expect(summary.textContent).not.toContain('Profile field:');
+    expect(summary.textContent).not.toContain('No usable saved data');
+    fireEvent.click(summary);
+    expect(within(row).getByText('No usable saved data for this profile field.')).toBeTruthy();
+    expect(within(row).getByText('links.linkedin')).toBeTruthy();
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'links linkedin' } });
     expect(screen.getByText('Website')).toBeTruthy();
+  });
+
+  it('keeps failed-write explanations and possible matches out of the main row', async () => {
+    const data = snapshot();
+    Object.assign(data.frames[1].log.fields[1].rule, {
+      layer: 'dictionary_exact',
+      confidence: 0.85,
+      profilePath: 'professional.noticePeriod.availableDate',
+    });
+    vi.mocked(loadFillLog).mockResolvedValue(data);
+    await showFields();
+    const row = screen.getByText('Resume').closest('details')!;
+    const summary = row.querySelector('summary')!;
+    expect(summary.textContent).not.toContain('Match found, but');
+    expect(summary.textContent).not.toContain('Possible profile field:');
+    fireEvent.click(summary);
+    expect(
+      within(row).getByText('Match found, but the form did not accept the value.'),
+    ).toBeTruthy();
+    fireEvent.click(
+      within(row).getByRole('button', { name: 'Rules: Match found, but could not fill' }),
+    );
+    expect(within(row).getByText('professional.noticePeriod.availableDate')).toBeTruthy();
   });
 
   it('shows required markers, numeric rule scores and qualitative AI confidence without inventing percentages', async () => {

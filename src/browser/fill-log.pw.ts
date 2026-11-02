@@ -188,6 +188,14 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   // A manual clear must stop counting as a filled value in both consumers.
   await page.locator('[name="firstName"]').fill('');
   await logPage.bringToFront();
+  const clearedRow = logPage
+    .locator('details')
+    .filter({ hasText: 'You cleared this answer.' })
+    .first();
+  await expect(clearedRow.locator('summary')).not.toContainText('You cleared this answer.');
+  if ((await clearedRow.getAttribute('open')) === null) {
+    await clearedRow.locator('summary').click();
+  }
   await expect(
     logPage.getByText('You cleared this answer.', { exact: true }).first(),
   ).toBeVisible();
