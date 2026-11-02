@@ -6,6 +6,7 @@ import { ruleQuestionBlocked } from './ruleContext';
 import { FIELD_DICTIONARY } from './dictionary';
 import { resolveProfileValue } from './resolver';
 import type { MatchLayer } from './debug';
+import type { LearnedCheck } from './fillLog';
 import { validMapping } from '../utils/learnedMappingData';
 import { sectionFamily } from './ruleContext';
 import {
@@ -171,9 +172,12 @@ export function mapField(
   profile: Profile,
   learnedMappings: LearnedMappings,
   domain: string,
+  onLearnedCheck?: (check: LearnedCheck) => void,
 ): FieldMatch {
-  if (ruleQuestionBlocked(signals))
+  if (ruleQuestionBlocked(signals)) {
+    onLearnedCheck?.({ status: 'not_checked' });
     return { fieldPath: null, confidence: 0, value: null, matchLayer: 'none', ruleBlocked: true };
+  }
   // Signals used in Layers 0–3 (nearbyText is reserved for Layer 4).
   // Label is checked first because it is the most semantically reliable
   // signal — it is what the user reads and describes what the field is FOR.
@@ -188,17 +192,26 @@ export function mapField(
   ].filter(Boolean);
   const normed = signalValues.map(normalize).filter(Boolean);
   const domainMappings = learnedMappings[domain] ?? {};
+  let learnedCheck: LearnedCheck = { status: 'no_match' };
+  const rejected = (check: LearnedCheck) => {
+    if (learnedCheck.status === 'no_match') learnedCheck = check;
+  };
 
   // ── Layer 0: Learned mappings ──────────────────────────────────────────────
   for (const n of normed) {
     const learned: LearnedMappingValue | undefined = domainMappings[n];
-    if (!validMapping(learned) || (typeof learned !== 'string' && learned.inactive) || genericLearnedSignal(n)) continue;
+    if (!validMapping(learned) || genericLearnedSignal(n)) continue;
     const fieldPath = typeof learned === 'string' ? learned : learned.path;
-    if (typeof learned !== 'string' && learned.count < LEARNED_MAPPING_THRESHOLD) continue;
-    if (!learnedSensitiveQuestion(fieldPath, signals)) continue;
+    if (!learnedSensitiveQuestion(fieldPath, signals)) {
+      rejected({ status: 'incompatible' });
+      continue;
+    }
     const section = signals.element ? sectionFamily(signals.element) : undefined;
     const pathSection = /^(education|workHistory)\./.exec(fieldPath)?.[1];
-    if (section && pathSection && section !== pathSection) continue;
+    if (section && pathSection && section !== pathSection) {
+      rejected({ status: 'incompatible' });
+      continue;
+    }
     const primary = [signals.label, signals.ariaLabel].map(normalize).filter(Boolean);
     const question = learningQuestion(signals);
     const storedQuestion =
@@ -208,7 +221,10 @@ export function mapField(
       (typeof learned !== 'string' && learned.question
         ? normalize(storedQuestion) === normalize(question)
         : normalize(storedQuestion) === normalize(question.slice(0, 120)));
-    if (typeof learned !== 'string' && learned.question && !compatible) continue;
+    if (typeof learned !== 'string' && learned.question && !compatible) {
+      rejected({ status: 'incompatible' });
+      continue;
+    }
     // Secondary/internal keys cannot carry an answer into a different question.
     if (question && !primary.includes(n) && !compatible) {
       const visibleHit = dictionaryExact(normalize(signals.label || signals.ariaLabel));
@@ -216,9 +232,29 @@ export function mapField(
         path
           .replace(/\.\d+(?=\.)/g, '')
           .replace(/personal\.phone\.(?:number|full)/, 'personal.phone.number');
-      if (!visibleHit || family(visibleHit) !== family(fieldPath)) continue;
+      if (!visibleHit || family(visibleHit) !== family(fieldPath)) {
+        rejected({ status: 'incompatible' });
+        continue;
+      }
     }
-    if (storedQuestion && question && !compatible && !primary.includes(n)) continue;
+    if (storedQuestion && question && !compatible && !primary.includes(n)) {
+      rejected({ status: 'incompatible' });
+      continue;
+    }
+    const metadata = {
+      profilePath: fieldPath,
+      ...(typeof learned === 'string'
+        ? { legacy: true as const }
+        : { confirmations: learned.count }),
+    };
+    if (typeof learned !== 'string' && learned.inactive) {
+      rejected({ status: 'inactive', ...metadata });
+      continue;
+    }
+    if (typeof learned !== 'string' && learned.count < LEARNED_MAPPING_THRESHOLD) {
+      rejected({ status: 'unconfirmed', ...metadata });
+      continue;
+    }
     const scope =
       typeof learned !== 'string' && learned.scope === 'entry'
         ? 'entry'
@@ -228,6 +264,7 @@ export function mapField(
           : 'entry';
     const resolved = resolveDictionaryHit(profile, fieldPath, signals);
     const marker = scope === 'field' && resolved.value ? repeatedLearnedMarker(fieldPath) : null;
+    onLearnedCheck?.({ status: 'trusted', ...metadata });
     return {
       fieldPath: marker || resolved.fieldPath,
       confidence: CONF_CONFIRMED,
@@ -236,6 +273,7 @@ export function mapField(
       learnedScope: scope,
     };
   }
+  onLearnedCheck?.(learnedCheck);
 
   // ── Layer 1: Autocomplete attribute ───────────────────────────────────────
   const ac = signals.autocomplete

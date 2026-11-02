@@ -28,14 +28,43 @@ export type AIOutcome =
   | 'no_response'
   | 'skipped';
 
+export const LEARNED_CHECK_LABELS = {
+  not_checked: 'Not run',
+  no_match: 'No usable mapping',
+  unconfirmed: 'Not trusted yet',
+  inactive: 'Inactive mapping',
+  incompatible: 'Mapping does not apply',
+  trusted: 'Trusted mapping',
+};
+export interface LearnedCheck {
+  status: keyof typeof LEARNED_CHECK_LABELS;
+  profilePath?: string;
+  confirmations?: number;
+  legacy?: true;
+}
+
 /** Metadata only: never store profile values, document bytes, or credentials. */
 export interface FillLogField {
   id: string;
   label: string;
   kind: 'text' | 'select' | 'file' | 'radio' | 'checkbox';
   required?: boolean;
-  rule: { outcome: RuleOutcome; layer?: MatchLayer; confidence?: number; profilePath?: string };
-  ai: { outcome: AIOutcome; confidence?: 'high' | 'low' | null; profilePath?: string };
+  learned?: LearnedCheck;
+  rule: {
+    outcome: RuleOutcome;
+    ran?: boolean;
+    layer?: MatchLayer;
+    confidence?: number;
+    matchConfidence?: number;
+    profilePath?: string;
+  };
+  ai: {
+    outcome: AIOutcome;
+    confidence?: 'high' | 'low' | null;
+    profilePath?: string;
+    optionReview?: boolean;
+    skipReason?: 'answer_changed' | 'profile_changed' | 'cancelled';
+  };
   outcome: FillOutcome;
   source: 'rules' | 'ai' | 'manual' | null;
   reason?:
@@ -182,11 +211,11 @@ export const AI_OUTCOME_LABELS: Record<AIOutcome, string> = {
   not_sent: 'Not sent',
   sent: 'Sent, awaiting response',
   filled: 'Matched and filled',
-  refined: 'Refined a rule-filled value',
+  refined: 'Refined the earlier fill',
   not_matched: 'No usable match',
   missing_data: 'No saved value',
   failed: 'AI assistance unavailable',
   fill_failed: 'Match found, but could not fill',
   no_response: 'No response for this field',
-  skipped: 'Your answer changed while AI was checking',
+  skipped: 'Answer not applied',
 };

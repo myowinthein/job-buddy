@@ -3,6 +3,7 @@ import {
   AI_OUTCOME_LABELS,
   FILL_OUTCOME_LABELS,
   RULE_OUTCOME_LABELS,
+  LEARNED_CHECK_LABELS,
   safeFormUrl,
 } from '@/src/autofill/fillLog';
 import { wrapStorageArea } from '@/src/utils/storageArea';
@@ -87,9 +88,26 @@ function reportMetadata(value: unknown): FrameFillLog | null {
           'none',
         ].includes(field.rule.layer)) ||
       (field.rule.confidence !== undefined && !Number.isFinite(field.rule.confidence)) ||
+      (field.rule.matchConfidence !== undefined &&
+        (!Number.isFinite(field.rule.matchConfidence) ||
+          field.rule.matchConfidence < 0 ||
+          field.rule.matchConfidence > 1)) ||
+      (field.rule.ran !== undefined && typeof field.rule.ran !== 'boolean') ||
+      (field.learned !== undefined &&
+        (!field.learned ||
+          !Object.hasOwn(LEARNED_CHECK_LABELS, field.learned.status) ||
+          (field.learned.profilePath !== undefined &&
+            typeof field.learned.profilePath !== 'string') ||
+          (field.learned.confirmations !== undefined &&
+            (!Number.isSafeInteger(field.learned.confirmations) ||
+              field.learned.confirmations < 0)) ||
+          (field.learned.legacy !== undefined && field.learned.legacy !== true))) ||
       (field.rule.profilePath !== undefined && typeof field.rule.profilePath !== 'string') ||
       (field.ai.profilePath !== undefined && typeof field.ai.profilePath !== 'string') ||
-      (field.ai.confidence !== undefined && ![null, 'high', 'low'].includes(field.ai.confidence))
+      (field.ai.confidence !== undefined && ![null, 'high', 'low'].includes(field.ai.confidence)) ||
+      (field.ai.optionReview !== undefined && typeof field.ai.optionReview !== 'boolean') ||
+      (field.ai.skipReason !== undefined &&
+        !['answer_changed', 'profile_changed', 'cancelled'].includes(field.ai.skipReason))
     )
       return null;
     fields.push({
@@ -100,16 +118,28 @@ function reportMetadata(value: unknown): FrameFillLog | null {
       outcome: field.outcome,
       source: field.source,
       reason: field.reason,
+      ...(field.learned && {
+        learned: {
+          status: field.learned.status,
+          profilePath: field.learned.profilePath,
+          confirmations: field.learned.confirmations,
+          legacy: field.learned.legacy,
+        },
+      }),
       rule: {
         outcome: field.rule.outcome,
+        ran: field.rule.ran,
         layer: field.rule.layer,
         confidence: field.rule.confidence,
+        matchConfidence: field.rule.matchConfidence,
         profilePath: field.rule.profilePath,
       },
       ai: {
         outcome: field.ai.outcome,
         confidence: field.ai.confidence,
         profilePath: field.ai.profilePath,
+        optionReview: field.ai.optionReview,
+        skipReason: field.ai.skipReason,
       },
     });
   }

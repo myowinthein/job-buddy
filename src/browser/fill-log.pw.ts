@@ -1,6 +1,8 @@
 import { test, expect } from './fixtures';
 import { summarizeFillFields } from '../autofill/fillLog';
 import type { FrameFillLog } from '../autofill/fillLog';
+import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
+import type { AIFieldPayload } from '../resume-ai/types';
 
 test('the production Fill Details combines frames, reports real outcomes, tracks edits and identifies Undo', async ({
   page,
@@ -104,10 +106,13 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
     animations: 'disabled',
     fullPage: false,
   });
-  await logPage.locator('details').first().screenshot({
-    path: testInfo.outputPath('fill-log-stage-details-dark.png'),
-    animations: 'disabled',
-  });
+  await logPage
+    .locator('details')
+    .first()
+    .screenshot({
+      path: testInfo.outputPath('fill-log-stage-details-dark.png'),
+      animations: 'disabled',
+    });
   await logPage.setViewportSize({ width: 375, height: 812 });
   await expect
     .poll(() => logPage.locator('aside').evaluate((el) => el.getBoundingClientRect().width))
@@ -124,10 +129,13 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
     animations: 'disabled',
   });
 
-  await logPage.locator('details').first().screenshot({
-    path: testInfo.outputPath('fill-log-stage-details-narrow.png'),
-    animations: 'disabled',
-  });
+  await logPage
+    .locator('details')
+    .first()
+    .screenshot({
+      path: testInfo.outputPath('fill-log-stage-details-narrow.png'),
+      animations: 'disabled',
+    });
 
   const popup = await context.newPage();
   // A full-page popup test has its own active tab. Pin its query to the source
@@ -273,9 +281,9 @@ test('an independently scanned empty iframe does not hide form fills, and a fres
   await popup.getByRole('button', { name: 'View details' }).click();
   const logPage = await opened;
   await expect(logPage.getByText('Detected', { exact: true }).locator('..')).toContainText('9');
-  await expect(logPage.getByText('Filled', { exact: true }).locator('..')).toContainText(
-    String(count),
-  );
+  await expect(
+    logPage.getByRole('button', { name: `Filled (${count})`, exact: true }),
+  ).toBeVisible();
   await logPage.screenshot({ path: testInfo.outputPath('sandbox-fill-log.png'), fullPage: false });
 
   await page.evaluate(() => {
@@ -499,4 +507,144 @@ test('an open empty report populates automatically and explicit actions select t
       ),
     )
     .toBe(bId);
+});
+
+test('records real LM, rule and AI decisions and browses them without another fill', async ({
+  page,
+  context,
+  extension,
+}, testInfo) => {
+  const profile = structuredClone(RULE_PROFILE);
+  profile.personal.nickname = '';
+  await extension.worker.evaluate(async (profile) => {
+    await chrome.storage.local.set({
+      profile,
+      learnedMappings: {
+        '127.0.0.1': {
+          fullname: { path: 'derived.fullName', count: 2 },
+          firstname: { path: 'personal.firstName', count: 1 },
+          lastname: { path: 'personal.lastName', count: 2, inactive: true },
+          screenname: { path: 'personal.nickname', count: 2 },
+        },
+      },
+    });
+  }, profile);
+  await page.evaluate(() => {
+    document.body.innerHTML =
+      '<form><h1>Job application</h1><label>Full name<input name="fullName"></label><label>First name<input name="firstName"></label><label>First nme<input name="typo"></label><label>Last name<input name="lastName"></label><label>Screen name<input name="screenName"></label></form>';
+  });
+  let aiRequests = 0;
+  await context.route('https://generativelanguage.googleapis.com/**', (route) => {
+    aiRequests++;
+    const prompt = route.request().postDataJSON().contents[0].parts[0].text as string;
+    const { fields } = JSON.parse(prompt.slice(prompt.lastIndexOf('\n\n{') + 2)) as {
+      fields: AIFieldPayload[];
+    };
+    return route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify(
+                    fields.map((field) => ({
+                      fieldId: field.fieldId,
+                      profilePath:
+                        field.label === 'Screen name' ? 'personal.nickname' : 'personal.firstName',
+                      confidence: 'high',
+                    })),
+                  ),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    });
+  });
+  await extension.send('AUTOFILL_SCAN');
+  await extension.send('AUTOFILL_FILL', 'overwrite');
+  await expect(page.locator('[name="fullName"]')).toHaveValue('Alex Sample');
+  await expect(page.locator('[name="firstName"]')).toHaveValue('Alex');
+  await expect(page.locator('[name="typo"]')).toHaveValue('Alex');
+  await expect(page.locator('[name="screenName"]')).toHaveValue('');
+  const logs = (await extension.send('GET_FILL_LOG')) as unknown as FrameFillLog[];
+  const fields = logs.flatMap((log) => log.fields);
+  expect(fields.find((field) => field.label === 'Full name')).toMatchObject({
+    learned: { status: 'trusted', confirmations: 2 },
+    rule: { ran: false, layer: 'learned', outcome: 'filled' },
+    ai: { outcome: 'not_sent' },
+  });
+  expect(fields.find((field) => field.label === 'First name')).toMatchObject({
+    learned: { status: 'unconfirmed', confirmations: 1 },
+    rule: { ran: true, layer: 'dictionary_exact', matchConfidence: 0.85 },
+  });
+  expect(fields.find((field) => field.label === 'Last name')).toMatchObject({
+    learned: { status: 'inactive' },
+    rule: { ran: true },
+  });
+  const refined = fields.find((field) => field.label === 'First nme')!;
+  expect(refined).toMatchObject({
+    learned: { status: 'no_match' },
+    rule: { ran: true, outcome: 'filled', layer: 'fuzzy', profilePath: 'personal.firstName' },
+    ai: { outcome: 'refined', confidence: 'high', profilePath: 'personal.firstName' },
+    source: 'ai',
+  });
+  expect(refined.rule.matchConfidence).toBeLessThan(0.85);
+  expect(fields.find((field) => field.label === 'Screen name')).toMatchObject({
+    learned: { status: 'trusted' },
+    rule: { ran: false, outcome: 'missing_data' },
+    ai: { outcome: 'missing_data' },
+  });
+
+  const details = await context.newPage();
+  await details.goto(new URL('options.html', extension.worker.url()).href);
+  await details.getByRole('button', { name: 'Fill Details', exact: true }).click();
+  const row = details
+    .locator('details')
+    .filter({ has: details.locator('summary', { hasText: 'First nme' }) });
+  await row.locator('summary').click();
+  await expect(row.getByRole('region', { name: 'AI stage details' })).toBeVisible();
+  await row.getByRole('button', { name: 'Rules: Matched and filled' }).click();
+  await expect(row.getByText('Similar field label', { exact: true })).toBeVisible();
+  await expect(
+    row.getByText(`${Math.round(refined.rule.matchConfidence! * 100)}%`, { exact: true }),
+  ).toBeVisible();
+  const requestsBefore = aiRequests;
+  await row.getByRole('button', { name: 'Learned mappings: No usable mapping' }).click();
+  await expect(row.getByRole('region', { name: 'Learned mappings stage details' })).toBeVisible();
+  await row.getByRole('button', { name: 'AI: Refined the earlier fill' }).click();
+  await expect(page.locator('[name="typo"]')).toHaveValue('Alex');
+  expect(aiRequests).toBe(requestsBefore);
+  await details.emulateMedia({ colorScheme: 'dark' });
+  await row.screenshot({
+    path: testInfo.outputPath('stage-navigation-dark.png'),
+    animations: 'disabled',
+  });
+  await details.setViewportSize({ width: 375, height: 812 });
+  await expect
+    .poll(() =>
+      details.locator('aside').evaluate((element) => element.getBoundingClientRect().width),
+    )
+    .toBe(64);
+  expect(
+    await details.locator('main').evaluate((element) => element.scrollWidth <= element.clientWidth),
+  ).toBe(true);
+  await row.screenshot({
+    path: testInfo.outputPath('stage-navigation-narrow.png'),
+    animations: 'disabled',
+  });
+  // The stage snapshot survives closing the source form.
+  await page.close();
+  await details.reload();
+  await expect(
+    details.getByText('This form is closed. Showing its last fill details.'),
+  ).toBeVisible();
+  const retained = await extension.worker.evaluate(
+    async () => (await chrome.storage.session.get('jb:last-fill-details'))['jb:last-fill-details'],
+  );
+  expect(JSON.stringify(retained)).toContain('unconfirmed');
+  expect(JSON.stringify(retained)).not.toContain('alex@example.test');
 });

@@ -94,14 +94,16 @@ export function fieldExplanation(field: FillLogField): string {
       ? 'A possible match could not be used safely.'
       : 'No suitable profile match was found.';
   }
-  if (field.ai.outcome === 'refined') return 'AI refined a rule-filled answer.';
+  if (field.ai.outcome === 'refined') return 'AI refined an earlier fill.';
   if (field.source === 'rules' && field.ai.outcome === 'failed')
-    return 'Kept the rule fill because AI was unavailable.';
+    return field.rule.layer === 'learned'
+      ? 'Kept the learned fill because AI was unavailable.'
+      : 'Kept the rule fill because AI was unavailable.';
   return '';
 }
 export function confidenceText(field: FillLogField): string | null {
   const source = finalFillSource(field);
-  if (source === 'manual') return null;
+  if (source === 'manual' || source === 'learned') return null;
   if (source === 'ai')
     return field.ai.confidence === 'high'
       ? 'High confidence'

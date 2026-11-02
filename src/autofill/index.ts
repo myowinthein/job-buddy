@@ -47,7 +47,7 @@ import type {
 } from './debug';
 import { summarizeFillFields, safeFormUrl } from './fillLog';
 import { requiredField, reportTitle } from '@/src/fill-log/fieldMetadata';
-import type { FillLogField, FrameFillLog } from './fillLog';
+import type { FillLogField, FrameFillLog, LearnedCheck } from './fillLog';
 import type { RadioGroup, CheckboxGroup } from './scanner';
 import { isConsentGroup } from './consent';
 import { aiQuestionIdentity } from './aiSafety';
@@ -397,6 +397,7 @@ function runSilentRefill(): Promise<void> {
         const record = fieldRecords.get(element);
         if (record) {
           record.rule.outcome = 'filled';
+          record.rule.confidence = confidence;
           record.outcome = green ? 'high_confidence' : 'review';
           record.source = 'rules';
           record.reason = 'profile_updated';
@@ -551,10 +552,13 @@ export async function scanAutofill(
 
   const scanned = fields.map((element, i) => {
     const signals = snapshot.signals(element);
+    const learned: LearnedCheck = { status: 'not_checked' };
+    const match = mapField(signals, profile, learnedMappings, domain, (check) => Object.assign(learned, check));
     return {
       element,
       signals,
-      match:        { ...mapField(signals, profile, learnedMappings, domain), element },
+      match: { ...match, element },
+      learned,
       debugFieldId: `field_${String(i + 1).padStart(3, '0')}`,
     };
   });
@@ -590,7 +594,7 @@ export async function scanAutofill(
   const checkboxGroups = snapshot.checkboxGroups;
   pendingRadioGroups = snapshot.radioGroups;
   pendingCheckboxGroups = checkboxGroups;
-  for (const { element, signals, match, debugFieldId } of scanned) {
+  for (const { element, signals, match, learned, debugFieldId } of scanned) {
     const record: FillLogField = {
       id: debugFieldId,
       label: reportTitle(bestLabel(signals), 'text', fillLog!.fields.length + 1),
@@ -605,9 +609,15 @@ export async function scanAutofill(
             : 'text',
       rule: {
         outcome: 'not_applicable',
+        ran: match.matchLayer !== 'learned' && !match.ruleBlocked,
         layer: match.matchLayer,
         confidence: match.confidence,
+        matchConfidence: match.confidence,
         ...(match.fieldPath ? { profilePath: match.fieldPath } : {}),
+      },
+      learned: {
+        ...learned,
+        ...(learned.status === 'trusted' && match.fieldPath ? { profilePath: match.fieldPath } : {}),
       },
       ai: { outcome: 'not_sent' },
       outcome: 'not_matched',
@@ -629,7 +639,8 @@ export async function scanAutofill(
           group.options.map(option => option.element), group.groupLabel, group.question,
         ),
         kind,
-        rule: { outcome: 'not_applicable' },
+        learned: { status: 'not_checked' },
+        rule: { outcome: 'not_applicable', ran: false },
         ai: { outcome: 'not_sent' },
         outcome: excluded ? 'excluded' : 'not_matched',
         source: null,
@@ -651,6 +662,7 @@ export async function scanAutofill(
   ];
   const checkboxScanned = checkboxMatches.map(({ element, fieldPath }, i) => ({
     element,
+    learned: { status: 'not_checked' } as LearnedCheck,
     signals: extractSignals(element),
     match: {
       fieldPath, element,
@@ -667,6 +679,13 @@ export async function scanAutofill(
     if (!group.isConsent && !isConsentGroup(group)) for (const option of group.options) if (isChoiceChecked(option.element)) prefilledRecords.add(fieldRecords.get(option.element)!);
   }
   scanned.forEach(({ element, signals, match, debugFieldId }) => {
+    Object.assign(fieldRecords.get(element)!.rule, {
+      ran: match.matchLayer !== 'learned' && !('ruleBlocked' in match && match.ruleBlocked),
+      layer: match.matchLayer,
+      confidence: match.confidence,
+      matchConfidence: match.confidence,
+      ...(match.fieldPath ? { profilePath: match.fieldPath } : {}),
+    });
     const hasExistingValue = getFieldValue(element).trim() !== '';
     if (hasExistingValue) prefilledRecords.add(fieldRecords.get(element)!);
 
@@ -814,6 +833,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     Object.assign(record.rule, {
       layer: match.matchLayer,
       confidence: match.confidence,
+      matchConfidence: match.confidence,
       ...(match.fieldPath ? { profilePath: match.fieldPath } : {}),
     });
     // Merge mode: skip pre-filled fields that would otherwise be overwritten.

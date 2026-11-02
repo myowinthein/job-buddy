@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { mapField, getFuzzyCacheSize } from './mapper';
 import { CONF_FUZZY_THRESHOLD, CONF_FUZZY_STRONG_MULT, CONF_FUZZY_WEAK_MULT } from './constants';
 import type { Profile } from '../types/profile';
@@ -644,5 +644,55 @@ describe('mapField — no match', () => {
     const result = mapField(sig({ name: 'linkedin' }), p, NO_MAPPINGS, DOMAIN);
     expect(result.fieldPath).toBe('links.linkedin');
     expect(result.value).toBeNull();
+  });
+});
+
+describe('recorded learned-mapping checks', () => {
+  it.each([
+    [undefined, 'no_match', 'dictionary_exact'],
+    [{ path: 'personal.firstName', count: 1 }, 'unconfirmed', 'dictionary_exact'],
+    [{ path: 'personal.firstName', count: 2 }, 'trusted', 'learned'],
+    [{ path: 'personal.firstName', count: 2, inactive: true }, 'inactive', 'dictionary_exact'],
+    [
+      { path: 'personal.firstName', count: 2, question: 'Another question' },
+      'incompatible',
+      'dictionary_exact',
+    ],
+    ['personal.firstName', 'trusted', 'learned'],
+  ] as const)('records %s without changing the selected match', (mapping, status, layer) => {
+    const mappings: LearnedMappings = mapping ? { [DOMAIN]: { firstname: mapping } } : {};
+    const observer = vi.fn();
+    const signals = sig({ label: 'First name' });
+    const match = mapField(signals, PROFILE, mappings, DOMAIN, observer);
+    expect(match).toEqual(mapField(signals, PROFILE, mappings, DOMAIN));
+    expect(match.matchLayer).toBe(layer);
+    expect(observer).toHaveBeenCalledOnce();
+    expect(observer.mock.calls[0][0].status).toBe(status);
+    expect(JSON.stringify(observer.mock.calls)).not.toContain('Jane');
+    if (typeof mapping === 'object' && status !== 'incompatible')
+      expect(observer.mock.calls[0][0].confirmations).toBe(mapping.count);
+  });
+  it('records skipped checks for unsupported questions', () => {
+    const observer = vi.fn();
+    mapField(sig({ label: 'Emergency contact name' }), PROFILE, {}, DOMAIN, observer);
+    expect(observer).toHaveBeenCalledWith({ status: 'not_checked' });
+  });
+  it('keeps a trusted empty match instead of claiming that Rules ran', () => {
+    const observer = vi.fn();
+    const profile = { ...PROFILE, personal: { ...PROFILE.personal, nickname: '' } };
+    const match = mapField(
+      sig({ label: 'Preferred name' }),
+      profile,
+      { [DOMAIN]: { preferredname: { path: 'personal.nickname', count: 2 } } },
+      DOMAIN,
+      observer,
+    );
+    expect(match.matchLayer).toBe('learned');
+    expect(match.value).toBeNull();
+    expect(observer).toHaveBeenCalledWith({
+      status: 'trusted',
+      profilePath: 'personal.nickname',
+      confirmations: 2,
+    });
   });
 });

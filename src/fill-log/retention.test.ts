@@ -196,3 +196,37 @@ it('replacing a profile clears its report while ordinary profile saves preserve 
   await retainFrameFillLog(sender(), log(), profile.id);
   expect(await readRetainedFillLog()).toBeNull();
 });
+
+it('retains only allowlisted stage metadata and keeps stage decisions across closed-form reads', async () => {
+  const report = log();
+  Object.assign(report.fields[0], {
+    learned: {
+      status: 'unconfirmed',
+      confirmations: 1,
+      profilePath: 'personal.firstName',
+      value: 'private',
+    },
+  });
+  Object.assign(report.fields[0].rule, { ran: true, matchConfidence: 0.85, confidence: 0.7 });
+  Object.assign(report.fields[0].ai, { outcome: 'filled', confidence: 'high', optionReview: true });
+  await retainFrameFillLog(sender(), report, 'profile');
+  const retained = (await readRetainedFillLog())!.frames[0].log.fields[0];
+  expect(retained.learned).toEqual({
+    status: 'unconfirmed',
+    confirmations: 1,
+    profilePath: 'personal.firstName',
+  });
+  expect(retained.rule).toMatchObject({ ran: true, matchConfidence: 0.85, confidence: 0.7 });
+  expect(retained.ai).toMatchObject({ confidence: 'high', optionReview: true });
+  expect(JSON.stringify(retained)).not.toContain('private');
+});
+it.each([
+  { status: 'invented' },
+  { status: 'trusted', confirmations: -1 },
+  { status: 'trusted', confirmations: 1.5 },
+])('rejects malformed stage metadata %s', async (learned) => {
+  const report = log();
+  Object.assign(report.fields[0], { learned });
+  await retainFrameFillLog(sender(), report, 'profile');
+  expect(await readRetainedFillLog()).toBeNull();
+});

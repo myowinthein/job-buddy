@@ -194,14 +194,21 @@ export async function runAIAutofill(
   try {
     responses = await resolveFieldsWithAI(apiKey, model, payload, profile as object, { signal: options.signal, isActive, onUnavailable: () => { requestIncomplete = true; } });
   } catch {
-    for (const record of candidateRecords.values()) record.ai.outcome = 'failed';
+    for (const record of candidateRecords.values()) {
+      record.ai.outcome = isActive() ? 'failed' : 'skipped';
+      if (!isActive()) record.ai.skipReason = 'cancelled';
+    }
     options.onStatus?.('unavailable');
     return true; // Keep the legacy availability result; report failure separately.
   }
 
   try {
-    if (!isActive() || (options.isProfileCurrent && !await options.isProfileCurrent())) {
-      for (const record of candidateRecords.values()) record.ai.outcome = 'skipped';
+    const activeBeforeCheck = isActive();
+    if (!activeBeforeCheck || (options.isProfileCurrent && !await options.isProfileCurrent())) {
+      for (const record of candidateRecords.values()) {
+        record.ai.outcome = 'skipped';
+        record.ai.skipReason = activeBeforeCheck ? 'profile_changed' : 'cancelled';
+      }
       return true;
     }
   } catch {
@@ -228,6 +235,7 @@ export async function runAIAutofill(
         if (aiOutcome === 'fill_failed' && record.rule.outcome !== 'filled') { record.outcome = 'failed'; record.reason = 'fill_failed'; }
       } else {
         record.ai.outcome = record.rule.outcome === 'filled' ? 'refined' : 'filled';
+        record.ai.optionReview = candidate.type === 'text' && getWriteConfidence(candidate.element) < CONF_GREEN;
         record.outcome = finalState === 'green' ? 'high_confidence' : 'review';
         record.source = 'ai';
       }
@@ -267,7 +275,7 @@ export async function runAIAutofill(
     if (elements.some(element => !unchanged(element) || (candidate.type !== 'text' && isChoiceChecked(element) !== choices.get(element)))) {
       if (tracked) {
         const hasValue = candidate.type === 'text' ? !!readFieldValue(candidate.element).trim() : candidate.group.options.some(option => isChoiceChecked(option.element));
-        tracked.ai.outcome = 'skipped'; tracked.outcome = hasValue ? 'manual' : 'not_matched';
+        tracked.ai.outcome = 'skipped'; tracked.ai.skipReason = 'answer_changed'; tracked.outcome = hasValue ? 'manual' : 'not_matched';
         tracked.source = hasValue ? 'manual' : null; tracked.reason = 'value_changed';
       }
       continue;
@@ -286,6 +294,7 @@ export async function runAIAutofill(
       if (tracked) {
         const available = isChoiceGroupAvailable(candidate.group);
         tracked.ai.outcome = available ? 'skipped' : 'fill_failed';
+        if (available) tracked.ai.skipReason = 'answer_changed';
         tracked.outcome = available ? 'manual' : 'failed';
         tracked.source = available ? 'manual' : null;
         tracked.reason = available ? 'value_changed' : 'fill_failed';
@@ -343,7 +352,7 @@ export async function runAIAutofill(
 
       const liveValue = readFieldValue(candidate.element);
       if (liveValue !== valuesAtRequest.get(candidate.element)) {
-        if (tracked) { tracked.ai.outcome = 'skipped'; tracked.outcome = liveValue.trim() ? 'manual' : 'not_matched'; tracked.source = 'manual'; tracked.reason = 'value_changed'; }
+        if (tracked) { tracked.ai.outcome = 'skipped'; tracked.ai.skipReason = 'answer_changed'; tracked.outcome = liveValue.trim() ? 'manual' : 'not_matched'; tracked.source = 'manual'; tracked.reason = 'value_changed'; }
         continue;
       }
       if (!value) {
@@ -454,7 +463,10 @@ export async function runAIAutofill(
     }
   }
 
-  for (const record of candidateRecords.values()) if (record.ai.outcome === 'sent') record.ai.outcome = 'no_response';
+  for (const record of candidateRecords.values()) if (record.ai.outcome === 'sent') {
+    record.ai.outcome = isActive() ? 'no_response' : 'skipped';
+    if (!isActive()) record.ai.skipReason = 'cancelled';
+  }
   options.onStatus?.(requestIncomplete ? 'unavailable' : 'succeeded');
   return true;
 }

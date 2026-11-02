@@ -41,6 +41,7 @@ import type { AIFieldResponse } from '../resume-ai/types';
 import type { FillLogField } from './fillLog';
 import { applyHighlight, applyMissingDataHighlight } from './highlighter';
 import { CONF_NO_MATCH } from './constants';
+import { setWriteConfidence } from './writeSession';
 
 // ── runAIAutofill helpers ─────────────────────────────────────────────────────
 
@@ -762,3 +763,70 @@ describe('AI completion status', () => {
     expect(onStatus).toHaveBeenCalledWith('unavailable');
   });
 });
+
+it('records option uncertainty separately from Gemini confidence', async () => {
+  vi.mocked(getGeminiApiKey).mockResolvedValue('test-key');
+  vi.mocked(getGeminiModel).mockResolvedValue('gemini-3.8-flash');
+  vi.mocked(resolveFieldsWithAI).mockResolvedValue([
+    { fieldId: 'field_001', profilePath: 'personal.firstName', confidence: 'high' },
+  ]);
+  const candidate = textCandidate('lowConfidence', 'First name');
+  setWriteConfidence(candidate.element, 0.7);
+  const record: FillLogField = {
+    id: 'one',
+    label: 'First name',
+    kind: 'text',
+    rule: { outcome: 'not_matched' },
+    ai: { outcome: 'not_sent' },
+    outcome: 'not_matched',
+    source: null,
+  };
+  const counts = { noReview: 0, needReview: 0, lowConfidence: 1, noData: 0 };
+  await runAIAutofill([candidate], PROFILE, counts, [], undefined, {
+    fieldRecords: new Map([[candidate.element, record]]),
+  });
+  expect(record).toMatchObject({
+    outcome: 'review',
+    source: 'ai',
+    ai: { confidence: 'high', optionReview: true },
+  });
+  expect(counts.needReview).toBe(1);
+  expect(counts.noReview).toBe(0);
+});
+
+it.each(['cancelled', 'profile_changed'] as const)(
+  'records the actual AI skip reason: %s',
+  async (reason) => {
+    vi.mocked(getGeminiApiKey).mockResolvedValue('test-key');
+    vi.mocked(getGeminiModel).mockResolvedValue('gemini-3.8-flash');
+    let active = true;
+    vi.mocked(resolveFieldsWithAI).mockImplementationOnce(async () => {
+      if (reason === 'cancelled') active = false;
+      return [{ fieldId: 'field_001', profilePath: 'personal.firstName', confidence: 'high' }];
+    });
+    const candidate = textCandidate('lowConfidence', 'First name');
+    const record: FillLogField = {
+      id: 'one',
+      label: 'First name',
+      kind: 'text',
+      rule: { outcome: 'not_matched' },
+      ai: { outcome: 'not_sent' },
+      outcome: 'not_matched',
+      source: null,
+    };
+    await runAIAutofill(
+      [candidate],
+      PROFILE,
+      { noReview: 0, needReview: 0, lowConfidence: 1, noData: 0 },
+      [],
+      undefined,
+      {
+        fieldRecords: new Map([[candidate.element, record]]),
+        isActive: () => active,
+        isProfileCurrent: async () => reason !== 'profile_changed',
+      },
+    );
+    expect(record.ai).toMatchObject({ outcome: 'skipped', skipReason: reason });
+    expect(record.outcome).toBe('not_matched');
+  },
+);

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { ArrowLeft, ChevronDown, ListChecks } from 'lucide-react';
 import { loadFillLog, returnToForm } from '@/src/fill-log/client';
 import { RETAINED_FILL_DETAILS } from '@/src/fill-log/retention';
+import { defaultStage, fillStages, type StageId } from '@/src/fill-log/stages';
 import {
   checkedBy,
   confidenceText,
@@ -10,7 +11,6 @@ import {
   matchesSearch,
   profileFieldName,
   profileMatch,
-  ruleMethods,
   sourceNames,
   statusLabel,
   type ColorFilter,
@@ -18,8 +18,6 @@ import {
   type SourceFilter,
 } from '@/src/fill-log/presentation';
 import {
-  AI_OUTCOME_LABELS,
-  RULE_OUTCOME_LABELS,
   finalFillSource,
   summarizeFillFields,
   type FillLogField,
@@ -479,58 +477,102 @@ function FieldRow({ field, control }: { field: FillLogField; control: string }) 
           className="col-start-3 row-start-1 mt-1 h-3.5 w-3.5 text-gray-400 transition-transform group-open:rotate-180"
         />
       </summary>
-      <dl className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 border-l-2 border-gray-200 pl-4 text-xs dark:border-gray-700">
-        <dt className="text-gray-500 dark:text-gray-400">Learned mapping</dt>
-        <dd>
-          {field.rule.layer === 'learned'
-            ? RULE_OUTCOME_LABELS[field.rule.outcome]
-            : field.rule.outcome === 'not_applicable'
-              ? 'Not applicable'
-              : 'No trusted match'}
-        </dd>
-        <dt className="text-gray-500 dark:text-gray-400">Rule result</dt>
-        <dd>
-          {field.rule.layer === 'learned'
-            ? 'Not run after learned mapping'
-            : RULE_OUTCOME_LABELS[field.rule.outcome]}
-        </dd>
-        <dt className="text-gray-500 dark:text-gray-400">AI result</dt>
-        <dd>{AI_OUTCOME_LABELS[field.ai.outcome]}</dd>
-        {field.rule.layer && (
-          <>
-            <dt className="text-gray-500 dark:text-gray-400">Rule method</dt>
-            <dd>{ruleMethods[field.rule.layer]}</dd>
-          </>
-        )}
-        {typeof field.rule.confidence === 'number' && (
-          <>
-            <dt className="text-gray-500 dark:text-gray-400">
-              {field.rule.layer === 'learned' ? 'Learned match score' : 'Rule match score'}
-            </dt>
-            <dd>{Math.round(field.rule.confidence * 100)}%</dd>
-          </>
-        )}
-        {field.ai.confidence && (
-          <>
-            <dt className="text-gray-500 dark:text-gray-400">AI confidence</dt>
-            <dd className="capitalize">{field.ai.confidence}</dd>
-          </>
-        )}
-        {field.rule.profilePath && (
-          <>
-            <dt className="text-gray-500 dark:text-gray-400">Rule profile field</dt>
-            <dd className="break-all font-mono">{field.rule.profilePath}</dd>
-          </>
-        )}
-        {field.ai.profilePath && (
-          <>
-            <dt className="text-gray-500 dark:text-gray-400">AI profile field</dt>
-            <dd className="break-all font-mono">{field.ai.profilePath}</dd>
-          </>
-        )}
+      <StageDetails field={field} control={control} />
+    </details>
+  );
+}
+
+function StageDetails({ field, control }: { field: FillLogField; control: string }) {
+  const [selected, setSelected] = useState<StageId | null>(null);
+  const panelId = useId();
+  const stages = fillStages(field);
+  const activeId =
+    selected && stages.some((stage) => stage.id === selected && stage.enabled)
+      ? selected
+      : defaultStage(field, stages);
+  const active = stages.find((stage) => stage.id === activeId);
+  return (
+    <div className="mt-4 text-xs">
+      <ol aria-label="Matching stages" className="grid grid-cols-3">
+        {stages.map((stage) => (
+          <li
+            key={stage.id}
+            className="relative min-w-0 before:absolute before:left-1/2 before:top-2.5 before:h-px before:w-full before:bg-gray-300 last:before:hidden dark:before:bg-gray-700"
+          >
+            <button
+              type="button"
+              aria-label={stage.label + ': ' + stage.result}
+              aria-pressed={stage.id === activeId}
+              aria-controls={active ? panelId : undefined}
+              disabled={!stage.enabled}
+              onClick={() => setSelected(stage.id)}
+              className={[
+                'relative flex w-full flex-col items-center gap-1.5 rounded-sm px-1 text-center focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500 disabled:cursor-default disabled:text-gray-400 dark:disabled:text-gray-500',
+                stage.id === activeId
+                  ? 'text-blue-700 dark:text-blue-300'
+                  : 'text-gray-600 enabled:hover:text-gray-900 dark:text-gray-400 dark:enabled:hover:text-gray-200',
+              ].join(' ')}
+            >
+              <span
+                aria-hidden="true"
+                className={[
+                  'relative grid h-5 w-5 place-items-center rounded-full border bg-gray-50 dark:bg-gray-900',
+                  stage.id === activeId
+                    ? 'border-blue-600 dark:border-blue-400'
+                    : 'border-gray-300 dark:border-gray-600',
+                ].join(' ')}
+              >
+                <span
+                  className={[
+                    'h-2 w-2 rounded-full',
+                    stage.id === activeId
+                      ? 'bg-blue-600 dark:bg-blue-400'
+                      : 'bg-gray-300 dark:bg-gray-600',
+                  ].join(' ')}
+                />
+              </span>
+              <span className="flex min-h-8 items-center justify-center font-medium sm:min-h-0">
+                {stage.label}
+              </span>
+              <span className="text-[11px]">{stage.summary}</span>
+            </button>
+          </li>
+        ))}
+      </ol>
+      {active && (
+        <div
+          id={panelId}
+          role="region"
+          aria-label={active.label + ' stage details'}
+          className="mt-4 border-l-2 border-gray-200 pl-4 dark:border-gray-700"
+        >
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2">
+            <dt className="text-gray-500 dark:text-gray-400">Result</dt>
+            <dd>{active.result}</dd>
+            {active.details.map((detail) => (
+              <Attribute
+                key={detail.label}
+                label={detail.label}
+                value={detail.value}
+                mono={detail.mono}
+              />
+            ))}
+          </dl>
+        </div>
+      )}
+      <dl className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 border-t border-gray-200 pt-3 dark:border-gray-800">
         <dt className="text-gray-500 dark:text-gray-400">Control</dt>
         <dd className="break-words font-mono">{control}</dd>
       </dl>
-    </details>
+    </div>
+  );
+}
+
+function Attribute({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <>
+      <dt className="text-gray-500 dark:text-gray-400">{label}</dt>
+      <dd className={mono ? 'break-all font-mono' : undefined}>{value}</dd>
+    </>
   );
 }

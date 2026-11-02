@@ -16,6 +16,7 @@ function snapshot(): FillLogSnapshot {
     kind: 'text',
     outcome: 'high_confidence',
     source: 'rules',
+    learned: { status: 'no_match' },
     rule: {
       outcome: 'filled',
       layer: 'dictionary_exact',
@@ -276,44 +277,80 @@ describe('Fill Details page', () => {
     expect(within(row).getByText('Exact dictionary match')).toBeTruthy();
   });
 
-  it('lists both rule and AI match attributes after a refinement', async () => {
+  it('opens the final contributing stage and lets users inspect earlier recorded matches', async () => {
     const data = snapshot();
     data.frames[0].log.fields[1].rule.profilePath = 'professional.summary';
     vi.mocked(loadFillLog).mockResolvedValue(data);
     await showFields();
     const row = screen.getByText('Summary').closest('details')!;
     fireEvent.click(row.querySelector('summary')!);
-    const value = (label: string) =>
-      within(row).getByText(label, { selector: 'dt' }).nextElementSibling?.textContent;
-    expect(value('Learned mapping')).toBe('No trusted match');
-    expect(value('Rule result')).toBe('Matched and filled');
-    expect(value('AI result')).toBe('Refined a rule-filled value');
-    expect(value('Rule method')).toBe('Exact dictionary match');
-    expect(value('Rule match score')).toBe('90%');
-    expect(value('Rule profile field')).toBe('professional.summary');
-    expect(value('AI confidence')).toBe('low');
-    expect(value('AI profile field')).toBe('professional.summary');
-    expect(value('Control')).toBe('Main page: text_2');
-    expect(within(row).queryByText('Processing stages')).toBeNull();
-    expect(within(row).queryByText('Match details')).toBeNull();
+    const panel = () => within(row).getByRole('region');
+    expect(panel().getAttribute('aria-label')).toBe('AI stage details');
+    expect(within(panel()).getByText('Low')).toBeTruthy();
+    expect(within(panel()).getByText('Refined the earlier fill')).toBeTruthy();
+    fireEvent.click(within(row).getByRole('button', { name: 'Rules: Matched and filled' }));
+    expect(panel().getAttribute('aria-label')).toBe('Rules stage details');
+    expect(within(panel()).getByText('Exact dictionary match')).toBeTruthy();
+    expect(within(panel()).getByText('90%')).toBeTruthy();
+    expect(within(panel()).getByText('professional.summary')).toBeTruthy();
+    fireEvent.click(
+      within(row).getByRole('button', { name: 'Learned mappings: No usable mapping' }),
+    );
+    expect(within(panel()).getByText('No usable mapping')).toBeTruthy();
+    expect(within(panel()).queryByText('Match score')).toBeNull();
+    expect(within(row).getByText('Main page: text_2')).toBeTruthy();
+    expect(loadFillLog).toHaveBeenCalledTimes(1);
   });
 
-  it('lists learned match attributes and keeps unused stage results', async () => {
+  it('shows learned trust and confirmations without a manufactured percentage or rule run', async () => {
     const data = snapshot();
     data.frames[0].log.fields[0].rule.layer = 'learned';
+    data.frames[0].log.fields[0].learned = {
+      status: 'trusted',
+      confirmations: 2,
+      profilePath: 'personal.firstName',
+    };
     vi.mocked(loadFillLog).mockResolvedValue(data);
     await showFields();
     const row = screen.getByText('Full name').closest('details')!;
     fireEvent.click(row.querySelector('summary')!);
-    const value = (label: string) =>
-      within(row).getByText(label, { selector: 'dt' }).nextElementSibling?.textContent;
-    expect(value('Learned mapping')).toBe('Matched and filled');
-    expect(value('Learned match score')).toBe('90%');
-    expect(value('Rule profile field')).toBe('personal.firstName');
-    expect(value('Rule result')).toBe('Not run after learned mapping');
-    expect(value('AI result')).toBe('Not sent');
-    expect(within(row).queryByText('AI confidence')).toBeNull();
-    expect(within(row).queryByText('AI profile field')).toBeNull();
+    const panel = within(row).getByRole('region', { name: 'Learned mappings stage details' });
+    expect(within(panel).getByText('Trusted mapping')).toBeTruthy();
+    expect(within(panel).getByText('2')).toBeTruthy();
+    expect(within(panel).getByText('personal.firstName')).toBeTruthy();
+    expect(within(panel).queryByText('Match score')).toBeNull();
+    expect(
+      within(row).getByRole('button', { name: 'Rules: Not run after learned mapping' }),
+    ).toHaveProperty('disabled', true);
+    expect(within(row).getByRole('button', { name: 'AI: Not sent' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+  });
+
+  it('does not invent LM checks in older reports', async () => {
+    const data = snapshot();
+    delete data.frames[0].log.fields[0].learned;
+    vi.mocked(loadFillLog).mockResolvedValue(data);
+    await showFields();
+    const row = screen.getByText('Full name').closest('details')!;
+    fireEvent.click(row.querySelector('summary')!);
+    expect(
+      within(row).getByRole('button', { name: 'Learned mappings: Not recorded' }),
+    ).toHaveProperty('disabled', true);
+    expect(within(row).getByRole('region', { name: 'Rules stage details' })).toBeTruthy();
+  });
+
+  it('defaults to the retained rule fill after an unsuccessful AI attempt', async () => {
+    const data = snapshot();
+    Object.assign(data.frames[0].log.fields[1], { source: 'rules', ai: { outcome: 'failed' } });
+    vi.mocked(loadFillLog).mockResolvedValue(data);
+    await showFields();
+    const row = screen.getByText('Summary').closest('details')!;
+    fireEvent.click(row.querySelector('summary')!);
+    expect(within(row).getByRole('region', { name: 'Rules stage details' })).toBeTruthy();
+    fireEvent.click(within(row).getByRole('button', { name: 'AI: AI assistance unavailable' }));
+    expect(within(row).getByRole('region', { name: 'AI stage details' })).toBeTruthy();
   });
 
   it('combines a selected outcome filter with searches over field titles', async () => {
