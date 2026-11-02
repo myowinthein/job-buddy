@@ -4,7 +4,7 @@ import type { FieldChange } from '@/src/resume-ai/types';
 import type { InvalidField } from './profileValidator';
 import { mergeLearnedMappings } from './storage';
 import { equalJsonValues } from './equalJsonValues';
-import { safeMappingKey as safeKey, validMapping } from './learnedMappingData';
+import { safeMappingKey as safeKey, validMapping, inactiveMapping } from './learnedMappingData';
 
 export const MAPPINGS_CHANGE_ID = 'backup.learnedMappings';
 
@@ -30,7 +30,7 @@ export function validateBackupData(raw: Record<string, unknown>) {
         }
         const group: Record<string, LearnedMappingValue> = {};
         for (const [signal, entry] of Object.entries(entries)) {
-          const valid = safeKey(signal) && validMapping(entry);
+          const valid = safeKey(signal) && (validMapping(entry) || inactiveMapping(entry));
           if (!valid)
             invalidFields.push({
               path: 'Learned Mappings',
@@ -45,6 +45,7 @@ export function validateBackupData(raw: Record<string, unknown>) {
               ...(typeof value.label === 'string' ? { label: value.label } : {}),
               ...(typeof value.question === 'string' ? { question: value.question } : {}),
               ...(value.scope === 'field' || value.scope === 'entry' ? { scope: value.scope } : {}),
+              ...(value.inactive ? { inactive: true as const } : {}),
             };
           }
         }

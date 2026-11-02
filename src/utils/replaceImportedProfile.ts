@@ -8,11 +8,13 @@ import { replaceProfileData, ProfileReplacementChangedError } from './storage';
 import { protectProfileReplacement } from './driveSync';
 import { ImportProfileChangedError } from './importPolicy';
 import { withProfileWriteLock } from './profileWriteLock';
+import { rebaseLearnedMappings } from './learnedMappingProfile';
 
 export async function replaceImportedProfile(
   base: Partial<Profile>,
   changes: FieldChange[],
   fromDrive = false,
+  incoming?: Partial<Profile>,
 ): Promise<Profile> {
   let profile = profileData({
     ...applyChanges(
@@ -27,10 +29,9 @@ export async function replaceImportedProfile(
     /* Save raw incoming data. */
   }
   const backup = selectedBackupData(changes);
+  const mappings = rebaseLearnedMappings(backup.learnedMappings ?? {}, incoming ?? {}, profile);
   const save = (paused?: import('@/src/types/storage').DriveBackupState) =>
-    withProfileWriteLock(() =>
-      replaceProfileData(profile, base, backup.learnedMappings ?? {}, paused),
-    );
+    withProfileWriteLock(() => replaceProfileData(profile, base, mappings, paused));
   try {
     if (fromDrive)
       await save(); // completeDriveRestore already holds the Drive lock.

@@ -41,12 +41,18 @@ function mappingShape(value: unknown): value is LearnedMappingValue {
       (typeof entry.label === 'string' && entry.label.length <= 1000)) &&
     (entry.question === undefined ||
       (typeof entry.question === 'string' && entry.question.length <= 1000)) &&
-    (entry.scope === undefined || entry.scope === 'field' || entry.scope === 'entry')
+    (entry.scope === undefined || entry.scope === 'field' || entry.scope === 'entry') &&
+    (entry.inactive === undefined || entry.inactive === true)
   );
 }
 
 export function validMapping(value: unknown): value is LearnedMappingValue {
   return mappingShape(value) && isLearnedPath(typeof value === 'string' ? value : value.path);
+}
+
+/** Unknown historical paths may travel as inert metadata, never executable mappings. */
+export function inactiveMapping(value: unknown): value is Exclude<LearnedMappingValue, string> {
+  return mappingShape(value) && typeof value !== 'string' && value.inactive === true;
 }
 
 /** Ignore malformed records in memory without deleting stored stale mappings. */
@@ -61,11 +67,22 @@ export function readableMappings(raw: unknown, retainStalePaths = false): Learne
         Array.isArray(signals)
       )
         return [];
-      const entries = Object.entries(signals).filter(
-        (entry): entry is [string, LearnedMappingValue] =>
-          safeMappingKey(entry[0]) &&
-          (retainStalePaths ? mappingShape(entry[1]) : validMapping(entry[1])),
-      );
+      const entries = Object.entries(signals)
+        .filter(
+          (entry): entry is [string, LearnedMappingValue] =>
+            safeMappingKey(entry[0]) &&
+            (retainStalePaths
+              ? mappingShape(entry[1])
+              : validMapping(entry[1]) || inactiveMapping(entry[1])),
+        )
+        .map(([key, value]): [string, LearnedMappingValue] => [
+          key,
+          !isLearnedPath(typeof value === 'string' ? value : value.path)
+            ? typeof value === 'string'
+              ? { path: value, count: 2, inactive: true }
+              : { ...value, inactive: true }
+            : value,
+        ]);
       return entries.length ? [[domain, Object.fromEntries(entries)]] : [];
     }),
   );

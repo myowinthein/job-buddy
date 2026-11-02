@@ -192,7 +192,7 @@ export function mapField(
   // ── Layer 0: Learned mappings ──────────────────────────────────────────────
   for (const n of normed) {
     const learned: LearnedMappingValue | undefined = domainMappings[n];
-    if (!validMapping(learned) || genericLearnedSignal(n)) continue;
+    if (!validMapping(learned) || (typeof learned !== 'string' && learned.inactive) || genericLearnedSignal(n)) continue;
     const fieldPath = typeof learned === 'string' ? learned : learned.path;
     if (typeof learned !== 'string' && learned.count < LEARNED_MAPPING_THRESHOLD) continue;
     if (!learnedSensitiveQuestion(fieldPath, signals)) continue;

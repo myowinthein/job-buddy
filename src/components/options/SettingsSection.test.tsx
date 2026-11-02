@@ -140,10 +140,12 @@ describe('SettingsSection — profile import merges learned mappings, never over
 
     fireEvent.click(await screen.findByText('Import All'));
     await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
-    expect(vi.mocked(saveLearnedMappings)).toHaveBeenCalledWith(
-      expect.objectContaining({ 'existing.com': expect.anything(), 'new.com': expect.anything() }),
-      {merge:true},
-    );
+    expect(saveProfile).toHaveBeenCalledWith(expect.anything(), {
+      incoming: { 'new.com': { sig2: { path: 'personal.email', count: 1 } } },
+      base: { 'existing.com': { sig: { path: 'personal.firstName', count: 2 } } },
+      source: makeProfile(),
+    });
+    expect(saveLearnedMappings).not.toHaveBeenCalled();
   });
 });
 
@@ -420,11 +422,12 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     fireEvent.click(await screen.findByText('Connect Google Drive'));
     fireEvent.click(await screen.findByText('Restore All'));
 
-    await waitFor(() => expect(vi.mocked(saveProfile)).toHaveBeenCalledWith({ ...backupProfile, derived: calculateDerivedFields(backupProfile) }));
-    expect(vi.mocked(saveLearnedMappings)).toHaveBeenCalledWith(
-      expect.objectContaining({ 'a.com': expect.anything(), 'b.com': expect.anything() }),
-      {merge:true},
-    );
+    await waitFor(() => expect(saveProfile).toHaveBeenCalledWith(
+      { ...backupProfile, derived: calculateDerivedFields(backupProfile) }, {
+        incoming: { 'a.com': { sig: { path: 'personal.firstName', count: 2 } } },
+        base: { 'b.com': { sig2: { path: 'personal.email', count: 2 } } }, source: backupProfile,
+      }));
+    expect(saveLearnedMappings).not.toHaveBeenCalled();
     expect(onImportComplete).toHaveBeenCalled();
     // Wait for the final state update that closes the restore dialog.
     await waitFor(() => expect(screen.queryByText('Restore your profile and learned mappings from Drive.')).toBeNull());

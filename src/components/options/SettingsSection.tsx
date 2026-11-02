@@ -17,8 +17,8 @@ import type {
 import {
   getProfile,
   saveProfile,
+  type ImportedMappings,
   getLearnedMappings,
-  saveLearnedMappings,
   clearAllStorage,
   clearGeminiSettings,
   saveThemePreference,
@@ -33,7 +33,6 @@ import {
   getFullDriveState,
   connectDrive,
   inspectDriveBackup,
-  finishDriveReview,
   completeDriveRestore,
   disconnectDrive,
   syncProfileToDrive,
@@ -148,7 +147,7 @@ function isProfileEmpty(profile: Partial<Profile> | null): boolean {
 // Replacement uses replaceImportedProfile instead.
 async function saveImportedData(
   profile: Profile,
-  learnedMappings: LearnedMappings | undefined,
+  mappings?: ImportedMappings,
 ): Promise<void> {
   profile = { ...profile, id: profile.id || crypto.randomUUID() };
   let updated = profile;
@@ -157,10 +156,8 @@ async function saveImportedData(
   } catch {
     /* Keep the accepted raw data even when derivation fails. */
   }
-  await saveProfile(updated);
-  if (learnedMappings) {
-    await saveLearnedMappings(learnedMappings, { merge: true });
-  }
+  if (mappings) await saveProfile(updated, mappings);
+  else await saveProfile(updated);
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -408,7 +405,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             const latest = (await getProfile({ rejectOnError: true })) ?? {};
             assertImportCurrent(currentProfile ?? {}, latest, []);
             if (!isProfileEmpty(latest)) throw new ImportProfileChangedError(latest);
-            await saveImportedData(validation.sanitized as Profile, backup.learnedMappings);
+            await saveImportedData(validation.sanitized as Profile, backup.learnedMappings ? {
+              incoming: backup.learnedMappings, base: localMappings, source: validation.sanitized,
+            } : undefined);
           });
           showToast('success', feedback.profileImportSucceeded);
           onImportComplete();
@@ -444,14 +443,17 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     setImporting(true);
     try {
       if (!finalChanges.some((change) => change.status !== 'unchanged' && change.accepted)) return;
-      if (importMode === 'replace') await replaceImportedProfile(importBaseProfile, finalChanges);
+      if (importMode === 'replace') await replaceImportedProfile(importBaseProfile, finalChanges, false, parsedImport.incoming);
       else {
         await withProfileWriteLock(async () => {
           const latestProfile = (await getProfile({ rejectOnError: true })) ?? {};
           assertImportCurrent(importBaseProfile, latestProfile, finalChanges);
           const applied = applyChanges(latestProfile, finalChanges);
           const backup = selectedBackupData(finalChanges);
-          await saveImportedData(applied as Profile, backup.learnedMappings);
+          await saveImportedData(applied as Profile, backup.learnedMappings ? {
+            incoming: parsedImport.backup.learnedMappings ?? {},
+            base: parsedImport.localMappings, source: parsedImport.incoming,
+          } : undefined);
         });
       }
       showToast('success', feedback.profileImportSucceeded);
@@ -551,8 +553,11 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           validation.invalidFields.length === 0 &&
           backupData.invalidFields.length === 0
         ) {
-          await finishDriveReview(result.reviewId);
-          showToast('success', feedback.driveBackupCurrent);
+          // A no-op local merge can still hide newer/conflicting local mappings.
+          // Reconcile the complete payload under Drive's remote-change guard.
+          const synced = await overwriteDriveWithLocal((localProfile ?? {}) as Profile, result.reviewId);
+          showToast(synced.success ? 'success' : 'warning',
+            synced.success ? feedback.driveBackupCurrent : driveFailureText(synced.errorCode));
           return;
         }
         setDriveConflictChanges(diff);
@@ -723,7 +728,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       ) return;
       await completeDriveRestore(driveReviewId, async () => {
         if (driveImportMode === 'replace') {
-          await replaceImportedProfile(driveLocalProfile ?? {}, finalChanges, true);
+          await replaceImportedProfile(driveLocalProfile ?? {}, finalChanges, true, driveRestoreData.profile);
         } else {
           await withProfileWriteLock(async () => {
             const latestProfile = (await getProfile({ rejectOnError: true })) ?? {};
@@ -732,7 +737,10 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               ? driveRestoreData.profile : applyChanges(latestProfile, finalChanges);
             const mappings = driveRestoreCase === 'empty'
               ? driveRestoreData.learnedMappings : selectedBackupData(finalChanges).learnedMappings;
-            await saveImportedData(applied as Profile, mappings);
+            await saveImportedData(applied as Profile, mappings ? {
+              incoming: driveRestoreData.learnedMappings ?? {}, base: driveLocalMappings,
+              source: driveRestoreData.profile,
+            } : undefined);
           });
         }
       });

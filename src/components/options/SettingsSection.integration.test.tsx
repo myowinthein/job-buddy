@@ -191,19 +191,20 @@ describe('SettingsSection — real Drive document validation', () => {
 });
 
 
-it.each([false, true])('preserves direct Drive persistence ordering with mapping failure=%s', async (failMappings) => {
+it.each([false, true])('uses one Drive profile/mapping save with storage failure=%s', async (failMappings) => {
   const backup = { profile: makeProfile(), lastModified: '2026-01-01T00:00:00Z',
     ...(failMappings ? { learnedMappings: { 'site.test': { name: 'personal.firstName' } } } : {}),
   };
   vi.mocked(connectDrive).mockResolvedValue({ token: 'synthetic', fileId: 'f1', backup });
-  if (failMappings) vi.mocked(saveLearnedMappings).mockRejectedValueOnce(new Error('synthetic write failure'));
+  if (failMappings) vi.mocked(saveProfile).mockRejectedValueOnce(new Error('synthetic write failure'));
   const { onImportComplete } = renderSection();
   fireEvent.click(await screen.findByText('Connect Google Drive'));
   fireEvent.click(await screen.findByText('Restore All'));
   if (failMappings) {
     expect(await screen.findByText('Restore failed. Please try again.')).toBeTruthy();
     expect(saveProfile).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(saveProfile).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(saveLearnedMappings).mock.invocationCallOrder[0]);
+    expect(vi.mocked(saveProfile).mock.calls[0][1]).toMatchObject({ incoming: backup.learnedMappings });
+    expect(saveLearnedMappings).not.toHaveBeenCalled();
     expect(onImportComplete).not.toHaveBeenCalled();
   } else {
     await waitFor(() => expect(onImportComplete).toHaveBeenCalled());

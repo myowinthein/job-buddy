@@ -20,6 +20,55 @@ test.beforeEach(async ({ page, context, extension }) => {
 async function settle(page: import('@playwright/test').Page) {
   await page.waitForTimeout(200);
 }
+test('JSON import keeps a trusted school mapping attached after reordering, then fills the real form', async ({ page, context, extension }) => {
+  await extension.worker.evaluate(async () => {
+    await chrome.storage.local.set({ learnedMappings: { '127.0.0.1': {
+      novelresponse: { path: 'education.0.institution', count: 2, scope: 'entry' },
+    } } });
+  });
+  const options = await context.newPage();
+  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.getByRole('button', { name: 'Settings', exact: true }).click();
+  await options.locator('input[type="file"][accept=".json"]').setInputFiles({
+    name: 'reordered.json', mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ profile: { ...RULE_PROFILE, education: [...RULE_PROFILE.education].reverse() } })),
+  });
+  await options.getByRole('button', { name: 'Import All', exact: true }).click();
+  await expect.poll(() => extension.worker.evaluate(async () => {
+    const mappings = (await chrome.storage.local.get('learnedMappings')).learnedMappings as LearnedMappings;
+    const mapping = mappings['127.0.0.1'].novelresponse;
+    return typeof mapping === 'string' ? mapping : mapping.path;
+  })).toBe('education.1.institution');
+  await page.locator('form').evaluate(form => {
+    form.innerHTML += '<label>Novel response<input id="q7" required></label>';
+    const input = form.querySelector('input')!;
+    input.addEventListener('input', () => input.dataset.inputEvent = 'received');
+  });
+  await extension.send('AUTOFILL_SCAN');
+  await extension.send('AUTOFILL_FILL', 'overwrite');
+  await expect(page.locator('#q7')).toHaveValue(RULE_PROFILE.education[0].institution);
+  await expect(page.locator('#q7')).toHaveAttribute('data-input-event', 'received');
+  expect(await page.locator('#q7').evaluate(el => (el as HTMLInputElement).checkValidity())).toBe(true);
+});
+
+test('an inactive known path is preserved but cannot autofill a real input', async ({ page, extension }) => {
+  await extension.worker.evaluate(async () => {
+    await chrome.storage.local.set({ learnedMappings: { '127.0.0.1': {
+      novelresponse: { path: 'personal.email', count: 2, inactive: true },
+    } } });
+  });
+  await page.locator('form').evaluate(form => {
+    form.innerHTML += '<label>Novel response<input id="q7" required></label>';
+  });
+  await extension.send('AUTOFILL_SCAN');
+  await extension.send('AUTOFILL_FILL', 'overwrite');
+  await expect(page.locator('#q7')).toHaveValue('');
+  expect(await page.locator('#q7').evaluate(el => (el as HTMLInputElement).checkValidity())).toBe(false);
+  expect(await extension.worker.evaluate(async () => {
+    const mappings = (await chrome.storage.local.get('learnedMappings')).learnedMappings as LearnedMappings;
+    return mappings['127.0.0.1'].novelresponse;
+  })).toMatchObject({ inactive: true, count: 2 });
+});
 test('learns a real user correction to a green field', async ({ page, extension }) => {
   await page.locator('form').evaluate((form) => {
     form.innerHTML += '<label>First name<input id="q"></label>';

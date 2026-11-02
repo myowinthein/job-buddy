@@ -191,7 +191,7 @@ describe('mapping storage integrity', () => {
 
 describe('mapping boundary validation and compatibility', () => {
   it('retains historical local paths for review without ever executing them', async () => {
-    const stale = { path: 'retired.oldField', count: 2 };
+    const stale = { path: 'retired.oldField', count: 2, inactive: true as const };
     const obs = await observation();
     // Use a different signal for the new observation; stale keys survive normal writes.
     await set({ learnedMappings: { 'example.test': { old: stale } } });

@@ -15,6 +15,7 @@ import type { GeminiModel } from '../resume-ai/types';
 import { wrapStorageArea } from './storageArea';
 import { equalJsonValues } from './equalJsonValues';
 import { profileData } from './profileData';
+import { rebaseLearnedMappings, reviewedIncomingMappings } from './learnedMappingProfile';
 import { withProfileWriteLock } from './profileWriteLock';
 import {
   readableMappings,
@@ -83,16 +84,32 @@ export async function getProfile(
   return profile;
 }
 
-export async function saveProfile(profile: Profile): Promise<void> {
+export interface ImportedMappings {
+  incoming: LearnedMappings;
+  base: LearnedMappings;
+  source: Partial<Profile>;
+}
+
+export async function saveProfile(profile: Profile, imported?: ImportedMappings): Promise<void> {
   // Belt-and-braces: normalise on every write so callers cannot persist a
   // salary entry without a valid period, even via Drive restore or resume
   // import paths that bypass validateImportedProfile.
-  await withLearnedMappingsLock(() =>
-    storageSet({
-      profile: normalizeProfile(profile),
+  await withLearnedMappingsLock(async () => {
+    const { profile: currentProfile } = await learningState();
+    const current = await getLearnedMappings();
+    profile = normalizeProfile(profile);
+    let mappings = rebaseLearnedMappings(current, currentProfile ?? {}, profile);
+    if (imported) {
+      const incoming = reviewedIncomingMappings(current, imported.base, imported.incoming);
+      mappings = mergeLearnedMappings(mappings, rebaseLearnedMappings(incoming, imported.source, profile));
+    }
+    // One transaction: neither the profile nor its mappings can be saved alone.
+    await storageSet({
+      profile,
+      ...(!equalJsonValues(current, mappings) ? { learnedMappings: mappings } : {}),
       learnedMappingsRevision: crypto.randomUUID(),
-    }),
-  );
+    });
+  });
 }
 
 export class ProfileReplacementChangedError extends Error {
@@ -120,7 +137,7 @@ export async function replaceProfileData(
       throw new ProfileReplacementChangedError(current);
     await storageSet({
       profile: normalizeProfile(profile),
-      learnedMappings: readableMappings(learnedMappings),
+      learnedMappings: readableMappings(learnedMappings, true),
       learnedMappingsRevision: crypto.randomUUID(),
       ...(pausedDriveState ? { driveBackupState: pausedDriveState } : {}),
     });
@@ -155,6 +172,9 @@ export function mergeLearnedMappings(
             const lp = typeof l === 'string' ? l : l.path,
               rp = typeof r === 'string' ? r : r.path;
             if (lp !== rp) return [key, l];
+            // An inactive snapshot cannot promote, disable, or reactivate a local choice.
+            if ((typeof l !== 'string' && l.inactive) || (typeof r !== 'string' && r.inactive))
+              return [key, l];
             if (typeof l === 'string') return [key, l];
             if (typeof r === 'string') return [key, { ...l, count: Math.max(l.count, 2) }];
             // Same-path backups are snapshots, not independent confirmations.
@@ -457,7 +477,7 @@ export async function saveLearnedMappingLocally(
     } else {
       // New counted format: increment on same path, reset on conflict. Always
       // refresh the label — it's a display aid, not part of the trust logic.
-      if (existing.path === fieldPath) {
+      if (existing.path === fieldPath && !existing.inactive) {
         mappings[domain][normalizedSignal] = {
           path: fieldPath,
           count: Math.min(Number.MAX_SAFE_INTEGER, existing.count + 1),
@@ -502,7 +522,8 @@ export async function saveLearnedObservationLocally(
     for (const key of new Set(observation.signals)) {
       const previous = mappings[domain][key];
       const samePath =
-        previous && (typeof previous === 'string' ? previous : previous.path) === observation.path;
+        previous && (typeof previous === 'string' || !previous.inactive) &&
+        (typeof previous === 'string' ? previous : previous.path) === observation.path;
       const sameQuestion =
         typeof previous !== 'object' ||
         !previous.question ||

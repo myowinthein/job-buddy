@@ -66,6 +66,22 @@ describe('LearnedMappingsSection — trust model (isTrusted)', () => {
 });
 
 describe('LearnedMappingsSection — stale-mapping detection (resolvesEmpty)', () => {
+  it('shows an inactive mapping once and lets an explicit save reactivate the same path', async () => {
+    vi.mocked(getLearnedMappings).mockResolvedValue({
+      'acme.com': { sig1: { path: 'personal.firstName', count: 2, inactive: true } },
+    });
+    renderSection();
+    fireEvent.click(await screen.findByText('acme.com'));
+    expect(screen.getByText('Inactive').className).toContain('text-gray-600');
+    expect(screen.queryByText('Trusted')).toBeNull();
+    expect(screen.queryByText('Empty right now')).toBeNull();
+    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.click(screen.getByText('Save'));
+    await waitFor(() => expect(saveLearnedMappings).toHaveBeenCalledWith({
+      'acme.com': { sig1: { path: 'personal.firstName', count: 2 } },
+    }, { base: expect.any(Object), context: expect.any(Object) }));
+  });
+
   it('flags "Empty right now" for a path that no longer resolves in the current profile', async () => {
     const mappings: LearnedMappings = {
       'acme.com': { sig1: { path: 'workHistory.5.company', count: 2 } },

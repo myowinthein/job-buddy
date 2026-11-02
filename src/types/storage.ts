@@ -12,6 +12,8 @@ export interface LearnedMappingEntry {
   question?: string;
   /** Generic repeated fields follow their row; explicit editor choices keep an entry. */
   scope?: 'field' | 'entry';
+  /** Retained for review/backups, but never used to fill a field. */
+  inactive?: true;
 }
 
 export interface LearningContext {

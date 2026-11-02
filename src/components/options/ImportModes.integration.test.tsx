@@ -9,6 +9,7 @@ import {
   getProfile,
   getDriveBackupState,
   saveProfile,
+  getLearnedMappings,
 } from '@/src/utils/storage';
 import { DevSimulation } from '@/src/devtools/simulation';
 import { scenarioById } from '@/src/devtools/scenarios';
@@ -126,6 +127,58 @@ function setupDrive(profile = incoming() as typeof DEV_PROFILE) {
   });
   return simulation;
 }
+
+it.each(['conflict', 'newer-count', 'local-only'] as const)(
+  'reconciles %s learned mappings before Drive reports an unchanged profile current', async difference => {
+    const remote = setupDrive(DEV_PROFILE);
+    const local = { 'example.test': { name: { path: 'personal.firstName', count: 3 } } };
+    remote.backup!.learnedMappings = difference === 'local-only' ? {} : {
+      'example.test': { name: { path: difference === 'conflict' ? 'personal.lastName' : 'personal.firstName', count: 1 } },
+    };
+    await new Promise<void>(resolve => remote.chrome.storage.local.set({ learnedMappings: local }, resolve));
+    mount();
+    fireEvent.click(await screen.findByText('Connect Google Drive'));
+    await waitFor(() => expect(remote.backup!.learnedMappings).toEqual(local));
+    expect(await getLearnedMappings()).toEqual(local);
+    expect((await getDriveBackupState()).reviewRequired).toBe(false);
+  },
+);
+
+it('JSON review respects mapping deletions made in another tab before Import All', async () => {
+  sessionStorage.setItem('jb:ui:section', 'settings');
+  const local = { 'local.test': { name: 'personal.firstName' } };
+  const incomingMappings = { 'new.test': { email: { path: 'personal.email', count: 1 } } };
+  const preview = createPreviewChrome(DEV_PROFILE, undefined, { initialData: { learnedMappings: local } });
+  vi.stubGlobal('chrome', preview);
+  mount();
+  await screen.findByText('Choose File');
+  fireEvent.change(document.querySelector('input[accept=".json"]')!, { target: { files: [
+    new File([JSON.stringify({ profile: DEV_PROFILE, learnedMappings: incomingMappings })], 'mappings.json', { type: 'application/json' }),
+  ] } });
+  const submit = await screen.findByRole('button', { name: 'Import All' });
+  await new Promise<void>(resolve => preview.storage.local.set({ learnedMappings: {} }, resolve));
+  fireEvent.click(submit);
+  await screen.findByText('Profile imported successfully');
+  expect(await getLearnedMappings()).toEqual(incomingMappings);
+});
+
+it('Drive Update keeps concurrent local corrections and uploads the final merged mappings', async () => {
+  const remote = setupDrive({ ...DEV_PROFILE, professional: { ...DEV_PROFILE.professional, summary: 'Updated summary' } });
+  const local = { 'local.test': { name: { path: 'personal.firstName', count: 2 } } };
+  const incomingMappings = { 'local.test': { name: { path: 'personal.lastName', count: 20 } }, 'new.test': { email: 'personal.email' } };
+  remote.backup!.learnedMappings = incomingMappings;
+  await new Promise<void>(resolve => remote.chrome.storage.local.set({ learnedMappings: local }, resolve));
+  mount();
+  fireEvent.click(await screen.findByText('Connect Google Drive'));
+  const restore = await screen.findByRole('button', { name: 'Restore All' });
+  const fresh = { 'local.test': { name: { path: 'personal.email', count: 2 } } };
+  await new Promise<void>(resolve => remote.chrome.storage.local.set({ learnedMappings: fresh }, resolve));
+  fireEvent.click(restore);
+  await screen.findByText('Profile restored from Google Drive.');
+  const merged = { ...fresh, 'new.test': incomingMappings['new.test'] };
+  expect(await getLearnedMappings()).toEqual(merged);
+  await waitFor(() => expect(remote.backup!.learnedMappings).toEqual(merged));
+});
 it('Drive person mismatch can be cancelled without uploading or changing either profile', async () => {
   const remote = setupDrive();
   const before = structuredClone(remote.backup);

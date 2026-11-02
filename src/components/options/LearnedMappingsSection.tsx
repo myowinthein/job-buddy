@@ -29,10 +29,12 @@ function isTrusted(value: LearnedMappingValue): boolean {
 }
 
 function countLabel(value: LearnedMappingValue): string {
+  if (typeof value !== 'string' && value.inactive) return 'Inactive';
   return isTrusted(value) ? 'Trusted' : 'Learning';
 }
 
 function countTooltip(value: LearnedMappingValue): string {
+  if (typeof value !== 'string' && value.inactive) return 'Edit this mapping to choose a profile field before using it again.';
   return isTrusted(value)
     ? 'This field now fills automatically without showing the picker.'
     : 'One more matching confirmation before this fills automatically.';
@@ -59,6 +61,7 @@ function SignalRow({ signal, value, profile, onDelete, onUpdate }: SignalRowProp
   const [editValue, setEditValue]     = useState(pathOf(value));
   const [confirmDelete, setConfirmDelete] = useState(false);
   const label = labelOf(value);
+  const inactive = typeof value !== 'string' && value.inactive === true;
   // Re-runs resolveProfileValue on every render otherwise — a re-render
   // happens on every persist() and every chrome.storage.onChanged event.
   const empty = useMemo(() => resolvesEmpty(value, profile), [value, profile]);
@@ -70,7 +73,7 @@ function SignalRow({ signal, value, profile, onDelete, onUpdate }: SignalRowProp
 
   const commitEdit = () => {
     const path = editValue.trim();
-    if (path && path !== pathOf(value)) onUpdate(path);
+    if (path && (path !== pathOf(value) || inactive)) onUpdate(path);
     setEditing(false);
   };
 
@@ -111,7 +114,9 @@ function SignalRow({ signal, value, profile, onDelete, onUpdate }: SignalRowProp
             <p className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate">{pathOf(value)}</p>
             <span
               className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${
-                isTrusted(value)
+                inactive
+                  ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                  : isTrusted(value)
                   ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                   : 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
               }`}
@@ -119,7 +124,7 @@ function SignalRow({ signal, value, profile, onDelete, onUpdate }: SignalRowProp
               {countLabel(value)}
             </span>
             <InfoTooltip text={countTooltip(value)} />
-            {empty && (
+            {empty && !inactive && (
               <>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full shrink-0 bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                   Empty right now
