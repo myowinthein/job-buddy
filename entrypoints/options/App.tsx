@@ -29,6 +29,7 @@ import { DraftStatusContext, SectionSaveStatusContext } from '@/src/components/o
 import { replaceImportedProfile } from '@/src/utils/replaceImportedProfile';
 import { withProfileWriteLock } from '@/src/utils/profileWriteLock';
 import { FillLogPage } from '@/src/components/fill-log/FillLogPage';
+import { selectFillLog } from '@/src/fill-log/client';
 import { FILL_DETAILS_REQUEST, takeFillDetailsRequest, lastFillDetailsSource, sourceFromQuery, sourceTabId } from '@/src/fill-log/navigation';
 
 const DevToolsPage = import.meta.env.DEV ? lazy(() => import('@/src/devtools/DevToolsPage')) : null;
@@ -101,6 +102,7 @@ function App() {
   const [activeSection, setActiveSection] = useState<SectionId>(readSection);
   const [fillDetailsTabId, setFillDetailsTabId] = useState<number | null>(readDetailsSource);
   const detailsQuery = useRef(new URLSearchParams(location.search).has('tabId'));
+  const initialDetailsSource = useRef(fillDetailsTabId);
   const initialTitle = useRef(document.title);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(readSidebar);
   const [loading, setLoading] = useState(true);
@@ -222,7 +224,11 @@ function App() {
   // ── Load profile ────────────────────────────────────────────────────────────
   useEffect(() => {
     getProfile()
-      .then((p) => { setProfile(p ?? {}); })
+      .then(async (p) => {
+        setProfile(p ?? {});
+        if (detailsQuery.current && initialDetailsSource.current !== null)
+          await selectFillLog(initialDetailsSource.current).catch(() => { /* A retained closed-form report can still be displayed. */ });
+      })
       .catch((err) => { console.error('[Job Buddy] Failed to initialize profile:', err); })
       .finally(() => { setLoading(false); });
   }, []);

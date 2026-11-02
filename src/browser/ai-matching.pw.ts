@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures';
 import type { AIFieldPayload, AIFieldResponse } from '../resume-ai/types';
+import type { FrameFillLog } from '../autofill/fillLog';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
 
 test.beforeEach(async ({ page, extension }) => {
@@ -241,3 +242,51 @@ for (const action of ['manual-choice', 'changed-question', 'profile-replacement'
     else await expect(page.locator('#target')).toHaveValue('');
   });
 }
+
+test('a saved value absent from dropdown options is red rather than missing profile data', async ({
+  page,
+  context,
+  extension,
+}) => {
+  await page.locator('form').evaluate((form) => {
+    form.innerHTML +=
+      '<label>Country of residence<select id="country" required><option value="">Choose</option><option value="JP">Japan</option></select></label>';
+  });
+  await context.route('https://generativelanguage.googleapis.com/**', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify([
+                    { fieldId: 'field_001', profilePath: 'address.country', confidence: 'high' },
+                  ]),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    }),
+  );
+  await extension.send('AUTOFILL_SCAN');
+  await extension.send('AUTOFILL_FILL', 'overwrite');
+  await expect(page.locator('#country')).toHaveValue('');
+  expect(
+    await page
+      .locator('#country')
+      .evaluate((element) => (element as HTMLSelectElement).checkValidity()),
+  ).toBe(false);
+  await expect(page.locator('#country')).toHaveCSS('background-color', 'rgba(239, 68, 68, 0.12)');
+  const logs = (await extension.send('GET_FILL_LOG')) as unknown as FrameFillLog[];
+  expect(
+    logs.flatMap((log) => log.fields).find((field) => field.label === 'Country of residence'),
+  ).toMatchObject({
+    outcome: 'failed',
+    reason: 'option_unavailable',
+    ai: { outcome: 'fill_failed' },
+  });
+});

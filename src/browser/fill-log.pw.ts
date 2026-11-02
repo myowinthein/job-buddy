@@ -38,16 +38,15 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   await logPage.screenshot({
     path: testInfo.outputPath('fill-log-overview-light.png'),
     animations: 'disabled',
-    fullPage: true,
+    fullPage: false,
   });
   await logPage.emulateMedia({ colorScheme: 'dark' });
   await expect(logPage.locator('html')).toHaveClass(/dark/);
   await logPage.screenshot({
     path: testInfo.outputPath('fill-log-overview-dark.png'),
     animations: 'disabled',
-    fullPage: true,
+    fullPage: false,
   });
-  await logPage.getByRole('tab', { name: 'Fields', exact: true }).click();
   await expect(
     logPage.getByRole('button', { name: `All (${counts.detected})`, exact: true }),
   ).toBeVisible();
@@ -58,7 +57,7 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   await logPage.screenshot({
     path: testInfo.outputPath('fill-log-fields-dark.png'),
     animations: 'disabled',
-    fullPage: true,
+    fullPage: false,
   });
   await logPage.setViewportSize({ width: 375, height: 812 });
   await expect
@@ -72,7 +71,7 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   );
   await logPage.screenshot({
     path: testInfo.outputPath('fill-log-narrow.png'),
-    fullPage: true,
+    fullPage: false,
     animations: 'disabled',
   });
 
@@ -127,7 +126,9 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   // A manual clear must stop counting as a filled value in both consumers.
   await page.locator('[name="firstName"]').fill('');
   await logPage.bringToFront();
-  await expect(logPage.getByText('Cleared manually', { exact: true }).first()).toBeVisible();
+  await expect(
+    logPage.getByText('You cleared this answer.', { exact: true }).first(),
+  ).toBeVisible();
   const edited = (await extension.send('GET_FILL_LOG')) as unknown as FrameFillLog[];
   expect(summarizeFillFields(edited.flatMap((log) => log.fields)).filled).toBe(counts.filled - 1);
   const status = await extension.send('GET_STATUS');
@@ -150,7 +151,7 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
 
   await page.reload();
   await logPage.bringToFront();
-  await expect(logPage.getByText(/No fill details are available yet/)).toBeVisible();
+  await expect(logPage.getByText(/These fills were undone/)).toBeVisible();
 });
 
 test('an independently scanned empty iframe does not hide form fills, and a fresh empty run stays empty', async ({
@@ -221,7 +222,7 @@ test('an independently scanned empty iframe does not hide form fills, and a fres
   await expect(logPage.getByText('Filled', { exact: true }).locator('..')).toContainText(
     String(count),
   );
-  await logPage.screenshot({ path: testInfo.outputPath('sandbox-fill-log.png'), fullPage: true });
+  await logPage.screenshot({ path: testInfo.outputPath('sandbox-fill-log.png'), fullPage: false });
 
   await page.evaluate(() => {
     document.body.innerHTML = '<p>No application form</p>';
@@ -311,8 +312,7 @@ test('keeps one session report after the form closes and replaces it on a new fi
     options.getByText('This form is closed. Showing its last fill details.'),
   ).toBeVisible();
   await expect(options.getByRole('button', { name: 'Return to Form', exact: true })).toHaveCount(0);
-  await options.getByRole('tab', { name: 'Fields', exact: true }).click();
-  await expect(options.getByText('First name', { exact: true }).first()).toBeVisible();
+  await expect(options.locator('summary').filter({ hasText: 'First name' }).first()).toBeVisible();
   await options.reload();
   await expect(
     options.getByText('This form is closed. Showing its last fill details.'),
@@ -356,4 +356,93 @@ test('keeps one session report after the form closes and replaces it on a new fi
   );
   expect((retained as { tabId: number }).tabId).toBe(nextId);
   expect((retained as { frames: unknown[] }).frames).toHaveLength(1);
+});
+
+test('an open empty report populates automatically and explicit actions select the form', async ({
+  page,
+  context,
+  extension,
+}, testInfo) => {
+  const options = await context.newPage();
+  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.getByRole('button', { name: 'Fill Details', exact: true }).click();
+  await expect(options.getByText('No fill details yet')).toBeVisible();
+  await page.bringToFront();
+  await extension.send('AUTOFILL_FILL', 'merge');
+  await options.bringToFront();
+  await expect(options.getByRole('button', { name: /^All \(/ })).toBeVisible();
+  await expect(options.getByRole('tab')).toHaveCount(0);
+  await expect(options.getByText('http://127.0.0.1/application', { exact: true })).toBeVisible();
+  const firstRow = options.locator('summary').filter({ hasText: 'First name' }).first();
+  await expect(firstRow.locator('.sr-only')).toHaveText(' required');
+  await firstRow.focus();
+  await options.keyboard.press('Enter');
+  await expect(options.getByText('Main page: text_1', { exact: true })).toBeVisible();
+
+  const b = await context.newPage();
+  await b.goto('http://127.0.0.1/application-b');
+  await b.evaluate(() => {
+    document.body.innerHTML =
+      '<form><h1>Job application B</h1><label>First name<input name="firstName" autocomplete="given-name" required></label><label>LinkedIn<input name="linkedin"></label></form>';
+  });
+  await b.bringToFront();
+  const bId = await extension.worker.evaluate(
+    async () => (await chrome.tabs.query({ active: true, currentWindow: true }))[0].id!,
+  );
+  const sendB = (action: string) =>
+    extension.worker.evaluate(
+      async ({ tabId, action }) => chrome.tabs.sendMessage(tabId, { action, mode: 'overwrite' }),
+      { tabId: bId, action },
+    );
+  await expect
+    .poll(async () => {
+      try {
+        return Boolean(await sendB('AUTOFILL_SCAN'));
+      } catch {
+        return false;
+      }
+    })
+    .toBe(true);
+  await sendB('AUTOFILL_FILL');
+  await options.bringToFront();
+  await expect(options.getByText('http://127.0.0.1/application-b', { exact: true })).toBeVisible();
+  await expect(options.getByRole('button', { name: 'All (2)', exact: true })).toBeVisible();
+  await expect(options.getByRole('button', { name: 'Gray (1)', exact: true })).toBeVisible();
+
+  // A manual edit in the older form does not replace the selected B report.
+  await page.locator('[name="firstName"]').fill('Changed in A');
+  await options.bringToFront();
+  await expect(options.getByText('http://127.0.0.1/application-b', { exact: true })).toBeVisible();
+
+  // View details is an explicit selection of A, with no rescan or fill.
+  const popup = await context.newPage();
+  await popup.addInitScript((id) => {
+    chrome.tabs.query = async () => [{ id } as chrome.tabs.Tab];
+  }, extension.sourceTabId);
+  await popup.goto(new URL('popup.html', extension.worker.url()).href);
+  await popup.getByRole('button', { name: 'View details', exact: true }).click();
+  await expect(options.getByText('http://127.0.0.1/application', { exact: true })).toBeVisible();
+  await expect(options.getByText('Confirmed by you').first()).toBeVisible();
+  await expect(options.getByText(/^Modified/)).toBeVisible();
+
+  // A new autofill on B becomes the selected report again.
+  await sendB('AUTOFILL_SCAN');
+  await sendB('AUTOFILL_FILL');
+  await options.bringToFront();
+  await expect(options.getByText('http://127.0.0.1/application-b', { exact: true })).toBeVisible();
+  await options.emulateMedia({ colorScheme: 'dark' });
+  await expect(options.locator('html')).toHaveClass(/dark/);
+  await options.screenshot({
+    path: testInfo.outputPath('single-report-dark.png'),
+    fullPage: false,
+    animations: 'disabled',
+  });
+  await options.getByRole('button', { name: 'Return to Form', exact: true }).click();
+  await expect
+    .poll(() =>
+      extension.worker.evaluate(
+        async () => (await chrome.tabs.query({ active: true, currentWindow: true }))[0].id,
+      ),
+    )
+    .toBe(bId);
 });

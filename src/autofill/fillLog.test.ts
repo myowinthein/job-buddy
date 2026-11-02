@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { latestFillLogFrames, summarizeFillFields } from './fillLog';
+import { latestFillLogFrames, summarizeFillFields, safeFormUrl } from './fillLog';
 import type { FillLogField, FillLogFrame } from './fillLog';
 
 const field = (overrides: Partial<FillLogField> = {}): FillLogField => ({
@@ -14,6 +14,43 @@ const field = (overrides: Partial<FillLogField> = {}): FillLogField => ({
 });
 
 describe('fill log summaries', () => {
+  it('counts final LM, rule, AI and manual fills exactly once while preserving processing overlap', () => {
+    const result = summarizeFillFields([
+      field({ rule: { outcome: 'filled', layer: 'learned' } }),
+      field(),
+      field({
+        rule: { outcome: 'filled', layer: 'learned' },
+        ai: { outcome: 'refined' },
+        source: 'ai',
+        outcome: 'review',
+      }),
+      field({ outcome: 'manual', source: 'manual' }),
+      field({ outcome: 'missing_data', source: null }),
+      field({ outcome: 'failed', source: null }),
+    ]);
+    expect(result).toMatchObject({
+      learnedFilled: 1,
+      finalRuleFilled: 1,
+      finalAIFilled: 1,
+      manual: 1,
+      green: 3,
+      review: 1,
+      red: 1,
+      missing: 1,
+      sentToAI: 1,
+    });
+    expect(
+      result.learnedFilled + result.finalRuleFilled + result.finalAIFilled + result.manual,
+    ).toBe(result.filled);
+  });
+  it('retains the job address without URL credentials or authentication parameters', () => {
+    expect(
+      safeFormUrl(
+        'https://user:secret@jobs.test/apply/12?id=12&token=private&source=LinkedIn#private',
+      ),
+    ).toBe('https://jobs.test/apply/12?id=12&source=LinkedIn');
+    expect(safeFormUrl('javascript:alert(1)')).toBeUndefined();
+  });
   it('counts a refinement in both processing stages, but once in final outcomes', () => {
     const result = summarizeFillFields([
       field({ ai: { outcome: 'refined' }, source: 'ai' }),

@@ -179,7 +179,9 @@ describe('reading a source form log', () => {
   it('keeps the latest concurrent navigation request and never scans a form', async () => {
     await Promise.all([openFillLog(10), openFillLog(20)]);
     expect(await takeFillDetailsRequest()).toEqual({ tabId: 20 });
-    expect(tabs.sendMessage).not.toHaveBeenCalled();
+    expect(tabs.sendMessage.mock.calls.every(([, message]) =>
+      ['GET_FILL_LOG', 'GET_STATUS'].includes(message.action),
+    )).toBe(true);
   });
   it('does not open an options page without a valid source or a saved request', async () => {
     await expect(openFillLog(-1)).rejects.toThrow('Invalid source form');

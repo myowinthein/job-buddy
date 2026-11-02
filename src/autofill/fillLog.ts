@@ -33,6 +33,7 @@ export interface FillLogField {
   id: string;
   label: string;
   kind: 'text' | 'select' | 'file' | 'radio' | 'checkbox';
+  required?: boolean;
   rule: { outcome: RuleOutcome; layer?: MatchLayer; confidence?: number; profilePath?: string };
   ai: { outcome: AIOutcome; confidence?: 'high' | 'low' | null; profilePath?: string };
   outcome: FillOutcome;
@@ -44,6 +45,7 @@ export interface FillLogField {
     | 'manual_clear'
     | 'manual_edit'
     | 'profile_updated'
+    | 'option_unavailable'
     | 'value_changed';
 }
 
@@ -52,7 +54,9 @@ export interface FrameFillLog {
   runId: string;
   startedAt: number;
   completedAt?: number;
+  modifiedAt?: number;
   origin: string;
+  url?: string;
   mode?: 'merge' | 'overwrite';
   status: 'scanning' | 'completed' | 'undone';
   aiStatus?: 'not_needed' | 'succeeded' | 'unavailable';
@@ -66,8 +70,38 @@ export interface FillLogFrame {
 export interface FillLogSnapshot {
   tabId: number;
   frames: FillLogFrame[];
+  pageUrl?: string;
+  selectedAt?: number;
   needsRefresh?: boolean;
   sourceClosed?: boolean;
+}
+
+export const isFilled = (field: FillLogField) =>
+  ['high_confidence', 'review', 'manual'].includes(field.outcome);
+export function finalFillSource(field: FillLogField): 'learned' | 'rules' | 'ai' | 'manual' | null {
+  if (!isFilled(field)) return null;
+  if (field.outcome === 'manual') return 'manual';
+  return field.source === 'rules' && field.rule.layer === 'learned' ? 'learned' : field.source;
+}
+
+/** Keep the form address useful without retaining credentials, fragments or authentication parameters. */
+export function safeFormUrl(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  try {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol)) return undefined;
+    url.username = '';
+    url.password = '';
+    url.hash = '';
+    for (const key of [...url.searchParams.keys()])
+      if (
+        /token|secret|password|credential|api.?key|authorization|^code$|^state$|^email$/i.test(key)
+      )
+        url.searchParams.delete(key);
+    return url.href;
+  } catch {
+    return undefined;
+  }
 }
 
 export function summarizeFillFields(fields: FillLogField[]) {
@@ -87,6 +121,11 @@ export function summarizeFillFields(fields: FillLogField[]) {
     missing,
     failed,
     manual,
+    green: highConfidence + manual,
+    red: unmatched + failed,
+    learnedFilled: count((f) => finalFillSource(f) === 'learned'),
+    finalRuleFilled: count((f) => finalFillSource(f) === 'rules'),
+    finalAIFilled: count((f) => finalFillSource(f) === 'ai'),
     notFilled: unmatched + missing + failed,
     kept: count((f) => f.outcome === 'kept'),
     excluded: count((f) => f.outcome === 'excluded'),

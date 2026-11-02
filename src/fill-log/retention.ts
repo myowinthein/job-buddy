@@ -3,6 +3,7 @@ import {
   AI_OUTCOME_LABELS,
   FILL_OUTCOME_LABELS,
   RULE_OUTCOME_LABELS,
+  safeFormUrl,
 } from '@/src/autofill/fillLog';
 import { wrapStorageArea } from '@/src/utils/storageArea';
 import { devLockName } from '@/src/devtools/context';
@@ -37,6 +38,7 @@ function reportMetadata(value: unknown): FrameFillLog | null {
     typeof log.origin !== 'string' ||
     !Array.isArray(log.fields) ||
     (log.completedAt !== undefined && !Number.isFinite(log.completedAt)) ||
+    (log.modifiedAt !== undefined && !Number.isFinite(log.modifiedAt)) ||
     (log.mode !== undefined && !['merge', 'overwrite'].includes(log.mode)) ||
     (log.aiStatus !== undefined &&
       !['not_needed', 'succeeded', 'unavailable'].includes(log.aiStatus))
@@ -54,6 +56,7 @@ function reportMetadata(value: unknown): FrameFillLog | null {
       !field ||
       typeof field.id !== 'string' ||
       typeof field.label !== 'string' ||
+      (field.required !== undefined && typeof field.required !== 'boolean') ||
       !['text', 'select', 'file', 'radio', 'checkbox'].includes(field.kind) ||
       !Object.hasOwn(FILL_OUTCOME_LABELS, field.outcome) ||
       !field.rule ||
@@ -69,6 +72,7 @@ function reportMetadata(value: unknown): FrameFillLog | null {
           'manual_clear',
           'manual_edit',
           'profile_updated',
+          'option_unavailable',
           'value_changed',
         ].includes(field.reason)) ||
       (field.rule.layer !== undefined &&
@@ -92,6 +96,7 @@ function reportMetadata(value: unknown): FrameFillLog | null {
       id: field.id,
       label: field.label,
       kind: field.kind,
+      required: field.required,
       outcome: field.outcome,
       source: field.source,
       reason: field.reason,
@@ -113,7 +118,9 @@ function reportMetadata(value: unknown): FrameFillLog | null {
     runId: log.runId,
     startedAt: log.startedAt,
     completedAt: log.completedAt,
+    modifiedAt: log.modifiedAt,
     origin,
+    url: safeFormUrl(log.url),
     status: log.status,
     mode: log.mode,
     aiStatus: log.aiStatus,
@@ -138,7 +145,48 @@ export async function readRetainedFillLog(): Promise<FillLogSnapshot | null> {
       ? [{ frameId: frame.frameId, log }]
       : [];
   });
-  return frames.length ? { tabId: value.tabId, frames } : null;
+  frames.sort((a, b) => a.frameId - b.frameId);
+  if (!frames.length && !Number.isFinite(value.selectedAt)) return null;
+  return {
+    tabId: value.tabId,
+    frames,
+    pageUrl: safeFormUrl(value.pageUrl),
+    selectedAt: Number.isFinite(value.selectedAt)
+      ? value.selectedAt
+      : Math.max(0, ...frames.map((frame) => frame.log.startedAt)),
+    ...(value.needsRefresh ? { needsRefresh: true } : {}),
+  };
+}
+
+/** Explicit View details chooses a report without starting a scan or fill. */
+export async function selectRetainedFillLog(
+  snapshot: FillLogSnapshot,
+  requestedAt: number,
+): Promise<void> {
+  await locked(async () => {
+    const previous = await readRetainedFillLog();
+    if ((previous?.selectedAt ?? 0) > requestedAt) return;
+    const cutoff = await fillDetailsClearedAt();
+    if (requestedAt < cutoff) return;
+    const frames = snapshot.frames.flatMap((frame) => {
+      const log = reportMetadata(frame.log);
+      return log && log.startedAt >= cutoff ? [{ frameId: frame.frameId, log }] : [];
+    });
+    const keepCompleted =
+      !frames.length &&
+      snapshot.frames.some((frame) => frame.log.status === 'scanning') &&
+      previous?.tabId === snapshot.tabId;
+    await session.set({
+      [RETAINED_FILL_DETAILS]: {
+        tabId: snapshot.tabId,
+        frames: keepCompleted ? previous.frames : frames,
+        selectedAt: requestedAt,
+        clearedAt: cutoff,
+        pageUrl: keepCompleted ? previous.pageUrl : safeFormUrl(snapshot.pageUrl),
+        ...(snapshot.needsRefresh ? { needsRefresh: true } : {}),
+      },
+    });
+  });
 }
 
 export async function clearRetainedFillLog(): Promise<void> {
@@ -173,6 +221,16 @@ export async function retainFrameFillLog(
     return;
   const log = reportMetadata(value);
   if (!log) return;
+  let pageUrl = safeFormUrl(sender.tab?.url);
+  if (!pageUrl) {
+    try {
+      pageUrl = safeFormUrl(
+        (await chrome.webNavigation.getFrame({ tabId: tabId!, frameId: 0 }))?.url,
+      );
+    } catch {
+      /* Sender/document metadata remains sufficient when frame lookup is unavailable. */
+    }
+  }
   await locked(async () => {
     const stored = await local.get(['profile', 'devProfileDisabled']);
     const profile = stored.profile as { id?: string } | undefined;
@@ -180,17 +238,49 @@ export async function retainFrameFillLog(
       profile?.id ??
       (import.meta.env.DEV && !stored.devProfileDisabled ? DEV_PROFILE.id : undefined);
     if (currentId !== profileId) return; // Reset/replacement invalidates old form reports.
-    if (log.startedAt < (await fillDetailsClearedAt())) return;
+    const cutoff = await fillDetailsClearedAt();
+    if (log.startedAt < cutoff) return;
     const previous = await readRetainedFillLog();
     const prior = previous?.frames[0]?.log;
+    const sameTab = previous?.tabId === tabId;
     const sameRun = previous?.tabId === tabId && prior?.runId === log.runId;
+    const priorFrame = sameRun
+      ? previous!.frames.find((frame) => frame.frameId === sender.frameId)?.log
+      : undefined;
+    const revisedAt = (frame: FrameFillLog) =>
+      frame.modifiedAt ?? frame.completedAt ?? frame.startedAt;
+    if (
+      priorFrame &&
+      ((priorFrame.status === 'undone' && log.status !== 'undone') ||
+        revisedAt(priorFrame) > revisedAt(log))
+    )
+      return;
     // Empty sandbox frames cannot replace a real form, nor can late old-run edits.
-    if (!sameRun && (!log.fields.length || (prior && prior.startedAt >= log.startedAt))) return;
+    if (
+      !sameRun &&
+      (!log.fields.length ||
+        (previous &&
+          (sameTab
+            ? Math.max(0, ...previous.frames.map((frame) => frame.log.startedAt))
+            : (previous.selectedAt ?? prior?.startedAt ?? 0)) >= log.startedAt))
+    )
+      return;
     const frames = sameRun
       ? previous!.frames.filter((frame) => frame.frameId !== sender.frameId)
       : [];
     frames.push({ frameId: sender.frameId!, log });
-    await session.set({ [RETAINED_FILL_DETAILS]: { tabId, frames } });
+    await session.set({
+      [RETAINED_FILL_DETAILS]: {
+        tabId,
+        frames,
+        selectedAt: sameTab ? Math.max(previous!.selectedAt ?? 0, log.startedAt) : log.startedAt,
+        clearedAt: cutoff,
+        pageUrl:
+          (sender.frameId === 0 ? log.url : undefined) ??
+          (sameRun ? previous!.pageUrl : undefined) ??
+          pageUrl,
+      },
+    });
   });
 }
 

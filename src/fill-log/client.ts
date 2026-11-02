@@ -1,42 +1,38 @@
-import { latestFillLogFrames } from '@/src/autofill/fillLog';
+import { latestFillLogFrames, safeFormUrl } from '@/src/autofill/fillLog';
 import type { FillLogFrame, FillLogSnapshot, FrameFillLog } from '@/src/autofill/fillLog';
-import { requestFillDetails } from './navigation';
-import { readRetainedFillLog, fillDetailsClearedAt } from './retention';
+import { requestFillDetails, sourceTabId } from './navigation';
+import { readRetainedFillLog, fillDetailsClearedAt, selectRetainedFillLog } from './retention';
 
 /** Read only: never scan, fill, or switch the source tab while opening its log. */
-export async function loadFillLog(tabId: number): Promise<FillLogSnapshot> {
+export async function loadFillLog(tabId: number | null): Promise<FillLogSnapshot> {
   const cached = await readRetainedFillLog();
   const clearedAt = await fillDetailsClearedAt();
   const retained = cached?.frames.every((frame) => frame.log.startedAt >= clearedAt)
     ? cached
     : null;
-  let live: FillLogSnapshot;
+  const source = retained?.tabId ?? tabId;
+  if (source === null) return { tabId: -1, frames: [] };
   try {
-    live = await readLiveFillLog(tabId, clearedAt);
+    const live = await readLiveFillLog(source, clearedAt);
+    // Keep the completed report through a refresh or an in-progress retry.
+    if (retained && !live.frames.some((frame) => frame.log.status !== 'scanning')) return retained;
+    return live;
   } catch (error) {
-    if (!retained) throw error;
-    try {
-      return await readLiveFillLog(retained.tabId, clearedAt);
-    } catch {
-      return { ...retained, sourceClosed: true };
-    }
+    if (retained) return { ...retained, sourceClosed: true };
+    throw error;
   }
-  // A newer fill replaces the single retained report, including in an already-open view.
-  const startedAt = (snapshot: FillLogSnapshot) =>
-    Math.max(0, ...snapshot.frames.map((frame) => frame.log.startedAt));
-  if (retained && retained.tabId !== tabId && startedAt(retained) > startedAt(live)) {
-    try {
-      return await readLiveFillLog(retained.tabId, clearedAt);
-    } catch {
-      return { ...retained, sourceClosed: true };
-    }
-  }
-  return live;
+}
+
+export async function selectFillLog(tabId: number): Promise<void> {
+  if (sourceTabId(tabId) === null) throw new Error('Invalid source form');
+  const requestedAt = Date.now();
+  const snapshot = await readLiveFillLog(tabId, await fillDetailsClearedAt());
+  await selectRetainedFillLog(snapshot, requestedAt);
 }
 
 async function readLiveFillLog(tabId: number, clearedAt: number): Promise<FillLogSnapshot> {
   // Distinguish a closed source tab from a page with no completed fill.
-  await chrome.tabs.get(tabId);
+  const tab = await chrome.tabs.get(tabId);
   let ids = [0];
   try {
     const frames = await chrome.webNavigation.getAllFrames({ tabId });
@@ -74,14 +70,20 @@ async function readLiveFillLog(tabId: number, clearedAt: number): Promise<FillLo
       return null;
     }),
   );
+  const frames = latestFillLogFrames(
+    responses.filter((frame): frame is FillLogFrame => frame !== null),
+  );
   return {
     tabId,
-    frames: latestFillLogFrames(responses.filter((frame): frame is FillLogFrame => frame !== null)),
+    pageUrl:
+      safeFormUrl(frames.find((frame) => frame.frameId === 0)?.log.url) ?? safeFormUrl(tab.url),
+    frames,
     ...(needsRefresh ? { needsRefresh: true } : {}),
   };
 }
 
 export async function openFillLog(tabId: number): Promise<void> {
+  await selectFillLog(tabId);
   await requestFillDetails(tabId);
 }
 

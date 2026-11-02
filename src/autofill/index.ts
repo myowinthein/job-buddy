@@ -45,7 +45,8 @@ import type {
   DebugAIField,
   FieldFinalState,
 } from './debug';
-import { summarizeFillFields } from './fillLog';
+import { summarizeFillFields, safeFormUrl } from './fillLog';
+import { requiredField, reportTitle } from '@/src/fill-log/fieldMetadata';
 import type { FillLogField, FrameFillLog } from './fillLog';
 import type { RadioGroup, CheckboxGroup } from './scanner';
 import { isConsentGroup } from './consent';
@@ -173,15 +174,14 @@ function refreshTrackedField(element: HTMLElement): void {
   const value = recordValue(record);
   if (recordValues.get(record) === value) return;
   recordValues.set(record, value);
-  const reportChanged = record.outcome !== (value ? 'manual' : 'not_matched') ||
-    record.source !== 'manual' || record.reason !== (value ? 'manual_edit' : 'manual_clear');
   record.outcome = value ? 'manual' : 'not_matched';
   record.source = 'manual';
   record.reason = value ? 'manual_edit' : 'manual_clear';
   if (value) for (const item of elements) confirmFieldFeedback(item);
   if (!value) for (const item of elements) clearElementHighlight(item);
   syncFillLogResult();
-  if (reportChanged) void publishFillLog(fillLog, completedProfileId);
+  if (fillLog) fillLog.modifiedAt = Date.now();
+  void publishFillLog(fillLog, completedProfileId);
 }
 
 function attachReportWatchers(): void {
@@ -414,6 +414,7 @@ function runSilentRefill(): Promise<void> {
       }
       if (noDataFields.length === 0) teardownVisibilityListener();
       syncFillLogResult(result);
+      if (fillLog) fillLog.modifiedAt = Date.now();
       await publishFillLog(fillLog, completedProfileId);
     } catch {
       // Keep unresolved entries for the next visibility event.
@@ -467,6 +468,7 @@ export async function undoAutofill(): Promise<boolean> {
     syncFillLogResult();
     attachReportWatchers();
   }
+  if (fillLog) fillLog.modifiedAt = Date.now();
   await publishFillLog(fillLog, reportProfileId);
   return outcome.success;
 }
@@ -503,6 +505,7 @@ export async function scanAutofill(
     runId,
     startedAt: Date.now(),
     origin: location.origin,
+    url: safeFormUrl(location.href),
     status: 'scanning',
     fields: [],
   };
@@ -590,7 +593,8 @@ export async function scanAutofill(
   for (const { element, signals, match, debugFieldId } of scanned) {
     const record: FillLogField = {
       id: debugFieldId,
-      label: bestLabel(signals) || 'Unlabelled field',
+      label: reportTitle(bestLabel(signals), 'text', fillLog!.fields.length + 1),
+      required: requiredField([element], bestLabel(signals)),
       kind:
         element instanceof HTMLInputElement && element.type === 'file'
           ? 'file'
@@ -620,7 +624,10 @@ export async function scanAutofill(
       const excluded = !!group.isConsent || isConsentGroup(group);
       const record: FillLogField = {
         id: `${kind}_${index + 1}`,
-        label: group.groupLabel || group.name || `Unlabelled ${kind} group`,
+        label: reportTitle(group.groupLabel || group.name, kind, index + 1),
+        required: requiredField(
+          group.options.map(option => option.element), group.groupLabel, group.question,
+        ),
         kind,
         rule: { outcome: 'not_applicable' },
         ai: { outcome: 'not_sent' },

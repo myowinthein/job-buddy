@@ -7,6 +7,8 @@ import {
   readRetainedFillLog,
   retainFrameFillLog,
   RETAINED_FILL_DETAILS,
+  selectRetainedFillLog,
+  fillDetailsClearedAt,
 } from './retention';
 
 const sender = (tabId = 10, frameId = 0): chrome.runtime.MessageSender => ({
@@ -43,6 +45,8 @@ it('keeps only one run, combines its frames, and ignores old updates and empty s
   await retainFrameFillLog(sender(), log(), 'profile');
   await retainFrameFillLog(sender(10, 5), log(), 'profile');
   expect((await readRetainedFillLog())?.frames).toHaveLength(2);
+  await retainFrameFillLog(sender(), { ...log(), modifiedAt: 3 }, 'profile');
+  expect((await readRetainedFillLog())?.frames.map((frame) => frame.frameId)).toEqual([0, 5]);
   await retainFrameFillLog(sender(20), { ...log('sandbox', 5), fields: [] }, 'profile');
   expect((await readRetainedFillLog())?.tabId).toBe(10);
   await retainFrameFillLog(sender(20), log('second', 10), 'profile');
@@ -53,14 +57,79 @@ it('keeps only one run, combines its frames, and ignores old updates and empty s
   });
   expect((await readRetainedFillLog())?.frames).toHaveLength(1);
 });
+it('explicitly selects an older form, ignores edits on other forms and follows the next autofill', async () => {
+  await retainFrameFillLog(sender(), log('A', 1), 'profile');
+  const a = (await readRetainedFillLog())!;
+  await retainFrameFillLog(sender(20), log('B', 5), 'profile');
+  await selectRetainedFillLog(a, 10);
+  expect((await readRetainedFillLog())?.tabId).toBe(10);
+  await retainFrameFillLog(sender(20), { ...log('B', 5), modifiedAt: 11 }, 'profile');
+  expect((await readRetainedFillLog())?.tabId).toBe(10);
+  await retainFrameFillLog(sender(), { ...log('A', 1), modifiedAt: 12 }, 'profile');
+  expect((await readRetainedFillLog())?.frames[0].log.modifiedAt).toBe(12);
+  await retainFrameFillLog(sender(20), log('B-new', 15), 'profile');
+  expect((await readRetainedFillLog())?.tabId).toBe(20);
+  await selectRetainedFillLog(a, 14);
+  expect((await readRetainedFillLog())?.tabId).toBe(20);
+});
+it('retains required markers, real modification times and a sanitized job-form URL', async () => {
+  const report = { ...log(), modifiedAt: 4, url: 'https://form.test/apply/1?token=private' };
+  report.fields[0].required = true;
+  await retainFrameFillLog(
+    {
+      ...sender(),
+      frameId: 5,
+      tab: {
+        id: 10,
+        url: 'https://jobs.test/apply/1?source=test&token=private',
+      } as chrome.tabs.Tab,
+    },
+    report,
+    'profile',
+  );
+  expect(await readRetainedFillLog()).toMatchObject({
+    pageUrl: 'https://jobs.test/apply/1?source=test',
+    frames: [
+      { log: { modifiedAt: 4, url: 'https://form.test/apply/1', fields: [{ required: true }] } },
+    ],
+  });
+});
+it('keeps a completed report during a retry and accepts completion on the explicitly selected form', async () => {
+  await retainFrameFillLog(sender(), log('A', 1), 'profile');
+  await selectRetainedFillLog(
+    { tabId: 10, frames: [{ frameId: 0, log: { ...log('A-retry', 5), status: 'scanning' } }] },
+    10,
+  );
+  expect((await readRetainedFillLog())?.frames[0].log.runId).toBe('A');
+  await retainFrameFillLog(sender(), log('A-retry', 5), 'profile');
+  expect(await readRetainedFillLog()).toMatchObject({
+    selectedAt: 10,
+    frames: [{ log: { runId: 'A-retry' } }],
+  });
+  await retainFrameFillLog(sender(20), log('older-B', 9), 'profile');
+  expect((await readRetainedFillLog())?.tabId).toBe(10);
+});
+it('keeps the reset cutoff when an empty older report is explicitly opened', async () => {
+  await clearRetainedFillLog();
+  const cutoff = await fillDetailsClearedAt();
+  await selectRetainedFillLog({ tabId: 10, frames: [{ frameId: 0, log: log() }] }, cutoff + 1);
+  expect((await readRetainedFillLog())?.frames).toEqual([]);
+  expect(await fillDetailsClearedAt()).toBe(cutoff);
+  await retainFrameFillLog(sender(), log(), 'profile');
+  expect((await readRetainedFillLog())?.frames).toEqual([]);
+});
 it('updates manual changes and Undo in the same retained frame', async () => {
   const report = log();
   await retainFrameFillLog(sender(), report, 'profile');
   report.fields[0].outcome = 'manual';
   report.fields[0].source = 'manual';
+  report.modifiedAt = 10;
   await retainFrameFillLog(sender(), report, 'profile');
   expect((await readRetainedFillLog())?.frames[0].log.fields[0].outcome).toBe('manual');
-  await retainFrameFillLog(sender(), { ...report, status: 'undone' }, 'profile');
+  await retainFrameFillLog(sender(), { ...log(), modifiedAt: 9 }, 'profile');
+  expect((await readRetainedFillLog())?.frames[0].log.fields[0].outcome).toBe('manual');
+  await retainFrameFillLog(sender(), { ...report, modifiedAt: 11, status: 'undone' }, 'profile');
+  await retainFrameFillLog(sender(), { ...report, modifiedAt: 12 }, 'profile');
   expect((await readRetainedFillLog())?.frames[0].log.status).toBe('undone');
 });
 it('projects metadata and drops values, debug details, credentials and unknown properties', async () => {

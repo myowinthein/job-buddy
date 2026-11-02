@@ -7,6 +7,8 @@ import { ToastProvider } from '@/src/components/ui/Toast';
 import { createPreviewChrome } from '@/src/preview/chrome';
 import { DEV_PROFILE } from '@/src/utils/devProfile';
 import { openFillLog } from '@/src/fill-log/client';
+import { requestFillDetails } from '@/src/fill-log/navigation';
+import { retainFrameFillLog } from '@/src/fill-log/retention';
 
 vi.mock('@/src/resume-ai/extractLinks', () => ({ extractLinks: vi.fn().mockResolvedValue([]) }));
 vi.mock('@/src/resume-ai/gemini', () => ({
@@ -58,7 +60,10 @@ beforeEach(() => {
     ],
   }));
   const preview = createPreviewChrome(DEV_PROFILE);
-  Object.assign(preview.runtime, { openOptionsPage: vi.fn().mockResolvedValue(undefined) });
+  Object.assign(preview.runtime, {
+    openOptionsPage: vi.fn().mockResolvedValue(undefined),
+    id: 'jb',
+  });
   vi.stubGlobal('chrome', {
     ...preview,
     tabs,
@@ -80,9 +85,7 @@ it('embeds a wide, empty details section in Tools without duplicate branding or 
   expect(screen.getByRole('progressbar', { name: 'Saved required profile details' })).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Fill Details' }));
   expect(await screen.findByRole('heading', { name: 'Fill Details' })).toBeTruthy();
-  expect(
-    screen.getByText('Fill a form, then select View details to see its results.'),
-  ).toBeTruthy();
+  expect(await screen.findByText('No fill details yet')).toBeTruthy();
   expect(screen.queryByRole('progressbar')).toBeNull();
   expect(document.querySelector('[data-profile-section="fillDetails"]')?.className).toContain(
     'max-w-none',
@@ -121,7 +124,9 @@ it('preserves a dirty profile when navigation is declined and asks once per requ
   await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
   expect((screen.getByLabelText('First Name*') as HTMLInputElement).value).toBe('Unsaved draft');
   expect(screen.queryByRole('heading', { name: 'Fill Details' })).toBeNull();
-  expect(tabs.sendMessage).not.toHaveBeenCalled();
+  expect(
+    tabs.sendMessage.mock.calls.every(([, message]) => message.action === 'GET_FILL_LOG'),
+  ).toBe(true);
   confirm.mockReturnValue(true);
   await act(async () => openFillLog(20));
   await screen.findByText(/https:\/\/form20.test/);
@@ -146,8 +151,25 @@ it('shows a closed source without silently loading another tab', async () => {
   tabs.get.mockRejectedValue(new Error('Closed source'));
   mount();
   await screen.findByLabelText('First Name*');
-  await act(async () => openFillLog(10));
+  await act(async () => requestFillDetails(10));
   await screen.findByText('The source form is unavailable. Its tab may have closed.');
   expect(tabs.get).toHaveBeenCalledWith(10);
   expect(tabs.sendMessage).not.toHaveBeenCalled();
+});
+
+it('populates the open empty Tools section from a completed fill without a View details request', async () => {
+  mount();
+  await screen.findByLabelText('First Name*');
+  fireEvent.click(screen.getByRole('button', { name: 'Fill Details' }));
+  await screen.findByText('No fill details yet');
+  const log = await tabs.sendMessage(10);
+  await act(async () =>
+    retainFrameFillLog(
+      { id: 'jb', tab: { id: 10 } as chrome.tabs.Tab, frameId: 0 },
+      log,
+      DEV_PROFILE.id,
+    ),
+  );
+  await screen.findByRole('button', { name: 'All (1)' });
+  expect(chrome.runtime.openOptionsPage).not.toHaveBeenCalled();
 });

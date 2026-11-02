@@ -1,6 +1,9 @@
 /** Minimum confidence to fill a field (yellow tier and above). */
 export const CONF_FILL = 0.6;
 
+/** No usable option or match; leave the control for manual input. */
+export const CONF_NO_MATCH = 0;
+
 /** Minimum confidence to fill without requiring review (green tier). */
 export const CONF_GREEN = 0.85;
 

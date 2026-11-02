@@ -38,6 +38,9 @@ import type { Profile } from '../types/profile';
 import type { FieldSignals } from './signals';
 import type { RadioGroup, CheckboxGroup } from './scanner';
 import type { AIFieldResponse } from '../resume-ai/types';
+import type { FillLogField } from './fillLog';
+import { applyHighlight, applyMissingDataHighlight } from './highlighter';
+import { CONF_NO_MATCH } from './constants';
 
 // ── runAIAutofill helpers ─────────────────────────────────────────────────────
 
@@ -396,6 +399,19 @@ describe('runAIAutofill — native <select> candidates', () => {
     );
     const sentPayload = vi.mocked(resolveFieldsWithAI).mock.calls[0][2];
     expect(sentPayload[0]).not.toHaveProperty('options');
+  });
+  it('reports an unavailable option as red instead of falsely reporting missing profile data', async () => {
+    const cand = selectCandidate([{ text: 'Choose', value: '' }, { text: 'Thailand', value: 'TH' }]);
+    const record: FillLogField = {
+      id: 'select', label: 'Country', kind: 'select', outcome: 'not_matched', source: null,
+      rule: { outcome: 'not_matched' }, ai: { outcome: 'not_sent' },
+    };
+    mockResponses([{ fieldId: 'field_001', profilePath: 'address.country', confidence: 'high' }]);
+    await runAIAutofill([cand], { ...PROFILE, address: { country: 'JP', city: 'Tokyo' } }, freshResult(), [], undefined, { fieldRecords: new Map([[cand.element, record]]) });
+    expect(fillField).not.toHaveBeenCalled();
+    expect(record).toMatchObject({ outcome: 'failed', reason: 'option_unavailable', ai: { outcome: 'fill_failed' } });
+    expect(applyMissingDataHighlight).not.toHaveBeenCalled();
+    expect(applyHighlight).toHaveBeenCalledWith(cand.element, CONF_NO_MATCH);
   });
 
   it('never fills a select from an unresolvable profile path when no selectedOption is given', async () => {

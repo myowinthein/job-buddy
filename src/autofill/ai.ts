@@ -15,7 +15,7 @@ import { scanRadioGroups, scanCheckboxGroups, isChoiceGroupAvailable, questionLa
 import type { RadioGroup, CheckboxGroup } from './scanner';
 import { fillField, fillRadioInput, fillCheckboxInput } from './filler';
 import { applyHighlight, applyMissingDataHighlight } from './highlighter';
-import { CONF_CONFIRMED, CONF_AI_YELLOW, CONF_GREEN } from './constants';
+import { CONF_CONFIRMED, CONF_AI_YELLOW, CONF_GREEN, CONF_NO_MATCH } from './constants';
 import { getGeminiApiKey, getGeminiModel } from '../utils/storage';
 import { isSkippableOption } from './normalizer';
 import type { DebugAIField } from './debug';
@@ -313,6 +313,7 @@ export async function runAIAutofill(
       }
 
       let value: string | string[] | null = null;
+      let optionUnavailable = false;
       if (candidate.element instanceof HTMLSelectElement && candidate.element.multiple && resp.selectedOptions) {
         const selected = resp.selectedOptions.map(answer => exactAIOption(field.options ?? [], answer));
         if (selected.some(option => !option) || selected.some(option => field.options!.filter(item => item.value === option!.value).length !== 1)) {
@@ -332,6 +333,7 @@ export async function runAIAutofill(
         value = allowedAIPath(profile, field, path) ? resolveRuleValue(profile, /^workAuthorization(?:\.\d+(?:\.status)?)?$/.test(path) ? 'workAuthorization' : path, signals) : '';
         if (isSelect && value) {
           const selected = exactAIOption(field.options ?? [], value);
+          optionUnavailable = !selected || field.options!.filter(option => option.value === selected.value).length !== 1;
           value = selected && field.options!.filter(option => option.value === selected.value).length === 1 ? [selected.value] : '';
         }
       }
@@ -345,8 +347,12 @@ export async function runAIAutofill(
         continue;
       }
       if (!value) {
-        if (!liveValue.trim()) applyMissingDataHighlight(candidate.element);
-        recordDebug(candidate, fieldId, aiResult, resp.confidence, 'unchanged', 'missing_data');
+        if (!liveValue.trim()) {
+          if (optionUnavailable) applyHighlight(candidate.element, CONF_NO_MATCH);
+          else applyMissingDataHighlight(candidate.element);
+        }
+        recordDebug(candidate, fieldId, aiResult, resp.confidence, 'unchanged', optionUnavailable ? 'fill_failed' : 'missing_data');
+        if (optionUnavailable && tracked && tracked.rule.outcome !== 'filled') tracked.reason = 'option_unavailable';
         continue;
       }
 
