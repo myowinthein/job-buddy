@@ -260,6 +260,10 @@ export function buildPickerTree(profile: Profile): Section[] {
     const items: SectionItem[] = [];
     if (profile.links?.linkedin)  items.push(row('LinkedIn',  'links.linkedin',  profile.links.linkedin));
     if (profile.links?.portfolio) items.push(row('Portfolio', 'links.portfolio', profile.links.portfolio));
+    for (const [key, label] of [['github', 'GitHub'], ['twitter', 'Twitter / X'], ['dribbble', 'Dribbble'], ['behance', 'Behance']] as const) {
+      const value = profile.links?.[key];
+      if (value) items.push(row(label, `links.${key}`, value));
+    }
     (profile.links?.custom ?? []).forEach((link, idx) => {
       if (!link.label || !link.url) return;
       items.push(row(link.label, `links.custom.${idx}.url`, link.url));

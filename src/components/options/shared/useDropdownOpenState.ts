@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 
 // Open/search/outside-click/focus-on-open plumbing shared by both
 // useDropdownPanel and useSearchableDropdown — extracted since they had
@@ -11,7 +11,10 @@ import { useEffect, useRef, useState } from 'react';
 // extra state (a highlight index) can reset that too. Read via a ref so the
 // outside-click effect only re-subscribes when `open` changes, not on every
 // render a fresh inline callback would otherwise trigger.
-export function useDropdownOpenState(onClose?: () => void) {
+export function useDropdownOpenState(
+  onClose?: () => void,
+  portalRef?: RefObject<HTMLElement | null>,
+) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -29,7 +32,10 @@ export function useDropdownOpenState(onClose?: () => void) {
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) {
+      if (
+        !containerRef.current?.contains(e.target as Node) &&
+        !portalRef?.current?.contains(e.target as Node)
+      ) {
         setOpen(false);
         setSearch('');
         onCloseRef.current?.();
@@ -37,7 +43,7 @@ export function useDropdownOpenState(onClose?: () => void) {
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
+  }, [open, portalRef]);
 
   return { open, setOpen, search, setSearch, containerRef, searchRef };
 }

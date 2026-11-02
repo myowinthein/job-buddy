@@ -236,7 +236,7 @@ function contentStorageClient(): boolean {
 }
 export async function saveLearnedMappings(
   mappings: LearnedMappings,
-  options: { labelsOnly?: boolean; base?: LearnedMappings; merge?: boolean; context?: LearningContext } = {},
+  options: { labelsOnly?: boolean; base?: LearnedMappings; merge?: boolean; context?: LearningContext; strictBase?: boolean } = {},
 ): Promise<void> {
   if (options.labelsOnly && contentStorageClient()) {
     const response = await chrome.runtime.sendMessage({ action: 'SAVE_LEARNED_LABELS', mappings });
@@ -256,12 +256,16 @@ export async function saveLearnedMappings(
       for (const domain of new Set([...Object.keys(options.base), ...Object.keys(mappings)])) {
         if (!(domain in mappings)) {
           if (!current[domain]) continue;
+          if (options.strictBase && !equalJsonValues(current[domain], options.base[domain]))
+            throw new Error('Learned mapping changed before saving');
           delete current[domain];
           continue;
         }
         const before = options.base[domain] ?? {};
         for (const key of new Set([...Object.keys(before), ...Object.keys(mappings[domain])])) {
           if (equalJsonValues(before[key], mappings[domain][key])) continue;
+          if (options.strictBase && !equalJsonValues(current[domain]?.[key], before[key]))
+            throw new Error('Learned mapping changed before saving');
           if (Object.hasOwn(before, key) && !Object.hasOwn(current[domain] ?? {}, key))
             throw new Error('Learned mapping changed before saving');
           current[domain] ??= {};

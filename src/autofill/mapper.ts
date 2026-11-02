@@ -26,6 +26,7 @@ import {
   CONF_CONTEXT,
   CONF_AUTOCOMPLETE,
   CONF_UNVERIFIED_SIGNAL,
+  LEARNED_MAPPING_THRESHOLD,
 } from './constants';
 
 export interface FieldMatch {
@@ -37,10 +38,6 @@ export interface FieldMatch {
   ruleBlocked?: boolean;
   learnedScope?: 'field' | 'entry';
 }
-
-// Minimum number of confirmations before a learned mapping is trusted for Layer 0.
-// 1 = stored but not yet promoted; ≥2 = trusted.
-const LEARNED_MAPPING_THRESHOLD = 2;
 
 // ── Layer 1 — Autocomplete attribute map ────────────────────────────────────
 const AUTOCOMPLETE_MAP: Record<string, { path: string; confidence: number }> = {

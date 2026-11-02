@@ -6,6 +6,7 @@ import type { ProfileUpdate } from '@/src/resume-ai/resumeImport';
 import { getProfile, saveProfile } from '@/src/utils/storage';
 import { sessionGet, sessionRemove } from '@/src/utils/sessionStorage';
 import { calculateCompletion, getSectionCompletion, getCompletionTarget, getSectionStartTarget } from '@/src/utils/profileCompletion';
+import { mappingProfileTarget } from '@/src/components/options/learnedMappingsView';
 import { calculateDerivedFields } from '@/src/utils/derivedFields';
 import { Sidebar } from '@/src/components/options/Sidebar';
 import { CompletionBanner } from '@/src/components/options/CompletionBanner';
@@ -370,6 +371,8 @@ function App() {
           const el = document.getElementById(focusTarget.id) ?? (focusTarget.fallbackId ? document.getElementById(focusTarget.fallbackId) : null);
           // Settings can render the key input before its saved state finishes loading.
           if (!el || el.matches(':disabled')) return;
+          for (let parent = el.parentElement; parent; parent = parent.parentElement)
+            if (parent instanceof HTMLDetailsElement) parent.open = true;
           el.focus({ preventScroll: true });
           if (document.activeElement !== el) return;
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -497,7 +500,10 @@ function App() {
       case 'links':             return <LinksSection key={`links-${sectionSeq}`} {...sectionProps} />;
       case 'documents':         return <DocumentsSection key={`documents-${sectionSeq}`} {...sectionProps} />;
       case 'resume':            return <ResumeImportSection key="resume" profile={profile} onSave={handleSave} onReplace={async (base, changes) => { setProfile(await replaceImportedProfile(base, changes)); }} onGoToApiKey={handleGoToApiKey} onClose={handleCloseResumeImport} />;
-      case 'learnedMappings':   return <LearnedMappingsSection key="learnedMappings" />;
+      case 'learnedMappings':   return <LearnedMappingsSection key="learnedMappings" onProfileChange={setProfile} onOpenProfile={(path, currentProfile) => {
+        const link = mappingProfileTarget(currentProfile, path);
+        if (link) navigateAndFocus(link.section, { ...link.target, fallbackId: link.target.fallbackId ?? getSectionStartTarget(link.section)?.id });
+      }} />;
       case 'fillDetails':       return <FillLogPage key={`fillDetails-${fillDetailsTabId}`} tabId={fillDetailsTabId} />;
       case 'devTools': return DevToolsPage ? <Suspense fallback={<p>Loading development tools…</p>}><DevToolsPage onFocusField={handleFocusField} /></Suspense> : null;
       case 'settings':          return <SettingsSection key="settings" onImportComplete={handleImportComplete} onResetComplete={handleResetComplete} />;
@@ -525,7 +531,7 @@ function App() {
         />
         <main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-8">
           {/* Settings uses max-w-none so long subtitles can flow to one line */}
-          <div data-profile-section={activeSection} className={['settings', 'devTools', 'fillDetails'].includes(activeSection) ? 'max-w-none' : 'max-w-2xl'}
+          <div data-profile-section={activeSection} className={['settings', 'devTools', 'fillDetails', 'learnedMappings'].includes(activeSection) ? 'max-w-none' : 'max-w-2xl'}
             onBlurCapture={() => {
               if (dirtyInputsRef.current.size > 0) setUnsavedStatusVisible(true);
             }}>

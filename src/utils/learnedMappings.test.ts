@@ -302,3 +302,51 @@ describe('mapping boundary validation and compatibility', () => {
     expect(Object.keys((await getLearnedMappings())['example.test'])).toHaveLength(5);
   });
 });
+
+describe('strict editor bases', () => {
+  it('rejects a stale correction rather than overwriting a concurrent changed path', async () => {
+    await set({
+      learnedMappings: {
+        'example.test': {
+          question: { path: 'personal.firstName', count: 2, label: 'Name', question: 'Name' },
+        },
+      },
+    });
+    const base = await getLearnedMappings();
+    await set({
+      learnedMappings: {
+        'example.test': {
+          question: { path: 'personal.lastName', count: 2, label: 'Name', question: 'Name' },
+        },
+      },
+    });
+    await expect(
+      saveLearnedMappings(
+        {
+          'example.test': {
+            question: { path: 'personal.email', count: 2, label: 'Name', question: 'Name' },
+          },
+        },
+        { base, strictBase: true },
+      ),
+    ).rejects.toThrow('Learned mapping changed');
+    expect((await getLearnedMappings())['example.test'].question).toMatchObject({
+      path: 'personal.lastName',
+    });
+  });
+  it('requires another review before deleting a site that gained a new mapping', async () => {
+    await set({
+      learnedMappings: { 'example.test': { first: { path: 'personal.firstName', count: 2 } } },
+    });
+    const base = await getLearnedMappings();
+    await set({
+      learnedMappings: {
+        'example.test': { ...base['example.test'], email: { path: 'personal.email', count: 2 } },
+      },
+    });
+    await expect(saveLearnedMappings({}, { base, strictBase: true })).rejects.toThrow(
+      'Learned mapping changed',
+    );
+    expect((await getLearnedMappings())['example.test']).toHaveProperty('email');
+  });
+});

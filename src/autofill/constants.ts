@@ -10,6 +10,9 @@ export const CONF_GREEN = 0.85;
 /** Confidence assigned to user-confirmed values (manual edit, silent re-fill). */
 export const CONF_CONFIRMED = 0.97;
 
+/** Independent manual confirmations required before a learned mapping is trusted. */
+export const LEARNED_MAPPING_THRESHOLD = 2;
+
 /** Confidence assigned to AI-resolved fields in the low/needReview tier.
  *  Intentionally equal to CONF_CONTEXT today but conceptually separate — these
  *  represent different pipeline stages and may drift independently. */

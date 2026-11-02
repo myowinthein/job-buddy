@@ -185,6 +185,7 @@ export function LinksSection({ profile, onSave }: Props) {
       </datalist>
       <div className="mb-4">
         <EntryListHeader
+          id="add-customLinks"
           title="Custom Links"
           onAdd={() => {
             setCustom((rows) => [...rows, { label: '', url: '' }]);
@@ -220,6 +221,7 @@ export function LinksSection({ profile, onSave }: Props) {
                 <FormField label="URL" error={errors[`custom.${idx}.url`]}>
                   <input
                     type="url"
+                    id={`field-customLink-${idx}-url`}
                     className={cls(errors[`custom.${idx}.url`])}
                     value={c.url}
                     onChange={(e) => updateCustom(idx, 'url', e.target.value)}

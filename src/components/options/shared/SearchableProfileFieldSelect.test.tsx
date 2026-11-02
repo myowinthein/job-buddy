@@ -12,12 +12,19 @@ afterEach(cleanup);
 
 const PROFILE = {
   personal: {
-    firstName: 'Jane', lastName: 'Doe',
+    firstName: 'Jane',
+    lastName: 'Doe',
     phone: { countryCode: 'US', callingCode: '+1', number: '5551234567' },
   },
   address: { city: 'Austin', country: 'US' },
   workHistory: [
-    { company: 'Old Co', title: 'Analyst', startDate: '2015-01', endDate: '2018-01', isCurrent: false },
+    {
+      company: 'Old Co',
+      title: 'Analyst',
+      startDate: '2015-01',
+      endDate: '2018-01',
+      isCurrent: false,
+    },
     { company: 'New Co', title: 'Engineer', startDate: '2020-01', isCurrent: true },
   ],
 } as Partial<Profile>;
@@ -47,12 +54,16 @@ describe('SearchableProfileFieldSelect — open/close toggling', () => {
   it('closes the dropdown on an outside click and clears the search text', () => {
     renderSelect();
     fireEvent.click(screen.getByRole('button'));
-    fireEvent.change(screen.getByPlaceholderText('Search profile fields…'), { target: { value: 'First' } });
+    fireEvent.change(screen.getByPlaceholderText('Search profile fields…'), {
+      target: { value: 'First' },
+    });
     fireEvent.mouseDown(document.body);
     expect(screen.queryByPlaceholderText('Search profile fields…')).toBeNull();
 
     fireEvent.click(screen.getByRole('button'));
-    expect((screen.getByPlaceholderText('Search profile fields…') as HTMLInputElement).value).toBe('');
+    expect((screen.getByPlaceholderText('Search profile fields…') as HTMLInputElement).value).toBe(
+      '',
+    );
   });
 });
 
@@ -60,7 +71,9 @@ describe('SearchableProfileFieldSelect — search filtering', () => {
   it('filters rows to only those matching the search text, case-insensitively', () => {
     renderSelect();
     fireEvent.click(screen.getByRole('button'));
-    fireEvent.change(screen.getByPlaceholderText('Search profile fields…'), { target: { value: 'first' } });
+    fireEvent.change(screen.getByPlaceholderText('Search profile fields…'), {
+      target: { value: 'first' },
+    });
     expect(screen.getByText('First Name')).toBeTruthy();
     expect(screen.queryByText('Last Name')).toBeNull();
     expect(screen.queryByText('City')).toBeNull();
@@ -69,7 +82,9 @@ describe('SearchableProfileFieldSelect — search filtering', () => {
   it('shows "No matching fields." when nothing matches', () => {
     renderSelect();
     fireEvent.click(screen.getByRole('button'));
-    fireEvent.change(screen.getByPlaceholderText('Search profile fields…'), { target: { value: 'zzzznomatch' } });
+    fireEvent.change(screen.getByPlaceholderText('Search profile fields…'), {
+      target: { value: 'zzzznomatch' },
+    });
     expect(screen.getByText('No matching fields.')).toBeTruthy();
   });
 
@@ -78,7 +93,9 @@ describe('SearchableProfileFieldSelect — search filtering', () => {
     fireEvent.click(screen.getByRole('button'));
     // "Old Co" is not the most recent entry, so it starts collapsed — but
     // searching for one of its fields by label should surface it anyway.
-    fireEvent.change(screen.getByPlaceholderText('Search profile fields…'), { target: { value: 'Job' } });
+    fireEvent.change(screen.getByPlaceholderText('Search profile fields…'), {
+      target: { value: 'Job' },
+    });
     expect(screen.getByText('Analyst')).toBeTruthy();
   });
 
@@ -86,7 +103,9 @@ describe('SearchableProfileFieldSelect — search filtering', () => {
     renderSelect();
     fireEvent.click(screen.getByRole('button'));
     fireEvent.click(screen.getByText('Personal')); // expand the section holding the Phone cluster
-    fireEvent.change(screen.getByPlaceholderText('Search profile fields…'), { target: { value: 'Country Code' } });
+    fireEvent.change(screen.getByPlaceholderText('Search profile fields…'), {
+      target: { value: 'Country Code' },
+    });
     expect(screen.getByText('Country Code')).toBeTruthy();
     expect(screen.queryByText('Full Phone')).toBeNull();
     expect(screen.queryByText('Phone Number')).toBeNull();
@@ -148,12 +167,14 @@ describe('SearchableProfileFieldSelect — keyboard navigation', () => {
     cleanup();
 
     const onChangeRoundTrip = vi.fn();
-    render(<SearchableProfileFieldSelect profile={PROFILE} value="" onChange={onChangeRoundTrip} />);
+    render(
+      <SearchableProfileFieldSelect profile={PROFILE} value="" onChange={onChangeRoundTrip} />,
+    );
     fireEvent.click(screen.getByRole('button'));
     const inputRoundTrip = screen.getByPlaceholderText('Search profile fields…');
     fireEvent.change(inputRoundTrip, { target: { value: 'Name' } });
     fireEvent.keyDown(inputRoundTrip, { key: 'ArrowDown' }); // move to the 2nd row
-    fireEvent.keyDown(inputRoundTrip, { key: 'ArrowUp' });   // then back to the 1st
+    fireEvent.keyDown(inputRoundTrip, { key: 'ArrowUp' }); // then back to the 1st
     fireEvent.keyDown(inputRoundTrip, { key: 'Enter' });
 
     // ArrowDown-then-Up should land back on the same field a plain Enter
@@ -173,10 +194,10 @@ describe('SearchableProfileFieldSelect — keyboard navigation', () => {
 });
 
 describe('SearchableProfileFieldSelect — selected-value display', () => {
-  it('shows the resolved label and path for a top-level option field', () => {
+  it('shows a readable selected label without the internal path', () => {
     renderSelect('personal.firstName');
     expect(screen.getByText('First Name', { exact: false })).toBeTruthy();
-    expect(screen.getByText('(personal.firstName)')).toBeTruthy();
+    expect(screen.queryByText('(personal.firstName)')).toBeNull();
   });
 
   it('shows "Heading · Label" for a value nested inside a subgroup', () => {
@@ -184,9 +205,10 @@ describe('SearchableProfileFieldSelect — selected-value display', () => {
     expect(screen.getByText(/New Co · Engineer · Company/)).toBeTruthy();
   });
 
-  it('falls back to showing the raw path when it does not resolve to any known field', () => {
+  it('asks for an available field when the saved path cannot be selected', () => {
     renderSelect('some.made.up.path');
-    expect(screen.getByText('some.made.up.path')).toBeTruthy();
+    expect(screen.getByText('Choose an available profile field')).toBeTruthy();
+    expect(screen.queryByText('some.made.up.path')).toBeNull();
   });
 });
 
@@ -230,7 +252,11 @@ it('keyboard navigation skips collapsed entry rows and selects the first visible
   fireEvent.click(screen.getByText('Work History'));
   expect(screen.queryByText('Analyst')).toBeNull();
   const search = screen.getByRole('combobox');
-  expect(search.getAttribute('aria-activedescendant')).toBe('spfs-option-workHistory.1.company');
+  expect(search.getAttribute('aria-activedescendant')).toMatch(/-option-workHistory\.1\.company$/);
+  expect(document.getElementById(search.getAttribute('aria-activedescendant')!)).toHaveProperty(
+    'role',
+    'option',
+  );
   fireEvent.keyDown(search, { key: 'Enter' });
   expect(onChange).toHaveBeenCalledWith('workHistory.1.company');
 });
@@ -245,10 +271,42 @@ it('keyboard selection follows filtered clusters and search-expanded entry rows'
   fireEvent.click(screen.getByRole('button'));
   search = screen.getByRole('combobox');
   fireEvent.change(search, { target: { value: 'Job' } });
-  expect(screen.getAllByRole('option').map((row) => row.id)).toEqual([
-    'spfs-option-workHistory.0.title', 'spfs-option-workHistory.1.title',
+  expect(screen.getAllByRole('option').map((row) => row.id.split('-option-')[1])).toEqual([
+    'workHistory.0.title',
+    'workHistory.1.title',
   ]);
   fireEvent.keyDown(search, { key: 'ArrowDown' });
   fireEvent.keyDown(search, { key: 'Enter' });
   expect(onChange).toHaveBeenLastCalledWith('workHistory.1.title');
+});
+
+it('keeps portal interactions open, gives instances distinct IDs, and names the search', () => {
+  render(
+    <>
+      <SearchableProfileFieldSelect
+        profile={PROFILE}
+        value="personal.firstName"
+        onChange={vi.fn()}
+      />
+      <SearchableProfileFieldSelect
+        profile={PROFILE}
+        value="personal.lastName"
+        onChange={vi.fn()}
+      />
+    </>,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Profile field: First Name' }));
+  const input = screen.getByRole('combobox', { name: 'Search profile fields' });
+  fireEvent.mouseDown(input);
+  expect(screen.getByRole('listbox', { name: 'Profile fields' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Profile field: Last Name' }));
+  const searches = screen.getAllByRole('combobox');
+  expect(new Set(searches.map((search) => search.getAttribute('aria-controls'))).size).toBe(
+    searches.length,
+  );
+  for (const search of searches)
+    expect(document.getElementById(search.getAttribute('aria-controls')!)).toHaveProperty(
+      'role',
+      'listbox',
+    );
 });
