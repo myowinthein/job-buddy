@@ -1021,6 +1021,42 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium"
         >
           <a
+            href={issueReportUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={footerLinkCls}
+          >
+            Report an issue
+          </a>
+          <span aria-hidden="true">·</span>
+          <a
+            href="https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={footerLinkCls}
+          >
+            Chrome Web Store
+          </a>
+          <span aria-hidden="true">·</span>
+          <a
+            href="https://github.com/myowinthein/job-buddy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={footerLinkCls}
+          >
+            GitHub
+          </a>
+          <span aria-hidden="true">·</span>
+          <a
+            href="https://ko-fi.com/myowinthein"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${footerLinkCls} inline-flex items-center gap-1 font-normal`}
+          >
+            Support on Ko-fi <span aria-hidden="true">↗</span>
+          </a>
+          <span aria-hidden="true">·</span>
+          <a
             href="https://myowinthein.github.io/job-buddy/legal/privacy/"
             target="_blank"
             rel="noopener noreferrer"
@@ -1036,24 +1072,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             className={footerLinkCls}
           >
             Disclaimer
-          </a>
-          <span aria-hidden="true">·</span>
-          <a
-            href={issueReportUrl()}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={footerLinkCls}
-          >
-            Report an issue
-          </a>
-          <span aria-hidden="true">·</span>
-          <a
-            href="https://ko-fi.com/myowinthein"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`${footerLinkCls} inline-flex items-center gap-1 font-normal`}
-          >
-            Support on Ko-fi <span aria-hidden="true">↗</span>
           </a>
         </nav>
       </footer>
