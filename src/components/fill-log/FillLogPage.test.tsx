@@ -264,13 +264,14 @@ describe('Fill Details page', () => {
     expect(screen.getByText('7 of 7 fields shown')).toBeTruthy();
   });
 
-  it('keeps core results collapsed and combines frame, control and per-type numbering in technical details', async () => {
+  it('keeps core results collapsed and hides internal control identifiers', async () => {
     await showFields();
     const row = screen.getByText('Full name').closest('details')!;
     fireEvent.click(row.querySelector('summary')!);
     expect(row.open).toBe(true);
-    expect(within(row).getByText('Main page: text_1')).toBeTruthy();
-    expect(screen.getByText('Embedded frame 5: text_1')).toBeTruthy();
+    expect(screen.queryByText('Control')).toBeNull();
+    expect(screen.queryByText('Main page: text_1')).toBeNull();
+    expect(screen.queryByText('Embedded frame 5: text_1')).toBeNull();
     expect(screen.queryByText('Field ID')).toBeNull();
     expect(screen.queryByText('Frame')).toBeNull();
     expect(screen.queryByText('0:field_001')).toBeNull();
@@ -298,7 +299,7 @@ describe('Fill Details page', () => {
     );
     expect(within(panel()).getByText('No usable mapping')).toBeTruthy();
     expect(within(panel()).queryByText('Match score')).toBeNull();
-    expect(within(row).getByText('Main page: text_2')).toBeTruthy();
+    expect(within(row).queryByText('Control')).toBeNull();
     expect(loadFillLog).toHaveBeenCalledTimes(1);
   });
 
@@ -355,15 +356,12 @@ describe('Fill Details page', () => {
 
   it('combines a selected outcome filter with searches over field titles', async () => {
     await showFields();
-    expect(within(screen.getByText('Location').closest('summary')!).getByText('5.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Red (2)' }));
     expect(screen.queryByText('Full name')).toBeNull();
     expect(screen.getByText('Location')).toBeTruthy();
-    expect(within(screen.getByText('Location').closest('summary')!).getByText('5.')).toBeTruthy();
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'location' } });
     expect(screen.getByText('Location')).toBeTruthy();
     expect(screen.queryByText('Resume')).toBeNull();
-    expect(within(screen.getByText('Location').closest('summary')!).getByText('5.')).toBeTruthy();
     expect(screen.getByText('1 of 7 fields shown')).toBeTruthy();
   });
 

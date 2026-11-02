@@ -439,7 +439,8 @@ test('an open empty report populates automatically and explicit actions select t
   await expect(firstRow.locator('.sr-only')).toHaveText(' required');
   await firstRow.focus();
   await options.keyboard.press('Enter');
-  await expect(options.getByText('Main page: text_1', { exact: true })).toBeVisible();
+  await expect(firstRow.locator('..').getByRole('list', { name: 'Matching stages' })).toBeVisible();
+  await expect(options.getByText('Control', { exact: true })).toHaveCount(0);
 
   const b = await context.newPage();
   await b.goto('http://127.0.0.1/application-b');

@@ -122,24 +122,9 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
   }, [tabId]);
   const frames = snapshot?.frames.filter((frame) => frame.log.status !== 'scanning') ?? [];
   const reportKey = reportIdentity(snapshot);
-  let fieldNumber = 0;
-  const fields = frames.flatMap((frame) => {
-    const indices: Record<string, number> = {};
-    return frame.log.fields.map((field) => {
-      indices[field.kind] = (indices[field.kind] ?? 0) + 1;
-      return {
-        field,
-        number: ++fieldNumber,
-        frameId: frame.frameId,
-        control:
-          (frame.frameId === 0 ? 'Main page' : 'Embedded frame ' + frame.frameId) +
-          ': ' +
-          field.kind +
-          '_' +
-          indices[field.kind],
-      };
-    });
-  });
+  const fields = frames.flatMap((frame) =>
+    frame.log.fields.map((field) => ({ field, frameId: frame.frameId })),
+  );
   const counts = summarizeFillFields(fields.map((row) => row.field));
   const groupFields = fields.filter(
     (row) => filterMatches[outcome](row.field) && matchesSearch(row.field, search),
@@ -401,13 +386,8 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
             </p>
           )}
           <div aria-label="Field results" className="divide-y divide-gray-200 dark:divide-gray-800">
-            {shown.map(({ field, frameId, control, number }) => (
-              <FieldRow
-                key={reportKey + ':' + frameId + ':' + field.id}
-                field={field}
-                control={control}
-                number={number}
-              />
+            {shown.map(({ field, frameId }) => (
+              <FieldRow key={reportKey + ':' + frameId + ':' + field.id} field={field} />
             ))}
           </div>
         </>
@@ -416,15 +396,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
   );
 }
 
-function FieldRow({
-  field,
-  control,
-  number,
-}: {
-  field: FillLogField;
-  control: string;
-  number: number;
-}) {
+function FieldRow({ field }: { field: FillLogField }) {
   const source = finalFillSource(field);
   const confidence = confidenceText(field);
   const explanation = fieldExplanation(field);
@@ -445,7 +417,6 @@ function FieldRow({
       <summary className="grid cursor-pointer grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-x-3 gap-y-2 rounded-sm">
         <span className="col-span-2 row-start-1 min-w-0 sm:col-span-1">
           <span className="block break-words text-sm font-medium">
-            <span className="mr-1.5 tabular-nums text-gray-500 dark:text-gray-400">{number}.</span>
             <span>{field.label}</span>
             {field.required && (
               <>
@@ -489,12 +460,12 @@ function FieldRow({
           className="col-start-3 row-start-1 mt-1 h-3.5 w-3.5 text-gray-400 transition-transform group-open:rotate-180"
         />
       </summary>
-      <StageDetails field={field} control={control} />
+      <StageDetails field={field} />
     </details>
   );
 }
 
-function StageDetails({ field, control }: { field: FillLogField; control: string }) {
+function StageDetails({ field }: { field: FillLogField }) {
   const [selected, setSelected] = useState<StageId | null>(null);
   const panelId = useId();
   const stages = fillStages(field);
@@ -558,7 +529,7 @@ function StageDetails({ field, control }: { field: FillLogField; control: string
           aria-label={active.label + ' stage details'}
           className="mt-4"
         >
-          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2">
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-left">
             <dt className="text-gray-500 dark:text-gray-400">Result</dt>
             <dd>{active.result}</dd>
             {active.details.map((detail) => (
@@ -572,10 +543,6 @@ function StageDetails({ field, control }: { field: FillLogField; control: string
           </dl>
         </div>
       )}
-      <dl className="mt-5 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4">
-        <dt className="text-gray-500 dark:text-gray-400">Control</dt>
-        <dd className="break-words font-mono">{control}</dd>
-      </dl>
     </div>
   );
 }
