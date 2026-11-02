@@ -471,10 +471,10 @@ function App() {
             <span className="h-3 w-28 animate-pulse rounded bg-gray-100 motion-reduce:animate-none dark:bg-gray-800" />
           ) : (
             <span
-              className={`flex items-center gap-1.5 font-medium ${isCoreComplete && !profileLoadFailed ? 'text-green-700 dark:text-green-400' : 'text-gray-600 dark:text-gray-300'}`}
+              className="flex items-center gap-1.5 font-medium text-gray-600 dark:text-gray-300"
             >
               {isCoreComplete && !profileLoadFailed && (
-                <Check aria-hidden="true" className="h-3.5 w-3.5" />
+                <Check aria-hidden="true" className="h-3.5 w-3.5 text-green-700 dark:text-green-400" />
               )}
               {isCoreComplete && !profileLoadFailed
                 ? 'Required details complete'
