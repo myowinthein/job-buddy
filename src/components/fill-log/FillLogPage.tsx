@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { ArrowLeft, ChevronDown, ListChecks } from 'lucide-react';
 import { loadFillLog, returnToForm } from '@/src/fill-log/client';
 import { RETAINED_FILL_DETAILS } from '@/src/fill-log/retention';
@@ -421,11 +421,6 @@ function FieldRow({ field, control }: { field: FillLogField; control: string }) 
   const explanation = fieldExplanation(field);
   const match = profileFieldName(profileMatch(field));
   const filled = source !== null;
-  const hasRuleDetails =
-    !!field.rule.layer || typeof field.rule.confidence === 'number' || !!field.rule.profilePath;
-  const hasAIDetails = !!field.ai.confidence || !!field.ai.profilePath;
-  const multipleMatches = hasRuleDetails && hasAIDetails;
-  const ruleSource = field.rule.layer === 'learned' ? 'Learned mappings' : 'Rules';
   const tone =
     field.outcome === 'review'
       ? 'yellow'
@@ -484,124 +479,58 @@ function FieldRow({ field, control }: { field: FillLogField; control: string }) 
           className="col-start-3 row-start-1 mt-1 h-3.5 w-3.5 text-gray-400 transition-transform group-open:rotate-180"
         />
       </summary>
-      <div className="mt-4 text-xs">
-        <div className="grid min-w-0 gap-x-8 gap-y-5 lg:grid-cols-2">
-          <section aria-label="Processing stages" className="min-w-0">
-            <h3 className="mb-3 font-medium text-gray-500 dark:text-gray-400">Processing stages</h3>
-            <ol aria-label="Matching stages" className="space-y-3">
-              <li>
-                <StageResult label="Learned mappings" final={source === 'learned'}>
-                  {field.rule.layer === 'learned'
-                    ? RULE_OUTCOME_LABELS[field.rule.outcome]
-                    : field.rule.outcome === 'not_applicable'
-                      ? 'Not applicable'
-                      : 'No trusted match'}
-                </StageResult>
-              </li>
-              <li>
-                <StageResult label="Rules" final={source === 'rules'}>
-                  {field.rule.layer === 'learned'
-                    ? 'Not run after learned mapping'
-                    : RULE_OUTCOME_LABELS[field.rule.outcome]}
-                </StageResult>
-              </li>
-              <li>
-                <StageResult label="AI" final={source === 'ai'}>
-                  {AI_OUTCOME_LABELS[field.ai.outcome]}
-                </StageResult>
-              </li>
-            </ol>
-          </section>
-          {(hasRuleDetails || hasAIDetails) && (
-            <section aria-label="Match details" className="min-w-0">
-              <h3 className="mb-3 font-medium text-gray-500 dark:text-gray-400">Match details</h3>
-              <div className="space-y-4">
-                {hasRuleDetails && (
-                  <div role="group" aria-label={ruleSource + ' match details'}>
-                    {multipleMatches && <h4 className="mb-2 font-medium">{ruleSource}</h4>}
-                    <RuleDetails field={field} />
-                  </div>
-                )}
-                {hasAIDetails && (
-                  <div role="group" aria-label="AI match details">
-                    {multipleMatches && <h4 className="mb-2 font-medium">AI</h4>}
-                    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2">
-                      {field.ai.confidence && (
-                        <>
-                          <dt className="text-gray-500 dark:text-gray-400">Confidence</dt>
-                          <dd className="capitalize">{field.ai.confidence}</dd>
-                        </>
-                      )}
-                      {field.ai.profilePath && (
-                        <>
-                          <dt className="text-gray-500 dark:text-gray-400">Profile field</dt>
-                          <dd className="break-all font-mono">{field.ai.profilePath}</dd>
-                        </>
-                      )}
-                    </dl>
-                  </div>
-                )}
-              </div>
-            </section>
-          )}
-        </div>
-        <dl className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 border-t border-gray-200 pt-3 dark:border-gray-800">
-          <dt className="text-gray-500 dark:text-gray-400">Control</dt>
-          <dd className="break-words font-mono">{control}</dd>
-        </dl>
-      </div>
+      <dl className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 border-l-2 border-gray-200 pl-4 text-xs dark:border-gray-700">
+        <dt className="text-gray-500 dark:text-gray-400">Learned mapping</dt>
+        <dd>
+          {field.rule.layer === 'learned'
+            ? RULE_OUTCOME_LABELS[field.rule.outcome]
+            : field.rule.outcome === 'not_applicable'
+              ? 'Not applicable'
+              : 'No trusted match'}
+        </dd>
+        <dt className="text-gray-500 dark:text-gray-400">Rule result</dt>
+        <dd>
+          {field.rule.layer === 'learned'
+            ? 'Not run after learned mapping'
+            : RULE_OUTCOME_LABELS[field.rule.outcome]}
+        </dd>
+        <dt className="text-gray-500 dark:text-gray-400">AI result</dt>
+        <dd>{AI_OUTCOME_LABELS[field.ai.outcome]}</dd>
+        {field.rule.layer && (
+          <>
+            <dt className="text-gray-500 dark:text-gray-400">Rule method</dt>
+            <dd>{ruleMethods[field.rule.layer]}</dd>
+          </>
+        )}
+        {typeof field.rule.confidence === 'number' && (
+          <>
+            <dt className="text-gray-500 dark:text-gray-400">
+              {field.rule.layer === 'learned' ? 'Learned match score' : 'Rule match score'}
+            </dt>
+            <dd>{Math.round(field.rule.confidence * 100)}%</dd>
+          </>
+        )}
+        {field.ai.confidence && (
+          <>
+            <dt className="text-gray-500 dark:text-gray-400">AI confidence</dt>
+            <dd className="capitalize">{field.ai.confidence}</dd>
+          </>
+        )}
+        {field.rule.profilePath && (
+          <>
+            <dt className="text-gray-500 dark:text-gray-400">Rule profile field</dt>
+            <dd className="break-all font-mono">{field.rule.profilePath}</dd>
+          </>
+        )}
+        {field.ai.profilePath && (
+          <>
+            <dt className="text-gray-500 dark:text-gray-400">AI profile field</dt>
+            <dd className="break-all font-mono">{field.ai.profilePath}</dd>
+          </>
+        )}
+        <dt className="text-gray-500 dark:text-gray-400">Control</dt>
+        <dd className="break-words font-mono">{control}</dd>
+      </dl>
     </details>
-  );
-}
-
-function StageResult({
-  label,
-  final,
-  children,
-}: {
-  label: string;
-  final: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <p className="grid grid-cols-[minmax(0,8rem)_minmax(0,1fr)] gap-x-4 gap-y-1">
-      <span
-        className={
-          final
-            ? 'font-semibold text-gray-900 dark:text-gray-100'
-            : 'text-gray-500 dark:text-gray-400'
-        }
-      >
-        {label}
-      </span>
-      <span className={final ? 'font-medium' : undefined}>{children}</span>
-    </p>
-  );
-}
-
-function RuleDetails({ field }: { field: FillLogField }) {
-  const { layer, confidence, profilePath } = field.rule;
-  if (!layer && typeof confidence !== 'number' && !profilePath) return null;
-  return (
-    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2">
-      {layer && layer !== 'learned' && (
-        <>
-          <dt className="text-gray-500 dark:text-gray-400">Method</dt>
-          <dd>{ruleMethods[layer]}</dd>
-        </>
-      )}
-      {typeof confidence === 'number' && (
-        <>
-          <dt className="text-gray-500 dark:text-gray-400">Match score</dt>
-          <dd>{Math.round(confidence * 100)}%</dd>
-        </>
-      )}
-      {profilePath && (
-        <>
-          <dt className="text-gray-500 dark:text-gray-400">Profile field</dt>
-          <dd className="break-all font-mono">{profilePath}</dd>
-        </>
-      )}
-    </dl>
   );
 }
