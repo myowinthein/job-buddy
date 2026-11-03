@@ -344,8 +344,8 @@ test('hidden-site management stays compact with many sites and actions remain be
     .boundingBox();
   expect(action!.x - (label!.x + label!.width)).toBeLessThanOrEqual(16);
   await section.screenshot({ path: info.outputPath('quick-fill-settings-dark.png') });
-  const next = section.getByRole('button', { name: 'Next', exact: true });
-  const previous = section.getByRole('button', { name: 'Previous', exact: true });
+  const next = section.getByRole('button', { name: 'Next page', exact: true });
+  const previous = section.getByRole('button', { name: 'Previous page', exact: true });
   const initialNext = await next.boundingBox();
   const initialPrevious = await previous.boundingBox();
   const firstSite = await section.getByRole('listitem').first().boundingBox();

@@ -77,7 +77,7 @@ it('shows five hidden sites per page, searches all sites, and restores only the 
   render(<QuickFillSettings />);
   fireEvent.click(await screen.findByText('Hidden sites (13)'));
   expect(screen.getAllByRole('listitem')).toHaveLength(5);
-  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
   expect(screen.getByText('6–10 of 13 sites')).toBeTruthy();
   const search = screen.getByRole('searchbox', { name: 'Search hidden sites' });
   fireEvent.change(search, { target: { value: 'SITE12' } });
@@ -88,8 +88,8 @@ it('shows five hidden sites per page, searches all sites, and restores only the 
   expect(preferences.disabledSites).not.toContain('site12.example');
   expect(preferences.disabledSites).toContain('site11.example');
   fireEvent.change(search, { target: { value: '' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
   expect(screen.getByText('11–12 of 12 sites')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Show button on site11.example' }));
   await waitFor(() => expect(preferences.disabledSites).toHaveLength(11));

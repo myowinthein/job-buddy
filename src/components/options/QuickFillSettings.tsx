@@ -12,6 +12,23 @@ import {
 } from '@/src/quick-fill/preferences';
 
 const SITES_PER_PAGE = 5;
+const paginationButton =
+  'grid h-8 w-8 place-items-center rounded-md text-gray-600 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent dark:text-gray-300 dark:hover:bg-gray-800 dark:disabled:hover:bg-transparent';
+
+// Temporary review entries. Remove after the hidden-site pagination review.
+const DEMO_HIDDEN_SITES =
+  import.meta.env.MODE === 'development'
+    ? [
+        'careers.acme.example',
+        'careers.brightside.example',
+        'careers.cloudworks.example',
+        'jobs.designstudio.example',
+        'jobs.evergreen.example',
+        'jobs.fintech.example',
+        'talent.globalteam.example',
+        'work.horizon.example',
+      ]
+    : [];
 
 export function QuickFillSettings() {
   const { showToast } = useToast();
@@ -19,6 +36,7 @@ export function QuickFillSettings() {
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
+  const [demoSites, setDemoSites] = useState(DEMO_HIDDEN_SITES);
   useEffect(() => {
     let active = true;
     void getQuickFillPreferences()
@@ -56,7 +74,8 @@ export function QuickFillSettings() {
       setSaving(false);
     }
   };
-  const sites = (prefs?.disabledSites ?? [])
+  const hiddenSites = [...new Set([...(prefs?.disabledSites ?? []), ...demoSites])];
+  const sites = hiddenSites
     .filter((site) => site.toLowerCase().includes(query.trim().toLowerCase()))
     .sort((a, b) => a.localeCompare(b));
   const lastPage = Math.max(0, Math.ceil(sites.length / SITES_PER_PAGE) - 1);
@@ -116,13 +135,13 @@ export function QuickFillSettings() {
           <option value="overwrite">Empty and existing fields</option>
         </select>
       </div>
-      {!!prefs?.disabledSites.length && (
+      {!!prefs && !!hiddenSites.length && (
         <details className="mt-4">
           <summary className="cursor-pointer rounded-sm text-sm font-medium text-gray-700 focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-gray-300">
-            Hidden sites ({prefs.disabledSites.length})
+            Hidden sites ({hiddenSites.length})
           </summary>
           <div className="mt-3 space-y-3">
-            {(prefs.disabledSites.length > SITES_PER_PAGE || query) && (
+            {(hiddenSites.length > SITES_PER_PAGE || query) && (
               <input
                 type="search"
                 aria-label="Search hidden sites"
@@ -139,30 +158,34 @@ export function QuickFillSettings() {
               <div
                 role="group"
                 aria-label="Hidden sites pagination"
-                className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400"
+                className="flex items-center justify-between gap-3 text-xs text-gray-500 dark:text-gray-400"
               >
-                <span role="status" className="w-28 shrink-0 whitespace-nowrap tabular-nums">
+                <span role="status" className="whitespace-nowrap tabular-nums">
                   {start + 1}–{Math.min(start + SITES_PER_PAGE, sites.length)} of {sites.length}{' '}
                   sites
                 </span>
-                <button
-                  type="button"
-                  disabled={currentPage === 0}
-                  onClick={() => setPage(currentPage - 1)}
-                  className="inline-flex items-center gap-0.5 rounded px-1 py-1 text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline dark:text-blue-400 dark:disabled:text-gray-600"
-                >
-                  <ChevronLeft aria-hidden="true" className="h-3 w-3" />
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  disabled={currentPage === lastPage}
-                  onClick={() => setPage(currentPage + 1)}
-                  className="inline-flex items-center gap-0.5 rounded px-1 py-1 text-blue-600 hover:underline disabled:text-gray-400 disabled:no-underline dark:text-blue-400 dark:disabled:text-gray-600"
-                >
-                  Next
-                  <ChevronRight aria-hidden="true" className="h-3 w-3" />
-                </button>
+                <div className="flex shrink-0 gap-1">
+                  <button
+                    type="button"
+                    aria-label="Previous page"
+                    title="Previous page"
+                    disabled={saving || currentPage === 0}
+                    onClick={() => setPage(currentPage - 1)}
+                    className={paginationButton}
+                  >
+                    <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Next page"
+                    title="Next page"
+                    disabled={saving || currentPage === lastPage}
+                    onClick={() => setPage(currentPage + 1)}
+                    className={paginationButton}
+                  >
+                    <ChevronRight aria-hidden="true" className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             )}
             {sites.length ? (
@@ -175,11 +198,13 @@ export function QuickFillSettings() {
                       disabled={saving}
                       aria-label={`Show button on ${site}`}
                       className="shrink-0 rounded text-blue-600 hover:underline focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50 dark:text-blue-400"
-                      onClick={() =>
-                        void save((current) => ({
-                          disabledSites: current.disabledSites.filter((value) => value !== site),
-                        }))
-                      }
+                      onClick={() => {
+                        setDemoSites((current) => current.filter((value) => value !== site));
+                        if (prefs.disabledSites.includes(site))
+                          void save((current) => ({
+                            disabledSites: current.disabledSites.filter((value) => value !== site),
+                          }));
+                      }}
                     >
                       Show
                     </button>
