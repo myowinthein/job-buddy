@@ -41,6 +41,8 @@ const statusColors = {
 };
 const profileKey = (profile: Partial<Profile>) => JSON.stringify(profileData(profile));
 const same = equalJsonValues;
+const SITES_PER_PAGE = 5;
+const MAPPINGS_PER_BATCH = 20;
 
 function DeleteConfirmation({
   text,
@@ -155,6 +157,7 @@ function MappingRow({
       ref={rowRef}
       role="group"
       aria-labelledby={rowId}
+      tabIndex={-1}
       className="min-w-0 border-b border-gray-100 py-4 last:border-b-0 dark:border-gray-800"
       onKeyDown={(event) => {
         if (event.key === 'Escape' && editing && !saving) {
@@ -369,10 +372,13 @@ function MappingSite({
   onFallbackFocus: () => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(MAPPINGS_PER_BATCH);
   const headerRef = useRef<HTMLButtonElement>(null);
   const deleteRef = useRef<HTMLButtonElement>(null);
   const root = useRef<HTMLElement>(null);
   const panelId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const remaining = Math.max(0, groups.length - visibleCount);
   const deleting = busy === `site:${domain}`;
   const cancel = () => {
     setConfirmDelete(false);
@@ -447,27 +453,62 @@ function MappingSite({
         </div>
       )}
       <div
+        ref={panelRef}
         id={panelId}
         hidden={!expanded}
         className={expanded ? 'border-t border-gray-200 px-4 dark:border-gray-700' : undefined}
       >
         {expanded &&
-          groups.map((group) => (
-            <MappingRow
-              key={group.id}
-              group={group}
-              domain={domain}
-              profile={profile}
-              revision={revision}
-              destination={mappingDestination(group.path, labels)}
-              availableFields={labels}
-              busy={busy}
-              onUpdate={onUpdate}
-              onDelete={onDelete}
-              onOpenProfile={onOpenProfile}
-              onAfterDelete={() => (headerRef.current ?? { focus: onFallbackFocus }).focus()}
-            />
-          ))}
+          groups
+            .slice(0, visibleCount)
+            .map((group) => (
+              <MappingRow
+                key={group.id}
+                group={group}
+                domain={domain}
+                profile={profile}
+                revision={revision}
+                destination={mappingDestination(group.path, labels)}
+                availableFields={labels}
+                busy={busy}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+                onOpenProfile={onOpenProfile}
+                onAfterDelete={() => (headerRef.current ?? { focus: onFallbackFocus }).focus()}
+              />
+            ))}
+        {expanded && groups.length > MAPPINGS_PER_BATCH && (
+          <div className="flex flex-wrap items-center gap-3 py-4">
+            <p role="status" className="text-xs text-gray-500 dark:text-gray-400">
+              Showing {Math.min(visibleCount, groups.length)} of {groups.length} mappings
+            </p>
+            {remaining > 0 && (
+              <button
+                type="button"
+                disabled={!!busy}
+                className={secondary}
+                onClick={() => {
+                  const firstNew = visibleCount;
+                  setVisibleCount((count) => count + MAPPINGS_PER_BATCH);
+                  requestAnimationFrame(() => {
+                    const row =
+                      panelRef.current?.querySelectorAll<HTMLElement>('[role="group"]')[firstNew];
+                    row?.focus({ preventScroll: true });
+                    row?.scrollIntoView({ block: 'nearest' });
+                  });
+                }}
+              >
+                Show {Math.min(MAPPINGS_PER_BATCH, remaining)} more
+                <span className="sr-only"> mappings for {domain}</span>
+              </button>
+            )}
+            {remaining > 0 && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {remaining} remaining
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -494,6 +535,7 @@ export function LearnedMappingsSection({
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'All' | MappingStatus>('All');
+  const [sitePage, setSitePage] = useState(0);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [filteredCollapsed, setFilteredCollapsed] = useState<Set<string>>(new Set());
   const refresh = useCallback(async () => {
@@ -559,6 +601,12 @@ export function LearnedMappingsSection({
   for (const { group } of searched) counts[group.status]++;
   const shown = searched.filter(({ group }) => filter === 'All' || group.status === filter);
   const shownSites = sites.filter((domain) => shown.some((entry) => entry.domain === domain));
+  const lastPage = Math.max(0, Math.ceil(shownSites.length / SITES_PER_PAGE) - 1);
+  const currentPage = Math.min(sitePage, lastPage);
+  // Deleting the last site on a page must not leave an empty or stale page selected.
+  if (sitePage !== currentPage) setSitePage(currentPage);
+  const firstSite = currentPage * SITES_PER_PAGE;
+  const pagedSites = shownSites.slice(firstSite, firstSite + SITES_PER_PAGE);
   const filtering = !!search.trim() || filter !== 'All';
 
   const mutate = async (
@@ -729,6 +777,7 @@ export function LearnedMappingsSection({
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
+              setSitePage(0);
               setFilteredCollapsed(new Set());
             }}
             placeholder="Search sites, questions, or profile fields"
@@ -744,6 +793,7 @@ export function LearnedMappingsSection({
                   disabled={status !== 'All' && counts[status] === 0 && filter !== status}
                   onClick={() => {
                     setFilter(status);
+                    setSitePage(0);
                     setFilteredCollapsed(new Set());
                   }}
                   className={`rounded-md border px-2.5 py-1.5 text-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-40 ${filter === status ? 'border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-950/50 dark:text-blue-300' : 'border-gray-300 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'}`}
@@ -759,7 +809,7 @@ export function LearnedMappingsSection({
           </div>
           {filtering && (
             <p role="status" className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-              {shown.length} of {allGroups.length} mappings shown
+              {shown.length} of {allGroups.length} mappings match
             </p>
           )}
           {!shown.length && (
@@ -770,9 +820,38 @@ export function LearnedMappingsSection({
               No mappings match this search or filter.
             </p>
           )}
-          {shownSites.map((domain) => (
+          {shownSites.length > SITES_PER_PAGE && (
+            <nav
+              aria-label="Learned mapping sites"
+              className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2"
+            >
+              <p role="status" className="text-xs text-gray-500 dark:text-gray-400">
+                Sites {firstSite + 1}–{Math.min(firstSite + SITES_PER_PAGE, shownSites.length)} of{' '}
+                {shownSites.length}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className={secondary}
+                  disabled={!!busy || currentPage === 0}
+                  onClick={() => setSitePage(currentPage - 1)}
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  className={secondary}
+                  disabled={!!busy || currentPage === lastPage}
+                  onClick={() => setSitePage(currentPage + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            </nav>
+          )}
+          {pagedSites.map((domain) => (
             <MappingSite
-              key={`${profile.id ?? ''}:${domain}`}
+              key={JSON.stringify([profile.id, domain, search, filter])}
               domain={domain}
               groups={shown.filter((entry) => entry.domain === domain).map((entry) => entry.group)}
               total={groupsBySite.get(domain)!.length}

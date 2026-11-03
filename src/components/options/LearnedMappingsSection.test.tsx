@@ -91,6 +91,85 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe('Learned Mappings pagination', () => {
+  function manySites() {
+    mappings = Object.fromEntries(
+      Array.from({ length: 7 }, (_, i) => [
+        `site${i + 1}.test`,
+        { name: entry('personal.firstName', i === 6 ? 1 : 2, `Question ${i + 1}`) },
+      ]),
+    );
+  }
+  it('pages five sites at a time, keeps expansion on return, and searches all sites', async () => {
+    manySites();
+    mount();
+    await open('site1.test');
+    const nav = screen.getByRole('navigation', { name: 'Learned mapping sites' });
+    expect(within(nav).getByText('Sites 1–5 of 7')).toBeTruthy();
+    expect(within(nav).getByRole('button', { name: 'Previous' })).toHaveProperty('disabled', true);
+    expect(screen.queryByRole('button', { name: /^site6.test/ })).toBeNull();
+    fireEvent.click(within(nav).getByRole('button', { name: 'Next' }));
+    expect(within(nav).getByText('Sites 6–7 of 7')).toBeTruthy();
+    expect(within(nav).getByRole('button', { name: 'Next' })).toHaveProperty('disabled', true);
+    expect(screen.queryByRole('button', { name: /^site1.test/ })).toBeNull();
+    fireEvent.click(within(nav).getByRole('button', { name: 'Previous' }));
+    expect(site('site1.test')).toHaveProperty('ariaExpanded', 'true');
+    fireEvent.click(within(nav).getByRole('button', { name: 'Next' }));
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Question 1' } });
+    expect(row('Question 1')).toBeTruthy();
+    expect(screen.queryByRole('navigation')).toBeNull();
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: '' } });
+    expect(screen.getByText('Sites 1–5 of 7')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Learning (1)' }));
+    expect(row('Question 7')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'All (7)' }));
+    expect(screen.getByText('Sites 1–5 of 7')).toBeTruthy();
+  });
+  it('returns to the last available page when live deletions remove the current page', async () => {
+    manySites();
+    mount();
+    await screen.findByText('Sites 1–5 of 7');
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    delete mappings['site6.test'];
+    delete mappings['site7.test'];
+    await change({ learnedMappings: { newValue: mappings } });
+    expect(screen.queryByRole('navigation')).toBeNull();
+    expect(site('site1.test')).toBeTruthy();
+    mappings['site6.test'] = { name: entry() };
+    await change({ learnedMappings: { newValue: mappings } });
+    expect(screen.getByText('Sites 1–5 of 6')).toBeTruthy();
+  });
+  it('reveals mappings in batches, focuses the first new row and finds hidden matches', async () => {
+    mappings = {
+      'acme.com': Object.fromEntries(
+        Array.from({ length: 45 }, (_, i) => [
+          `q${String(i).padStart(2, '0')}`,
+          entry('personal.firstName', 2, `Question ${i + 1}`),
+        ]),
+      ),
+    };
+    mount();
+    await open();
+    expect(screen.getAllByRole('group', { name: /^Question / })).toHaveLength(20);
+    expect(screen.getByText('Showing 20 of 45 mappings')).toBeTruthy();
+    expect(screen.getByText('25 remaining')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /^Show 20 more/ }));
+    expect(screen.getAllByRole('group', { name: /^Question / })).toHaveLength(40);
+    await waitFor(() => expect(document.activeElement).toBe(row('Question 21')));
+    fireEvent.click(screen.getByRole('button', { name: /^Show 5 more/ }));
+    expect(screen.getAllByRole('group', { name: /^Question / })).toHaveLength(45);
+    await waitFor(() => expect(document.activeElement).toBe(row('Question 41')));
+    expect(screen.queryByRole('button', { name: /^Show .* more/ })).toBeNull();
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Question 45' } });
+    expect(row('Question 45')).toBeTruthy();
+    expect(screen.getAllByRole('group', { name: /^Question / })).toHaveLength(1);
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: '' } });
+    expect(screen.getAllByRole('group', { name: /^Question / })).toHaveLength(20);
+    expect(saveLearnedMappings).not.toHaveBeenCalled();
+  });
+});
+
 describe('Learned Mappings presentation and discovery', () => {
   it('uses the current learning copy, readable destinations and contextual action names', async () => {
     mount();

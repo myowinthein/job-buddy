@@ -275,3 +275,72 @@ test('distinguishes read failure from empty data and deep-links to the missing p
   await expect(options.getByRole('heading', { name: 'Links', exact: true })).toBeVisible();
   await expect(options.locator('#field-linkedin')).toBeFocused();
 });
+
+test('paginates sites and reveals large mapping lists without hiding search results', async ({
+  context,
+  extension,
+}, info) => {
+  await extension.worker.evaluate(async () => {
+    const learnedMappings = Object.fromEntries(
+      Array.from({ length: 7 }, (_, site) => [
+        `jobs${site + 1}.example.test`,
+        Object.fromEntries(
+          Array.from({ length: site === 0 ? 45 : 1 }, (_, i) => [
+            `question${String(i).padStart(2, '0')}`,
+            {
+              path: 'personal.firstName',
+              count: site === 6 ? 1 : 2,
+              label: `Question ${i + 1}`,
+              question: `Question ${i + 1}`,
+            },
+          ]),
+        ),
+      ]),
+    );
+    await chrome.storage.local.set({ learnedMappings });
+  });
+  const options = await context.newPage();
+  await options.setViewportSize({ width: 1280, height: 1000 });
+  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.getByRole('button', { name: 'Learned Mappings', exact: true }).click();
+  const nav = options.getByRole('navigation', { name: 'Learned mapping sites' });
+  await expect(nav).toContainText('Sites 1–5 of 7');
+  await options.screenshot({
+    path: info.outputPath('learned-mappings-pagination-desktop.png'),
+    animations: 'disabled',
+  });
+  await nav.getByRole('button', { name: 'Next' }).click();
+  await expect(nav).toContainText('Sites 6–7 of 7');
+  await expect(nav.getByRole('button', { name: 'Next' })).toBeDisabled();
+  await options.getByRole('searchbox').fill('jobs1.example.test Question 45');
+  await expect(row(options, 'Question 45')).toBeVisible();
+  await expect(nav).toHaveCount(0);
+  await options.getByRole('searchbox').fill('');
+  await expect(nav).toContainText('Sites 1–5 of 7');
+  await options.getByRole('button', { name: /^jobs1.example.test/ }).click();
+  const bulk = options.getByRole('region', { name: 'Mappings for jobs1.example.test' });
+  await expect(bulk.getByRole('group', { name: /^Question / })).toHaveCount(20);
+  await expect(bulk.getByText('25 remaining')).toBeVisible();
+  await bulk.getByRole('button', { name: /^Show 20 more/ }).click();
+  await expect(row(options, 'Question 21')).toBeFocused();
+  await expect(bulk.getByRole('group', { name: /^Question / })).toHaveCount(40);
+  await bulk.getByRole('button', { name: /^Show 5 more/ }).click();
+  await expect(row(options, 'Question 41')).toBeFocused();
+  await expect(bulk.getByRole('group', { name: /^Question / })).toHaveCount(45);
+  await nav.getByRole('button', { name: 'Next' }).click();
+  await options.getByRole('button', { name: 'Learning (1)' }).click();
+  await expect(
+    options.getByRole('region', { name: 'Mappings for jobs7.example.test' }),
+  ).toBeVisible();
+  await options.getByRole('button', { name: 'All (51)' }).click();
+  await expect(nav).toContainText('Sites 1–5 of 7');
+  await options.setViewportSize({ width: 375, height: 1100 });
+  await nav.scrollIntoViewIfNeeded();
+  await options.screenshot({
+    path: info.outputPath('learned-mappings-pagination-narrow.png'),
+    animations: 'disabled',
+  });
+  expect(await options.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+    true,
+  );
+});
