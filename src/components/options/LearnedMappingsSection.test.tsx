@@ -106,21 +106,24 @@ describe('Learned Mappings pagination', () => {
     await open('site1.test');
     const nav = screen.getByRole('navigation', { name: 'Learned mapping sites' });
     expect(within(nav).getByText('Sites 1–5 of 7')).toBeTruthy();
-    expect(within(nav).getByRole('button', { name: 'Previous' })).toHaveProperty('disabled', true);
+    expect(within(nav).getByRole('button', { name: 'Previous page' })).toHaveProperty(
+      'disabled',
+      true,
+    );
     expect(screen.queryByRole('button', { name: /^site6.test/ })).toBeNull();
-    fireEvent.click(within(nav).getByRole('button', { name: 'Next' }));
+    fireEvent.click(within(nav).getByRole('button', { name: 'Next page' }));
     expect(within(nav).getByText('Sites 6–7 of 7')).toBeTruthy();
-    expect(within(nav).getByRole('button', { name: 'Next' })).toHaveProperty('disabled', true);
+    expect(within(nav).getByRole('button', { name: 'Next page' })).toHaveProperty('disabled', true);
     expect(screen.queryByRole('button', { name: /^site1.test/ })).toBeNull();
-    fireEvent.click(within(nav).getByRole('button', { name: 'Previous' }));
+    fireEvent.click(within(nav).getByRole('button', { name: 'Previous page' }));
     expect(site('site1.test')).toHaveProperty('ariaExpanded', 'true');
-    fireEvent.click(within(nav).getByRole('button', { name: 'Next' }));
+    fireEvent.click(within(nav).getByRole('button', { name: 'Next page' }));
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Question 1' } });
     expect(row('Question 1')).toBeTruthy();
     expect(screen.queryByRole('navigation')).toBeNull();
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: '' } });
     expect(screen.getByText('Sites 1–5 of 7')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
     fireEvent.click(screen.getByRole('button', { name: 'Learning (1)' }));
     expect(row('Question 7')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'All (7)' }));
@@ -130,7 +133,7 @@ describe('Learned Mappings pagination', () => {
     manySites();
     mount();
     await screen.findByText('Sites 1–5 of 7');
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
     delete mappings['site6.test'];
     delete mappings['site7.test'];
     await change({ learnedMappings: { newValue: mappings } });

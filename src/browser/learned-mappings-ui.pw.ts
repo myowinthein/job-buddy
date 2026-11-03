@@ -309,9 +309,9 @@ test('paginates sites and reveals large mapping lists without hiding search resu
     path: info.outputPath('learned-mappings-pagination-desktop.png'),
     animations: 'disabled',
   });
-  await nav.getByRole('button', { name: 'Next' }).click();
+  await nav.getByRole('button', { name: 'Next page' }).click();
   await expect(nav).toContainText('Sites 6–7 of 7');
-  await expect(nav.getByRole('button', { name: 'Next' })).toBeDisabled();
+  await expect(nav.getByRole('button', { name: 'Next page' })).toBeDisabled();
   await options.getByRole('searchbox').fill('jobs1.example.test Question 45');
   await expect(row(options, 'Question 45')).toBeVisible();
   await expect(nav).toHaveCount(0);
@@ -327,7 +327,7 @@ test('paginates sites and reveals large mapping lists without hiding search resu
   await bulk.getByRole('button', { name: /^Show 5 more/ }).click();
   await expect(row(options, 'Question 41')).toBeFocused();
   await expect(bulk.getByRole('group', { name: /^Question / })).toHaveCount(45);
-  await nav.getByRole('button', { name: 'Next' }).click();
+  await nav.getByRole('button', { name: 'Next page' }).click();
   await options.getByRole('button', { name: 'Learning (1)' }).click();
   await expect(
     options.getByRole('region', { name: 'Mappings for jobs7.example.test' }),

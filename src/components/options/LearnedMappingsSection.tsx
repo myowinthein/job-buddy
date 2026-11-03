@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { ChevronDown, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings, LearnedMappingValue } from '@/src/types/storage';
 import {
@@ -823,28 +823,32 @@ export function LearnedMappingsSection({
           {shownSites.length > SITES_PER_PAGE && (
             <nav
               aria-label="Learned mapping sites"
-              className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2"
+              className="mb-3 flex items-center justify-between gap-3"
             >
               <p role="status" className="text-xs text-gray-500 dark:text-gray-400">
                 Sites {firstSite + 1}–{Math.min(firstSite + SITES_PER_PAGE, shownSites.length)} of{' '}
                 {shownSites.length}
               </p>
-              <div className="flex gap-2">
+              <div className="flex shrink-0 gap-1">
                 <button
                   type="button"
-                  className={secondary}
+                  aria-label="Previous page"
+                  title="Previous page"
+                  className={`${action} grid h-8 w-8 place-items-center disabled:cursor-default disabled:hover:bg-transparent dark:disabled:hover:bg-transparent`}
                   disabled={!!busy || currentPage === 0}
                   onClick={() => setSitePage(currentPage - 1)}
                 >
-                  Previous
+                  <ChevronLeft aria-hidden="true" className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
-                  className={secondary}
+                  aria-label="Next page"
+                  title="Next page"
+                  className={`${action} grid h-8 w-8 place-items-center disabled:cursor-default disabled:hover:bg-transparent dark:disabled:hover:bg-transparent`}
                   disabled={!!busy || currentPage === lastPage}
                   onClick={() => setSitePage(currentPage + 1)}
                 >
-                  Next
+                  <ChevronRight aria-hidden="true" className="h-4 w-4" />
                 </button>
               </div>
             </nav>
