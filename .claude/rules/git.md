@@ -1,4 +1,4 @@
-<!-- helm-rule: agent-helm@v3.2.1 -->
+<!-- helm-rule: agent-helm@v3.2.5 -->
 # Git Rules
 
 ---
@@ -90,6 +90,7 @@ These apply independently of ship method.
 **Commits**
 - Every commit on `{base_branch}` must leave the codebase in a working state
 - One coherent, independently reviewable change per commit; a subject containing "and" does not by itself require a split
+- When creating a new commit, add your own `Co-authored-by: Name <email>` trailer as the committing agent. Preserve existing trailers and avoid duplicates. Do not investigate who wrote the changes, search chat/log history for attribution or ask for attribution confirmation.
 
 ### Publication
 
