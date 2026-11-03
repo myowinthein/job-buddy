@@ -140,7 +140,7 @@ export function QuickFillSettings() {
           <summary className="cursor-pointer rounded-sm text-sm font-medium text-gray-700 focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-gray-300">
             Hidden sites ({hiddenSites.length})
           </summary>
-          <div className="mt-3 space-y-3">
+          <div className="mt-3 w-full max-w-[480px] space-y-3">
             {(hiddenSites.length > SITES_PER_PAGE || query) && (
               <input
                 type="search"
@@ -151,7 +151,7 @@ export function QuickFillSettings() {
                   setQuery(event.target.value);
                   setPage(0);
                 }}
-                className={`${fieldCls()} max-w-xs`}
+                className={fieldCls()}
               />
             )}
             {sites.length > SITES_PER_PAGE && (
