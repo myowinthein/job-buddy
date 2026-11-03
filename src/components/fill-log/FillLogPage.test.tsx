@@ -191,14 +191,14 @@ describe('Fill Details page', () => {
       'disabled',
       true,
     );
-    expect(screen.getByText('3 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByLabelText('Field results').children).toHaveLength(3);
     fireEvent.click(screen.getByRole('button', { name: 'AI (1)' }));
     expect(screen.getByRole('button', { name: 'Yellow (1)' })).toHaveProperty('disabled', false);
     expect(screen.getByRole('button', { name: 'Green (0)' })).toHaveProperty('disabled', true);
     fireEvent.click(screen.getByRole('button', { name: 'Yellow (1)' }));
     expect(screen.getByText('Summary')).toBeTruthy();
     expect(screen.queryByText('Full name')).toBeNull();
-    expect(screen.getByText('1 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByLabelText('Field results').children).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'Rules (0)' })).toHaveProperty('disabled', true);
     // Counts in the top row always describe the full report.
     for (const name of [
@@ -212,7 +212,7 @@ describe('Fill Details page', () => {
     // Clicking active refinements removes them without leaving the Filled group.
     fireEvent.click(screen.getByRole('button', { name: 'Yellow (1)' }));
     fireEvent.click(screen.getByRole('button', { name: 'AI (1)' }));
-    expect(screen.getByText('3 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByLabelText('Field results').children).toHaveLength(3);
     expect(screen.getByRole('button', { name: 'Filled (3)' }).getAttribute('aria-pressed')).toBe(
       'true',
     );
@@ -250,7 +250,7 @@ describe('Fill Details page', () => {
     fireEvent.focus(help);
     fireEvent.blur(help, { relatedTarget: screen.getByRole('searchbox') });
     expect(screen.queryByRole('tooltip')).toBeNull();
-    expect(screen.getByText('7 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByLabelText('Field results').children).toHaveLength(7);
     expect(screen.getByRole('button', { name: 'Detected (7)' }).getAttribute('aria-pressed')).toBe(
       'true',
     );
@@ -259,16 +259,16 @@ describe('Fill Details page', () => {
   it('keeps AI handoff independent from the final source and resets refinements on a new outcome group', async () => {
     await showFields();
     fireEvent.click(screen.getByRole('button', { name: 'Sent to AI (3)' }));
-    expect(screen.getByText('3 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByLabelText('Field results').children).toHaveLength(3);
     expect(screen.getByRole('button', { name: 'Rules (0)' })).toHaveProperty('disabled', true);
     fireEvent.click(screen.getByRole('button', { name: 'AI (1)' }));
     fireEvent.click(screen.getByRole('button', { name: 'Yellow (1)' }));
     expect(
       screen.getByRole('button', { name: 'Sent to AI (1)' }).getAttribute('aria-pressed'),
     ).toBe('true');
-    expect(screen.getByText('1 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByLabelText('Field results').children).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Not filled (2)' }));
-    expect(screen.getByText('2 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByLabelText('Field results').children).toHaveLength(2);
     expect(screen.getByText('Location')).toBeTruthy();
     expect(screen.getByText('Resume')).toBeTruthy();
     expect(
@@ -279,7 +279,7 @@ describe('Fill Details page', () => {
       'false',
     );
     fireEvent.click(screen.getByRole('button', { name: 'Detected (7)' }));
-    expect(screen.getByText('7 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByLabelText('Field results').children).toHaveLength(7);
     expect(screen.getByRole('button', { name: 'AI (1)' })).toHaveProperty('disabled', false);
   });
 
@@ -291,14 +291,14 @@ describe('Fill Details page', () => {
     vi.mocked(loadFillLog).mockResolvedValue(data);
     await showFields();
     fireEvent.click(screen.getByRole('button', { name: 'Checked by rules (3)' }));
-    expect(screen.getByText('3 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByLabelText('Field results').children).toHaveLength(3);
     expect(screen.queryByText('Full name')).toBeNull();
     expect(screen.queryByText('Email')).toBeNull();
     expect(screen.queryByText('Resume')).toBeNull();
     expect(screen.getByText('Summary')).toBeTruthy();
     expect(screen.getByText('Pronouns')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Sent to AI (2)' }));
-    expect(screen.getByText('2 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByLabelText('Field results').children).toHaveLength(2);
     expect(
       screen.getByRole('button', { name: 'Checked by rules (2)' }).getAttribute('aria-pressed'),
     ).toBe('true');
@@ -307,7 +307,7 @@ describe('Fill Details page', () => {
       'disabled',
       false,
     );
-    expect(screen.getByText('1 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByLabelText('Field results').children).toHaveLength(1);
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: '' } });
     // An edited report can leave both selected stages with no intersection.
     data.frames[0].log.fields[1].rule.ran = false;
@@ -327,7 +327,7 @@ describe('Fill Details page', () => {
       'disabled',
       true,
     );
-    expect(screen.getByText('2 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByLabelText('Field results').children).toHaveLength(2);
   });
 
   it('clears the rule-check filter when a different report is selected', async () => {
@@ -340,7 +340,7 @@ describe('Fill Details page', () => {
     expect(
       screen.getByRole('button', { name: 'Checked by rules (6)' }).getAttribute('aria-pressed'),
     ).toBe('false');
-    expect(screen.getByText('7 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByLabelText('Field results').children).toHaveLength(7);
   });
 
   it('narrows available counts with search while retaining the overall totals', async () => {
@@ -378,7 +378,7 @@ describe('Fill Details page', () => {
     }
     fireEvent.click(screen.getByRole('button', { name: 'Yellow (0)' }));
     fireEvent.click(screen.getByRole('button', { name: 'AI (0)' }));
-    expect(screen.getByText('3 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByLabelText('Field results').children).toHaveLength(3);
     fireEvent.click(screen.getByRole('button', { name: 'Manual (2)' }));
     const next = snapshot();
     next.tabId = 20;
@@ -390,7 +390,7 @@ describe('Fill Details page', () => {
     expect(screen.getByRole('button', { name: 'Manual (1)' }).getAttribute('aria-pressed')).toBe(
       'false',
     );
-    expect(screen.getByText('7 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByLabelText('Field results').children).toHaveLength(7);
   });
 
   it('keeps core results collapsed and hides internal control identifiers', async () => {
@@ -491,7 +491,7 @@ describe('Fill Details page', () => {
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'location' } });
     expect(screen.getByText('Location')).toBeTruthy();
     expect(screen.queryByText('Resume')).toBeNull();
-    expect(screen.getByText('1 of 7 fields shown')).toBeTruthy();
+    expect(screen.getByLabelText('Field results').children).toHaveLength(1);
   });
 
   it('shows kept and skipped reasons without counting them as unfilled', async () => {

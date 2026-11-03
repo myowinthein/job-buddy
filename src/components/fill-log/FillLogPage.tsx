@@ -455,9 +455,6 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
               ))}
             </div>
           </section>
-          <p role="status" className="mb-1 text-xs text-gray-500 dark:text-gray-400">
-            {shown.length} of {counts.detected} fields shown
-          </p>
           {shown.length === 0 && (
             <p className="py-6 text-sm text-gray-600 dark:text-gray-300">
               No fields match this search or filter.
