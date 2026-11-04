@@ -212,10 +212,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
     ].join(' ');
 
   return (
-    <section
-      aria-label="Fill Details"
-      className="min-w-0 text-gray-900 dark:text-gray-100"
-    >
+    <section aria-label="Fill Details" className="min-w-0 text-gray-900 dark:text-gray-100">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 max-w-full sm:flex-1">
           <h2 className="text-xl font-semibold">Fill Details</h2>
@@ -318,9 +315,16 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
       ) : (
         <>
           {snapshot?.sourceClosed && (
-            <p role="status" className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-              This form is closed. Showing its last fill details.
-            </p>
+            <div
+              role="status"
+              className="mb-4 flex items-start gap-2 rounded-lg bg-gray-100 p-3 text-sm leading-relaxed text-gray-700 dark:bg-gray-800/60 dark:text-gray-300"
+            >
+              <Info
+                aria-hidden="true"
+                className="mt-0.5 h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400"
+              />
+              <span>This form is closed. Showing its last fill details.</span>
+            </div>
           )}
           {undone && (
             <p role="status" className="mb-4 text-sm text-gray-600 dark:text-gray-300">
