@@ -422,7 +422,10 @@ export function SearchableProfileFieldSelect({
                 visibleSections.map((section) => {
                   const isExpanded = section.expanded;
                   return (
-                    <div key={section.id}>
+                    <div
+                      key={section.id}
+                      className="border-t border-gray-200 first:border-t-0 dark:border-gray-700"
+                    >
                       <button
                         type="button"
                         onMouseDown={(e) => e.preventDefault()}
