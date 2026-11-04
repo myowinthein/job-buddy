@@ -99,7 +99,7 @@ export function catalogProfileFieldName(path: string): string | undefined {
         .label,
     );
   if (metadata.template.includes('$')) parts.push(`Entry ${index + 1}`);
-  if (field.cluster) parts.push(field.label);
+  if (field.pickerGroup) parts.push(field.pickerGroup.label ?? field.label);
   parts.push(label);
   return [...new Set(parts)].join(' → ');
 }

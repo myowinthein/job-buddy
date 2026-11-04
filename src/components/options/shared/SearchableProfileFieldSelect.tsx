@@ -63,11 +63,11 @@ function findSectionIdFor(sections: Section[], fieldPath: string): string | null
   return null;
 }
 
-function findSubGroupHeadingFor(sections: Section[], fieldPath: string): string | null {
+function findSubGroupIdFor(sections: Section[], fieldPath: string): string | null {
   for (const section of sections) {
     for (const item of section.items) {
       if (item.kind === 'subgroup' && item.rows.some((r) => r.fieldPath === fieldPath))
-        return item.heading;
+        return item.id;
     }
   }
   return null;
@@ -95,7 +95,7 @@ export function SearchableProfileFieldSelect({
   const [position, setPosition] = useState<CSSProperties | null>(null);
   const sections = useMemo(() => buildPickerTree(profile as Profile), [profile]);
   const selectedSectionId = findSectionIdFor(sections, value);
-  const selectedSubGroup = findSubGroupHeadingFor(sections, value);
+  const selectedSubGroup = findSubGroupIdFor(sections, value);
 
   const selectedLabel = useMemo(() => {
     for (const section of sections) {
@@ -126,10 +126,10 @@ export function SearchableProfileFieldSelect({
       const defaultCollapsed = new Set<string>();
       for (const section of sections) {
         for (const item of section.items) {
-          if (item.kind === 'subgroup' && item.defaultCollapsed) defaultCollapsed.add(item.heading);
+          if (item.kind === 'subgroup' && item.defaultCollapsed) defaultCollapsed.add(item.id);
         }
       }
-      const currentSubGroup = findSubGroupHeadingFor(sections, value);
+      const currentSubGroup = findSubGroupIdFor(sections, value);
       if (currentSubGroup) defaultCollapsed.delete(currentSubGroup);
       setCollapsedSubGroups(defaultCollapsed);
       setHlIdx(-1);
@@ -188,11 +188,11 @@ export function SearchableProfileFieldSelect({
     });
   };
 
-  const toggleSubGroup = (heading: string) => {
+  const toggleSubGroup = (id: string) => {
     setCollapsedSubGroups((prev) => {
       const next = new Set(prev);
-      if (next.has(heading)) next.delete(heading);
-      else next.add(heading);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -215,7 +215,7 @@ export function SearchableProfileFieldSelect({
           items.push({
             ...item,
             rows,
-            expanded: item.kind === 'cluster' || !!q || !collapsedSubGroups.has(item.heading),
+            expanded: item.kind === 'cluster' || !!q || !collapsedSubGroups.has(item.id),
           });
         }
       }
@@ -234,9 +234,10 @@ export function SearchableProfileFieldSelect({
         ),
   );
 
-  const renderRow = (row: OptionRow, indent: boolean) => {
+  const renderRow = (row: OptionRow, inEntry: boolean) => {
     const isSelected = row.fieldPath === value;
     const isHighlighted = row.fieldPath === highlightedPath;
+    const padding = inEntry ? (row.component ? 'pl-10' : 'pl-7') : row.component ? 'pl-8' : 'pl-5';
     return (
       <div
         key={row.fieldPath}
@@ -249,7 +250,7 @@ export function SearchableProfileFieldSelect({
         aria-selected={isSelected}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => select(row.fieldPath)}
-        className={`flex items-start gap-3 py-2 text-sm cursor-pointer select-none ${indent ? 'pl-5 pr-3' : 'px-3'} ${
+        className={`flex items-start gap-3 py-2 pr-3 text-sm cursor-pointer select-none ${padding} ${
           isSelected
             ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
             : isHighlighted
@@ -279,11 +280,13 @@ export function SearchableProfileFieldSelect({
     if (item.kind === 'cluster') {
       const rows = item.rows;
       return (
-        <div key={item.heading}>
-          <p className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700">
+        <div key={item.id} className="py-1">
+          <p
+            className={`px-5 pt-2 pb-1 text-xs font-medium ${item.rows.some((row) => row.fieldPath === value) ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
+          >
             {item.heading}
           </p>
-          {rows.map((r) => renderRow(r, true))}
+          {rows.map((r) => renderRow(r, false))}
         </div>
       );
     }
@@ -291,13 +294,13 @@ export function SearchableProfileFieldSelect({
     const expanded = item.expanded;
     const rows = item.rows;
     return (
-      <div key={item.heading}>
+      <div key={item.id} className="py-1">
         <button
           type="button"
           onMouseDown={(e) => e.preventDefault()}
-          onClick={() => toggleSubGroup(item.heading)}
+          onClick={() => toggleSubGroup(item.id)}
           aria-expanded={!!expanded}
-          className={`w-full min-h-9 flex items-center justify-between gap-2 px-3 py-2 text-xs leading-4 font-semibold border-t border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 ${item.heading === selectedSubGroup ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
+          className={`w-full min-h-9 flex items-center justify-between gap-2 px-5 py-2 text-xs leading-4 font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 ${item.id === selectedSubGroup ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
         >
           <span className="min-w-0 break-words text-left">{item.heading}</span>
           <span className="shrink-0">{expanded ? '▾' : '▸'}</span>

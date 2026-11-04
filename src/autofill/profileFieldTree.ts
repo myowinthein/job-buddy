@@ -6,8 +6,9 @@ import { mostRecentIdx } from './entryRecency';
 import {
   PROFILE_SECTION_DEFINITIONS,
   PROFILE_FIELD_LAYOUTS,
-  catalogFields,
   type CatalogField,
+  type CatalogNode,
+  type PickerGroup,
   type ProfileFieldScope,
 } from '../profile/fieldCatalog';
 
@@ -16,14 +17,17 @@ export interface OptionRow {
   label: string;
   fieldPath: string;
   value: string;
+  component?: boolean;
 }
 export interface Cluster {
   kind: 'cluster';
+  id: string;
   heading: string;
   rows: OptionRow[];
 }
 export interface SubGroup {
   kind: 'subgroup';
+  id: string;
   heading: string;
   rows: OptionRow[];
   defaultCollapsed?: boolean;
@@ -105,7 +109,8 @@ export function buildPickerTree(profile: Profile): Section[] {
       }
       return [
         {
-          kind: 'subgroup',
+          kind: Array.isArray(source) ? 'subgroup' : 'cluster',
+          id: Array.isArray(source) ? `${definition.path}.${index}` : definition.path,
           heading,
           rows,
           ...(['work', 'education'].includes(definition.heading)
@@ -120,7 +125,38 @@ export function buildPickerTree(profile: Profile): Section[] {
     index?: number,
     entry?: Record<string, unknown>,
   ): SectionItem[] {
-    return catalogFields(PROFILE_FIELD_LAYOUTS[scope]).flatMap((field): SectionItem[] => {
+    return buildNodes(PROFILE_FIELD_LAYOUTS[scope], index, entry);
+  }
+  function groupItems(
+    items: SectionItem[],
+    grouping: PickerGroup,
+    label: string,
+    index?: number,
+  ): SectionItem[] {
+    const completePath = grouping.completePath?.replaceAll('$', String(index ?? 0));
+    const rows = items.flatMap((item) => (item.kind === 'option' ? [item] : item.rows));
+    if (!rows.length) return [];
+    return [
+      {
+        kind: 'cluster',
+        id: completePath ?? rows[0].fieldPath,
+        heading: grouping.label ?? label,
+        rows: completePath
+          ? rows.map((row) => ({ ...row, component: row.fieldPath !== completePath }))
+          : rows,
+      },
+    ];
+  }
+  function buildNodes(
+    nodes: readonly CatalogNode[],
+    index?: number,
+    entry?: Record<string, unknown>,
+  ): SectionItem[] {
+    return nodes.flatMap((field): SectionItem[] => {
+      if (field.kind === 'group') {
+        const items = buildNodes(field.children, index, entry);
+        return field.pickerGroup ? groupItems(items, field.pickerGroup, field.key, index) : items;
+      }
       if (field.entries) return buildEntries(field.entries, field.label);
       if (field.picker === false || (field.when && entry?.[field.when.key] !== field.when.value))
         return [];
@@ -136,9 +172,7 @@ export function buildPickerTree(profile: Profile): Section[] {
           : (choice.label ?? field.inputLabel ?? field.label);
         return [{ kind: 'option', label, fieldPath, value }];
       });
-      return field.cluster && rows.length
-        ? [{ kind: 'cluster', heading: field.label, rows }]
-        : rows;
+      return field.pickerGroup ? groupItems(rows, field.pickerGroup, field.label, index) : rows;
     });
   }
   return PROFILE_SECTION_DEFINITIONS.flatMap((section): Section[] => {

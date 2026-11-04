@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
 import { SearchableProfileFieldSelect } from './SearchableProfileFieldSelect';
 import type { Profile } from '@/src/types/profile';
 import { settingsReviewProfile } from '../settingsReviewFixture';
@@ -306,6 +306,34 @@ it('keyboard navigation skips collapsed entry rows and selects the first visible
   expect(onChange).toHaveBeenCalledWith('workHistory.1.company');
 });
 
+it('expands entries with identical headings independently', () => {
+  render(
+    <SearchableProfileFieldSelect
+      profile={{
+        ...PROFILE,
+        workHistory: PROFILE.workHistory!.map((entry) => ({
+          ...entry,
+          company: 'Example',
+          title: 'Engineer',
+        })),
+      }}
+      value="workHistory.0.company"
+      onChange={vi.fn()}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button'));
+  const entries = within(screen.getByRole('listbox')).getAllByRole('button', {
+    name: /Example · Engineer/,
+  });
+  expect(entries.map((entry) => entry.getAttribute('aria-expanded'))).toEqual(['true', 'true']);
+  fireEvent.click(entries[0]);
+  expect(entries.map((entry) => entry.getAttribute('aria-expanded'))).toEqual(['false', 'true']);
+  fireEvent.click(entries[1]);
+  expect(entries.map((entry) => entry.getAttribute('aria-expanded'))).toEqual(['false', 'false']);
+  fireEvent.click(entries[0]);
+  expect(entries.map((entry) => entry.getAttribute('aria-expanded'))).toEqual(['true', 'false']);
+});
+
 it('keyboard selection follows filtered clusters and search-expanded entry rows', () => {
   const { onChange } = renderSelect();
   fireEvent.click(screen.getByRole('button'));
@@ -341,11 +369,15 @@ it('keeps portal interactions open, gives instances distinct IDs, and names the 
       />
     </>,
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Profile field: Personal → First Name' }));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Profile field: Personal → Name → First Name' }),
+  );
   const input = screen.getByRole('combobox', { name: 'Search profile fields' });
   fireEvent.mouseDown(input);
   expect(screen.getByRole('listbox', { name: 'Profile fields' })).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Profile field: Personal → Last Name' }));
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Profile field: Personal → Name → Last Name' }),
+  );
   const searches = screen.getAllByRole('combobox');
   expect(new Set(searches.map((search) => search.getAttribute('aria-controls'))).size).toBe(
     searches.length,

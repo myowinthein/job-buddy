@@ -46,11 +46,15 @@ interface PickerChoice {
   label?: string;
   path: string;
 }
+export interface PickerGroup {
+  label?: string;
+  completePath?: string;
+}
 interface FieldOptions {
   learnDisplay?: boolean;
   required?: boolean;
   picker?: false | readonly PickerChoice[];
-  cluster?: boolean;
+  pickerGroup?: PickerGroup;
   pickerLabelFrom?: string;
   activeLabel?: string;
   inputId?: string;
@@ -75,6 +79,7 @@ export interface CatalogGroup {
   key: string;
   className?: string;
   disclosure?: string;
+  pickerGroup?: PickerGroup;
   children: readonly CatalogNode[];
 }
 export type CatalogNode = CatalogField | CatalogGroup;
@@ -152,9 +157,9 @@ function group<const Key extends string, const Children extends readonly Catalog
   key: Key,
   children: Children,
   className?: string,
-  disclosure?: string,
+  options: Pick<CatalogGroup, 'disclosure' | 'pickerGroup'> = {},
 ) {
-  return { kind: 'group' as const, key, children, className, disclosure };
+  return { kind: 'group' as const, key, children, className, ...options };
 }
 const twoColumns = 'grid grid-cols-1 sm:grid-cols-2 gap-4';
 
@@ -177,6 +182,12 @@ function salaryFields<const Prefix extends 'current' | 'expected.$'>(prefix: Pre
         field('period', 'Period', `salary.${prefix}.period`),
       ],
       'grid grid-cols-1 sm:grid-cols-3 gap-x-4',
+      {
+        pickerGroup: {
+          label: prefix === 'current' ? 'Current Salary' : 'Expected Salary',
+          completePath: `salary.${prefix}.formatted`,
+        },
+      },
     ),
   ] as const;
 }
@@ -199,6 +210,7 @@ export const PROFILE_FIELD_LAYOUTS = {
         field('nickname', 'Preferred name', 'personal.nickname'),
       ],
       'grid grid-cols-1 md:grid-cols-3 gap-4',
+      { pickerGroup: { label: 'Name', completePath: 'derived.fullName' } },
     ),
     field('email', 'Email', 'personal.email', { required: true }),
     compound(
@@ -207,7 +219,7 @@ export const PROFILE_FIELD_LAYOUTS = {
       ['personal.phone.countryCode', 'personal.phone.callingCode', 'personal.phone.number'],
       {
         required: true,
-        cluster: true,
+        pickerGroup: { completePath: 'personal.phone.full' },
         picker: [
           { label: 'Full Phone', path: 'personal.phone.full', learnDisplay: true },
           { label: 'Country Code', path: 'personal.phone.callingCode' },
@@ -219,7 +231,7 @@ export const PROFILE_FIELD_LAYOUTS = {
       'background',
       [
         field('dateOfBirth', 'Date of Birth', 'personal.dateOfBirth', {
-          cluster: true,
+          pickerGroup: { completePath: 'personal.dateOfBirth' },
           picker: [
             { path: 'personal.dateOfBirth' },
             { label: 'Day', path: 'personal.dateOfBirth.day' },
@@ -246,7 +258,7 @@ export const PROFILE_FIELD_LAYOUTS = {
         ),
       ],
       'mt-5 rounded-lg border border-gray-200 dark:border-gray-700 p-4',
-      'Background details',
+      { disclosure: 'Background details' },
     ),
   ],
   address: [
@@ -348,6 +360,7 @@ export const PROFILE_FIELD_LAYOUTS = {
         field('city', 'City', 'workHistory.$.location.city'),
       ],
       twoColumns,
+      { pickerGroup: { label: 'Location', completePath: 'workHistory.$.location' } },
     ),
     field('arrangement', 'Work Arrangement', 'workHistory.$.arrangement'),
     group(
@@ -401,7 +414,7 @@ export const PROFILE_FIELD_LAYOUTS = {
         field('description', 'Description', 'education.$.description'),
       ],
       'mb-4',
-      'Grade and coursework',
+      { disclosure: 'Grade and coursework' },
     ),
   ],
   languages: [
@@ -441,9 +454,9 @@ export const PROFILE_FIELD_LAYOUTS = {
     ),
   ],
   documents: [
-    field('cv', 'CV / Résumé', 'documents.cv.url', { cluster: true, inputLabel: 'Document URL' }),
+    field('cv', 'CV / Résumé', 'documents.cv.url', { pickerGroup: {}, inputLabel: 'Document URL' }),
     field('coverLetter', 'Cover letter', 'documents.coverLetter.url', {
-      cluster: true,
+      pickerGroup: {},
       inputLabel: 'Document URL',
     }),
   ],

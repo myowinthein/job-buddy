@@ -182,7 +182,7 @@ describe('Learned Mappings presentation and discovery', () => {
     expect(
       screen.getByText('Review and manage the profile fields remembered for each site'),
     ).toBeTruthy();
-    expect(screen.getByText('Personal → First Name')).toBeTruthy();
+    expect(screen.getByText('Personal → Name → First Name')).toBeTruthy();
     expect(within(row()).queryByText('personal.firstName')).toBeNull();
     expect(screen.getByRole('button', { name: 'Edit Applicant name on acme.com' })).toBeTruthy();
     expect(
@@ -362,7 +362,7 @@ describe('explicit corrections and guarded writes', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText(feedback.sectionSaveFailed)).toBeTruthy();
     expect(
-      screen.getByRole('button', { name: 'Profile field: Personal → Last Name' }),
+      screen.getByRole('button', { name: 'Profile field: Personal → Name → Last Name' }),
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Save' })).toHaveProperty('disabled', false);
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -389,7 +389,7 @@ describe('explicit corrections and guarded writes', () => {
     expect(screen.getByRole('button', { name: 'Saving…' })).toHaveProperty('disabled', true);
     expect(screen.getByRole('button', { name: 'Cancel' })).toHaveProperty('disabled', true);
     expect(
-      screen.getByRole('button', { name: 'Profile field: Personal → Last Name' }),
+      screen.getByRole('button', { name: 'Profile field: Personal → Name → Last Name' }),
     ).toHaveProperty('disabled', true);
     await act(async () => finish());
     expect(await screen.findByText(feedback.mappingSaved)).toBeTruthy();

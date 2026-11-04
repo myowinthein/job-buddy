@@ -48,7 +48,9 @@ describe('buildPickerTree', () => {
 
       const personal = getSection(p, 'personal');
       const labels = personal.items.map((i) => ('label' in i ? i.label : i.heading));
-      expect(labels).toEqual(['First Name', 'Email']);
+      expect(labels).toEqual(['Name', 'Email']);
+      const name = personal.items[0];
+      expect(name.kind === 'cluster' && name.rows.map((row) => row.label)).toEqual(['First Name']);
     });
 
     it('uses the Profile label for a preferred name', () => {
@@ -57,7 +59,7 @@ describe('buildPickerTree', () => {
       p.personal.nickname = 'Janey';
 
       const personal = getSection(p, 'personal');
-      const labels = personal.items.map((i) => ('label' in i ? i.label : i.heading));
+      const labels = personal.items.flatMap((item) => item.kind === 'option' ? item.label : item.rows.map((row) => row.label));
       expect(labels).toEqual(['First Name', 'Preferred name']);
     });
 
@@ -123,6 +125,7 @@ describe('buildPickerTree', () => {
       const salary = getSection(p, 'salary');
       const sub = salary.items.find((i) => 'heading' in i && i.heading === 'Current Salary');
       expect(sub).toBeDefined();
+      expect(sub?.kind).toBe('cluster');
       if (sub && 'rows' in sub) {
         expect(sub.rows.map((r) => r.fieldPath)).toEqual([
           'salary.current.formatted', 'salary.current.amount', 'salary.current.currency',
@@ -292,7 +295,7 @@ describe('buildPickerTree', () => {
 
       const lang = getSection(p, 'languages');
       expect(lang.items[0]).toEqual({
-        kind: 'subgroup', heading: 'English', rows: [
+        kind: 'subgroup', id: 'languages.0', heading: 'English', rows: [
           { kind: 'option', label: 'Language', fieldPath: 'languages.0.language', value: 'English' },
           { kind: 'option', label: 'Proficiency', fieldPath: 'languages.0.proficiency', value: 'Native' },
         ],
@@ -429,6 +432,10 @@ it('offers current Profile fields with previews equal to their resolved mapping 
   const paths = rows.map((row) => row.fieldPath);
   expect(paths.slice(0, 4)).toEqual([
     'derived.fullName', 'personal.firstName', 'personal.lastName', 'personal.nickname',
+  ]);
+  const name = buildPickerTree(profile)[0].items[0];
+  expect(name.kind === 'cluster' && name.rows.map((row) => row.component)).toEqual([
+    false, true, true, true,
   ]);
   expect(new Set(paths).size).toBe(paths.length);
   expect(paths).toEqual(expect.arrayContaining([

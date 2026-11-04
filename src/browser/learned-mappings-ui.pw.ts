@@ -129,6 +129,8 @@ test('shows readable chooser previews and a persistent selected category across 
   await expect(trigger).toBeFocused();
   await trigger.click();
   await expect(selected).toContainText('Annual');
+  await expect(list.getByRole('button', { name: /^Current Salary/ })).toHaveCount(0);
+  await expect(list.getByRole('button', { name: /^Expected Salary/ })).toHaveCount(2);
   await options.setViewportSize({ width: 375, height: 1000 });
   await expect
     .poll(() =>
@@ -237,7 +239,7 @@ test('groups aliases, keeps the editor visible, preserves metadata, and uses the
   await show(options);
   await expect(options.getByText('6 mappings across 2 sites')).toBeVisible();
   await expect(row(options, 'Applicant response')).toHaveCount(1);
-  await expect(options.getByText('Personal → First Name', { exact: true })).toBeVisible();
+  await expect(options.getByText('Personal → Name → First Name', { exact: true })).toBeVisible();
   await options
     .getByRole('searchbox', { name: 'Search mappings' })
     .fill('New University institution');
@@ -276,6 +278,8 @@ test('groups aliases, keeps the editor visible, preserves metadata, and uses the
       .getByRole('option')
       .evaluateAll((rows) => rows.slice(0, 4).map((row) => row.textContent)),
   ).toEqual(['Full NameAlex Sample', 'First NameAlex', 'Last NameSample', 'Preferred nameLex']);
+  await options.mouse.move(0, 0);
+  await options.screenshot({ path: info.outputPath('chooser-name-hierarchy-dark.png') });
   await options.getByRole('combobox').press('Escape');
   await choose(options, 'Preferred name');
   await applicant.getByRole('button', { name: 'Save', exact: true }).click();
@@ -372,7 +376,10 @@ test('follows profile changes, preserves failed drafts and supports scoped keybo
     options.getByText('Failed to save. Please try again.', { exact: true }),
   ).toBeVisible();
   await expect(
-    options.getByRole('button', { name: 'Profile field: Personal → Preferred name', exact: true }),
+    options.getByRole('button', {
+      name: 'Profile field: Personal → Name → Preferred name',
+      exact: true,
+    }),
   ).toBeVisible();
   await options.evaluate(() => {
     (window as Window & { failMappingSave?: boolean }).failMappingSave = false;
