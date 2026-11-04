@@ -714,7 +714,7 @@ export function LearnedMappingsSection({
     );
 
   return (
-    <section className="max-w-5xl" aria-label="Learned Mappings">
+    <section aria-label="Learned Mappings">
       <header className="mb-6">
         <div className="flex items-center justify-between gap-3">
           <h2

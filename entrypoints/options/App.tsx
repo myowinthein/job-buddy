@@ -51,6 +51,14 @@ type SectionId =
   | 'settings'
   | 'devTools';
 
+// Profile forms use 672px. Settings and lists use 1024px, and reports use 1152px.
+const SECTION_WIDTHS: Partial<Record<SectionId, string>> = {
+  settings: 'max-w-5xl',
+  devTools: 'max-w-5xl',
+  learnedMappings: 'max-w-5xl',
+  fillDetails: 'max-w-6xl',
+};
+
 // ── UI state persistence keys (sessionStorage) ───────────────────────────────
 const UI_SECTION_KEY  = 'jb:ui:section';
 const UI_SIDEBAR_KEY  = 'jb:ui:sidebar';
@@ -530,8 +538,7 @@ function App() {
           onFocusField={handleFocusField}
         />
         <main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-8">
-          {/* Settings uses max-w-none so long subtitles can flow to one line */}
-          <div data-profile-section={activeSection} className={['settings', 'devTools', 'fillDetails', 'learnedMappings'].includes(activeSection) ? 'max-w-none' : 'max-w-2xl'}
+          <div data-profile-section={activeSection} className={SECTION_WIDTHS[activeSection] ?? 'max-w-2xl'}
             onBlurCapture={() => {
               if (dirtyInputsRef.current.size > 0) setUnsavedStatusVisible(true);
             }}>

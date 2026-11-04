@@ -214,7 +214,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
   return (
     <section
       aria-label="Fill Details"
-      className="min-w-0 max-w-6xl text-gray-900 dark:text-gray-100"
+      className="min-w-0 text-gray-900 dark:text-gray-100"
     >
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 max-w-full sm:flex-1">
