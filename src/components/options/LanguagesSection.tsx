@@ -1,3 +1,4 @@
+import { ProfileFields } from './shared/ProfileFields';
 import { stableDisclosureFocus } from './shared/stableControlFocus';
 import { Info } from 'lucide-react';
 import { SectionHeader } from './shared/SectionHeader';
@@ -155,32 +156,47 @@ export function LanguagesSection({ profile, onSave }: Props) {
               </span>
               <RemoveButton onClick={() => removeEntry(idx)} />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FormField label="Language" required error={errors[`${idx}.language`]}>
-                <SearchableLanguageSelect
-                  id={`field-languages-${idx}-language`}
-                  value={row.language}
-                  onChange={(code) => update(idx, 'language', code)}
-                  error={errors[`${idx}.language`]}
-                />
-              </FormField>
-              <FormField label="Proficiency" required error={errors[`${idx}.proficiency`]}>
-                <select
-                  id={`field-languages-${idx}-proficiency`}
-                  className={cls(errors[`${idx}.proficiency`])}
-                  value={row.proficiency}
-                  onChange={(e) => update(idx, 'proficiency', e.target.value)}
-                  onBlur={() => handleProficiencyBlur(idx)}
-                >
-                  <option value="">Select proficiency…</option>
-                  {PROFICIENCY_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-            </div>
+            <ProfileFields
+              scope="languages"
+              renderers={{
+                language: (field) => (
+                  <FormField
+                    label={field.label}
+                    required={field.required}
+                    error={errors[`${idx}.language`]}
+                  >
+                    <SearchableLanguageSelect
+                      id={`field-languages-${idx}-language`}
+                      value={row.language}
+                      onChange={(code) => update(idx, 'language', code)}
+                      error={errors[`${idx}.language`]}
+                    />
+                  </FormField>
+                ),
+                proficiency: (field) => (
+                  <FormField
+                    label={field.label}
+                    required={field.required}
+                    error={errors[`${idx}.proficiency`]}
+                  >
+                    <select
+                      id={`field-languages-${idx}-proficiency`}
+                      className={cls(errors[`${idx}.proficiency`])}
+                      value={row.proficiency}
+                      onChange={(e) => update(idx, 'proficiency', e.target.value)}
+                      onBlur={() => handleProficiencyBlur(idx)}
+                    >
+                      <option value="">Select proficiency…</option>
+                      {PROFICIENCY_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
+                ),
+              }}
+            />
           </div>
         ))}
       </div>

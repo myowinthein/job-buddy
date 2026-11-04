@@ -94,6 +94,7 @@ describe('buildPickerTree', () => {
           'Day:15',
           'Month:06',
           'Year:1990',
+          `Age:${resolveProfileValue(p, 'derived.age')}`,
         ]);
       }
     });
@@ -137,7 +138,7 @@ describe('buildPickerTree', () => {
 
       const salary = getSection(p, 'salary');
       const headings = salary.items.filter((i) => 'heading' in i).map((i) => (i as { heading: string }).heading);
-      expect(headings).toEqual(['Current Salary', 'Expected Salary: USD', 'Expected Salary: GBP']);
+      expect(headings).toEqual(['Expected Salary: USD', 'Expected Salary: GBP', 'Current Salary']);
     });
 
     it('skips an expected-salary entry with neither amount nor currency', () => {
@@ -401,8 +402,8 @@ it('preserves formatted work and education previews, order, and current end date
   const education = getSection(profile, 'education').items[0];
   if (work.kind !== 'subgroup' || education.kind !== 'subgroup') throw new Error('Expected entry groups');
   expect(work.rows.map(({ label, value }) => [label, value])).toEqual([
-    ['Company', 'Acme'], ['Job Title', 'Dev'], ['Location', 'Paris, France'],
-    ['Country', 'France'], ['City', 'Paris'], ['Work Arrangement', 'Remote'],
+    ['Company', 'Acme'], ['Job Title', 'Dev'], ['Country', 'France'],
+    ['Location', 'Paris, France'], ['City', 'Paris'], ['Work Arrangement', 'Remote'],
     ['Start Date', 'March 2022'], ['End Date', 'Present'], ['I currently work here', 'Yes'],
   ]);
   expect(education.rows.map(({ label, value }) => [label, value])).toEqual([

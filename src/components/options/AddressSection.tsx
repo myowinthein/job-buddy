@@ -1,3 +1,4 @@
+import { ProfileFields } from './shared/ProfileFields';
 import { SectionHeader } from './shared/SectionHeader';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useState } from 'react';
@@ -92,60 +93,69 @@ export function AddressSection({ profile, onSave }: Props) {
     <div>
       <SectionHeader sectionId="address" />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <FormField label="Country" required error={errors.countryCode}>
-          <SearchableCountryDropdown
-            id="field-country"
-            value={form.countryCode}
-            onChange={(code) => set('countryCode', code)}
-            error={errors.countryCode}
-          />
-        </FormField>
-        <FormField label="Postal Code" error={errors.postalCode}>
-          <input
-            className={cls(errors.postalCode)}
-            id="field-postalCode"
-            value={form.postalCode}
-            onChange={(e) => set('postalCode', e.target.value)}
-            placeholder="94105"
-            maxLength={20}
-          />
-        </FormField>
-      </div>
-
-      <FormField label="Street Address" error={errors.street}>
-        <input
-          className={cls(errors.street)}
-          id="field-street"
-          value={form.street}
-          onChange={(e) => set('street', e.target.value)}
-          placeholder="123 Main Street, Apt 4B"
-          maxLength={255}
-        />
-      </FormField>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <FormField label="City" required error={errors.city}>
-          <input
-            className={cls(errors.city)}
-            value={form.city}
-            onChange={(e) => set('city', e.target.value)}
-            id="field-city"
-            placeholder="San Francisco"
-            maxLength={100}
-          />
-        </FormField>
-        <FormField label="State / Province" error={errors.state}>
-          <input
-            className={cls(errors.state)}
-            id="field-state"
-            value={form.state}
-            onChange={(e) => set('state', e.target.value)}
-            placeholder="CA"
-            maxLength={100}
-          />
-        </FormField>
-      </div>
+      <ProfileFields
+        scope="address"
+        renderers={{
+          country: (field) => (
+            <FormField label={field.label} required={field.required} error={errors.countryCode}>
+              <SearchableCountryDropdown
+                id="field-country"
+                value={form.countryCode}
+                onChange={(code) => set('countryCode', code)}
+                error={errors.countryCode}
+              />
+            </FormField>
+          ),
+          postalCode: (field) => (
+            <FormField label={field.label} required={field.required} error={errors.postalCode}>
+              <input
+                className={cls(errors.postalCode)}
+                id="field-postalCode"
+                value={form.postalCode}
+                onChange={(e) => set('postalCode', e.target.value)}
+                placeholder="94105"
+                maxLength={20}
+              />
+            </FormField>
+          ),
+          street: (field) => (
+            <FormField label={field.label} required={field.required} error={errors.street}>
+              <input
+                className={cls(errors.street)}
+                id="field-street"
+                value={form.street}
+                onChange={(e) => set('street', e.target.value)}
+                placeholder="123 Main Street, Apt 4B"
+                maxLength={255}
+              />
+            </FormField>
+          ),
+          city: (field) => (
+            <FormField label={field.label} required={field.required} error={errors.city}>
+              <input
+                className={cls(errors.city)}
+                value={form.city}
+                onChange={(e) => set('city', e.target.value)}
+                id="field-city"
+                placeholder="San Francisco"
+                maxLength={100}
+              />
+            </FormField>
+          ),
+          state: (field) => (
+            <FormField label={field.label} required={field.required} error={errors.state}>
+              <input
+                className={cls(errors.state)}
+                id="field-state"
+                value={form.state}
+                onChange={(e) => set('state', e.target.value)}
+                placeholder="CA"
+                maxLength={100}
+              />
+            </FormField>
+          ),
+        }}
+      />
 
       <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
         <SaveButton onClick={handleSave} saving={saving} label="Save Address" />

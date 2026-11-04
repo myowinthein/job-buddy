@@ -1,4 +1,4 @@
-import { stableDisclosureFocus } from './shared/stableControlFocus';
+import { ProfileFields } from './shared/ProfileFields';
 import { SectionHeader } from './shared/SectionHeader';
 import { profileDateRangeErrors } from '@/src/utils/profileInputValidation';
 import { useSectionDraft } from './shared/useSectionDraft';
@@ -199,123 +199,149 @@ export function EducationSection({ profile, onSave }: Props) {
               ([key, value]) => key.startsWith(`${idx}.`) && !!value,
             )}
           >
-            <FormField label="Institution" required error={errors[`${idx}.institution`]}>
-              <input
-                className={cls(errors[`${idx}.institution`])}
-                id={`field-education-${idx}-institution`}
-                value={row.institution}
-                onChange={(e) => update(idx, 'institution', e.target.value)}
-                onBlur={() => handleEntryBlur(idx, 'institution')}
-                placeholder="University of California, Berkeley"
-                maxLength={150}
-              />
-            </FormField>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField label="Degree" required error={errors[`${idx}.degree`]}>
-                <input
-                  className={cls(errors[`${idx}.degree`])}
-                  id={`field-education-${idx}-degree`}
-                  value={row.degree}
-                  onChange={(e) => update(idx, 'degree', e.target.value)}
-                  onBlur={() => handleEntryBlur(idx, 'degree')}
-                  placeholder="Bachelor of Science"
-                  maxLength={150}
-                />
-              </FormField>
-              <FormField label="Field of Study" required error={errors[`${idx}.fieldOfStudy`]}>
-                <input
-                  className={cls(errors[`${idx}.fieldOfStudy`])}
-                  id={`field-education-${idx}-fieldOfStudy`}
-                  value={row.fieldOfStudy}
-                  onChange={(e) => update(idx, 'fieldOfStudy', e.target.value)}
-                  onBlur={() => handleEntryBlur(idx, 'fieldOfStudy')}
-                  placeholder="Computer Science"
-                  maxLength={150}
-                />
-              </FormField>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField label="Start Date" required error={errors[`${idx}.startDate`]}>
-                <MonthYearPicker
-                  id={`field-education-${idx}-startDate`}
-                  onPartialChange={(partial) =>
-                    setPartialDates((previous) => ({
-                      ...previous,
-                      [`${row.rowId}.startDate`]: partial,
-                    }))
-                  }
-                  value={row.startDate}
-                  onChange={(v) => update(idx, 'startDate', v)}
-                  onYearChange={(y) => handleYearChange(idx, 'startDate', y)}
-                  onBlur={(m, y) => handleDateBlur(idx, 'startDate', m, y)}
-                  error={errors[`${idx}.startDate`]}
-                  monthOptional
-                />
-              </FormField>
-              <FormField
-                label={row.isCurrent ? 'Expected graduation date' : 'End Date'}
-                required={!row.isCurrent}
-                error={errors[`${idx}.endDate`]}
-              >
-                <MonthYearPicker
-                  id={`field-education-${idx}-endDate`}
-                  onPartialChange={(partial) =>
-                    setPartialDates((previous) => ({
-                      ...previous,
-                      [`${row.rowId}.endDate`]: partial,
-                    }))
-                  }
-                  value={row.endDate ?? ''}
-                  onChange={(v) => update(idx, 'endDate', v)}
-                  onYearChange={(y) => handleYearChange(idx, 'endDate', y)}
-                  onBlur={(m, y) => handleDateBlur(idx, 'endDate', m, y)}
-                  error={errors[`${idx}.endDate`]}
-                  monthOptional
-                />
-              </FormField>
-            </div>
-
-            <label className="flex items-center gap-2 mb-4 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={row.isCurrent}
-                onChange={(e) => update(idx, 'isCurrent', e.target.checked)}
-                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                I’m currently studying here
-              </span>
-            </label>
-            <details className="mb-4">
-              <summary
-                {...stableDisclosureFocus}
-                className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300"
-              >
-                Grade and coursework
-              </summary>
-              <div className="mt-3">
-                <FormField label="Grade / GPA" error={errors[`${idx}.grade`]}>
-                  <input
-                    className={cls()}
-                    value={row.grade ?? ''}
-                    onChange={(e) => update(idx, 'grade', e.target.value)}
-                    maxLength={100}
-                    placeholder="3.8 / 4.0"
-                  />
-                </FormField>
-                <FormField label="Description" error={errors[`${idx}.description`]}>
-                  <textarea
-                    className={`${cls()} min-h-24`}
-                    value={row.description ?? ''}
-                    onChange={(e) => update(idx, 'description', e.target.value)}
-                    maxLength={3000}
-                    placeholder="Honors, thesis, relevant coursework…"
-                  />
-                </FormField>
-              </div>
-            </details>
+            <ProfileFields
+              scope="education"
+              renderers={{
+                institution: (field) => (
+                  <FormField
+                    label={field.label}
+                    required={field.required}
+                    error={errors[`${idx}.institution`]}
+                  >
+                    <input
+                      className={cls(errors[`${idx}.institution`])}
+                      id={`field-education-${idx}-institution`}
+                      value={row.institution}
+                      onChange={(e) => update(idx, 'institution', e.target.value)}
+                      onBlur={() => handleEntryBlur(idx, 'institution')}
+                      placeholder="University of California, Berkeley"
+                      maxLength={150}
+                    />
+                  </FormField>
+                ),
+                degree: (field) => (
+                  <FormField
+                    label={field.label}
+                    required={field.required}
+                    error={errors[`${idx}.degree`]}
+                  >
+                    <input
+                      className={cls(errors[`${idx}.degree`])}
+                      id={`field-education-${idx}-degree`}
+                      value={row.degree}
+                      onChange={(e) => update(idx, 'degree', e.target.value)}
+                      onBlur={() => handleEntryBlur(idx, 'degree')}
+                      placeholder="Bachelor of Science"
+                      maxLength={150}
+                    />
+                  </FormField>
+                ),
+                fieldOfStudy: (field) => (
+                  <FormField
+                    label={field.label}
+                    required={field.required}
+                    error={errors[`${idx}.fieldOfStudy`]}
+                  >
+                    <input
+                      className={cls(errors[`${idx}.fieldOfStudy`])}
+                      id={`field-education-${idx}-fieldOfStudy`}
+                      value={row.fieldOfStudy}
+                      onChange={(e) => update(idx, 'fieldOfStudy', e.target.value)}
+                      onBlur={() => handleEntryBlur(idx, 'fieldOfStudy')}
+                      placeholder="Computer Science"
+                      maxLength={150}
+                    />
+                  </FormField>
+                ),
+                startDate: (field) => (
+                  <FormField
+                    label={field.label}
+                    required={field.required}
+                    error={errors[`${idx}.startDate`]}
+                  >
+                    <MonthYearPicker
+                      id={`field-education-${idx}-startDate`}
+                      onPartialChange={(partial) =>
+                        setPartialDates((previous) => ({
+                          ...previous,
+                          [`${row.rowId}.startDate`]: partial,
+                        }))
+                      }
+                      value={row.startDate}
+                      onChange={(v) => update(idx, 'startDate', v)}
+                      onYearChange={(y) => handleYearChange(idx, 'startDate', y)}
+                      onBlur={(m, y) => handleDateBlur(idx, 'startDate', m, y)}
+                      error={errors[`${idx}.startDate`]}
+                      monthOptional
+                    />
+                  </FormField>
+                ),
+                endDate: (field) => (
+                  <FormField
+                    label={row.isCurrent ? (field.activeLabel ?? field.label) : field.label}
+                    required={!row.isCurrent}
+                    error={errors[`${idx}.endDate`]}
+                  >
+                    <MonthYearPicker
+                      id={`field-education-${idx}-endDate`}
+                      onPartialChange={(partial) =>
+                        setPartialDates((previous) => ({
+                          ...previous,
+                          [`${row.rowId}.endDate`]: partial,
+                        }))
+                      }
+                      value={row.endDate ?? ''}
+                      onChange={(v) => update(idx, 'endDate', v)}
+                      onYearChange={(y) => handleYearChange(idx, 'endDate', y)}
+                      onBlur={(m, y) => handleDateBlur(idx, 'endDate', m, y)}
+                      error={errors[`${idx}.endDate`]}
+                      monthOptional
+                    />
+                  </FormField>
+                ),
+                isCurrent: (field) => (
+                  <label className="flex items-center gap-2 mb-4 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={row.isCurrent}
+                      onChange={(e) => update(idx, 'isCurrent', e.target.checked)}
+                      className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{field.label}</span>
+                  </label>
+                ),
+                grade: (field) => (
+                  <FormField
+                    label={field.label}
+                    required={field.required}
+                    error={errors[`${idx}.grade`]}
+                  >
+                    <input
+                      className={cls()}
+                      value={row.grade ?? ''}
+                      onChange={(e) => update(idx, 'grade', e.target.value)}
+                      maxLength={100}
+                      placeholder="3.8 / 4.0"
+                    />
+                  </FormField>
+                ),
+                description: (field) => (
+                  <FormField
+                    label={field.label}
+                    required={field.required}
+                    error={errors[`${idx}.description`]}
+                  >
+                    <textarea
+                      className={`${cls()} min-h-24`}
+                      value={row.description ?? ''}
+                      onChange={(e) => update(idx, 'description', e.target.value)}
+                      maxLength={3000}
+                      placeholder="Honors, thesis, relevant coursework…"
+                    />
+                  </FormField>
+                ),
+              }}
+            />
           </ExpandableCard>
         ))}
       </div>

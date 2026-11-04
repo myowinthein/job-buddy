@@ -1,301 +1,150 @@
-import type { Profile, WorkHistoryEntry, EducationEntry } from '../types/profile';
+import type { Profile } from '../types/profile';
 import { COUNTRIES } from '../data/countries';
 import { languageName } from '../data/languages';
 import { resolveProfileValue } from './resolver';
 import { mostRecentIdx } from './entryRecency';
-
-// Builds a human-labeled tree of every profile field that currently has a
-// value, pairing each with its dot-notation path. Pure function of `profile`
-// only, no DOM — powers the grouped, searchable field dropdown in the
-// Learned Mappings edit UI (SearchableProfileFieldSelect.tsx), the one
-// canonical list of valid paths a learned mapping's path can be set to.
+import {
+  PROFILE_SECTION_DEFINITIONS,
+  PROFILE_FIELD_LAYOUTS,
+  catalogFields,
+  type CatalogField,
+  type ProfileFieldScope,
+} from '../profile/fieldCatalog';
 
 export interface OptionRow {
-  kind:      'option';
-  label:     string;
+  kind: 'option';
+  label: string;
   fieldPath: string;
-  value:     string;
+  value: string;
 }
-
-// Inline heading + rows, no collapse control (Phone, Date of Birth).
 export interface Cluster {
-  kind:    'cluster';
+  kind: 'cluster';
   heading: string;
-  rows:    OptionRow[];
+  rows: OptionRow[];
 }
-
-// Collapsible sub-group for multi-entry arrays (Salary, Work History, Education).
-// defaultCollapsed = true means collapsed on first open (most entries in Work
-// History/Education); the most-recent entry is left at the default (expanded).
 export interface SubGroup {
-  kind:             'subgroup';
-  heading:          string;
-  rows:             OptionRow[];
+  kind: 'subgroup';
+  heading: string;
+  rows: OptionRow[];
   defaultCollapsed?: boolean;
 }
-
 export type SectionItem = OptionRow | Cluster | SubGroup;
-
 export interface Section {
-  id:    string;
+  id: string;
   label: string;
   items: SectionItem[];
 }
 
+function readPath(value: unknown, path: string): unknown {
+  return path
+    .split('.')
+    .reduce<unknown>(
+      (node, key) =>
+        node && typeof node === 'object' ? (node as Record<string, unknown>)[key] : undefined,
+      value,
+    );
+}
 function countryName(code: string): string {
-  return COUNTRIES.find(c => c.code === code)?.name ?? code;
+  return COUNTRIES.find((country) => country.code === code)?.name ?? code;
+}
+function entryHeading(
+  entry: Record<string, unknown>,
+  primary: string,
+  secondary: string,
+  index: number,
+): string {
+  if (entry[primary] && entry[secondary]) return `${entry[primary]} · ${entry[secondary]}`;
+  if (entry[primary] || entry[secondary]) return String(entry[primary] || entry[secondary]);
+  const start = String(entry.startDate ?? '').split('-')[0];
+  const end = entry.isCurrent ? 'Present' : String(entry.endDate ?? '').split('-')[0];
+  return start ? (end ? `${start}–${end}` : start) : `Entry ${index + 1}`;
 }
 
-// Shared by workHistoryHeading/educationHeading below: primary/secondary
-// field fallback, then start/end-year range fallback, then "Entry N".
-function entryHeading(primary: string | undefined, secondary: string | undefined, entry: { startDate?: string; isCurrent?: boolean; endDate?: string }, idx: number): string {
-  if (primary && secondary) return `${primary} · ${secondary}`;
-  if (primary)   return primary;
-  if (secondary) return secondary;
-  const sy = entry.startDate?.split('-')[0];
-  const ey = entry.isCurrent ? 'Present' : entry.endDate?.split('-')[0];
-  if (sy) return ey ? `${sy}–${ey}` : sy;
-  return `Entry ${idx + 1}`;
-}
-
-function workHistoryHeading(entry: WorkHistoryEntry, idx: number): string {
-  return entryHeading(entry.company, entry.title, entry, idx);
-}
-
-function educationHeading(entry: EducationEntry, idx: number): string {
-  return entryHeading(entry.institution, entry.degree, entry, idx);
-}
-
-function row(label: string, fieldPath: string, value: string): OptionRow {
-  return { kind: 'option', label, fieldPath, value };
-}
-
+/** The editor catalog supplies labels, section order, field order and picker aliases. */
 export function buildPickerTree(profile: Profile): Section[] {
-  const sections: Section[] = [];
-
-  function addPath(items: SectionItem[], label: string, path: string): void {
-    const v = resolveProfileValue(profile, path);
-    if (v) items.push(row(label, path, v));
-  }
-
-  // Personal
-  {
-    const items: SectionItem[] = [];
-    addPath(items, 'First Name',        'personal.firstName');
-    addPath(items, 'Last Name',         'personal.lastName');
-    addPath(items, 'Preferred name',    'personal.nickname');
-    addPath(items, 'Full Name',         'derived.fullName');
-    addPath(items, 'Email',             'personal.email');
-    addPath(items, 'Age',               'derived.age');
-    addPath(items, 'Gender',            'personal.gender');
-    addPath(items, 'Ethnicity',         'personal.ethnicity');
-    addPath(items, 'Veteran Status',    'personal.veteranStatus');
-    addPath(items, 'Disability Status', 'personal.disabilityStatus');
-
-    const phone = profile.personal?.phone;
-    if (phone?.number || phone?.callingCode) {
-      const rows: OptionRow[] = [];
-      if (phone.callingCode && phone.number)
-        rows.push(row('Full Phone',   'personal.phone.full',        `${phone.callingCode} ${phone.number}`));
-      if (phone.callingCode)
-        rows.push(row('Country Code', 'personal.phone.callingCode', phone.callingCode));
-      if (phone.number)
-        rows.push(row('Phone Number', 'personal.phone.number',      phone.number));
-      if (rows.length) items.push({ kind: 'cluster', heading: 'Phone', rows });
-    }
-
-    const dob = profile.personal?.dateOfBirth;
-    if (dob) {
-      const [year, month, day] = dob.split('-');
-      const rows: OptionRow[] = [row('Date of Birth', 'personal.dateOfBirth', dob)];
-      if (day)   rows.push(row('Day',   'personal.dateOfBirth.day',   day));
-      if (month) rows.push(row('Month', 'personal.dateOfBirth.month', month));
-      if (year)  rows.push(row('Year',  'personal.dateOfBirth.year',  year));
-      items.push({ kind: 'cluster', heading: 'Date of Birth', rows });
-    }
-
-    if (items.length) sections.push({ id: 'personal', label: 'Personal', items });
-  }
-
-  // Address
-  {
-    const items: SectionItem[] = [];
-    addPath(items, 'Street Address',   'address.street');
-    addPath(items, 'City',             'address.city');
-    const cc = profile.address?.country;
-    if (cc) items.push(row('Country', 'address.countryName', countryName(cc)));
-    addPath(items, 'State / Province', 'address.state');
-    addPath(items, 'Postal Code',      'address.postalCode');
-    if (items.length) sections.push({ id: 'address', label: 'Address', items });
-  }
-
-  // Work Authorization
-  {
-    const items: SectionItem[] = [];
-    (profile.workAuthorization ?? []).forEach((entry, idx) => {
-      if (!entry.status) return;
-      const name   = countryName(entry.country);
-      const rows: OptionRow[] = [];
-      addPath(rows, 'Country', `workAuthorization.${idx}.country`);
-      // Preserve the existing indexed path, which resolves the readable status.
-      addPath(rows, 'Authorization Status', `workAuthorization.${idx}`);
-      if (entry.status === 'work_visa') {
-        addPath(rows, 'Visa type', `workAuthorization.${idx}.visaType`);
-        addPath(rows, 'Visa expiry date', `workAuthorization.${idx}.expiryDate`);
+  function buildEntries(
+    definition: NonNullable<CatalogField['entries']>,
+    label: string,
+  ): SectionItem[] {
+    const source = readPath(profile, definition.path);
+    const entries = Array.isArray(source) ? source : source ? [source] : [];
+    const recent = mostRecentIdx(entries);
+    return entries.flatMap((entry: Record<string, unknown>, index): SectionItem[] => {
+      if (definition.heading === 'country' && !entry.status) return [];
+      if (definition.heading === 'language' && !entry.language) return [];
+      if (definition.heading === 'link' && (!entry.label || !entry.url)) return [];
+      if (
+        definition.heading === 'salary' &&
+        source !== profile.salary?.current &&
+        !entry.amount &&
+        !entry.currency
+      )
+        return [];
+      const items = buildScope(definition.scope as ProfileFieldScope, index, entry);
+      if (definition.heading === 'link') return items;
+      const rows = items.flatMap((item) => (item.kind === 'option' ? [item] : item.rows));
+      if (!rows.length) return [];
+      let heading = label;
+      switch (definition.heading) {
+        case 'work':
+          heading = entryHeading(entry, 'company', 'title', index);
+          break;
+        case 'education':
+          heading = entryHeading(entry, 'institution', 'degree', index);
+          break;
+        case 'country':
+          heading = countryName(String(entry.country ?? '')) || `Entry ${index + 1}`;
+          break;
+        case 'language':
+          heading = languageName(String(entry.language));
+          break;
+        case 'salary':
+          if (Array.isArray(source))
+            heading = `${label}: ${entry.currency || `Entry ${index + 1}`}`;
+          break;
       }
-      items.push({ kind: 'subgroup', heading: name || `Entry ${idx + 1}`, rows });
-    });
-    if (items.length) sections.push({ id: 'work-authorization', label: 'Work Authorization', items });
-  }
-
-  // Work History
-  {
-    const entries = profile.workHistory ?? [];
-    const items: SectionItem[] = [];
-    const recentIdx = mostRecentIdx(entries);
-
-    entries.forEach((entry, idx) => {
-      const rows: OptionRow[] = [];
-
-      if (entry.company) rows.push(row('Company',   `workHistory.${idx}.company`, entry.company));
-      if (entry.title)   rows.push(row('Job Title', `workHistory.${idx}.title`,   entry.title));
-
-      addPath(rows, 'Location', `workHistory.${idx}.location`);
-      addPath(rows, 'Country', `workHistory.${idx}.location.countryName`);
-      addPath(rows, 'City', `workHistory.${idx}.location.city`);
-      addPath(rows, 'Work Arrangement', `workHistory.${idx}.arrangement`);
-      addPath(rows, 'Start Date', `workHistory.${idx}.startDate.formatted`);
-      addPath(rows, 'End Date', `workHistory.${idx}.endDate.formatted`);
-      addPath(rows, 'I currently work here', `workHistory.${idx}.isCurrent`);
-
-      if (entry.description) rows.push(row('Description', `workHistory.${idx}.description`, entry.description));
-
-      if (rows.length) {
-        items.push({
-          kind:            'subgroup',
-          heading:         workHistoryHeading(entry, idx),
+      return [
+        {
+          kind: 'subgroup',
+          heading,
           rows,
-          defaultCollapsed: idx !== recentIdx,
-        });
-      }
+          ...(['work', 'education'].includes(definition.heading)
+            ? { defaultCollapsed: index !== recent }
+            : {}),
+        },
+      ];
     });
-
-    // Not per-entry — grouped under Work History to match profileCompletion.ts.
-    addPath(items, 'Career Summary', 'professional.summary');
-    addPath(items, 'Available Date', 'professional.noticePeriod.availableDate');
-    addPath(items, 'Notice Period', 'professional.noticePeriod.formatted');
-
-    if (items.length) sections.push({ id: 'work-history', label: 'Work History', items });
   }
-
-  // Education
-  {
-    const entries = profile.education ?? [];
-    const items: SectionItem[] = [];
-    const recentIdx = mostRecentIdx(entries);
-
-    entries.forEach((entry, idx) => {
-      const rows: OptionRow[] = [];
-
-      if (entry.institution)  rows.push(row('Institution',    `education.${idx}.institution`,  entry.institution));
-      if (entry.degree)       rows.push(row('Degree',         `education.${idx}.degree`,       entry.degree));
-      if (entry.fieldOfStudy) rows.push(row('Field of Study', `education.${idx}.fieldOfStudy`, entry.fieldOfStudy));
-
-      addPath(rows, 'Start Date', `education.${idx}.startDate.formatted`);
-      addPath(rows, 'End Date', `education.${idx}.endDate.formatted`);
-      addPath(rows, 'I’m currently studying here', `education.${idx}.isCurrent`);
-
-      if (entry.grade)       rows.push(row('Grade / GPA', `education.${idx}.grade`,       entry.grade));
-      if (entry.description) rows.push(row('Description', `education.${idx}.description`, entry.description));
-
-      if (rows.length) {
-        items.push({
-          kind:            'subgroup',
-          heading:         educationHeading(entry, idx),
-          rows,
-          defaultCollapsed: idx !== recentIdx,
-        });
-      }
+  function buildScope(
+    scope: ProfileFieldScope,
+    index?: number,
+    entry?: Record<string, unknown>,
+  ): SectionItem[] {
+    return catalogFields(PROFILE_FIELD_LAYOUTS[scope]).flatMap((field): SectionItem[] => {
+      if (field.entries) return buildEntries(field.entries, field.label);
+      if (field.picker === false || (field.when && entry?.[field.when.key] !== field.when.value))
+        return [];
+      if (field.pickerLabelFrom && !entry?.[field.pickerLabelFrom]) return [];
+      const choices: readonly { label?: string; path: string }[] =
+        field.picker ?? field.paths.map((path) => ({ path }));
+      const rows: OptionRow[] = choices.flatMap((choice): OptionRow[] => {
+        const fieldPath = choice.path.replaceAll('$', String(index ?? 0));
+        const value = resolveProfileValue(profile, fieldPath);
+        if (!value) return [];
+        const label = field.pickerLabelFrom
+          ? String(entry?.[field.pickerLabelFrom])
+          : (choice.label ?? field.inputLabel ?? field.label);
+        return [{ kind: 'option', label, fieldPath, value }];
+      });
+      return field.cluster && rows.length
+        ? [{ kind: 'cluster', heading: field.label, rows }]
+        : rows;
     });
-
-    if (items.length) sections.push({ id: 'education', label: 'Education', items });
   }
-
-  // Languages
-  {
-    const items: SectionItem[] = [];
-    (profile.languages ?? []).forEach((entry, idx) => {
-      if (!entry.language) return;
-      const name = languageName(entry.language);
-      const rows: OptionRow[] = [];
-      addPath(rows, 'Language', `languages.${idx}.language`);
-      addPath(rows, 'Proficiency', `languages.${idx}.proficiency`);
-      items.push({ kind: 'subgroup', heading: name, rows });
-    });
-    if (items.length) sections.push({ id: 'languages', label: 'Languages', items });
-  }
-
-  // Links
-  {
-    const items: SectionItem[] = [];
-    if (profile.links?.linkedin)  items.push(row('LinkedIn',  'links.linkedin',  profile.links.linkedin));
-    if (profile.links?.portfolio) items.push(row('Portfolio', 'links.portfolio', profile.links.portfolio));
-    for (const [key, label] of [['github', 'GitHub'], ['twitter', 'X / Twitter'], ['dribbble', 'Dribbble'], ['behance', 'Behance']] as const) {
-      const value = profile.links?.[key];
-      if (value) items.push(row(label, `links.${key}`, value));
-    }
-    (profile.links?.custom ?? []).forEach((link, idx) => {
-      if (!link.label || !link.url) return;
-      items.push(row(link.label, `links.custom.${idx}.url`, link.url));
-    });
-    if (items.length) sections.push({ id: 'links', label: 'Links', items });
-  }
-
-  // Documents
-  {
-    const items: SectionItem[] = [];
-    const cvUrl = profile.documents?.cv?.url;
-    if (cvUrl) items.push({
-      kind: 'cluster', heading: 'CV / Résumé',
-      rows: [row('Document URL', 'documents.cv.url', cvUrl)],
-    });
-    const coverLetterUrl = profile.documents?.coverLetter?.url;
-    if (coverLetterUrl) items.push({
-      kind: 'cluster', heading: 'Cover letter',
-      rows: [row('Document URL', 'documents.coverLetter.url', coverLetterUrl)],
-    });
-    if (items.length) sections.push({ id: 'documents', label: 'Documents', items });
-  }
-
-  // Salary
-  {
-    const items: SectionItem[] = [];
-
-    const cur = profile.salary?.current;
-    if (cur?.amount != null || cur?.currency) {
-      const rows: OptionRow[] = [];
-      const full = resolveProfileValue(profile, 'salary.current.formatted');
-      if (full)                rows.push(row('Current Salary', 'salary.current.formatted', full));
-      if (cur?.amount != null) rows.push(row('Amount',         'salary.current.amount',    String(cur.amount)));
-      if (cur?.currency)       rows.push(row('Currency',       'salary.current.currency',  cur.currency));
-      addPath(rows, 'Period', 'salary.current.period');
-      if (rows.length) items.push({ kind: 'subgroup', heading: 'Current Salary', rows });
-    }
-
-    (profile.salary?.expected ?? []).forEach((entry, idx) => {
-      if (!entry.amount && !entry.currency) return;
-      const name = entry.currency || `Entry ${idx + 1}`;
-      const rows: OptionRow[] = [];
-      const full = resolveProfileValue(profile, `salary.expected.${idx}.formatted`);
-      if (full)                rows.push(row('Expected Salary', `salary.expected.${idx}.formatted`, full));
-      if (entry.amount != null) rows.push(row('Amount',         `salary.expected.${idx}.amount`,    String(entry.amount)));
-      if (entry.currency)       rows.push(row('Currency',       `salary.expected.${idx}.currency`,  entry.currency));
-      addPath(rows, 'Period', `salary.expected.${idx}.period`);
-      if (rows.length) items.push({ kind: 'subgroup', heading: `Expected Salary: ${name}`, rows });
-    });
-
-    if (items.length) sections.push({ id: 'salary', label: 'Salary', items });
-  }
-
-  return sections;
+  return PROFILE_SECTION_DEFINITIONS.flatMap((section): Section[] => {
+    const items =
+      'entries' in section ? buildEntries(section.entries, section.label) : buildScope(section.id);
+    const id = section.id.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+    return items.length ? [{ id, label: section.label, items }] : [];
+  });
 }

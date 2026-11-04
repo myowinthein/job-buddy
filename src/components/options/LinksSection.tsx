@@ -1,3 +1,5 @@
+import { ProfileFields } from './shared/ProfileFields';
+import type { CatalogField } from '@/src/profile/fieldCatalog';
 import { SectionHeader } from './shared/SectionHeader';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
@@ -133,110 +135,128 @@ export function LinksSection({ profile, onSave }: Props) {
     setSaving(false);
   };
 
-  const PLATFORMS = [
-    {
-      key: 'linkedin',
-      label: 'LinkedIn',
-      required: false,
-      placeholder: 'https://www.linkedin.com/in/johnsmith',
-    },
-    { key: 'portfolio', label: 'Portfolio', required: false, placeholder: 'https://johnsmith.dev' },
-    { key: 'github', label: 'GitHub', required: false, placeholder: 'https://github.com/you' },
-    { key: 'twitter', label: 'X / Twitter', required: false, placeholder: 'https://x.com/you' },
-    {
-      key: 'dribbble',
-      label: 'Dribbble',
-      required: false,
-      placeholder: 'https://dribbble.com/you',
-    },
-    { key: 'behance', label: 'Behance', required: false, placeholder: 'https://behance.net/you' },
-  ] as const;
+  const placeholders = {
+    linkedin: 'https://www.linkedin.com/in/johnsmith',
+    portfolio: 'https://johnsmith.dev',
+    github: 'https://github.com/you',
+    twitter: 'https://x.com/you',
+    dribbble: 'https://dribbble.com/you',
+    behance: 'https://behance.net/you',
+  };
+  const renderLink = (key: keyof typeof form, field: CatalogField) => (
+    <FormField label={field.label} required={field.required} error={errors[key]}>
+      <input
+        id={`field-${key}`}
+        type="url"
+        className={cls(errors[key])}
+        value={form[key]}
+        onChange={(e) => set(key, e.target.value)}
+        onBlur={() => handleBlur(key)}
+        placeholder={placeholders[key]}
+        maxLength={2048}
+      />
+    </FormField>
+  );
 
   return (
     <div>
       <SectionHeader sectionId="links" />
 
-      {PLATFORMS.map(({ key, label, required, placeholder }) => (
-        <FormField key={key} label={label} required={required} error={errors[key]}>
-          <input
-            id={`field-${key}`}
-            type="url"
-            className={cls(errors[key])}
-            value={form[key]}
-            onChange={(e) => set(key, e.target.value)}
-            onBlur={() => handleBlur(key)}
-            placeholder={placeholder}
-            maxLength={2048}
-          />
-        </FormField>
-      ))}
-
-      <datalist id="custom-link-labels">
-        {[
-          'Blog',
-          'GitLab',
-          'Stack Overflow',
-          'YouTube',
-          'Personal website',
-          'Design portfolio',
-        ].map((label) => (
-          <option key={label} value={label} />
-        ))}
-      </datalist>
-      <div className="mb-4">
-        <EntryListHeader
-          id="add-customLinks"
-          title="Custom Links"
-          onAdd={() => {
-            setCustom((rows) => [...rows, { label: '', url: '' }]);
-            setNewEntryTick((t) => t + 1);
-          }}
-          label="+ Add Entry"
-        />
-        <div ref={customContainerRef}>
-          {custom.map((c, idx) => (
-            <div
-              key={idx}
-              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                  Entry {idx + 1}
-                </span>
-                <RemoveButton
-                  onClick={() => setCustom((rows) => rows.filter((_, i) => i !== idx))}
+      <ProfileFields
+        scope="links"
+        renderers={{
+          linkedin: (field) => renderLink('linkedin', field),
+          portfolio: (field) => renderLink('portfolio', field),
+          github: (field) => renderLink('github', field),
+          twitter: (field) => renderLink('twitter', field),
+          dribbble: (field) => renderLink('dribbble', field),
+          behance: (field) => renderLink('behance', field),
+          custom: (field) => (
+            <>
+              <datalist id="custom-link-labels">
+                {[
+                  'Blog',
+                  'GitLab',
+                  'Stack Overflow',
+                  'YouTube',
+                  'Personal website',
+                  'Design portfolio',
+                ].map((label) => (
+                  <option key={label} value={label} />
+                ))}
+              </datalist>
+              <div className="mb-4">
+                <EntryListHeader
+                  id="add-customLinks"
+                  title={field.label}
+                  onAdd={() => {
+                    setCustom((rows) => [...rows, { label: '', url: '' }]);
+                    setNewEntryTick((t) => t + 1);
+                  }}
+                  label="+ Add Entry"
                 />
+                <div ref={customContainerRef}>
+                  {custom.map((c, idx) => (
+                    <div
+                      key={idx}
+                      className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                          Entry {idx + 1}
+                        </span>
+                        <RemoveButton
+                          onClick={() => setCustom((rows) => rows.filter((_, i) => i !== idx))}
+                        />
+                      </div>
+                      <ProfileFields
+                        scope="customLink"
+                        renderers={{
+                          label: (field) => (
+                            <FormField
+                              label={field.label}
+                              required={field.required}
+                              error={errors[`custom.${idx}.label`]}
+                            >
+                              <input
+                                className={cls(errors[`custom.${idx}.label`])}
+                                value={c.label}
+                                onChange={(e) => updateCustom(idx, 'label', e.target.value)}
+                                placeholder="My Blog"
+                                list="custom-link-labels"
+                                maxLength={100}
+                              />
+                            </FormField>
+                          ),
+                          url: (field) => (
+                            <FormField
+                              label={field.label}
+                              required={field.required}
+                              error={errors[`custom.${idx}.url`]}
+                            >
+                              <input
+                                type="url"
+                                id={`field-customLink-${idx}-url`}
+                                className={cls(errors[`custom.${idx}.url`])}
+                                value={c.url}
+                                onChange={(e) => updateCustom(idx, 'url', e.target.value)}
+                                onBlur={(e) => handleCustomUrlBlur(idx, e.target.value)}
+                                placeholder="https://blog.johnsmith.dev"
+                                maxLength={2048}
+                              />
+                            </FormField>
+                          ),
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                {/* customContainerRef */}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <FormField label="Label" error={errors[`custom.${idx}.label`]}>
-                  <input
-                    className={cls(errors[`custom.${idx}.label`])}
-                    value={c.label}
-                    onChange={(e) => updateCustom(idx, 'label', e.target.value)}
-                    placeholder="My Blog"
-                    list="custom-link-labels"
-                    maxLength={100}
-                  />
-                </FormField>
-                <FormField label="URL" error={errors[`custom.${idx}.url`]}>
-                  <input
-                    type="url"
-                    id={`field-customLink-${idx}-url`}
-                    className={cls(errors[`custom.${idx}.url`])}
-                    value={c.url}
-                    onChange={(e) => updateCustom(idx, 'url', e.target.value)}
-                    onBlur={(e) => handleCustomUrlBlur(idx, e.target.value)}
-                    placeholder="https://blog.johnsmith.dev"
-                    maxLength={2048}
-                  />
-                </FormField>
-              </div>
-            </div>
-          ))}
-        </div>
-        {/* customContainerRef */}
-      </div>
-
+            </>
+          ),
+        }}
+      />
       <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
         <SaveButton onClick={handleSave} saving={saving} label="Save Links" />
       </div>

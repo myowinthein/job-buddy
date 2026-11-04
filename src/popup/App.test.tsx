@@ -660,7 +660,9 @@ it('preserves the overwrite choice and fills without rescanning after confirmati
   expect(
     sendMessageMock.mock.calls.filter(([, message]) => message.action === 'AUTOFILL_SCAN'),
   ).toHaveLength(1);
-  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fill Form' }));
+  await waitFor(() =>
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Fill Form' })),
+  );
 });
 
 it('shows a no-form explanation without promoting AI or suggesting iframes are unsupported', async () => {

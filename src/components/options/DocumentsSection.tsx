@@ -1,3 +1,5 @@
+import { ProfileFields } from './shared/ProfileFields';
+import type { CatalogField } from '@/src/profile/fieldCatalog';
 import { stableDisclosureFocus } from './shared/stableControlFocus';
 import { SectionHeader } from './shared/SectionHeader';
 import { useState, useRef, useEffect, type DragEvent } from 'react';
@@ -58,15 +60,16 @@ function fileToBase64(file: File): Promise<string> {
 }
 function DocUploader({
   id,
-  label,
+  definition,
   state,
   onChange,
 }: {
   id: string;
-  label: string;
+  definition: CatalogField;
   state: DocState;
   onChange: (updates: Partial<DocState>) => void;
 }) {
+  const label = definition.label;
   const inputRef = useRef<HTMLInputElement>(null);
   const generation = useRef(0);
   const [fileActionError, setFileActionError] = useState('');
@@ -127,7 +130,11 @@ function DocUploader({
       className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-4"
     >
       <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200 mb-3">{label}</h3>
-      <FormField label="Document URL" error={state.urlError}>
+      <FormField
+        label={definition.inputLabel ?? definition.label}
+        required={definition.required}
+        error={state.urlError}
+      >
         <input
           id={`field-${id}`}
           type="url"
@@ -224,11 +231,13 @@ function DocUploader({
           }}
         />
       </div>
-      {[state.sizeError, state.typeError, state.readError, fileActionError].filter(Boolean).map((error) => (
-        <p key={error} role="alert" className="text-xs text-red-700 dark:text-red-400 mt-2">
-          {error}
-        </p>
-      ))}
+      {[state.sizeError, state.typeError, state.readError, fileActionError]
+        .filter(Boolean)
+        .map((error) => (
+          <p key={error} role="alert" className="text-xs text-red-700 dark:text-red-400 mt-2">
+            {error}
+          </p>
+        ))}
     </section>
   );
 }
@@ -263,27 +272,36 @@ export function DocumentsSection({ profile, onSave }: Props) {
   return (
     <div>
       <SectionHeader sectionId="documents" />
-      <DocUploader
-        id="cv"
-        label="CV / Résumé"
-        state={cv}
-        onChange={(updates) => setCv((value) => ({ ...value, ...updates }))}
+      <ProfileFields
+        scope="documents"
+        renderers={{
+          cv: (field) => (
+            <DocUploader
+              id="cv"
+              definition={field}
+              state={cv}
+              onChange={(updates) => setCv((value) => ({ ...value, ...updates }))}
+            />
+          ),
+          coverLetter: (field) => (
+            <details ref={coverRef} className="mb-4">
+              <summary
+                {...stableDisclosureFocus}
+                className="cursor-pointer text-sm font-medium text-gray-800 dark:text-gray-200 mb-3"
+              >
+                {field.label}
+                {coverLetter.file || coverLetter.url ? ' · details added' : ''}
+              </summary>
+              <DocUploader
+                id="coverLetter"
+                definition={field}
+                state={coverLetter}
+                onChange={(updates) => setCoverLetter((value) => ({ ...value, ...updates }))}
+              />
+            </details>
+          ),
+        }}
       />
-      <details ref={coverRef} className="mb-4">
-        <summary
-          {...stableDisclosureFocus}
-          className="cursor-pointer text-sm font-medium text-gray-800 dark:text-gray-200 mb-3"
-        >
-          Cover letter
-          {coverLetter.file || coverLetter.url ? ' · details added' : ''}
-        </summary>
-        <DocUploader
-          id="coverLetter"
-          label="Cover letter"
-          state={coverLetter}
-          onChange={(updates) => setCoverLetter((value) => ({ ...value, ...updates }))}
-        />
-      </details>
       <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
         <SaveButton
           onClick={handleSave}

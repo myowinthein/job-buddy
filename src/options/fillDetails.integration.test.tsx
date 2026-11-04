@@ -90,7 +90,7 @@ it('embeds a wide, empty details section in Tools with the shared profile progre
     screen.getAllByRole('progressbar', { name: 'Saved required profile details' }),
   ).toHaveLength(1);
   expect(document.querySelector('[data-profile-section="fillDetails"]')?.className).toContain(
-    'max-w-none',
+    'max-w-6xl',
   );
   expect(document.querySelectorAll('main')).toHaveLength(1);
   expect(document.querySelector('[aria-label="Fill Details"] img')).toBeNull();

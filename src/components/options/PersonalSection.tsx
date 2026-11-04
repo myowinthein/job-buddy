@@ -1,4 +1,4 @@
-import { stableDisclosureFocus } from './shared/stableControlFocus';
+import { ProfileFields } from './shared/ProfileFields';
 import { SectionHeader } from './shared/SectionHeader';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useState, useRef } from 'react';
@@ -197,126 +197,126 @@ export function PersonalSection({ profile, onSave }: Props) {
     <div>
       <SectionHeader sectionId="personal" />
 
-      {/* Name */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <FormField label="First Name" required error={errors.firstName}>
-          <input
-            className={cls(errors.firstName)}
-            value={form.firstName}
-            onChange={(e) => set('firstName', e.target.value)}
-            onBlur={() => handleBlur('firstName')}
-            id="field-firstName"
-            placeholder="John"
-            maxLength={100}
-          />
-        </FormField>
-        <FormField label="Last Name" error={errors.lastName}>
-          <input
-            className={cls(errors.lastName)}
-            value={form.lastName}
-            onChange={(e) => set('lastName', e.target.value)}
-            onBlur={() => handleBlur('lastName')}
-            id="field-lastName"
-            placeholder="Smith"
-            maxLength={100}
-          />
-        </FormField>
-        <FormField label="Preferred name" error={errors.nickname}>
-          <input
-            className={cls(errors.nickname)}
-            value={form.nickname}
-            onChange={(e) => set('nickname', e.target.value)}
-            onBlur={() => handleBlur('nickname')}
-            id="field-nickname"
-            placeholder="Johnny"
-            maxLength={100}
-          />
-        </FormField>
-      </div>
-
-      {/* Email */}
-      <FormField label="Email" required error={errors.email}>
-        <input
-          type="email"
-          className={cls(errors.email)}
-          value={form.email}
-          onChange={(e) => set('email', e.target.value)}
-          onBlur={() => handleBlur('email')}
-          id="field-email"
-          placeholder="john.smith@example.com"
-          maxLength={254}
-        />
-      </FormField>
-
-      {/* Phone — searchable country selector + number input */}
-      <FormField label="Phone" required error={errors.phoneNumber}>
-        <div
-          className={`flex items-stretch rounded-lg border ${
-            errors.phoneNumber
-              ? 'border-red-300 dark:border-red-500'
-              : 'border-gray-300 dark:border-gray-600'
-          } focus-within:ring-2 ${
-            errors.phoneNumber ? 'focus-within:ring-red-500' : 'focus-within:ring-blue-500'
-          } focus-within:border-transparent`}
-        >
-          <SearchableCallingCodeSelect value={form.phoneCountry} onChange={handleCountryChange} />
-          <input
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            maxLength={15}
-            className="rounded-r-lg min-w-0 w-0 flex-1 px-3 py-2 text-sm focus:outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-            value={form.phoneNumber}
-            onChange={(e) => handlePhoneNumberChange(e.target.value)}
-            onBlur={() => handleBlur('phoneNumber')}
-            id="field-phone"
-            aria-label="Phone number"
-            placeholder="5551234567"
-          />
-        </div>
-      </FormField>
-
-      {/* Date of Birth */}
-      <details
-        ref={optionalDetailsRef}
-        className="mt-5 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
-      >
-        <summary
-          {...stableDisclosureFocus}
-          className="cursor-pointer font-medium text-sm text-gray-800 dark:text-gray-200"
-        >
-          Background details
-        </summary>
-        <div className="mt-4">
-          <FormField label="Date of Birth" error={errors.dateOfBirth}>
-            <DateOfBirthPicker
-              id="field-dateOfBirth"
-              value={form.dateOfBirth}
-              onChange={(v) => set('dateOfBirth', v)}
-              onPartialChange={(partial) => {
-                setDobIsPartial(partial);
-                // Live feedback: surface or clear the partial-completion error as
-                // the user types, but don't stomp on more specific range errors.
-                setErrors((e) => {
-                  const existing = e.dateOfBirth;
-                  if (partial) {
-                    if (!existing)
-                      return { ...e, dateOfBirth: 'Complete day, month, and year, or leave blank' };
+      <ProfileFields
+        scope="personal"
+        disclosureProps={{ background: { ref: optionalDetailsRef } }}
+        renderers={{
+          firstName: (field) => (
+            <FormField label={field.label} required={field.required} error={errors.firstName}>
+              <input
+                className={cls(errors.firstName)}
+                value={form.firstName}
+                onChange={(e) => set('firstName', e.target.value)}
+                onBlur={() => handleBlur('firstName')}
+                id="field-firstName"
+                placeholder="John"
+                maxLength={100}
+              />
+            </FormField>
+          ),
+          lastName: (field) => (
+            <FormField label={field.label} required={field.required} error={errors.lastName}>
+              <input
+                className={cls(errors.lastName)}
+                value={form.lastName}
+                onChange={(e) => set('lastName', e.target.value)}
+                onBlur={() => handleBlur('lastName')}
+                id="field-lastName"
+                placeholder="Smith"
+                maxLength={100}
+              />
+            </FormField>
+          ),
+          nickname: (field) => (
+            <FormField label={field.label} required={field.required} error={errors.nickname}>
+              <input
+                className={cls(errors.nickname)}
+                value={form.nickname}
+                onChange={(e) => set('nickname', e.target.value)}
+                onBlur={() => handleBlur('nickname')}
+                id="field-nickname"
+                placeholder="Johnny"
+                maxLength={100}
+              />
+            </FormField>
+          ),
+          email: (field) => (
+            <FormField label={field.label} required={field.required} error={errors.email}>
+              <input
+                type="email"
+                className={cls(errors.email)}
+                value={form.email}
+                onChange={(e) => set('email', e.target.value)}
+                onBlur={() => handleBlur('email')}
+                id="field-email"
+                placeholder="john.smith@example.com"
+                maxLength={254}
+              />
+            </FormField>
+          ),
+          phone: (field) => (
+            <FormField label={field.label} required={field.required} error={errors.phoneNumber}>
+              <div
+                className={`flex items-stretch rounded-lg border ${
+                  errors.phoneNumber
+                    ? 'border-red-300 dark:border-red-500'
+                    : 'border-gray-300 dark:border-gray-600'
+                } focus-within:ring-2 ${
+                  errors.phoneNumber ? 'focus-within:ring-red-500' : 'focus-within:ring-blue-500'
+                } focus-within:border-transparent`}
+              >
+                <SearchableCallingCodeSelect
+                  value={form.phoneCountry}
+                  onChange={handleCountryChange}
+                />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={15}
+                  className="rounded-r-lg min-w-0 w-0 flex-1 px-3 py-2 text-sm focus:outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  value={form.phoneNumber}
+                  onChange={(e) => handlePhoneNumberChange(e.target.value)}
+                  onBlur={() => handleBlur('phoneNumber')}
+                  id="field-phone"
+                  aria-label="Phone number"
+                  placeholder="5551234567"
+                />
+              </div>
+            </FormField>
+          ),
+          dateOfBirth: (field) => (
+            <FormField label={field.label} required={field.required} error={errors.dateOfBirth}>
+              <DateOfBirthPicker
+                id="field-dateOfBirth"
+                value={form.dateOfBirth}
+                onChange={(v) => set('dateOfBirth', v)}
+                onPartialChange={(partial) => {
+                  setDobIsPartial(partial);
+                  // Live feedback: surface or clear the partial-completion error as
+                  // the user types, but don't stomp on more specific range errors.
+                  setErrors((e) => {
+                    const existing = e.dateOfBirth;
+                    if (partial) {
+                      if (!existing)
+                        return {
+                          ...e,
+                          dateOfBirth: 'Complete day, month, and year, or leave blank',
+                        };
+                      return e;
+                    }
+                    if (existing === 'Complete day, month, and year, or leave blank') {
+                      return { ...e, dateOfBirth: '' };
+                    }
                     return e;
-                  }
-                  if (existing === 'Complete day, month, and year, or leave blank') {
-                    return { ...e, dateOfBirth: '' };
-                  }
-                  return e;
-                });
-              }}
-              error={errors.dateOfBirth}
-            />
-          </FormField>
-
-          {/* Gender & Ethnicity */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label="Gender" error={errors.gender}>
+                  });
+                }}
+                error={errors.dateOfBirth}
+              />
+            </FormField>
+          ),
+          gender: (field) => (
+            <FormField label={field.label} required={field.required} error={errors.gender}>
               <select
                 id="field-gender"
                 className={cls(errors.gender)}
@@ -330,8 +330,9 @@ export function PersonalSection({ profile, onSave }: Props) {
                 <option value="prefer_not_to_say">Prefer not to say</option>
               </select>
             </FormField>
-
-            <FormField label="Ethnicity" error={errors.ethnicity}>
+          ),
+          ethnicity: (field) => (
+            <FormField label={field.label} required={field.required} error={errors.ethnicity}>
               <select
                 id="field-ethnicity"
                 className={cls(errors.ethnicity)}
@@ -347,11 +348,9 @@ export function PersonalSection({ profile, onSave }: Props) {
                 <option value="prefer_not_to_say">Prefer not to say</option>
               </select>
             </FormField>
-          </div>
-
-          {/* Veteran & Disability */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label="Veteran Status" error={errors.veteranStatus}>
+          ),
+          veteranStatus: (field) => (
+            <FormField label={field.label} required={field.required} error={errors.veteranStatus}>
               <select
                 id="field-veteranStatus"
                 className={cls(errors.veteranStatus)}
@@ -364,7 +363,13 @@ export function PersonalSection({ profile, onSave }: Props) {
                 <option value="prefer_not_to_say">Prefer not to say</option>
               </select>
             </FormField>
-            <FormField label="Disability Status" error={errors.disabilityStatus}>
+          ),
+          disabilityStatus: (field) => (
+            <FormField
+              label={field.label}
+              required={field.required}
+              error={errors.disabilityStatus}
+            >
               <select
                 id="field-disabilityStatus"
                 className={cls(errors.disabilityStatus)}
@@ -377,9 +382,9 @@ export function PersonalSection({ profile, onSave }: Props) {
                 <option value="prefer_not_to_say">Prefer not to say</option>
               </select>
             </FormField>
-          </div>
-        </div>
-      </details>
+          ),
+        }}
+      />
 
       <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
         <SaveButton onClick={handleSave} saving={saving} label="Save Personal" />

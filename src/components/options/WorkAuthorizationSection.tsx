@@ -1,3 +1,4 @@
+import { ProfileFields } from './shared/ProfileFields';
 import { SectionHeader } from './shared/SectionHeader';
 import { isValidCalendarDate } from '@/src/utils/profileInputValidation';
 import { useSectionDraft } from './shared/useSectionDraft';
@@ -142,52 +143,76 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField label="Country" required error={errors[`${idx}.country`]}>
-                <SearchableCountryDropdown
-                  id={`field-workAuthorization-${idx}-country`}
-                  value={row.country}
-                  onChange={(code) => update(idx, 'country', code)}
-                  error={errors[`${idx}.country`]}
-                />
-              </FormField>
-              <FormField label="Authorization Status" required error={errors[`${idx}.status`]}>
-                <select
-                  id={`field-workAuthorization-${idx}-status`}
-                  className={cls(errors[`${idx}.status`])}
-                  value={row.status}
-                  onChange={(e) => update(idx, 'status', e.target.value)}
-                >
-                  <option value="">Select authorization status…</option>
-                  {WORK_AUTH_STATUS_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-            </div>
-            {row.status === 'work_visa' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField label="Visa type" error={errors[`${idx}.visaType`]}>
-                  <input
-                    className={cls(errors[`${idx}.visaType`])}
-                    value={row.visaType ?? ''}
-                    maxLength={100}
-                    onChange={(e) => update(idx, 'visaType', e.target.value)}
-                    placeholder="Employment Pass"
-                  />
-                </FormField>
-                <FormField label="Visa expiry date" error={errors[`${idx}.expiryDate`]}>
-                  <input
-                    type="date"
-                    className={cls(errors[`${idx}.expiryDate`])}
-                    value={row.expiryDate ?? ''}
-                    onChange={(e) => update(idx, 'expiryDate', e.target.value)}
-                  />
-                </FormField>
-              </div>
-            )}
+            <ProfileFields
+              scope="workAuthorization"
+              values={row}
+              renderers={{
+                country: (field) => (
+                  <FormField
+                    label={field.label}
+                    required={field.required}
+                    error={errors[`${idx}.country`]}
+                  >
+                    <SearchableCountryDropdown
+                      id={`field-workAuthorization-${idx}-country`}
+                      value={row.country}
+                      onChange={(code) => update(idx, 'country', code)}
+                      error={errors[`${idx}.country`]}
+                    />
+                  </FormField>
+                ),
+                status: (field) => (
+                  <FormField
+                    label={field.label}
+                    required={field.required}
+                    error={errors[`${idx}.status`]}
+                  >
+                    <select
+                      id={`field-workAuthorization-${idx}-status`}
+                      className={cls(errors[`${idx}.status`])}
+                      value={row.status}
+                      onChange={(e) => update(idx, 'status', e.target.value)}
+                    >
+                      <option value="">Select authorization status…</option>
+                      {WORK_AUTH_STATUS_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
+                ),
+                visaType: (field) => (
+                  <FormField
+                    label={field.label}
+                    required={field.required}
+                    error={errors[`${idx}.visaType`]}
+                  >
+                    <input
+                      className={cls(errors[`${idx}.visaType`])}
+                      value={row.visaType ?? ''}
+                      maxLength={100}
+                      onChange={(e) => update(idx, 'visaType', e.target.value)}
+                      placeholder="Employment Pass"
+                    />
+                  </FormField>
+                ),
+                expiryDate: (field) => (
+                  <FormField
+                    label={field.label}
+                    required={field.required}
+                    error={errors[`${idx}.expiryDate`]}
+                  >
+                    <input
+                      type="date"
+                      className={cls(errors[`${idx}.expiryDate`])}
+                      value={row.expiryDate ?? ''}
+                      onChange={(e) => update(idx, 'expiryDate', e.target.value)}
+                    />
+                  </FormField>
+                ),
+              }}
+            />
           </div>
         ))}
       </div>

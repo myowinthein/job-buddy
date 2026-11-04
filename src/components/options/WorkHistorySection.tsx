@@ -1,3 +1,4 @@
+import { ProfileFields } from './shared/ProfileFields';
 import { SectionHeader } from './shared/SectionHeader';
 import {
   NOTICE_MAX,
@@ -248,320 +249,391 @@ export function WorkHistorySection({ profile, onSave }: Props) {
     <div>
       <SectionHeader sectionId="workHistory" />
 
-      {/* ── Career Summary ──────────────────────────────────────────────────── */}
-      <FormField error={errors.summary} label="Career Summary" hint={`${summary.length} / 2000`}>
-        <textarea
-          id="field-summary"
-          className={`${cls()} min-h-[100px] resize-y`}
-          value={summary}
-          onChange={(e) => setSummary(e.target.value)}
-          placeholder="A brief overview of your background and key strengths..."
-          maxLength={2000}
-        />
-      </FormField>
+      <ProfileFields
+        scope="workHistory"
+        renderers={{
+          summary: (field) => (
+            <FormField
+              error={errors.summary}
+              label={field.label}
+              required={field.required}
+              hint={`${summary.length} / 2000`}
+            >
+              <textarea
+                id="field-summary"
+                className={`${cls()} min-h-[100px] resize-y`}
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                placeholder="A brief overview of your background and key strengths..."
+                maxLength={2000}
+              />
+            </FormField>
+          ),
+          experience: (field) => (
+            <>
+              {/* ── Work Entries ────────────────────────────────────────────────────── */}
+              <EntryListHeader
+                title={field.label}
+                id="add-workHistory"
+                onAdd={() => {
+                  const row = emptyRow();
+                  setEntries((rows) => [...rows, row]);
+                  setNewEntryTick((t) => t + 1);
+                }}
+                label="+ Add Entry"
+              />
 
-      {/* ── Work Entries ────────────────────────────────────────────────────── */}
-      <EntryListHeader
-        title="Experience"
-        id="add-workHistory"
-        onAdd={() => {
-          const row = emptyRow();
-          setEntries((rows) => [...rows, row]);
-          setNewEntryTick((t) => t + 1);
-        }}
-        label="+ Add Entry"
-      />
+              {errors.general && (
+                <p className="text-sm text-red-700 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
+                  {errors.general}
+                </p>
+              )}
 
-      {errors.general && (
-        <p className="text-sm text-red-700 dark:text-red-400 mb-4 p-3 bg-red-50 dark:bg-red-900/30 rounded-lg">
-          {errors.general}
-        </p>
-      )}
-
-      <div ref={entriesContainerRef}>
-        {!entries.length && (
-          <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">No experience added</p>
-        )}
-        {entries.map((row, idx) => (
-          <ExpandableCard
-            id={`entry-workHistory-${idx}`}
-            key={row.rowId}
-            summary={cardSummary(row, idx)}
-            badge={row.isCurrent ? (
-              <span className="shrink-0 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                Current
-              </span>
-            ) : undefined}
-            onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
-            defaultExpanded={!row.company}
-            invalid={Object.entries(errors).some(
-              ([key, value]) => key.startsWith(`${idx}.`) && !!value,
-            )}
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField label="Company" required error={errors[`${idx}.company`]}>
-                <input
-                  className={cls(errors[`${idx}.company`])}
-                  id={`field-workHistory-${idx}-company`}
-                  value={row.company}
-                  onChange={(e) => updateEntry(idx, 'company', e.target.value)}
-                  onBlur={() => handleEntryBlur(idx, 'company')}
-                  placeholder="Acme Inc."
-                  maxLength={150}
-                />
-              </FormField>
-              <FormField label="Job Title" required error={errors[`${idx}.title`]}>
-                <input
-                  className={cls(errors[`${idx}.title`])}
-                  id={`field-workHistory-${idx}-title`}
-                  value={row.title}
-                  onChange={(e) => updateEntry(idx, 'title', e.target.value)}
-                  onBlur={() => handleEntryBlur(idx, 'title')}
-                  placeholder="Senior Software Engineer"
-                  maxLength={150}
-                />
-              </FormField>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField label="Country">
-                <SearchableCountryDropdown
-                  id={`field-workHistory-${idx}-location`}
-                  value={row.locationCountry}
-                  onChange={(code) => updateEntry(idx, 'locationCountry', code)}
-                />
-              </FormField>
-              <FormField label="City" error={errors[`${idx}.locationCity`]}>
-                <input
-                  className={cls(errors[`${idx}.locationCity`])}
-                  value={row.locationCity}
-                  onChange={(e) => updateEntry(idx, 'locationCity', e.target.value)}
-                  placeholder="San Francisco"
-                  maxLength={100}
-                />
-              </FormField>
-            </div>
-
-            <div className="mb-4">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Work Arrangement
-              </p>
-              <div className="flex flex-wrap gap-x-6 gap-y-2">
-                {(['onsite', 'remote', 'hybrid'] as const).map((opt) => (
-                  <label key={opt} className="flex items-center gap-2 cursor-pointer">
+              <div ref={entriesContainerRef}>
+                {!entries.length && (
+                  <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+                    No experience added
+                  </p>
+                )}
+                {entries.map((row, idx) => (
+                  <ExpandableCard
+                    id={`entry-workHistory-${idx}`}
+                    key={row.rowId}
+                    summary={cardSummary(row, idx)}
+                    badge={
+                      row.isCurrent ? (
+                        <span className="shrink-0 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                          Current
+                        </span>
+                      ) : undefined
+                    }
+                    onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
+                    defaultExpanded={!row.company}
+                    invalid={Object.entries(errors).some(
+                      ([key, value]) => key.startsWith(`${idx}.`) && !!value,
+                    )}
+                  >
+                    <ProfileFields
+                      scope="workEntry"
+                      renderers={{
+                        company: (field) => (
+                          <FormField
+                            label={field.label}
+                            required={field.required}
+                            error={errors[`${idx}.company`]}
+                          >
+                            <input
+                              className={cls(errors[`${idx}.company`])}
+                              id={`field-workHistory-${idx}-company`}
+                              value={row.company}
+                              onChange={(e) => updateEntry(idx, 'company', e.target.value)}
+                              onBlur={() => handleEntryBlur(idx, 'company')}
+                              placeholder="Acme Inc."
+                              maxLength={150}
+                            />
+                          </FormField>
+                        ),
+                        title: (field) => (
+                          <FormField
+                            label={field.label}
+                            required={field.required}
+                            error={errors[`${idx}.title`]}
+                          >
+                            <input
+                              className={cls(errors[`${idx}.title`])}
+                              id={`field-workHistory-${idx}-title`}
+                              value={row.title}
+                              onChange={(e) => updateEntry(idx, 'title', e.target.value)}
+                              onBlur={() => handleEntryBlur(idx, 'title')}
+                              placeholder="Senior Software Engineer"
+                              maxLength={150}
+                            />
+                          </FormField>
+                        ),
+                        country: (field) => (
+                          <FormField label={field.label} required={field.required}>
+                            <SearchableCountryDropdown
+                              id={`field-workHistory-${idx}-location`}
+                              value={row.locationCountry}
+                              onChange={(code) => updateEntry(idx, 'locationCountry', code)}
+                            />
+                          </FormField>
+                        ),
+                        city: (field) => (
+                          <FormField
+                            label={field.label}
+                            required={field.required}
+                            error={errors[`${idx}.locationCity`]}
+                          >
+                            <input
+                              className={cls(errors[`${idx}.locationCity`])}
+                              value={row.locationCity}
+                              onChange={(e) => updateEntry(idx, 'locationCity', e.target.value)}
+                              placeholder="San Francisco"
+                              maxLength={100}
+                            />
+                          </FormField>
+                        ),
+                        arrangement: (field) => (
+                          <div className="mb-4">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              {field.label}
+                            </p>
+                            <div className="flex flex-wrap gap-x-6 gap-y-2">
+                              {(['onsite', 'remote', 'hybrid'] as const).map((opt) => (
+                                <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    id={
+                                      opt === 'onsite'
+                                        ? `field-workHistory-${idx}-arrangement`
+                                        : undefined
+                                    }
+                                    name={`arrangement-${idx}`}
+                                    value={opt}
+                                    checked={row.arrangement === opt}
+                                    // A native radio only fires `change` when its checked
+                                    // state actually flips — e.g. arrow-key navigation to a
+                                    // different option in the group — so that alone is
+                                    // enough to pick up a new selection. But re-clicking the
+                                    // already-selected radio never flips its checked state,
+                                    // so no `change` fires for that gesture; `click` still
+                                    // fires regardless, which is what lets deselect-by-
+                                    // reclick work.
+                                    onChange={(e) => {
+                                      if (e.target.checked) updateEntry(idx, 'arrangement', opt);
+                                    }}
+                                    onClick={() => {
+                                      if (row.arrangement === opt)
+                                        updateEntry(idx, 'arrangement', '');
+                                    }}
+                                    className="text-blue-600"
+                                  />
+                                  <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">
+                                    {opt}
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        ),
+                        startDate: (field) => (
+                          <FormField
+                            label={field.label}
+                            required={field.required}
+                            error={errors[`${idx}.startDate`]}
+                          >
+                            <MonthYearPicker
+                              id={`field-workHistory-${idx}-startDate`}
+                              onPartialChange={(partial) =>
+                                setPartialDates((previous) => ({
+                                  ...previous,
+                                  [`${row.rowId}.startDate`]: partial,
+                                }))
+                              }
+                              value={row.startDate}
+                              onChange={(v) => updateEntry(idx, 'startDate', v)}
+                              onYearChange={(y) => handleYearChange(idx, 'startDate', y)}
+                              onBlur={(m, y) => handleDateBlur(idx, 'startDate', m, y)}
+                              error={errors[`${idx}.startDate`]}
+                            />
+                          </FormField>
+                        ),
+                        endDate: (field) => (
+                          <FormField
+                            label={field.label}
+                            required={!row.isCurrent}
+                            error={errors[`${idx}.endDate`]}
+                          >
+                            <MonthYearPicker
+                              id={`field-workHistory-${idx}-endDate`}
+                              onPartialChange={(partial) =>
+                                setPartialDates((previous) => ({
+                                  ...previous,
+                                  [`${row.rowId}.endDate`]: partial,
+                                }))
+                              }
+                              value={row.endDate}
+                              onChange={(v) => updateEntry(idx, 'endDate', v)}
+                              onYearChange={(y) => handleYearChange(idx, 'endDate', y)}
+                              onBlur={(m, y) => handleDateBlur(idx, 'endDate', m, y)}
+                              error={errors[`${idx}.endDate`]}
+                              disabled={row.isCurrent}
+                            />
+                          </FormField>
+                        ),
+                        isCurrent: (field) => (
+                          <label className="flex items-center gap-2 mb-4 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={row.isCurrent}
+                              onChange={(e) => updateEntry(idx, 'isCurrent', e.target.checked)}
+                              className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                              {field.label}
+                            </span>
+                          </label>
+                        ),
+                        description: (field) => (
+                          <FormField
+                            label={field.label}
+                            required={field.required}
+                            error={errors[`${idx}.description`]}
+                            hint={`${row.description.length} / 3000`}
+                          >
+                            <textarea
+                              className={`${cls(errors[`${idx}.description`])} min-h-[100px] resize-y`}
+                              id={`field-workHistory-${idx}-description`}
+                              value={row.description}
+                              onChange={(e) => updateEntry(idx, 'description', e.target.value)}
+                              placeholder="Key responsibilities and achievements..."
+                              maxLength={3000}
+                            />
+                          </FormField>
+                        ),
+                      }}
+                    />
+                  </ExpandableCard>
+                ))}
+              </div>
+              {/* entriesContainerRef */}
+            </>
+          ),
+          totalExperience: (field) => (
+            <>
+              {/* Total experience — updates live as the user edits dates */}
+              {experience.totalMonths > 0 && (
+                <div className="flex items-center justify-between px-3 py-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 rounded-lg mb-6 text-sm">
+                  <span className="text-gray-600 dark:text-gray-300">{field.label}</span>
+                  <span className="font-semibold text-blue-700 dark:text-blue-300">
+                    {experience.label}
+                  </span>
+                </div>
+              )}
+            </>
+          ),
+          noticePeriod: (field) => (
+            <>
+              {/* ── Notice Period ────────────────────────────────────────────────────── */}
+              <div className="pt-4 mb-4" data-field-error={!!errors.noticePeriod}>
+                <p
+                  id="notice-period-label"
+                  className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                >
+                  {field.label}
+                  <span className="text-red-700 dark:text-red-400 ml-0.5">*</span>
+                </p>
+                <div
+                  role="radiogroup"
+                  aria-labelledby="notice-period-label"
+                  aria-required="true"
+                  aria-invalid={!!errors.noticePeriod}
+                  aria-describedby={errors.noticePeriod ? 'notice-period-error' : undefined}
+                  className="flex flex-wrap gap-4 mb-3"
+                >
+                  <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
-                      id={opt === 'onsite' ? `field-workHistory-${idx}-arrangement` : undefined}
-                      name={`arrangement-${idx}`}
-                      value={opt}
-                      checked={row.arrangement === opt}
-                      // A native radio only fires `change` when its checked
-                      // state actually flips — e.g. arrow-key navigation to a
-                      // different option in the group — so that alone is
-                      // enough to pick up a new selection. But re-clicking the
-                      // already-selected radio never flips its checked state,
-                      // so no `change` fires for that gesture; `click` still
-                      // fires regardless, which is what lets deselect-by-
-                      // reclick work.
-                      onChange={(e) => {
-                        if (e.target.checked) updateEntry(idx, 'arrangement', opt);
-                      }}
-                      onClick={() => {
-                        if (row.arrangement === opt) updateEntry(idx, 'arrangement', '');
+                      id="field-noticePeriod"
+                      name="notice"
+                      checked={noticeImmediate === true}
+                      onChange={() => {
+                        setNoticeImmediate(true);
+                        setErrors((e) => ({ ...e, noticePeriod: '' }));
                       }}
                       className="text-blue-600"
                     />
-                    <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">
-                      {opt}
+                    <span className="text-sm text-gray-700 dark:text-gray-300">Available Now</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="notice"
+                      checked={noticeImmediate === false}
+                      onChange={() => {
+                        setNoticeImmediate(false);
+                        setErrors((e) => ({ ...e, noticePeriod: '' }));
+                      }}
+                      className="text-blue-600"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      Available Later
                     </span>
                   </label>
-                ))}
+                </div>
+
+                {errors.noticePeriod && noticeImmediate === null && (
+                  <p
+                    id="notice-period-error"
+                    role="alert"
+                    className="text-xs text-red-700 dark:text-red-400 mb-2"
+                  >
+                    {errors.noticePeriod}
+                  </p>
+                )}
+                {noticeImmediate === false && (
+                  <div
+                    data-field-error={!!errors.noticeValue}
+                    className="flex flex-wrap items-center gap-2 mt-1"
+                  >
+                    <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">
+                      Available after
+                    </span>
+                    <div className="w-20">
+                      <input
+                        id="field-noticeValue"
+                        type="number"
+                        step={1}
+                        min={1}
+                        max={NOTICE_MAX[noticeUnit]}
+                        className={cls(errors.noticeValue)}
+                        value={noticeValue}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (raw === '' || Number(raw) <= 999) {
+                            setNoticeValue(raw);
+                            setErrors((prev) => ({
+                              ...prev,
+                              noticeValue: validateNoticePeriod(raw, noticeUnit),
+                            }));
+                          }
+                        }}
+                        placeholder="3"
+                      />
+                    </div>
+                    <div className="w-28">
+                      <select
+                        className={cls()}
+                        value={noticeUnit}
+                        onChange={(e) => {
+                          const newUnit = e.target.value as NoticePeriodUnit;
+                          setNoticeUnit(newUnit);
+                          setErrors((prev) => ({
+                            ...prev,
+                            noticeValue: noticeValue.trim()
+                              ? validateNoticePeriod(noticeValue, newUnit)
+                              : '',
+                          }));
+                        }}
+                      >
+                        <option value="day">days</option>
+                        <option value="week">weeks</option>
+                        <option value="month">months</option>
+                      </select>
+                    </div>
+                    {errors.noticeValue && (
+                      <span className="text-xs text-red-700 dark:text-red-400">
+                        {errors.noticeValue}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField label="Start Date" required error={errors[`${idx}.startDate`]}>
-                <MonthYearPicker
-                  id={`field-workHistory-${idx}-startDate`}
-                  onPartialChange={(partial) =>
-                    setPartialDates((previous) => ({
-                      ...previous,
-                      [`${row.rowId}.startDate`]: partial,
-                    }))
-                  }
-                  value={row.startDate}
-                  onChange={(v) => updateEntry(idx, 'startDate', v)}
-                  onYearChange={(y) => handleYearChange(idx, 'startDate', y)}
-                  onBlur={(m, y) => handleDateBlur(idx, 'startDate', m, y)}
-                  error={errors[`${idx}.startDate`]}
-                />
-              </FormField>
-              <FormField
-                label="End Date"
-                required={!row.isCurrent}
-                error={errors[`${idx}.endDate`]}
-              >
-                <MonthYearPicker
-                  id={`field-workHistory-${idx}-endDate`}
-                  onPartialChange={(partial) =>
-                    setPartialDates((previous) => ({
-                      ...previous,
-                      [`${row.rowId}.endDate`]: partial,
-                    }))
-                  }
-                  value={row.endDate}
-                  onChange={(v) => updateEntry(idx, 'endDate', v)}
-                  onYearChange={(y) => handleYearChange(idx, 'endDate', y)}
-                  onBlur={(m, y) => handleDateBlur(idx, 'endDate', m, y)}
-                  error={errors[`${idx}.endDate`]}
-                  disabled={row.isCurrent}
-                />
-              </FormField>
-            </div>
-
-            <label className="flex items-center gap-2 mb-4 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={row.isCurrent}
-                onChange={(e) => updateEntry(idx, 'isCurrent', e.target.checked)}
-                className="rounded border-gray-300 dark:border-gray-600 text-blue-600 dark:text-blue-400"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                I currently work here
-              </span>
-            </label>
-
-            <FormField
-              label="Description"
-              error={errors[`${idx}.description`]}
-              hint={`${row.description.length} / 3000`}
-            >
-              <textarea
-                className={`${cls(errors[`${idx}.description`])} min-h-[100px] resize-y`}
-                id={`field-workHistory-${idx}-description`}
-                value={row.description}
-                onChange={(e) => updateEntry(idx, 'description', e.target.value)}
-                placeholder="Key responsibilities and achievements..."
-                maxLength={3000}
-              />
-            </FormField>
-          </ExpandableCard>
-        ))}
-      </div>
-      {/* entriesContainerRef */}
-
-      {/* Total experience — updates live as the user edits dates */}
-      {experience.totalMonths > 0 && (
-        <div className="flex items-center justify-between px-3 py-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 rounded-lg mb-6 text-sm">
-          <span className="text-gray-600 dark:text-gray-300">Total Experience</span>
-          <span className="font-semibold text-blue-700 dark:text-blue-300">{experience.label}</span>
-        </div>
-      )}
-
-      {/* ── Notice Period ────────────────────────────────────────────────────── */}
-      <div className="pt-4 mb-4" data-field-error={!!errors.noticePeriod}>
-        <p id="notice-period-label" className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Notice Period<span className="text-red-700 dark:text-red-400 ml-0.5">*</span>
-        </p>
-        <div
-          role="radiogroup"
-          aria-labelledby="notice-period-label"
-          aria-required="true"
-          aria-invalid={!!errors.noticePeriod}
-          aria-describedby={errors.noticePeriod ? 'notice-period-error' : undefined}
-          className="flex flex-wrap gap-4 mb-3"
-        >
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              id="field-noticePeriod"
-              name="notice"
-              checked={noticeImmediate === true}
-              onChange={() => {
-                setNoticeImmediate(true);
-                setErrors((e) => ({ ...e, noticePeriod: '' }));
-              }}
-              className="text-blue-600"
-            />
-            <span className="text-sm text-gray-700 dark:text-gray-300">Available Now</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="notice"
-              checked={noticeImmediate === false}
-              onChange={() => {
-                setNoticeImmediate(false);
-                setErrors((e) => ({ ...e, noticePeriod: '' }));
-              }}
-              className="text-blue-600"
-            />
-            <span className="text-sm text-gray-700 dark:text-gray-300">Available Later</span>
-          </label>
-        </div>
-
-        {errors.noticePeriod && noticeImmediate === null && (
-          <p id="notice-period-error" role="alert" className="text-xs text-red-700 dark:text-red-400 mb-2">
-            {errors.noticePeriod}
-          </p>
-        )}
-        {noticeImmediate === false && (
-          <div
-            data-field-error={!!errors.noticeValue}
-            className="flex flex-wrap items-center gap-2 mt-1"
-          >
-            <span className="text-sm text-gray-600 dark:text-gray-400 shrink-0">
-              Available after
-            </span>
-            <div className="w-20">
-              <input
-                id="field-noticeValue"
-                type="number"
-                step={1}
-                min={1}
-                max={NOTICE_MAX[noticeUnit]}
-                className={cls(errors.noticeValue)}
-                value={noticeValue}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  if (raw === '' || Number(raw) <= 999) {
-                    setNoticeValue(raw);
-                    setErrors((prev) => ({
-                      ...prev,
-                      noticeValue: validateNoticePeriod(raw, noticeUnit),
-                    }));
-                  }
-                }}
-                placeholder="3"
-              />
-            </div>
-            <div className="w-28">
-              <select
-                className={cls()}
-                value={noticeUnit}
-                onChange={(e) => {
-                  const newUnit = e.target.value as NoticePeriodUnit;
-                  setNoticeUnit(newUnit);
-                  setErrors((prev) => ({
-                    ...prev,
-                    noticeValue: noticeValue.trim()
-                      ? validateNoticePeriod(noticeValue, newUnit)
-                      : '',
-                  }));
-                }}
-              >
-                <option value="day">days</option>
-                <option value="week">weeks</option>
-                <option value="month">months</option>
-              </select>
-            </div>
-            {errors.noticeValue && (
-              <span className="text-xs text-red-700 dark:text-red-400">{errors.noticeValue}</span>
-            )}
-          </div>
-        )}
-      </div>
-
+            </>
+          ),
+        }}
+      />
       <div className="pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
         <SaveButton onClick={handleSave} saving={saving} label="Save Work History" />
       </div>

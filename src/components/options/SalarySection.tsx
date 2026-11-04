@@ -1,3 +1,4 @@
+import { ProfileFields } from './shared/ProfileFields';
 import { findCountryByNameOrCode } from '@/src/data/countries';
 import { SectionHeader } from './shared/SectionHeader';
 import { useState, useRef } from 'react';
@@ -124,95 +125,125 @@ export function SalarySection({ profile, onSave }: Props) {
   ) => {
     const isCurrent = expectedIndex === undefined;
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4">
-        <FormField label="Amount" error={errors[`${prefix}.amount`]}>
-          <input
-            id={isCurrent ? 'field-currentAmount' : `field-expected-${expectedIndex}-amount`}
-            type="number"
-            min={0}
-            step="any"
-            className={fieldCls(errors[`${prefix}.amount`])}
-            value={row.amount}
-            onChange={(e) => change('amount', e.target.value)}
-            placeholder={isCurrent ? '80000' : '100000'}
-          />
-        </FormField>
-        <FormField label="Currency" error={errors[`${prefix}.currency`]}>
-          <SearchableCurrencySelect
-            id={isCurrent ? 'field-currentCurrency' : `field-expected-${expectedIndex}-currency`}
-            value={row.currency}
-            onChange={(value) => change('currency', value)}
-            error={errors[`${prefix}.currency`]}
-          />
-        </FormField>
-        <FormField label="Period">
-          <select
-            className={fieldCls()}
-            value={row.period}
-            onChange={(e) => change('period', e.target.value)}
-          >
-            <option value="monthly">Monthly</option>
-            <option value="annual">Annual</option>
-          </select>
-        </FormField>
-      </div>
+      <ProfileFields
+        scope={isCurrent ? 'currentSalary' : 'expectedSalary'}
+        renderers={{
+          amount: (field) => (
+            <FormField
+              label={field.label}
+              required={field.required}
+              error={errors[`${prefix}.amount`]}
+            >
+              <input
+                id={isCurrent ? 'field-currentAmount' : `field-expected-${expectedIndex}-amount`}
+                type="number"
+                min={0}
+                step="any"
+                className={fieldCls(errors[`${prefix}.amount`])}
+                value={row.amount}
+                onChange={(e) => change('amount', e.target.value)}
+                placeholder={isCurrent ? '80000' : '100000'}
+              />
+            </FormField>
+          ),
+          currency: (field) => (
+            <FormField
+              label={field.label}
+              required={field.required}
+              error={errors[`${prefix}.currency`]}
+            >
+              <SearchableCurrencySelect
+                id={
+                  isCurrent ? 'field-currentCurrency' : `field-expected-${expectedIndex}-currency`
+                }
+                value={row.currency}
+                onChange={(value) => change('currency', value)}
+                error={errors[`${prefix}.currency`]}
+              />
+            </FormField>
+          ),
+          period: (field) => (
+            <FormField label={field.label} required={field.required}>
+              <select
+                className={fieldCls()}
+                value={row.period}
+                onChange={(e) => change('period', e.target.value)}
+              >
+                <option value="monthly">Monthly</option>
+                <option value="annual">Annual</option>
+              </select>
+            </FormField>
+          ),
+        }}
+      />
     );
   };
   return (
     <div>
       <SectionHeader sectionId="salary" />
-      <section className="mb-6">
-        <EntryListHeader
-          title="Expected Salary"
-          id="add-expected"
-          onAdd={() => {
-            setExpected((rows) => [...rows, emptyRow()]);
-            setNewEntryTick((value) => value + 1);
-          }}
-          label="+ Add Entry"
-        />
-        <div ref={entriesContainerRef}>
-          {expected.map((row, index) => (
-            <div
-              key={index}
-              className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3"
-            >
-              <div className="flex justify-between mb-3">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Entry {index + 1}</span>
-                <RemoveButton
-                  onClick={() => setExpected((rows) => rows.filter((_, i) => i !== index))}
-                />
+      <ProfileFields
+        scope="salary"
+        renderers={{
+          expected: (field) => (
+            <section className="mb-6">
+              <EntryListHeader
+                title={field.label}
+                id="add-expected"
+                onAdd={() => {
+                  setExpected((rows) => [...rows, emptyRow()]);
+                  setNewEntryTick((value) => value + 1);
+                }}
+                label="+ Add Entry"
+              />
+              <div ref={entriesContainerRef}>
+                {expected.map((row, index) => (
+                  <div
+                    key={index}
+                    className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3"
+                  >
+                    <div className="flex justify-between mb-3">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        Entry {index + 1}
+                      </span>
+                      <RemoveButton
+                        onClick={() => setExpected((rows) => rows.filter((_, i) => i !== index))}
+                      />
+                    </div>
+                    {renderRow(
+                      row,
+                      `expected.${index}`,
+                      (key, value) => changeExpected(index, key, value),
+                      index,
+                    )}
+                  </div>
+                ))}
               </div>
-              {renderRow(
-                row,
-                `expected.${index}`,
-                (key, value) => changeExpected(index, key, value),
-                index,
+            </section>
+          ),
+          current: (field) => (
+            <section className="mb-6">
+              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
+                {field.label}
+              </h3>
+              {started(current) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrent(emptyRow());
+                    checkRow('current', emptyRow());
+                  }}
+                  className="mb-3 text-xs text-red-600 dark:text-red-400 hover:underline"
+                >
+                  Remove current salary
+                </button>
               )}
-            </div>
-          ))}
-        </div>
-      </section>
-      <section className="mb-6">
-        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
-          Current Salary
-        </h3>
-        {started(current) && (
-          <button
-            type="button"
-            onClick={() => {
-              setCurrent(emptyRow());
-              checkRow('current', emptyRow());
-            }}
-            className="mb-3 text-xs text-red-600 dark:text-red-400 hover:underline"
-          >
-            Remove current salary
-          </button>
-        )}
-        <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-          {renderRow(current, 'current', changeCurrent)}
-        </div>
-      </section>
+              <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                {renderRow(current, 'current', changeCurrent)}
+              </div>
+            </section>
+          ),
+        }}
+      />
       <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
         <SaveButton onClick={handleSave} saving={saving} label="Save Salary" />
       </div>

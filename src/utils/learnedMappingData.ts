@@ -1,27 +1,21 @@
+import { PROFILE_MAPPING_PATH_TEMPLATES } from '../profile/fieldCatalog';
 import type { LearnedMappingValue, LearnedMappings } from '../types/storage';
 
 export const safeMappingKey = (key: string): boolean =>
   !!key.trim() && key.length <= 1000 && !['__proto__', 'constructor', 'prototype'].includes(key);
 
+const learnedPathPattern = new RegExp(
+  `^(?:${PROFILE_MAPPING_PATH_TEMPLATES.map((template) =>
+    template
+      .split('.')
+      .map((part) => (part === '$' ? '(?:0|[1-9]\\d*)' : part))
+      .join('\\.'),
+  ).join('|')})$`,
+);
+
 /** Schema paths, not values: empty/deleted array entries remain valid mappings. */
 export function isLearnedPath(path: unknown): path is string {
-  if (typeof path !== 'string' || path.length > 200) return false;
-  return [
-    /^personal\.(firstName|lastName|nickname|email|gender|ethnicity|veteranStatus|disabilityStatus)$/,
-    /^personal\.phone\.(number|callingCode|countryCode|full)$/,
-    /^personal\.dateOfBirth(?:\.(day|month|year))?$/,
-    /^address\.(street|city|state|postalCode|country|countryName)$/,
-    /^professional\.(summary|noticePeriod\.(immediate|value|unit|formatted|availableDate))$/,
-    /^salary\.(current|expected\.(?:0|[1-9]\d*))\.(amount|currency|country|period|formatted)$/,
-    /^salary\.expected\.formatted$/,
-    /^workAuthorization(?:\.(?:0|[1-9]\d*)(?:\.(country|status|visaType|expiryDate))?)?$/,
-    /^workHistory\.(?:0|[1-9]\d*)\.(company|title|description|arrangement|isCurrent|(?:startDate|endDate)(?:\.formatted)?|location(?:\.(city|countryCode|countryName))?)$/,
-    /^education\.(?:0|[1-9]\d*)\.(institution|degree|fieldOfStudy|grade|description|isCurrent|(?:startDate|endDate)(?:\.formatted)?)$/,
-    /^languages\.(?:formatted|(?:0|[1-9]\d*)\.(language|proficiency))$/,
-    /^links\.(linkedin|portfolio|github|twitter|dribbble|behance|custom\.(?:0|[1-9]\d*)\.url)$/,
-    /^documents\.(cv\.(url|file)|coverLetter\.url)$/,
-    /^derived\.(fullName|currentTitle|currentCompany|age|totalExperience\.(years|months|totalMonths|label))$/,
-  ].some((pattern) => pattern.test(path));
+  return typeof path === 'string' && path.length <= 200 && learnedPathPattern.test(path);
 }
 
 function mappingShape(value: unknown): value is LearnedMappingValue {
