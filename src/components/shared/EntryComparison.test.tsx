@@ -13,13 +13,25 @@ it('opens on the first changed entry instead of making users page through identi
         {
           label: 'Unchanged employer',
           fields: [
-            { label: 'Job title', current: 'Developer', suggested: 'Developer', changed: false },
+            {
+              id: 'title',
+              label: 'Job title',
+              current: 'Developer',
+              suggested: 'Developer',
+              changed: false,
+            },
           ],
         },
         {
           label: 'Changed employer',
           fields: [
-            { label: 'Job title', current: 'Engineer', suggested: 'Lead Engineer', changed: true },
+            {
+              id: 'title',
+              label: 'Job title',
+              current: 'Engineer',
+              suggested: 'Lead Engineer',
+              changed: true,
+            },
           ],
         },
       ]}
@@ -38,14 +50,27 @@ it('shows one entry at a time with changed values highlighted and unchanged deta
         {
           label: 'First employer',
           fields: [
-            { label: 'Job title', current: 'Developer', suggested: 'Lead', changed: true },
-            { label: 'Start date', current: '2020-01', suggested: '2020-01', changed: false },
+            {
+              id: 'title',
+              label: 'Job title',
+              current: 'Developer',
+              suggested: 'Lead',
+              changed: true,
+            },
+            {
+              id: 'startDate',
+              label: 'Start Date',
+              current: '2020-01',
+              suggested: '2020-01',
+              changed: false,
+            },
           ],
         },
         {
           label: 'Second employer',
           fields: [
             {
+              id: 'title',
               label: 'Job title',
               current: 'Engineer',
               suggested: 'Senior Engineer',
@@ -58,9 +83,9 @@ it('shows one entry at a time with changed values highlighted and unchanged deta
   );
   expect(screen.getByText('Lead').tagName).toBe('MARK');
   expect(screen.queryByText('Senior Engineer')).toBeNull();
-  expect(screen.queryByText('Start date')).toBeNull();
+  expect(screen.queryByText('Start Date')).toBeNull();
   fireEvent.click(screen.getByLabelText('Show unchanged details'));
-  expect(screen.getByText('Start date')).toBeTruthy();
+  expect(screen.getByText('Start Date')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Next entry' }));
   expect(screen.getByText('Senior Engineer')).toBeTruthy();
   expect(screen.queryByText('Lead')).toBeNull();
@@ -77,7 +102,15 @@ it('keeps full descriptions available without expanding them by default', () => 
       entries={[
         {
           label: 'Employer',
-          fields: [{ label: 'Description', current: 'Old text', suggested: value, changed: true }],
+          fields: [
+            {
+              id: 'description',
+              label: 'Description',
+              current: 'Old text',
+              suggested: value,
+              changed: true,
+            },
+          ],
         },
       ]}
     />,
@@ -117,9 +150,9 @@ it('hides unchanged controls for a new entry and restores them for a matching sa
   expect(screen.queryByText('Current')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: 'Next entry' }));
   expect(screen.getByText('Lead Developer')).toBeTruthy();
-  expect(screen.queryByText('Start date')).toBeNull();
+  expect(screen.queryByText('Start Date')).toBeNull();
   fireEvent.click(screen.getByLabelText('Show unchanged details'));
-  expect(screen.getByText('Start date')).toBeTruthy();
+  expect(screen.getByText('Start Date')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Previous entry' }));
   expect(screen.getByText('New entry')).toBeTruthy();
   expect(screen.queryByLabelText('Show unchanged details')).toBeNull();

@@ -86,7 +86,7 @@ const categoryFocusCases: [string, string, (profile: Profile) => Profile][] = [
   ],
   ['Links', 'field-linkedin', (p) => ({ ...p, links: { linkedin: '', custom: [] } })],
   ['Documents', 'field-cv', (p) => ({ ...p, documents: { cv: {} } })],
-  ['Salary', 'field-currentAmount', (p) => ({ ...p, salary: { ...p.salary, expected: [] } })],
+  ['Salary', 'field-expected-0-amount', (p) => ({ ...p, salary: { ...p.salary, expected: [] } })],
 ];
 
 it.each(categoryFocusCases)(

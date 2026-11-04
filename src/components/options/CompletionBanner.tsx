@@ -163,12 +163,12 @@ export function CompletionBanner({
                         <ChevronRight aria-hidden="true" className="h-3 w-3" />
                       </button>
                       <ul className="ml-4 mr-2 border-l border-gray-200 pl-2 dark:border-gray-600">
-                        {group.fields.map((field) => (
+                        {group.fields.map((field, index) => (
                           <li key={field}>
                             <button
                               type="button"
                               onClick={() => {
-                                onFocusField(group.sectionId, field);
+                                onFocusField(group.sectionId, group.fieldIds?.[index] ?? field);
                                 setOpen(false);
                               }}
                               className="w-full rounded-md px-2 py-1.5 text-left text-xs text-gray-600 hover:bg-blue-50 hover:text-blue-700 dark:text-gray-300 dark:hover:bg-blue-900/30 dark:hover:text-blue-300"

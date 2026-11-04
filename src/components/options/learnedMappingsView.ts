@@ -1,9 +1,10 @@
+import { catalogProfileTarget, catalogSectionStartTarget } from '@/src/profile/fieldMetadata';
 import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings, LearnedMappingValue } from '@/src/types/storage';
 import { LEARNED_MAPPING_THRESHOLD } from '@/src/autofill/constants';
 import { buildPickerTree } from '@/src/autofill/profileFieldTree';
 import { profileFieldName } from '@/src/fill-log/presentation';
-import { getSectionStartTarget, type CompletionTarget } from '@/src/utils/profileCompletion';
+import type { CompletionTarget } from '@/src/utils/profileCompletion';
 import type { ProfileSectionId } from './shared/profileSections';
 
 export type MappingStatus = 'Trusted' | 'Learning' | 'Inactive';
@@ -103,74 +104,12 @@ export function mappingProfileTarget(
   profile: Partial<Profile>,
   path: string,
 ): { section: ProfileSectionId; target: CompletionTarget } | null {
-  const parts = path.split('.');
-  const section = (
-    parts[0] === 'professional' || /^derived\.(current|totalExperience)/.test(path)
+  const target = catalogProfileTarget(profile, path);
+  if (target) return target;
+  const section =
+    path.startsWith('derived.current') || path.startsWith('derived.totalExperience')
       ? 'workHistory'
-      : parts[0] === 'derived'
-        ? 'personal'
-        : parts[0]
-  ) as ProfileSectionId;
-  const fallback = getSectionStartTarget(section);
-  if (!fallback) return null;
-  if (parts[0] === 'personal') {
-    const key = parts[1] === 'phone' ? 'phone' : parts[1];
-    return { section, target: { id: `field-${key}` } };
-  }
-  if (section === 'address')
-    return {
-      section,
-      target: { id: `field-${parts[1] === 'countryName' ? 'country' : parts[1]}` },
-    };
-  if (section === 'links' && parts[1] !== 'custom')
-    return { section, target: { id: `field-${parts[1]}` } };
-  if (section === 'links' && parts[1] === 'custom')
-    return {
-      section,
-      target: { id: `field-customLink-${parts[2]}-url`, fallbackId: 'add-customLinks' },
-    };
-  if (
-    ['education', 'workHistory', 'languages', 'workAuthorization'].includes(section) &&
-    /^\d+$/.test(parts[1] ?? '')
-  ) {
-    const index = Number(parts[1]);
-    const rows =
-      profile[section as 'education' | 'workHistory' | 'languages' | 'workAuthorization'] ?? [];
-    const key = parts[2] === 'isCurrent' ? 'endDate' : (parts[2] ?? 'country');
-    return {
-      section,
-      target: rows[index]
-        ? {
-            id: `field-${section}-${index}-${key}`,
-            ...(section === 'education' || section === 'workHistory'
-              ? { cardId: `entry-${section}-${index}` }
-              : {}),
-            fallbackId: `add-${section}`,
-          }
-        : { id: `add-${section}` },
-    };
-  }
-  if (section === 'salary') {
-    if (parts[1] === 'current')
-      return {
-        section,
-        target: { id: parts[2] === 'currency' ? 'field-currentCurrency' : 'field-currentAmount' },
-      };
-    const index = /^\d+$/.test(parts[2] ?? '') ? Number(parts[2]) : 0;
-    return {
-      section,
-      target: {
-        id: `field-expected-${index}-${parts[3] === 'currency' ? 'currency' : 'amount'}`,
-        fallbackId: 'add-expected',
-      },
-    };
-  }
-  if (section === 'workHistory' && path.startsWith('professional.noticePeriod'))
-    return { section, target: { id: 'field-noticePeriod' } };
-  if (section === 'documents')
-    return {
-      section,
-      target: { id: parts[1] === 'coverLetter' ? 'field-coverLetter' : 'field-cv' },
-    };
-  return { section, target: fallback };
+      : 'personal';
+  const fallback = catalogSectionStartTarget(section);
+  return path.startsWith('derived.') && fallback ? { section, target: fallback } : null;
 }

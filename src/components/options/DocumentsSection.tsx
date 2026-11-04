@@ -59,12 +59,10 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 function DocUploader({
-  id,
   definition,
   state,
   onChange,
 }: {
-  id: string;
   definition: CatalogField;
   state: DocState;
   onChange: (updates: Partial<DocState>) => void;
@@ -136,11 +134,11 @@ function DocUploader({
         error={state.urlError}
       >
         <input
-          id={`field-${id}`}
+          id={definition.inputId}
           type="url"
           className={fieldCls(state.urlError)}
           value={state.url}
-          maxLength={2048}
+          maxLength={definition.maxLength}
           onChange={(event) => onChange({ url: event.target.value, urlError: '' })}
           onBlur={() => onChange({ urlError: urlError(state.url) })}
           placeholder="https://drive.google.com/file/..."
@@ -277,7 +275,6 @@ export function DocumentsSection({ profile, onSave }: Props) {
         renderers={{
           cv: (field) => (
             <DocUploader
-              id="cv"
               definition={field}
               state={cv}
               onChange={(updates) => setCv((value) => ({ ...value, ...updates }))}
@@ -293,7 +290,6 @@ export function DocumentsSection({ profile, onSave }: Props) {
                 {coverLetter.file || coverLetter.url ? ' · details added' : ''}
               </summary>
               <DocUploader
-                id="coverLetter"
                 definition={field}
                 state={coverLetter}
                 onChange={(updates) => setCoverLetter((value) => ({ ...value, ...updates }))}

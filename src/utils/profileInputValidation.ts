@@ -1,15 +1,19 @@
+import {
+  PROFILE_FIELD_POLICIES,
+  profileFieldPolicy,
+  profileTextLimit,
+  URL_MAX_LENGTH,
+} from '../profile/fieldPolicies';
+import type { ProfileStoragePath } from '../profile/fieldCatalog';
 import { withScheme } from './url';
 import type { NoticePeriodUnit } from '../types/profile';
-import { ETHNICITIES } from '../data/ethnicities';
 
 export function isValidPersonalOption(key: string, value: string): boolean {
-  if (!value) return true;
-  if (key === 'gender') return ['male', 'female', 'other', 'prefer_not_to_say'].includes(value);
-  if (key === 'ethnicity')
-    return value === 'prefer_not_to_say' || ETHNICITIES.some((ethnicity) => ethnicity === value);
-  if (key === 'veteranStatus' || key === 'disabilityStatus')
-    return ['yes', 'no', 'prefer_not_to_say'].includes(value);
-  return true;
+  const path = `personal.${key}`;
+  const policy = Object.hasOwn(PROFILE_FIELD_POLICIES, path)
+    ? profileFieldPolicy(path as ProfileStoragePath)
+    : undefined;
+  return !value || !policy?.options || policy.options.includes(value);
 }
 
 export const NOTICE_MAX: Record<NoticePeriodUnit, number> = { day: 365, week: 52, month: 24 };
@@ -26,7 +30,10 @@ export function noticeDurationError(raw: string, unit: NoticePeriodUnit): string
 }
 
 export function isValidProfilePhone(value: string): boolean {
-  return /^\d{4,15}$/.test(value);
+  const policy = profileFieldPolicy('personal.phone.number');
+  return (
+    /^\d+$/.test(value) && value.length >= policy.minLength! && value.length <= policy.maxLength!
+  );
 }
 
 export function isValidAmount(value: string | number): boolean {
@@ -34,7 +41,7 @@ export function isValidAmount(value: string | number): boolean {
 }
 
 export function isValidProfileUrl(value: string): boolean {
-  if (value.length > 2048) return false;
+  if (value.length > URL_MAX_LENGTH) return false;
   try {
     const url = new URL(withScheme(value.trim()));
     return (
@@ -100,7 +107,9 @@ export function profileDateRangeErrors(
 }
 
 export function isValidProfileEmail(value: string): boolean {
-  return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  return (
+    value.length <= profileTextLimit('personal.email') && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+  );
 }
 
 export function isLinkedInUrl(value: string): boolean {

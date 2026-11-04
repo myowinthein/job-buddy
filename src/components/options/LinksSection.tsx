@@ -1,3 +1,4 @@
+import { profileTextLimit } from '@/src/profile/fieldPolicies';
 import { ProfileFields } from './shared/ProfileFields';
 import type { CatalogField } from '@/src/profile/fieldCatalog';
 import { SectionHeader } from './shared/SectionHeader';
@@ -102,7 +103,9 @@ export function LinksSection({ profile, onSave }: Props) {
       const err = customUrlError(c.url, c.label);
       if (err) e[`custom.${idx}.url`] = err;
       if (c.url.trim() && !c.label.trim()) e[`custom.${idx}.label`] = 'Label is required';
-      else if (c.label.length > 100) e[`custom.${idx}.label`] = 'Use 100 characters or fewer';
+      else if (c.label.length > profileTextLimit('links.custom.$.label'))
+        e[`custom.${idx}.label`] =
+          `Use ${profileTextLimit('links.custom.$.label')} characters or fewer`;
     });
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -146,14 +149,14 @@ export function LinksSection({ profile, onSave }: Props) {
   const renderLink = (key: keyof typeof form, field: CatalogField) => (
     <FormField label={field.label} required={field.required} error={errors[key]}>
       <input
-        id={`field-${key}`}
+        id={field.inputId}
         type="url"
         className={cls(errors[key])}
         value={form[key]}
         onChange={(e) => set(key, e.target.value)}
         onBlur={() => handleBlur(key)}
         placeholder={placeholders[key]}
-        maxLength={2048}
+        maxLength={field.maxLength}
       />
     </FormField>
   );
@@ -210,6 +213,7 @@ export function LinksSection({ profile, onSave }: Props) {
                         />
                       </div>
                       <ProfileFields
+                        index={idx}
                         scope="customLink"
                         renderers={{
                           label: (field) => (
@@ -219,12 +223,13 @@ export function LinksSection({ profile, onSave }: Props) {
                               error={errors[`custom.${idx}.label`]}
                             >
                               <input
+                                id={field.inputId}
                                 className={cls(errors[`custom.${idx}.label`])}
                                 value={c.label}
                                 onChange={(e) => updateCustom(idx, 'label', e.target.value)}
                                 placeholder="My Blog"
                                 list="custom-link-labels"
-                                maxLength={100}
+                                maxLength={field.maxLength}
                               />
                             </FormField>
                           ),
@@ -236,13 +241,13 @@ export function LinksSection({ profile, onSave }: Props) {
                             >
                               <input
                                 type="url"
-                                id={`field-customLink-${idx}-url`}
+                                id={field.inputId}
                                 className={cls(errors[`custom.${idx}.url`])}
                                 value={c.url}
                                 onChange={(e) => updateCustom(idx, 'url', e.target.value)}
                                 onBlur={(e) => handleCustomUrlBlur(idx, e.target.value)}
                                 placeholder="https://blog.johnsmith.dev"
-                                maxLength={2048}
+                                maxLength={field.maxLength}
                               />
                             </FormField>
                           ),

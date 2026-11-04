@@ -22,7 +22,7 @@ it('uses numeric rule match scores and qualitative AI confidence without inventi
   expect(confidenceText({ ...field, outcome: 'manual', source: 'manual' })).toBeNull();
 });
 it('searches readable profile names and titles, without exposing internal IDs', () => {
-  expect(profileFieldName('education.1.fieldOfStudy')).toBe('Education → Entry 2 → Field Of Study');
+  expect(profileFieldName('education.1.fieldOfStudy')).toBe('Education → Entry 2 → Field of Study');
   expect(matchesSearch(field, 'linkedin links')).toBe(true);
   expect(matchesSearch(field, 'Website')).toBe(true);
   expect(matchesSearch(field, 'field_1')).toBe(false);

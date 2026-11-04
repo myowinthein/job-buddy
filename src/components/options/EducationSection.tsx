@@ -1,3 +1,4 @@
+import { profileTextLimit } from '@/src/profile/fieldPolicies';
 import { ProfileFields } from './shared/ProfileFields';
 import { SectionHeader } from './shared/SectionHeader';
 import { profileDateRangeErrors } from '@/src/utils/profileInputValidation';
@@ -77,7 +78,8 @@ export function EducationSection({ profile, onSave }: Props) {
     if (key === 'institution' && !value.trim()) return 'Institution is required';
     if (key === 'degree' && !value.trim()) return 'Degree is required';
     if (key === 'fieldOfStudy' && !value.trim()) return 'Field of study is required';
-    if (value.length > 150) return 'Use 150 characters or fewer';
+    const limit = profileTextLimit(`education.$.${key}`);
+    if (value.length > limit) return `Use ${limit} characters or fewer`;
     return '';
   };
 
@@ -132,9 +134,11 @@ export function EducationSection({ profile, onSave }: Props) {
       for (const key of ['startDate', 'endDate'])
         if (partialDates[`${row.rowId}.${key}`])
           e[`${idx}.${key}`] = 'Complete the year, or leave the optional date blank';
-      if ((row.grade?.length ?? 0) > 100) e[`${idx}.grade`] = 'Use 100 characters or fewer';
-      if ((row.description?.length ?? 0) > 3000)
-        e[`${idx}.description`] = 'Use 3000 characters or fewer';
+      if ((row.grade?.length ?? 0) > profileTextLimit('education.$.grade'))
+        e[`${idx}.grade`] = `Use ${profileTextLimit('education.$.grade')} characters or fewer`;
+      if ((row.description?.length ?? 0) > profileTextLimit('education.$.description'))
+        e[`${idx}.description`] =
+          `Use ${profileTextLimit('education.$.description')} characters or fewer`;
     });
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -200,6 +204,7 @@ export function EducationSection({ profile, onSave }: Props) {
             )}
           >
             <ProfileFields
+              index={idx}
               scope="education"
               renderers={{
                 institution: (field) => (
@@ -210,12 +215,12 @@ export function EducationSection({ profile, onSave }: Props) {
                   >
                     <input
                       className={cls(errors[`${idx}.institution`])}
-                      id={`field-education-${idx}-institution`}
+                      id={field.inputId}
                       value={row.institution}
                       onChange={(e) => update(idx, 'institution', e.target.value)}
                       onBlur={() => handleEntryBlur(idx, 'institution')}
                       placeholder="University of California, Berkeley"
-                      maxLength={150}
+                      maxLength={field.maxLength}
                     />
                   </FormField>
                 ),
@@ -227,12 +232,12 @@ export function EducationSection({ profile, onSave }: Props) {
                   >
                     <input
                       className={cls(errors[`${idx}.degree`])}
-                      id={`field-education-${idx}-degree`}
+                      id={field.inputId}
                       value={row.degree}
                       onChange={(e) => update(idx, 'degree', e.target.value)}
                       onBlur={() => handleEntryBlur(idx, 'degree')}
                       placeholder="Bachelor of Science"
-                      maxLength={150}
+                      maxLength={field.maxLength}
                     />
                   </FormField>
                 ),
@@ -244,12 +249,12 @@ export function EducationSection({ profile, onSave }: Props) {
                   >
                     <input
                       className={cls(errors[`${idx}.fieldOfStudy`])}
-                      id={`field-education-${idx}-fieldOfStudy`}
+                      id={field.inputId}
                       value={row.fieldOfStudy}
                       onChange={(e) => update(idx, 'fieldOfStudy', e.target.value)}
                       onBlur={() => handleEntryBlur(idx, 'fieldOfStudy')}
                       placeholder="Computer Science"
-                      maxLength={150}
+                      maxLength={field.maxLength}
                     />
                   </FormField>
                 ),
@@ -260,7 +265,7 @@ export function EducationSection({ profile, onSave }: Props) {
                     error={errors[`${idx}.startDate`]}
                   >
                     <MonthYearPicker
-                      id={`field-education-${idx}-startDate`}
+                      id={field.inputId}
                       onPartialChange={(partial) =>
                         setPartialDates((previous) => ({
                           ...previous,
@@ -283,7 +288,7 @@ export function EducationSection({ profile, onSave }: Props) {
                     error={errors[`${idx}.endDate`]}
                   >
                     <MonthYearPicker
-                      id={`field-education-${idx}-endDate`}
+                      id={field.inputId}
                       onPartialChange={(partial) =>
                         setPartialDates((previous) => ({
                           ...previous,
@@ -302,6 +307,7 @@ export function EducationSection({ profile, onSave }: Props) {
                 isCurrent: (field) => (
                   <label className="flex items-center gap-2 mb-4 cursor-pointer">
                     <input
+                      id={field.inputId}
                       type="checkbox"
                       checked={row.isCurrent}
                       onChange={(e) => update(idx, 'isCurrent', e.target.checked)}
@@ -317,10 +323,11 @@ export function EducationSection({ profile, onSave }: Props) {
                     error={errors[`${idx}.grade`]}
                   >
                     <input
+                      id={field.inputId}
                       className={cls()}
                       value={row.grade ?? ''}
                       onChange={(e) => update(idx, 'grade', e.target.value)}
-                      maxLength={100}
+                      maxLength={field.maxLength}
                       placeholder="3.8 / 4.0"
                     />
                   </FormField>
@@ -332,10 +339,11 @@ export function EducationSection({ profile, onSave }: Props) {
                     error={errors[`${idx}.description`]}
                   >
                     <textarea
+                      id={field.inputId}
                       className={`${cls()} min-h-24`}
                       value={row.description ?? ''}
                       onChange={(e) => update(idx, 'description', e.target.value)}
-                      maxLength={3000}
+                      maxLength={field.maxLength}
                       placeholder="Honors, thesis, relevant coursework…"
                     />
                   </FormField>

@@ -1,3 +1,4 @@
+import { profileEntryFields, readProfilePath } from '@/src/profile/fieldMetadata';
 import type { Profile } from '@/src/types/profile';
 import { findLanguage, languageName, LANGUAGE_PROFICIENCY_LABELS } from '@/src/data/languages';
 import type { LanguageProficiency } from '@/src/types/profile';
@@ -13,7 +14,14 @@ export interface EntryComparison {
   currentIndex?: number;
   suggestedIndex?: number;
   accepted?: boolean;
-  fields: { label: string; current: string; suggested: string; changed: boolean }[];
+  fields: {
+    id: string;
+    heading?: boolean;
+    label: string;
+    current: string;
+    suggested: string;
+    changed: boolean;
+  }[];
 }
 const key = (value: unknown) =>
   String(value ?? '')
@@ -131,9 +139,17 @@ const text = (value: unknown): string =>
         ? Object.values(value).filter(Boolean).join(', ')
         : String(value);
 
+function entryFieldValue(entry: Entry, path: string): unknown {
+  // Older profiles store the entire work location in the City input.
+  if (path === 'location.city' && typeof entry.location === 'string') return entry.location;
+  return readProfilePath(entry, path);
+}
+
 function fieldText(section: string, name: string, value: unknown): string {
   if (section === 'languages')
     return LANGUAGE_PROFICIENCY_LABELS[value as LanguageProficiency] ?? text(value);
+  if (name === 'location.countryCode')
+    return findCountryByNameOrCode(String(value ?? ''))?.name ?? text(value);
   if (section === 'workAuthorization') {
     if (name === 'country')
       return findCountryByNameOrCode(String(value ?? ''))?.name ?? text(value);
@@ -188,34 +204,7 @@ export function compareEntries(
           ],
     ),
   );
-  const fields =
-    section === 'languages'
-      ? { proficiency: 'Proficiency' }
-      : section === 'workAuthorization'
-        ? { country: 'Country', status: 'Status', visaType: 'Visa type', expiryDate: 'Visa expiry' }
-        : section === 'links.custom'
-          ? { label: 'Label', url: 'URL' }
-          : section === 'workHistory'
-            ? {
-                company: 'Company',
-                title: 'Job title',
-                startDate: 'Start date',
-                endDate: 'End date',
-                isCurrent: 'Current role',
-                location: 'Location',
-                arrangement: 'Work arrangement',
-                description: 'Description',
-              }
-            : {
-                institution: 'Institution',
-                degree: 'Degree',
-                fieldOfStudy: 'Field of study',
-                startDate: 'Start date',
-                endDate: 'End date',
-                isCurrent: 'Currently studying',
-                grade: 'Grade',
-                description: 'Description',
-              };
+  const fields = profileEntryFields(section);
   return pairs.map(({ incoming, saved, currentIndex, suggestedIndex }) => ({
     label:
       section === 'languages'
@@ -235,13 +224,21 @@ export function compareEntries(
         : equalJsonValues(incoming, saved)
           ? 'unchanged'
           : 'changed',
-    fields: Object.entries(fields)
-      .filter(([name]) => section === 'languages' || incoming[name] != null || saved[name] != null)
-      .map(([name, label]) => ({
-        label,
-        current: fieldText(section, name, saved[name]),
-        suggested: fieldText(section, name, incoming[name]),
-        changed: !equalJsonValues(saved[name] ?? '', incoming[name] ?? ''),
+    fields: fields
+      .filter(
+        (field) =>
+          section === 'languages' ||
+          entryFieldValue(incoming, field.id) != null ||
+          entryFieldValue(saved, field.id) != null,
+      )
+      .map((field) => ({
+        ...field,
+        current: fieldText(section, field.id, entryFieldValue(saved, field.id)),
+        suggested: fieldText(section, field.id, entryFieldValue(incoming, field.id)),
+        changed: !equalJsonValues(
+          entryFieldValue(saved, field.id) ?? '',
+          entryFieldValue(incoming, field.id) ?? '',
+        ),
       })),
   }));
 }

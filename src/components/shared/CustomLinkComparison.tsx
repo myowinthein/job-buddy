@@ -5,8 +5,8 @@ import { entryIsSelectable, entryIsSelected } from '@/src/resume-ai/entrySelecti
 
 function LinkValue({ entry, incoming }: { entry: EntryComparison; incoming: boolean }) {
   const source = incoming ? 'suggested' : 'current';
-  const label = entry.fields.find((field) => field.label === 'Label')?.[source] ?? entry.label;
-  const url = entry.fields.find((field) => field.label === 'URL')?.[source];
+  const label = entry.fields.find((field) => field.id === 'label')?.[source] ?? entry.label;
+  const url = entry.fields.find((field) => field.id === 'url')?.[source];
   return (
     <span className="block min-w-0">
       <span className="block break-words text-sm font-medium text-gray-800 dark:text-gray-200">

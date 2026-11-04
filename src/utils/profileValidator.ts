@@ -1,3 +1,9 @@
+import {
+  profileTextLimit,
+  profileFieldPolicy,
+  WORK_ARRANGEMENTS,
+  URL_MAX_LENGTH,
+} from '../profile/fieldPolicies';
 import { profileData } from './profileData';
 import type { Profile } from '../types/profile';
 import { findCountryByNameOrCode } from '../data/countries';
@@ -37,8 +43,8 @@ export interface ValidationResult {
 const RE_YYYYMM = /^\d{4}-(0[1-9]|1[0-2])$/;
 const RE_YYYY_OR_YYYYMM = /^\d{4}(-(0[1-9]|1[0-2]))?$/;
 
-const VALID_GENDERS = new Set(['male', 'female', 'other', 'prefer_not_to_say']);
-const VALID_YES_NO_PNTS = new Set(['yes', 'no', 'prefer_not_to_say']);
+const VALID_GENDERS = new Set(profileFieldPolicy('personal.gender').options);
+const VALID_YES_NO_PNTS = new Set(profileFieldPolicy('personal.veteranStatus').options);
 // PersonalSection.tsx's <select> offers every ETHNICITIES value plus an
 // explicit "Prefer not to say" option not itself in that list.
 const VALID_ETHNICITIES = new Set<string>([...ETHNICITIES, 'prefer_not_to_say']);
@@ -61,7 +67,7 @@ function validateDocumentEntry(
   if (value.url !== undefined) {
     if (typeof value.url === 'string' && (!value.url.trim() || isValidProfileUrl(value.url)))
       entry.url = value.url;
-    else err(`${fieldPrefix}.url`, 'expected a valid URL, max 2048 chars');
+    else err(`${fieldPrefix}.url`, `expected a valid URL, max ${URL_MAX_LENGTH} chars`);
   }
   if (value.file !== undefined && typeof value.file === 'object' && value.file !== null) {
     const f = value.file as Record<string, unknown>;
@@ -92,16 +98,40 @@ function validatePersonal(
   const sp: Record<string, unknown> = {};
 
   if (p.firstName !== undefined) {
-    if (typeof p.firstName === 'string' && p.firstName.length <= 100) sp.firstName = p.firstName;
-    else err('personal.firstName', 'expected string, max 100 chars');
+    if (
+      typeof p.firstName === 'string' &&
+      p.firstName.length <= profileTextLimit('personal.firstName')
+    )
+      sp.firstName = p.firstName;
+    else
+      err(
+        'personal.firstName',
+        `expected string, max ${profileTextLimit('personal.firstName')} chars`,
+      );
   }
   if (p.lastName !== undefined) {
-    if (typeof p.lastName === 'string' && p.lastName.length <= 100) sp.lastName = p.lastName;
-    else err('personal.lastName', 'expected string, max 100 chars');
+    if (
+      typeof p.lastName === 'string' &&
+      p.lastName.length <= profileTextLimit('personal.lastName')
+    )
+      sp.lastName = p.lastName;
+    else
+      err(
+        'personal.lastName',
+        `expected string, max ${profileTextLimit('personal.lastName')} chars`,
+      );
   }
   if (p.nickname !== undefined) {
-    if (typeof p.nickname === 'string' && p.nickname.length <= 100) sp.nickname = p.nickname;
-    else err('personal.nickname', 'expected string, max 100 chars');
+    if (
+      typeof p.nickname === 'string' &&
+      p.nickname.length <= profileTextLimit('personal.nickname')
+    )
+      sp.nickname = p.nickname;
+    else
+      err(
+        'personal.nickname',
+        `expected string, max ${profileTextLimit('personal.nickname')} chars`,
+      );
   }
   if (p.email !== undefined) {
     if (typeof p.email === 'string' && (!p.email || isValidProfileEmail(p.email)))
@@ -167,24 +197,37 @@ function validateAddress(
   const sa: Record<string, unknown> = {};
 
   if (a.city !== undefined) {
-    if (typeof a.city === 'string' && a.city.length <= 100) sa.city = a.city;
-    else err('address.city', 'expected string, max 100 chars');
+    if (typeof a.city === 'string' && a.city.length <= profileTextLimit('address.city'))
+      sa.city = a.city;
+    else err('address.city', `expected string, max ${profileTextLimit('address.city')} chars`);
   }
   if (a.country !== undefined) {
-    if (typeof a.country === 'string' && a.country.length <= 100) sa.country = a.country;
-    else err('address.country', 'expected string, max 100 chars');
+    if (typeof a.country === 'string' && a.country.length <= profileTextLimit('address.country'))
+      sa.country = a.country;
+    else
+      err('address.country', `expected string, max ${profileTextLimit('address.country')} chars`);
   }
   if (a.street !== undefined) {
-    if (typeof a.street === 'string' && a.street.length <= 255) sa.street = a.street;
-    else err('address.street', 'expected string, max 255 chars');
+    if (typeof a.street === 'string' && a.street.length <= profileTextLimit('address.street'))
+      sa.street = a.street;
+    else err('address.street', `expected string, max ${profileTextLimit('address.street')} chars`);
   }
   if (a.state !== undefined) {
-    if (typeof a.state === 'string' && a.state.length <= 100) sa.state = a.state;
-    else err('address.state', 'expected string, max 100 chars');
+    if (typeof a.state === 'string' && a.state.length <= profileTextLimit('address.state'))
+      sa.state = a.state;
+    else err('address.state', `expected string, max ${profileTextLimit('address.state')} chars`);
   }
   if (a.postalCode !== undefined) {
-    if (typeof a.postalCode === 'string' && a.postalCode.length <= 20) sa.postalCode = a.postalCode;
-    else err('address.postalCode', 'expected string, max 20 chars');
+    if (
+      typeof a.postalCode === 'string' &&
+      a.postalCode.length <= profileTextLimit('address.postalCode')
+    )
+      sa.postalCode = a.postalCode;
+    else
+      err(
+        'address.postalCode',
+        `expected string, max ${profileTextLimit('address.postalCode')} chars`,
+      );
   }
 
   return Object.keys(sa).length > 0 ? (sa as Profile['address']) : undefined;
@@ -202,8 +245,16 @@ function validateProfessional(
     return undefined;
   const pr = data.professional as Record<string, unknown>;
   const sp: Profile['professional'] = {};
-  if (typeof pr.summary === 'string' && pr.summary.length <= 2000) sp.summary = pr.summary;
-  else if (pr.summary !== undefined) err('professional.summary', 'expected string, max 2000 chars');
+  if (
+    typeof pr.summary === 'string' &&
+    pr.summary.length <= profileTextLimit('professional.summary')
+  )
+    sp.summary = pr.summary;
+  else if (pr.summary !== undefined)
+    err(
+      'professional.summary',
+      `expected string, max ${profileTextLimit('professional.summary')} chars`,
+    );
   if (pr.noticePeriod && typeof pr.noticePeriod === 'object') {
     const notice = pr.noticePeriod as Record<string, unknown>;
     if (notice.immediate === true) sp.noticePeriod = { immediate: true };
@@ -223,7 +274,11 @@ function validateProfessional(
   return sp;
 }
 
-function validateSalary(data: Record<string, unknown>, err: ErrFn, accepted?: AcceptedEntry): Profile['salary'] | undefined {
+function validateSalary(
+  data: Record<string, unknown>,
+  err: ErrFn,
+  accepted?: AcceptedEntry,
+): Profile['salary'] | undefined {
   if (!('salary' in data) || typeof data.salary !== 'object' || data.salary === null)
     return undefined;
   const sal = data.salary as Record<string, unknown>;
@@ -309,8 +364,14 @@ function validateWorkAuthorization(
           );
           return;
         }
-        if (typeof e.visaType === 'string' && e.visaType.length > 100) {
-          err(`workAuthorization[${i}].visaType`, 'max 100 chars');
+        if (
+          typeof e.visaType === 'string' &&
+          e.visaType.length > profileTextLimit('workAuthorization.$.visaType')
+        ) {
+          err(
+            `workAuthorization[${i}].visaType`,
+            `max ${profileTextLimit('workAuthorization.$.visaType')} chars`,
+          );
           return;
         }
         if (
@@ -360,15 +421,30 @@ function validateWorkHistory(
           if (!e.endDate) delete dateErrors.endDate;
         }
         if (Object.keys(dateErrors).length) {
-          for (const [key, reason] of Object.entries(dateErrors)) err(`workHistory[${i}].${key}`, reason);
+          for (const [key, reason] of Object.entries(dateErrors))
+            err(`workHistory[${i}].${key}`, reason);
+          return;
+        }
+        const location =
+          typeof e.location === 'object' && e.location !== null
+            ? (e.location as Record<string, unknown>)
+            : undefined;
+        if (
+          String(e.company).length > profileTextLimit('workHistory.$.company') ||
+          String(e.title).length > profileTextLimit('workHistory.$.title') ||
+          (typeof location?.city === 'string' &&
+            location.city.length > profileTextLimit('workHistory.$.location.city')) ||
+          (typeof e.description === 'string' &&
+            e.description.length > profileTextLimit('workHistory.$.description'))
+        ) {
+          err(`workHistory[${i}]`, 'text exceeds editor limits');
           return;
         }
         if (
-          String(e.company).length > 150 ||
-          String(e.title).length > 150 ||
-          (typeof e.description === 'string' && e.description.length > 3000)
+          e.arrangement &&
+          !WORK_ARRANGEMENTS.some((arrangement) => arrangement === e.arrangement)
         ) {
-          err(`workHistory[${i}]`, 'text exceeds editor limits');
+          err(`workHistory[${i}].arrangement`, 'expected onsite | remote | hybrid');
           return;
         }
         accepted?.(i, valid.length);
@@ -418,11 +494,12 @@ function validateEducation(
           (allowMissingDates && !e.startDate))
       ) {
         if (
-          String(e.institution).length > 150 ||
-          String(e.degree).length > 150 ||
-          String(e.fieldOfStudy).length > 150 ||
-          (typeof e.grade === 'string' && e.grade.length > 100) ||
-          (typeof e.description === 'string' && e.description.length > 3000)
+          String(e.institution).length > profileTextLimit('education.$.institution') ||
+          String(e.degree).length > profileTextLimit('education.$.degree') ||
+          String(e.fieldOfStudy).length > profileTextLimit('education.$.fieldOfStudy') ||
+          (typeof e.grade === 'string' && e.grade.length > profileTextLimit('education.$.grade')) ||
+          (typeof e.description === 'string' &&
+            e.description.length > profileTextLimit('education.$.description'))
         ) {
           err(`education[${i}]`, 'text exceeds editor limits');
           return;
@@ -436,7 +513,8 @@ function validateEducation(
           if (!e.endDate) delete dateErrors.endDate;
         }
         if (Object.keys(dateErrors).length) {
-          for (const [key, reason] of Object.entries(dateErrors)) err(`education[${i}].${key}`, reason);
+          for (const [key, reason] of Object.entries(dateErrors))
+            err(`education[${i}].${key}`, reason);
           return;
         }
         const endDate =
@@ -501,7 +579,11 @@ function validateLanguages(
   return valid.length > 0 ? valid : undefined;
 }
 
-function validateLinks(data: Record<string, unknown>, err: ErrFn, accepted?: AcceptedEntry): Profile['links'] | undefined {
+function validateLinks(
+  data: Record<string, unknown>,
+  err: ErrFn,
+  accepted?: AcceptedEntry,
+): Profile['links'] | undefined {
   if (!('links' in data) || typeof data.links !== 'object' || data.links === null) return undefined;
   const lnk = data.links as Record<string, unknown>;
   const sl: Partial<Profile['links']> = {};
@@ -554,7 +636,7 @@ function validateLinks(data: Record<string, unknown>, err: ErrFn, accepted?: Acc
         if (
           typeof e.label === 'string' &&
           !!e.label.trim() &&
-          e.label.length <= 100 &&
+          e.label.length <= profileTextLimit('links.custom.$.label') &&
           typeof e.url === 'string' &&
           isValidProfileUrl(e.url)
         ) {
@@ -614,12 +696,17 @@ export function validateImportedProfile(
   const data = raw as Record<string, unknown>;
   const s: Partial<Profile> = {};
   const kept = (family: string): AcceptedEntry => {
-    const indices = options.entryIndices ? (options.entryIndices[family] = {} as Record<number, number>) : undefined;
-    return (original, index) => { if (indices) indices[original] = index; };
+    const indices = options.entryIndices
+      ? (options.entryIndices[family] = {} as Record<number, number>)
+      : undefined;
+    return (original, index) => {
+      if (indices) indices[original] = index;
+    };
   };
   if (data.id !== undefined) {
-    if (typeof data.id === 'string' && data.id.trim() && data.id.length <= 200) s.id = data.id;
-    else err('id', 'expected a non-empty profile ID, max 200 chars');
+    if (typeof data.id === 'string' && data.id.trim() && data.id.length <= profileTextLimit('id'))
+      s.id = data.id;
+    else err('id', `expected a non-empty profile ID, max ${profileTextLimit('id')} chars`);
   }
 
   const personal = validatePersonal(data, err);
@@ -637,7 +724,12 @@ export function validateImportedProfile(
   const workAuthorization = validateWorkAuthorization(data, err, kept('workAuthorization'));
   if (workAuthorization) s.workAuthorization = workAuthorization;
 
-  const workHistory = validateWorkHistory(data, err, options.allowMissingDates, kept('workHistory'));
+  const workHistory = validateWorkHistory(
+    data,
+    err,
+    options.allowMissingDates,
+    kept('workHistory'),
+  );
   if (workHistory) s.workHistory = workHistory;
 
   const education = validateEducation(data, err, options.allowMissingDates, kept('education'));

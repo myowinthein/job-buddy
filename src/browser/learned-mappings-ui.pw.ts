@@ -3,6 +3,7 @@ import type { Page } from '@playwright/test';
 import type { LearnedMappings } from '../types/storage';
 import type { Profile } from '../types/profile';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
+import { settingsReviewProfile } from '../components/options/settingsReviewFixture';
 
 const domain = '127.0.0.1';
 const first = {
@@ -51,6 +52,52 @@ async function show(options: Page) {
   await options.getByRole('button', { name: /^127\.0\.0\.1/ }).click();
 }
 const row = (page: Page, title: string) => page.getByRole('group', { name: title, exact: true });
+
+test('renders catalog-backed salary periods and opens missing city and education details', async ({
+  context,
+  extension,
+}) => {
+  const destinations = [
+    ['Work city', 'workHistory.1.location.city', 'field-workHistory-1-locationCity'],
+    ['Education grade', 'education.1.grade', 'field-education-1-grade'],
+    ['Education description', 'education.1.description', 'field-education-1-description'],
+    ['Custom URL', 'links.custom.1.url', 'field-customLink-1-url'],
+  ];
+  const profile = settingsReviewProfile();
+  profile.workHistory[1].location!.city = '';
+  profile.education[1].grade = '';
+  profile.education[1].description = '';
+  profile.links.custom![1].url = '';
+  await extension.worker.evaluate(
+    async ({ profile, destinations }) => {
+      await chrome.storage.local.set({
+        profile,
+        learnedMappings: {
+          '127.0.0.1': Object.fromEntries(
+            destinations.map(([label, path], index) => [
+              `question${index}`,
+              { path, count: 2, label, question: label, scope: 'entry' },
+            ]),
+          ),
+        },
+      });
+    },
+    { profile, destinations },
+  );
+  const options = await context.newPage();
+  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.getByRole('button', { name: 'Salary', exact: true }).click();
+  await expect(options.locator('#field-currentPeriod')).toHaveValue('annual');
+  await expect(options.locator('#field-expected-1-period')).toHaveValue('monthly');
+  for (const [label, , id] of destinations) {
+    await options.getByRole('button', { name: 'Learned Mappings', exact: true }).click();
+    const site = options.getByRole('button', { name: /^127\.0\.0\.1/ });
+    if ((await site.getAttribute('aria-expanded')) !== 'true') await site.click();
+    await row(options, label).getByRole('button', { name: 'Open profile', exact: true }).click();
+    await expect(options.locator(`#${id}`)).toBeFocused();
+  }
+});
+
 async function choose(page: Page, query: string) {
   await page.getByRole('button', { name: /^Profile field:|^Choose a profile field/ }).click();
   await page.getByRole('combobox', { name: 'Search profile fields' }).fill(query);

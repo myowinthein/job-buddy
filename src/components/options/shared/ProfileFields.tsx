@@ -17,9 +17,11 @@ export function ProfileFields<Scope extends ProfileFieldScope>({
   renderers,
   disclosureProps,
   values,
+  index,
 }: {
   scope: Scope;
   renderers: FieldRenderers<Scope>;
+  index?: number;
   values?: Record<string, unknown>;
   disclosureProps?: Record<string, ComponentPropsWithRef<'details'>>;
 }) {
@@ -28,7 +30,14 @@ export function ProfileFields<Scope extends ProfileFieldScope>({
     nodes.map((node) => {
       if (node.kind === 'field') {
         if (node.when && values?.[node.when.key] !== node.when.value) return null;
-        return <Fragment key={node.key}>{controls[node.key](node)}</Fragment>;
+        return (
+          <Fragment key={node.key}>
+            {controls[node.key]({
+              ...node,
+              inputId: node.inputId?.replaceAll('$', String(index ?? 0)),
+            })}
+          </Fragment>
+        );
       }
       if (node.disclosure)
         return (

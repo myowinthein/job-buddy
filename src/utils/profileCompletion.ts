@@ -1,3 +1,17 @@
+import { profileTextLimit, WORK_ARRANGEMENTS } from '../profile/fieldPolicies';
+import {
+  CORE_COMPLETION_IDS,
+  completionItem,
+  completionFieldId,
+  completionSectionLabel,
+} from '../profile/completionItems';
+import { PROFILE_SECTION_DEFINITIONS } from '../profile/fieldCatalog';
+import {
+  catalogProfileTarget,
+  catalogSectionStartTarget,
+  profileReviewMetadata,
+  type ProfileInputTarget,
+} from '../profile/fieldMetadata';
 import {
   isValidProfileEmail,
   isValidProfilePhone,
@@ -44,16 +58,26 @@ function validCountry(value: string | undefined): boolean {
 }
 function workErrors(row: WorkHistoryEntry): Record<string, string> {
   return {
-    ...(!validText(row.company, 150) ? { company: 'required' } : {}),
-    ...(!validText(row.title, 150) ? { title: 'required' } : {}),
+    ...(!validText(row.company, profileTextLimit('workHistory.$.company'))
+      ? { company: 'required' }
+      : {}),
+    ...(!validText(row.title, profileTextLimit('workHistory.$.title'))
+      ? { title: 'required' }
+      : {}),
     ...profileDateRangeErrors(row),
   };
 }
 function educationErrors(row: EducationEntry): Record<string, string> {
   return {
-    ...(!validText(row.institution, 150) ? { institution: 'required' } : {}),
-    ...(!validText(row.degree, 150) ? { degree: 'required' } : {}),
-    ...(!validText(row.fieldOfStudy, 150) ? { fieldOfStudy: 'required' } : {}),
+    ...(!validText(row.institution, profileTextLimit('education.$.institution'))
+      ? { institution: 'required' }
+      : {}),
+    ...(!validText(row.degree, profileTextLimit('education.$.degree'))
+      ? { degree: 'required' }
+      : {}),
+    ...(!validText(row.fieldOfStudy, profileTextLimit('education.$.fieldOfStudy'))
+      ? { fieldOfStudy: 'required' }
+      : {}),
     ...profileDateRangeErrors(row, true),
   };
 }
@@ -61,12 +85,17 @@ function optionalWorkFieldValid(
   row: WorkHistoryEntry,
   field: 'location' | 'arrangement' | 'description',
 ): boolean {
-  if (field === 'description') return validText(row.description, 3000);
-  if (field === 'arrangement')
-    return ['onsite', 'remote', 'hybrid'].includes(row.arrangement ?? '');
+  if (field === 'description')
+    return validText(row.description, profileTextLimit('workHistory.$.description'));
+  if (field === 'arrangement') return WORK_ARRANGEMENTS.some((value) => value === row.arrangement);
   const location = row.location;
-  if (typeof location === 'string') return validText(location, 100);
-  return !!location && (validText(location.city, 100) || validCountry(location.countryCode));
+  if (typeof location === 'string')
+    return validText(location, profileTextLimit('workHistory.$.location.city'));
+  return (
+    !!location &&
+    (validText(location.city, profileTextLimit('workHistory.$.location.city')) ||
+      validCountry(location.countryCode))
+  );
 }
 function validProficiency(value: string): boolean {
   return (
@@ -101,34 +130,8 @@ export interface CompletionGroup {
   sectionId: string;
   sectionLabel: string;
   fields: string[];
+  fieldIds?: string[];
 }
-
-// Maps the human-readable field label used in CompletionGroup.fields to the
-// DOM id of the corresponding input, so the banner can scroll+focus it.
-export const FIELD_FOCUS_IDS: Record<string, string> = {
-  // Mandatory
-  'First Name': 'field-firstName',
-  'Last Name': 'field-lastName',
-  Email: 'field-email',
-  Phone: 'field-phone',
-  City: 'field-city',
-  Country: 'field-country',
-  'Current Salary Amount': 'field-currentAmount',
-  'Current Salary Currency': 'field-currentCountry',
-  'LinkedIn URL': 'field-linkedin',
-  // Optional
-  'Preferred name': 'field-nickname',
-  'Date of Birth': 'field-dateOfBirth',
-  Gender: 'field-gender',
-  Ethnicity: 'field-ethnicity',
-  'Veteran Status': 'field-veteranStatus',
-  'Disability Status': 'field-disabilityStatus',
-  'Street Address': 'field-street',
-  'State / Province': 'field-state',
-  'Postal Code': 'field-postalCode',
-  'Career Summary': 'field-summary',
-  'Portfolio URL': 'field-portfolio',
-};
 
 export interface CompletionResult {
   percentage: number;
@@ -139,48 +142,64 @@ export interface CompletionResult {
   optionalGroups: CompletionGroup[];
 }
 
-const TOTAL_CHECKS = 10;
+const TOTAL_CHECKS = CORE_COMPLETION_IDS.length;
 
 function makeChecker(target: CompletionGroup[]) {
-  return (condition: boolean, sectionId: string, sectionLabel: string, field: string) => {
-    if (!condition) {
-      let g = target.find((x) => x.sectionId === sectionId);
-      if (!g) {
-        g = { sectionId, sectionLabel, fields: [] };
-        target.push(g);
-      }
-      g.fields.push(field);
+  return (condition: boolean, id: string) => {
+    if (condition) return;
+    const item = completionItem(id);
+    let group = target.find((entry) => entry.sectionId === item.section);
+    if (!group) {
+      group = {
+        sectionId: item.section,
+        sectionLabel: completionSectionLabel(item.section),
+        fields: [],
+        fieldIds: [],
+      };
+      target.push(group);
     }
+    group.fields.push(item.label);
+    group.fieldIds!.push(id);
   };
+}
+function sortGroups(groups: CompletionGroup[]): CompletionGroup[] {
+  return groups
+    .sort(
+      (left, right) =>
+        PROFILE_SECTION_DEFINITIONS.findIndex((item) => item.id === left.sectionId) -
+        PROFILE_SECTION_DEFINITIONS.findIndex((item) => item.id === right.sectionId),
+    )
+    .map((group) => {
+      const items = group
+        .fieldIds!.map((id, index) => ({
+          id,
+          label: group.fields[index],
+          order: profileReviewMetadata(id.replaceAll('$', '0'))?.order ?? 0,
+        }))
+        .sort((left, right) => left.order - right.order);
+      return {
+        ...group,
+        fields: items.map((item) => item.label),
+        fieldIds: items.map((item) => item.id),
+      };
+    });
 }
 
 export function calculateCompletion(profile: Partial<Profile>): CompletionResult {
   const groups: CompletionGroup[] = [];
   const check = makeChecker(groups);
 
-  // Personal (4)
+  // Personal (3)
   check(
-    validText(profile.personal?.firstName, 100),
-    'personal',
-    'Personal',
-    'First Name',
+    validText(profile.personal?.firstName, profileTextLimit('personal.firstName')),
+    'personal.firstName',
   );
-  check(
-    isValidProfileEmail(profile.personal?.email ?? ''),
-    'personal',
-    'Personal',
-    'Email',
-  );
-  check(
-    isValidProfilePhone(resolvePhoneNumber(profile.personal?.phone)),
-    'personal',
-    'Personal',
-    'Phone',
-  );
+  check(isValidProfileEmail(profile.personal?.email ?? ''), 'personal.email');
+  check(isValidProfilePhone(resolvePhoneNumber(profile.personal?.phone)), 'personal.phone');
 
   // Address (2)
-  check(validText(profile.address?.city, 100), 'address', 'Address', 'City');
-  check(validCountry(profile.address?.country), 'address', 'Address', 'Country');
+  check(validText(profile.address?.city, profileTextLimit('address.city')), 'address.city');
+  check(validCountry(profile.address?.country), 'address.country');
 
   // Work Authorization (1)
   const waEntries = profile.workAuthorization ?? [];
@@ -193,25 +212,16 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
         (e) => validCountry(e.country) && Object.hasOwn(WORK_AUTH_STATUS_LABELS, e.status),
       ),
     'workAuthorization',
-    'Work Authorization',
-    'At least one valid entry',
   );
 
   // Availability (1); employment history is optional.
-  check(
-    isNoticePeriodValid(profile.professional?.noticePeriod),
-    'workHistory',
-    'Work History',
-    'Notice Period',
-  );
+  check(isNoticePeriodValid(profile.professional?.noticePeriod), 'professional.noticePeriod');
 
   // Education (1)
   const eduEntries = profile.education ?? [];
   check(
     eduEntries.length >= 1 && eduEntries.every((e) => Object.keys(educationErrors(e)).length === 0),
     'education',
-    'Education',
-    'At least one complete entry',
   );
 
   // Languages (1)
@@ -224,31 +234,34 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
       ).size === profile.languages!.length &&
       profile.languages!.every((e) => !!e.language?.trim() && validProficiency(e.proficiency)),
     'languages',
-    'Languages',
-    'At least one language',
   );
 
   // Documents (1)
   check(
     !!(profile.documents?.cv?.url?.trim() || profile.documents?.cv?.file?.base64) &&
       (!profile.documents?.cv?.url?.trim() || isValidProfileUrl(profile.documents.cv.url)),
-    'documents',
-    'Documents',
-    'CV / Résumé',
+    'documents.cv',
   );
 
-  const totalMissing = groups.reduce((sum, g) => sum + g.fields.length, 0);
+  const sortedGroups = sortGroups(groups);
+  const totalMissing = sortedGroups.reduce((sum, g) => sum + g.fields.length, 0);
   const percentage = Math.round(((TOTAL_CHECKS - totalMissing) / TOTAL_CHECKS) * 100);
-  const missingFields = groups.flatMap((g) => g.fields);
+  const missingFields = sortedGroups.flatMap((g) => g.fields);
   const isCoreComplete = percentage === 100;
 
   // Optional fields — count unfilled; also build groups for the dropdown
   const optGroups: CompletionGroup[] = [];
   const optCheck = makeChecker(optGroups);
 
-  optCheck(validText(profile.address?.street, 255), 'address', 'Address', 'Street Address');
-  optCheck(validText(profile.address?.state, 100), 'address', 'Address', 'State / Province');
-  optCheck(validText(profile.address?.postalCode, 20), 'address', 'Address', 'Postal Code');
+  optCheck(
+    validText(profile.address?.street, profileTextLimit('address.street')),
+    'address.street',
+  );
+  optCheck(validText(profile.address?.state, profileTextLimit('address.state')), 'address.state');
+  optCheck(
+    validText(profile.address?.postalCode, profileTextLimit('address.postalCode')),
+    'address.postalCode',
+  );
   optCheck(
     (profile.salary?.expected?.length ?? 0) >= 1 &&
       profile.salary!.expected.every(
@@ -257,15 +270,11 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
           isValidAmount(e.amount) &&
           CURRENCIES.some((currency) => currency.code === e.currency),
       ),
-    'salary',
-    'Salary',
-    'Expected Salary',
+    'salary.expected',
   );
   optCheck(
-    validText(profile.professional?.summary, 2000),
-    'workHistory',
-    'Work History',
-    'Career Summary',
+    validText(profile.professional?.summary, profileTextLimit('professional.summary')),
+    'professional.summary',
   );
 
   // Work History entry-level optional fields: report once per missing field
@@ -278,36 +287,30 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
   if (whFilled.length > 0) {
     optCheck(
       whFilled.every((e) => optionalWorkFieldValid(e, 'location')),
-      'workHistory',
-      'Work History',
-      'Location',
+      'workHistory.$.location',
     );
     optCheck(
       whFilled.every((e) => optionalWorkFieldValid(e, 'arrangement')),
-      'workHistory',
-      'Work History',
-      'Work Arrangement',
+      'workHistory.$.arrangement',
     );
     optCheck(
       whFilled.every((e) => optionalWorkFieldValid(e, 'description')),
-      'workHistory',
-      'Work History',
-      'Description',
+      'workHistory.$.description',
     );
   }
 
-  optCheck(hasProfileLink(profile), 'links', 'Links', 'Profile links');
-  optCheck(validSalary(profile.salary?.current), 'salary', 'Salary', 'Current Salary');
+  optCheck(hasProfileLink(profile), 'links');
+  optCheck(validSalary(profile.salary?.current), 'salary.current');
 
   const optionalFieldsRemaining = optGroups.reduce((sum, g) => sum + g.fields.length, 0);
 
   return {
     percentage,
     missingFields,
-    missingGroups: groups,
+    missingGroups: sortedGroups,
     isCoreComplete,
     optionalFieldsRemaining,
-    optionalGroups: optGroups,
+    optionalGroups: sortGroups(optGroups),
   };
 }
 
@@ -328,36 +331,11 @@ export function getSectionCompletion(profile: Partial<Profile>): Record<string, 
   };
 }
 
-export interface CompletionTarget {
-  id: string;
-  cardId?: string;
-  fallbackId?: string;
-  revealId?: string;
-}
+export type CompletionTarget = ProfileInputTarget;
 
-const SECTION_START_TARGETS: Record<string, CompletionTarget> = {
-  personal: { id: 'field-firstName' },
-  address: { id: 'field-country' },
-  workAuthorization: {
-    id: 'field-workAuthorization-0-country',
-    fallbackId: 'add-workAuthorization',
-  },
-  workHistory: { id: 'field-summary' },
-  education: {
-    id: 'field-education-0-institution',
-    cardId: 'entry-education-0',
-    fallbackId: 'add-education',
-  },
-  languages: { id: 'field-languages-0-language', fallbackId: 'add-languages' },
-  links: { id: 'field-linkedin' },
-  documents: { id: 'field-cv' },
-  salary: { id: 'field-currentAmount' },
-};
-
-/** Category links start at the first field, even when it already has a value. */
+/** Category links follow the same first-field order as the editor. */
 export function getSectionStartTarget(section: string): CompletionTarget | undefined {
-  const target = SECTION_START_TARGETS[section];
-  return target ? { ...target } : undefined;
+  return catalogSectionStartTarget(section);
 }
 
 /** Resolve aggregate checklist items to the first row/input that needs attention. */
@@ -366,7 +344,9 @@ export function getCompletionTarget(
   section: string,
   field: string,
 ): CompletionTarget | undefined {
-  if (FIELD_FOCUS_IDS[field]) return { id: FIELD_FOCUS_IDS[field] };
+  const id = completionFieldId(section, field);
+  const direct = id.includes('$') ? null : catalogProfileTarget(profile, id);
+  if (direct) return direct.target;
   if (section === 'workAuthorization') {
     const rows = profile.workAuthorization ?? [];
     const seen = new Set<string>();
@@ -411,20 +391,13 @@ export function getCompletionTarget(
     );
     return { id: `field-languages-${idx}-${key}`, fallbackId: 'add-languages' };
   }
-  if (field === 'Notice Period')
-    return {
-      id:
-        profile.professional?.noticePeriod?.immediate === false
-          ? 'field-noticeValue'
-          : 'field-noticePeriod',
-    };
-  if (field === 'CV / Résumé') return { id: 'field-cv' };
-  if (field === 'Profile links') return { id: 'field-linkedin' };
-  if (field === 'Current Salary')
+  if (id === 'documents.cv') return { id: 'field-cv' };
+  if (id === 'links') return { id: 'field-linkedin' };
+  if (id === 'salary.current')
     return {
       id: profile.salary?.current?.amount == null ? 'field-currentAmount' : 'field-currentCurrency',
     };
-  if (field === 'Expected Salary') {
+  if (id === 'salary.expected') {
     const rows = profile.salary?.expected ?? [];
     const idx = Math.max(
       0,
@@ -441,12 +414,14 @@ export function getCompletionTarget(
     let key = section === 'workHistory' ? 'company' : 'institution';
     if (
       section === 'workHistory' &&
-      ['Location', 'Work Arrangement', 'Description'].includes(field)
+      ['workHistory.$.location', 'workHistory.$.arrangement', 'workHistory.$.description'].includes(
+        id,
+      )
     ) {
       const property =
-        field === 'Location'
+        id === 'workHistory.$.location'
           ? 'location'
-          : field === 'Work Arrangement'
+          : id === 'workHistory.$.arrangement'
             ? 'arrangement'
             : 'description';
       idx = Math.max(

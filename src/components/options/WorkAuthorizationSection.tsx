@@ -1,3 +1,4 @@
+import { profileTextLimit } from '@/src/profile/fieldPolicies';
 import { ProfileFields } from './shared/ProfileFields';
 import { SectionHeader } from './shared/SectionHeader';
 import { isValidCalendarDate } from '@/src/utils/profileInputValidation';
@@ -74,7 +75,9 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
       if (seen.has(row.country.toUpperCase()))
         e[`${idx}.country`] = 'This country is already listed';
       seen.add(row.country.toUpperCase());
-      if ((row.visaType?.length ?? 0) > 100) e[`${idx}.visaType`] = 'Use 100 characters or fewer';
+      if ((row.visaType?.length ?? 0) > profileTextLimit('workAuthorization.$.visaType'))
+        e[`${idx}.visaType`] =
+          `Use ${profileTextLimit('workAuthorization.$.visaType')} characters or fewer`;
       if (row.expiryDate && !isValidCalendarDate(row.expiryDate))
         e[`${idx}.expiryDate`] = 'Enter a valid expiry date';
       if (!row.country) e[`${idx}.country`] = 'Country is required';
@@ -144,6 +147,7 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
             </div>
 
             <ProfileFields
+              index={idx}
               scope="workAuthorization"
               values={row}
               renderers={{
@@ -154,7 +158,7 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
                     error={errors[`${idx}.country`]}
                   >
                     <SearchableCountryDropdown
-                      id={`field-workAuthorization-${idx}-country`}
+                      id={field.inputId}
                       value={row.country}
                       onChange={(code) => update(idx, 'country', code)}
                       error={errors[`${idx}.country`]}
@@ -168,7 +172,7 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
                     error={errors[`${idx}.status`]}
                   >
                     <select
-                      id={`field-workAuthorization-${idx}-status`}
+                      id={field.inputId}
                       className={cls(errors[`${idx}.status`])}
                       value={row.status}
                       onChange={(e) => update(idx, 'status', e.target.value)}
@@ -189,9 +193,10 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
                     error={errors[`${idx}.visaType`]}
                   >
                     <input
+                      id={field.inputId}
                       className={cls(errors[`${idx}.visaType`])}
                       value={row.visaType ?? ''}
-                      maxLength={100}
+                      maxLength={field.maxLength}
                       onChange={(e) => update(idx, 'visaType', e.target.value)}
                       placeholder="Employment Pass"
                     />
@@ -204,6 +209,7 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
                     error={errors[`${idx}.expiryDate`]}
                   >
                     <input
+                      id={field.inputId}
                       type="date"
                       className={cls(errors[`${idx}.expiryDate`])}
                       value={row.expiryDate ?? ''}

@@ -1,3 +1,4 @@
+import { SALARY_PERIOD_OPTIONS } from '@/src/profile/fieldPolicies';
 import { ProfileFields } from './shared/ProfileFields';
 import { findCountryByNameOrCode } from '@/src/data/countries';
 import { SectionHeader } from './shared/SectionHeader';
@@ -126,6 +127,7 @@ export function SalarySection({ profile, onSave }: Props) {
     const isCurrent = expectedIndex === undefined;
     return (
       <ProfileFields
+        index={expectedIndex}
         scope={isCurrent ? 'currentSalary' : 'expectedSalary'}
         renderers={{
           amount: (field) => (
@@ -135,7 +137,7 @@ export function SalarySection({ profile, onSave }: Props) {
               error={errors[`${prefix}.amount`]}
             >
               <input
-                id={isCurrent ? 'field-currentAmount' : `field-expected-${expectedIndex}-amount`}
+                id={field.inputId}
                 type="number"
                 min={0}
                 step="any"
@@ -153,9 +155,7 @@ export function SalarySection({ profile, onSave }: Props) {
               error={errors[`${prefix}.currency`]}
             >
               <SearchableCurrencySelect
-                id={
-                  isCurrent ? 'field-currentCurrency' : `field-expected-${expectedIndex}-currency`
-                }
+                id={field.inputId}
                 value={row.currency}
                 onChange={(value) => change('currency', value)}
                 error={errors[`${prefix}.currency`]}
@@ -165,12 +165,16 @@ export function SalarySection({ profile, onSave }: Props) {
           period: (field) => (
             <FormField label={field.label} required={field.required}>
               <select
+                id={field.inputId}
                 className={fieldCls()}
                 value={row.period}
                 onChange={(e) => change('period', e.target.value)}
               >
-                <option value="monthly">Monthly</option>
-                <option value="annual">Annual</option>
+                {SALARY_PERIOD_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </FormField>
           ),

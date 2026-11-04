@@ -174,12 +174,12 @@ describe('individual work authorizations', () => {
     expect(change.entries![0]).toMatchObject({
       label: 'United States',
       fields: expect.arrayContaining([
-        {
-          label: 'Status',
+        expect.objectContaining({
+          label: 'Authorization Status',
           current: 'Not provided',
           suggested: 'Citizen / Permanent Resident',
           changed: true,
-        },
+        }),
       ]),
     });
     expect(applyChanges({}, [change]).workAuthorization).toEqual([rows[0], rows[2]]);

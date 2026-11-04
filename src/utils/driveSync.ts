@@ -1,5 +1,5 @@
 import { devContext, devLockName } from '@/src/devtools/context';
-import { profileData } from './profileData';
+import { profileData, backupProfileData } from './profileData';
 import type { Profile } from '../types/profile';
 import type { DriveBackupFile, DriveBackupState, DriveError } from '../types/storage';
 import {
@@ -597,7 +597,7 @@ async function uploadUnlocked(
     if (!profile) return { success: false, errorCode: null };
     const learnedMappings = await getLearnedMappings();
     const payload: DriveBackupFile = {
-      profile: profileData(profile),
+      profile: backupProfileData(profile),
       learnedMappings,
       lastModified: new Date().toISOString(),
     };

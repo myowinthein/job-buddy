@@ -16,7 +16,7 @@ export function LanguageComparison({
   return (
     <div>
       {change.entries!.map((entry, index) => {
-        const field = entry.fields[0];
+        const field = entry.fields.find((item) => item.id === 'proficiency')!;
         const selectable = entryIsSelectable(entry, replacement);
         const selected = entryIsSelected(change, entry);
         const changed = entry.status === 'changed';

@@ -1,9 +1,10 @@
+import { profileReviewMetadata } from '@/src/profile/fieldMetadata';
 import { feedback } from '@/src/ui/feedback';
 import { documentFileSizeError } from '@/src/utils/documentLimits';
 import { QuickFillSettings } from './QuickFillSettings';
 import { updateQuickFillPreferences } from '@/src/quick-fill/preferences';
 import { GeminiSettings } from './GeminiSettings';
-import { profileData, hasCredentialSettings } from '@/src/utils/profileData';
+import { backupProfileData, hasCredentialSettings } from '@/src/utils/profileData';
 import { SettingsDialog } from './shared/SettingsDialog';
 import { ImportWarnings } from '@/src/components/shared/ImportWarnings';
 import { SectionHeader } from './shared/SectionHeader';
@@ -318,7 +319,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         return;
       }
 
-      const backupProfile = profileData(profile ?? { id: crypto.randomUUID() });
+      const backupProfile = backupProfileData(profile ?? { id: crypto.randomUUID() });
       const exportData = {
         _comment:
           'This is your Job Buddy profile backup. Import it back into the Job Buddy extension to restore your data.',
@@ -533,7 +534,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       const backupData = validateBackupData({ learnedMappings: backup.learnedMappings }, entryIndices);
       setDriveImportWarnings(
         [...validation.invalidFields, ...backupData.invalidFields].map(
-          (field) => `${FIELD_DEFS.find((def) => def.id === field.path)?.label ?? field.path}: ${field.reason}`,
+          (field) => `${profileReviewMetadata(field.path)?.label ?? field.path}: ${field.reason}`,
         ),
       );
       const validatedBackup = {
@@ -1099,7 +1100,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           returnFocusRef={importButtonRef}
           warnings={parsedImport?.invalidFields.map(
             (field) =>
-              `${FIELD_DEFS.find((def) => def.id === field.path)?.label ?? field.path}: ${field.reason}`,
+              `${profileReviewMetadata(field.path)?.label ?? field.path}: ${field.reason}`,
           )}
           onDismiss={handleImportRejectAll}
           onAcceptAll={handleImportAcceptAll}
@@ -1116,7 +1117,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           onDismiss={handleImportRejectAll}
           warnings={parsedImport?.invalidFields.map(
             (field) =>
-              `${FIELD_DEFS.find((def) => def.id === field.path)?.label ?? field.path}: ${field.reason}`,
+              `${profileReviewMetadata(field.path)?.label ?? field.path}: ${field.reason}`,
           )}
           onSave={performImportSave}
           onBack={() => setImportScreen('summary')}

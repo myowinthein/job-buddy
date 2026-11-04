@@ -1,7 +1,12 @@
 import type { Profile } from '../types/profile';
 import type { AIFieldPayload } from './types';
 import { calculateDerivedFields } from '../utils/derivedFields';
-import { profileData } from '../utils/profileData';
+import { projectProfilePaths } from '../utils/profileData';
+import {
+  PROFILE_POLICY_PATHS,
+  profileFieldPolicy,
+  type AIFieldScope,
+} from '../profile/fieldPolicies';
 
 /** Document bytes never help resolve a form control. Sensitive details are
  * included only when one of the fields actually asks for that information. */
@@ -9,50 +14,31 @@ export function autofillProfilePayload(
   profile: Partial<Profile>,
   fields: AIFieldPayload[],
 ): Partial<Profile> {
-  const safe = profileData(profile);
+  const safe = projectProfilePaths(profile, PROFILE_POLICY_PATHS);
   let refreshed = safe.derived;
   try {
     refreshed = calculateDerivedFields(safe as Profile);
   } catch {
     /* Partial profiles remain usable. */
   }
-  const { id: _id, documents, personal, derived: _derived, ...rest } = safe;
-  const derived = refreshed;
   const text = fields
     .map((field) =>
       [field.visibleLabel ?? field.label, field.placeholder].filter(Boolean).join(' '),
     )
     .join(' ');
-  const { dateOfBirth, gender, ethnicity, veteranStatus, disabilityStatus, ...contact } =
-    personal ?? {};
-  const { age, ...professionalDerived } = derived ?? {};
-  const birthRequested = /\b(birth|dob)\b/i.test(text);
-  const ageRequested = /\bage\b/i.test(text);
-  return boundProfile({
-    ...(personal && {
-      personal: {
-        ...contact,
-        ...(birthRequested && { dateOfBirth }),
-        ...(/\b(gender|sex)\b/i.test(text) && { gender }),
-        ...(/\b(ethnicity|ethnic|race|racial)\b/i.test(text) && { ethnicity }),
-        ...(/\bveteran\b/i.test(text) && { veteranStatus }),
-        ...(/\b(disability|disabled)\b/i.test(text) && { disabilityStatus }),
-      } as Profile['personal'],
-    }),
-    ...(derived && {
-      derived: {
-        ...professionalDerived,
-        ...((birthRequested || ageRequested) && { age }),
-      } as Profile['derived'],
-    }),
-    ...rest,
-    ...(documents && {
-      documents: {
-        cv: { url: documents.cv?.url },
-        ...(documents.coverLetter && { coverLetter: { url: documents.coverLetter.url } }),
-      },
-    }),
-  });
+  const birth = /\b(birth|dob)\b/i.test(text);
+  const permitted: Record<AIFieldScope, boolean> = {
+    public: true,
+    never: false,
+    birth,
+    age: birth || /\bage\b/i.test(text),
+    gender: /\b(gender|sex)\b/i.test(text),
+    ethnicity: /\b(ethnicity|ethnic|race|racial)\b/i.test(text),
+    veteran: /\bveteran\b/i.test(text),
+    disability: /\b(disability|disabled)\b/i.test(text),
+  };
+  const paths = PROFILE_POLICY_PATHS.filter((path) => permitted[profileFieldPolicy(path).autofill]);
+  return boundProfile(projectProfilePaths({ ...safe, derived: refreshed }, paths));
 }
 
 // Bound request content without changing stored data or array indices. Long prose

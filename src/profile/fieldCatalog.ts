@@ -1,3 +1,4 @@
+import { profileFieldPolicy } from './fieldPolicies';
 import type { Profile } from '../types/profile';
 
 export const PROFILE_SECTION_DEFINITIONS = [
@@ -50,6 +51,9 @@ interface FieldOptions {
   cluster?: boolean;
   pickerLabelFrom?: string;
   activeLabel?: string;
+  inputId?: string;
+  maxLength?: number;
+  reviewHeading?: boolean;
   inputLabel?: string;
   when?: { key: string; value: string };
 }
@@ -73,13 +77,44 @@ export interface CatalogGroup {
 }
 export type CatalogNode = CatalogField | CatalogGroup;
 
+// Existing IDs remain stable for deep links and restored options-page requests.
+export function storageInputId(path: string): string {
+  const parts = path.split('.');
+  if (parts[0] === 'personal') return `field-${parts[1]}`;
+  if (parts[0] === 'address') return `field-${parts[1]}`;
+  if (parts[0] === 'professional')
+    return parts[1] === 'summary'
+      ? 'field-summary'
+      : parts[2] === 'value'
+        ? 'field-noticeValue'
+        : 'field-noticePeriod';
+  if (parts[0] === 'documents') return `field-${parts[1]}`;
+  if (parts[0] === 'links')
+    return parts[1] === 'custom' ? `field-customLink-${parts[2]}-${parts[3]}` : `field-${parts[1]}`;
+  if (parts[0] === 'salary')
+    return parts[1] === 'current'
+      ? `field-current${parts[2][0].toUpperCase()}${parts[2].slice(1)}`
+      : `field-expected-${parts[2]}-${parts[3]}`;
+  const key =
+    parts[2] === 'location' ? (parts[3] === 'city' ? 'locationCity' : 'location') : parts[2];
+  return `field-${parts[0]}-${parts[1]}-${key}`;
+}
+
 function field<const Key extends string, const Path extends ProfileStoragePath>(
   key: Key,
   label: string,
   path: Path,
   options: FieldOptions = {},
 ) {
-  return { kind: 'field' as const, key, label, paths: [path] as readonly [Path], ...options };
+  return {
+    kind: 'field' as const,
+    key,
+    label,
+    paths: [path] as readonly [Path],
+    inputId: storageInputId(path),
+    maxLength: profileFieldPolicy(path).maxLength,
+    ...options,
+  };
 }
 function compound<const Key extends string, const Paths extends readonly ProfileStoragePath[]>(
   key: Key,
@@ -87,7 +122,15 @@ function compound<const Key extends string, const Paths extends readonly Profile
   paths: Paths,
   options: FieldOptions,
 ) {
-  return { kind: 'field' as const, key, label, paths, ...options };
+  return {
+    kind: 'field' as const,
+    key,
+    label,
+    paths,
+    inputId: storageInputId(paths[0]),
+    maxLength: profileFieldPolicy(paths[paths.length - 1]).maxLength,
+    ...options,
+  };
 }
 function slot<const Key extends string>(
   key: Key,
@@ -225,7 +268,10 @@ export const PROFILE_FIELD_LAYOUTS = {
     group(
       'authorization',
       [
-        field('country', 'Country', 'workAuthorization.$.country', { required: true }),
+        field('country', 'Country', 'workAuthorization.$.country', {
+          required: true,
+          reviewHeading: true,
+        }),
         field('status', 'Authorization Status', 'workAuthorization.$.status', {
           required: true,
           picker: [{ path: 'workAuthorization.$' }],
@@ -271,7 +317,10 @@ export const PROFILE_FIELD_LAYOUTS = {
     group(
       'position',
       [
-        field('company', 'Company', 'workHistory.$.company', { required: true }),
+        field('company', 'Company', 'workHistory.$.company', {
+          required: true,
+          reviewHeading: true,
+        }),
         field('title', 'Job Title', 'workHistory.$.title', { required: true }),
       ],
       twoColumns,
@@ -307,7 +356,10 @@ export const PROFILE_FIELD_LAYOUTS = {
     field('description', 'Description', 'workHistory.$.description'),
   ],
   education: [
-    field('institution', 'Institution', 'education.$.institution', { required: true }),
+    field('institution', 'Institution', 'education.$.institution', {
+      required: true,
+      reviewHeading: true,
+    }),
     group(
       'qualification',
       [
@@ -345,7 +397,10 @@ export const PROFILE_FIELD_LAYOUTS = {
     group(
       'language',
       [
-        field('language', 'Language', 'languages.$.language', { required: true }),
+        field('language', 'Language', 'languages.$.language', {
+          required: true,
+          reviewHeading: true,
+        }),
         field('proficiency', 'Proficiency', 'languages.$.proficiency', { required: true }),
       ],
       'grid grid-cols-1 sm:grid-cols-2 gap-3',
@@ -406,7 +461,7 @@ export type ProfileFieldKey<Scope extends ProfileFieldScope> = FieldsFor<Scope>[
 
 type RegisteredPaths = FieldsFor<ProfileFieldScope>['paths'][number];
 // Stored metadata and legacy context have no editable input of their own.
-const _NON_EDITOR_PATHS = [
+export const PROFILE_NON_EDITOR_PATHS = [
   'id',
   'salary.current.country',
   'salary.expected.$.country',
@@ -427,7 +482,7 @@ const _NON_EDITOR_PATHS = [
 ] as const satisfies readonly ProfileStoragePath[];
 type RequireCoverage<Missing extends never> = Missing;
 export type ProfileFieldCoverage = RequireCoverage<
-  Exclude<ProfileStoragePath, RegisteredPaths | (typeof _NON_EDITOR_PATHS)[number]>
+  Exclude<ProfileStoragePath, RegisteredPaths | (typeof PROFILE_NON_EDITOR_PATHS)[number]>
 >;
 
 export function catalogFields(nodes: readonly CatalogNode[]): CatalogField[] {
@@ -457,5 +512,14 @@ export const PROFILE_MAPPING_PATH_TEMPLATES = [
     'derived.totalExperience.months',
     'derived.totalExperience.totalMonths',
     'derived.totalExperience.label',
+  ]),
+];
+
+export const PROFILE_STORAGE_PATHS = [
+  ...new Set<ProfileStoragePath>([
+    ...Object.values(PROFILE_FIELD_LAYOUTS).flatMap((nodes) =>
+      catalogFields(nodes).flatMap((field) => field.paths),
+    ),
+    ...PROFILE_NON_EDITOR_PATHS,
   ]),
 ];

@@ -157,6 +157,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
               <RemoveButton onClick={() => removeEntry(idx)} />
             </div>
             <ProfileFields
+              index={idx}
               scope="languages"
               renderers={{
                 language: (field) => (
@@ -166,7 +167,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
                     error={errors[`${idx}.language`]}
                   >
                     <SearchableLanguageSelect
-                      id={`field-languages-${idx}-language`}
+                      id={field.inputId}
                       value={row.language}
                       onChange={(code) => update(idx, 'language', code)}
                       error={errors[`${idx}.language`]}
@@ -180,7 +181,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
                     error={errors[`${idx}.proficiency`]}
                   >
                     <select
-                      id={`field-languages-${idx}-proficiency`}
+                      id={field.inputId}
                       className={cls(errors[`${idx}.proficiency`])}
                       value={row.proficiency}
                       onChange={(e) => update(idx, 'proficiency', e.target.value)}

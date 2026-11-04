@@ -1,3 +1,4 @@
+import { catalogProfileFieldName } from '@/src/profile/fieldMetadata';
 import { finalFillSource, type FillLogField } from '@/src/autofill/fillLog';
 
 export const sourceNames = {
@@ -50,6 +51,8 @@ function words(value: string): string {
 }
 export function profileFieldName(path?: string): string | null {
   if (!path) return null;
+  const catalogName = catalogProfileFieldName(path);
+  if (catalogName) return catalogName;
   const parts = path.split('.');
   if (parts[0] === 'derived' && /currentCompany|currentTitle|totalExperience/.test(parts[1] ?? ''))
     parts[0] = 'workHistory';

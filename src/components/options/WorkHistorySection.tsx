@@ -1,3 +1,9 @@
+import {
+  profileTextLimit,
+  WORK_ARRANGEMENTS,
+  NOTICE_PERIOD_OPTIONS,
+} from '@/src/profile/fieldPolicies';
+import { storageInputId } from '@/src/profile/fieldCatalog';
 import { ProfileFields } from './shared/ProfileFields';
 import { SectionHeader } from './shared/SectionHeader';
 import {
@@ -137,7 +143,8 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   const textFieldError = (key: 'company' | 'title', value: string): string => {
     if (key === 'company' && !value.trim()) return 'Company name is required';
     if (key === 'title' && !value.trim()) return 'Job title is required';
-    if (value.length > 150) return 'Use 150 characters or fewer';
+    const limit = profileTextLimit(`workHistory.$.${key}`);
+    if (value.length > limit) return `Use ${limit} characters or fewer`;
     return '';
   };
 
@@ -174,14 +181,19 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   const validate = () => {
     const e: Record<string, string> = {};
 
-    if (summary.length > 2000) e.summary = 'Use 2000 characters or fewer';
+    if (summary.length > profileTextLimit('professional.summary'))
+      e.summary = `Use ${profileTextLimit('professional.summary')} characters or fewer`;
     entries.forEach((row, idx) => {
       for (const key of ['company', 'title'] as const) {
         const err = textFieldError(key, row[key]);
         if (err) e[`${idx}.${key}`] = err;
       }
-      if (row.locationCity.length > 100) e[`${idx}.locationCity`] = 'Use 100 characters or fewer';
-      if (row.description.length > 3000) e[`${idx}.description`] = 'Use 3000 characters or fewer';
+      if (row.locationCity.length > profileTextLimit('workHistory.$.location.city'))
+        e[`${idx}.locationCity`] =
+          `Use ${profileTextLimit('workHistory.$.location.city')} characters or fewer`;
+      if (row.description.length > profileTextLimit('workHistory.$.description'))
+        e[`${idx}.description`] =
+          `Use ${profileTextLimit('workHistory.$.description')} characters or fewer`;
       for (const [key, error] of Object.entries(profileDateRangeErrors(row)))
         e[`${idx}.${key}`] = error;
       for (const key of ['startDate', 'endDate'])
@@ -257,15 +269,15 @@ export function WorkHistorySection({ profile, onSave }: Props) {
               error={errors.summary}
               label={field.label}
               required={field.required}
-              hint={`${summary.length} / 2000`}
+              hint={`${summary.length} / ${field.maxLength}`}
             >
               <textarea
-                id="field-summary"
+                id={field.inputId}
                 className={`${cls()} min-h-[100px] resize-y`}
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
                 placeholder="A brief overview of your background and key strengths..."
-                maxLength={2000}
+                maxLength={field.maxLength}
               />
             </FormField>
           ),
@@ -314,6 +326,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                     )}
                   >
                     <ProfileFields
+                      index={idx}
                       scope="workEntry"
                       renderers={{
                         company: (field) => (
@@ -324,12 +337,12 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                           >
                             <input
                               className={cls(errors[`${idx}.company`])}
-                              id={`field-workHistory-${idx}-company`}
+                              id={field.inputId}
                               value={row.company}
                               onChange={(e) => updateEntry(idx, 'company', e.target.value)}
                               onBlur={() => handleEntryBlur(idx, 'company')}
                               placeholder="Acme Inc."
-                              maxLength={150}
+                              maxLength={field.maxLength}
                             />
                           </FormField>
                         ),
@@ -341,19 +354,19 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                           >
                             <input
                               className={cls(errors[`${idx}.title`])}
-                              id={`field-workHistory-${idx}-title`}
+                              id={field.inputId}
                               value={row.title}
                               onChange={(e) => updateEntry(idx, 'title', e.target.value)}
                               onBlur={() => handleEntryBlur(idx, 'title')}
                               placeholder="Senior Software Engineer"
-                              maxLength={150}
+                              maxLength={field.maxLength}
                             />
                           </FormField>
                         ),
                         country: (field) => (
                           <FormField label={field.label} required={field.required}>
                             <SearchableCountryDropdown
-                              id={`field-workHistory-${idx}-location`}
+                              id={field.inputId}
                               value={row.locationCountry}
                               onChange={(code) => updateEntry(idx, 'locationCountry', code)}
                             />
@@ -366,11 +379,12 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                             error={errors[`${idx}.locationCity`]}
                           >
                             <input
+                              id={field.inputId}
                               className={cls(errors[`${idx}.locationCity`])}
                               value={row.locationCity}
                               onChange={(e) => updateEntry(idx, 'locationCity', e.target.value)}
                               placeholder="San Francisco"
-                              maxLength={100}
+                              maxLength={field.maxLength}
                             />
                           </FormField>
                         ),
@@ -380,15 +394,11 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                               {field.label}
                             </p>
                             <div className="flex flex-wrap gap-x-6 gap-y-2">
-                              {(['onsite', 'remote', 'hybrid'] as const).map((opt) => (
+                              {WORK_ARRANGEMENTS.map((opt) => (
                                 <label key={opt} className="flex items-center gap-2 cursor-pointer">
                                   <input
                                     type="radio"
-                                    id={
-                                      opt === 'onsite'
-                                        ? `field-workHistory-${idx}-arrangement`
-                                        : undefined
-                                    }
+                                    id={opt === 'onsite' ? field.inputId : undefined}
                                     name={`arrangement-${idx}`}
                                     value={opt}
                                     checked={row.arrangement === opt}
@@ -424,7 +434,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                             error={errors[`${idx}.startDate`]}
                           >
                             <MonthYearPicker
-                              id={`field-workHistory-${idx}-startDate`}
+                              id={field.inputId}
                               onPartialChange={(partial) =>
                                 setPartialDates((previous) => ({
                                   ...previous,
@@ -446,7 +456,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                             error={errors[`${idx}.endDate`]}
                           >
                             <MonthYearPicker
-                              id={`field-workHistory-${idx}-endDate`}
+                              id={field.inputId}
                               onPartialChange={(partial) =>
                                 setPartialDates((previous) => ({
                                   ...previous,
@@ -465,6 +475,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                         isCurrent: (field) => (
                           <label className="flex items-center gap-2 mb-4 cursor-pointer">
                             <input
+                              id={field.inputId}
                               type="checkbox"
                               checked={row.isCurrent}
                               onChange={(e) => updateEntry(idx, 'isCurrent', e.target.checked)}
@@ -480,15 +491,15 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                             label={field.label}
                             required={field.required}
                             error={errors[`${idx}.description`]}
-                            hint={`${row.description.length} / 3000`}
+                            hint={`${row.description.length} / ${field.maxLength}`}
                           >
                             <textarea
                               className={`${cls(errors[`${idx}.description`])} min-h-[100px] resize-y`}
-                              id={`field-workHistory-${idx}-description`}
+                              id={field.inputId}
                               value={row.description}
                               onChange={(e) => updateEntry(idx, 'description', e.target.value)}
                               placeholder="Key responsibilities and achievements..."
-                              maxLength={3000}
+                              maxLength={field.maxLength}
                             />
                           </FormField>
                         ),
@@ -535,7 +546,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
-                      id="field-noticePeriod"
+                      id={field.inputId}
                       name="notice"
                       checked={noticeImmediate === true}
                       onChange={() => {
@@ -582,7 +593,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                     </span>
                     <div className="w-20">
                       <input
-                        id="field-noticeValue"
+                        id={storageInputId('professional.noticePeriod.value')}
                         type="number"
                         step={1}
                         min={1}
@@ -617,9 +628,11 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                           }));
                         }}
                       >
-                        <option value="day">days</option>
-                        <option value="week">weeks</option>
-                        <option value="month">months</option>
+                        {NOTICE_PERIOD_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     {errors.noticeValue && (

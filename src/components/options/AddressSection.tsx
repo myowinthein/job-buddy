@@ -1,3 +1,4 @@
+import { profileTextLimit } from '@/src/profile/fieldPolicies';
 import { ProfileFields } from './shared/ProfileFields';
 import { SectionHeader } from './shared/SectionHeader';
 import { useSectionDraft } from './shared/useSectionDraft';
@@ -39,9 +40,14 @@ export function AddressSection({ profile, onSave }: Props) {
 
   const fieldError = (key: string, value: string): string => {
     if (key === 'city' && !value.trim()) return 'City is required';
-    const max = ({ city: 100, state: 100, street: 255, postalCode: 20 } as Record<string, number>)[
-      key
-    ];
+    const max = (
+      {
+        city: profileTextLimit('address.city'),
+        state: profileTextLimit('address.state'),
+        street: profileTextLimit('address.street'),
+        postalCode: profileTextLimit('address.postalCode'),
+      } as Record<string, number>
+    )[key];
     if (max && value.length > max) return `Use ${max} characters or fewer`;
     if (key === 'countryCode')
       return !value
@@ -99,7 +105,7 @@ export function AddressSection({ profile, onSave }: Props) {
           country: (field) => (
             <FormField label={field.label} required={field.required} error={errors.countryCode}>
               <SearchableCountryDropdown
-                id="field-country"
+                id={field.inputId}
                 value={form.countryCode}
                 onChange={(code) => set('countryCode', code)}
                 error={errors.countryCode}
@@ -110,11 +116,11 @@ export function AddressSection({ profile, onSave }: Props) {
             <FormField label={field.label} required={field.required} error={errors.postalCode}>
               <input
                 className={cls(errors.postalCode)}
-                id="field-postalCode"
+                id={field.inputId}
                 value={form.postalCode}
                 onChange={(e) => set('postalCode', e.target.value)}
                 placeholder="94105"
-                maxLength={20}
+                maxLength={field.maxLength}
               />
             </FormField>
           ),
@@ -122,11 +128,11 @@ export function AddressSection({ profile, onSave }: Props) {
             <FormField label={field.label} required={field.required} error={errors.street}>
               <input
                 className={cls(errors.street)}
-                id="field-street"
+                id={field.inputId}
                 value={form.street}
                 onChange={(e) => set('street', e.target.value)}
                 placeholder="123 Main Street, Apt 4B"
-                maxLength={255}
+                maxLength={field.maxLength}
               />
             </FormField>
           ),
@@ -136,9 +142,9 @@ export function AddressSection({ profile, onSave }: Props) {
                 className={cls(errors.city)}
                 value={form.city}
                 onChange={(e) => set('city', e.target.value)}
-                id="field-city"
+                id={field.inputId}
                 placeholder="San Francisco"
-                maxLength={100}
+                maxLength={field.maxLength}
               />
             </FormField>
           ),
@@ -146,11 +152,11 @@ export function AddressSection({ profile, onSave }: Props) {
             <FormField label={field.label} required={field.required} error={errors.state}>
               <input
                 className={cls(errors.state)}
-                id="field-state"
+                id={field.inputId}
                 value={form.state}
                 onChange={(e) => set('state', e.target.value)}
                 placeholder="CA"
-                maxLength={100}
+                maxLength={field.maxLength}
               />
             </FormField>
           ),

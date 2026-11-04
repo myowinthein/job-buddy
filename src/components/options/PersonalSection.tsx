@@ -1,3 +1,8 @@
+import {
+  profileTextLimit,
+  PERSONAL_GENDER_OPTIONS,
+  PERSONAL_YES_NO_OPTIONS,
+} from '@/src/profile/fieldPolicies';
 import { ProfileFields } from './shared/ProfileFields';
 import { SectionHeader } from './shared/SectionHeader';
 import { useSectionDraft } from './shared/useSectionDraft';
@@ -73,16 +78,21 @@ export function PersonalSection({ profile, onSave }: Props) {
     switch (key) {
       case 'firstName':
         if (!value.trim()) return 'First name is required';
-        if (value.length > 100) return 'First name must be 100 characters or fewer';
+        if (value.length > profileTextLimit('personal.firstName'))
+          return `First name must be ${profileTextLimit('personal.firstName')} characters or fewer`;
         return '';
       case 'lastName':
-        if (value.length > 100) return 'Last name must be 100 characters or fewer';
+        if (value.length > profileTextLimit('personal.lastName'))
+          return `Last name must be ${profileTextLimit('personal.lastName')} characters or fewer`;
         return '';
       case 'nickname':
-        return value.length > 100 ? 'Preferred name must be 100 characters or fewer' : '';
+        return value.length > profileTextLimit('personal.nickname')
+          ? `Preferred name must be ${profileTextLimit('personal.nickname')} characters or fewer`
+          : '';
       case 'email':
         if (!value.trim()) return 'Email is required';
-        if (value.length > 254) return 'Email must be 254 characters or fewer';
+        if (value.length > profileTextLimit('personal.email'))
+          return `Email must be ${profileTextLimit('personal.email')} characters or fewer`;
         if (!isValidProfileEmail(value)) return 'Enter a valid email address';
         return '';
       case 'phoneNumber':
@@ -208,9 +218,9 @@ export function PersonalSection({ profile, onSave }: Props) {
                 value={form.firstName}
                 onChange={(e) => set('firstName', e.target.value)}
                 onBlur={() => handleBlur('firstName')}
-                id="field-firstName"
+                id={field.inputId}
                 placeholder="John"
-                maxLength={100}
+                maxLength={field.maxLength}
               />
             </FormField>
           ),
@@ -221,9 +231,9 @@ export function PersonalSection({ profile, onSave }: Props) {
                 value={form.lastName}
                 onChange={(e) => set('lastName', e.target.value)}
                 onBlur={() => handleBlur('lastName')}
-                id="field-lastName"
+                id={field.inputId}
                 placeholder="Smith"
-                maxLength={100}
+                maxLength={field.maxLength}
               />
             </FormField>
           ),
@@ -234,9 +244,9 @@ export function PersonalSection({ profile, onSave }: Props) {
                 value={form.nickname}
                 onChange={(e) => set('nickname', e.target.value)}
                 onBlur={() => handleBlur('nickname')}
-                id="field-nickname"
+                id={field.inputId}
                 placeholder="Johnny"
-                maxLength={100}
+                maxLength={field.maxLength}
               />
             </FormField>
           ),
@@ -248,9 +258,9 @@ export function PersonalSection({ profile, onSave }: Props) {
                 value={form.email}
                 onChange={(e) => set('email', e.target.value)}
                 onBlur={() => handleBlur('email')}
-                id="field-email"
+                id={field.inputId}
                 placeholder="john.smith@example.com"
-                maxLength={254}
+                maxLength={field.maxLength}
               />
             </FormField>
           ),
@@ -273,12 +283,12 @@ export function PersonalSection({ profile, onSave }: Props) {
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  maxLength={15}
+                  maxLength={field.maxLength}
                   className="rounded-r-lg min-w-0 w-0 flex-1 px-3 py-2 text-sm focus:outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   value={form.phoneNumber}
                   onChange={(e) => handlePhoneNumberChange(e.target.value)}
                   onBlur={() => handleBlur('phoneNumber')}
-                  id="field-phone"
+                  id={field.inputId}
                   aria-label="Phone number"
                   placeholder="5551234567"
                 />
@@ -288,7 +298,7 @@ export function PersonalSection({ profile, onSave }: Props) {
           dateOfBirth: (field) => (
             <FormField label={field.label} required={field.required} error={errors.dateOfBirth}>
               <DateOfBirthPicker
-                id="field-dateOfBirth"
+                id={field.inputId}
                 value={form.dateOfBirth}
                 onChange={(v) => set('dateOfBirth', v)}
                 onPartialChange={(partial) => {
@@ -318,23 +328,24 @@ export function PersonalSection({ profile, onSave }: Props) {
           gender: (field) => (
             <FormField label={field.label} required={field.required} error={errors.gender}>
               <select
-                id="field-gender"
+                id={field.inputId}
                 className={cls(errors.gender)}
                 value={form.gender}
                 onChange={(e) => set('gender', e.target.value)}
               >
                 <option value="">Select gender…</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-                <option value="prefer_not_to_say">Prefer not to say</option>
+                {PERSONAL_GENDER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </FormField>
           ),
           ethnicity: (field) => (
             <FormField label={field.label} required={field.required} error={errors.ethnicity}>
               <select
-                id="field-ethnicity"
+                id={field.inputId}
                 className={cls(errors.ethnicity)}
                 value={form.ethnicity}
                 onChange={(e) => set('ethnicity', e.target.value)}
@@ -352,15 +363,17 @@ export function PersonalSection({ profile, onSave }: Props) {
           veteranStatus: (field) => (
             <FormField label={field.label} required={field.required} error={errors.veteranStatus}>
               <select
-                id="field-veteranStatus"
+                id={field.inputId}
                 className={cls(errors.veteranStatus)}
                 value={form.veteranStatus}
                 onChange={(e) => set('veteranStatus', e.target.value)}
               >
                 <option value="">Select veteran status…</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-                <option value="prefer_not_to_say">Prefer not to say</option>
+                {PERSONAL_YES_NO_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </FormField>
           ),
@@ -371,15 +384,17 @@ export function PersonalSection({ profile, onSave }: Props) {
               error={errors.disabilityStatus}
             >
               <select
-                id="field-disabilityStatus"
+                id={field.inputId}
                 className={cls(errors.disabilityStatus)}
                 value={form.disabilityStatus}
                 onChange={(e) => set('disabilityStatus', e.target.value)}
               >
                 <option value="">Select disability status…</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-                <option value="prefer_not_to_say">Prefer not to say</option>
+                {PERSONAL_YES_NO_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </FormField>
           ),
