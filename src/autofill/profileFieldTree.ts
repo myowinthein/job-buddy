@@ -65,19 +65,21 @@ function entryHeading(
 }
 
 /** The editor catalog supplies labels, section order, field order and picker aliases. */
-export function buildPickerTree(profile: Profile): Section[] {
+export function buildPickerTree(profile: Profile, includeEmpty = false): Section[] {
   function buildEntries(
     definition: NonNullable<CatalogField['entries']>,
     label: string,
   ): SectionItem[] {
     const source = readPath(profile, definition.path);
-    const entries = Array.isArray(source) ? source : source ? [source] : [];
+    const saved = Array.isArray(source) ? source : source ? [source] : [];
+    const entries = includeEmpty && !saved.length ? [{}] : saved;
     const recent = mostRecentIdx(entries);
     return entries.flatMap((entry: Record<string, unknown>, index): SectionItem[] => {
-      if (definition.heading === 'country' && !entry.status) return [];
-      if (definition.heading === 'language' && !entry.language) return [];
-      if (definition.heading === 'link' && (!entry.label || !entry.url)) return [];
+      if (!includeEmpty && definition.heading === 'country' && !entry.status) return [];
+      if (!includeEmpty && definition.heading === 'language' && !entry.language) return [];
+      if (!includeEmpty && definition.heading === 'link' && (!entry.label || !entry.url)) return [];
       if (
+        !includeEmpty &&
         definition.heading === 'salary' &&
         source !== profile.salary?.current &&
         !entry.amount &&
@@ -100,7 +102,7 @@ export function buildPickerTree(profile: Profile): Section[] {
           heading = countryName(String(entry.country ?? '')) || `Entry ${index + 1}`;
           break;
         case 'language':
-          heading = languageName(String(entry.language));
+          heading = entry.language ? languageName(String(entry.language)) : `Entry ${index + 1}`;
           break;
         case 'salary':
           if (Array.isArray(source))
@@ -158,17 +160,20 @@ export function buildPickerTree(profile: Profile): Section[] {
         return field.pickerGroup ? groupItems(items, field.pickerGroup, field.key, index) : items;
       }
       if (field.entries) return buildEntries(field.entries, field.label);
-      if (field.picker === false || (field.when && entry?.[field.when.key] !== field.when.value))
+      if (
+        field.picker === false ||
+        (!includeEmpty && field.when && entry?.[field.when.key] !== field.when.value)
+      )
         return [];
-      if (field.pickerLabelFrom && !entry?.[field.pickerLabelFrom]) return [];
+      if (!includeEmpty && field.pickerLabelFrom && !entry?.[field.pickerLabelFrom]) return [];
       const choices: readonly { label?: string; path: string }[] =
         field.picker ?? field.paths.map((path) => ({ path }));
       const rows: OptionRow[] = choices.flatMap((choice): OptionRow[] => {
         const fieldPath = choice.path.replaceAll('$', String(index ?? 0));
         const value = resolveProfileValue(profile, fieldPath);
-        if (!value) return [];
+        if (!value && !includeEmpty) return [];
         const label = field.pickerLabelFrom
-          ? String(entry?.[field.pickerLabelFrom])
+          ? String(entry?.[field.pickerLabelFrom] || field.label)
           : (choice.label ?? field.inputLabel ?? field.label);
         return [{ kind: 'option', label, fieldPath, value }];
       });

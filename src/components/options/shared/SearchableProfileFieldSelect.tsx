@@ -27,6 +27,7 @@ interface Props {
   onChange: (fieldPath: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  includeEmpty?: boolean;
 }
 
 const PREVIEW_OPTIONS: Record<string, readonly { value: string; label: string }[]> = {
@@ -77,23 +78,24 @@ function findSubGroupIdFor(sections: Section[], fieldPath: string): string | nul
 // on-page picker structure (sections > clusters/subgroups > rows) rather than
 // a flat searchable list, since a flat list of 15+ similarly-named fields
 // ("Company", "Job Title" repeated per work-history entry) reads as noise.
-// Constrains a learned-mapping's path to fields that actually exist and
-// currently have a value — typing a raw path by hand let a typo (dead path,
-// silently never fills) or a wrong-but-valid path (confidently auto-fills the
-// wrong data, since a manual edit is trusted immediately) both through with
-// no feedback.
+// The usual editor offers populated fields. AI review can include empty
+// catalog fields so missing data does not rule out a valid destination.
 export function SearchableProfileFieldSelect({
   profile,
   value,
   onChange,
   placeholder = 'Select a profile field…',
   disabled = false,
+  includeEmpty = false,
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listId = useId();
   const [position, setPosition] = useState<CSSProperties | null>(null);
-  const sections = useMemo(() => buildPickerTree(profile as Profile), [profile]);
+  const sections = useMemo(
+    () => buildPickerTree(profile as Profile, includeEmpty),
+    [profile, includeEmpty],
+  );
   const selectedSectionId = findSectionIdFor(sections, value);
   const selectedSubGroup = findSubGroupIdFor(sections, value);
 
@@ -264,7 +266,7 @@ export function SearchableProfileFieldSelect({
           {row.label}
         </span>
         <span className="min-w-0 flex-1 break-words line-clamp-2 font-medium">
-          {previewValue(row)}
+          {previewValue(row) || 'No saved value'}
         </span>
         <span className="flex h-5 w-4 shrink-0 items-center" aria-hidden="true">
           {isSelected && <Check size={16} />}

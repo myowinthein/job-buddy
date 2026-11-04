@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Pencil, Trash2, Sparkles } from 'lucide-react';
 import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings, LearnedMappingValue } from '@/src/types/storage';
 import {
@@ -19,6 +19,7 @@ import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 import { SearchableProfileFieldSelect } from './shared/SearchableProfileFieldSelect';
 import { fieldCls } from './shared/fieldCls';
 import { LearnedMappingsHelp } from './LearnedMappingsHelp';
+import { MappingReviewDialog } from './MappingReviewDialog';
 import {
   groupMappings,
   mappingDestination,
@@ -478,9 +479,11 @@ function MappingSite({
 export function LearnedMappingsSection({
   onOpenProfile,
   onProfileChange,
+  onGoToApiKey,
 }: {
   onOpenProfile?: MappingRowProps['onOpenProfile'];
   onProfileChange?: (profile: Partial<Profile>) => void;
+  onGoToApiKey?: () => void;
 } = {}) {
   const { showToast } = useToast();
   const [mappings, setMappings] = useState<LearnedMappings>({});
@@ -489,6 +492,10 @@ export function LearnedMappingsSection({
   const [reloading, setReloading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [reviewBase, setReviewBase] = useState<{
+    profile: Partial<Profile>;
+    mappings: LearnedMappings;
+  } | null>(null);
   const busyRef = useRef(false);
   const live = useRef(false);
   const sequence = useRef(0);
@@ -677,7 +684,7 @@ export function LearnedMappingsSection({
   return (
     <section aria-label="Learned Mappings">
       <header className="mb-6">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2
             ref={headingRef}
             tabIndex={-1}
@@ -685,12 +692,36 @@ export function LearnedMappingsSection({
           >
             Learned Mappings
           </h2>
-          <LearnedMappingsHelp />
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className={secondary}
+              disabled={loading || loadError || !!busy || !Object.keys(mappings).length}
+              onClick={() => setReviewBase(structuredClone({ profile, mappings }))}
+            >
+              <span className="flex items-center gap-2">
+                <Sparkles size={15} aria-hidden="true" />Review Mappings
+              </span>
+            </button>
+            <LearnedMappingsHelp />
+          </div>
         </div>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Review and manage the profile fields remembered for each site
         </p>
       </header>
+      {reviewBase && (
+        <MappingReviewDialog
+          {...reviewBase}
+          onGoToApiKey={onGoToApiKey}
+          onClose={() => setReviewBase(null)}
+          onSaved={() => {
+            setReviewBase(null);
+            void refresh();
+            showToast('success', feedback.mappingReviewSaved);
+          }}
+        />
+      )}
       {loadError && (
         <div
           role="alert"

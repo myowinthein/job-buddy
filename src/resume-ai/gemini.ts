@@ -11,6 +11,12 @@ import { buildAutofillPrompt } from './autofillPrompt';
 import { autofillProfilePayload } from './profilePayload';
 import { resumeDocumentType } from './documentAssessment';
 import type { ResumeDocumentType } from './types';
+import {
+  mappingReviewBody,
+  parseMappingAssessments,
+  type MappingReviewItem,
+  type ReviewCatalogField,
+} from '../learned-mappings/review';
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -124,6 +130,63 @@ export async function checkApiKey(apiKey: string, signal?: AbortSignal): Promise
 }
 function importError(code: ImportError['code'], message: string): ImportError {
   return { code, message };
+}
+
+/** Semantic mapping review shares Gemini's authenticated, abortable transport. */
+export async function reviewMappingsWithAI(
+  apiKey: string,
+  model: GeminiModel,
+  items: MappingReviewItem[],
+  catalog: ReviewCatalogField[],
+  signal: AbortSignal,
+  onAttempt?: (model: GeminiModel) => void,
+) {
+  const models = [model, ...GEMINI_MODEL_PRIORITY.filter((candidate) => candidate !== model)];
+  let lastError = feedback.resumeServiceUnavailable as string;
+  for (const candidate of models) {
+    signal.throwIfAborted();
+    onAttempt?.(candidate);
+    try {
+      const result = await geminiRequest(
+        endpoint(candidate),
+        apiKey,
+        {
+          method: 'POST',
+          signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: mappingReviewBody(items, catalog),
+        },
+        async (response) => {
+          if (!response.ok) return { error: await responseError(response) };
+          return { text: extractGeminiText(await response.json()) };
+        },
+      );
+      signal.throwIfAborted();
+      if (result.error) {
+        lastError = KEY_ERROR_MESSAGES[result.error];
+        if (['rate_limit', 'no_model', 'service_error'].includes(result.error)) continue;
+        throw new Error(lastError);
+      }
+      return {
+        assessments: parseMappingAssessments(result.text ?? '', items, catalog),
+        model: candidate,
+      };
+    } catch (error) {
+      signal.throwIfAborted();
+      if ((error as { name?: string })?.name === 'TimeoutError') {
+        lastError = KEY_ERROR_MESSAGES.timeout;
+        continue;
+      }
+      if (
+        error instanceof Error &&
+        (error.message === feedback.mappingReviewInvalid ||
+          Object.values(KEY_ERROR_MESSAGES).some((message) => message === error.message))
+      )
+        throw error;
+      throw new Error(feedback.mappingReviewFailed);
+    }
+  }
+  throw new Error(lastError);
 }
 
 export async function validateApiKey(

@@ -146,6 +146,7 @@ export async function replaceProfileData(
       profile: normalizeProfile(profile),
       learnedMappings: readableMappings(learnedMappings, true),
       learnedMappingRepairs: {},
+      learnedMappingReviews: {},
       learnedMappingsRevision: crypto.randomUUID(),
       ...(pausedDriveState ? { driveBackupState: pausedDriveState } : {}),
     });
@@ -340,7 +341,7 @@ export async function saveLearnedMappings(
       return;
     }
     if (!options.labelsOnly) {
-      await storageSet({ learnedMappings: mappings, learnedMappingRepairs: {} });
+      await storageSet({ learnedMappings: mappings, learnedMappingRepairs: {}, learnedMappingReviews: {} });
       return;
     }
     for (const [domain, signals] of Object.entries(mappings))

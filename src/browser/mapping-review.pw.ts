@@ -1,0 +1,229 @@
+import { test, expect } from './fixtures';
+import type { Page } from '@playwright/test';
+import type { LearnedMappings } from '../types/storage';
+
+const mappings: LearnedMappings = {
+  'jobs.example.test': {
+    salary: {
+      path: 'salary.current.amount',
+      count: 1,
+      label: 'Expected salary',
+      question: 'Expected salary',
+    },
+    salaryalias: {
+      path: 'salary.current.amount',
+      count: 2,
+      label: 'Expected salary',
+      question: 'Expected salary',
+    },
+    consent: {
+      path: 'personal.firstName',
+      count: 2,
+      label: 'I agree to the privacy policy',
+      question: 'I agree to the privacy policy',
+    },
+    unclear: {
+      path: 'address.city',
+      count: 1,
+      label: 'Location preference',
+      question: 'Location preference',
+    },
+    email: { path: 'personal.email', count: 1, label: 'Email', question: 'Email' },
+    id88: { path: 'personal.lastName', count: 2 },
+  },
+  'other.example.test': {
+    city: { path: 'address.city', count: 1, label: 'City', question: 'City' },
+  },
+};
+
+async function open(options: Page) {
+  await options.getByRole('button', { name: 'Learned Mappings', exact: true }).click();
+  await options.getByRole('button', { name: 'Review Mappings', exact: true }).click();
+  return options.getByRole('dialog', { name: 'Review Mappings' });
+}
+
+test('requires Gemini setup and takes the user to the focused API key input', async ({
+  context,
+  extension,
+}) => {
+  await extension.worker.evaluate(async (data) => {
+    await chrome.storage.local.set({ learnedMappings: data });
+    await chrome.storage.local.remove(['geminiApiKey', 'geminiModel']);
+  }, mappings);
+  const options = await context.newPage();
+  await options.goto(new URL('options.html', extension.worker.url()).href);
+  const dialog = await open(options);
+  await expect(dialog).toContainText('Add a Gemini API key to review learned mappings.');
+  await dialog.getByRole('button', { name: 'Go to Settings' }).click();
+  await expect(options.getByLabel('Gemini API Key', { exact: true })).toBeFocused();
+});
+
+test('reviews one site, applies only approved corrections and reuses local reviews', async ({
+  context,
+  extension,
+}, info) => {
+  await extension.worker.evaluate(async (data) => {
+    await chrome.storage.local.set({ learnedMappings: data, themePreference: 'dark' });
+  }, mappings);
+  let requests = 0;
+  await context.route('https://generativelanguage.googleapis.com/**', async (route) => {
+    requests++;
+    const prompt = route.request().postDataJSON().contents[0].parts[0].text as string;
+    const payload = JSON.parse(prompt.slice(prompt.lastIndexOf('\n') + 1));
+    expect(prompt).not.toContain('jane@example.test');
+    expect(prompt).not.toContain('synthetic-browser-profile');
+    expect(payload.fields).toContainEqual(
+      expect.objectContaining({ path: 'personal.dateOfBirth' }),
+    );
+    expect(payload.mappings).toHaveLength(4);
+    const results = payload.mappings.map((item: { id: string; question: string }) => ({
+      id: item.id,
+      verdict:
+        item.question === 'Expected salary'
+          ? 'change'
+          : item.question.includes('privacy')
+            ? 'inactive'
+            : item.question === 'Email'
+              ? 'correct'
+              : 'uncertain',
+      path: item.question === 'Expected salary' ? 'salary.expected.0.amount' : null,
+      reason:
+        item.question === 'Expected salary'
+          ? 'This question asks for expected salary.'
+          : 'Review this question against the saved field.',
+    }));
+    await route.fulfill({
+      json: { candidates: [{ content: { parts: [{ text: JSON.stringify(results) }] } }] },
+    });
+  });
+  const options = await context.newPage();
+  await options.setViewportSize({ width: 1200, height: 1000 });
+  await options.goto(new URL('options.html', extension.worker.url()).href);
+  let dialog = await open(options);
+  await dialog.getByLabel('Sites to review').selectOption('jobs.example.test');
+  await dialog.getByRole('button', { name: 'Review Mappings', exact: true }).click();
+  await expect(dialog).toContainText('5 reviewed · 0 remaining');
+  await expect(dialog.getByRole('button', { name: 'Needs review (4)' })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Apply Changes', exact: true })).toBeDisabled();
+  expect(requests).toBe(1);
+  const unchanged = await extension.worker.evaluate(
+    async () => (await chrome.storage.local.get('learnedMappings')).learnedMappings,
+  );
+  expect(unchanged).toEqual(mappings);
+  await dialog.getByRole('button', { name: 'Use clear suggestions' }).click();
+  await expect(dialog.getByRole('button', { name: 'Apply Changes (2)' })).toBeEnabled();
+  await dialog.getByLabel('Action for Location preference').selectOption('change');
+  await dialog.getByRole('button', { name: 'Profile field: Address → City' }).click();
+  const chooser = options.getByRole('combobox', { name: 'Search profile fields' });
+  await chooser.fill('Date of Birth');
+  await expect(options.getByRole('option').filter({ hasText: 'Date of Birth' })).toContainText(
+    'No saved value',
+  );
+  await chooser.press('Enter');
+  await expect(
+    dialog.getByRole('button', { name: /^Profile field: Personal.*Date of Birth/ }),
+  ).toBeVisible();
+  await dialog.getByLabel('Action for Location preference').selectOption('keep');
+  await options.screenshot({ path: info.outputPath('mapping-review-dark.png') });
+  await options.setViewportSize({ width: 620, height: 800 });
+  await expect(dialog.getByLabel('Action for Expected salary')).toBeVisible();
+  await options.screenshot({ path: info.outputPath('mapping-review-narrow.png') });
+  await dialog.getByRole('button', { name: 'Apply Changes (2)' }).click();
+  await expect(dialog).toHaveCount(0);
+  const after = (await extension.worker.evaluate(
+    async () => (await chrome.storage.local.get('learnedMappings')).learnedMappings,
+  )) as LearnedMappings;
+  expect(after['jobs.example.test'].salary).toMatchObject({
+    path: 'salary.expected.0.amount',
+    count: 2,
+    scope: 'entry',
+  });
+  expect(after['jobs.example.test'].salaryalias).toMatchObject({
+    path: 'salary.expected.0.amount',
+    count: 2,
+  });
+  expect(after['jobs.example.test'].consent).toMatchObject({ inactive: true, count: 2 });
+  expect(after['jobs.example.test'].email).toMatchObject({ count: 1 });
+  expect(after['other.example.test']).toEqual(mappings['other.example.test']);
+  await options.getByRole('button', { name: 'Review Mappings', exact: true }).click();
+  dialog = options.getByRole('dialog', { name: 'Review Mappings' });
+  await dialog.getByLabel('Sites to review').selectOption('jobs.example.test');
+  await expect(dialog).toContainText('3 reviewed · 2 remaining');
+  expect(requests).toBe(1);
+});
+
+test('retains completed batches when stopped and retries only unreviewed mappings', async ({
+  context,
+  extension,
+}) => {
+  const many = Object.fromEntries(
+    Array.from({ length: 25 }, (_, index) => [
+      `q${index}`,
+      {
+        path: 'personal.email',
+        count: 1,
+        label: `Email address ${index}`,
+        question: `Email address ${index}`,
+      },
+    ]),
+  );
+  await extension.worker.evaluate(
+    async (data) => chrome.storage.local.set({ learnedMappings: { 'batch.test': data } }),
+    many,
+  );
+  let calls = 0;
+  let release: () => void = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await context.route('https://generativelanguage.googleapis.com/**', async (route) => {
+    calls++;
+    const prompt = route.request().postDataJSON().contents[0].parts[0].text as string;
+    const payload = JSON.parse(prompt.slice(prompt.lastIndexOf('\n') + 1));
+    if (calls === 2) await held;
+    const answers = payload.mappings.map((item: { id: string }) => ({
+      id: item.id,
+      verdict: 'correct',
+      path: null,
+      reason: 'The email field matches.',
+    }));
+    await route
+      .fulfill({
+        json: { candidates: [{ content: { parts: [{ text: JSON.stringify(answers) }] } }] },
+      })
+      .catch(() => {});
+  });
+  const options = await context.newPage();
+  await options.goto(new URL('options.html', extension.worker.url()).href);
+  const dialog = await open(options);
+  await dialog.getByRole('button', { name: 'Review Mappings', exact: true }).click();
+  await expect.poll(() => calls).toBe(2);
+  await dialog.getByRole('button', { name: 'Stop review' }).click();
+  await expect(dialog).toContainText('20 reviewed · 5 remaining');
+  release();
+  await dialog.getByRole('button', { name: 'Review Mappings', exact: true }).click();
+  await expect(dialog).toContainText('25 reviewed · 0 remaining');
+  expect(calls).toBe(3);
+  await dialog.getByRole('checkbox', { name: 'Review all again' }).check();
+  await dialog.getByRole('button', { name: 'Review Mappings', exact: true }).click();
+  await expect.poll(() => calls).toBe(5);
+  await expect(dialog).toContainText('25 reviewed · 0 remaining');
+});
+
+test('blocks stale review decisions after profile or mapping edits', async ({
+  context,
+  extension,
+}) => {
+  await extension.worker.evaluate(
+    async (data) => chrome.storage.local.set({ learnedMappings: data }),
+    mappings,
+  );
+  const options = await context.newPage();
+  await options.goto(new URL('options.html', extension.worker.url()).href);
+  const dialog = await open(options);
+  await expect(dialog.getByLabel('Sites to review')).toBeEnabled();
+  await extension.worker.evaluate(async () => chrome.storage.local.set({ learnedMappings: {} }));
+  await expect(dialog.getByRole('alert')).toContainText('Your profile or mappings changed.');
+  await expect(dialog.getByRole('button', { name: 'Review Mappings', exact: true })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Apply Changes', exact: true })).toBeDisabled();
+});

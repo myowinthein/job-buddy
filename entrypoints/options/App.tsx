@@ -508,7 +508,7 @@ function App() {
       case 'links':             return <LinksSection key={`links-${sectionSeq}`} {...sectionProps} />;
       case 'documents':         return <DocumentsSection key={`documents-${sectionSeq}`} {...sectionProps} />;
       case 'resume':            return <ResumeImportSection key="resume" profile={profile} onSave={handleSave} onReplace={async (base, changes) => { setProfile(await replaceImportedProfile(base, changes)); }} onGoToApiKey={handleGoToApiKey} onClose={handleCloseResumeImport} />;
-      case 'learnedMappings':   return <LearnedMappingsSection key="learnedMappings" onProfileChange={setProfile} onOpenProfile={(path, currentProfile) => {
+      case 'learnedMappings':   return <LearnedMappingsSection key="learnedMappings" onGoToApiKey={handleGoToApiKey} onProfileChange={setProfile} onOpenProfile={(path, currentProfile) => {
         const link = mappingProfileTarget(currentProfile, path);
         if (link) navigateAndFocus(link.section, { ...link.target, fallbackId: link.target.fallbackId ?? getSectionStartTarget(link.section)?.id });
       }} />;
