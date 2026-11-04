@@ -72,10 +72,14 @@ export function SearchableProfileFieldSelect({
   const selectedLabel = useMemo(() => {
     for (const section of sections) {
       for (const item of section.items) {
-        if (item.kind === 'option' && item.fieldPath === value) return item.label;
+        if (item.kind === 'option' && item.fieldPath === value)
+          return `${section.label} → ${item.label}`;
         if (item.kind !== 'option') {
           const row = item.rows.find((r) => r.fieldPath === value);
-          if (row) return item.kind === 'subgroup' ? `${item.heading} · ${row.label}` : row.label;
+          if (row)
+            return item.kind === 'subgroup'
+              ? `${section.label} → ${item.heading} → ${row.label}`
+              : `${section.label} → ${row.label}`;
         }
       }
     }
@@ -216,7 +220,7 @@ export function SearchableProfileFieldSelect({
         aria-selected={isSelected}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => select(row.fieldPath)}
-        className={`flex items-center gap-2 py-1.5 text-sm cursor-pointer select-none ${indent ? 'pl-5 pr-3' : 'px-3'} ${
+        className={`flex items-start gap-3 py-2 text-sm cursor-pointer select-none ${indent ? 'pl-5 pr-3' : 'px-3'} ${
           isSelected
             ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
             : isHighlighted
@@ -224,10 +228,10 @@ export function SearchableProfileFieldSelect({
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
         }`}
       >
-        <span className="shrink-0 w-2/5 text-xs text-gray-500 dark:text-gray-400 truncate">
+        <span className="w-2/5 shrink-0 break-words text-xs leading-relaxed text-gray-500 dark:text-gray-400">
           {row.label}
         </span>
-        <span className="flex-1 min-w-0 truncate font-medium">{row.value}</span>
+        <span className="min-w-0 flex-1 break-words line-clamp-2 font-medium">{row.value}</span>
       </div>
     );
   };
@@ -258,7 +262,7 @@ export function SearchableProfileFieldSelect({
           onClick={() => toggleSubGroup(item.heading)}
           className="w-full flex items-center justify-between gap-2 px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700"
         >
-          <span className="truncate">{item.heading}</span>
+          <span className="min-w-0 break-words text-left">{item.heading}</span>
           <span className="shrink-0">{expanded ? '▾' : '▸'}</span>
         </button>
         {expanded && rows.map((r) => renderRow(r, true))}
@@ -313,7 +317,7 @@ export function SearchableProfileFieldSelect({
         aria-label={selectedLabel ? `Profile field: ${selectedLabel}` : 'Choose a profile field'}
       >
         {selectedLabel ? (
-          <span className="flex-1 min-w-0 truncate text-gray-900 dark:text-gray-100">
+          <span className="min-w-0 flex-1 break-words text-gray-900 dark:text-gray-100">
             {selectedLabel}
           </span>
         ) : (

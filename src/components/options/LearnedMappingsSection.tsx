@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings, LearnedMappingValue } from '@/src/types/storage';
 import {
@@ -166,7 +166,7 @@ function MappingRow({
         }
       }}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-4">
         <div className="min-w-0 flex-1">
           <p
             id={rowId}
@@ -174,15 +174,52 @@ function MappingRow({
           >
             {group.title}
           </p>
-          <p className="mt-1 break-words text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-            {destination}
-          </p>
+          {!editing && (
+            <p className="mt-1 break-words text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+              {destination}
+            </p>
+          )}
         </div>
-        <span className={`shrink-0 rounded-md px-2 py-1 text-xs ${statusColors[group.status]}`}>
-          {group.status}
-        </span>
+        <div className="flex items-center justify-between gap-3 sm:self-start">
+          <span className={`shrink-0 rounded-md px-2 py-1 text-xs ${statusColors[group.status]}`}>
+            {group.status}
+          </span>
+          {!editing && (
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                ref={editRef}
+                type="button"
+                disabled={!!busy}
+                aria-label={`Edit ${group.title} on ${domain}`}
+                title="Edit mapping"
+                className={`${action} grid h-8 w-8 place-items-center`}
+                onClick={() => {
+                  setEditValue(group.path);
+                  setReviewedProfile(profile);
+                  setReviewedRevision(revision);
+                  setReviewedGroup(group);
+                  setConfirmDelete(false);
+                  setEditing(true);
+                }}
+              >
+                <Pencil aria-hidden="true" className="h-4 w-4" />
+              </button>
+              <button
+                ref={deleteRef}
+                type="button"
+                disabled={!!busy}
+                aria-label={`Delete mapping ${group.title} on ${domain}`}
+                title="Delete mapping"
+                className={`${action} grid h-8 w-8 place-items-center`}
+                onClick={() => setConfirmDelete(true)}
+              >
+                <Trash2 aria-hidden="true" className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-      {group.status !== 'Inactive' && empty && (
+      {!editing && group.status !== 'Inactive' && empty && (
         <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
           No saved profile data.
           {onOpenProfile && (
@@ -199,13 +236,14 @@ function MappingRow({
           )}
         </p>
       )}
-      {group.status === 'Inactive' && (
+      {!editing && group.status === 'Inactive' && (
         <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
           Choose a profile field to use this mapping again.
         </p>
       )}
-      {editing ? (
-        <div className="mt-3 space-y-3">
+      {editing && (
+        <div className="mt-3 max-w-2xl space-y-3">
+          <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Profile field</p>
           <SearchableProfileFieldSelect
             disabled={!!busy}
             profile={profile}
@@ -242,83 +280,6 @@ function MappingRow({
             </button>
             <button type="button" disabled={saving} onClick={cancelEdit} className={secondary}>
               Cancel
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-          <details className="min-w-0 flex-1 text-xs text-gray-500 dark:text-gray-400">
-            <summary className="w-fit cursor-pointer rounded-sm py-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500">
-              Details
-              <span className="sr-only">
-                {' '}
-                for {group.title} on {domain}
-              </span>
-            </summary>
-            <dl className="mt-2 space-y-2 break-words leading-relaxed">
-              <div>
-                <dt className="font-medium">Profile path</dt>
-                <dd className="break-all font-mono">{group.path}</dd>
-              </div>
-              {group.members.map(([signal, entry]) => (
-                <div key={signal}>
-                  <dt className="font-medium">Saved identifier</dt>
-                  <dd className="break-all font-mono">{signal}</dd>
-                  {typeof entry !== 'string' && entry.question && (
-                    <>
-                      <dt className="mt-1 font-medium">Question</dt>
-                      <dd>{entry.question}</dd>
-                    </>
-                  )}
-                  <dt className="mt-1 font-medium">Confirmations</dt>
-                  <dd>
-                    {typeof entry === 'string'
-                      ? 'Trusted legacy mapping'
-                      : entry.count < LEARNED_MAPPING_THRESHOLD
-                        ? `${entry.count} of ${LEARNED_MAPPING_THRESHOLD} needed`
-                        : entry.count}
-                  </dd>
-                  {typeof entry !== 'string' && entry.scope && (
-                    <>
-                      <dt className="mt-1 font-medium">Applies to</dt>
-                      <dd>
-                        {entry.scope === 'entry'
-                          ? 'This specific profile entry'
-                          : 'The matching row in the form'}
-                      </dd>
-                    </>
-                  )}
-                </div>
-              ))}
-            </dl>
-          </details>
-          <div className="flex shrink-0 items-center gap-1">
-            <button
-              ref={editRef}
-              type="button"
-              disabled={!!busy}
-              aria-label={`Edit ${group.title} on ${domain}`}
-              className={action}
-              onClick={() => {
-                setEditValue(group.path);
-                setReviewedProfile(profile);
-                setReviewedRevision(revision);
-                setReviewedGroup(group);
-                setConfirmDelete(false);
-                setEditing(true);
-              }}
-            >
-              Edit
-            </button>
-            <button
-              ref={deleteRef}
-              type="button"
-              disabled={!!busy}
-              aria-label={`Delete mapping ${group.title} on ${domain}`}
-              className={action}
-              onClick={() => setConfirmDelete(true)}
-            >
-              <Trash2 aria-hidden="true" className="h-4 w-4" />
             </button>
           </div>
         </div>

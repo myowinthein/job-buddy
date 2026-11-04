@@ -200,9 +200,9 @@ describe('SearchableProfileFieldSelect — selected-value display', () => {
     expect(screen.queryByText('(personal.firstName)')).toBeNull();
   });
 
-  it('shows "Heading · Label" for a value nested inside a subgroup', () => {
+  it('shows section and entry context for a field inside a subgroup', () => {
     renderSelect('workHistory.1.company');
-    expect(screen.getByText(/New Co · Engineer · Company/)).toBeTruthy();
+    expect(screen.getByText(/Work History → New Co · Engineer → Company/)).toBeTruthy();
   });
 
   it('asks for an available field when the saved path cannot be selected', () => {
@@ -295,11 +295,11 @@ it('keeps portal interactions open, gives instances distinct IDs, and names the 
       />
     </>,
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Profile field: First Name' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Profile field: Personal → First Name' }));
   const input = screen.getByRole('combobox', { name: 'Search profile fields' });
   fireEvent.mouseDown(input);
   expect(screen.getByRole('listbox', { name: 'Profile fields' })).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Profile field: Last Name' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Profile field: Personal → Last Name' }));
   const searches = screen.getAllByRole('combobox');
   expect(new Set(searches.map((search) => search.getAttribute('aria-controls'))).size).toBe(
     searches.length,

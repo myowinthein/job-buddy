@@ -214,7 +214,7 @@ test('follows profile changes, preserves failed drafts and supports scoped keybo
     options.getByText('Failed to save. Please try again.', { exact: true }),
   ).toBeVisible();
   await expect(
-    options.getByRole('button', { name: 'Profile field: Nickname', exact: true }),
+    options.getByRole('button', { name: 'Profile field: Personal → Nickname', exact: true }),
   ).toBeVisible();
   await options.evaluate(() => {
     (window as Window & { failMappingSave?: boolean }).failMappingSave = false;

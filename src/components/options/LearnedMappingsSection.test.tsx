@@ -181,7 +181,7 @@ describe('Learned Mappings presentation and discovery', () => {
       screen.getByText('Review and manage the profile fields remembered for each site'),
     ).toBeTruthy();
     expect(screen.getByText('Personal → First Name')).toBeTruthy();
-    expect(screen.getByText('personal.firstName').closest('details')).toHaveProperty('open', false);
+    expect(within(row()).queryByText('personal.firstName')).toBeNull();
     expect(screen.getByRole('button', { name: 'Edit Applicant name on acme.com' })).toBeTruthy();
     expect(
       screen.getByRole('button', { name: 'Delete mapping Applicant name on acme.com' }),
@@ -191,8 +191,7 @@ describe('Learned Mappings presentation and discovery', () => {
       screen.getByRole('button', { name: /^acme.com/ }).getAttribute('aria-controls'),
     ).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Expand' })).toBeNull();
-    fireEvent.click(within(row()).getByText('Details', { exact: false }));
-    expect(within(row()).getByText('personal.firstName')).toBeTruthy();
+    expect(row().querySelector('details')).toBeNull();
   });
   it('distinguishes learning, trusted legacy, inactive and empty-data states', async () => {
     mappings = {
@@ -225,9 +224,10 @@ describe('Learned Mappings presentation and discovery', () => {
     await open();
     expect(screen.getAllByRole('group', { name: 'Applicant name' })).toHaveLength(1);
     expect(screen.getByText('2 mappings across 1 site')).toBeTruthy();
-    fireEvent.click(within(row()).getByText('Details', { exact: false }));
-    expect(within(row()).getByText('field001')).toBeTruthy();
-    expect(within(row()).getByText('label')).toBeTruthy();
+    expect(within(row()).queryByText('field001')).toBeNull();
+    expect(within(row()).queryByText('label')).toBeNull();
+    expect(mappings['acme.com']).toHaveProperty('field001');
+    expect(mappings['acme.com']).toHaveProperty('label');
     expect(saveLearnedMappings).not.toHaveBeenCalled();
   });
   it('searches questions and destinations, expands matches, and restores the earlier expansion on clear', async () => {
@@ -357,7 +357,9 @@ describe('explicit corrections and guarded writes', () => {
     choose('Last Name');
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText(feedback.sectionSaveFailed)).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Profile field: Last Name' })).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Profile field: Personal → Last Name' }),
+    ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Save' })).toHaveProperty('disabled', false);
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText(feedback.mappingSaved)).toBeTruthy();
@@ -382,10 +384,9 @@ describe('explicit corrections and guarded writes', () => {
     await waitFor(() => expect(saveLearnedMappings).toHaveBeenCalled());
     expect(screen.getByRole('button', { name: 'Saving…' })).toHaveProperty('disabled', true);
     expect(screen.getByRole('button', { name: 'Cancel' })).toHaveProperty('disabled', true);
-    expect(screen.getByRole('button', { name: 'Profile field: Last Name' })).toHaveProperty(
-      'disabled',
-      true,
-    );
+    expect(
+      screen.getByRole('button', { name: 'Profile field: Personal → Last Name' }),
+    ).toHaveProperty('disabled', true);
     await act(async () => finish());
     expect(await screen.findByText(feedback.mappingSaved)).toBeTruthy();
   });
