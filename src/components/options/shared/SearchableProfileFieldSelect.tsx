@@ -298,7 +298,7 @@ export function SearchableProfileFieldSelect({
     const rows = item.rows;
     const isHistoryEntry = item.id.startsWith('workHistory.') || item.id.startsWith('education.');
     return (
-      <div key={item.id} className={isHistoryEntry ? 'pt-3 pb-1' : 'py-1'}>
+      <div key={item.id} className="py-1">
         <button
           type="button"
           onMouseDown={(e) => e.preventDefault()}
