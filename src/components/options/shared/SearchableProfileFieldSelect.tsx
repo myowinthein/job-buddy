@@ -23,7 +23,8 @@ interface Props {
 }
 
 function matchesSearch(label: string, q: string): boolean {
-  return label.toLowerCase().includes(q);
+  const text = label.toLowerCase();
+  return q.split(/\s+/).every((word) => text.includes(word));
 }
 
 function findSectionIdFor(sections: Section[], fieldPath: string): string | null {
@@ -76,10 +77,7 @@ export function SearchableProfileFieldSelect({
           return `${section.label} → ${item.label}`;
         if (item.kind !== 'option') {
           const row = item.rows.find((r) => r.fieldPath === value);
-          if (row)
-            return item.kind === 'subgroup'
-              ? `${section.label} → ${item.heading} → ${row.label}`
-              : `${section.label} → ${row.label}`;
+          if (row) return `${section.label} → ${item.heading} → ${row.label}`;
         }
       }
     }
@@ -179,9 +177,13 @@ export function SearchableProfileFieldSelect({
       const items: VisibleItem[] = [];
       for (const item of section.items) {
         if (item.kind === 'option') {
-          if (!q || matchesSearch(item.label, q)) items.push(item);
+          if (!q || matchesSearch(`${section.label} ${item.label}`, q)) items.push(item);
         } else {
-          const rows = q ? item.rows.filter((row) => matchesSearch(row.label, q)) : item.rows;
+          const rows = q
+            ? item.rows.filter((row) =>
+                matchesSearch(`${section.label} ${item.heading} ${row.label}`, q),
+              )
+            : item.rows;
           if (q && rows.length === 0) continue;
           items.push({
             ...item,

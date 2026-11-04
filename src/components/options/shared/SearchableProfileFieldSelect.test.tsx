@@ -310,3 +310,53 @@ it('keeps portal interactions open, gives instances distinct IDs, and names the 
       'listbox',
     );
 });
+
+it('refreshes saved profile values while open and searches entry names with field labels', () => {
+  const onChange = vi.fn();
+  const initial: Partial<Profile> = {
+    ...PROFILE,
+    languages: [{ language: 'en', proficiency: 'native_bilingual' }],
+  };
+  const { rerender } = render(
+    <SearchableProfileFieldSelect profile={initial} value="" onChange={onChange} />,
+  );
+  fireEvent.click(screen.getByRole('button'));
+  const search = screen.getByRole('combobox');
+  fireEvent.change(search, { target: { value: 'English proficiency' } });
+  expect(screen.getByRole('option').textContent).toBe('ProficiencyNative');
+  rerender(
+    <SearchableProfileFieldSelect
+      profile={{ ...initial, languages: [{ language: 'en', proficiency: 'elementary' }] }}
+      value=""
+      onChange={onChange}
+    />,
+  );
+  expect(screen.getByRole('option').textContent).toBe('ProficiencyBasic');
+  fireEvent.keyDown(search, { key: 'Enter' });
+  expect(onChange).toHaveBeenCalledWith('languages.0.proficiency');
+});
+
+it('keeps document context in the selected field and searches salary fields by section', () => {
+  const onChange = vi.fn();
+  render(
+    <SearchableProfileFieldSelect
+      profile={{
+        ...PROFILE,
+        documents: { cv: {}, coverLetter: { url: 'https://example.test/letter' } },
+        salary: { expected: [{ amount: 5000, currency: 'USD', period: 'annual' }] },
+      }}
+      value="documents.coverLetter.url"
+      onChange={onChange}
+    />,
+  );
+  fireEvent.click(
+    screen.getByRole('button', {
+      name: 'Profile field: Documents → Cover letter → Document URL',
+    }),
+  );
+  const search = screen.getByRole('combobox');
+  fireEvent.change(search, { target: { value: 'salary USD period' } });
+  expect(screen.getAllByRole('option')).toHaveLength(1);
+  fireEvent.keyDown(search, { key: 'Enter' });
+  expect(onChange).toHaveBeenCalledWith('salary.expected.0.period');
+});

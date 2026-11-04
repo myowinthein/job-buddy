@@ -119,7 +119,7 @@ test('groups aliases, keeps the editor visible, preserves metadata, and uses the
   await school.getByRole('button', { name: 'Cancel', exact: true }).click();
   const applicant = row(options, 'Applicant response');
   await applicant.getByRole('button', { name: /^Edit / }).click();
-  await choose(options, 'Nickname');
+  await choose(options, 'Preferred name');
   await applicant.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(options.getByText('Mapping updated.', { exact: true })).toBeVisible();
   const edited = await extension.worker.evaluate(
@@ -196,7 +196,7 @@ test('follows profile changes, preserves failed drafts and supports scoped keybo
   await row(options, 'Applicant response')
     .getByRole('button', { name: /^Edit / })
     .click();
-  await choose(options, 'Nickname');
+  await choose(options, 'Preferred name');
   await options.evaluate(() => {
     const original = chrome.storage.local.set.bind(chrome.storage.local);
     (window as Window & { failMappingSave?: boolean }).failMappingSave = true;
@@ -214,7 +214,7 @@ test('follows profile changes, preserves failed drafts and supports scoped keybo
     options.getByText('Failed to save. Please try again.', { exact: true }),
   ).toBeVisible();
   await expect(
-    options.getByRole('button', { name: 'Profile field: Personal → Nickname', exact: true }),
+    options.getByRole('button', { name: 'Profile field: Personal → Preferred name', exact: true }),
   ).toBeVisible();
   await options.evaluate(() => {
     (window as Window & { failMappingSave?: boolean }).failMappingSave = false;
@@ -343,4 +343,47 @@ test('paginates sites and reveals large mapping lists without hiding search resu
   expect(await options.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
     true,
   );
+});
+
+test('refreshes the chooser from saved Profile edits and fills an individually selected proficiency', async ({
+  context,
+  page,
+  extension,
+}) => {
+  const options = await context.newPage();
+  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await show(options);
+  const applicant = row(options, 'Applicant response');
+  await applicant.getByRole('button', { name: /^Edit / }).click();
+  await options.getByRole('button', { name: /^Profile field:/ }).click();
+  const search = options.getByRole('combobox', { name: 'Search profile fields' });
+  await search.fill('English proficiency');
+  await expect(options.getByRole('option')).toHaveText('ProficiencyNative');
+  await extension.worker.evaluate(async () => {
+    const { profile } = await chrome.storage.local.get<{ profile: Profile }>('profile');
+    profile.languages[0].proficiency = 'elementary';
+    await chrome.storage.local.set({ profile });
+  });
+  await expect(options.getByRole('option')).toHaveText('ProficiencyBasic');
+  await search.press('Enter');
+  await expect(
+    options.getByRole('button', {
+      name: 'Profile field: Languages → English → Proficiency',
+    }),
+  ).toBeVisible();
+  await applicant.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(options.getByText('Mapping updated.', { exact: true })).toBeVisible();
+  await page.locator('body').evaluate((body) => {
+    body.innerHTML =
+      '<form><h1>Job application</h1><label>Applicant response<input id="q7" name="q7" required></label></form>';
+    const input = body.querySelector('input')!;
+    input.addEventListener('input', () => (input.dataset.observed = 'yes'));
+  });
+  await extension.send('AUTOFILL_SCAN');
+  await extension.send('AUTOFILL_FILL', 'overwrite');
+  await expect(page.locator('#q7')).toHaveValue('Basic');
+  await expect(page.locator('#q7')).toHaveAttribute('data-observed', 'yes');
+  expect(
+    await page.locator('#q7').evaluate((element) => (element as HTMLInputElement).checkValidity()),
+  ).toBe(true);
 });

@@ -1,7 +1,6 @@
 import type { Profile, WorkHistoryEntry, EducationEntry } from '../types/profile';
 import { COUNTRIES } from '../data/countries';
-import { languageName, LANGUAGE_PROFICIENCY_LABELS } from '../data/languages';
-import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
+import { languageName } from '../data/languages';
 import { resolveProfileValue } from './resolver';
 import { mostRecentIdx } from './entryRecency';
 
@@ -84,7 +83,7 @@ export function buildPickerTree(profile: Profile): Section[] {
     const items: SectionItem[] = [];
     addPath(items, 'First Name',        'personal.firstName');
     addPath(items, 'Last Name',         'personal.lastName');
-    addPath(items, 'Nickname',          'personal.nickname');
+    addPath(items, 'Preferred name',    'personal.nickname');
     addPath(items, 'Full Name',         'derived.fullName');
     addPath(items, 'Email',             'personal.email');
     addPath(items, 'Age',               'derived.age');
@@ -121,7 +120,7 @@ export function buildPickerTree(profile: Profile): Section[] {
   // Address
   {
     const items: SectionItem[] = [];
-    addPath(items, 'Street',           'address.street');
+    addPath(items, 'Street Address',   'address.street');
     addPath(items, 'City',             'address.city');
     const cc = profile.address?.country;
     if (cc) items.push(row('Country', 'address.countryName', countryName(cc)));
@@ -130,42 +129,21 @@ export function buildPickerTree(profile: Profile): Section[] {
     if (items.length) sections.push({ id: 'address', label: 'Address', items });
   }
 
-  // Salary
-  {
-    const items: SectionItem[] = [];
-
-    const cur = profile.salary?.current;
-    if (cur?.amount != null || cur?.currency) {
-      const rows: OptionRow[] = [];
-      const full = resolveProfileValue(profile, 'salary.current.formatted');
-      if (full)                rows.push(row('Current Salary', 'salary.current.formatted', full));
-      if (cur?.amount != null) rows.push(row('Amount',         'salary.current.amount',    String(cur.amount)));
-      if (cur?.currency)       rows.push(row('Currency',       'salary.current.currency',  cur.currency));
-      if (rows.length) items.push({ kind: 'subgroup', heading: 'Current Salary', rows });
-    }
-
-    (profile.salary?.expected ?? []).forEach((entry, idx) => {
-      if (!entry.amount && !entry.currency) return;
-      const name = entry.country ? countryName(entry.country) : `Entry ${idx + 1}`;
-      const rows: OptionRow[] = [];
-      const full = resolveProfileValue(profile, `salary.expected.${idx}.formatted`);
-      if (full)                rows.push(row('Expected Salary', `salary.expected.${idx}.formatted`, full));
-      if (entry.amount != null) rows.push(row('Amount',         `salary.expected.${idx}.amount`,    String(entry.amount)));
-      if (entry.currency)       rows.push(row('Currency',       `salary.expected.${idx}.currency`,  entry.currency));
-      if (rows.length) items.push({ kind: 'subgroup', heading: `Expected Salary: ${name}`, rows });
-    });
-
-    if (items.length) sections.push({ id: 'salary', label: 'Salary', items });
-  }
-
-  // Work Authorization — flat rows (label = country name, value = status)
+  // Work Authorization
   {
     const items: SectionItem[] = [];
     (profile.workAuthorization ?? []).forEach((entry, idx) => {
       if (!entry.status) return;
       const name   = countryName(entry.country);
-      const status = WORK_AUTH_STATUS_LABELS[entry.status] ?? entry.status;
-      items.push(row(name, `workAuthorization.${idx}`, status));
+      const rows: OptionRow[] = [];
+      addPath(rows, 'Country', `workAuthorization.${idx}.country`);
+      // Preserve the existing indexed path, which resolves the readable status.
+      addPath(rows, 'Authorization Status', `workAuthorization.${idx}`);
+      if (entry.status === 'work_visa') {
+        addPath(rows, 'Visa type', `workAuthorization.${idx}.visaType`);
+        addPath(rows, 'Visa expiry date', `workAuthorization.${idx}.expiryDate`);
+      }
+      items.push({ kind: 'subgroup', heading: name || `Entry ${idx + 1}`, rows });
     });
     if (items.length) sections.push({ id: 'work-authorization', label: 'Work Authorization', items });
   }
@@ -177,17 +155,18 @@ export function buildPickerTree(profile: Profile): Section[] {
     const recentIdx = mostRecentIdx(entries);
 
     entries.forEach((entry, idx) => {
-      if (!entry.title && !entry.company) return;
       const rows: OptionRow[] = [];
 
-      // Order: Company, Job Title, Location, Work Arrangement, Start Date, End Date, Description
       if (entry.company) rows.push(row('Company',   `workHistory.${idx}.company`, entry.company));
       if (entry.title)   rows.push(row('Job Title', `workHistory.${idx}.title`,   entry.title));
 
       addPath(rows, 'Location', `workHistory.${idx}.location`);
+      addPath(rows, 'Country', `workHistory.${idx}.location.countryName`);
+      addPath(rows, 'City', `workHistory.${idx}.location.city`);
       addPath(rows, 'Work Arrangement', `workHistory.${idx}.arrangement`);
       addPath(rows, 'Start Date', `workHistory.${idx}.startDate.formatted`);
       addPath(rows, 'End Date', `workHistory.${idx}.endDate.formatted`);
+      addPath(rows, 'I currently work here', `workHistory.${idx}.isCurrent`);
 
       if (entry.description) rows.push(row('Description', `workHistory.${idx}.description`, entry.description));
 
@@ -216,16 +195,15 @@ export function buildPickerTree(profile: Profile): Section[] {
     const recentIdx = mostRecentIdx(entries);
 
     entries.forEach((entry, idx) => {
-      if (!entry.degree && !entry.institution) return;
       const rows: OptionRow[] = [];
 
-      // Order: Institution, Degree, Field of Study, Start Date, End Date
       if (entry.institution)  rows.push(row('Institution',    `education.${idx}.institution`,  entry.institution));
       if (entry.degree)       rows.push(row('Degree',         `education.${idx}.degree`,       entry.degree));
       if (entry.fieldOfStudy) rows.push(row('Field of Study', `education.${idx}.fieldOfStudy`, entry.fieldOfStudy));
 
       addPath(rows, 'Start Date', `education.${idx}.startDate.formatted`);
       addPath(rows, 'End Date', `education.${idx}.endDate.formatted`);
+      addPath(rows, 'I’m currently studying here', `education.${idx}.isCurrent`);
 
       if (entry.grade)       rows.push(row('Grade / GPA', `education.${idx}.grade`,       entry.grade));
       if (entry.description) rows.push(row('Description', `education.${idx}.description`, entry.description));
@@ -243,14 +221,16 @@ export function buildPickerTree(profile: Profile): Section[] {
     if (items.length) sections.push({ id: 'education', label: 'Education', items });
   }
 
-  // Languages — label = language name, value = proficiency
+  // Languages
   {
     const items: SectionItem[] = [];
     (profile.languages ?? []).forEach((entry, idx) => {
       if (!entry.language) return;
       const name = languageName(entry.language);
-      const prof = LANGUAGE_PROFICIENCY_LABELS[entry.proficiency] ?? entry.proficiency ?? '';
-      items.push(row(name, `languages.${idx}.language`, prof || name));
+      const rows: OptionRow[] = [];
+      addPath(rows, 'Language', `languages.${idx}.language`);
+      addPath(rows, 'Proficiency', `languages.${idx}.proficiency`);
+      items.push({ kind: 'subgroup', heading: name, rows });
     });
     if (items.length) sections.push({ id: 'languages', label: 'Languages', items });
   }
@@ -260,7 +240,7 @@ export function buildPickerTree(profile: Profile): Section[] {
     const items: SectionItem[] = [];
     if (profile.links?.linkedin)  items.push(row('LinkedIn',  'links.linkedin',  profile.links.linkedin));
     if (profile.links?.portfolio) items.push(row('Portfolio', 'links.portfolio', profile.links.portfolio));
-    for (const [key, label] of [['github', 'GitHub'], ['twitter', 'Twitter / X'], ['dribbble', 'Dribbble'], ['behance', 'Behance']] as const) {
+    for (const [key, label] of [['github', 'GitHub'], ['twitter', 'X / Twitter'], ['dribbble', 'Dribbble'], ['behance', 'Behance']] as const) {
       const value = profile.links?.[key];
       if (value) items.push(row(label, `links.${key}`, value));
     }
@@ -275,10 +255,46 @@ export function buildPickerTree(profile: Profile): Section[] {
   {
     const items: SectionItem[] = [];
     const cvUrl = profile.documents?.cv?.url;
-    if (cvUrl) items.push(row('Document URL', 'documents.cv.url', cvUrl));
+    if (cvUrl) items.push({
+      kind: 'cluster', heading: 'CV / Résumé',
+      rows: [row('Document URL', 'documents.cv.url', cvUrl)],
+    });
     const coverLetterUrl = profile.documents?.coverLetter?.url;
-    if (coverLetterUrl) items.push(row('Cover Letter URL', 'documents.coverLetter.url', coverLetterUrl));
+    if (coverLetterUrl) items.push({
+      kind: 'cluster', heading: 'Cover letter',
+      rows: [row('Document URL', 'documents.coverLetter.url', coverLetterUrl)],
+    });
     if (items.length) sections.push({ id: 'documents', label: 'Documents', items });
+  }
+
+  // Salary
+  {
+    const items: SectionItem[] = [];
+
+    const cur = profile.salary?.current;
+    if (cur?.amount != null || cur?.currency) {
+      const rows: OptionRow[] = [];
+      const full = resolveProfileValue(profile, 'salary.current.formatted');
+      if (full)                rows.push(row('Current Salary', 'salary.current.formatted', full));
+      if (cur?.amount != null) rows.push(row('Amount',         'salary.current.amount',    String(cur.amount)));
+      if (cur?.currency)       rows.push(row('Currency',       'salary.current.currency',  cur.currency));
+      addPath(rows, 'Period', 'salary.current.period');
+      if (rows.length) items.push({ kind: 'subgroup', heading: 'Current Salary', rows });
+    }
+
+    (profile.salary?.expected ?? []).forEach((entry, idx) => {
+      if (!entry.amount && !entry.currency) return;
+      const name = entry.currency || `Entry ${idx + 1}`;
+      const rows: OptionRow[] = [];
+      const full = resolveProfileValue(profile, `salary.expected.${idx}.formatted`);
+      if (full)                rows.push(row('Expected Salary', `salary.expected.${idx}.formatted`, full));
+      if (entry.amount != null) rows.push(row('Amount',         `salary.expected.${idx}.amount`,    String(entry.amount)));
+      if (entry.currency)       rows.push(row('Currency',       `salary.expected.${idx}.currency`,  entry.currency));
+      addPath(rows, 'Period', `salary.expected.${idx}.period`);
+      if (rows.length) items.push({ kind: 'subgroup', heading: `Expected Salary: ${name}`, rows });
+    });
+
+    if (items.length) sections.push({ id: 'salary', label: 'Salary', items });
   }
 
   return sections;

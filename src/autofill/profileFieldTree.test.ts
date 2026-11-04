@@ -2,6 +2,8 @@ import { resolveProfileValue } from './resolver';
 import { describe, it, expect } from 'vitest';
 import type { Profile } from '../types/profile';
 import { buildPickerTree } from './profileFieldTree';
+import { RULE_PROFILE } from './ruleMatching.fixture';
+import { isLearnedPath } from '../utils/learnedMappingData';
 
 function emptyProfile(): Profile {
   return {
@@ -49,14 +51,14 @@ describe('buildPickerTree', () => {
       expect(labels).toEqual(['First Name', 'Email']);
     });
 
-    it('includes Nickname when present', () => {
+    it('uses the Profile label for a preferred name', () => {
       const p = emptyProfile();
       p.personal.firstName = 'Jane';
       p.personal.nickname = 'Janey';
 
       const personal = getSection(p, 'personal');
       const labels = personal.items.map((i) => ('label' in i ? i.label : i.heading));
-      expect(labels).toEqual(['First Name', 'Nickname']);
+      expect(labels).toEqual(['First Name', 'Preferred name']);
     });
 
     it('groups phone into a cluster only when callingCode or number is present', () => {
@@ -126,7 +128,7 @@ describe('buildPickerTree', () => {
       }
     });
 
-    it('adds one subgroup per expected-salary entry, named by country or entry index', () => {
+    it('adds one subgroup per expected-salary entry, named by currency', () => {
       const p = emptyProfile();
       p.salary.expected = [
         { amount: 100, currency: 'USD', period: 'monthly', country: 'US' },
@@ -135,7 +137,7 @@ describe('buildPickerTree', () => {
 
       const salary = getSection(p, 'salary');
       const headings = salary.items.filter((i) => 'heading' in i).map((i) => (i as { heading: string }).heading);
-      expect(headings).toEqual(['Current Salary', 'Expected Salary: United States', 'Expected Salary: Entry 2']);
+      expect(headings).toEqual(['Current Salary', 'Expected Salary: USD', 'Expected Salary: GBP']);
     });
 
     it('skips an expected-salary entry with neither amount nor currency', () => {
@@ -147,7 +149,7 @@ describe('buildPickerTree', () => {
   });
 
   describe('work authorization section', () => {
-    it('renders one flat row per entry: country name as label, status label as value', () => {
+    it('groups each country and its authorization status, preserving indexed mapping paths', () => {
       const p = emptyProfile();
       p.workAuthorization = [
         { country: 'US', status: 'citizen_or_pr' },
@@ -155,9 +157,15 @@ describe('buildPickerTree', () => {
       ];
 
       const wa = getSection(p, 'work-authorization');
-      expect(wa.items.map((i) => ('label' in i ? `${i.label}: ${i.value}` : ''))).toEqual([
-        'United States: Citizen / Permanent Resident',
-        'Thailand: Requires Sponsorship',
+      expect(wa.items.map((item) => item.kind === 'subgroup' && [item.heading, item.rows])).toEqual([
+        ['United States', [
+          { kind: 'option', label: 'Country', fieldPath: 'workAuthorization.0.country', value: 'US' },
+          { kind: 'option', label: 'Authorization Status', fieldPath: 'workAuthorization.0', value: 'Citizen / Permanent Resident' },
+        ]],
+        ['Thailand', [
+          { kind: 'option', label: 'Country', fieldPath: 'workAuthorization.1.country', value: 'TH' },
+          { kind: 'option', label: 'Authorization Status', fieldPath: 'workAuthorization.1', value: 'Requires Sponsorship' },
+        ]],
       ]);
     });
 
@@ -236,10 +244,12 @@ describe('buildPickerTree', () => {
       expect(noticePeriodRow && 'value' in noticePeriodRow && noticePeriodRow.value).toBe('2 Weeks');
     });
 
-    it('skips an entry with neither company nor title', () => {
+    it('retains usable fields in a partial work entry', () => {
       const p = emptyProfile();
       p.workHistory = [{ startDate: '2020-01', isCurrent: false } as Profile['workHistory'][0]];
-      expect(sectionIds(p)).not.toContain('work-history');
+      expect(getSection(p, 'work-history').items[0]).toMatchObject({
+        heading: '2020', rows: [expect.objectContaining({ fieldPath: 'workHistory.0.startDate.formatted' })],
+      });
     });
 
     it('falls back to just the company name when title is missing', () => {
@@ -259,10 +269,15 @@ describe('buildPickerTree', () => {
       expect('heading' in edu.items[0] && edu.items[0].heading).toBe('MIT · BSc');
     });
 
-    it('skips an entry with neither institution nor degree', () => {
+    it('retains usable fields in a partial education entry', () => {
       const p = emptyProfile();
       p.education = [{ fieldOfStudy: 'CS', startDate: '2020' } as Profile['education'][0]];
-      expect(sectionIds(p)).not.toContain('education');
+      expect(getSection(p, 'education').items[0]).toMatchObject({
+        heading: '2020', rows: [
+          expect.objectContaining({ fieldPath: 'education.0.fieldOfStudy' }),
+          expect.objectContaining({ fieldPath: 'education.0.startDate.formatted' }),
+        ],
+      });
     });
   });
 
@@ -272,8 +287,12 @@ describe('buildPickerTree', () => {
       p.languages = [{ language: 'en', proficiency: 'native_bilingual' }];
 
       const lang = getSection(p, 'languages');
-      expect('label' in lang.items[0] && lang.items[0].label).toBe('English');
-      expect('value' in lang.items[0] && lang.items[0].value).toBe('Native');
+      expect(lang.items[0]).toEqual({
+        kind: 'subgroup', heading: 'English', rows: [
+          { kind: 'option', label: 'Language', fieldPath: 'languages.0.language', value: 'English' },
+          { kind: 'option', label: 'Proficiency', fieldPath: 'languages.0.proficiency', value: 'Native' },
+        ],
+      });
     });
 
     it('skips an entry with no language', () => {
@@ -311,7 +330,7 @@ describe('buildPickerTree', () => {
       p.documents = { cv: { url: 'https://drive.example/cv.pdf' } };
 
       const docs = getSection(p, 'documents');
-      expect('value' in docs.items[0] && docs.items[0].value).toBe('https://drive.example/cv.pdf');
+      expect('rows' in docs.items[0] && docs.items[0].rows[0].value).toBe('https://drive.example/cv.pdf');
     });
 
     it('is omitted when the CV has no URL (file-only or empty)', () => {
@@ -325,7 +344,7 @@ describe('buildPickerTree', () => {
       p.documents = { cv: {}, coverLetter: { url: 'https://drive.example/letter.pdf' } };
 
       const docs = getSection(p, 'documents');
-      expect('value' in docs.items[0] && docs.items[0].value).toBe('https://drive.example/letter.pdf');
+      expect('rows' in docs.items[0] && docs.items[0].rows[0].value).toBe('https://drive.example/letter.pdf');
     });
 
     it('includes both CV URL and Cover Letter URL as separate rows when both are present', () => {
@@ -337,8 +356,8 @@ describe('buildPickerTree', () => {
 
       const docs = getSection(p, 'documents');
       expect(docs.items).toHaveLength(2);
-      expect('value' in docs.items[0] && docs.items[0].value).toBe('https://drive.example/cv.pdf');
-      expect('value' in docs.items[1] && docs.items[1].value).toBe('https://drive.example/letter.pdf');
+      expect('rows' in docs.items[0] && docs.items[0].rows[0].value).toBe('https://drive.example/cv.pdf');
+      expect('rows' in docs.items[1] && docs.items[1].rows[0].value).toBe('https://drive.example/letter.pdf');
     });
   });
 
@@ -355,8 +374,8 @@ describe('buildPickerTree', () => {
     p.documents = { cv: { url: 'https://drive.example/cv.pdf' } };
 
     expect(sectionIds(p)).toEqual([
-      'personal', 'address', 'salary', 'work-authorization',
-      'work-history', 'education', 'languages', 'links', 'documents',
+      'personal', 'address', 'work-authorization', 'work-history',
+      'education', 'languages', 'links', 'documents', 'salary',
     ]);
   });
 });
@@ -383,9 +402,41 @@ it('preserves formatted work and education previews, order, and current end date
   if (work.kind !== 'subgroup' || education.kind !== 'subgroup') throw new Error('Expected entry groups');
   expect(work.rows.map(({ label, value }) => [label, value])).toEqual([
     ['Company', 'Acme'], ['Job Title', 'Dev'], ['Location', 'Paris, France'],
-    ['Work Arrangement', 'Remote'], ['Start Date', 'March 2022'], ['End Date', 'Present'],
+    ['Country', 'France'], ['City', 'Paris'], ['Work Arrangement', 'Remote'],
+    ['Start Date', 'March 2022'], ['End Date', 'Present'], ['I currently work here', 'Yes'],
   ]);
   expect(education.rows.map(({ label, value }) => [label, value])).toEqual([
     ['Institution', 'School'], ['Degree', 'BSc'], ['Start Date', '2015'], ['End Date', 'June 2019'],
   ]);
+});
+
+
+it('offers current Profile fields with previews equal to their resolved mapping values', () => {
+  const profile = structuredClone(RULE_PROFILE);
+  profile.personal.nickname = 'Lex';
+  profile.workAuthorization[1].visaType = 'Work permit';
+  profile.workAuthorization[1].expiryDate = '2028-06-30';
+  profile.workHistory[1].location = { city: 'Bangkok', countryCode: 'TH' };
+  profile.documents.coverLetter = { url: 'https://example.test/letter' };
+  profile.links.twitter = 'https://x.com/example';
+  const rows = buildPickerTree(profile).flatMap((section) =>
+    section.items.flatMap((item) => item.kind === 'option' ? [item] : item.rows),
+  );
+  const paths = rows.map((row) => row.fieldPath);
+  expect(new Set(paths).size).toBe(paths.length);
+  expect(paths).toEqual(expect.arrayContaining([
+    'personal.nickname', 'salary.current.period', 'salary.expected.1.period',
+    'workAuthorization.1', 'workAuthorization.1.country',
+    'workAuthorization.1.visaType', 'workAuthorization.1.expiryDate',
+    'workHistory.1.location.city', 'workHistory.1.location.countryName',
+    'workHistory.1.isCurrent', 'education.1.isCurrent',
+    'languages.0.language', 'languages.0.proficiency',
+    'documents.cv.url', 'documents.coverLetter.url',
+  ]));
+  for (const row of rows) {
+    expect(isLearnedPath(row.fieldPath), row.fieldPath).toBe(true);
+    expect(row.value, row.fieldPath).toBe(resolveProfileValue(profile, row.fieldPath));
+  }
+  expect(paths.some((path) => path.includes('.file'))).toBe(false);
+  expect(rows.find((row) => row.fieldPath === 'links.twitter')?.label).toBe('X / Twitter');
 });
