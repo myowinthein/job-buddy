@@ -279,13 +279,16 @@ export function SearchableProfileFieldSelect({
     }
     if (item.kind === 'cluster') {
       const rows = item.rows;
+      const showHeading = !rows.some((row) => row.component === false);
       return (
         <div key={item.id} className="py-1">
-          <p
-            className={`px-5 pt-2 pb-1 text-xs font-medium ${item.rows.some((row) => row.fieldPath === value) ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
-          >
-            {item.heading}
-          </p>
+          {showHeading && (
+            <p
+              className={`px-5 pt-2 pb-1 text-xs font-medium ${item.rows.some((row) => row.fieldPath === value) ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
+            >
+              {item.heading}
+            </p>
+          )}
           {rows.map((r) => renderRow(r, false))}
         </div>
       );
