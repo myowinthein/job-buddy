@@ -4,8 +4,9 @@ vi.mock('@/src/utils/storage', async (original) => ({
   ...(await original<typeof import('./utils/storage')>()),
   saveLearnedObservationLocally: vi.fn().mockResolvedValue(undefined),
   saveLearnedMappings: vi.fn().mockResolvedValue(undefined),
+  repairLearnedMappings: vi.fn().mockResolvedValue({}),
 }));
-import { saveLearnedObservationLocally, saveLearnedMappings } from './utils/storage';
+import { saveLearnedObservationLocally, saveLearnedMappings, repairLearnedMappings } from './utils/storage';
 
 vi.mock('@/src/devtools/registerContentScript', () => ({
   registerDevelopmentContentScript: vi.fn().mockResolvedValue(undefined),
@@ -203,6 +204,19 @@ describe('background autofill entry point', () => {
 
 describe('background learning writes', () => {
   const learningListener = () => vi.mocked(chrome.runtime.onMessage.addListener).mock.calls[1][0];
+  it('repairs only the sender site and ignores a message-supplied site', async () => {
+    const respond = vi.fn();
+    const fields = [{ keys: ['email'], question: 'Email' }];
+    const context = { profileId: 'profile', revision: null };
+    expect(learningListener()(
+      { action: 'REPAIR_LEARNED_MAPPINGS', domain: 'other.test', fields, context },
+      { id: 'job-buddy', url: 'https://actual.test/apply', tab: { id: 1 } } as chrome.runtime.MessageSender,
+      respond,
+    )).toBe(true);
+    expect(repairLearnedMappings).toHaveBeenCalledWith('actual.test', fields, context);
+    await Promise.resolve();
+    expect(respond).toHaveBeenCalledWith({ ok: true, mappings: {} });
+  });
   it('derives the domain from the sender, including inherited-origin frames', async () => {
     const respond=vi.fn();
     expect(

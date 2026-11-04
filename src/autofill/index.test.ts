@@ -6,7 +6,7 @@ vi.mock('../utils/storage', () => ({
   getProfile: vi.fn(),
   getLearnedMappings: vi.fn().mockResolvedValue({}),
   getLearningContext: vi.fn().mockResolvedValue({profileId:'test-profile',revision:null}),
-  saveLearnedMappings: vi.fn().mockResolvedValue(undefined),
+  repairLearnedMappings: vi.fn().mockResolvedValue({}),
 }));
 vi.mock('./scanner', async (original) => {
   const actual = await original<typeof import('./scanner')>();
@@ -58,20 +58,19 @@ vi.mock('./resolver', async (importOriginal) => {
   return { ...actual, resolveProfileValue: vi.fn() };
 });
 vi.mock('./mappings', () => ({
-  refreshLearnedLabels: vi.fn().mockReturnValue(false),
   saveElementMappings: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock('./ai', () => ({ runAIAutofill: vi.fn().mockResolvedValue(false) }));
 
 import { scanAutofill, executeAutofill, undoAutofill, getLastResult, EMPTY_AUTOFILL_RESULT } from './index';
-import { getProfile, saveLearnedMappings } from '../utils/storage';
+import { getProfile, getLearnedMappings, repairLearnedMappings } from '../utils/storage';
 import { scanFields, scanAriaFields, scanCheckboxGroups, scanRadioGroups } from './scanner';
 import { extractSignals } from './signals';
 import { mapField } from './mapper';
 import { clearFieldValue, fillField, fillCheckboxInput, fillFileField } from './filler';
 import { clearHighlights, applyHighlight, applyMissingDataHighlight } from './highlighter';
 import { resolveProfileValue } from './resolver';
-import { refreshLearnedLabels, saveElementMappings } from './mappings';
+import { saveElementMappings } from './mappings';
 import { runAIAutofill } from './ai';
 import { CONF_CONFIRMED } from './constants';
 
@@ -103,6 +102,7 @@ beforeEach(async () => {
   await undoAutofill(); // reset sessionElements, noDataFields, lastResult
   vi.clearAllMocks(); // clear calls produced by undoAutofill itself
   vi.mocked(getProfile).mockResolvedValue(makeProfile());
+  vi.mocked(getLearnedMappings).mockResolvedValue({});
   vi.mocked(scanFields).mockReturnValue([]);
   vi.mocked(scanAriaFields).mockReturnValue([]);
   vi.mocked(scanCheckboxGroups).mockReturnValue([]);
@@ -154,21 +154,23 @@ describe('scanAutofill', () => {
     expect(result.preFilledCount).toBe(1);
   });
 
-  it('does not write learned mappings when no field label needed backfilling', async () => {
+  it('skips repair when this site has no mappings', async () => {
     vi.mocked(scanFields).mockReturnValue([makeInput(), makeInput()]);
-    vi.mocked(refreshLearnedLabels).mockReturnValue(false);
-
     await scanAutofill();
-    expect(saveLearnedMappings).not.toHaveBeenCalled();
+    expect(repairLearnedMappings).not.toHaveBeenCalled();
   });
 
-  it('batches label backfills from multiple fields into a single write', async () => {
+  it('repairs all captured fields in one transaction before matching', async () => {
+    vi.mocked(getLearnedMappings).mockResolvedValue({
+      localhost: { email: { path: 'personal.email', count: 1 } },
+    });
     vi.mocked(scanFields).mockReturnValue([makeInput(), makeInput(), makeInput()]);
-    vi.mocked(refreshLearnedLabels).mockReturnValue(true);
-
     await scanAutofill();
-    expect(refreshLearnedLabels).toHaveBeenCalledTimes(3);
-    expect(saveLearnedMappings).toHaveBeenCalledTimes(1);
+    expect(repairLearnedMappings).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(repairLearnedMappings).mock.calls[0][1]).toHaveLength(3);
+    expect(vi.mocked(repairLearnedMappings).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(mapField).mock.invocationCallOrder[0],
+    );
   });
 
   it('resolves a label-matched phone field to the full number when no calling-code sibling is present', async () => {

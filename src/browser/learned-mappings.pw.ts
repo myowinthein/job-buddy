@@ -193,7 +193,7 @@ test('does not recreate mappings from a completed form after reset', async ({
     ),
   ).toEqual({});
 });
-test('backfills counted labels alongside legacy mappings', async ({ page, extension }) => {
+test('keeps an unidentified historical ID pending alongside legacy mappings', async ({ page, extension }) => {
   await extension.worker.evaluate(async () => {
     await chrome.storage.local.set({
       learnedMappings: {
@@ -214,7 +214,7 @@ test('backfills counted labels alongside legacy mappings', async ({ page, extens
           | undefined
       )?.['127.0.0.1']?.q7,
   );
-  expect(entry).toEqual({ path: 'personal.firstName', count: 1, label: 'Novel response' });
+  expect(entry).toEqual({ path: 'personal.firstName', count: 1 });
 });
 test('rejects a reused legacy internal key', async ({ page, extension }) => {
   await extension.worker.evaluate(async () => {

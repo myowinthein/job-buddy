@@ -1,8 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, it, expect, vi } from 'vitest';
-import { saveElementMappings, refreshLearnedLabels } from './mappings';
-import { extractSignals } from './signals';
-import type { LearnedMappings } from '../types/storage';
+import { saveElementMappings } from './mappings';
 
 // In-memory store to capture saveLearnedMapping calls
 const savedMappings: Array<{ domain: string; signal: string; path: string; label?: string }> = [];
@@ -144,87 +142,5 @@ describe('saveElementMappings', () => {
 
     await saveElementMappings('example.com', el, 'personal.phone.number');
     expect(savedMappings).toHaveLength(0);
-  });
-});
-
-describe('refreshLearnedLabels', () => {
-  it('backfills a missing label on an existing counted entry and reports a change', () => {
-    const el = makeInput({ id: 'field-email' });
-    const label = document.createElement('label');
-    label.setAttribute('for', 'field-email');
-    label.textContent = 'Email Address';
-    document.body.appendChild(label);
-    const signals = extractSignals(el);
-
-    const mappings: LearnedMappings = {
-      'example.com': { fieldemail: { path: 'personal.email', count: 1 } },
-    };
-    const changed = refreshLearnedLabels('example.com', signals, mappings);
-
-    expect(changed).toBe(true);
-    expect(mappings['example.com']['fieldemail']).toEqual({
-      path: 'personal.email', count: 1, label: 'Email Address',
-    });
-  });
-
-  it('preserves the original label and trust when an internal key is reused', () => {
-    const el = makeInput({ id: 'field-email' });
-    const label = document.createElement('label');
-    label.setAttribute('for', 'field-email');
-    label.textContent = 'Updated Label';
-    document.body.appendChild(label);
-    const signals = extractSignals(el);
-
-    const mappings: LearnedMappings = {
-      'example.com': { fieldemail: { path: 'personal.email', count: 2, label: 'Old Label' } },
-    };
-    refreshLearnedLabels('example.com', signals, mappings);
-
-    expect(mappings['example.com']['fieldemail']).toEqual({
-      path: 'personal.email', count: 2, label: 'Old Label',
-    });
-  });
-
-  it('returns false and does not mutate when the label is already up to date', () => {
-    const el = makeInput({ id: 'field-email' });
-    const label = document.createElement('label');
-    label.setAttribute('for', 'field-email');
-    label.textContent = 'Email Address';
-    document.body.appendChild(label);
-    const signals = extractSignals(el);
-
-    const mappings: LearnedMappings = {
-      'example.com': { fieldemail: { path: 'personal.email', count: 2, label: 'Email Address' } },
-    };
-    expect(refreshLearnedLabels('example.com', signals, mappings)).toBe(false);
-  });
-
-  it('leaves a legacy string entry untouched', () => {
-    const el = makeInput({ id: 'field-email' });
-    const label = document.createElement('label');
-    label.setAttribute('for', 'field-email');
-    label.textContent = 'Email Address';
-    document.body.appendChild(label);
-    const signals = extractSignals(el);
-
-    const mappings: LearnedMappings = { 'example.com': { fieldemail: 'personal.email' } };
-    expect(refreshLearnedLabels('example.com', signals, mappings)).toBe(false);
-    expect(mappings['example.com']['fieldemail']).toBe('personal.email');
-  });
-
-  it('returns false when the domain has no learned mappings at all', () => {
-    const el = makeInput({ name: 'email' });
-    const signals = extractSignals(el);
-    const mappings: LearnedMappings = {};
-    expect(refreshLearnedLabels('example.com', signals, mappings)).toBe(false);
-  });
-
-  it('returns false when no signal on the field matches an existing entry', () => {
-    const el = makeInput({ name: 'unrelatedfield' });
-    const signals = extractSignals(el);
-    const mappings: LearnedMappings = {
-      'example.com': { fieldemail: { path: 'personal.email', count: 2 } },
-    };
-    expect(refreshLearnedLabels('example.com', signals, mappings)).toBe(false);
   });
 });

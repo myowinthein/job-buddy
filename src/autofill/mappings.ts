@@ -2,7 +2,7 @@ import type { FieldSignals } from './signals';
 import { extractSignals, displayLabel } from './signals';
 import { normalize } from './normalizer';
 import { getProfile, getLearningContext, saveLearnedObservation } from '../utils/storage';
-import type { LearnedMappings, LearningContext } from '../types/storage';
+import type { LearningContext } from '../types/storage';
 import { genericLearnedSignal, hasGenericEntryLabel, learningQuestion } from './learnedContext';
 import { isLearnedPath, safeMappingKey } from '../utils/learnedMappingData';
 
@@ -50,49 +50,3 @@ export async function saveElementMappings(
 
 const repeatedLearnedPath = (path: string) =>
   /^(education|workHistory|languages)\.\d+\.|^salary\.expected\.\d+\./.test(path);
-
-// Opportunistically backfills a missing/stale display label on an *existing*
-// learned-mapping entry when the same field is scanned again later — covers
-// entries written before label capture existed, and ones where the page's
-// wording changed since. Never touches path/count (trust is unaffected).
-// Legacy string-format entries are left alone; saveLearnedMapping's own
-// upgrade path already handles those on the next real confirmation.
-// Mutates `mappings` in place and returns whether anything changed, so
-// callers can batch many fields into a single storage write per scan instead
-// of one write per field.
-export function refreshLearnedLabels(
-  domain: string,
-  signals: FieldSignals,
-  mappings: LearnedMappings,
-  patch?: LearnedMappings,
-): boolean {
-  const domainMap = mappings[domain];
-  if (!domainMap) return false;
-
-  const label = displayLabel(signals);
-  if (!label) return false;
-
-  const texts = [
-    signals.name,
-    signals.id,
-    signals.placeholder,
-    signals.ariaLabel,
-    signals.label,
-  ].filter(Boolean);
-
-  let changed = false;
-  for (const text of texts) {
-    const norm = normalize(text);
-    if (!norm) continue;
-    const existing = domainMap[norm];
-    if (existing === undefined || typeof existing === 'string') continue;
-    if (existing.label) continue;
-    domainMap[norm] = { ...existing, label };
-    if (patch) {
-      patch[domain] ??= {};
-      patch[domain][norm] = domainMap[norm];
-    }
-    changed = true;
-  }
-  return changed;
-}

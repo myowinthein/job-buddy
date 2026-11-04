@@ -25,6 +25,15 @@ function addInput(attrs: Record<string, string> = {}): HTMLInputElement {
   return el;
 }
 
+it('excludes site language controls while keeping application language questions', () => {
+  document.body.innerHTML = `
+    <header><button role="combobox" aria-label="Select language">English</button></header>
+    <main><header><label>Language<select id="answer"><option>English</option></select></label></header>
+    <form><label>Native language<select id="native"><option>Burmese</option></select></label></form></main>`;
+  expect(scanFields({ scopeApplication: true }).map((field) => field.id)).toEqual(['answer', 'native']);
+  expect(scanAriaFields()).toHaveLength(1);
+});
+
 describe('scanFields', () => {
   it('includes a standard visible text input', () => {
     addInput({ type: 'text', name: 'username' });

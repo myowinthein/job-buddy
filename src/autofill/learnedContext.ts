@@ -6,7 +6,7 @@ export const learningQuestion = (signals: FieldSignals): string =>
   (signals.label || signals.ariaLabel || signals.placeholder).trim();
 
 export function genericLearnedSignal(text: string): boolean {
-  return /^(?:enter(?:your)?(?:answer|response|text|value)?|select(?:one|option)?|choose(?:one)?|answer|response|value|text|field\d*)$/.test(
+  return /^(?:enter(?:your)?(?:answer|response|text|value)?|select(?:one|option)?|choose(?:one)?|answer|response|value|text|field\d*|typehere|typeyourresponse|youranswer|starttyping|singlelinetext|egquestions|usernameornumber|yyyy|mmddyyyy)$/.test(
     text,
   );
 }

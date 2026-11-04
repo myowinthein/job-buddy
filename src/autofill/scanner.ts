@@ -227,8 +227,16 @@ function scopedControls(
         const data = forms.get(form)!;
         return data.career || (!hasApplication && !data.auxiliary);
       }
+      const ancestors = [...composedAncestors(element)];
+      const signal = signals(element);
+      const locale = /\b(language|locale|translate)\b/i.test(
+        [signal.label, signal.ariaLabel, signal.name, signal.id].join(' '),
+      );
+      if (locale && ancestors.some((ancestor) => ancestor.matches('header,[role="banner"]')) &&
+          !ancestors.some((ancestor) => ancestor.matches('main,[role="main"]')))
+        return false;
       // Formless application builders and shadow controls remain supported.
-      return ![...composedAncestors(element)].some((ancestor) =>
+      return !ancestors.some((ancestor) =>
         ancestor.matches('nav,footer,[role="navigation"],[role="search"]'),
       );
     }),

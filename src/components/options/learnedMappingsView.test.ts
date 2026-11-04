@@ -30,12 +30,14 @@ it('groups only explicit equivalent aliases, preserving their individual records
   };
   const before = structuredClone(input);
   const groups = groupMappings(input).get('site')!;
-  expect(groups).toHaveLength(8);
-  expect(groups[0].members.length).toBe(1);
-  expect(groups.find((group) => group.members.length === 2)?.members.map(([key]) => key)).toEqual([
+  expect(groups).toHaveLength(7);
+  expect(groups[0].members.length).toBe(3);
+  expect(groups.find((group) => group.members.length === 3)?.members.map(([key]) => key)).toEqual([
+    'differentCount',
     'one',
     'two',
   ]);
+  expect(groups.find((group) => group.members.length === 3)?.status).toBe('Trusted');
   expect(input).toEqual(before);
 });
 it('keeps unknown-question records separate even if their labels and paths look alike', () => {

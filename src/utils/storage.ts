@@ -19,6 +19,12 @@ import { rebaseLearnedMappings, reviewedIncomingMappings } from './learnedMappin
 import { withProfileWriteLock } from './profileWriteLock';
 import { clearRetainedFillLog } from '@/src/fill-log/retention';
 import {
+  repairMappingDomain,
+  validRepairFields,
+  type LearnedRepairField,
+  type LearnedRepairState,
+} from './learnedMappingRepair';
+import {
   readableMappings,
   safeMappingKey,
   validMapping,
@@ -139,6 +145,7 @@ export async function replaceProfileData(
     await storageSet({
       profile: normalizeProfile(profile),
       learnedMappings: readableMappings(learnedMappings, true),
+      learnedMappingRepairs: {},
       learnedMappingsRevision: crypto.randomUUID(),
       ...(pausedDriveState ? { driveBackupState: pausedDriveState } : {}),
     });
@@ -149,6 +156,48 @@ export async function replaceProfileData(
 export async function getLearnedMappings(): Promise<LearnedMappings> {
   const result = await local.get('learnedMappings', { rejectOnError: true });
   return readableMappings(result.learnedMappings, true);
+}
+
+/** Serialize repair with edits, imports and reset, using the sender's actual site. */
+export async function repairLearnedMappings(
+  domain: string,
+  fields: LearnedRepairField[],
+  context: LearningContext,
+): Promise<LearnedMappings> {
+  if (!safeMappingKey(domain) || !validRepairFields(fields))
+    throw new Error('Invalid mapping repair');
+  if (contentStorageClient()) {
+    const response = await chrome.runtime.sendMessage({
+      action: 'REPAIR_LEARNED_MAPPINGS', fields, context,
+    });
+    if (!response?.ok) throw new Error('Could not repair learned mappings');
+    return readableMappings(response.mappings, true);
+  }
+  return withLearnedMappingsLock(async () => {
+    const current = await learningState();
+    if (!current.context.profileId || !equalJsonValues(current.context, context))
+      throw new Error('Profile changed before repairing mappings');
+    const stored = await local.get(['learnedMappings', 'learnedMappingRepairs'], {
+      rejectOnError: true,
+    });
+    const mappings = readableMappings(stored.learnedMappings, true);
+    if (!mappings[domain]) return {};
+    const cached = stored.learnedMappingRepairs;
+    const checkpoints = (cached && typeof cached === 'object' && !Array.isArray(cached)
+      ? cached : {}) as Record<string, LearnedRepairState>;
+    const result = await repairMappingDomain(
+      mappings[domain], fields, checkpoints[domain] ?? {}, context.profileId,
+    );
+    const raw = stored.learnedMappings as LearnedMappings;
+    const updated = { ...raw[domain], ...result.mappings };
+    const changes: Record<string, unknown> = {};
+    if (!equalJsonValues(updated, raw[domain]))
+      changes.learnedMappings = { ...raw, [domain]: updated };
+    if (!equalJsonValues(result.state, checkpoints[domain]))
+      changes.learnedMappingRepairs = { ...checkpoints, [domain]: result.state };
+    if (Object.keys(changes).length) await storageSet(changes);
+    return { [domain]: result.mappings };
+  });
 }
 
 /** Conflicting historical counts cannot establish which answer is current.
@@ -276,11 +325,22 @@ export async function saveLearnedMappings(
           }
         }
       }
-      await storageSet({ learnedMappings: current });
+      const stored = await local.get('learnedMappingRepairs');
+      const checkpoints = stored.learnedMappingRepairs as Record<string, LearnedRepairState> | undefined;
+      const kept = checkpoints && Object.fromEntries(
+        Object.entries(checkpoints).filter(([domain]) => Object.hasOwn(current, domain))
+          .map(([domain, entries]) => [domain, Object.fromEntries(
+            Object.entries(entries).filter(([key]) => Object.hasOwn(current[domain], key)),
+          )]),
+      );
+      await storageSet({
+        learnedMappings: current,
+        ...(kept ? { learnedMappingRepairs: kept } : {}),
+      });
       return;
     }
     if (!options.labelsOnly) {
-      await storageSet({ learnedMappings: mappings });
+      await storageSet({ learnedMappings: mappings, learnedMappingRepairs: {} });
       return;
     }
     for (const [domain, signals] of Object.entries(mappings))

@@ -1,13 +1,13 @@
 import { fieldDomain } from './ruleContext';
 import { resolveRuleValue, ruleValuePath } from './ruleValue';
 import { readFieldValue as getFieldValue } from './fieldValue';
-import type { LearnedMappings } from '../types/storage';
 import {
   getProfile,
   getLearnedMappings,
-  saveLearnedMappings,
   getLearningContext,
+  repairLearnedMappings,
 } from '../utils/storage';
+import { learnedRepairField } from '../utils/learnedMappingRepair';
 import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED, CONF_DICT_EXACT } from './constants';
 import { scanForm, isChoiceGroupAvailable } from './scanner';
 import { isChoice, isChoiceChecked, isControlAvailable } from './dom';
@@ -34,7 +34,6 @@ import {
   clearHighlights,
 } from './highlighter';
 import { confirmFieldFeedback } from './fieldFeedback';
-import { refreshLearnedLabels } from './mappings';
 import { watchLearning } from './learning';
 import { runAIAutofill } from './ai';
 import type { AITextCandidate, AIAutofillStatus } from './ai';
@@ -530,7 +529,7 @@ export async function scanAutofill(
   }
 
   watchRunProfile();
-  const learnedMappings = await getLearnedMappings();
+  let learnedMappings = await getLearnedMappings();
   if (generation !== sessionGeneration) return { preFilledCount: 0, totalMatched: 0 };
   const domain = fieldDomain();
 
@@ -540,16 +539,23 @@ export async function scanAutofill(
   const allowFileInputs = !!profile.documents?.cv?.file;
   const snapshot = scanForm({ allowFileInputs, scopeApplication: true });
   const fields = snapshot.fields;
+  if (Object.keys(learnedMappings[domain] ?? {}).length) {
+    const context = await getLearningContext(profile);
+    if (context) {
+      const evidence = fields.map((element) => learnedRepairField(snapshot.signals(element)))
+        .filter((field) => field.question.length <= 1000).slice(0, 1000);
+      try {
+        learnedMappings = await repairLearnedMappings(domain, evidence, context);
+      } catch {
+        // A failed write can retry on a later scan. Existing matching guards still apply.
+      }
+    }
+    if (generation !== sessionGeneration) return { preFilledCount: 0, totalMatched: 0 };
+  }
 
   let preFilledCount = 0;
   let totalMatched   = 0;
   const debugScanner: DebugScanField[] = [];
-  // Opportunistic label backfill for existing learned-mapping entries — see
-  // refreshLearnedLabels. Batched into one write after the loop rather than
-  // one per field.
-  let learnedLabelsDirty = false;
-  const learnedLabelsPatch: LearnedMappings = {};
-
   const scanned = fields.map((element, i) => {
     const signals = snapshot.signals(element);
     const learned: LearnedCheck = { status: 'not_checked' };
@@ -693,9 +699,6 @@ export async function scanAutofill(
       totalMatched++;
     }
 
-    if (refreshLearnedLabels(domain, signals, learnedMappings, learnedLabelsPatch))
-      learnedLabelsDirty = true;
-
     debugScanner.push({
       fieldId: debugFieldId,
       label:   bestLabel(signals),
@@ -706,9 +709,6 @@ export async function scanAutofill(
 
     pendingMatches.push({ element, signals, match, hasExistingValue, debugFieldId });
   });
-
-  if (learnedLabelsDirty)
-    void saveLearnedMappings(learnedLabelsPatch, { labelsOnly: true }).catch(() => {});
 
   // Seed an initial debug session — mapping/ai/summary are populated by executeAutofill.
   debugSession = {

@@ -31,7 +31,6 @@ vi.mock('./scanner', async (original) => {
   };
 });
 vi.mock('./mappings', () => ({
-  refreshLearnedLabels: vi.fn().mockReturnValue(false),
   saveElementMappings: vi.fn(),
 }));
 vi.mock('./signals', async (original) => ({

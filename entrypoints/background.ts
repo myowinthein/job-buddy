@@ -1,6 +1,7 @@
 import {
   saveLearnedObservationLocally,
   saveLearnedMappings,
+  repairLearnedMappings,
   validObservation,
 } from '@/src/utils/storage';
 import type { LearnedMappings } from '@/src/types/storage';
@@ -56,7 +57,8 @@ export default defineBackground(() => {
     return true;
   });
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
-    if (!['SAVE_LEARNED_OBSERVATION', 'SAVE_LEARNED_LABELS'].includes(message?.action)) return;
+    if (!['SAVE_LEARNED_OBSERVATION', 'SAVE_LEARNED_LABELS', 'REPAIR_LEARNED_MAPPINGS']
+      .includes(message?.action)) return;
     if (sender.id !== chrome.runtime.id || !sender.tab || !sender.url) return;
     let domain: string;
     try {
@@ -65,6 +67,12 @@ export default defineBackground(() => {
       domain = url.hostname;
     } catch {
       return;
+    }
+    if (message.action === 'REPAIR_LEARNED_MAPPINGS') {
+      repairLearnedMappings(domain, message.fields, message.context)
+        .then((mappings) => respond({ ok: true, mappings }))
+        .catch(() => respond({ ok: false }));
+      return true;
     }
     let task: Promise<void>;
     if (message.action === 'SAVE_LEARNED_OBSERVATION') {

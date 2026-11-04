@@ -24,7 +24,7 @@ export function mappingStatus(value: LearnedMappingValue): MappingStatus {
     : 'Learning';
 }
 
-/** Group only records with explicit, identical question/trust/scope metadata. Never merge storage. */
+/** Group explicit equivalent questions. Preserve each alias's confirmation history. */
 export function groupMappings(mappings: LearnedMappings): Map<string, MappingGroup[]> {
   return new Map(
     Object.entries(mappings).map(([domain, entries]) => {
@@ -39,13 +39,14 @@ export function groupMappings(mappings: LearnedMappings): Map<string, MappingGro
               metadata.label ?? '',
               metadata.question,
               metadata.scope ?? '',
-              metadata.count,
               !!metadata.inactive,
             ])
           : JSON.stringify(['signal', signal]);
         const existing = groups.get(key);
-        if (existing) existing.members.push([signal, value]);
-        else
+        if (existing) {
+          existing.members.push([signal, value]);
+          if (mappingStatus(value) === 'Trusted') existing.status = 'Trusted';
+        } else
           groups.set(key, {
             id: signal,
             title: metadata?.label?.trim() || metadata?.question?.trim() || 'Unlabelled field',
