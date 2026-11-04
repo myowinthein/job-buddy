@@ -306,14 +306,7 @@ export function SearchableProfileFieldSelect({
           aria-expanded={!!expanded}
           className={`w-full min-h-9 flex items-center justify-between gap-2 px-5 py-2 text-xs leading-4 ${isHistoryEntry ? 'font-bold' : 'font-semibold'} hover:bg-gray-100 dark:hover:bg-gray-700 ${item.id === selectedSubGroup ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
         >
-          <span className="flex min-w-0 items-start gap-2 text-left">
-            {isHistoryEntry && (
-              <span aria-hidden="true" className="shrink-0 text-gray-400 dark:text-gray-500">
-                •
-              </span>
-            )}
-            <span className="min-w-0 break-words">{item.heading}</span>
-          </span>
+          <span className="min-w-0 break-words text-left">{item.heading}</span>
           <span className="shrink-0">{expanded ? '▾' : '▸'}</span>
         </button>
         {expanded && rows.map((r) => renderRow(r, true))}
