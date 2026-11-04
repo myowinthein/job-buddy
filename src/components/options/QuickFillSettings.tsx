@@ -15,28 +15,12 @@ const SITES_PER_PAGE = 5;
 const paginationButton =
   'grid h-8 w-8 place-items-center rounded-md text-gray-600 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent dark:text-gray-300 dark:hover:bg-gray-800 dark:disabled:hover:bg-transparent';
 
-// Temporary review entries. Remove after the hidden-site pagination review.
-const DEMO_HIDDEN_SITES =
-  import.meta.env.MODE === 'development'
-    ? [
-        'careers.acme.example',
-        'careers.brightside.example',
-        'careers.cloudworks.example',
-        'jobs.designstudio.example',
-        'jobs.evergreen.example',
-        'jobs.fintech.example',
-        'talent.globalteam.example',
-        'work.horizon.example',
-      ]
-    : [];
-
 export function QuickFillSettings() {
   const { showToast } = useToast();
   const [prefs, setPrefs] = useState<QuickFillPreferences | null>(null);
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
-  const [demoSites, setDemoSites] = useState(DEMO_HIDDEN_SITES);
   useEffect(() => {
     let active = true;
     void getQuickFillPreferences()
@@ -74,7 +58,7 @@ export function QuickFillSettings() {
       setSaving(false);
     }
   };
-  const hiddenSites = [...new Set([...(prefs?.disabledSites ?? []), ...demoSites])];
+  const hiddenSites = prefs?.disabledSites ?? [];
   const sites = hiddenSites
     .filter((site) => site.toLowerCase().includes(query.trim().toLowerCase()))
     .sort((a, b) => a.localeCompare(b));
@@ -198,13 +182,11 @@ export function QuickFillSettings() {
                       disabled={saving}
                       aria-label={`Show button on ${site}`}
                       className="shrink-0 rounded text-blue-600 hover:underline focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50 dark:text-blue-400"
-                      onClick={() => {
-                        setDemoSites((current) => current.filter((value) => value !== site));
-                        if (prefs.disabledSites.includes(site))
-                          void save((current) => ({
-                            disabledSites: current.disabledSites.filter((value) => value !== site),
-                          }));
-                      }}
+                      onClick={() =>
+                        void save((current) => ({
+                          disabledSites: current.disabledSites.filter((value) => value !== site),
+                        }))
+                      }
                     >
                       Show
                     </button>
