@@ -7,7 +7,7 @@ export interface Scenario {
   section: DevSection;
   label: string;
   description: string;
-  page: 'personal' | 'resume' | 'settings' | 'devTools';
+  page: 'personal' | 'resume' | 'settings' | 'devTools' | 'learnedMappings';
   action?: 'resume' | 'check-key' | 'connect-drive' | 'back-up';
 }
 export const SCENARIOS: Scenario[] = [
@@ -45,6 +45,13 @@ export const SCENARIOS: Scenario[] = [
     label: 'Long and international values',
     description: 'Check long names, Unicode text, multiple entries, and narrow layouts.',
     page: 'personal',
+  },
+  {
+    id: 'learned-mappings-pagination',
+    section: 'profile',
+    label: 'Learned Mappings pagination',
+    description: 'Review 36 sample mappings across eight sites, including one with 22 mappings.',
+    page: 'learnedMappings',
   },
   {
     id: 'resume-success',
