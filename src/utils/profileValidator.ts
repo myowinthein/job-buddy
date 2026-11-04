@@ -1,17 +1,8 @@
-import {
-  profileTextLimit,
-  profileFieldPolicy,
-  WORK_ARRANGEMENTS,
-  URL_MAX_LENGTH,
-} from '../profile/fieldPolicies';
+import { profileTextLimit, URL_MAX_LENGTH } from '../profile/fieldPolicies';
 import { profileData } from './profileData';
 import type { Profile } from '../types/profile';
 import { findCountryByNameOrCode } from '../data/countries';
 import { findLanguage } from '../data/languages';
-import { CURRENCIES } from '../data/currencies';
-import { ETHNICITIES } from '../data/ethnicities';
-import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
-import { LANGUAGE_PROFICIENCY_LABELS } from '../data/languages';
 import {
   MAX_DOCUMENT_FILE_BYTES,
   MAX_DOCUMENT_BASE64_LENGTH,
@@ -19,6 +10,9 @@ import {
 } from './documentLimits';
 import {
   isLinkedInUrl,
+  isValidProfileOption,
+  isValidProfileCurrency,
+  isValidProfileYearMonth,
   isValidProfileEmail,
   isValidProfilePhone,
   birthDateError,
@@ -39,17 +33,6 @@ export interface ValidationResult {
   invalidFields: InvalidField[];
   sanitized: Partial<Profile>;
 }
-
-const RE_YYYYMM = /^\d{4}-(0[1-9]|1[0-2])$/;
-const RE_YYYY_OR_YYYYMM = /^\d{4}(-(0[1-9]|1[0-2]))?$/;
-
-const VALID_GENDERS = new Set(profileFieldPolicy('personal.gender').options);
-const VALID_YES_NO_PNTS = new Set(profileFieldPolicy('personal.veteranStatus').options);
-// PersonalSection.tsx's <select> offers every ETHNICITIES value plus an
-// explicit "Prefer not to say" option not itself in that list.
-const VALID_ETHNICITIES = new Set<string>([...ETHNICITIES, 'prefer_not_to_say']);
-const VALID_AUTH_STATUS = new Set(Object.keys(WORK_AUTH_STATUS_LABELS));
-const VALID_PROFICIENCY = new Set(Object.keys(LANGUAGE_PROFICIENCY_LABELS));
 
 export type EntryIndexMap = Record<string, Record<number, number>>;
 type AcceptedEntry = (originalIndex: number, keptIndex: number) => void;
@@ -161,12 +144,11 @@ function validatePersonal(
     else err('personal.dateOfBirth', 'invalid date format, expected YYYY-MM-DD');
   }
   if (p.gender !== undefined) {
-    if (typeof p.gender === 'string' && VALID_GENDERS.has(p.gender)) sp.gender = p.gender;
+    if (isValidProfileOption('personal.gender', p.gender)) sp.gender = p.gender;
     else err('personal.gender', 'expected male | female | other | prefer_not_to_say');
   }
   if (p.ethnicity !== undefined) {
-    if (typeof p.ethnicity === 'string' && VALID_ETHNICITIES.has(p.ethnicity))
-      sp.ethnicity = p.ethnicity;
+    if (isValidProfileOption('personal.ethnicity', p.ethnicity)) sp.ethnicity = p.ethnicity;
     else
       err(
         'personal.ethnicity',
@@ -174,12 +156,12 @@ function validatePersonal(
       );
   }
   if (p.veteranStatus !== undefined) {
-    if (typeof p.veteranStatus === 'string' && VALID_YES_NO_PNTS.has(p.veteranStatus))
+    if (isValidProfileOption('personal.veteranStatus', p.veteranStatus))
       sp.veteranStatus = p.veteranStatus;
     else err('personal.veteranStatus', 'expected yes | no | prefer_not_to_say');
   }
   if (p.disabilityStatus !== undefined) {
-    if (typeof p.disabilityStatus === 'string' && VALID_YES_NO_PNTS.has(p.disabilityStatus))
+    if (isValidProfileOption('personal.disabilityStatus', p.disabilityStatus))
       sp.disabilityStatus = p.disabilityStatus;
     else err('personal.disabilityStatus', 'expected yes | no | prefer_not_to_say');
   }
@@ -289,8 +271,7 @@ function validateSalary(
     if (
       typeof cur.amount === 'number' &&
       isValidAmount(cur.amount) &&
-      typeof cur.currency === 'string' &&
-      CURRENCIES.some((currency) => currency.code === cur.currency)
+      isValidProfileCurrency(cur.currency)
     ) {
       ss.current = {
         amount: cur.amount,
@@ -301,10 +282,7 @@ function validateSalary(
     } else {
       if (typeof cur.amount !== 'number' || !isValidAmount(cur.amount))
         err('salary.current.amount', 'expected non-negative number');
-      if (
-        typeof cur.currency !== 'string' ||
-        !CURRENCIES.some((currency) => currency.code === cur.currency)
-      )
+      if (!isValidProfileCurrency(cur.currency))
         err('salary.current.currency', 'expected 3-letter uppercase currency code');
     }
   }
@@ -315,8 +293,7 @@ function validateSalary(
       if (typeof entry === 'object' && entry !== null) {
         const e = entry as Record<string, unknown>;
         if (
-          typeof e.currency === 'string' &&
-          CURRENCIES.some((currency) => currency.code === e.currency) &&
+          isValidProfileCurrency(e.currency) &&
           (e.amount === undefined || (typeof e.amount === 'number' && isValidAmount(e.amount)))
         ) {
           // Current shape: { country?, currency, amount?, period? }
@@ -353,8 +330,7 @@ function validateWorkAuthorization(
       const e = entry as Record<string, unknown>;
       if (
         typeof e.country === 'string' &&
-        typeof e.status === 'string' &&
-        VALID_AUTH_STATUS.has(e.status)
+        isValidProfileOption('workAuthorization.$.status', e.status)
       ) {
         const country = findCountryByNameOrCode(e.country);
         if (!country || countries.has(country.code)) {
@@ -411,8 +387,7 @@ function validateWorkHistory(
       if (
         typeof e.company === 'string' &&
         typeof e.title === 'string' &&
-        ((typeof e.startDate === 'string' && RE_YYYYMM.test(e.startDate)) ||
-          (allowMissingDates && !e.startDate)) &&
+        (isValidProfileYearMonth(e.startDate) || (allowMissingDates && !e.startDate)) &&
         typeof e.isCurrent === 'boolean'
       ) {
         const dateErrors = profileDateRangeErrors(e as unknown as Profile['workHistory'][number]);
@@ -440,10 +415,7 @@ function validateWorkHistory(
           err(`workHistory[${i}]`, 'text exceeds editor limits');
           return;
         }
-        if (
-          e.arrangement &&
-          !WORK_ARRANGEMENTS.some((arrangement) => arrangement === e.arrangement)
-        ) {
+        if (e.arrangement && !isValidProfileOption('workHistory.$.arrangement', e.arrangement)) {
           err(`workHistory[${i}].arrangement`, 'expected onsite | remote | hybrid');
           return;
         }
@@ -490,8 +462,7 @@ function validateEducation(
         typeof e.institution === 'string' &&
         typeof e.degree === 'string' &&
         typeof e.fieldOfStudy === 'string' &&
-        ((typeof e.startDate === 'string' && RE_YYYY_OR_YYYYMM.test(e.startDate)) ||
-          (allowMissingDates && !e.startDate))
+        (isValidProfileYearMonth(e.startDate, true) || (allowMissingDates && !e.startDate))
       ) {
         if (
           String(e.institution).length > profileTextLimit('education.$.institution') ||
@@ -517,10 +488,7 @@ function validateEducation(
             err(`education[${i}].${key}`, reason);
           return;
         }
-        const endDate =
-          typeof e.endDate === 'string' && RE_YYYY_OR_YYYYMM.test(e.endDate)
-            ? e.endDate
-            : undefined;
+        const endDate = isValidProfileYearMonth(e.endDate, true) ? e.endDate : undefined;
         accepted?.(i, valid.length);
         valid.push({
           institution: e.institution,
@@ -557,8 +525,7 @@ function validateLanguages(
       if (
         typeof e.language === 'string' &&
         !!e.language.trim() &&
-        typeof e.proficiency === 'string' &&
-        VALID_PROFICIENCY.has(e.proficiency)
+        isValidProfileOption('languages.$.proficiency', e.proficiency)
       ) {
         const key = findLanguage(e.language)?.code ?? e.language.trim().toLowerCase();
         if (languages.has(key)) {

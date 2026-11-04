@@ -10,11 +10,10 @@ import { adjustRepeatingEntryMatches } from './repeatingEntryResolution';
 // logic as education/workHistory via adjustRepeatingEntryMatches; salary
 // entries have no startDate/isCurrent, so mostRecentIdx() naturally falls
 // back to index 0 for the common single-field case.
-const SALARY_MARKERS = ['salary.expected.formatted'] as const;
 
 export function adjustSalaryMatches(matches: FieldMatch[], profile: Profile): void {
   // Expected-salary entries have no startDate/isCurrent (unlike education/work
   // history) — cast is safe, mostRecentIdx() treats both as simply absent.
   const entries = (profile.salary?.expected ?? []) as Array<{ startDate?: string; isCurrent?: boolean }>;
-  adjustRepeatingEntryMatches(matches, entries, SALARY_MARKERS, 'salary.expected.', profile);
+  adjustRepeatingEntryMatches(matches, entries, 'salary.expected', profile);
 }

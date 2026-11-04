@@ -1,4 +1,4 @@
-import { profileTextLimit, WORK_ARRANGEMENTS } from '../profile/fieldPolicies';
+import { profileTextLimit } from '../profile/fieldPolicies';
 import {
   CORE_COMPLETION_IDS,
   completionItem,
@@ -14,6 +14,8 @@ import {
 } from '../profile/fieldMetadata';
 import {
   isValidProfileEmail,
+  isValidProfileOption,
+  isValidProfileCurrency,
   isValidProfilePhone,
   isValidAmount,
   isLinkedInUrl,
@@ -22,9 +24,7 @@ import {
   profileDateRangeErrors,
 } from './profileInputValidation';
 import { findCountryByNameOrCode } from '../data/countries';
-import { CURRENCIES } from '../data/currencies';
-import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
-import { findLanguage, LANGUAGE_PROFICIENCY_LABELS } from '../data/languages';
+import { findLanguage } from '../data/languages';
 import type {
   Profile,
   PhoneNumber,
@@ -87,7 +87,8 @@ function optionalWorkFieldValid(
 ): boolean {
   if (field === 'description')
     return validText(row.description, profileTextLimit('workHistory.$.description'));
-  if (field === 'arrangement') return WORK_ARRANGEMENTS.some((value) => value === row.arrangement);
+  if (field === 'arrangement')
+    return isValidProfileOption('workHistory.$.arrangement', row.arrangement);
   const location = row.location;
   if (typeof location === 'string')
     return validText(location, profileTextLimit('workHistory.$.location.city'));
@@ -99,17 +100,14 @@ function optionalWorkFieldValid(
 }
 function validProficiency(value: string): boolean {
   return (
-    Object.hasOwn(LANGUAGE_PROFICIENCY_LABELS, value) ||
+    isValidProfileOption('languages.$.proficiency', value) ||
     ['basic', 'conversational', 'professional', 'native'].includes(value)
   );
 }
 
 function validSalary(row?: { amount?: number; currency?: string }): boolean {
   return (
-    !!row &&
-    row.amount != null &&
-    isValidAmount(row.amount) &&
-    CURRENCIES.some((currency) => currency.code === row.currency)
+    !!row && row.amount != null && isValidAmount(row.amount) && isValidProfileCurrency(row.currency)
   );
 }
 function hasProfileLink(profile: Partial<Profile>): boolean {
@@ -209,7 +207,8 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
         waEntries.map((entry) => findCountryByNameOrCode(entry.country)?.code ?? entry.country),
       ).size === waEntries.length &&
       waEntries.every(
-        (e) => validCountry(e.country) && Object.hasOwn(WORK_AUTH_STATUS_LABELS, e.status),
+        (e) =>
+          validCountry(e.country) && isValidProfileOption('workAuthorization.$.status', e.status),
       ),
     'workAuthorization',
   );
@@ -265,10 +264,7 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
   optCheck(
     (profile.salary?.expected?.length ?? 0) >= 1 &&
       profile.salary!.expected.every(
-        (e) =>
-          e.amount != null &&
-          isValidAmount(e.amount) &&
-          CURRENCIES.some((currency) => currency.code === e.currency),
+        (e) => e.amount != null && isValidAmount(e.amount) && isValidProfileCurrency(e.currency),
       ),
     'salary.expected',
   );
@@ -360,7 +356,7 @@ export function getCompletionTarget(
           return true;
         }
         seen.add(country);
-        if (!Object.hasOwn(WORK_AUTH_STATUS_LABELS, row.status)) {
+        if (!isValidProfileOption('workAuthorization.$.status', row.status)) {
           key = 'status';
           return true;
         }

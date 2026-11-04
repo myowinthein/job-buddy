@@ -1,7 +1,7 @@
 import { profileTextLimit } from '@/src/profile/fieldPolicies';
 import { ProfileFields } from './shared/ProfileFields';
 import { SectionHeader } from './shared/SectionHeader';
-import { isValidCalendarDate } from '@/src/utils/profileInputValidation';
+import { isValidCalendarDate, isValidProfileOption } from '@/src/utils/profileInputValidation';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef } from 'react';
@@ -62,7 +62,7 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
     const ek = `${idx}.${key}`;
     let err = '';
     if (key === 'country' && !findCountryByNameOrCode(value)) err = 'Select a valid country';
-    else if (key === 'status' && !WORK_AUTH_STATUS_OPTIONS.some((opt) => opt.value === value))
+    else if (key === 'status' && !isValidProfileOption('workAuthorization.$.status', value))
       err = 'Select a valid status';
     setErrors((e) => ({ ...e, [ek]: err }));
   };
@@ -84,7 +84,7 @@ export function WorkAuthorizationSection({ profile, onSave }: Props) {
       else if (!findCountryByNameOrCode(row.country))
         e[`${idx}.country`] = 'Select a valid country';
       if (!row.status) e[`${idx}.status`] = 'Status is required';
-      else if (!WORK_AUTH_STATUS_OPTIONS.some((opt) => opt.value === row.status))
+      else if (!isValidProfileOption('workAuthorization.$.status', row.status))
         e[`${idx}.status`] = 'Select a valid status';
     });
     setErrors(e);

@@ -5,15 +5,31 @@ import {
   URL_MAX_LENGTH,
 } from '../profile/fieldPolicies';
 import type { ProfileStoragePath } from '../profile/fieldCatalog';
+import { CURRENCIES } from '../data/currencies';
 import { withScheme } from './url';
 import type { NoticePeriodUnit } from '../types/profile';
+
+export function isValidProfileOption(path: ProfileStoragePath, value: unknown): value is string {
+  return typeof value === 'string' && !!profileFieldPolicy(path).options?.includes(value);
+}
+
+export function isValidProfileCurrency(value: unknown): value is string {
+  return typeof value === 'string' && CURRENCIES.some((currency) => currency.code === value);
+}
+
+const MONTH_YEAR = /^\d{4}-(0[1-9]|1[0-2])$/;
+const YEAR_OR_MONTH_YEAR = /^\d{4}(-(0[1-9]|1[0-2]))?$/;
+
+export function isValidProfileYearMonth(value: unknown, yearOnly = false): value is string {
+  return typeof value === 'string' && (yearOnly ? YEAR_OR_MONTH_YEAR : MONTH_YEAR).test(value);
+}
 
 export function isValidPersonalOption(key: string, value: string): boolean {
   const path = `personal.${key}`;
   const policy = Object.hasOwn(PROFILE_FIELD_POLICIES, path)
     ? profileFieldPolicy(path as ProfileStoragePath)
     : undefined;
-  return !value || !policy?.options || policy.options.includes(value);
+  return !value || !policy?.options || isValidProfileOption(path as ProfileStoragePath, value);
 }
 
 export const NOTICE_MAX: Record<NoticePeriodUnit, number> = { day: 365, week: 52, month: 24 };
@@ -84,13 +100,12 @@ export function profileDateRangeErrors(
 ): Record<string, string> {
   const errors: Record<string, string> = {};
   const year = new Date().getFullYear();
-  const pattern = yearOnly ? /^\d{4}(-(?:0[1-9]|1[0-2]))?$/ : /^\d{4}-(?:0[1-9]|1[0-2])$/;
   for (const key of ['startDate', 'endDate'] as const) {
     if (key === 'endDate' && row.isCurrent && (!yearOnly || !row.endDate)) continue;
     const value = row[key] ?? '';
     const label = key === 'startDate' ? 'Start date' : 'End date';
     if (!value.trim()) errors[key] = `${label} is required`;
-    else if (!pattern.test(value))
+    else if (!isValidProfileYearMonth(value, yearOnly))
       errors[key] = `Enter ${yearOnly ? 'a year or month and year' : 'a month and year'}`;
     else {
       const maxYear = key === 'endDate' && yearOnly && row.isCurrent ? year + 10 : year;

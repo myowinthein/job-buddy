@@ -58,6 +58,10 @@ describe('safe value aliases', () => {
     ['New Company', 'workHistory.1.company'],
     ['Senior', 'workHistory.1.title'],
     ['6,000 USD', 'salary.expected.0.formatted'],
+    ['2015-01', 'workHistory.0.startDate.formatted'],
+    ['January 2015', 'workHistory.0.startDate.formatted'],
+    ['2010-01', 'education.0.startDate.formatted'],
+    ['January 2010', 'education.0.startDate.formatted'],
     ['Alex Sample', 'derived.fullName'],
     ['ALEX@EXAMPLE.TEST', 'personal.email'],
   ])('matches %s to a unique canonical path', (value, path) => {

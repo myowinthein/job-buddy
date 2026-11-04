@@ -364,6 +364,8 @@ test('learns a user correction after an AI-green result, without learning the AI
 for (const [value, path] of [
   ['+1 (202) 555-0100', 'personal.phone.full'],
   ['Senior', 'workHistory.1.title'],
+  ['2015-01', 'workHistory.0.startDate.formatted'],
+  ['January 2015', 'workHistory.0.startDate.formatted'],
 ] as const) {
   test(`learns the displayed value ${value}`, async ({ page, extension }) => {
     await page.locator('form').evaluate((form) => {

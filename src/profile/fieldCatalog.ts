@@ -42,10 +42,12 @@ type LeafPaths<T> = T extends readonly (infer Entry)[]
 export type ProfileStoragePath = LeafPaths<Profile>;
 
 interface PickerChoice {
+  learnDisplay?: boolean;
   label?: string;
   path: string;
 }
 interface FieldOptions {
+  learnDisplay?: boolean;
   required?: boolean;
   picker?: false | readonly PickerChoice[];
   cluster?: boolean;
@@ -166,6 +168,7 @@ function salaryFields<const Prefix extends 'current' | 'expected.$'>(prefix: Pre
             {
               label: prefix === 'current' ? 'Current Salary' : 'Expected Salary',
               path: `salary.${prefix}.formatted`,
+              learnDisplay: true,
             },
             { path: `salary.${prefix}.amount` },
           ],
@@ -202,7 +205,7 @@ export const PROFILE_FIELD_LAYOUTS = {
         required: true,
         cluster: true,
         picker: [
-          { label: 'Full Phone', path: 'personal.phone.full' },
+          { label: 'Full Phone', path: 'personal.phone.full', learnDisplay: true },
           { label: 'Country Code', path: 'personal.phone.callingCode' },
           { label: 'Phone Number', path: 'personal.phone.number' },
         ],
@@ -248,7 +251,7 @@ export const PROFILE_FIELD_LAYOUTS = {
       [
         field('country', 'Country', 'address.country', {
           required: true,
-          picker: [{ path: 'address.countryName' }],
+          picker: [{ path: 'address.countryName', learnDisplay: true }],
         }),
         field('postalCode', 'Postal Code', 'address.postalCode'),
       ],
@@ -307,8 +310,12 @@ export const PROFILE_FIELD_LAYOUTS = {
       {
         required: true,
         picker: [
-          { path: 'professional.noticePeriod.formatted' },
-          { label: 'Available Date', path: 'professional.noticePeriod.availableDate' },
+          { path: 'professional.noticePeriod.formatted', learnDisplay: true },
+          {
+            label: 'Available Date',
+            path: 'professional.noticePeriod.availableDate',
+            learnDisplay: true,
+          },
         ],
       },
     ),
@@ -344,10 +351,10 @@ export const PROFILE_FIELD_LAYOUTS = {
       [
         field('startDate', 'Start Date', 'workHistory.$.startDate', {
           required: true,
-          picker: [{ path: 'workHistory.$.startDate.formatted' }],
+          picker: [{ path: 'workHistory.$.startDate.formatted', learnDisplay: true }],
         }),
         field('endDate', 'End Date', 'workHistory.$.endDate', {
-          picker: [{ path: 'workHistory.$.endDate.formatted' }],
+          picker: [{ path: 'workHistory.$.endDate.formatted', learnDisplay: true }],
         }),
       ],
       twoColumns,
@@ -373,11 +380,11 @@ export const PROFILE_FIELD_LAYOUTS = {
       [
         field('startDate', 'Start Date', 'education.$.startDate', {
           required: true,
-          picker: [{ path: 'education.$.startDate.formatted' }],
+          picker: [{ path: 'education.$.startDate.formatted', learnDisplay: true }],
         }),
         field('endDate', 'End Date', 'education.$.endDate', {
           activeLabel: 'Expected graduation date',
-          picker: [{ path: 'education.$.endDate.formatted' }],
+          picker: [{ path: 'education.$.endDate.formatted', learnDisplay: true }],
         }),
       ],
       twoColumns,
@@ -400,8 +407,12 @@ export const PROFILE_FIELD_LAYOUTS = {
         field('language', 'Language', 'languages.$.language', {
           required: true,
           reviewHeading: true,
+          learnDisplay: true,
         }),
-        field('proficiency', 'Proficiency', 'languages.$.proficiency', { required: true }),
+        field('proficiency', 'Proficiency', 'languages.$.proficiency', {
+          required: true,
+          learnDisplay: true,
+        }),
       ],
       'grid grid-cols-1 sm:grid-cols-2 gap-3',
     ),
@@ -490,29 +501,39 @@ export function catalogFields(nodes: readonly CatalogNode[]): CatalogField[] {
 }
 
 // Compatibility aliases are executable paths without a dedicated editor control.
-// Stored entry indices are substituted only when matching an actual mapping.
-export const PROFILE_MAPPING_PATH_TEMPLATES = [
-  ...new Set([
-    ...Object.values(PROFILE_FIELD_LAYOUTS).flatMap((nodes) =>
-      catalogFields(nodes).flatMap((field) =>
-        field.picker === false
-          ? []
-          : [...field.paths, ...(field.picker ?? []).map((choice) => choice.path)],
-      ),
+const COMPATIBILITY_MAPPING_CHOICES: readonly PickerChoice[] = [
+  { path: 'workAuthorization' },
+  { path: 'languages.formatted', learnDisplay: true },
+  { path: 'salary.expected.formatted' },
+  { path: 'salary.current.country' },
+  { path: 'salary.expected.$.country' },
+  { path: 'documents.cv.file' },
+  { path: 'derived.currentTitle' },
+  { path: 'derived.currentCompany' },
+  { path: 'derived.totalExperience.years' },
+  { path: 'derived.totalExperience.months' },
+  { path: 'derived.totalExperience.totalMonths' },
+  { path: 'derived.totalExperience.label' },
+];
+const mappingChoices: readonly PickerChoice[] = [
+  ...Object.values(PROFILE_FIELD_LAYOUTS).flatMap((nodes) =>
+    catalogFields(nodes).flatMap((field) =>
+      field.picker === false
+        ? []
+        : [
+            ...field.paths.map((path) => ({ path, learnDisplay: field.learnDisplay })),
+            ...(field.picker ?? []),
+          ],
     ),
-    'workAuthorization',
-    'languages.formatted',
-    'salary.expected.formatted',
-    'salary.current.country',
-    'salary.expected.$.country',
-    'documents.cv.file',
-    'derived.currentTitle',
-    'derived.currentCompany',
-    'derived.totalExperience.years',
-    'derived.totalExperience.months',
-    'derived.totalExperience.totalMonths',
-    'derived.totalExperience.label',
-  ]),
+  ),
+  ...COMPATIBILITY_MAPPING_CHOICES,
+];
+export const PROFILE_MAPPING_PATH_TEMPLATES = [
+  ...new Set(mappingChoices.map((choice) => choice.path)),
+];
+// Learning compares raw values plus this explicit set of supported display values.
+export const PROFILE_LEARNING_PATH_TEMPLATES = [
+  ...new Set(mappingChoices.filter((choice) => choice.learnDisplay).map((choice) => choice.path)),
 ];
 
 export const PROFILE_STORAGE_PATHS = [
@@ -522,4 +543,14 @@ export const PROFILE_STORAGE_PATHS = [
     ),
     ...PROFILE_NON_EDITOR_PATHS,
   ]),
+];
+
+type CollectionPath<Path> = Path extends `${infer Collection}.$.${string}` ? Collection : never;
+export type ProfileCollectionPath = CollectionPath<ProfileStoragePath>;
+export const PROFILE_ENTRY_PATHS = [
+  ...new Set(
+    PROFILE_STORAGE_PATHS.filter((path) => path.includes('.$.')).map(
+      (path) => path.split('.$')[0] as ProfileCollectionPath,
+    ),
+  ),
 ];

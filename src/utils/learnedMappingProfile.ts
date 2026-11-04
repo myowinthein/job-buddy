@@ -1,3 +1,4 @@
+import { indexedProfilePath, profileEntries } from '../profile/mappingMetadata';
 import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings, LearnedMappingValue } from '@/src/types/storage';
 import { matchedEntryIndex } from '@/src/resume-ai/entryComparison';
@@ -15,32 +16,18 @@ export function validatedMappingIndices(
     for (const [signal, mapping] of Object.entries(group)) {
       if (typeof mapping !== 'string' && mapping.inactive) continue;
       const path = typeof mapping === 'string' ? mapping : mapping.path;
-      const match =
-        /^(education|workHistory|languages|workAuthorization|links\.custom|salary\.expected)\.(\d+)(\..*)?$/.exec(
-          path,
-        );
-      if (!match || !Object.hasOwn(indices, match[1])) continue;
+      const match = indexedProfilePath(path);
+      if (!match || !Object.hasOwn(indices, match.family)) continue;
       const index =
-        indices[match[1]][Number(match[2])] ??
+        indices[match.family][match.index] ??
         (typeof mapping !== 'string' && mapping.scope === 'field' ? 0 : undefined);
-      if (index === Number(match[2])) continue;
+      if (index === match.index) continue;
       const value = typeof mapping === 'string' ? { path, count: 2 } : { ...mapping };
       if (index === undefined) Object.assign(value, { inactive: true });
-      else value.path = `${match[1]}.${index}${match[3] ?? ''}`;
+      else value.path = `${match.family}.${index}${match.suffix}`;
       group[signal] = value;
     }
   return result;
-}
-
-type Entry = Record<string, unknown>;
-function entries(profile: Partial<Profile>, family: string): Entry[] {
-  const value =
-    family === 'links.custom'
-      ? profile.links?.custom
-      : family === 'salary.expected'
-        ? profile.salary?.expected
-        : profile[family as 'education' | 'workHistory' | 'languages' | 'workAuthorization'];
-  return (value ?? []) as unknown as Entry[];
 }
 
 /** Keep entry-specific answers attached to their original entry, not its old index. */
@@ -54,16 +41,13 @@ export function rebaseLearnedMappings(
     for (const [signal, mapping] of Object.entries(group)) {
       if (typeof mapping !== 'string' && (mapping.inactive || mapping.scope === 'field')) continue;
       const path = typeof mapping === 'string' ? mapping : mapping.path;
-      const match =
-        /^(education|workHistory|languages|workAuthorization|links\.custom|salary\.expected)\.(\d+)(\..*)?$/.exec(
-          path,
-        );
+      const match = indexedProfilePath(path);
       if (!match) continue;
-      const [, family, rawIndex, suffix = ''] = match;
-      const before = entries(source, family),
-        after = entries(target, family);
+      const { family, index: originalIndex, suffix } = match;
+      const before = profileEntries(source, family),
+        after = profileEntries(target, family);
       if (equalJsonValues(before, after)) continue;
-      const original = before[Number(rawIndex)];
+      const original = before[originalIndex];
       let index = -1;
       if (original) {
         const exact = after

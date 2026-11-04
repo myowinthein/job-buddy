@@ -3,19 +3,6 @@ import type { FieldMatch } from './mapper';
 import type { CheckboxOption } from './scanner';
 import { adjustRepeatingEntryMatches, matchCurrentEntryCheckboxes } from './repeatingEntryResolution';
 
-const WORK_HISTORY_MARKERS = [
-  'workHistory.company',
-  'workHistory.title',
-  'workHistory.location',
-  'workHistory.location.city',
-  'workHistory.location.countryName',
-  'workHistory.startDate.formatted',
-  'workHistory.endDate.formatted',
-  'workHistory.isCurrent',
-  'workHistory.description',
-  'workHistory.arrangement',
-] as const;
-
 // Mutates `matches` in place — same pattern as adjustEducationMatches, see
 // there for the single-vs-sequential reasoning. Deliberately separate from
 // derived.currentCompany/derived.currentTitle (dictionary.ts), which stay
@@ -26,7 +13,7 @@ const WORK_HISTORY_MARKERS = [
 // for an unqualified field but would be wrong for one that specifically
 // asks about current employment.
 export function adjustWorkHistoryMatches(matches: FieldMatch[], profile: Profile): void {
-  adjustRepeatingEntryMatches(matches, profile.workHistory ?? [], WORK_HISTORY_MARKERS, 'workHistory.', profile);
+  adjustRepeatingEntryMatches(matches, profile.workHistory ?? [], 'workHistory', profile);
 }
 
 // Deliberately exact-match only — same safety reasoning as

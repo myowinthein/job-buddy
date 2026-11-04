@@ -8,8 +8,7 @@ export function adjustLanguageMatches(matches: FieldMatch[], profile: Profile): 
   adjustRepeatingEntryMatches(
     matches,
     [],
-    ['languages.language', 'languages.proficiency'],
-    'languages.',
+    'languages',
     profile,
   );
 }

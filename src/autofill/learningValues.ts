@@ -1,3 +1,5 @@
+import { PROFILE_LEARNING_PATH_TEMPLATES } from '../profile/fieldCatalog';
+import { expandMappingPaths } from '../profile/mappingMetadata';
 import type { Profile } from '../types/profile';
 import { calculateDerivedFields } from '../utils/derivedFields';
 import { isLearnedPath } from '../utils/learnedMappingData';
@@ -28,6 +30,12 @@ export function learningValues(profile: Profile): Array<{ path: string; value: s
   }
   const fresh = { ...profile, derived };
   const current = mostRecentIdx(profile.workHistory ?? []);
+  const virtual = expandMappingPaths(profile, PROFILE_LEARNING_PATH_TEMPLATES);
+  const formattedAliases = new Set(
+    virtual
+      .filter((path) => path.endsWith('.formatted'))
+      .map((path) => path.slice(0, -'.formatted'.length)),
+  );
   const canonical = (path: string): string => {
     if (path === 'derived.currentTitle' && profile.workHistory?.[current]?.isCurrent)
       return `workHistory.${current}.title`;
@@ -38,28 +46,10 @@ export function learningValues(profile: Profile): Array<{ path: string; value: s
     if (path === 'address.countryName') return 'address.country';
     if (path === 'personal.phone.full' && !profile.personal?.phone?.callingCode)
       return 'personal.phone.number';
-    if (/^(education|workHistory)\.\d+\.(startDate|endDate)$/.test(path))
-      return `${path}.formatted`;
+    if (formattedAliases.has(path)) return `${path}.formatted`;
     return path;
   };
   const values = flattenProfileValues(fresh).filter((entry) => isLearnedPath(entry.path));
-  const virtual = [
-    'personal.phone.full',
-    'address.countryName',
-    'languages.formatted',
-    'professional.noticePeriod.formatted',
-    'professional.noticePeriod.availableDate',
-    'salary.current.formatted',
-  ];
-  for (const family of ['workHistory', 'education', 'languages'] as const)
-    (profile[family] ?? []).forEach((_entry, i) => {
-      if (family === 'languages')
-        virtual.push(`languages.${i}.language`, `languages.${i}.proficiency`);
-      else virtual.push(`${family}.${i}.startDate.formatted`, `${family}.${i}.endDate.formatted`);
-    });
-  (profile.salary?.expected ?? []).forEach((_entry, i) =>
-    virtual.push(`salary.expected.${i}.formatted`),
-  );
   for (const path of virtual) {
     const value = resolveProfileValue(fresh, path);
     if (value) values.push({ path, value });

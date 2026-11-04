@@ -5,8 +5,7 @@ import { SectionHeader } from './shared/SectionHeader';
 import { useState, useRef } from 'react';
 import type { Profile, SalaryPeriod } from '@/src/types/profile';
 import { useToast } from '@/src/components/ui/useToast';
-import { CURRENCIES } from '@/src/data/currencies';
-import { isValidAmount } from '@/src/utils/profileInputValidation';
+import { isValidAmount, isValidProfileCurrency } from '@/src/utils/profileInputValidation';
 import { FormField } from './shared/FormField';
 import { SearchableCurrencySelect } from './shared/SearchableCurrencySelect';
 import { RemoveButton } from './shared/RemoveButton';
@@ -44,7 +43,7 @@ function rowErrors(row: SalaryRow): Record<string, string> {
   if (!row.amount.trim()) errors.amount = 'Amount is required';
   else if (!isValidAmount(row.amount)) errors.amount = 'Enter a valid amount';
   if (!row.currency) errors.currency = 'Currency is required';
-  else if (!CURRENCIES.some((currency) => currency.code === row.currency))
+  else if (!isValidProfileCurrency(row.currency))
     errors.currency = 'Select a valid currency';
   return errors;
 }

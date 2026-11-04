@@ -8,7 +8,11 @@ import {
   noticeDurationError,
   profileDateRangeErrors,
   isValidPersonalOption,
+  isValidProfileOption,
+  isValidProfileCurrency,
+  isValidProfileYearMonth,
 } from './profileInputValidation';
+import { PROFILE_POLICY_PATHS, profileFieldPolicy } from '../profile/fieldPolicies';
 import { validateImportedProfile } from './profileValidator';
 
 describe('profile input and import validation agree', () => {
@@ -100,5 +104,31 @@ it('keeps optional personal choices optional and validates populated enum values
     expect(isValidPersonalOption(key, '')).toBe(true);
     expect(isValidPersonalOption(key, 'prefer_not_to_say')).toBe(true);
     expect(isValidPersonalOption(key, 'unknown')).toBe(false);
+  }
+});
+
+it('validates every declared option through the same field policy', () => {
+  for (const path of PROFILE_POLICY_PATHS) {
+    const options = profileFieldPolicy(path).options;
+    if (!options) continue;
+    for (const value of options) expect(isValidProfileOption(path, value), path).toBe(true);
+    for (const value of ['', 'unknown', 0, false, null, undefined])
+      expect(isValidProfileOption(path, value), path).toBe(false);
+  }
+});
+
+it('shares exact currency codes and month/year formats across consumers', () => {
+  expect(isValidProfileCurrency('USD')).toBe(true);
+  for (const value of ['usd', ' USD', 'US', '', 123, undefined])
+    expect(isValidProfileCurrency(value)).toBe(false);
+  for (const value of ['2020-01', '2020-12']) {
+    expect(isValidProfileYearMonth(value)).toBe(true);
+    expect(isValidProfileYearMonth(value, true)).toBe(true);
+  }
+  expect(isValidProfileYearMonth('2020')).toBe(false);
+  expect(isValidProfileYearMonth('2020', true)).toBe(true);
+  for (const value of ['2020-00', '2020-13', '2020-1', '2020-01-01', '2020 ', 2020]) {
+    expect(isValidProfileYearMonth(value)).toBe(false);
+    expect(isValidProfileYearMonth(value, true)).toBe(false);
   }
 });

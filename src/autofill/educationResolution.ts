@@ -3,15 +3,6 @@ import type { FieldMatch } from './mapper';
 import type { CheckboxOption } from './scanner';
 import { adjustRepeatingEntryMatches, matchCurrentEntryCheckboxes } from './repeatingEntryResolution';
 
-const EDUCATION_MARKERS = [
-  'education.institution',
-  'education.degree',
-  'education.fieldOfStudy',
-  'education.startDate.formatted',
-  'education.endDate.formatted',
-  'education.isCurrent',
-] as const;
-
 // Mutates `matches` in place: rewrites the unindexed education.* markers
 // (see dictionary.ts) to a concrete education.N.* path.
 //
@@ -21,7 +12,7 @@ const EDUCATION_MARKERS = [
 // button) should still get the applicant's most relevant entry, not
 // arbitrarily index 0 — see adjustRepeatingEntryMatches.
 export function adjustEducationMatches(matches: FieldMatch[], profile: Profile): void {
-  adjustRepeatingEntryMatches(matches, profile.education ?? [], EDUCATION_MARKERS, 'education.', profile);
+  adjustRepeatingEntryMatches(matches, profile.education ?? [], 'education', profile);
 }
 
 // Deliberately exact-match only (no fuzzy, no shared FIELD_DICTIONARY entry)

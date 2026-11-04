@@ -1,3 +1,9 @@
+import {
+  PROFILE_ENTRY_PATHS,
+  PROFILE_MAPPING_PATH_TEMPLATES,
+  type ProfileCollectionPath,
+} from '../profile/fieldCatalog';
+import { FIELD_DICTIONARY } from './dictionary';
 import type { Profile } from '../types/profile';
 import type { FieldMatch } from './mapper';
 import type { CheckboxOption } from './scanner';
@@ -15,16 +21,33 @@ const ADJUSTABLE_LAYERS = new Set(['dictionary_exact', 'fuzzy', 'context']);
 
 type EntryWithRecency = { startDate?: string; isCurrent?: boolean };
 
+const mappingTemplates = new Set(PROFILE_MAPPING_PATH_TEMPLATES);
+const repeatingMarkers = new Map(
+  PROFILE_ENTRY_PATHS.map((family) => [
+    family,
+    Object.keys(FIELD_DICTIONARY).filter(
+      (path) =>
+        path.startsWith(`${family}.`) &&
+        mappingTemplates.has(`${family}.$${path.slice(family.length)}`),
+    ),
+  ]),
+);
+
+export function repeatingEntryMarkers(family: ProfileCollectionPath): readonly string[] {
+  return repeatingMarkers.get(family) ?? [];
+}
+
 // Resolve a single entry to the most relevant profile entry. Repeated rows
 // share an anchor field so missing fields cannot mix two profile entries.
 // Every form is independent; shadow field components share their composed form. Explicit learned paths stay unchanged.
 export function adjustRepeatingEntryMatches(
   matches: FieldMatch[],
   entries: EntryWithRecency[],
-  markers: readonly string[],
-  prefix: string,
+  family: ProfileCollectionPath,
   profile: Profile,
 ): void {
+  const markers = repeatingEntryMarkers(family);
+  const prefix = `${family}.`;
   const candidates = matches.filter(
     (match) =>
       match.fieldPath &&
