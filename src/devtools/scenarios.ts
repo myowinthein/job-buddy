@@ -47,13 +47,6 @@ export const SCENARIOS: Scenario[] = [
     page: 'personal',
   },
   {
-    id: 'learned-mappings-pagination',
-    section: 'profile',
-    label: 'Learned Mappings pagination',
-    description: 'Review 36 sample mappings across eight sites, including one with 22 mappings.',
-    page: 'learnedMappings',
-  },
-  {
     id: 'resume-success',
     section: 'resume',
     label: 'New profile details',

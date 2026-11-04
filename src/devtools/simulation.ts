@@ -1,5 +1,5 @@
 import type { Profile } from '@/src/types/profile';
-import type { DriveBackupFile, LearnedMappings } from '@/src/types/storage';
+import type { DriveBackupFile } from '@/src/types/storage';
 import { createPreviewChrome } from '@/src/preview/chrome';
 import { DEV_PROFILE } from '@/src/utils/devProfile';
 import { DEFAULT_GEMINI_MODEL } from '@/src/resume-ai/types';
@@ -47,49 +47,6 @@ export class DevSimulation {
     version: string,
   ) {
     const profile = profilePreset(scenario.id);
-    // Temporary sample data for the Learned Mappings pagination review.
-    const learnedMappings: LearnedMappings = {};
-    if (scenario.id === 'learned-mappings-pagination') {
-      const fields = [
-        ['First name', 'personal.firstName'],
-        ['Email address', 'personal.email'],
-        ['Last name', 'personal.lastName'],
-        ['Preferred name', 'personal.nickname'],
-        ['Phone number', 'personal.phone.full'],
-        ['Street address', 'address.street'],
-        ['City of residence', 'address.city'],
-        ['State or province', 'address.state'],
-        ['Postal code', 'address.postalCode'],
-        ['Country', 'address.country'],
-        ['LinkedIn profile', 'links.linkedin'],
-        ['GitHub profile', 'links.github'],
-        ['Portfolio website', 'links.portfolio'],
-        ['Career summary', 'professional.summary'],
-        ['Notice period', 'professional.noticePeriod.formatted'],
-        ['Current employer', 'workHistory.0.company'],
-        ['Job title', 'workHistory.0.title'],
-        ['Institution', 'education.0.institution'],
-        ['Degree', 'education.0.degree'],
-        ['Language', 'languages.0.language'],
-        ['Proficiency', 'languages.0.proficiency'],
-        ['Resume URL', 'documents.cv.url'],
-      ];
-      for (let site = 0; site < 8; site++) {
-        learnedMappings[`careers${site + 1}.example.test`] = Object.fromEntries(
-          (site === 0 ? fields : fields.slice(0, 2)).map(([label, path], index) => [
-            `question_${index + 1}`,
-            {
-              path,
-              label,
-              question: label,
-              count: index % 3 === 1 ? 1 : 2,
-              scope: 'field' as const,
-              ...(index % 7 === 6 ? { inactive: true as const } : {}),
-            },
-          ]),
-        );
-      }
-    }
     const sample = structuredClone(DEV_PROFILE);
     const {
       id: _id,
@@ -146,7 +103,6 @@ export class DevSimulation {
       initialData: {
         devProfileDisabled: true,
         geminiDevDisabled: true,
-        ...(scenario.id === 'learned-mappings-pagination' ? { learnedMappings } : {}),
         ...(scenario.id !== 'ai-no-key'
           ? {
               geminiApiKey: 'simulated-key',
