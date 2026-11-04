@@ -188,11 +188,15 @@ export const PROFILE_FIELD_LAYOUTS = {
     group(
       'name',
       [
-        field('firstName', 'First Name', 'personal.firstName', { required: true }),
-        field('lastName', 'Last Name', 'personal.lastName'),
-        field('nickname', 'Preferred name', 'personal.nickname', {
-          picker: [{ path: 'personal.nickname' }, { label: 'Full Name', path: 'derived.fullName' }],
+        field('firstName', 'First Name', 'personal.firstName', {
+          required: true,
+          picker: [
+            { label: 'Full Name', path: 'derived.fullName' },
+            { path: 'personal.firstName' },
+          ],
         }),
+        field('lastName', 'Last Name', 'personal.lastName'),
+        field('nickname', 'Preferred name', 'personal.nickname'),
       ],
       'grid grid-cols-1 md:grid-cols-3 gap-4',
     ),
@@ -337,8 +341,8 @@ export const PROFILE_FIELD_LAYOUTS = {
       [
         field('country', 'Country', 'workHistory.$.location.countryCode', {
           picker: [
-            { path: 'workHistory.$.location.countryName' },
             { label: 'Location', path: 'workHistory.$.location' },
+            { path: 'workHistory.$.location.countryName' },
           ],
         }),
         field('city', 'City', 'workHistory.$.location.city'),

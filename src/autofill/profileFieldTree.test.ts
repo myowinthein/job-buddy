@@ -124,7 +124,10 @@ describe('buildPickerTree', () => {
       const sub = salary.items.find((i) => 'heading' in i && i.heading === 'Current Salary');
       expect(sub).toBeDefined();
       if (sub && 'rows' in sub) {
-        expect(sub.rows.some((r) => r.label === 'Current Salary')).toBe(true);
+        expect(sub.rows.map((r) => r.fieldPath)).toEqual([
+          'salary.current.formatted', 'salary.current.amount', 'salary.current.currency',
+          'salary.current.period',
+        ]);
         expect(sub.rows.some((r) => r.label === 'Amount' && r.value === '5000')).toBe(true);
       }
     });
@@ -402,8 +405,8 @@ it('preserves formatted work and education previews, order, and current end date
   const education = getSection(profile, 'education').items[0];
   if (work.kind !== 'subgroup' || education.kind !== 'subgroup') throw new Error('Expected entry groups');
   expect(work.rows.map(({ label, value }) => [label, value])).toEqual([
-    ['Company', 'Acme'], ['Job Title', 'Dev'], ['Country', 'France'],
-    ['Location', 'Paris, France'], ['City', 'Paris'], ['Work Arrangement', 'Remote'],
+    ['Company', 'Acme'], ['Job Title', 'Dev'], ['Location', 'Paris, France'],
+    ['Country', 'France'], ['City', 'Paris'], ['Work Arrangement', 'Remote'],
     ['Start Date', 'March 2022'], ['End Date', 'Present'], ['I currently work here', 'Yes'],
   ]);
   expect(education.rows.map(({ label, value }) => [label, value])).toEqual([
@@ -424,6 +427,9 @@ it('offers current Profile fields with previews equal to their resolved mapping 
     section.items.flatMap((item) => item.kind === 'option' ? [item] : item.rows),
   );
   const paths = rows.map((row) => row.fieldPath);
+  expect(paths.slice(0, 4)).toEqual([
+    'derived.fullName', 'personal.firstName', 'personal.lastName', 'personal.nickname',
+  ]);
   expect(new Set(paths).size).toBe(paths.length);
   expect(paths).toEqual(expect.arrayContaining([
     'personal.nickname', 'salary.current.period', 'salary.expected.1.period',

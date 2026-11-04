@@ -269,6 +269,14 @@ test('groups aliases, keeps the editor visible, preserves metadata, and uses the
   await school.getByRole('button', { name: 'Cancel', exact: true }).click();
   const applicant = row(options, 'Applicant response');
   await applicant.getByRole('button', { name: /^Edit / }).click();
+  await options.getByRole('button', { name: /^Profile field:/ }).click();
+  expect(
+    await options
+      .getByRole('listbox', { name: 'Profile fields' })
+      .getByRole('option')
+      .evaluateAll((rows) => rows.slice(0, 4).map((row) => row.textContent)),
+  ).toEqual(['Full NameAlex Sample', 'First NameAlex', 'Last NameSample', 'Preferred nameLex']);
+  await options.getByRole('combobox').press('Escape');
   await choose(options, 'Preferred name');
   await applicant.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(options.getByText('Mapping updated.', { exact: true })).toBeVisible();
