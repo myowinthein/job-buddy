@@ -9,7 +9,14 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { Check } from 'lucide-react';
 import type { Profile } from '@/src/types/profile';
+import { findCountryByNameOrCode } from '@/src/data/countries';
+import {
+  PERSONAL_GENDER_OPTIONS,
+  PERSONAL_YES_NO_OPTIONS,
+  SALARY_PERIOD_OPTIONS,
+} from '@/src/profile/fieldPolicies';
 import { buildPickerTree } from '@/src/autofill/profileFieldTree';
 import type { Section, SectionItem, OptionRow } from '@/src/autofill/profileFieldTree';
 import { useDropdownPanel } from './useDropdownPanel';
@@ -20,6 +27,24 @@ interface Props {
   onChange: (fieldPath: string) => void;
   placeholder?: string;
   disabled?: boolean;
+}
+
+const PREVIEW_OPTIONS: Record<string, readonly { value: string; label: string }[]> = {
+  'personal.gender': PERSONAL_GENDER_OPTIONS,
+  'personal.ethnicity': PERSONAL_GENDER_OPTIONS.filter(
+    (option) => option.value === 'prefer_not_to_say',
+  ),
+  'personal.veteranStatus': PERSONAL_YES_NO_OPTIONS,
+  'personal.disabilityStatus': PERSONAL_YES_NO_OPTIONS,
+  'salary.current.period': SALARY_PERIOD_OPTIONS,
+  'salary.expected.$.period': SALARY_PERIOD_OPTIONS,
+};
+
+function previewValue(row: OptionRow): string {
+  const path = row.fieldPath.replace(/\.\d+(?=\.|$)/g, '.$');
+  if (path === 'workAuthorization.$.country')
+    return findCountryByNameOrCode(row.value)?.name ?? row.value;
+  return PREVIEW_OPTIONS[path]?.find((option) => option.value === row.value)?.label ?? row.value;
 }
 
 function matchesSearch(label: string, q: string): boolean {
@@ -69,6 +94,8 @@ export function SearchableProfileFieldSelect({
   const listId = useId();
   const [position, setPosition] = useState<CSSProperties | null>(null);
   const sections = useMemo(() => buildPickerTree(profile as Profile), [profile]);
+  const selectedSectionId = findSectionIdFor(sections, value);
+  const selectedSubGroup = findSubGroupHeadingFor(sections, value);
 
   const selectedLabel = useMemo(() => {
     for (const section of sections) {
@@ -230,10 +257,17 @@ export function SearchableProfileFieldSelect({
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
         }`}
       >
-        <span className="w-2/5 shrink-0 break-words text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+        <span
+          className={`w-2/5 shrink-0 break-words text-xs leading-relaxed ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
+        >
           {row.label}
         </span>
-        <span className="min-w-0 flex-1 break-words line-clamp-2 font-medium">{row.value}</span>
+        <span className="min-w-0 flex-1 break-words line-clamp-2 font-medium">
+          {previewValue(row)}
+        </span>
+        <span className="flex h-5 w-4 shrink-0 items-center" aria-hidden="true">
+          {isSelected && <Check size={16} />}
+        </span>
       </div>
     );
   };
@@ -246,7 +280,7 @@ export function SearchableProfileFieldSelect({
       const rows = item.rows;
       return (
         <div key={item.heading}>
-          <p className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700">
+          <p className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700">
             {item.heading}
           </p>
           {rows.map((r) => renderRow(r, true))}
@@ -262,7 +296,8 @@ export function SearchableProfileFieldSelect({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => toggleSubGroup(item.heading)}
-          className="w-full flex items-center justify-between gap-2 px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700"
+          aria-expanded={!!expanded}
+          className={`w-full min-h-9 flex items-center justify-between gap-2 px-3 py-2 text-xs leading-4 font-semibold border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 ${item.heading === selectedSubGroup ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
         >
           <span className="min-w-0 break-words text-left">{item.heading}</span>
           <span className="shrink-0">{expanded ? '▾' : '▸'}</span>
@@ -386,7 +421,8 @@ export function SearchableProfileFieldSelect({
                         type="button"
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => toggleSection(section.id)}
-                        className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/40 hover:bg-gray-100 dark:hover:bg-gray-900/70"
+                        aria-expanded={isExpanded}
+                        className={`w-full min-h-9 flex items-center justify-between gap-2 px-3 py-2 text-[13px] leading-5 font-semibold bg-gray-50 dark:bg-gray-900/40 hover:bg-gray-100 dark:hover:bg-gray-900/70 ${section.id === selectedSectionId ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
                       >
                         <span className="truncate">{section.label}</span>
                         <span className="shrink-0">{isExpanded ? '▾' : '▸'}</span>

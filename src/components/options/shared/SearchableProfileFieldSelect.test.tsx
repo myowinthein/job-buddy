@@ -3,6 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { SearchableProfileFieldSelect } from './SearchableProfileFieldSelect';
 import type { Profile } from '@/src/types/profile';
+import { settingsReviewProfile } from '../settingsReviewFixture';
 
 // jsdom doesn't implement Element.scrollIntoView; the keyboard-highlight
 // effect calls it whenever the highlighted row changes.
@@ -33,6 +34,46 @@ function renderSelect(value = '', onChange = vi.fn()) {
   render(<SearchableProfileFieldSelect profile={PROFILE} value={value} onChange={onChange} />);
   return { onChange };
 }
+
+describe('SearchableProfileFieldSelect — readable selected previews', () => {
+  it.each([
+    ['personal.gender', 'Other'],
+    ['personal.ethnicity', 'Prefer not to say'],
+    ['personal.veteranStatus', 'No'],
+    ['personal.disabilityStatus', 'Prefer not to say'],
+    ['workAuthorization.0.country', 'United States'],
+    ['salary.current.period', 'Annual'],
+    ['salary.expected.1.period', 'Monthly'],
+  ])('formats %s while preserving its selected path', (path, label) => {
+    const onChange = vi.fn();
+    render(
+      <SearchableProfileFieldSelect
+        profile={settingsReviewProfile()}
+        value={path}
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button'));
+    const selected = screen.getByRole('option', { selected: true });
+    expect(selected.textContent).toContain(label);
+    expect(selected.querySelector('svg')).toBeTruthy();
+    fireEvent.click(selected);
+    expect(onChange).toHaveBeenCalledWith(path);
+    expect(screen.queryByRole('listbox')).toBeNull();
+  });
+
+  it('exposes the selected section expansion state when toggled', () => {
+    renderSelect('personal.firstName');
+    fireEvent.click(screen.getByRole('button'));
+    const section = screen.getByRole('button', { name: /^Personal/ });
+    expect(section.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(section);
+    expect(section.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('option', { selected: true })).toBeNull();
+    fireEvent.click(section);
+    expect(screen.getByRole('option', { selected: true }).textContent).toContain('Jane');
+  });
+});
 
 describe('SearchableProfileFieldSelect — open/close toggling', () => {
   it('opens the dropdown on click, showing the search input', () => {

@@ -53,6 +53,86 @@ async function show(options: Page) {
 }
 const row = (page: Page, title: string) => page.getByRole('group', { name: title, exact: true });
 
+test('shows readable chooser previews and a persistent selected category across layouts', async ({
+  context,
+  extension,
+}, info) => {
+  await extension.worker.evaluate(async (profile) => {
+    await chrome.storage.local.set({
+      profile,
+      learnedMappings: {
+        '127.0.0.1': {
+          gender: { path: 'personal.gender', count: 2, label: 'Gender', question: 'Gender' },
+        },
+      },
+    });
+  }, settingsReviewProfile());
+  const options = await context.newPage();
+  await options.setViewportSize({ width: 1280, height: 1000 });
+  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await show(options);
+  await row(options, 'Gender')
+    .getByRole('button', { name: /^Edit / })
+    .click();
+  await options.getByRole('button', { name: /^Profile field:/ }).click();
+  const list = options.getByRole('listbox', { name: 'Profile fields' });
+  const selected = list.getByRole('option', { selected: true });
+  await expect(selected).toContainText('Other');
+  await expect(selected.locator('svg')).toBeVisible();
+  const personal = list.getByRole('button', { name: /^Personal/ });
+  const color = await personal.evaluate((element) => getComputedStyle(element).color);
+  await personal.click();
+  await expect(personal).toHaveAttribute('aria-expanded', 'false');
+  expect((await personal.boundingBox())!.height).toBeGreaterThanOrEqual(36);
+  expect(await personal.evaluate((element) => getComputedStyle(element).color)).toBe(color);
+  await personal.click();
+  await selected.scrollIntoViewIfNeeded();
+  await options.screenshot({ path: info.outputPath('chooser-selected-dark.png') });
+  const search = options.getByRole('combobox', { name: 'Search profile fields' });
+  for (const [query, value] of [
+    ['Veteran', 'No'],
+    ['Disability', 'Prefer not to say'],
+    ['Work Authorization Country', 'United States'],
+    ['Salary Current Period', 'Annual'],
+    ['Salary Expected Period', 'Monthly'],
+  ]) {
+    await search.fill(query);
+    await expect(list.getByRole('option').filter({ hasText: value }).first()).toBeVisible();
+  }
+  await search.fill('Salary Current Period');
+  await search.press('Enter');
+  await expect(list).toHaveCount(0);
+  const trigger = options.getByRole('button', { name: /^Profile field:/ });
+  await expect(trigger).toBeFocused();
+  await trigger.click();
+  await expect(selected).toContainText('Annual');
+  await options.setViewportSize({ width: 375, height: 1000 });
+  await expect
+    .poll(() =>
+      options.locator('aside').evaluate((element) => element.getBoundingClientRect().width),
+    )
+    .toBe(64);
+  await expect(selected).toBeVisible();
+  await selected.scrollIntoViewIfNeeded();
+  const box = await list.boundingBox();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(375);
+  await options.screenshot({ path: info.outputPath('chooser-selected-narrow.png') });
+  await extension.worker.evaluate(async () =>
+    chrome.storage.local.set({ themePreference: 'light' }),
+  );
+  await options.reload();
+  await options.getByRole('button', { name: /^127\.0\.0\.1/ }).click();
+  await row(options, 'Gender')
+    .getByRole('button', { name: /^Edit / })
+    .click();
+  await options.getByRole('button', { name: /^Profile field:/ }).click();
+  await expect(options.locator('html')).not.toHaveClass(/dark/);
+  await expect(selected).toContainText('Other');
+  await selected.scrollIntoViewIfNeeded();
+  await options.screenshot({ path: info.outputPath('chooser-selected-light.png') });
+});
+
 test('renders catalog-backed salary periods and opens missing city and education details', async ({
   context,
   extension,
