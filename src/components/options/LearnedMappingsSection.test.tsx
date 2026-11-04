@@ -106,6 +106,7 @@ describe('Learned Mappings pagination', () => {
     await open('site1.test');
     const nav = screen.getByRole('navigation', { name: 'Learned mapping sites' });
     expect(within(nav).getByText('Sites 1–5 of 7')).toBeTruthy();
+    expect(within(nav).getByRole('status').textContent).toContain('7 mappings');
     expect(within(nav).getByRole('button', { name: 'Previous page' })).toHaveProperty(
       'disabled',
       true,
@@ -126,6 +127,7 @@ describe('Learned Mappings pagination', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
     fireEvent.click(screen.getByRole('button', { name: 'Learning (1)' }));
     expect(row('Question 7')).toBeTruthy();
+    expect(screen.getByText('1 mapping across 1 site')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'All (7)' }));
     expect(screen.getByText('Sites 1–5 of 7')).toBeTruthy();
   });
@@ -239,6 +241,7 @@ describe('Learned Mappings presentation and discovery', () => {
     await open();
     const input = screen.getByRole('searchbox', { name: 'Search mappings' });
     fireEvent.change(input, { target: { value: 'address city' } });
+    expect(screen.getByText('1 mapping across 1 site')).toBeTruthy();
     expect(screen.getByRole('group', { name: 'Town of residence' })).toBeTruthy();
     expect(screen.queryByRole('group', { name: 'Applicant name' })).toBeNull();
     expect(site().getAttribute('aria-expanded')).toBe('true');
@@ -246,6 +249,7 @@ describe('Learned Mappings presentation and discovery', () => {
     expect(site().getAttribute('aria-expanded')).toBe('true');
     expect(site('beta.com').getAttribute('aria-expanded')).toBe('false');
     fireEvent.change(input, { target: { value: 'BETA.COM' } });
+    expect(screen.getByText('1 mapping across 1 site')).toBeTruthy();
     expect(site('beta.com').getAttribute('aria-expanded')).toBe('true');
     expect(screen.queryByRole('button', { name: /^acme.com/ })).toBeNull();
   });

@@ -763,16 +763,7 @@ export function LearnedMappingsSection({
                 </button>
               ))}
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {allGroups.length} mapping{allGroups.length === 1 ? '' : 's'} across {sites.length}{' '}
-              site{sites.length === 1 ? '' : 's'}
-            </p>
           </div>
-          {filtering && (
-            <p role="status" className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-              {shown.length} of {allGroups.length} mappings match
-            </p>
-          )}
           {!shown.length && (
             <p
               role="status"
@@ -786,9 +777,18 @@ export function LearnedMappingsSection({
               aria-label="Learned mapping sites"
               className="mb-3 flex items-center justify-between gap-3"
             >
-              <p role="status" className="text-xs text-gray-500 dark:text-gray-400">
-                Sites {firstSite + 1}–{Math.min(firstSite + SITES_PER_PAGE, shownSites.length)} of{' '}
-                {shownSites.length}
+              <p
+                role="status"
+                className="flex flex-wrap items-center gap-x-1 text-xs text-gray-500 dark:text-gray-400"
+              >
+                <span>
+                  {shown.length} mapping{shown.length === 1 ? '' : 's'}
+                </span>
+                <span aria-hidden="true">·</span>
+                <span>
+                  Sites {firstSite + 1}–{Math.min(firstSite + SITES_PER_PAGE, shownSites.length)} of{' '}
+                  {shownSites.length}
+                </span>
               </p>
               <div className="flex shrink-0 gap-1">
                 <button
@@ -813,6 +813,12 @@ export function LearnedMappingsSection({
                 </button>
               </div>
             </nav>
+          )}
+          {shown.length > 0 && shownSites.length <= SITES_PER_PAGE && (
+            <p role="status" className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+              {shown.length} mapping{shown.length === 1 ? '' : 's'} across {shownSites.length} site
+              {shownSites.length === 1 ? '' : 's'}
+            </p>
           )}
           {pagedSites.map((domain) => (
             <MappingSite
