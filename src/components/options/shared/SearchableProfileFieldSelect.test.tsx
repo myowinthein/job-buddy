@@ -165,7 +165,7 @@ describe('SearchableProfileFieldSelect — selecting a row', () => {
 });
 
 describe('SearchableProfileFieldSelect — keyboard navigation', () => {
-  it('Enter selects the first highlighted row without clicking', () => {
+  it('Enter selects the first search result without clicking', () => {
     const { onChange } = renderSelect();
     fireEvent.click(screen.getByRole('button'));
     const input = screen.getByPlaceholderText('Search profile fields…');
@@ -192,6 +192,7 @@ describe('SearchableProfileFieldSelect — keyboard navigation', () => {
     const inputB = screen.getByPlaceholderText('Search profile fields…');
     fireEvent.change(inputB, { target: { value: 'Name' } });
     fireEvent.keyDown(inputB, { key: 'ArrowDown' });
+    fireEvent.keyDown(inputB, { key: 'ArrowDown' });
     fireEvent.keyDown(inputB, { key: 'Enter' });
 
     expect(['personal.firstName', 'personal.lastName']).toContain(onChangeB.mock.calls[0][0]);
@@ -214,11 +215,12 @@ describe('SearchableProfileFieldSelect — keyboard navigation', () => {
     fireEvent.click(screen.getByRole('button'));
     const inputRoundTrip = screen.getByPlaceholderText('Search profile fields…');
     fireEvent.change(inputRoundTrip, { target: { value: 'Name' } });
+    fireEvent.keyDown(inputRoundTrip, { key: 'ArrowDown' }); // start on the 1st row
     fireEvent.keyDown(inputRoundTrip, { key: 'ArrowDown' }); // move to the 2nd row
     fireEvent.keyDown(inputRoundTrip, { key: 'ArrowUp' }); // then back to the 1st
     fireEvent.keyDown(inputRoundTrip, { key: 'Enter' });
 
-    // ArrowDown-then-Up should land back on the same field a plain Enter
+    // Moving to the second row and back should land on the same field a plain Enter
     // selects — proving Up actually moved the highlight back, not just
     // no-opped past the top.
     expect(onChangeRoundTrip.mock.calls[0][0]).toBe(onChangeBaseline.mock.calls[0][0]);
@@ -293,6 +295,8 @@ it('keyboard navigation skips collapsed entry rows and selects the first visible
   fireEvent.click(screen.getByText('Work History'));
   expect(screen.queryByText('Analyst')).toBeNull();
   const search = screen.getByRole('combobox');
+  expect(search.getAttribute('aria-activedescendant')).toBeNull();
+  fireEvent.keyDown(search, { key: 'ArrowDown' });
   expect(search.getAttribute('aria-activedescendant')).toMatch(/-option-workHistory\.1\.company$/);
   expect(document.getElementById(search.getAttribute('aria-activedescendant')!)).toHaveProperty(
     'role',
@@ -316,6 +320,7 @@ it('keyboard selection follows filtered clusters and search-expanded entry rows'
     'workHistory.0.title',
     'workHistory.1.title',
   ]);
+  fireEvent.keyDown(search, { key: 'ArrowDown' });
   fireEvent.keyDown(search, { key: 'ArrowDown' });
   fireEvent.keyDown(search, { key: 'Enter' });
   expect(onChange).toHaveBeenLastCalledWith('workHistory.1.title');

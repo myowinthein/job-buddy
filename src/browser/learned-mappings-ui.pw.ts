@@ -79,7 +79,30 @@ test('shows readable chooser previews and a persistent selected category across 
   const selected = list.getByRole('option', { selected: true });
   await expect(selected).toContainText('Other');
   await expect(selected.locator('svg')).toBeVisible();
+  const search = options.getByRole('combobox', { name: 'Search profile fields' });
   const personal = list.getByRole('button', { name: /^Personal/ });
+  const firstName = list.getByRole('option').filter({ hasText: 'First Name' });
+  const lastName = list.getByRole('option').filter({ hasText: 'Last Name' });
+  await options.mouse.move(0, 0);
+  await expect(personal).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(firstName).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  expect(await search.getAttribute('aria-activedescendant')).toBeNull();
+  const selectedBackground = await selected.evaluate(
+    (element) => getComputedStyle(element).backgroundColor,
+  );
+  await search.press('ArrowDown');
+  await expect(firstName).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(search).toHaveAttribute(
+    'aria-activedescendant',
+    (await firstName.getAttribute('id'))!,
+  );
+  await lastName.hover();
+  await expect(firstName).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  expect(await search.getAttribute('aria-activedescendant')).toBeNull();
+  await expect(lastName).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await options.mouse.move(0, 0);
+  await expect(lastName).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(selected).toHaveCSS('background-color', selectedBackground);
   const color = await personal.evaluate((element) => getComputedStyle(element).color);
   await personal.click();
   await expect(personal).toHaveAttribute('aria-expanded', 'false');
@@ -87,8 +110,8 @@ test('shows readable chooser previews and a persistent selected category across 
   expect(await personal.evaluate((element) => getComputedStyle(element).color)).toBe(color);
   await personal.click();
   await selected.scrollIntoViewIfNeeded();
+  await options.mouse.move(0, 0);
   await options.screenshot({ path: info.outputPath('chooser-selected-dark.png') });
-  const search = options.getByRole('combobox', { name: 'Search profile fields' });
   for (const [query, value] of [
     ['Veteran', 'No'],
     ['Disability', 'Prefer not to say'],

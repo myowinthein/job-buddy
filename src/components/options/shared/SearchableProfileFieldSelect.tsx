@@ -113,7 +113,7 @@ export function SearchableProfileFieldSelect({
 
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [collapsedSubGroups, setCollapsedSubGroups] = useState<Set<string>>(new Set());
-  const [hlIdx, setHlIdx] = useState(0);
+  const [hlIdx, setHlIdx] = useState(-1);
 
   const { open, search, setSearch, containerRef, searchRef, toggle, close } = useDropdownPanel({
     panelRef,
@@ -132,7 +132,7 @@ export function SearchableProfileFieldSelect({
       const currentSubGroup = findSubGroupHeadingFor(sections, value);
       if (currentSubGroup) defaultCollapsed.delete(currentSubGroup);
       setCollapsedSubGroups(defaultCollapsed);
-      setHlIdx(0);
+      setHlIdx(-1);
     },
   });
 
@@ -254,8 +254,8 @@ export function SearchableProfileFieldSelect({
             ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
             : isHighlighted
               ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-        }`}
+              : 'text-gray-700 dark:text-gray-300'
+        } ${!isSelected && !highlightedPath ? 'hover:bg-gray-100 dark:hover:bg-gray-700' : ''}`}
       >
         <span
           className={`w-2/5 shrink-0 break-words text-xs leading-relaxed ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
@@ -297,7 +297,7 @@ export function SearchableProfileFieldSelect({
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => toggleSubGroup(item.heading)}
           aria-expanded={!!expanded}
-          className={`w-full min-h-9 flex items-center justify-between gap-2 px-3 py-2 text-xs leading-4 font-semibold border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 ${item.heading === selectedSubGroup ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
+          className={`w-full min-h-9 flex items-center justify-between gap-2 px-3 py-2 text-xs leading-4 font-semibold border-t border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 ${item.heading === selectedSubGroup ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
         >
           <span className="min-w-0 break-words text-left">{item.heading}</span>
           <span className="shrink-0">{expanded ? '▾' : '▸'}</span>
@@ -307,10 +307,8 @@ export function SearchableProfileFieldSelect({
     );
   };
 
-  // Clamp for display/selection purposes only — the underlying hlIdx state
-  // corrects itself on the next arrow-key press regardless (Math.min/max
-  // against the current list length), so no effect is needed to write it back.
-  const clampedHlIdx = Math.min(hlIdx, Math.max(visibleRowPaths.length - 1, 0));
+  // -1 leaves rows neutral until arrow-key navigation starts.
+  const clampedHlIdx = Math.min(hlIdx, visibleRowPaths.length - 1);
   const highlightedPath = visibleRowPaths[clampedHlIdx];
 
   useEffect(() => {
@@ -328,7 +326,8 @@ export function SearchableProfileFieldSelect({
         e.preventDefault();
         break;
       case 'Enter':
-        if (visibleRowPaths[clampedHlIdx]) select(visibleRowPaths[clampedHlIdx]);
+        if (visibleRowPaths[Math.max(clampedHlIdx, 0)])
+          select(visibleRowPaths[Math.max(clampedHlIdx, 0)]);
         e.preventDefault();
         break;
       case 'Escape':
@@ -390,7 +389,7 @@ export function SearchableProfileFieldSelect({
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
-                  setHlIdx(0);
+                  setHlIdx(-1);
                 }}
                 onKeyDown={handleSearchKeyDown}
                 role="combobox"
@@ -407,6 +406,7 @@ export function SearchableProfileFieldSelect({
               className="min-h-0 overflow-y-auto py-1"
               role="listbox"
               aria-label="Profile fields"
+              onPointerMove={() => setHlIdx(-1)}
             >
               {visibleSections.length === 0 ? (
                 <p className="px-3 py-3 text-sm text-gray-500 dark:text-gray-400 text-center select-none">
@@ -422,7 +422,7 @@ export function SearchableProfileFieldSelect({
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => toggleSection(section.id)}
                         aria-expanded={isExpanded}
-                        className={`w-full min-h-9 flex items-center justify-between gap-2 px-3 py-2 text-[13px] leading-5 font-semibold bg-gray-50 dark:bg-gray-900/40 hover:bg-gray-100 dark:hover:bg-gray-900/70 ${section.id === selectedSectionId ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
+                        className={`w-full min-h-9 flex items-center justify-between gap-2 px-3 py-2 text-[13px] leading-5 font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 ${section.id === selectedSectionId ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
                       >
                         <span className="truncate">{section.label}</span>
                         <span className="shrink-0">{isExpanded ? '▾' : '▸'}</span>
