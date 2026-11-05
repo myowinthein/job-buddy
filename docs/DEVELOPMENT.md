@@ -70,11 +70,11 @@ browser.
 
 ## Development tools
 
-Every development options page has a compact bar with **Empty**, **Required only**,
+Every development options page has a compact bar with **Original**, **Empty**, **Required only**,
 and **Complete** profile presets, plus a **Missing API key** toggle. These controls
 open temporary data in the same tab, keep the current section, and respect
 unsaved edits. The bar stays in place while the next isolated view loads. Key
-toggling preserves edits. **Use saved data** returns to saved extension data.
+toggling preserves edits. **Original** returns to saved extension data.
 Temporary changes reset on refresh. Gemini and Drive are simulated. Popup and
 job-form data are unaffected.
 

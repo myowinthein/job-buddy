@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { PROFILE_PRESETS, type PreviewPreset } from './quickPreview';
 import type { DevSurface, SurfaceState } from './surface';
 
+const PROFILE_OPTIONS = [{ id: 'original', label: 'Original' }, ...PROFILE_PRESETS] as const;
+
 export default function DevToolbar({
   surface,
   onNavigate,
@@ -62,6 +64,7 @@ export default function DevToolbar({
   };
 
   const exit = async () => {
+    if (!context) return;
     if (!surface.canLeave()) return;
     await perform(() => onNavigate(surface.exitUrl()));
   };
@@ -82,18 +85,24 @@ export default function DevToolbar({
         )}
         <div role="group" aria-label="Profile preset" className="flex flex-wrap items-center gap-1">
           <span className="mr-2 text-amber-800 dark:text-amber-200">Profile</span>
-          {PROFILE_PRESETS.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              disabled={busy || !state}
-              aria-pressed={state?.preset === preset.id}
-              onClick={() => void startPreview(preset.id)}
-              className={`rounded-md border px-2.5 py-1 transition-colors disabled:opacity-50 ${state?.preset === preset.id ? 'border-amber-600 bg-amber-200 font-medium dark:border-amber-500 dark:bg-amber-800' : 'border-amber-300 bg-white/70 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/50 dark:hover:bg-amber-800'}`}
-            >
-              {preset.label}
-            </button>
-          ))}
+          {PROFILE_OPTIONS.map((preset) => {
+            const selected =
+              preset.id === 'original'
+                ? !context || state?.preset === 'saved'
+                : state?.preset === preset.id;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                disabled={busy || !state}
+                aria-pressed={selected}
+                onClick={() => void (preset.id === 'original' ? exit() : startPreview(preset.id))}
+                className={`rounded-md border px-2.5 py-1 transition-colors disabled:opacity-50 ${selected ? 'border-amber-600 bg-amber-200 font-medium dark:border-amber-500 dark:bg-amber-800' : 'border-amber-300 bg-white/70 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/50 dark:hover:bg-amber-800'}`}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
         </div>
         <button
           type="button"
@@ -113,16 +122,6 @@ export default function DevToolbar({
             />
           </span>
         </button>
-        {context && (
-          <button
-            type="button"
-            disabled={busy || !state}
-            onClick={() => void exit()}
-            className="rounded-sm underline underline-offset-2 sm:ml-auto"
-          >
-            Use saved data
-          </button>
-        )}
         {busy && <span role="status">Switching data…</span>}
       </div>
       {error && (

@@ -166,8 +166,12 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     await bar.screenshot({ path: info.outputPath('dev-bar-narrow.png'), animations: 'disabled' });
     const box = await bar.boundingBox();
     expect(box!.x + box!.width).toBeLessThanOrEqual(390);
-    await bar.getByRole('button', { name: 'Use saved data', exact: true }).click();
+    await bar.getByRole('button', { name: 'Original', exact: true }).click();
     await expect(page).not.toHaveURL(/devPreview/);
+    await expect(bar.getByRole('button', { name: 'Original', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     expect(
       await page.evaluate(() => (window as Window & { testDocument?: string }).testDocument),
     ).toBe(initialDocument);
