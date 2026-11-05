@@ -1,0 +1,124 @@
+{
+  "_comment": "Fictional sample data for the Job Buddy demo. Import through Settings → Import Profile.",
+  "version": "1.0",
+  "profileId": "jb-demo-alex-morgan",
+  "profile": {
+    "id": "jb-demo-alex-morgan",
+    "personal": {
+      "firstName": "Alex",
+      "lastName": "Morgan",
+      "email": "alex.morgan@example.com",
+      "phone": {
+        "countryCode": "US",
+        "callingCode": "+1",
+        "number": "2025550188"
+      },
+      "dateOfBirth": "1994-06-15"
+    },
+    "address": {
+      "street": "88 Sample Street",
+      "city": "Seattle",
+      "state": "Washington",
+      "postalCode": "98101",
+      "country": "US"
+    },
+    "professional": {
+      "summary": "Frontend engineer building accessible web applications and tools for small teams.",
+      "noticePeriod": {
+        "immediate": false,
+        "value": 2,
+        "unit": "week"
+      }
+    },
+    "salary": {
+      "current": {
+        "amount": 110000,
+        "currency": "USD",
+        "period": "annual"
+      },
+      "expected": [
+        {
+          "amount": 125000,
+          "currency": "USD",
+          "period": "annual"
+        }
+      ]
+    },
+    "workAuthorization": [
+      {
+        "country": "US",
+        "status": "citizen_or_pr"
+      }
+    ],
+    "workHistory": [
+      {
+        "company": "Example Studio",
+        "title": "Senior Frontend Engineer",
+        "startDate": "2022-04",
+        "isCurrent": true,
+        "location": {
+          "countryCode": "US",
+          "city": "Seattle"
+        },
+        "arrangement": "remote",
+        "description": "Builds accessible web applications and mentors frontend engineers."
+      },
+      {
+        "company": "Sample Labs",
+        "title": "Frontend Engineer",
+        "startDate": "2019-07",
+        "endDate": "2022-03",
+        "isCurrent": false,
+        "location": {
+          "countryCode": "US",
+          "city": "Portland"
+        },
+        "arrangement": "onsite",
+        "description": "Developed interfaces for internal tools."
+      }
+    ],
+    "education": [
+      {
+        "institution": "Example University",
+        "degree": "Bachelor of Science",
+        "fieldOfStudy": "Computer Science",
+        "startDate": "2015-08",
+        "endDate": "2019-05",
+        "isCurrent": false
+      },
+      {
+        "institution": "Sample Institute",
+        "degree": "Certificate",
+        "fieldOfStudy": "Accessible Web Design",
+        "startDate": "2020-01",
+        "endDate": "2020-12",
+        "isCurrent": false
+      }
+    ],
+    "languages": [
+      {
+        "language": "en",
+        "proficiency": "native_bilingual"
+      },
+      {
+        "language": "es",
+        "proficiency": "professional_working"
+      }
+    ],
+    "links": {
+      "linkedin": "https://www.linkedin.com/in/alex-morgan-demo",
+      "portfolio": "https://alexmorgan.example.com",
+      "github": "https://github.com/example"
+    },
+    "documents": {
+      "cv": {
+        "file": {
+          "name": "Alex-Morgan-Sample-Resume.pdf",
+          "size": 601,
+          "base64": "data:application/pdf;base64,JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCA2MTIgNzkyXSAvUmVzb3VyY2VzIDw8IC9Gb250IDw8IC9GMSA0IDAgUiA+PiA+PiAvQ29udGVudHMgNSAwIFIgPj4KZW5kb2JqCjQgMCBvYmoKPDwgL1R5cGUgL0ZvbnQgL1N1YnR5cGUgL1R5cGUxIC9CYXNlRm9udCAvSGVsdmV0aWNhID4+CmVuZG9iago1IDAgb2JqCjw8IC9MZW5ndGggNTggPj4Kc3RyZWFtCkJUIC9GMSAxOCBUZiA1MCA3NDAgVGQgKEFsZXggTW9yZ2FuIC0gU2FtcGxlIFJlc3VtZSkgVGogRVQKZW5kc3RyZWFtCmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMDkgMDAwMDAgbiAKMDAwMDAwMDA1OCAwMDAwMCBuIAowMDAwMDAwMTE1IDAwMDAwIG4gCjAwMDAwMDAyNDEgMDAwMDAgbiAKMDAwMDAwMDMxMSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXplIDYgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjQxOQolJUVPRg=="
+        }
+      }
+    }
+  },
+  "learnedMappings": {}
+}

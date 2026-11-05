@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Try Job Buddy on an original demo job application. Use your saved profile or download a sample profile to test autofill."
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="form-action 'none'; base-uri 'none'; object-src 'none'"
+    />
+    <title>Demo application · Job Buddy</title>
+    <link rel="icon" href="../assets/icons/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="demo.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#application">Skip to application</a>
+    <header class="site-header">
+      <div class="site-header-inner">
+        <span class="company"
+          ><span class="company-mark" aria-hidden="true">f.</span>Fieldwork</span
+        >
+        <a href="../">A Job Buddy demo <span aria-hidden="true">↗</span></a>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="role-details" aria-labelledby="role-title">
+        <p class="role-team">Engineering</p>
+        <h1 id="role-title">Senior Frontend Engineer</h1>
+        <ul class="role-meta" aria-label="Role details">
+          <li>Remote · United States</li>
+          <li>Full-time</li>
+        </ul>
+        <p class="role-description">
+          Help a small team build useful, accessible tools for everyday work. Bring your experience
+          with modern web applications and an eye for the details.
+        </p>
+        <div class="demo-guide">
+          <h2>Try autofill here</h2>
+          <p>
+            Open Job Buddy and select <strong>Fill Form</strong>, then review the highlighted
+            answers.
+          </p>
+          <a href="sample-profile.json" download="job-buddy-demo-profile.json"
+            >Download sample profile <span aria-hidden="true">↓</span></a
+          >
+          <p class="sample-help">
+            To use the sample, import it from Settings → Import Profile in Job Buddy.
+          </p>
+        </div>
+        <p class="demo-note">
+          Fieldwork and this role are fictional. Finishing this demo does not send a job
+          application.
+        </p>
+        <div id="test-controls" class="test-controls" hidden>
+          <h2>Local testing</h2>
+          <button type="button" id="test-mode" aria-pressed="false" aria-controls="test-fields">
+            Show test fields
+          </button>
+          <button type="button" id="existing-answers">Load existing answers</button>
+          <p>
+            Extra fields are available on localhost for testing repeated entries and different
+            controls.
+          </p>
+        </div>
+      </aside>
+
+      <article class="application-panel" aria-labelledby="application-title">
+        <header class="application-header">
+          <h2 id="application-title">Your application</h2>
+          <p>
+            Required fields are marked
+            <span aria-hidden="true">*</span><span class="sr-only">with an asterisk</span>.
+          </p>
+        </header>
+
+        <form id="application" aria-label="Job application" autocomplete="off">
+          <section class="form-section" aria-labelledby="contact-heading">
+            <h3 id="contact-heading">Contact information</h3>
+            <div class="field-grid">
+              <div class="field">
+                <label for="first-name">First name <span aria-hidden="true">*</span></label
+                ><input
+                  id="first-name"
+                  name="firstName"
+                  autocomplete="given-name"
+                  required
+                  maxlength="100"
+                />
+              </div>
+              <div class="field">
+                <label for="last-name">Last name</label
+                ><input id="last-name" name="lastName" autocomplete="family-name" maxlength="100" />
+              </div>
+              <div class="field">
+                <label for="email">Email address <span aria-hidden="true">*</span></label
+                ><input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autocomplete="email"
+                  required
+                  maxlength="254"
+                />
+              </div>
+              <div class="field">
+                <label for="phone">Phone number <span aria-hidden="true">*</span></label
+                ><input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  autocomplete="tel"
+                  required
+                  maxlength="40"
+                />
+              </div>
+            </div>
+          </section>
+
+          <section class="form-section" aria-labelledby="location-heading">
+            <h3 id="location-heading">Location</h3>
+            <div class="field-grid">
+              <div class="field full">
+                <label for="street">Street address</label
+                ><input
+                  id="street"
+                  name="streetAddress"
+                  autocomplete="street-address"
+                  maxlength="200"
+                />
+              </div>
+              <div class="field">
+                <label for="city">City</label
+                ><input id="city" name="city" autocomplete="address-level2" maxlength="100" />
+              </div>
+              <div class="field">
+                <label for="state">State or province</label
+                ><input id="state" name="state" autocomplete="address-level1" maxlength="100" />
+              </div>
+              <div class="field">
+                <label for="postal-code">Postal code</label
+                ><input
+                  id="postal-code"
+                  name="postalCode"
+                  autocomplete="postal-code"
+                  maxlength="20"
+                />
+              </div>
+              <div class="field">
+                <label for="country">Country</label
+                ><select id="country" name="country" autocomplete="country">
+                  <option value="">Select a country</option>
+                  <option value="US">United States</option>
+                  <option value="GB">United Kingdom</option>
+                  <option value="CA">Canada</option>
+                  <option value="DE">Germany</option>
+                  <option value="SG">Singapore</option>
+                  <option value="TH">Thailand</option>
+                  <option value="MY">Malaysia</option>
+                  <option value="AU">Australia</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section class="form-section" aria-labelledby="links-heading">
+            <h3 id="links-heading">Professional links</h3>
+            <div class="field-grid">
+              <div class="field full">
+                <label for="linkedin">LinkedIn</label
+                ><input id="linkedin" name="linkedin" type="url" maxlength="500" />
+              </div>
+              <div class="field">
+                <label for="portfolio">Portfolio or website</label
+                ><input id="portfolio" name="portfolio" type="url" maxlength="500" />
+              </div>
+              <div class="field">
+                <label for="github">GitHub</label
+                ><input id="github" name="github" type="url" maxlength="500" />
+              </div>
+            </div>
+          </section>
+
+          <section class="form-section" aria-labelledby="application-heading">
+            <h3 id="application-heading">Application details</h3>
+            <div class="field-grid">
+              <div class="field full">
+                <label for="resume">Resume <span aria-hidden="true">*</span></label
+                ><input
+                  id="resume"
+                  name="resume"
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  required
+                  aria-describedby="resume-help"
+                />
+                <p id="resume-help" class="field-help">
+                  PDF or Word document. The file stays on this page.
+                </p>
+              </div>
+              <div class="field full">
+                <label for="authorized">Are you authorized to work in the United States?</label
+                ><select id="authorized" name="workAuthorization">
+                  <option value="">Select an answer</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
+              <fieldset class="field full">
+                <legend>Will you require visa sponsorship?</legend>
+                <div class="choices">
+                  <label><input type="radio" name="sponsorship" value="yes" /> Yes</label
+                  ><label><input type="radio" name="sponsorship" value="no" /> No</label>
+                </div>
+              </fieldset>
+              <div class="field full">
+                <label for="interest">What interests you about this role?</label
+                ><textarea id="interest" name="motivation" rows="4" maxlength="2000"></textarea>
+              </div>
+            </div>
+          </section>
+
+          <section id="test-fields" class="form-section" aria-labelledby="test-heading" hidden>
+            <h3 id="test-heading">Additional test fields</h3>
+            <p class="field-help">
+              These controls exercise dates, repeated entries, multi-selects, and missing profile
+              data.
+            </p>
+            <div class="field-grid">
+              <div class="field">
+                <label for="available-date">Available from</label
+                ><input id="available-date" name="availableDate" type="date" disabled />
+              </div>
+              <div class="field">
+                <label for="expected-salary">Expected annual salary in USD</label
+                ><input
+                  id="expected-salary"
+                  name="expectedSalary"
+                  type="number"
+                  min="0"
+                  step="1"
+                  disabled
+                />
+              </div>
+              <div class="field">
+                <label for="work-arrangement">Preferred work arrangement</label
+                ><select id="work-arrangement" name="workArrangement" disabled>
+                  <option value="">Select an arrangement</option>
+                  <option value="remote">Remote</option>
+                  <option value="hybrid">Hybrid</option>
+                  <option value="onsite">On-site</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="languages">Languages spoken</label
+                ><select id="languages" name="languages" multiple size="4" disabled>
+                  <option value="English">English</option>
+                  <option value="Spanish">Spanish</option>
+                  <option value="Burmese">Burmese</option>
+                  <option value="German">German</option>
+                </select>
+              </div>
+              <div class="field full">
+                <label for="reference-code">Employee referral code</label
+                ><input id="reference-code" name="referralCode" maxlength="80" disabled />
+              </div>
+            </div>
+            <div class="repeated-section">
+              <h4>Work experience</h4>
+              <div id="work-entries"></div>
+              <button type="button" class="text-button" id="add-work">Add experience</button>
+            </div>
+            <div class="repeated-section">
+              <h4>Education</h4>
+              <div id="education-entries"></div>
+              <button type="button" class="text-button" id="add-education">Add education</button>
+            </div>
+          </section>
+
+          <div class="form-footer">
+            <label class="consent"
+              ><input type="checkbox" name="demoConsent" required /><span
+                >I understand this is a demo application. <span aria-hidden="true">*</span></span
+              ></label
+            >
+            <div id="completion" class="completion" role="status" tabindex="-1" hidden>
+              <h3>Demo complete</h3>
+              <p>No application was sent. Reset the form to try again.</p>
+            </div>
+            <div class="form-actions">
+              <button type="reset" class="text-button">Reset form</button
+              ><button type="submit" class="primary-button" id="finish-demo" disabled>
+                Finish demo <span aria-hidden="true">→</span>
+              </button>
+            </div>
+          </div>
+        </form>
+        <noscript
+          ><p class="noscript-note">
+            Enable JavaScript to finish this local demo. Applications cannot be sent from this page.
+          </p></noscript
+        >
+      </article>
+    </main>
+
+    <footer class="page-footer">
+      <span>Demo form by Job Buddy</span><a href="../">Back to Job Buddy</a>
+    </footer>
+  </body>
+</html>
