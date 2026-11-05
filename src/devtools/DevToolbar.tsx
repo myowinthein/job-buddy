@@ -75,34 +75,41 @@ export default function DevToolbar({
       className="relative z-[60] shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100"
     >
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-        {context && (
+        <div className="flex flex-wrap items-center gap-3">
           <span
-            title="Changes stay in this tab and reset on refresh. Gemini and Drive are simulated."
-            className="font-medium text-amber-800 dark:text-amber-200"
+            title={
+              context
+                ? 'Changes stay in this tab and reset on refresh. Gemini and Drive are simulated.'
+                : 'Original uses your saved data. Other modes use temporary data.'
+            }
+            className="text-amber-800 dark:text-amber-200"
           >
-            Temporary data
+            Profile
           </span>
-        )}
-        <div role="group" aria-label="Profile preset" className="flex flex-wrap items-center gap-1">
-          <span className="mr-2 text-amber-800 dark:text-amber-200">Profile</span>
-          {PROFILE_OPTIONS.map((preset) => {
-            const selected =
-              preset.id === 'original'
-                ? !context || state?.preset === 'saved'
-                : state?.preset === preset.id;
-            return (
-              <button
-                key={preset.id}
-                type="button"
-                disabled={busy || !state}
-                aria-pressed={selected}
-                onClick={() => void (preset.id === 'original' ? exit() : startPreview(preset.id))}
-                className={`rounded-md border px-2.5 py-1 transition-colors disabled:opacity-50 ${selected ? 'border-amber-600 bg-amber-200 font-medium dark:border-amber-500 dark:bg-amber-800' : 'border-amber-300 bg-white/70 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/50 dark:hover:bg-amber-800'}`}
-              >
-                {preset.label}
-              </button>
-            );
-          })}
+          <div
+            role="group"
+            aria-label="Profile mode"
+            className="inline-flex shrink-0 overflow-hidden rounded-md border border-amber-400 bg-white/70 divide-x divide-amber-300 dark:border-amber-700 dark:bg-amber-900/50 dark:divide-amber-700"
+          >
+            {PROFILE_OPTIONS.map((preset) => {
+              const selected =
+                preset.id === 'original'
+                  ? !context || state?.preset === 'saved'
+                  : state?.preset === preset.id;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  disabled={busy || !state}
+                  aria-pressed={selected}
+                  onClick={() => void (preset.id === 'original' ? exit() : startPreview(preset.id))}
+                  className={`px-2.5 py-1 transition-colors focus-visible:relative focus-visible:z-10 focus-visible:outline-offset-[-2px] disabled:opacity-50 ${selected ? 'bg-amber-200 font-medium dark:bg-amber-700' : 'hover:bg-amber-100 dark:hover:bg-amber-800'}`}
+                >
+                  {preset.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
         <button
           type="button"

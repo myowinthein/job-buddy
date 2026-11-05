@@ -118,7 +118,11 @@ test('the dev bar previews profiles and missing keys without changing saved exte
       await page.evaluate(() => (window as Window & { testDocument?: string }).testDocument),
     ).toBe(initialDocument);
     await expect(bar.getByText('DEV', { exact: true })).toHaveCount(0);
-    await expect(bar.getByText('Temporary data', { exact: true })).toBeVisible();
+    await expect(bar.getByText('Temporary data', { exact: true })).toHaveCount(0);
+    await expect(bar.getByText('Profile', { exact: true })).toBeVisible();
+    await expect(bar.getByRole('group', { name: 'Profile mode' }).getByRole('button')).toHaveCount(
+      4,
+    );
     const progress = app.getByRole('progressbar', { name: 'Saved required profile details' });
     await expect(progress).toHaveAttribute('aria-valuenow', '0');
     await bar.getByRole('button', { name: 'Required only', exact: true }).click();
