@@ -493,20 +493,7 @@ export function MappingReviewDialog({
                                         {mappingDestination(item.path, labels)}
                                         {item.status === 'Inactive' ? ' (Inactive)' : ''}
                                       </dd>
-                                      {assessment.verdict === 'change' && (
-                                        <>
-                                          <dt className="text-gray-500 dark:text-gray-400">
-                                            Suggested
-                                          </dt>
-                                          <dd className="min-w-0 break-words text-gray-900 dark:text-gray-100">
-                                            {mappingDestination(assessment.path!, labels)}
-                                          </dd>
-                                        </>
-                                      )}
                                     </dl>
-                                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                      {assessment.reason}
-                                    </p>
                                   </div>
                                   <div className="flex min-w-0 flex-col gap-2">
                                     <select
