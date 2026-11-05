@@ -83,20 +83,29 @@ button {
   letter-spacing: 1px;
   font-weight: 500;
 }
-.careers {
-  color: var(--muted);
-  border-left: 1px solid var(--line);
-  padding-left: 28px;
-  font-size: 13px;
-}
 #theme {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   margin-left: auto;
-  color: var(--muted);
+  color: var(--ink);
   font-size: 12px;
   background: transparent;
   border: 1px solid var(--line);
-  padding: 5px 10px;
+  padding: 6px 10px;
   border-radius: 4px;
+}
+#theme svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+#theme .theme-sun,
+:root.dark #theme .theme-moon {
+  display: none;
+}
+:root.dark #theme .theme-sun {
+  display: block;
 }
 .application-layout,
 .page-footer {
@@ -224,7 +233,22 @@ textarea {
   font-size: 14px;
 }
 select {
-  padding-right: 28px;
+  appearance: none;
+  padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23626b7c' stroke-width='1.5'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 16px 16px;
+  background-position: right 12px center;
+}
+:root.dark select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23b0bacd' stroke-width='1.5'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+}
+input:not([type='radio'], [type='checkbox']):focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
 }
 textarea {
   resize: vertical;
@@ -268,6 +292,12 @@ fieldset {
   align-items: center;
   gap: 7px;
   margin: 0;
+  min-height: 32px;
+  line-height: 20px;
+}
+.radio-options input {
+  margin: 0;
+  flex-shrink: 0;
 }
 .form-actions {
   margin-top: 28px;
@@ -378,9 +408,6 @@ button:disabled {
     padding: 19px 18px;
     gap: 15px;
   }
-  .careers {
-    padding-left: 15px;
-  }
   .wordmark {
     font-size: 25px;
     gap: 5px;
@@ -410,6 +437,12 @@ button:disabled {
   }
 }
 @media (forced-colors: active) {
+  select,
+  :root.dark select {
+    appearance: auto;
+    background-image: none;
+    padding-right: 11px;
+  }
   .actions #submit {
     border: 1px solid ButtonText;
   }
