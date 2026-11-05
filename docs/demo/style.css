@@ -7,6 +7,9 @@
   --line: #d5dae3;
   --input: #fff;
   --accent: #394e9a;
+  --notice-bg: #eaf2ff;
+  --notice-border: #8eb2ed;
+  --notice-ink: #214e90;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 :root.dark {
@@ -18,6 +21,9 @@
   --line: #46516a;
   --input: #222c3e;
   --accent: #a8baff;
+  --notice-bg: #162d4d;
+  --notice-border: #446fa6;
+  --notice-ink: #c2dcff;
 }
 * {
   box-sizing: border-box;
@@ -120,34 +126,46 @@ button {
 .application-layout {
   padding-block: 46px 30px;
   align-items: start;
+  row-gap: 28px;
 }
 .job-description {
   padding-top: 4px;
 }
 .setup-notice {
-  border: 1px solid var(--line);
-  background: var(--paper);
-  border-radius: 4px;
-  padding: 16px;
-  margin-bottom: 28px;
-  font-size: 13px;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--notice-border);
+  background: var(--notice-bg);
+  color: var(--notice-ink);
+  border-radius: 6px;
+  padding: 20px 24px;
+  font-size: 14px;
+}
+.setup-notice svg {
+  width: 22px;
+  height: 22px;
 }
 .setup-notice strong {
   display: block;
-  color: var(--ink);
+  font-size: 15px;
 }
 .setup-notice p {
-  color: var(--muted);
-  margin: 4px 0 12px;
+  margin: 3px 0 0;
 }
 .setup-notice a {
   display: inline-block;
   border-radius: 4px;
-  padding: 7px 12px;
-  background: #394e9a;
+  padding: 9px 15px;
+  background: #255ccd;
   color: white;
   font-weight: 600;
   text-decoration: none;
+}
+.setup-notice a:hover {
+  background: #1e4dc0;
 }
 .team {
   margin: 0 0 12px;
@@ -410,6 +428,18 @@ button:disabled {
   }
 }
 @media (max-width: 750px) {
+  .setup-notice {
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 12px;
+    padding: 18px;
+  }
+  .setup-notice svg {
+    align-self: start;
+  }
+  .setup-notice a {
+    grid-column: 2;
+    justify-self: start;
+  }
   .application-layout,
   .page-footer {
     grid-template-columns: 1fr;
