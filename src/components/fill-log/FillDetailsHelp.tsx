@@ -59,8 +59,8 @@ export function FillDetailsHelp() {
             className="max-h-[70dvh] space-y-3 overflow-y-auto rounded-lg border border-gray-200 bg-white p-3 text-xs leading-relaxed text-gray-600 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
           >
             <p className="text-pretty">
-              For each field, autofill tries learned mappings → rules → AI, stopping when a reliable
-              answer is found.
+              For each field, autofill tries learned mappings → rules → AI and stops when it finds
+              a reliable answer.
             </p>
             <p>Each fill attempt can have one of these results:</p>
             <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-2 [&_dd]:text-balance">
