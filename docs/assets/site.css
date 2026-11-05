@@ -496,6 +496,12 @@ li {
 }
 .detail-list details ul {
   margin: 10px 0;
+  max-width: 780px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.detail-list details ul strong {
+  color: var(--ink);
 }
 .table-scroll {
   overflow-x: auto;
