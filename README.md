@@ -5,9 +5,9 @@ AI-powered job application assistant browser extension
 Save your profile once and use Job Buddy to fill supported job application forms.
 Import your resume, review your details, and fill forms with one click.
 
-[Chrome Web Store](https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk) · [Website](https://myowinthein.github.io/job-buddy/) · [User guide](docs/USAGE.md)
+[Chrome Web Store](https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk) · [Website](https://myowinthein.github.io/job-buddy/)
 
-<img src="docs/assets/images/4.webp" alt="A sample job application filled from a saved Job Buddy profile" width="800">
+<img src="docs/assets/images/autofill-demo.jpg" alt="Job Buddy filling a sample application with saved profile details and the Quick Fill control" width="1000">
 
 ## Why I built this
 
@@ -41,15 +41,10 @@ and relevant form and profile details during autofill. Google Drive backup is
 optional. Read the [privacy policy](docs/legal/privacy/index.html) and
 [autofill and AI disclaimer](docs/legal/disclaimer/index.html) for details.
 
-The [user guide](docs/USAGE.md) covers field colors, Quick Fill, learned mappings,
-and backups.
-
 ## Help me improve it
 
 If something doesn't work, or you have an idea that would make applying for jobs
 easier, [share it on GitHub](https://github.com/myowinthein/job-buddy/issues).
-
-To run or work on the extension, see the [development guide](docs/DEVELOPMENT.md).
 
 [MIT](LICENSE) © 2026 Myo Win Thein (Martin).
 
