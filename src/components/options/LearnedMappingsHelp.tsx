@@ -5,7 +5,6 @@ import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 export function LearnedMappingsHelp() {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
   const [pinned, setPinned] = useState(false);
   const id = useId();
   const close = () => {
@@ -37,10 +36,8 @@ export function LearnedMappingsHelp() {
       }}
     >
       <button
-        ref={trigger}
         type="button"
         aria-label="How learned mappings work"
-        aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? id : undefined}
         aria-describedby={open ? id : undefined}
@@ -57,8 +54,7 @@ export function LearnedMappingsHelp() {
         <div className="absolute left-0 top-full z-40 w-96 max-w-[calc(100vw-6rem)] pt-2">
           <div
             id={id}
-            role="dialog"
-            aria-label="How learned mappings work"
+            role="tooltip"
             className="space-y-3 rounded-lg border border-gray-200 bg-white p-3 text-xs leading-relaxed text-gray-600 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
           >
             <p>
@@ -73,33 +69,8 @@ export function LearnedMappingsHelp() {
               <dd>Saved but excluded from autofill because the mapping needs review.</dd>
             </dl>
             <p>
-              Correct a field using your saved profile information, then move to another field
-              to record it.
+              Use Review Mappings to let AI check your saved matches.
             </p>
-            {pinned ? (
-              <div className="space-y-2">
-                <p>
-                  Learning works on detected fields, including those left empty or filled
-                  incorrectly. AI answers do not teach mappings.
-                </p>
-                <p>
-                  Mappings can become inactive after a profile entry is removed, an older
-                  mapping becomes ambiguous, or you approve making it inactive in a review.
-                </p>
-                <p>Save an edit here to make the mapping Trusted.</p>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setPinned(true);
-                  trigger.current?.focus();
-                }}
-                className="rounded text-blue-600 underline underline-offset-2 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-              >
-                Click for more details
-              </button>
-            )}
           </div>
         </div>
       )}
