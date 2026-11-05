@@ -71,6 +71,7 @@ export function MappingReviewSites({
           id={`${id}-sites`}
           role="group"
           aria-label="Site selection"
+          tabIndex={-1}
           className="mt-2 rounded-lg border border-gray-300 dark:border-gray-600"
         >
           <div className="p-2">

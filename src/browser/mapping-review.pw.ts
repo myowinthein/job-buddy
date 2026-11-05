@@ -87,11 +87,23 @@ test('selects all sites by default and supports searchable multi-selection', asy
   await selector.click();
   const all = dialog.getByRole('checkbox', { name: 'All sites (2)' });
   const search = dialog.getByRole('searchbox', { name: 'Search sites' });
+  const siteSelection = dialog.getByRole('group', { name: 'Site selection' });
   await expect(all).toBeChecked();
-  await all.uncheck();
+  await siteSelection.getByText('All sites (2)', { exact: true }).click();
+  await expect(search).toBeVisible();
+  await expect(all).not.toBeChecked();
   await expect(review).toBeDisabled();
   await search.fill('other');
   await expect(dialog.getByRole('checkbox')).toHaveCount(2);
+  await siteSelection.getByText('other.example.test', { exact: true }).click();
+  await expect(search).toHaveValue('other');
+  await expect(
+    dialog.getByRole('checkbox', { name: 'other.example.test', exact: true }),
+  ).toBeChecked();
+  await siteSelection.getByText('other.example.test', { exact: true }).click();
+  await expect(
+    dialog.getByRole('checkbox', { name: 'other.example.test', exact: true }),
+  ).not.toBeChecked();
   await dialog.getByRole('checkbox', { name: 'other.example.test', exact: true }).check();
   await expect(all).toBeChecked({ indeterminate: true });
   await search.fill('no-matching-site');
