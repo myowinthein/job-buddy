@@ -17,6 +17,45 @@ async function capture(page: Page, info: TestInfo, name: string, target?: Locato
   } else await page.screenshot({ path: info.outputPath(`${name}.png`), animations: 'disabled' });
 }
 
+// Keep the real options-page gutters in component crops. These pixels come
+// from the running app, rather than padding painted around the image later.
+async function captureInPage(page: Page, info: TestInfo, name: string, target: Locator) {
+  await target.scrollIntoViewIfNeeded();
+  const content = await target.boundingBox();
+  const main = page.locator('main').first();
+  const bounds = await main.boundingBox();
+  const gutter = await main.evaluate((element) =>
+    parseFloat(getComputedStyle(element).paddingLeft),
+  );
+  if (!content || !bounds || !Number.isFinite(gutter) || gutter <= 0)
+    throw new Error(`Missing native page gutters: ${name}`);
+  const x = Math.max(bounds.x, Math.floor(content.x - gutter));
+  const right = Math.min(bounds.x + bounds.width, Math.ceil(content.x + content.width + gutter));
+  const spacing = await target.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return {
+      paddingTop: parseFloat(style.paddingTop),
+      borderTop: parseFloat(style.borderTopWidth),
+      borderBottom: parseFloat(style.borderBottomWidth),
+      previousBottom: element.previousElementSibling?.getBoundingClientRect().bottom,
+    };
+  });
+  // Settings sections have a real gap above them; field rows already contain
+  // their own vertical inset. Keep adjacent section separators out of the crop.
+  const above =
+    spacing.paddingTop === 0
+      ? Math.min(24, Math.max(0, content.y - (spacing.previousBottom ?? bounds.y)))
+      : 0;
+  const y = Math.max(bounds.y, content.y - above + spacing.borderTop);
+  const bottom = content.y + content.height - spacing.borderBottom;
+  await page.mouse.move(0, 0);
+  await page.screenshot({
+    path: info.outputPath(`${name}.png`),
+    clip: { x, y, width: right - x, height: bottom - y },
+    animations: 'disabled',
+  });
+}
+
 async function captureRegion(
   page: Page,
   info: TestInfo,
@@ -107,7 +146,7 @@ for (const theme of ['light', 'dark'] as const) {
       .locator('..');
     await expect(section.locator('input#gemini-api-key')).toBeVisible();
     await expect(section.locator('input#gemini-api-key')).toHaveValue('');
-    await capture(options, info, `ai-empty-${theme}`, section);
+    await captureInPage(options, info, `ai-empty-${theme}`, section);
   });
 
   test(`website captures in ${theme} mode`, async ({ context, page, extension }, info) => {
@@ -237,7 +276,7 @@ for (const theme of ['light', 'dark'] as const) {
         if (!(await row.evaluate((el) => (el as HTMLDetailsElement).open))) await summary.click();
       }
       await row.getByRole('button', { name: new RegExp(`^${stage}:`) }).click();
-      await capture(options, info, `${name}-${theme}`, row);
+      await captureInPage(options, info, `${name}-${theme}`, row);
     }
     await options.getByRole('button', { name: 'Personal', exact: true }).click();
     await expect(options.getByLabel('First Name', { exact: false }).first()).toBeVisible();
@@ -315,7 +354,7 @@ for (const theme of ['light', 'dark'] as const) {
       .getByRole('heading', { name: 'AI Features', exact: true })
       .scrollIntoViewIfNeeded();
     await options.getByRole('button', { name: /Model options/ }).click();
-    await capture(
+    await captureInPage(
       options,
       info,
       `ai-${theme}`,
@@ -325,7 +364,7 @@ for (const theme of ['light', 'dark'] as const) {
       .getByRole('heading', { name: 'Quick Fill', exact: true })
       .scrollIntoViewIfNeeded();
     await options.getByText('Hidden sites (2)', { exact: true }).click();
-    await capture(
+    await captureInPage(
       options,
       info,
       `quick-fill-${theme}`,
@@ -335,13 +374,13 @@ for (const theme of ['light', 'dark'] as const) {
       .getByRole('heading', { name: 'Export Profile', exact: true })
       .scrollIntoViewIfNeeded();
     await capture(options, info, `backup-${theme}`);
-    await capture(
+    await captureInPage(
       options,
       info,
       `export-profile-${theme}`,
       options.getByRole('heading', { name: 'Export Profile', exact: true }).locator('..'),
     );
-    await capture(
+    await captureInPage(
       options,
       info,
       `import-profile-${theme}`,
@@ -442,7 +481,7 @@ for (const theme of ['light', 'dark'] as const) {
       .getByRole('heading', { name: 'Cloud Backup', exact: true })
       .scrollIntoViewIfNeeded();
     await expect(preview.getByRole('button', { name: 'Disconnect', exact: true })).toBeVisible();
-    await capture(
+    await captureInPage(
       preview,
       info,
       `drive-${theme}`,

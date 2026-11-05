@@ -776,10 +776,6 @@ pre code {
     padding-block: 24px;
   }
 }
-.component-figure .capture,
-.stage-figure .capture {
-  padding: 22px;
-}
 .component-figure {
   max-width: 820px;
 }
