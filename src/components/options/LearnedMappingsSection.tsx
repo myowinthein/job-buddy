@@ -685,26 +685,26 @@ export function LearnedMappingsSection({
     <section aria-label="Learned Mappings">
       <header className="mb-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2
-            ref={headingRef}
-            tabIndex={-1}
-            className="text-xl font-semibold text-gray-900 dark:text-gray-100"
-          >
-            Learned Mappings
-          </h2>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className={secondary}
-              disabled={loading || loadError || !!busy || !Object.keys(mappings).length}
-              onClick={() => setReviewBase(structuredClone({ profile, mappings }))}
+          <div className="relative flex items-center gap-2">
+            <h2
+              ref={headingRef}
+              tabIndex={-1}
+              className="text-xl font-semibold text-gray-900 dark:text-gray-100"
             >
-              <span className="flex items-center gap-2">
-                <Sparkles size={15} aria-hidden="true" />Review Mappings
-              </span>
-            </button>
+              Learned Mappings
+            </h2>
             <LearnedMappingsHelp />
           </div>
+          <button
+            type="button"
+            className={secondary}
+            disabled={loading || loadError || !!busy || !Object.keys(mappings).length}
+            onClick={() => setReviewBase(structuredClone({ profile, mappings }))}
+          >
+            <span className="flex items-center gap-2">
+              <Sparkles size={15} aria-hidden="true" />Review Mappings
+            </span>
+          </button>
         </div>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Review and manage the profile fields remembered for each site

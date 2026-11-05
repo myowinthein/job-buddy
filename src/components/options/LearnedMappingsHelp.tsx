@@ -26,7 +26,7 @@ export function LearnedMappingsHelp() {
   return (
     <div
       ref={root}
-      className="relative shrink-0"
+      className="shrink-0"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => {
         if (!pinned && !root.current?.contains(document.activeElement)) setOpen(false);
@@ -50,7 +50,7 @@ export function LearnedMappingsHelp() {
         <Info aria-hidden="true" className="h-4 w-4" />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-40 w-96 max-w-[calc(100vw-6rem)] pt-2">
+        <div className="absolute left-0 top-full z-40 w-96 max-w-[calc(100vw-6rem)] pt-2">
           <div
             id={id}
             role="tooltip"
