@@ -489,9 +489,9 @@
             <h2 id="autofill-title">Fill a form</h2>
           </div>
 
-          <p class="prose">
-            Pin Job Buddy in Chrome for easier access. You can close the popup once filling starts;
-            it continues on the source form.
+          <p>
+            Pin Job Buddy in Chrome for easier access. Filling continues on the form after you close
+            the popup.
           </p>
           <div class="visual-tour" data-visual-tour>
             <div
@@ -543,9 +543,6 @@
                       />
                     </button>
                   </div>
-                  <figcaption>
-                    Refreshing, navigating away, or closing the source form cancels its active fill.
-                  </figcaption>
                 </figure>
               </div>
               <div id="popup-views-1" data-visual-panel>
@@ -567,10 +564,6 @@
                       />
                     </button>
                   </div>
-                  <figcaption>
-                    Both modes leave unmatched answers untouched. All matched fields also replaces
-                    existing answers that Job Buddy can match.
-                  </figcaption>
                 </figure>
               </div>
               <div id="popup-views-2" data-visual-panel>
@@ -592,40 +585,33 @@
                       />
                     </button>
                   </div>
-                  <figcaption>
-                    Undo preserves edits you make after filling. Some custom controls may need
-                    manual restoration.
-                  </figcaption>
                 </figure>
               </div>
             </div>
             <p class="visual-status" role="status" aria-live="polite" aria-atomic="true"></p>
           </div>
-          <dl class="color-key">
-            <div>
-              <dt class="green">Green</dt>
-              <dd>Filled with high confidence, or confirmed by you.</dd>
-            </div>
-            <div>
-              <dt class="yellow">Yellow</dt>
-              <dd>Filled, but needs your review.</dd>
-            </div>
-            <div>
-              <dt class="red">Red</dt>
-              <dd>Not filled: no safe match, or the form rejected the value.</dd>
-            </div>
-            <div>
-              <dt class="gray">Gray</dt>
-              <dd>Not filled: a profile match exists, but its value is empty.</dd>
-            </div>
-          </dl>
-          <p class="prose">
-            Consent questions are always skipped. Job Buddy never submits the application; check the
-            answers and attachments before you do.
+          <p>Autofill highlights fields with these colors:</p>
+          <ul class="color-key">
+            <li>
+              <strong class="green">Green:</strong> Filled with high confidence or confirmed by you.
+            </li>
+            <li><strong class="yellow">Yellow:</strong> Filled, but needs your review.</li>
+            <li>
+              <strong class="red">Red:</strong> Not filled because no safe match was found or the form
+              rejected the value.
+            </li>
+            <li>
+              <strong class="gray">Gray:</strong> Not filled because the matching profile field has no
+              data.
+            </li>
+          </ul>
+          <p>
+            Job Buddy leaves consent questions for you to answer and never submits the application.
+            Review your answers and attachments before submitting.
           </p>
           <div class="detail-list">
             <details>
-              <summary>When filling needs help</summary>
+              <summary>If autofill can’t complete the form</summary>
               <dl class="compact-definitions">
                 <div>
                   <dt>Setup is missing</dt>

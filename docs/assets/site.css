@@ -438,32 +438,7 @@ li {
   margin-top: 0;
 }
 .color-key {
-  margin: 23px 0;
-}
-.color-key > div {
-  display: grid;
-  grid-template-columns: 100px minmax(0, 1fr);
-  gap: 14px;
-  padding: 10px 0;
-}
-.color-key dt {
-  font-weight: 600;
-  display: flex;
-  align-items: baseline;
-  gap: 9px;
-}
-.color-key dt::before {
-  content: '';
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: currentColor;
-}
-.color-key dd {
-  margin: 0;
-  color: var(--muted);
+  margin: 12px 0 24px;
 }
 .green {
   color: var(--green);
@@ -745,10 +720,6 @@ pre code {
   }
   .facts {
     gap: 0;
-  }
-  .color-key > div {
-    grid-template-columns: 78px minmax(0, 1fr);
-    gap: 10px;
   }
   .category-list {
     columns: 1;
