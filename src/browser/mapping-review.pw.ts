@@ -404,7 +404,7 @@ test('retains completed batches when stopped and starts a fresh review on every 
   await expect(dialog).toContainText('Reviewed 25 of 25 mappings.');
 });
 
-test('paginates within sites and applies choices from collapsed sites', async ({
+test('keeps site tabs independent while paginating and saving collapsed choices', async ({
   context,
   extension,
 }) => {
@@ -422,18 +422,34 @@ test('paginates within sites and applies choices from collapsed sites', async ({
   await extension.worker.evaluate(async (data) => {
     await chrome.storage.local.set({
       learnedMappings: {
-        'batch.test': data,
-        'other.test': { city: { path: 'address.city', count: 1, label: 'City', question: 'City' } },
+        'batch.test': {
+          ...data,
+          country: { path: 'address.city', count: 1, label: 'Country', question: 'Country' },
+        },
+        'other.test': {
+          city: { path: 'address.city', count: 1, label: 'City', question: 'City' },
+          consent: {
+            path: 'personal.firstName',
+            count: 2,
+            label: 'I agree to the privacy policy',
+            question: 'I agree to the privacy policy',
+          },
+        },
       },
     });
   }, many);
   await context.route('https://generativelanguage.googleapis.com/**', async (route) => {
     const prompt = route.request().postDataJSON().contents[0].parts[0].text as string;
     const payload = JSON.parse(prompt.slice(prompt.lastIndexOf('\n') + 1));
-    const answers = payload.mappings.map((item: { id: string }) => ({
+    const answers = payload.mappings.map((item: { id: string; question: string }) => ({
       id: item.id,
-      verdict: 'uncertain',
-      path: null,
+      verdict:
+        item.question === 'Country'
+          ? 'change'
+          : item.question.includes('privacy')
+            ? 'inactive'
+            : 'uncertain',
+      path: item.question === 'Country' ? 'address.countryName' : null,
       reason: 'Review the saved field.',
     }));
     await route.fulfill({
@@ -444,21 +460,42 @@ test('paginates within sites and applies choices from collapsed sites', async ({
   await options.goto(new URL('options.html', extension.worker.url()).href);
   const dialog = await open(options);
   await dialog.getByRole('button', { name: 'Review Mappings', exact: true }).click();
-  await expect(dialog).toContainText('Reviewed 22 of 22 mappings.');
+  await expect(dialog).toContainText('Reviewed 24 of 24 mappings.');
   const firstSite = dialog.getByRole('group', { name: 'Findings for batch.test' });
   const secondSite = dialog.getByRole('group', { name: 'Findings for other.test' });
+  await expect(firstSite.getByRole('button', { name: 'batch.test (22)' })).toBeVisible();
+  const firstTabs = firstSite.getByRole('group', { name: 'Review status' });
+  await expect(firstTabs.getByRole('button', { name: 'Better field (1)' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await firstSite.getByRole('button', { name: 'Use clear suggestions' }).click();
+  await expect(dialog.getByRole('button', { name: 'Apply Changes (1)' })).toBeEnabled();
+  await firstTabs.getByRole('button', { name: 'Needs context (21)' }).click();
   await expect(firstSite.getByRole('region')).toHaveCount(20);
-  await expect(secondSite.getByRole('button', { name: 'other.test (1)' })).toBeVisible();
+  await expect(secondSite.getByRole('button', { name: 'other.test (2)' })).toBeVisible();
   await expect(secondSite.getByRole('region')).toHaveCount(0);
   await firstSite.getByRole('button', { name: 'Show 1 more' }).click();
   await expect(firstSite.getByRole('region')).toHaveCount(21);
   await firstSite.getByRole('region').first().getByRole('combobox').selectOption('inactive');
-  await firstSite.getByRole('button', { name: 'batch.test (21)' }).click();
-  await secondSite.getByRole('button', { name: 'other.test (1)' }).click();
-  await secondSite.getByLabel('Action for City').selectOption('inactive');
-  await secondSite.getByRole('button', { name: 'other.test (1)' }).click();
+  await secondSite.getByRole('button', { name: 'other.test (2)' }).click();
+  const secondTabs = secondSite.getByRole('group', { name: 'Review status' });
+  await expect(secondTabs.getByRole('button', { name: 'Needs context (1)' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(secondTabs.getByRole('button', { name: 'Better field (1)' })).toHaveCount(0);
+  await secondTabs.getByRole('button', { name: 'No suitable field (1)' }).click();
+  await secondSite.getByRole('button', { name: 'Use clear suggestions' }).click();
+  await expect(firstTabs.getByRole('button', { name: 'Needs context (21)' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(firstSite.getByRole('region')).toHaveCount(21);
+  await firstSite.getByRole('button', { name: 'batch.test (22)' }).click();
+  await secondSite.getByRole('button', { name: 'other.test (2)' }).click();
   await expect(dialog.getByRole('region')).toHaveCount(0);
-  await dialog.getByRole('button', { name: 'Apply Changes (2)' }).click();
+  await dialog.getByRole('button', { name: 'Apply Changes (3)' }).click();
   await expect(dialog).toHaveCount(0);
   const saved = (await extension.worker.evaluate(
     async () => (await chrome.storage.local.get('learnedMappings')).learnedMappings,
@@ -466,7 +503,9 @@ test('paginates within sites and applies choices from collapsed sites', async ({
   expect(
     Object.values(saved['batch.test']).filter((item) => typeof item !== 'string' && item.inactive),
   ).toHaveLength(1);
-  expect(saved['other.test'].city).toMatchObject({ inactive: true });
+  expect(saved['batch.test'].country).toMatchObject({ path: 'address.countryName', count: 2 });
+  expect(saved['other.test'].consent).toMatchObject({ inactive: true });
+  expect(saved['other.test'].city).toMatchObject({ path: 'address.city', count: 1 });
 });
 
 test('blocks stale review decisions after profile or mapping edits', async ({

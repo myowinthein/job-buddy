@@ -59,10 +59,9 @@ export function MappingReviewDialog({
   const [loading, setLoading] = useState(true);
   const [hasKey, setHasKey] = useState(false);
   const [selectedSites, setSelectedSites] = useState<Set<string> | null>(null);
-  const [statusFilter, setStatusFilter] = useState<keyof typeof verdictLabels | null>(null);
-  const [siteViews, setSiteViews] = useState<Record<string, { expanded: boolean; limit: number }>>(
-    {},
-  );
+  const [siteViews, setSiteViews] = useState<
+    Record<string, { expanded: boolean; limit: number; status?: keyof typeof verdictLabels }>
+  >({});
   const [results, setResults] = useState<Record<string, MappingAssessment>>({});
   const [decisions, setDecisions] = useState<Record<string, MappingReviewDecision>>({});
   const [working, setWorking] = useState(false);
@@ -88,18 +87,8 @@ export function MappingReviewDialog({
     const verdict = results[item.id].verdict;
     return verdict !== 'correct' && !(verdict === 'inactive' && item.status === 'Inactive');
   });
-  const statusOptions = (['change', 'uncertain', 'inactive'] as const)
-    .map((value) => ({
-      value,
-      label: verdictLabels[value],
-      count: attention.filter((item) => results[item.id].verdict === value).length,
-    }))
-    .filter((option) => option.count > 0);
-  const activeStatus =
-    statusOptions.find((option) => option.value === statusFilter)?.value ?? statusOptions[0]?.value;
-  const shown = attention.filter((item) => results[item.id].verdict === activeStatus);
-  const findingSites = new Map<string, typeof shown>();
-  for (const item of shown) {
+  const findingSites = new Map<string, typeof attention>();
+  for (const item of attention) {
     const group = findingSites.get(item.domain) ?? [];
     group.push(item);
     findingSites.set(item.domain, group);
@@ -183,7 +172,6 @@ export function MappingReviewDialog({
     const controller = new AbortController();
     abortRef.current = controller;
     setWorking(true);
-    setStatusFilter(null);
     setSiteViews({});
     setError(null);
     setWarning(null);
@@ -338,7 +326,6 @@ export function MappingReviewDialog({
                       disabled={working || applying || stale}
                       onChange={(selected) => {
                         setSelectedSites(selected);
-                        setStatusFilter(null);
                         setSiteViews({});
                       }}
                     />
@@ -402,56 +389,6 @@ export function MappingReviewDialog({
           )}
           {hasKey && !!completed.length && (
             <>
-              {!!attention.length && (
-                <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-3 dark:border-gray-700">
-                  <div
-                    role="group"
-                    aria-label="Review status"
-                    className="flex flex-wrap gap-x-4 gap-y-2 text-sm"
-                  >
-                    {statusOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        aria-pressed={activeStatus === option.value}
-                        onClick={() => setStatusFilter(option.value)}
-                        className={`rounded-sm py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${activeStatus === option.value ? 'font-medium text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
-                      >
-                        {option.label} ({option.count})
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    disabled={
-                      working ||
-                      applying ||
-                      stale ||
-                      !shown.some((item) =>
-                        ['change', 'inactive'].includes(results[item.id].verdict),
-                      )
-                    }
-                    className="text-sm text-blue-600 disabled:opacity-40 dark:text-blue-400"
-                    onClick={() =>
-                      setDecisions((current) => ({
-                        ...current,
-                        ...Object.fromEntries(
-                          shown.flatMap<[string, MappingReviewDecision]>((item) => {
-                            const result = results[item.id];
-                            return result.verdict === 'change'
-                              ? [[item.id, { action: 'change', path: result.path! }]]
-                              : result.verdict === 'inactive'
-                                ? [[item.id, { action: 'inactive' }]]
-                                : [];
-                          }),
-                        ),
-                      }))
-                    }
-                  >
-                    Use clear suggestions
-                  </button>
-                </div>
-              )}
               {!attention.length && (
                 <p className="py-5 text-sm text-gray-600 dark:text-gray-300">
                   No changes suggested for the reviewed mappings.
@@ -459,14 +396,24 @@ export function MappingReviewDialog({
               )}
               <div>
                 {[...findingSites].map(([domain, group], siteIndex) => {
-                  const siteKey = `${activeStatus}:${domain}`;
-                  const view = siteViews[siteKey];
+                  const view = siteViews[domain];
+                  const statusOptions = (['change', 'uncertain', 'inactive'] as const)
+                    .map((value) => ({
+                      value,
+                      label: verdictLabels[value],
+                      count: group.filter((item) => results[item.id].verdict === value).length,
+                    }))
+                    .filter((option) => option.count > 0);
+                  const activeStatus =
+                    statusOptions.find((option) => option.value === view?.status)?.value ??
+                    statusOptions[0]?.value;
+                  const shown = group.filter((item) => results[item.id].verdict === activeStatus);
                   const expanded = view?.expanded ?? siteIndex === 0;
                   const siteLimit = view?.limit ?? 20;
-                  const panelId = `${titleId}-${activeStatus}-site-${siteIndex}`;
+                  const panelId = `${titleId}-site-${siteIndex}`;
                   return (
                     <div
-                      key={siteKey}
+                      key={domain}
                       role="group"
                       aria-label={`Findings for ${domain}`}
                       className="border-t border-gray-200 py-4 first:border-t-0 dark:border-gray-700"
@@ -479,7 +426,7 @@ export function MappingReviewDialog({
                           onClick={() =>
                             setSiteViews((current) => ({
                               ...current,
-                              [siteKey]: { expanded: !expanded, limit: siteLimit },
+                              [domain]: { ...view, expanded: !expanded, limit: siteLimit },
                             }))
                           }
                           className="flex w-full items-center gap-2 rounded-sm py-1 text-left hover:text-blue-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:hover:text-blue-400"
@@ -496,8 +443,63 @@ export function MappingReviewDialog({
                         </button>
                       </h4>
                       <div id={panelId} hidden={!expanded} className="mt-3 space-y-4">
+                        {expanded && (
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-3 dark:border-gray-700">
+                            <div
+                              role="group"
+                              aria-label="Review status"
+                              className="flex flex-wrap gap-x-4 gap-y-2 text-sm"
+                            >
+                              {statusOptions.map((option) => (
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  aria-pressed={activeStatus === option.value}
+                                  onClick={() =>
+                                    setSiteViews((current) => ({
+                                      ...current,
+                                      [domain]: { expanded: true, limit: 20, status: option.value },
+                                    }))
+                                  }
+                                  className={`rounded-sm py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${activeStatus === option.value ? 'font-medium text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+                                >
+                                  {option.label} ({option.count})
+                                </button>
+                              ))}
+                            </div>
+                            <button
+                              type="button"
+                              disabled={
+                                working ||
+                                applying ||
+                                stale ||
+                                !shown.some((item) =>
+                                  ['change', 'inactive'].includes(results[item.id].verdict),
+                                )
+                              }
+                              className="text-sm text-blue-600 disabled:opacity-40 dark:text-blue-400"
+                              onClick={() =>
+                                setDecisions((current) => ({
+                                  ...current,
+                                  ...Object.fromEntries(
+                                    shown.flatMap<[string, MappingReviewDecision]>((item) => {
+                                      const result = results[item.id];
+                                      return result.verdict === 'change'
+                                        ? [[item.id, { action: 'change', path: result.path! }]]
+                                        : result.verdict === 'inactive'
+                                          ? [[item.id, { action: 'inactive' }]]
+                                          : [];
+                                    }),
+                                  ),
+                                }))
+                              }
+                            >
+                              Use clear suggestions
+                            </button>
+                          </div>
+                        )}
                         {expanded &&
-                          group.slice(0, siteLimit).map((item) => {
+                          shown.slice(0, siteLimit).map((item) => {
                             const assessment = results[item.id];
                             const choice = decisions[item.id] ?? { action: 'keep' as const };
                             return (
@@ -572,18 +574,18 @@ export function MappingReviewDialog({
                               </section>
                             );
                           })}
-                        {expanded && group.length > siteLimit && (
+                        {expanded && shown.length > siteLimit && (
                           <button
                             type="button"
                             className={secondary}
                             onClick={() =>
                               setSiteViews((current) => ({
                                 ...current,
-                                [siteKey]: { expanded: true, limit: siteLimit + 20 },
+                                [domain]: { ...view, expanded: true, limit: siteLimit + 20 },
                               }))
                             }
                           >
-                            Show {Math.min(20, group.length - siteLimit)} more
+                            Show {Math.min(20, shown.length - siteLimit)} more
                           </button>
                         )}
                       </div>
