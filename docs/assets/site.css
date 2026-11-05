@@ -507,9 +507,6 @@ li {
   border-bottom: 1px solid var(--line);
   padding: 15px 0;
 }
-#ai .detail-list details {
-  border-bottom: 0;
-}
 .detail-list summary {
   cursor: pointer;
   font-weight: 550;
@@ -816,6 +813,38 @@ pre code {
 }
 
 /* Screenshot-led walkthrough. The developer guide keeps its existing layout. */
+.walkthrough {
+  --chapter-gap: 64px;
+  --divider-gap: 16px;
+}
+.walkthrough .chapter {
+  padding-block: var(--chapter-gap);
+}
+.walkthrough .chapter:first-of-type {
+  margin-top: var(--chapter-gap);
+}
+.walkthrough .chapter > :last-child {
+  margin-bottom: 0;
+}
+.walkthrough .detail-list {
+  margin-top: 24px;
+}
+.walkthrough .detail-list details {
+  border: 0;
+  padding-block: var(--divider-gap);
+}
+.walkthrough .detail-list details + details {
+  border-top: 1px solid var(--line);
+}
+.walkthrough .detail-list details:first-child {
+  padding-top: 0;
+}
+.walkthrough .detail-list details:last-child {
+  padding-bottom: 0;
+}
+.walkthrough .detail-list details > :last-child {
+  margin-bottom: 0;
+}
 .visual-tour {
   margin: 25px 0;
   min-width: 0;
@@ -828,7 +857,7 @@ pre code {
   flex-wrap: wrap;
   gap: 4px 20px;
   border-bottom: 1px solid var(--line);
-  margin-bottom: 18px;
+  margin-bottom: var(--divider-gap);
 }
 .visual-controls button {
   border: 0;
@@ -951,8 +980,16 @@ pre code {
   display: grid;
   grid-template-columns: 170px minmax(0, 1fr);
   gap: 24px;
-  padding: 18px 0;
-  border-bottom: 1px solid var(--line);
+  padding: var(--divider-gap) 0;
+}
+.data-ledger > div + div {
+  border-top: 1px solid var(--line);
+}
+.data-ledger > div:first-child {
+  padding-top: 0;
+}
+.data-ledger > div:last-child {
+  padding-bottom: 0;
 }
 .data-ledger dt {
   font-weight: 600;
@@ -963,13 +1000,16 @@ pre code {
   color: var(--muted);
 }
 @media (max-width: 800px) {
+  .walkthrough {
+    --chapter-gap: 40px;
+  }
   .sequence-tour.is-enhanced {
     display: block;
   }
   .sequence-tour.is-enhanced > .visual-controls {
     flex-direction: row;
     gap: 5px 16px;
-    margin-bottom: 18px;
+    margin-bottom: var(--divider-gap);
   }
   .sequence-tour .visual-controls button {
     padding: 12px 0;
@@ -1003,6 +1043,9 @@ pre code {
   }
 }
 @media print {
+  .walkthrough {
+    --chapter-gap: 24px;
+  }
   .is-enhanced > .visual-controls {
     display: none !important;
   }
