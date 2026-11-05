@@ -1,221 +1,55 @@
-# Job Buddy _(job-buddy)_
+# Job Buddy
 
 AI-powered job application assistant browser extension
 
 Save your profile once and use Job Buddy to fill supported job application forms.
-It stores your profile in your browser. A Gemini API key is required for autofill
-and resume import; Google Drive backup is optional.
+Import your resume, review your details, and fill forms with one click.
 
-## Table of Contents
+[Chrome Web Store](https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk) · [Website](https://myowinthein.github.io/job-buddy/) · [User guide](docs/USAGE.md)
 
-- [Install](#install)
-- [Usage](#usage)
-- [Integrations](#integrations)
-- [Development](#development)
-- [Documentation](#documentation)
-- [Contributing](#contributing)
-- [License](#license)
+<img src="docs/assets/images/4.webp" alt="A sample job application filled from a saved Job Buddy profile" width="800">
 
-## Install
+## Why I built this
 
-Install Job Buddy from the [Chrome Web Store](https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk).
+While actively looking for a job, I found myself filling out several application
+forms every day. Repeating the same personal details, work history, and education
+was exhausting and took time away from the search itself.
 
-To run from source, install Node.js 22 (see [.nvmrc](.nvmrc)) and pnpm 11.7.0, then:
+I tried extensions from the Chrome Web Store. Some included job listings, resume
+matching, and other features I didn't need. Others were simpler, but didn't fill
+forms as accurately as I wanted.
 
-```bash
-git clone https://github.com/myowinthein/job-buddy.git
-cd job-buddy
-pnpm install
-pnpm dev
-```
+That's why I built Job Buddy. I wanted a simple, reliable extension that could read
+my resume and use AI to help fill application forms in one click. I built it for my
+own job search and made it free and open source for others to use.
 
-In Chrome, open `chrome://extensions/`, enable **Developer mode**, click **Load
-unpacked**, and select `.output/chrome-mv3-dev/`. Keep `pnpm dev` running while
-developing. Set up Gemini to use autofill and resume import. Google Drive setup is optional.
+## How to use it
 
-## Usage
+After installing Job Buddy, you need two things: a
+[Gemini API key](https://aistudio.google.com/api-keys) and your resume in PDF or DOCX
+format. Gemini offers a free tier, with
+[usage limits](https://ai.google.dev/gemini-api/docs/rate-limits) that vary by model.
 
-```text
-Set Up Profile → Set Up AI Autofill → Fill Form → Review answers → Submit on the application site
-```
+1. Open **Settings → AI Features**, enter your key, and select **Save Key**.
+2. Choose **Import Resume**, review the extracted details, and import them into
+   your profile. Add any missing required details.
+3. Open a job application form and select **Fill Form** from Job Buddy.
+4. Review the answers, complete anything missing, and submit on the application site.
 
-1. Open the extension popup and choose **Set Up Profile**, **Complete Profile**, or **Edit Profile**.
-   Save your personal details, work history, education, and other relevant sections.
-   Add a CV in **Documents** to attach it to supported upload fields.
-   Open uploaded PDFs with **View PDF**, or use **Download** to save PDF and Word attachments.
-   Unsaved edits show a warning before you leave a section or close the profile page.
-   The top bar tracks 10 required checks after saving; select a remaining detail
-   to go to its input. Optional details do not affect the percentage.
-2. Choose **Set Up AI Autofill** and save a Gemini key in **Settings → AI Features**.
-   Save a valid first name and email to enable autofill. Then visit a job application page
-   and click **Fill Form** in the popup.
-3. If the form already contains values, choose **Fill empty fields** to keep existing values
-   or **Fill all matched fields** to fill empty fields and replace existing answers
-   with your saved details, then click **Fill Form**.
-   After you start a fill, you can close the popup while it continues on that page.
-   Reopen it to see progress or results. If existing answers need a choice, filling
-   waits until you choose and confirm. Reloading or leaving the page stops the run.
-4. Review the results and type any missing or corrected answers directly into the
-   form. Submit the application yourself on the website.
+Your profile is stored in your browser. Gemini processes your resume during import
+and relevant form and profile details during autofill. Google Drive backup is
+optional. Read the [privacy policy](docs/legal/privacy/index.html) and
+[autofill and AI disclaimer](docs/legal/disclaimer/index.html) for details.
 
-On the application form, colors describe individual field confidence:
+The [user guide](docs/USAGE.md) covers field colors, Quick Fill, learned mappings,
+and backups.
 
-| Result                      | Meaning                                                                      |
-| --------------------------- | ---------------------------------------------------------------------------- |
-| Green / High confidence     | Filled with high confidence; still check the answer.                         |
-| Yellow / Review value       | Filled with lower confidence; review and correct it.                         |
-| Red / Not matched           | Left unfilled because no confident match was found.                          |
-| Gray / Missing profile data | Your profile lacks the value; a subtle gray background tint marks the field. |
+## Help me improve it
 
-The form stays free of per-field icons and automatic tooltips. Read textual field
-statuses in **Fill Details** when needed. Screen-reader descriptions supplement existing
-site hints without changing keyboard tab order; Undo removes Job Buddy's feedback.
+If something doesn't work, or you have an idea that would make applying for jobs
+easier, [share it on GitHub](https://github.com/myowinthein/job-buddy/issues).
 
-**Quick Fill** adds a movable **Fill Form** button to likely application pages. It fills
-empty fields and keeps existing answers. Its menu can hide the button until refresh
-or disable it for a site. Manage this in **Settings → Quick Fill**. The popup still
-offers the choice to replace existing answers. Form detection stays local and may
-miss unusual layouts; the popup remains available.
-
-Moving or hiding the button does not stop a fill already running. Its position is
-saved in this browser across restarts and shared across sites. Use **On / Off** in
-Settings to control visibility. Hidden sites can be searched and managed in pages
-of five.
-
-Popup messages share one area below the main buttons. Blue indicates setup or
-loading, gray an informational outcome, green completed fills, amber a result
-needing review or input, and red a failed action. Fill Form stays on the left;
-Undo or Cancel sits on the right.
-
-If AI assistance is unavailable during a fill, the popup warns you to review the
-results. Existing rule-based fills remain, and **Undo** is still available.
-
-The popup shows a compact result summary. Choose **View details** in the result card
-to open **Fill Details** for detected fields, rule fills, AI handoffs, and final
-outcomes across the form's frames.
-Use **Fields** to search, filter, or inspect how an individual answer was handled.
-Processing-stage counts can overlap when AI refines a rule-filled value; final
-totals count each field or question group once. Kept answers and consent questions
-are separate from unfilled fields.
-
-The log follows edits on the source form and keeps only its latest run in memory.
-Reloading or closing the form discards it. It records field metadata, not profile
-values, uploaded document contents, or API keys.
-
-**Undo** clears Job Buddy's fills for the current session. Corrections that match
-saved profile values can teach the extension a field mapping for that website.
-Review or edit these in **Learned Mappings**.
-
-Compatibility depends on the site's controls. Some custom fields cannot be filled;
-check every answer and uploaded document before submitting.
-
-## Integrations
-
-- **Gemini (required for autofill and resume import):** add your own API key in **Settings → AI Features** for AI autofill
-  assistance and PDF/DOCX resume import. Select **Save Key** to verify and save it.
-  Keys remain in this browser and are excluded from JSON and Drive backups.
-  Use **Replace Key** or **Remove Key** to manage access. Review imported suggestions
-  before saving. Updating from a resume keeps saved entries and missing details.
-  Local checks reject unreadable PDF/DOCX files before sending. Gemini also checks
-  document purpose: unrelated documents stop, and uncertain results need confirmation
-  before review. Slow, rate-limited, or unavailable models fall back automatically.
-- **Google Drive:** connect in **Settings** to back up your profile and learned
-  mappings. Saved changes update the backup automatically. Use **Back Up Now**
-  to check and update it manually. Different Drive data requires review before
-  replacement. Temporary failures retry with increasing delays; Google may ask
-  you to reconnect. Appearance and Gemini settings stay in this browser.
-- **JSON backup:** use **Export Profile** and **Import Profile** in **Settings** to
-  transfer your profile and learned mappings.
-
-Disconnecting keeps the last successful Drive backup unless you choose to delete
-it. Keeping a backup does not upload unsynced changes first. A failed cloud
-deletion must be retried before a reset can clear this browser.
-
-Valid JSON backups import immediately into an empty profile. Resume, JSON, and Drive
-imports show **Update current profile** and **Replace current profile** only for a
-possible name/email mismatch. Empty profiles and matching identities use the normal
-import flow. Update keeps omitted details;
-JSON and Drive lists replace supplied lists, while resume updates retain saved
-entries. The shared review lets you select individual jobs, education entries,
-languages, and custom links. New entries show their details; changed entries
-compare current and incoming values in both Update and Replace.
-Imported mappings merge with saved mappings.
-
-Replace starts fresh with the selected incoming details and clears old documents
-and mappings unless imported. Appearance and AI settings stay in this
-browser. Replacing from a resume or JSON pauses connected Drive backups until you
-review the saved backup in Settings.
-
-AI autofill sends profile details and form fields to Google's Gemini API, excluding
-stored document files. Personal background details are included only when a field
-asks for them. Resume import sends the selected file and extracted hyperlinks; the
-current profile stays local for review. Drive
-backup uploads your profile and learned mappings to Google. Read the
-[privacy policy](docs/legal/privacy/index.html) and
-[autofill and AI disclaimer](docs/legal/disclaimer/index.html) before using these features.
-See [Project Setup](.github/SETUP.md) for integration configuration.
-
-## Development
-
-The extension uses WXT, React, TypeScript, and Tailwind CSS v4, with Vitest for tests.
-
-The dev server uses `127.0.0.1` (port 3000 by default) for a consistent local
-connection. Development page scripts register independently of hot reload, so
-the floating button can appear even if the dev server is temporarily unavailable.
-
-Restart `pnpm dev` after adding a new extension page so WXT discovers and emits
-its HTML file. Already-open forms may keep an earlier content script; refresh
-the form before testing a changed autofill flow. The Fill Details page explains when an
-earlier script cannot supply detailed records.
-
-| Command              | Purpose                                                             |
-| -------------------- | ------------------------------------------------------------------- |
-| `pnpm dev`           | Start Chrome extension development.                                 |
-| `pnpm dev:preview`   | Preview the profile UI with sample data at `http://127.0.0.1:4173`. |
-| `pnpm compile`       | Check TypeScript without emitting files.                            |
-| `pnpm lint`          | Run ESLint.                                                         |
-| `pnpm test:run`      | Run the test suite once.                                            |
-| `pnpm build`         | Build the production Chrome extension.                              |
-| `pnpm zip`           | Build and package a Chrome Web Store archive.                       |
-| `pnpm serve:landing` | Serve the static website at `http://localhost:3000`.                |
-
-Browser tests use Playwright with an isolated Chromium profile and synthetic local forms.
-Install the browser once with `pnpm exec playwright install chromium`, then run
-`pnpm test:browser`. This builds the extension and runs headless tests. After a build,
-use `pnpm exec playwright test --headed` to see the browser while debugging.
-Normal edits do not start browser tests.
-
-The localhost profile preview uses the existing Options UI with in-memory sample
-data. Use **Sample profile** or **Empty profile** to review completion states.
-Profile saves last until you refresh the page; Appearance is remembered. It does not access your installed
-extension's data, load environment files, or connect to Gemini or Google Drive.
-Use it to review profile forms and layout; extension autofill and real integrations
-still require an unpacked extension.
-
-Development builds also include **Dev Tools** in the sidebar. Inspect local JSON,
-completion checks, storage usage, and diagnostics, or run profile, resume, AI, and
-Drive scenarios. Scenarios open the real interface with temporary storage and
-simulated providers. **Exit Simulation** returns to live inspection. Refreshing
-a simulation restarts it; production builds exclude these tools.
-
-Chrome builds are under `.output/`. Firefox development, build, and packaging
-scripts are also available in [package.json](package.json); production distribution
-targets Chrome.
-
-## Documentation
-
-- [Project Setup](.github/SETUP.md): Gemini, Drive OAuth, and release configuration.
-- [Website](docs/index.html) and [project overview](docs/project-site/index.html).
-
-## Contributing
-
-Ask questions, report bugs, or suggest features through
-[GitHub Issues](https://github.com/myowinthein/job-buddy/issues).
-Project development uses direct commits to `main` rather than a pull request workflow.
-Before committing code changes, run `pnpm compile`, `pnpm lint`, `pnpm test:run`, and
-`pnpm build`; these are also the CI checks.
-
-## License
+To run or work on the extension, see the [development guide](docs/DEVELOPMENT.md).
 
 [MIT](LICENSE) © 2026 Myo Win Thein (Martin).
 

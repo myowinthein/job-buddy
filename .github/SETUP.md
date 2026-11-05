@@ -1,16 +1,16 @@
 # Project Setup
 
-One-time configuration for the three external integrations. Work through each
-section in order -- CI/CD depends on the Google Cloud project already existing
-when you reach it.
+Gemini setup is required for autofill, resume import, and AI mapping review.
+Google Drive backup and automated publishing need additional configuration only
+when developing or maintaining the extension.
 
 ---
 
 ## 1. Gemini API Key
 
-The Gemini API key enables AI resume import and AI autofill assist inside the
-extension. It is entered by the user in Settings and is never required for the
-extension to function.
+Users enter their own Gemini API key in Settings. A saved key is required for
+autofill, resume import, and AI mapping review. Profile editing and JSON backups
+remain available without it.
 
 1. Go to [Google AI Studio](https://aistudio.google.com/api-keys).
 2. Click **Create API key**.

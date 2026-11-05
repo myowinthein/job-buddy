@@ -9,7 +9,7 @@ Chrome MV3 extension built with WXT 0.20.26, React 19, TypeScript 5.9, Tailwind 
 - ship-method: direct
 - git-auto-commit: true
 - git-merge-strategy: squash
-- readme-style: standard
+- readme-style: custom
 
 ## Dev Commands
 
