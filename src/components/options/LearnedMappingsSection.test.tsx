@@ -290,12 +290,24 @@ describe('Learned Mappings presentation and discovery', () => {
       .map((button) => button.textContent);
     expect(summaries).toEqual(['many.com2 mappings', 'alpha.com1 mapping', 'zeta.com1 mapping']);
   });
-  it('provides one accessible explanation on focus and click', async () => {
+  it('shows compact guidance on focus and reveals extra details when pinned', async () => {
     mount();
     await screen.findByRole('button', { name: 'How learned mappings work' });
     const help = screen.getByRole('button', { name: 'How learned mappings work' });
     fireEvent.focus(help);
+    const tooltip = screen.getByRole('tooltip');
+    expect(tooltip.textContent).toContain('Job Buddy remembers your corrections');
+    expect(within(tooltip).getByText('Learning')).toBeTruthy();
+    expect(within(tooltip).getByText('Trusted')).toBeTruthy();
+    expect(within(tooltip).getByText('Inactive')).toBeTruthy();
+    expect(tooltip.textContent).not.toContain('AI answers do not teach mappings.');
+    expect(tooltip.textContent).toContain('Click for more details');
+    fireEvent.click(help);
     expect(screen.getByRole('tooltip').textContent).toContain('AI answers do not teach mappings.');
+    expect(screen.getByRole('tooltip').textContent).toContain('a profile entry is removed');
+    expect(screen.getByRole('tooltip').textContent).not.toContain('Click for more details');
+    fireEvent.mouseLeave(help.parentElement!);
+    expect(screen.getByRole('tooltip')).toBeTruthy();
     fireEvent.keyDown(help, { key: 'Escape' });
     expect(screen.queryByRole('tooltip')).toBeNull();
     fireEvent.click(help);
