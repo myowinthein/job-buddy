@@ -490,8 +490,8 @@
           </div>
 
           <p>
-            Pin Job Buddy in Chrome for easier access. Filling continues on the form after you close
-            the popup.
+            Pin Job Buddy in Chrome for easier access. On a job application form, open the Job Buddy
+            popup and select <strong>Fill Form</strong>.
           </p>
           <div class="visual-tour" data-visual-tour>
             <div
@@ -611,31 +611,20 @@
           </p>
           <div class="detail-list">
             <details>
-              <summary>If autofill can’t complete the form</summary>
-              <dl class="compact-definitions">
-                <div>
-                  <dt>Setup is missing</dt>
-                  <dd>
-                    The popup links to the key or profile details it needs. Undo and previous
-                    results stay available.
-                  </dd>
-                </div>
-                <div>
-                  <dt>No form, or no connection</dt>
-                  <dd>
-                    Open the application itself and let it load. Refresh forms opened before an
-                    extension install or update. Chrome’s internal pages and some custom controls
-                    cannot be filled.
-                  </dd>
-                </div>
-                <div>
-                  <dt>AI is unavailable</dt>
-                  <dd>
-                    Accepted rule-based fills remain. Complete the rest yourself, check your key and
-                    usage limits, or retry later.
-                  </dd>
-                </div>
-              </dl>
+              <summary>No fields detected, or the form cannot be reached</summary>
+              <p>
+                Open the application form and wait for it to load before trying again. Refresh the
+                page if it was open when Job Buddy was installed or updated. Chrome’s internal pages
+                and some custom controls do not support autofill.
+              </p>
+            </details>
+            <details>
+              <summary>AI is unavailable, or only part of the form is filled</summary>
+              <p>
+                Answers already filled stay in place. If the popup reports an AI error, check your
+                Gemini key, model and usage limits in Settings, or try again later. You can complete
+                any remaining fields yourself.
+              </p>
             </details>
           </div>
         </section>

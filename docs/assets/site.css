@@ -935,15 +935,6 @@ pre code {
   color: var(--muted);
   margin-top: 5px;
 }
-.compact-definitions > div {
-  margin: 16px 0;
-}
-.compact-definitions dt {
-  font-weight: 600;
-}
-.compact-definitions dd {
-  margin: 3px 0 0;
-}
 .data-ledger {
   margin: 25px 0 32px;
 }
