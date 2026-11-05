@@ -31,8 +31,7 @@ format. Gemini offers a free tier, with
 [usage limits](https://ai.google.dev/gemini-api/docs/rate-limits) that vary by model.
 
 1. Open **Settings → AI Features**, enter your key, and select **Save Key**.
-2. Choose **Import Resume**, review the extracted details, and import them into
-   your profile. Add any missing required details.
+2. Choose **Import Resume**, review and import your details, then complete your profile.
 3. Open a job application form and select **Fill Form** from Job Buddy.
 4. Review the answers, complete anything missing, and submit on the application site.
 
