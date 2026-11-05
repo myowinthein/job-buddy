@@ -60,7 +60,6 @@ export function MappingReviewDialog({
   const [loading, setLoading] = useState(true);
   const [hasKey, setHasKey] = useState(false);
   const [selectedSites, setSelectedSites] = useState<Set<string> | null>(null);
-  const [showAll, setShowAll] = useState(false);
   const [limit, setLimit] = useState(20);
   const [results, setResults] = useState<Record<string, MappingAssessment>>({});
   const [decisions, setDecisions] = useState<Record<string, MappingReviewDecision>>({});
@@ -83,8 +82,10 @@ export function MappingReviewDialog({
   const sites = useMemo(() => [...new Set(items.map((item) => item.domain))].sort(), [items]);
   const scoped = items.filter((item) => selectedSites === null || selectedSites.has(item.domain));
   const completed = scoped.filter((item) => results[item.id]);
-  const attention = completed.filter((item) => results[item.id].verdict !== 'correct');
-  const shown = showAll ? completed : attention;
+  const attention = completed.filter((item) => {
+    const verdict = results[item.id].verdict;
+    return verdict !== 'correct' && !(verdict === 'inactive' && item.status === 'Inactive');
+  });
   const changes = scoped.filter((item) => {
     const choice = decisions[item.id];
     return (
@@ -381,75 +382,48 @@ export function MappingReviewDialog({
           )}
           {hasKey && !!completed.length && (
             <>
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-3 dark:border-gray-700">
-                <div role="group" aria-label="Review results" className="flex gap-3 text-sm">
+              {!!attention.length && (
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-3 dark:border-gray-700">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                    {attention.length} {attention.length === 1 ? 'mapping' : 'mappings'} to review
+                  </p>
                   <button
                     type="button"
-                    aria-pressed={!showAll}
-                    onClick={() => {
-                      setShowAll(false);
-                      setLimit(20);
-                    }}
-                    className={
-                      !showAll
-                        ? 'font-medium text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500 dark:text-gray-400'
+                    disabled={
+                      working ||
+                      applying ||
+                      stale ||
+                      !attention.some((item) =>
+                        ['change', 'inactive'].includes(results[item.id].verdict),
+                      )
+                    }
+                    className="text-sm text-blue-600 disabled:opacity-40 dark:text-blue-400"
+                    onClick={() =>
+                      setDecisions((current) => ({
+                        ...current,
+                        ...Object.fromEntries(
+                          attention.flatMap<[string, MappingReviewDecision]>((item) => {
+                            const result = results[item.id];
+                            return result.verdict === 'change'
+                              ? [[item.id, { action: 'change', path: result.path! }]]
+                              : result.verdict === 'inactive'
+                                ? [[item.id, { action: 'inactive' }]]
+                                : [];
+                          }),
+                        ),
+                      }))
                     }
                   >
-                    Needs review ({attention.length})
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={showAll}
-                    onClick={() => {
-                      setShowAll(true);
-                      setLimit(20);
-                    }}
-                    className={
-                      showAll
-                        ? 'font-medium text-blue-600 dark:text-blue-400'
-                        : 'text-gray-500 dark:text-gray-400'
-                    }
-                  >
-                    All ({completed.length})
+                    Use clear suggestions
                   </button>
                 </div>
-                <button
-                  type="button"
-                  disabled={
-                    working ||
-                    applying ||
-                    stale ||
-                    !attention.some((item) =>
-                      ['change', 'inactive'].includes(results[item.id].verdict),
-                    )
-                  }
-                  className="text-sm text-blue-600 disabled:opacity-40 dark:text-blue-400"
-                  onClick={() =>
-                    setDecisions((current) => ({
-                      ...current,
-                      ...Object.fromEntries(
-                        attention.flatMap<[string, MappingReviewDecision]>((item) => {
-                          const result = results[item.id];
-                          return result.verdict === 'change'
-                            ? [[item.id, { action: 'change', path: result.path! }]]
-                            : result.verdict === 'inactive'
-                              ? [[item.id, { action: 'inactive' }]]
-                              : [];
-                        }),
-                      ),
-                    }))
-                  }
-                >
-                  Use clear suggestions
-                </button>
-              </div>
-              {!shown.length && (
+              )}
+              {!attention.length && (
                 <p className="py-5 text-sm text-gray-600 dark:text-gray-300">
-                  No questionable mappings found in the completed reviews.
+                  No changes suggested for the reviewed mappings.
                 </p>
               )}
-              {shown.slice(0, limit).map((item, index) => {
+              {attention.slice(0, limit).map((item, index) => {
                 const assessment = results[item.id];
                 const verdict = verdicts[assessment.verdict];
                 const choice = decisions[item.id] ?? { action: 'keep' as const };
@@ -459,74 +433,84 @@ export function MappingReviewDialog({
                     aria-label={`Review ${item.title}`}
                     className="border-b border-gray-200 py-4 last:border-0 dark:border-gray-700"
                   >
-                    {(index === 0 || shown[index - 1].domain !== item.domain) && (
+                    {(index === 0 || attention[index - 1].domain !== item.domain) && (
                       <h4 className="mb-3 break-all text-xs font-medium text-gray-500 dark:text-gray-400">
                         {item.domain}
                       </h4>
                     )}
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <h5 className="min-w-0 flex-1 break-words text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {item.question || item.title}
-                      </h5>
-                      <span className={`text-xs ${verdict.color}`}>{verdict.label}</span>
-                    </div>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      Current · {mappingDestination(item.path, labels)}
-                      {item.status === 'Inactive' ? ' (Inactive)' : ''}
-                    </p>
-                    {assessment.verdict === 'change' && (
-                      <p className="mt-1 text-sm text-gray-700 dark:text-gray-200">
-                        Suggested · {mappingDestination(assessment.path!, labels)}
-                      </p>
-                    )}
-                    <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                      {assessment.reason}
-                    </p>
-                    <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
-                      <select
-                        aria-label={`Action for ${item.title}`}
-                        className={`${fieldCls()} sm:max-w-48`}
-                        value={choice.action}
-                        disabled={working || applying || stale}
-                        onChange={(event) =>
-                          setDecisions((current) => ({
-                            ...current,
-                            [item.id]:
-                              event.target.value === 'change'
-                                ? { action: 'change', path: assessment.path ?? item.path }
-                                : { action: event.target.value as 'keep' | 'inactive' },
-                          }))
-                        }
-                      >
-                        <option value="keep">Keep current</option>
-                        <option value="change">Change field</option>
-                        <option value="inactive">Make inactive</option>
-                      </select>
-                      {choice.action === 'change' && (
-                        <SearchableProfileFieldSelect
-                          profile={profile}
-                          includeEmpty
-                          value={choice.path}
+                    <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_15rem] md:gap-5">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <h5 className="min-w-0 break-words text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {item.question || item.title}
+                          </h5>
+                          <span className={`text-xs ${verdict.color}`}>{verdict.label}</span>
+                        </div>
+                        <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
+                          <dt className="text-gray-500 dark:text-gray-400">Current</dt>
+                          <dd className="min-w-0 break-words text-gray-600 dark:text-gray-300">
+                            {mappingDestination(item.path, labels)}
+                            {item.status === 'Inactive' ? ' (Inactive)' : ''}
+                          </dd>
+                          {assessment.verdict === 'change' && (
+                            <>
+                              <dt className="text-gray-500 dark:text-gray-400">Suggested</dt>
+                              <dd className="min-w-0 break-words text-gray-900 dark:text-gray-100">
+                                {mappingDestination(assessment.path!, labels)}
+                              </dd>
+                            </>
+                          )}
+                        </dl>
+                        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                          {assessment.reason}
+                        </p>
+                      </div>
+                      <div className="flex min-w-0 flex-col gap-2">
+                        <select
+                          aria-label={`Action for ${item.title}`}
+                          className={fieldCls()}
+                          value={choice.action}
                           disabled={working || applying || stale}
-                          onChange={(path) =>
+                          onChange={(event) =>
                             setDecisions((current) => ({
                               ...current,
-                              [item.id]: { action: 'change', path },
+                              [item.id]:
+                                event.target.value === 'change'
+                                  ? { action: 'change', path: assessment.path ?? item.path }
+                                  : { action: event.target.value as 'keep' | 'inactive' },
                             }))
                           }
-                        />
-                      )}
+                        >
+                          <option value="keep">Keep current</option>
+                          <option value="change">Change field</option>
+                          <option value="inactive">Make inactive</option>
+                        </select>
+                        {choice.action === 'change' && (
+                          <SearchableProfileFieldSelect
+                            profile={profile}
+                            includeEmpty
+                            value={choice.path}
+                            disabled={working || applying || stale}
+                            onChange={(path) =>
+                              setDecisions((current) => ({
+                                ...current,
+                                [item.id]: { action: 'change', path },
+                              }))
+                            }
+                          />
+                        )}
+                      </div>
                     </div>
                   </section>
                 );
               })}
-              {shown.length > limit && (
+              {attention.length > limit && (
                 <button
                   type="button"
                   className={`${secondary} mt-3`}
                   onClick={() => setLimit((current) => current + 20)}
                 >
-                  Show {Math.min(20, shown.length - limit)} more
+                  Show {Math.min(20, attention.length - limit)} more
                 </button>
               )}
             </>

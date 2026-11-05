@@ -212,7 +212,12 @@ test('reviews one site, applies only approved corrections and reuses local revie
   await dialog.getByRole('searchbox', { name: 'Search sites' }).press('Escape');
   await dialog.getByRole('button', { name: 'Review Mappings', exact: true }).click();
   await expect(dialog).toContainText('Reviewed 5 of 5 mappings.');
-  await expect(dialog.getByRole('button', { name: 'Needs review (4)' })).toBeVisible();
+  await expect(dialog).toContainText('4 mappings to review');
+  await expect(dialog.getByRole('button', { name: /^Needs review|^All \(/ })).toHaveCount(0);
+  await expect(dialog.getByRole('region', { name: 'Review Email', exact: true })).toHaveCount(0);
+  await expect(
+    dialog.getByRole('region', { name: 'Review Expected salary', exact: true }),
+  ).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Apply Changes', exact: true })).toBeDisabled();
   expect(requests).toBe(1);
   const unchanged = await extension.worker.evaluate(
@@ -261,6 +266,9 @@ test('reviews one site, applies only approved corrections and reuses local revie
   await dialog.getByRole('checkbox', { name: 'jobs.example.test', exact: true }).check();
   await dialog.getByRole('searchbox', { name: 'Search sites' }).press('Escape');
   await expect(dialog).toContainText('Reviewed 3 of 5 mappings.');
+  await expect(
+    dialog.getByRole('region', { name: 'Review I agree to the privacy policy' }),
+  ).toHaveCount(0);
   expect(requests).toBe(1);
   await extension.worker.evaluate(async () =>
     chrome.storage.local.remove(['geminiApiKey', 'geminiModel']),
@@ -324,6 +332,8 @@ test('retains completed batches when stopped and starts a fresh review on every 
   release();
   await dialog.getByRole('button', { name: 'Review Mappings', exact: true }).click();
   await expect(dialog).toContainText('Reviewed 25 of 25 mappings.');
+  await expect(dialog).toContainText('No changes suggested for the reviewed mappings.');
+  await expect(dialog.getByRole('region')).toHaveCount(0);
   expect(calls).toBe(4);
   await expect(dialog.getByRole('checkbox', { name: 'Review all again' })).toHaveCount(0);
   await expect(dialog.getByRole('button', { name: 'Review Mappings', exact: true })).toBeEnabled();
