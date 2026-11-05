@@ -50,6 +50,12 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   await expect(
     page.getByRole('button', { name: 'Enlarge empty demo form', exact: true }),
   ).toBeFocused();
+  const geminiStates = page.getByRole('group', { name: 'Gemini setup screenshots' });
+  await geminiStates.getByRole('button', { name: 'With a key', exact: true }).click();
+  await expect(page.locator('[data-comparison="with-key"]')).toBeVisible();
+  await expect(page.locator('[data-comparison="without-key"]')).toBeHidden();
+  await geminiStates.getByRole('button', { name: 'Without a key', exact: true }).click();
+  await expect(page.locator('[data-comparison="without-key"]')).toBeVisible();
   const mode = await page.locator('html').evaluate((el) => el.classList.contains('dark'));
   const themeToggle = page.locator('.theme-toggle');
   await expect(themeToggle).toHaveText('');
@@ -163,6 +169,10 @@ for (const density of [1, 2, 3]) {
         )
           await page.getByRole('button', { name: /Switch to .* mode/ }).click();
         for (const image of await page.locator('[data-enlarge] img').all()) {
+          const comparison = await image.evaluate(
+            (img) => img.closest<HTMLElement>('[data-comparison]')?.dataset.comparison,
+          );
+          if (comparison) await page.locator(`[data-compare] [data-show="${comparison}"]`).click();
           const panelId = await image.evaluate((img) => img.closest('[data-visual-panel]')?.id);
           if (panelId) await page.locator(`[aria-controls="${panelId}"]`).click();
           else if (!(await image.isVisible())) continue;

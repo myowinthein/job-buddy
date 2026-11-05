@@ -507,6 +507,9 @@ li {
   border-bottom: 1px solid var(--line);
   padding: 15px 0;
 }
+#ai .detail-list details {
+  border-bottom: 0;
+}
 .detail-list summary {
   cursor: pointer;
   font-weight: 550;

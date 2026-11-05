@@ -35,6 +35,24 @@ async function captureRegion(page: Page, info: TestInfo, name: string, targets: 
 }
 
 for (const theme of ['light', 'dark'] as const) {
+  test(`AI setup without a key in ${theme} mode`, async ({ context, extension }, info) => {
+    test.skip(process.env.JB_CAPTURE_SITE !== '1', 'Opt-in website capture.');
+    await extension.worker.evaluate(async (theme) => {
+      await chrome.storage.local.remove(['geminiApiKey', 'geminiModel']);
+      await chrome.storage.local.set({ themePreference: theme });
+    }, theme);
+    const options = await context.newPage();
+    await options.setViewportSize({ width: 1280, height: 900 });
+    await options.goto(new URL('options.html', extension.worker.url()).href);
+    await options.getByRole('button', { name: 'Settings', exact: true }).click();
+    const section = options
+      .getByRole('heading', { name: 'AI Features', exact: true })
+      .locator('..');
+    await expect(section.locator('input#gemini-api-key')).toBeVisible();
+    await expect(section.locator('input#gemini-api-key')).toHaveValue('');
+    await capture(options, info, `ai-empty-${theme}`, section);
+  });
+
   test(`website captures in ${theme} mode`, async ({ context, page, extension }, info) => {
     test.skip(
       process.env.JB_CAPTURE_SITE !== '1',

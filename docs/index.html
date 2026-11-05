@@ -160,7 +160,37 @@
             account is needed.
           </p>
           <figure class="component-figure">
-            <div class="capture">
+            <div class="figure-toolbar">
+              <div
+                class="segmented"
+                data-compare
+                role="group"
+                aria-label="Gemini setup screenshots"
+              >
+                <button type="button" data-show="without-key" aria-pressed="true">
+                  Without a key
+                </button>
+                <button type="button" data-show="with-key" aria-pressed="false">With a key</button>
+              </div>
+            </div>
+            <div class="capture" data-comparison="without-key">
+              <button
+                type="button"
+                data-enlarge
+                aria-label="Enlarge screenshot: AI Features before adding a Gemini key"
+              >
+                <img
+                  src="./assets/screenshots/ai-empty-light.webp?v=3ff84de1c951"
+                  data-light="./assets/screenshots/ai-empty-light.webp?v=3ff84de1c951"
+                  data-dark="./assets/screenshots/ai-empty-dark.webp?v=2b6c919df181"
+                  alt="AI Features before adding a Gemini key"
+                  width="992"
+                  height="227"
+                  loading="lazy"
+                />
+              </button>
+            </div>
+            <div class="capture" data-comparison="with-key" hidden>
               <button
                 type="button"
                 data-enlarge
@@ -186,10 +216,9 @@
             <details>
               <summary>Which model, and what happens at its limit?</summary>
               <p>
-                Flash-Lite is the default for speed; Flash is an alternative for more demanding
+                Flash-Lite is the default for speed. Flash is an alternative for more demanding
                 questions. Job Buddy tries your selected model first, then another supported model
-                after a timeout, rate limit or temporary failure. Invalid keys need your attention.
-                Switching keys in the same Google project does not create extra quota.
+                after a timeout, rate limit or temporary failure.
               </p>
               <p>
                 Check
@@ -197,7 +226,6 @@
                   >Google’s model information</a
                 >
                 and <a href="https://ai.google.dev/gemini-api/docs/rate-limits">current limits</a>.
-                The usage link in AI Features opens Google’s dashboard.
               </p>
             </details>
           </div>
@@ -268,7 +296,7 @@
                       />
                     </button>
                   </div>
-                  <figcaption>Only saved changes are used in applications.</figcaption>
+                  <figcaption>Autofill uses the details you’ve saved.</figcaption>
                 </figure>
               </div>
               <div id="profile-views-1" data-visual-panel>
@@ -291,8 +319,8 @@
                     </button>
                   </div>
                   <figcaption>
-                    Employment history is optional. Overlapping jobs count once toward total
-                    experience.
+                    Work history is optional. Overlapping roles count only once toward your
+                    experience total.
                   </figcaption>
                 </figure>
               </div>
@@ -316,7 +344,7 @@
                     </button>
                   </div>
                   <figcaption>
-                    Files and URLs can coexist. Stored attachments go with your profile backups.
+                    Backups include your saved CV and cover letter files and links.
                   </figcaption>
                 </figure>
               </div>
@@ -340,8 +368,8 @@
                     </button>
                   </div>
                   <figcaption>
-                    Progress counts 10 required checks using saved data. At 100%, optional details
-                    can still be empty.
+                    Reaching 100% means the required details are saved. Optional details don’t
+                    affect progress.
                   </figcaption>
                 </figure>
               </div>
@@ -349,9 +377,9 @@
             <p class="visual-status" role="status" aria-live="polite" aria-atomic="true"></p>
           </div>
           <p class="prose essential">
-            You can start autofill before 100%: a saved <strong>first name</strong>,
-            <strong>valid email</strong> and <strong>Gemini key</strong> are enough. More saved
-            information means fewer blanks to complete yourself.
+            You don’t need 100% completion to start. Autofill only needs a saved
+            <strong>first name</strong>, a <strong>valid email address</strong> and a
+            <strong>Gemini key</strong>.
           </p>
         </section>
         <section class="chapter" id="resume" aria-labelledby="resume-title">
