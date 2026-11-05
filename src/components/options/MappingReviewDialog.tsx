@@ -23,6 +23,7 @@ import { groupMappings, mappingDestination, profileFieldLabels } from './learned
 import { SearchableProfileFieldSelect } from './shared/SearchableProfileFieldSelect';
 import { fieldCls } from './shared/fieldCls';
 import { MappingReviewSites } from './MappingReviewSites';
+import { MappingReviewTitle } from './MappingReviewTitle';
 import { useDialogFocus } from '../ui/useDialogFocus';
 import { useEscapeToClose } from '../ui/useEscapeToClose';
 import { feedback } from '@/src/ui/feedback';
@@ -484,9 +485,7 @@ export function MappingReviewDialog({
                               <section key={item.id} aria-label={`Review ${item.title}`}>
                                 <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_15rem] md:gap-5">
                                   <div className="min-w-0">
-                                    <h5 className="break-words text-sm font-medium text-gray-900 dark:text-gray-100">
-                                      {item.question || item.title}
-                                    </h5>
+                                    <MappingReviewTitle text={item.question || item.title} />
                                     <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
                                       <dt className="text-gray-500 dark:text-gray-400">Current</dt>
                                       <dd className="min-w-0 break-words text-gray-600 dark:text-gray-300">

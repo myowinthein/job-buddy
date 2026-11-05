@@ -2,6 +2,9 @@ import { test, expect } from './fixtures';
 import type { Page } from '@playwright/test';
 import type { LearnedMappings } from '../types/storage';
 
+const longQuestion =
+  'Which city or region would you prefer to work in, and are you willing to relocate to another location for this role? Please include any location preferences, restrictions, or circumstances that would affect where you could work, including whether you are available for remote, hybrid, or office-based work.';
+
 const mappings: LearnedMappings = {
   'jobs.example.test': {
     salary: {
@@ -26,7 +29,7 @@ const mappings: LearnedMappings = {
       path: 'address.city',
       count: 1,
       label: 'Location preference',
-      question: 'Location preference',
+      question: longQuestion,
     },
     email: { path: 'personal.email', count: 1, label: 'Email', question: 'Email' },
     id88: { path: 'personal.lastName', count: 2 },
@@ -134,6 +137,20 @@ test('selects all sites by default and supports searchable multi-selection', asy
   ).toBeVisible();
   const firstToggle = firstSite.getByRole('button', { name: 'jobs.example.test (5)' });
   const secondToggle = secondSite.getByRole('button', { name: 'other.example.test (1)' });
+  const longTitle = firstSite.getByRole('heading', { name: longQuestion, exact: true });
+  await expect(longTitle).toHaveAttribute('title', longQuestion);
+  await expect(longTitle).toHaveAttribute('tabindex', '0');
+  await expect.poll(() => longTitle.evaluate((element) => element.clientHeight)).toBe(40);
+  await expect(
+    firstSite.getByRole('heading', { name: 'Expected salary', exact: true }),
+  ).not.toHaveAttribute('tabindex');
+  await longTitle.hover();
+  await longTitle.focus();
+  await expect
+    .poll(() => longTitle.evaluate((element) => element.clientHeight))
+    .toBeGreaterThan(40);
+  await firstToggle.focus();
+  await expect.poll(() => longTitle.evaluate((element) => element.clientHeight)).toBe(40);
   await expect(firstToggle).toHaveAttribute('aria-expanded', 'true');
   await expect(secondToggle).toHaveAttribute('aria-expanded', 'false');
   await expect(secondSite.getByRole('region')).toHaveCount(0);
