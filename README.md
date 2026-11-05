@@ -35,10 +35,8 @@ format. Gemini offers a free tier, with
 3. Open a job application form and select **Fill Form** from Job Buddy.
 4. Review the answers, complete anything missing, and submit on the application site.
 
-Your profile is stored in your browser. Gemini processes your resume during import
-and relevant form and profile details during autofill. Google Drive backup is
-optional. Read the [privacy policy](docs/legal/privacy/index.html) and
-[autofill and AI disclaimer](docs/legal/disclaimer/index.html) for details.
+Your profile stays in your browser. Resume import and autofill send relevant data
+to Gemini. Google Drive backup is optional.
 
 ## Help me improve it
 
