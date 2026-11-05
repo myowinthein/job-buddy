@@ -7,7 +7,7 @@ import {
   ListChecks,
   LoaderCircle,
 } from 'lucide-react';
-import { OutcomeFilterHelp } from './OutcomeFilterHelp';
+import { FillDetailsHelp } from './FillDetailsHelp';
 import { loadFillLog, returnToForm } from '@/src/fill-log/client';
 import { RETAINED_FILL_DETAILS } from '@/src/fill-log/retention';
 import { defaultStage, fillStages, type StageId } from '@/src/fill-log/stages';
@@ -215,7 +215,10 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
     <section aria-label="Fill Details" className="min-w-0 text-gray-900 dark:text-gray-100">
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 max-w-full sm:flex-1">
-          <h2 className="text-xl font-semibold">Fill Details</h2>
+          <div className="relative flex w-fit max-w-full items-center gap-2">
+            <h2 className="text-xl font-semibold">Fill Details</h2>
+            <FillDetailsHelp />
+          </div>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             See how Job Buddy filled your form
           </p>
@@ -344,10 +347,9 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
             aria-label="Fill summary"
             className="mb-5 border-b border-gray-200 pb-5 dark:border-gray-800"
           >
-            <div className="relative">
-              <OutcomeFilterHelp />
+            <div>
               <div
-                className="grid grid-cols-3 gap-2 pr-8 sm:grid-cols-5"
+                className="grid grid-cols-3 gap-2 sm:grid-cols-5"
                 role="group"
                 aria-label="Outcome filters"
               >

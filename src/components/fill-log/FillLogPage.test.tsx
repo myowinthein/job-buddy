@@ -218,17 +218,23 @@ describe('Fill Details page', () => {
     );
   });
 
-  it('explains the root outcomes on hover, focus and click without changing filters', async () => {
+  it('explains the page beside its title on hover, focus and click without changing filters', async () => {
     await showFields();
-    const help = screen.getByRole('button', { name: 'Explain fill outcomes' });
+    const help = screen.getByRole('button', { name: 'How Fill Details works' });
+    expect(help.parentElement?.parentElement).toBe(
+      screen.getByRole('heading', { name: 'Fill Details' }).parentElement,
+    );
     expect(screen.queryByRole('tooltip')).toBeNull();
     fireEvent.mouseEnter(help.parentElement!);
     const tooltip = screen.getByRole('tooltip');
     for (const explanation of [
-      'Green or yellow fields.',
-      'Red or gray fields.',
-      'Existing answers preserved.',
-      'Consent questions left for you.',
+      'Colors show each field’s final result.',
+      'Filled with high confidence, or confirmed by you.',
+      'Filled, but needs your review.',
+      'Not filled: no reliable match, or the form rejected the value.',
+      'Not filled: a profile match has no usable saved data.',
+      'Existing answers stay when filling empty fields only.',
+      'Consent questions and other excluded fields are left for you.',
     ])
       expect(within(tooltip).getByText(explanation)).toBeTruthy();
     expect(help.getAttribute('aria-describedby')).toBe(tooltip.id);
@@ -616,6 +622,9 @@ describe('Fill Details page', () => {
     vi.mocked(loadFillLog).mockResolvedValue({ tabId: -1, frames: [] });
     render(<FillLogPage tabId={null} />);
     expect(await screen.findByText('No fill details yet')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'How Fill Details works' }));
+    expect(screen.getByRole('tooltip')).toBeTruthy();
+    fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByRole('button', { name: 'Return to Form' })).toBeNull();
     vi.mocked(loadFillLog).mockResolvedValue(snapshot());
     await notify();

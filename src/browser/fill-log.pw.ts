@@ -54,9 +54,14 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
     animations: 'disabled',
     fullPage: false,
   });
-  const outcomeHelp = logPage.getByRole('button', { name: 'Explain fill outcomes' });
+  const outcomeHelp = logPage.getByRole('button', { name: 'How Fill Details works' });
   await outcomeHelp.hover();
-  await expect(logPage.getByRole('tooltip')).toContainText('Consent questions left for you.');
+  await expect(logPage.getByRole('tooltip')).toContainText(
+    'High-confidence fills skip later stages.',
+  );
+  await expect(logPage.getByRole('tooltip')).toContainText(
+    'Consent questions and other excluded fields are left for you.',
+  );
   await logPage.screenshot({ path: testInfo.outputPath('fill-log-filter-help-dark.png') });
   await logPage.keyboard.press('Escape');
   await expect(logPage.getByRole('tooltip')).toHaveCount(0);
