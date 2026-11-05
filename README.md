@@ -36,7 +36,7 @@ format. Gemini offers a free tier, with
 4. Review the answers, complete anything missing, and submit on the application site.
 
 Your profile stays in your browser. Resume import and autofill send relevant data
-to Gemini. Google Drive backup is optional.
+to Gemini.
 
 ## Help me improve it
 
