@@ -140,7 +140,10 @@ test('requires Gemini setup and takes the user to the focused API key input', as
   await options.goto(new URL('options.html', extension.worker.url()).href);
   const dialog = await open(options);
   await expect(dialog).toContainText('Add a Gemini API key to review learned mappings.');
-  await dialog.getByRole('button', { name: 'Go to Settings' }).click();
+  await expect(dialog.getByRole('button')).toHaveCount(2);
+  await expect(dialog.getByLabel('Sites to review')).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Apply Changes' })).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Go to Settings →' }).click();
   await expect(options.getByLabel('Gemini API Key', { exact: true })).toBeFocused();
 });
 
@@ -242,6 +245,14 @@ test('reviews one site, applies only approved corrections and reuses local revie
   await dialog.getByRole('searchbox', { name: 'Search sites' }).press('Escape');
   await expect(dialog).toContainText('Reviewed 3 of 5 mappings.');
   expect(requests).toBe(1);
+  await extension.worker.evaluate(async () =>
+    chrome.storage.local.remove(['geminiApiKey', 'geminiModel']),
+  );
+  await expect(dialog).toContainText('Add a Gemini API key to review learned mappings.');
+  await expect(dialog.getByRole('button')).toHaveCount(2);
+  await expect(dialog.getByRole('group', { name: 'Review results' })).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Go to Settings →' }).click();
+  await expect(options.getByLabel('Gemini API Key', { exact: true })).toBeFocused();
 });
 
 test('retains completed batches when stopped and starts a fresh review on every click', async ({

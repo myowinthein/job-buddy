@@ -98,10 +98,12 @@ export function MappingReviewDialog({
   const load = async () => {
     setLoading(true);
     setError(null);
+    setWarning(null);
     try {
       const settings = await getGeminiSettings();
       if (!live.current) return;
       setHasKey(!!settings.apiKey && !!settings.model);
+      if (!settings.apiKey || !settings.model) return;
       const keys = await mappingReviewKeys(profile, items, toGeminiModel(settings.model));
       const cached = await readMappingReviews(profile, items, keys).catch(() => {
         if (live.current) setWarning(feedback.mappingReviewCacheFailed);
@@ -134,8 +136,10 @@ export function MappingReviewDialog({
         ['geminiApiKey', 'geminiModel', 'geminiSettingsMeta'].some((key) => key in changes)
       ) {
         abortRef.current?.abort();
-        if ('geminiApiKey' in changes && !changes.geminiApiKey.newValue) setHasKey(false);
-        setError(feedback.geminiChangedInAnotherTab);
+        if ('geminiApiKey' in changes && !changes.geminiApiKey.newValue) {
+          setHasKey(false);
+          setError(null);
+        } else setError(feedback.geminiChangedInAnotherTab);
       }
     };
     chrome.storage.onChanged.addListener(changed);
@@ -255,7 +259,7 @@ export function MappingReviewDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-xl bg-white shadow-2xl outline-none dark:bg-gray-800"
+        className={`flex max-h-[90vh] w-full ${!loading && !hasKey ? 'max-w-lg' : 'max-w-3xl'} flex-col rounded-xl bg-white shadow-2xl outline-none dark:bg-gray-800`}
         onClick={(event) => event.stopPropagation()}
       >
         <header className="shrink-0 px-6 pt-5 pb-4">
@@ -273,9 +277,11 @@ export function MappingReviewDialog({
               <X size={16} aria-hidden="true" />
             </button>
           </div>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Check saved matches with Gemini and choose any corrections.
-          </p>
+          {hasKey && (
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Check saved matches with Gemini and choose any corrections.
+            </p>
+          )}
         </header>
         <div className="min-h-0 overflow-y-auto px-6 pb-4">
           {loading ? (
@@ -285,8 +291,10 @@ export function MappingReviewDialog({
           ) : (
             <>
               {!hasKey && !error && (
-                <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
-                  <p>{feedback.mappingReviewKeyRequired}</p>
+                <div className="py-6 text-center">
+                  <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
+                    {feedback.mappingReviewKeyRequired}
+                  </p>
                   {onGoToApiKey && (
                     <button
                       type="button"
@@ -294,9 +302,9 @@ export function MappingReviewDialog({
                         close();
                         onGoToApiKey();
                       }}
-                      className="mt-2 font-medium underline"
+                      className="text-sm font-medium text-blue-600 hover:underline active:scale-95 dark:text-blue-400"
                     >
-                      Go to Settings
+                      Go to Settings →
                     </button>
                   )}
                 </div>
@@ -366,12 +374,12 @@ export function MappingReviewDialog({
               )}
             </div>
           )}
-          {warning && (
+          {hasKey && warning && (
             <p role="status" className="mt-3 text-sm text-amber-700 dark:text-amber-400">
               {warning}
             </p>
           )}
-          {!!completed.length && (
+          {hasKey && !!completed.length && (
             <>
               <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-3 dark:border-gray-700">
                 <div role="group" aria-label="Review results" className="flex gap-3 text-sm">
@@ -524,21 +532,23 @@ export function MappingReviewDialog({
             </>
           )}
         </div>
-        <footer className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-gray-200 p-4 dark:border-gray-700">
-          <button type="button" className={secondary} disabled={applying} onClick={close}>
-            Close
-          </button>
-          <button
-            type="button"
-            className={primary}
-            disabled={!changes.length || working || applying || stale}
-            onClick={() => void apply()}
-          >
-            {applying
-              ? 'Applying…'
-              : `Apply Changes${changes.length ? ` (${changes.length})` : ''}`}
-          </button>
-        </footer>
+        {hasKey && (
+          <footer className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-gray-200 p-4 dark:border-gray-700">
+            <button type="button" className={secondary} disabled={applying} onClick={close}>
+              Close
+            </button>
+            <button
+              type="button"
+              className={primary}
+              disabled={!changes.length || working || applying || stale}
+              onClick={() => void apply()}
+            >
+              {applying
+                ? 'Applying…'
+                : `Apply Changes${changes.length ? ` (${changes.length})` : ''}`}
+            </button>
+          </footer>
+        )}
       </div>
     </div>
   );
