@@ -54,7 +54,7 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   await expect(page.locator('html')).toHaveClass(mode ? '' : 'dark');
   await expect(page.locator('[data-comparison="before"] img')).toHaveAttribute(
     'src',
-    mode ? /-light.webp$/ : /-dark.webp$/,
+    mode ? /-light\.webp(?:\?v=[a-f0-9]+)?$/ : /-dark\.webp(?:\?v=[a-f0-9]+)?$/,
   );
   await page
     .getByRole('navigation', { name: 'Main navigation' })
