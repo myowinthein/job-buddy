@@ -129,7 +129,6 @@ export default function DevToolbar({
             />
           </span>
         </button>
-        {busy && <span role="status">Switching data…</span>}
       </div>
       {error && (
         <p role="alert" className="mt-2 text-red-700 dark:text-red-300">
