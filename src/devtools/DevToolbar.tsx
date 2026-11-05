@@ -3,6 +3,42 @@ import { PROFILE_PRESETS, type PreviewPreset } from './quickPreview';
 import type { DevSurface, SurfaceState } from './surface';
 
 const PROFILE_OPTIONS = [{ id: 'original', label: 'Original' }, ...PROFILE_PRESETS] as const;
+const groupCls =
+  'inline-flex shrink-0 overflow-hidden rounded-md border border-amber-400 bg-white/70 divide-x divide-amber-300 dark:border-amber-700 dark:bg-amber-900/50 dark:divide-amber-700';
+const optionCls = (selected: boolean) =>
+  `px-2.5 py-1 transition-colors focus-visible:relative focus-visible:z-10 focus-visible:outline-offset-[-2px] ${selected ? 'bg-amber-200 font-medium dark:bg-amber-700' : 'hover:bg-amber-100 dark:hover:bg-amber-800'}`;
+
+function IntegrationControl({
+  label,
+  enabled,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  enabled: boolean;
+  disabled: boolean;
+  onChange: (enabled: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-amber-800 dark:text-amber-200">{label}</span>
+      <div role="group" aria-label={label} className={groupCls}>
+        {[true, false].map((value) => (
+          <button
+            key={String(value)}
+            type="button"
+            aria-pressed={enabled === value}
+            aria-disabled={disabled}
+            onClick={() => onChange(value)}
+            className={optionCls(enabled === value)}
+          >
+            {value ? 'On' : 'Off'}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function DevToolbar({
   surface,
@@ -53,17 +89,35 @@ export default function DevToolbar({
     }
   };
 
-  const startPreview = async (preset: PreviewPreset, noKey = missingKey) => {
-    if (!state || pending.current || (state.preset === preset && noKey === missingKey)) return;
+  const startPreview = async (
+    preset: PreviewPreset,
+    noKey = missingKey,
+    driveConnected = state?.driveConnected ?? false,
+  ) => {
+    if (
+      !state ||
+      pending.current ||
+      (state.preset === preset && noKey === missingKey && driveConnected === state.driveConnected)
+    )
+      return;
     if (!surface.canLeave()) return;
-    await perform(async () => onNavigate(await surface.prepare(preset, noKey)));
+    await perform(async () => onNavigate(await surface.prepare(preset, noKey, driveConnected)));
   };
 
-  const toggleKey = async () => {
-    if (!state || pending.current) return;
-    if (!state?.preset) return startPreview('saved', !missingKey);
+  const setKey = async (enabled: boolean) => {
+    if (!state || pending.current || enabled === !missingKey) return;
+    if (!state.preset) return startPreview('saved', !enabled);
     await perform(async () => {
-      await surface.toggleKey();
+      await surface.setKeyEnabled(enabled);
+      setState(await surface.state());
+    });
+  };
+
+  const setDrive = async (enabled: boolean) => {
+    if (!state || pending.current || enabled === state.driveConnected) return;
+    if (!state.preset) return startPreview('saved', missingKey, enabled);
+    await perform(async () => {
+      await surface.setDriveConnected(enabled);
       setState(await surface.state());
     });
   };
@@ -91,11 +145,7 @@ export default function DevToolbar({
           >
             Profile
           </span>
-          <div
-            role="group"
-            aria-label="Profile mode"
-            className="inline-flex shrink-0 overflow-hidden rounded-md border border-amber-400 bg-white/70 divide-x divide-amber-300 dark:border-amber-700 dark:bg-amber-900/50 dark:divide-amber-700"
-          >
+          <div role="group" aria-label="Profile mode" className={groupCls}>
             {PROFILE_OPTIONS.map((preset) => {
               const selected =
                 preset.id === 'original'
@@ -108,7 +158,7 @@ export default function DevToolbar({
                   aria-disabled={busy || !state}
                   aria-pressed={selected}
                   onClick={() => void (preset.id === 'original' ? exit() : startPreview(preset.id))}
-                  className={`px-2.5 py-1 transition-colors focus-visible:relative focus-visible:z-10 focus-visible:outline-offset-[-2px] ${selected ? 'bg-amber-200 font-medium dark:bg-amber-700' : 'hover:bg-amber-100 dark:hover:bg-amber-800'}`}
+                  className={optionCls(selected)}
                 >
                   {preset.label}
                 </button>
@@ -116,24 +166,18 @@ export default function DevToolbar({
             })}
           </div>
         </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={missingKey}
-          aria-disabled={busy || !state}
-          onClick={() => void toggleKey()}
-          className="inline-flex items-center gap-2 rounded-md py-1"
-        >
-          <span>Missing API key</span>
-          <span
-            aria-hidden="true"
-            className={`flex h-4 w-7 items-center rounded-full p-0.5 ${missingKey ? 'bg-amber-700 dark:bg-amber-500' : 'bg-amber-950/20 dark:bg-amber-100/20'}`}
-          >
-            <span
-              className={`h-3 w-3 rounded-full bg-white transition-transform ${missingKey ? 'translate-x-3' : ''}`}
-            />
-          </span>
-        </button>
+        <IntegrationControl
+          label="API key"
+          enabled={!missingKey}
+          disabled={busy || !state}
+          onChange={(enabled) => void setKey(enabled)}
+        />
+        <IntegrationControl
+          label="Google Drive"
+          enabled={state?.driveConnected ?? false}
+          disabled={busy || !state}
+          onChange={(enabled) => void setDrive(enabled)}
+        />
       </div>
       {error && (
         <p role="alert" className="mt-2 text-red-700 dark:text-red-300">

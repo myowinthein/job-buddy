@@ -49,6 +49,7 @@ export class DevSimulation {
       profile?: Partial<Profile>;
       initialData?: Record<string, unknown>;
       noKey?: boolean;
+      driveConnected?: boolean;
     } = {},
   ) {
     const profile = options.profile ?? profilePreset(scenario.id);
@@ -98,12 +99,9 @@ export class DevSimulation {
       : null;
     if (scenario.id === 'drive-different')
       this.backup!.profile.personal.nickname = 'From simulated Drive';
-    const connected = [
-      'drive-syncing',
-      'drive-pending',
-      'drive-reconnect',
-      'drive-failure',
-    ].includes(scenario.id);
+    const connected =
+      options.driveConnected ??
+      ['drive-syncing', 'drive-pending', 'drive-reconnect', 'drive-failure'].includes(scenario.id);
     const base = createPreviewChrome(profile, undefined, {
       initialData: {
         devProfileDisabled: true,
@@ -170,6 +168,33 @@ export class DevSimulation {
         clear: async (name: string) => this.clearAlarm(name),
       },
     };
+  }
+
+  async setDriveConnected(connected: boolean): Promise<void> {
+    if (connected) {
+      await new Promise<void>((resolve) =>
+        this.chrome.storage.local.set(
+          {
+            driveToken: 'simulated-token',
+            driveBackupState: {
+              fileId: this.backup ? 'simulated-backup' : null,
+              lastSynced: this.backup?.lastModified ?? null,
+              pendingSync: false,
+              error: null,
+              tokenExpiresAt: Date.now() + 3_600_000,
+              accountEmail: 'simulation@example.test',
+              oauthClientId: 'simulation-client',
+            },
+          },
+          resolve,
+        ),
+      );
+    } else {
+      await new Promise<void>((resolve) =>
+        this.chrome.storage.local.remove(['driveToken', 'driveBackupState'], resolve),
+      );
+      for (const name of this.alarms.keys()) this.clearAlarm(name);
+    }
   }
 
   private clearAlarm(name: string): boolean {

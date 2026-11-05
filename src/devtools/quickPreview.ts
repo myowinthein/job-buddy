@@ -11,6 +11,7 @@ export type PreviewPreset = (typeof PROFILE_PRESETS)[number]['id'] | 'saved';
 export interface QuickPreview {
   preset: PreviewPreset;
   missingKey: boolean;
+  driveConnected: boolean;
   seedId: string | null;
 }
 interface PreviewSeed {
@@ -27,13 +28,24 @@ export function readQuickPreview(search = location.search): QuickPreview | null 
     throw new Error('Unknown profile preview');
   const seedId = params.get('devPreviewSeed');
   if (seedId && !/^[a-z0-9-]{1,64}$/i.test(seedId)) throw new Error('Invalid preview seed');
-  return { preset: preset as PreviewPreset, missingKey: params.get('devNoKey') === '1', seedId };
+  return {
+    preset: preset as PreviewPreset,
+    missingKey: params.get('devNoKey') === '1',
+    driveConnected: params.get('devDrive') === '1',
+    seedId,
+  };
 }
 
-export function previewUrl(preset: PreviewPreset, missingKey: boolean, seedId: string): string {
+export function previewUrl(
+  preset: PreviewPreset,
+  missingKey: boolean,
+  seedId: string,
+  driveConnected = false,
+): string {
   const url = new URL(location.href);
   url.search = new URLSearchParams({ devPreview: preset, devPreviewSeed: seedId }).toString();
   if (missingKey) url.searchParams.set('devNoKey', '1');
+  if (driveConnected) url.searchParams.set('devDrive', '1');
   url.hash = '';
   return url.href;
 }

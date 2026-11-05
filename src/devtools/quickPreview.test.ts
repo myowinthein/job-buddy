@@ -34,9 +34,10 @@ it('copies only profile, mappings and appearance when entering a saved-profile p
   const id = await preparePreview('saved');
   const raw = sessionStorage.getItem(PREVIEW_SEED_PREFIX + id)!;
   expect(raw).not.toContain('synthetic-private');
-  const url = previewUrl('saved', true, id);
+  const url = previewUrl('saved', true, id, true);
   const preview = readQuickPreview(new URL(url).search)!;
   expect(preview.missingKey).toBe(true);
+  expect(preview.driveConnected).toBe(true);
   expect(loadPreviewSeed(preview)).toEqual({
     profile: { id: 'saved-profile' },
     initialData: {

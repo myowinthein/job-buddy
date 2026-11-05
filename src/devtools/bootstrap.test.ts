@@ -56,17 +56,19 @@ it('keeps the selected page when starting a required-only preview with a missing
   const original = createPreviewChrome({ id: 'original' });
   vi.stubGlobal('chrome', original);
   sessionStorage.setItem('jb:ui:section', 'education');
-  history.replaceState(null, '', '?devPreview=required&devNoKey=1');
+  history.replaceState(null, '', '?devPreview=required&devNoKey=1&devDrive=1');
   const { initializeDevTools } = await import('./bootstrap');
   dispose = initializeDevTools();
   expect(sessionStorage.getItem('jb:ui:section')).toBe('education');
   expect(globalThis.__JB_DEV_CONTEXT__?.quickPreview).toBe('required');
   const data = await new Promise<Record<string, unknown>>((resolve) =>
-    chrome.storage.local.get(['profile', 'geminiApiKey'], (data: Record<string, unknown>) =>
-      resolve(data),
+    chrome.storage.local.get(
+      ['profile', 'geminiApiKey', 'driveToken'],
+      (data: Record<string, unknown>) => resolve(data),
     ),
   );
   expect(data.geminiApiKey).toBeUndefined();
+  expect(data.driveToken).toBe('simulated-token');
   expect((data.profile as { id: string }).id).toBe('dev-tools-sample');
   expect(chrome.storage).not.toBe(original.storage);
 });

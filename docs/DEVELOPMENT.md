@@ -71,11 +71,11 @@ browser.
 ## Development tools
 
 Every development options page has a **Profile** segmented control with
-**Original**, **Empty**, **Required only**, and **Complete** modes, plus a
-**Missing API key** toggle. These controls
+**Original**, **Empty**, **Required only**, and **Complete** modes, plus
+**API key** and **Google Drive** On/Off controls. These controls
 open temporary data in the same tab, keep the current section, and respect
-unsaved edits. The bar stays in place while the next isolated view loads. Key
-toggling preserves edits. **Original** returns to saved extension data.
+unsaved edits. The bar stays in place while the next isolated view loads.
+Integration changes preserve edits. **Original** returns to saved extension data.
 Temporary changes reset on refresh. Gemini and Drive are simulated. Popup and
 job-form data are unaffected.
 

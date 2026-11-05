@@ -31,6 +31,7 @@ export function initializeDevTools() {
     const instance = new DevSimulation(scenario, extensionId, version, {
       ...seed,
       noKey: quick?.missingKey,
+      driveConnected: quick?.driveConnected,
     });
     // A fresh document gets an isolated Chrome surface before app modules load.
     // Never swap storage beneath an already-running live App.
