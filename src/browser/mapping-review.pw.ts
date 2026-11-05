@@ -492,6 +492,17 @@ test('paginates one ordered findings list and saves selected changes across site
   await firstSite
     .getByLabel('Action for Email address 0', { exact: true })
     .selectOption('inactive');
+  const siteHeader = firstSite.getByRole('button', { name: 'batch.test', exact: true });
+  await siteHeader.focus();
+  await siteHeader.press('Space');
+  await expect(siteHeader).toHaveAttribute('aria-expanded', 'false');
+  await expect(firstSite.getByLabel('Action for Email address 0', { exact: true })).toBeHidden();
+  await expect(secondSite.getByLabel('Action for City')).toBeVisible();
+  await siteHeader.press('Enter');
+  await expect(firstSite.getByLabel('Action for Email address 0', { exact: true })).toHaveValue(
+    'inactive',
+  );
+  await siteHeader.press('Space');
   await expect(secondSite.getByLabel('Action for I agree to the privacy policy')).toHaveValue(
     'inactive',
   );

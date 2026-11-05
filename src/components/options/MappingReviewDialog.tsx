@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { LoaderCircle, Sparkles } from 'lucide-react';
+import { ChevronDown, LoaderCircle, Sparkles } from 'lucide-react';
 import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings } from '@/src/types/storage';
 import { getGeminiSettings } from '@/src/utils/storage';
@@ -62,6 +62,7 @@ export function MappingReviewDialog({
   const [hasKey, setHasKey] = useState(false);
   const [selectedSites, setSelectedSites] = useState<Set<string> | null>(null);
   const [limit, setLimit] = useState(20);
+  const [collapsedSites, setCollapsedSites] = useState<Set<string>>(() => new Set());
   const [results, setResults] = useState<Record<string, MappingAssessment>>({});
   const [decisions, setDecisions] = useState<Record<string, MappingReviewDecision>>({});
   const [working, setWorking] = useState(false);
@@ -412,10 +413,33 @@ export function MappingReviewDialog({
                       aria-label={`Findings for ${domain}`}
                       className="rounded-xl border border-gray-200 dark:border-gray-700"
                     >
-                      <h4 className="rounded-t-xl border-b border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold break-all text-gray-800 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-200">
-                        {domain}
+                      <h4>
+                        <button
+                          type="button"
+                          aria-expanded={!collapsedSites.has(domain)}
+                          aria-controls={`${titleId}-site-${encodeURIComponent(domain)}`}
+                          onClick={() =>
+                            setCollapsedSites((current) => {
+                              const next = new Set(current);
+                              if (next.has(domain)) next.delete(domain);
+                              else next.add(domain);
+                              return next;
+                            })
+                          }
+                          className={`flex w-full items-center gap-3 rounded-t-xl bg-gray-50 px-4 py-3 text-left text-sm font-semibold text-gray-800 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-500 dark:bg-gray-900/30 dark:text-gray-200 ${collapsedSites.has(domain) ? 'rounded-b-xl' : 'border-b border-gray-200 dark:border-gray-700'}`}
+                        >
+                          <ChevronDown
+                            aria-hidden="true"
+                            className={`h-4 w-4 shrink-0 text-gray-500 transition-transform motion-reduce:transition-none ${collapsedSites.has(domain) ? '-rotate-90' : ''}`}
+                          />
+                          <span className="min-w-0 break-all">{domain}</span>
+                        </button>
                       </h4>
-                      <div className="divide-y divide-gray-200/70 p-4 dark:divide-gray-700/60">
+                      <div
+                        id={`${titleId}-site-${encodeURIComponent(domain)}`}
+                        hidden={collapsedSites.has(domain)}
+                        className="divide-y divide-gray-200/70 p-4 dark:divide-gray-700/60"
+                      >
                         {group.map((item) => {
                           const assessment = results[item.id];
                           const verdict = verdicts[assessment.verdict];
