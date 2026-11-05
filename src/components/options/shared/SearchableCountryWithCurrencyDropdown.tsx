@@ -50,7 +50,7 @@ export function SearchableCountryWithCurrencyDropdown({
   return (
     <SearchableDropdown
       dropdown={dropdown}
-      panelClassName="w-full min-w-[min(280px,calc(100vw-6rem))]"
+      minPanelWidth={280}
       searchPlaceholder="Search country, code, or currency…"
       emptyText={feedback.noCountriesFound}
       getKey={(c) => c.code}

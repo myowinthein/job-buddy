@@ -25,7 +25,8 @@ interface UseSearchableDropdownOptions<T> {
  */
 export function useSearchableDropdown<T>({ filter, onSelect, findOpenIndex }: UseSearchableDropdownOptions<T>) {
   const [hlIdx, setHlIdx] = useState(0);
-  const { open, setOpen, search, setSearch, containerRef, searchRef } = useDropdownOpenState(() => setHlIdx(0));
+  const panelRef = useRef<HTMLDivElement>(null);
+  const { open, setOpen, search, setSearch, containerRef, searchRef } = useDropdownOpenState(() => setHlIdx(0), panelRef);
 
   const filtered = useMemo(() => filter(search), [filter, search]);
 
@@ -69,6 +70,7 @@ export function useSearchableDropdown<T>({ filter, onSelect, findOpenIndex }: Us
         e.preventDefault();
         break;
       case 'Escape':
+        e.stopPropagation();
         setOpen(false);
         setSearch('');
         setHlIdx(0);
@@ -89,6 +91,7 @@ export function useSearchableDropdown<T>({ filter, onSelect, findOpenIndex }: Us
     hlIdx,
     filtered,
     containerRef,
+    panelRef,
     searchRef,
     listRef,
     setHlIdx,

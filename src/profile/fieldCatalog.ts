@@ -161,7 +161,7 @@ function group<const Key extends string, const Children extends readonly Catalog
 ) {
   return { kind: 'group' as const, key, children, className, ...options };
 }
-const twoColumns = 'grid grid-cols-1 sm:grid-cols-2 gap-4';
+const twoColumns = 'grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-4';
 
 function salaryFields<const Prefix extends 'current' | 'expected.$'>(prefix: Prefix) {
   return [
@@ -181,7 +181,7 @@ function salaryFields<const Prefix extends 'current' | 'expected.$'>(prefix: Pre
         field('currency', 'Currency', `salary.${prefix}.currency`),
         field('period', 'Period', `salary.${prefix}.period`),
       ],
-      'grid grid-cols-1 sm:grid-cols-3 gap-x-4',
+      'grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-x-4',
       {
         pickerGroup: {
           label: prefix === 'current' ? 'Current Salary' : 'Expected Salary',
@@ -209,7 +209,7 @@ export const PROFILE_FIELD_LAYOUTS = {
         field('lastName', 'Last Name', 'personal.lastName'),
         field('nickname', 'Preferred name', 'personal.nickname'),
       ],
-      'grid grid-cols-1 md:grid-cols-3 gap-4',
+      'grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-4',
       { pickerGroup: { label: 'Name', completePath: 'derived.fullName' } },
     ),
     field('email', 'Email', 'personal.email', { required: true }),
@@ -431,7 +431,7 @@ export const PROFILE_FIELD_LAYOUTS = {
           learnDisplay: true,
         }),
       ],
-      'grid grid-cols-1 sm:grid-cols-2 gap-3',
+      'grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-3',
     ),
   ],
   links: [
@@ -450,7 +450,7 @@ export const PROFILE_FIELD_LAYOUTS = {
         field('label', 'Label', 'links.custom.$.label', { picker: false }),
         field('url', 'URL', 'links.custom.$.url', { pickerLabelFrom: 'label' }),
       ],
-      'grid grid-cols-1 sm:grid-cols-2 gap-3',
+      'grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-3',
     ),
   ],
   documents: [

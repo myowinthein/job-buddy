@@ -26,7 +26,7 @@ export function ResumeDocumentNotice({
         aria-labelledby={title}
         aria-describedby={description}
         onClick={(event) => event.stopPropagation()}
-        className="mx-4 w-full max-w-md rounded-xl bg-white p-6 shadow-2xl outline-none dark:bg-gray-800"
+        className="mx-4 max-h-[90dvh] overflow-y-auto w-full max-w-md rounded-xl bg-white p-6 shadow-2xl outline-none dark:bg-gray-800"
       >
         <h3 id={title} className="text-base font-semibold text-gray-900 dark:text-gray-100">
           Check Document

@@ -38,7 +38,7 @@ export function SearchableCountryDropdown({ value, onChange, error, placeholder 
   return (
     <SearchableDropdown
       dropdown={dropdown}
-      panelClassName="w-full min-w-[min(240px,calc(100vw-6rem))]"
+      minPanelWidth={240}
       searchPlaceholder={feedback.countrySearchPlaceholder}
       emptyText={feedback.noCountriesFound}
       getKey={(c) => c.code}

@@ -28,7 +28,7 @@ export function SettingsDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto outline-none"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90dvh] overflow-y-auto outline-none"
         onClick={(event) => event.stopPropagation()}
       >
         <h3 id={titleId} className="text-base font-semibold text-gray-900 dark:text-gray-100">

@@ -13,7 +13,7 @@ function filterItems(search: string): string[] {
 }
 
 function key(k: string): KeyboardEvent<HTMLInputElement> {
-  return { key: k, preventDefault: () => {} } as unknown as KeyboardEvent<HTMLInputElement>;
+  return { key: k, preventDefault: () => {}, stopPropagation: () => {} } as unknown as KeyboardEvent<HTMLInputElement>;
 }
 
 function setup(onSelect = vi.fn(), findOpenIndex = () => -1) {

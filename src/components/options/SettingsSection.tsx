@@ -1139,7 +1139,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             aria-modal="true"
             aria-labelledby="reset-data-title"
             aria-describedby="reset-data-description"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-sm p-6 mx-4"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-sm p-6 mx-4 max-h-[90dvh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <h3
@@ -1198,7 +1198,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               />
             </div>
 
-            <div className="mt-6 flex justify-end gap-3">
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
               <button type="button" onClick={handleResetDialogClose} className={btnSecondaryCls}>
                 Cancel
               </button>
@@ -1239,7 +1239,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               The Drive backup will be permanently deleted.
             </p>
           )}
-          <div className="mt-6 flex justify-end gap-3">
+          <div className="mt-6 flex flex-wrap justify-end gap-3">
             <button
               type="button"
               onClick={closeDriveDisconnectDialog}
@@ -1277,7 +1277,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             Restore your profile and learned mappings from Drive.
           </p>
           <ImportWarnings warnings={driveImportWarnings} />
-          <div className="mt-6 flex justify-end gap-3">
+          <div className="mt-6 flex flex-wrap justify-end gap-3">
             <button
               type="button"
               onClick={dismissRestoreDialog}

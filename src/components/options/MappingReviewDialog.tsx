@@ -277,7 +277,7 @@ export function MappingReviewDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`flex max-h-[90vh] w-full ${!loading && !hasKey ? 'max-w-lg' : 'max-w-3xl'} flex-col rounded-xl bg-white shadow-2xl outline-none dark:bg-gray-800`}
+        className={`review-dialog flex max-h-[90dvh] w-full ${!loading && !hasKey ? 'max-w-lg' : 'max-w-3xl'} flex-col rounded-xl bg-white shadow-2xl outline-none dark:bg-gray-800`}
         onClick={(event) => event.stopPropagation()}
       >
         <header className="flex shrink-0 items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
@@ -300,7 +300,7 @@ export function MappingReviewDialog({
           </button>
         </header>
         <div
-          className={`min-h-0 overflow-y-auto px-6 ${!loading && !hasKey ? 'py-5' : 'pt-4 pb-4'}`}
+          className={`review-dialog-body min-h-0 overflow-y-auto px-6 ${!loading && !hasKey ? 'py-5' : 'pt-4 pb-4'}`}
         >
           {loading ? (
             <p role="status" className="text-sm text-gray-500">

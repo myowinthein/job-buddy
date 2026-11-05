@@ -38,7 +38,7 @@ export function SearchableCurrencySelect({ value, onChange, error, placeholder =
   return (
     <SearchableDropdown
       dropdown={dropdown}
-      panelClassName="w-full min-w-[min(280px,calc(100vw-6rem))]"
+      minPanelWidth={280}
       searchPlaceholder="Search by code or name…"
       emptyText="No currencies found."
       getKey={(c) => c.code}

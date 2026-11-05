@@ -77,7 +77,7 @@ export default function ImportSummaryDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className={`bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full ${importControls ? 'max-w-lg' : hasChanges ? 'max-w-md' : 'max-w-sm'} mx-4 p-6 max-h-[90vh] overflow-y-auto outline-none`}
+        className={`bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full ${importControls ? 'max-w-lg' : hasChanges ? 'max-w-md' : 'max-w-sm'} mx-4 p-6 max-h-[90dvh] overflow-y-auto outline-none`}
         onClick={(event) => event.stopPropagation()}
       >
         <h3 id={titleId} className="text-base font-semibold text-gray-900 dark:text-gray-100">

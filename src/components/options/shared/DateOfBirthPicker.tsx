@@ -10,7 +10,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 const MIN_YEAR = CURRENT_YEAR - 100;
 
 interface Props {
-  value: string;      // "YYYY-MM-DD" or ""
+  value: string; // "YYYY-MM-DD" or ""
   onChange: (value: string) => void;
   // Reports incomplete or invalid typed components; false when valid or empty.
   // This lets the
@@ -23,9 +23,9 @@ interface Props {
 export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id }: Props) {
   const parsed = parseDOB(value);
   const [month, setMonth] = useState(parsed.month);
-  const [year,  setYear]  = useState(parsed.year);
+  const [year, setYear] = useState(parsed.year);
 
-  const [dayStr,  setDayStr]  = useState(parsed.day  ? String(parsed.day)  : '');
+  const [dayStr, setDayStr] = useState(parsed.day ? String(parsed.day) : '');
   const [yearStr, setYearStr] = useState(parsed.year ? String(parsed.year) : '');
 
   // buildDOB() returns '' the moment ANY one of month/day/year is cleared
@@ -36,12 +36,12 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
   useResyncOnExternalChange(value, () => {
     setMonth(parsed.month);
     setYear(parsed.year);
-    setDayStr(parsed.day  ? String(parsed.day)  : '');
+    setDayStr(parsed.day ? String(parsed.day) : '');
     setYearStr(parsed.year ? String(parsed.year) : '');
   });
 
   // Inline range errors shown below the entire row, not inside individual inputs
-  const [dayError,  setDayError]  = useState('');
+  const [dayError, setDayError] = useState('');
   const [yearError, setYearError] = useState('');
 
   const hasAnyError = !!error || !!dayError || !!yearError;
@@ -101,10 +101,10 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
   const inlineError = dayError || yearError;
 
   return (
-    <div>
-      <div className="flex gap-2">
+    <div className="@container">
+      <div className="grid grid-cols-[3rem_minmax(0,1fr)] gap-2 @min-[18rem]:grid-cols-[4rem_minmax(0,1fr)_5rem]">
         {/* Day — text input, digits only, 1–31 */}
-        <div className="w-12 sm:w-16 shrink-0">
+        <div className="min-w-0">
           <input
             type="text"
             inputMode="numeric"
@@ -119,36 +119,36 @@ export function DateOfBirthPicker({ value, onChange, onPartialChange, error, id 
           />
         </div>
 
-        {/* Month + Year — same proportions as MonthYearPicker */}
-        <div className="flex-1 min-w-0 flex gap-2">
-          <div className="flex-1 min-w-0">
-            <select
-              className={inputCls}
-              value={month || ''}
-              onChange={(e) => handleMonth(Number(e.target.value))}
-              aria-label="Month"
-            >
-              <option value="">Month</option>
-              {MONTHS.map((m) => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </div>
+        {/* Keep the month readable; the year moves below in narrow cards. */}
+        <div className="min-w-0">
+          <select
+            className={inputCls}
+            value={month || ''}
+            onChange={(e) => handleMonth(Number(e.target.value))}
+            aria-label="Month"
+          >
+            <option value="">Month</option>
+            {MONTHS.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          {/* Year — text input restricted to 4 digits */}
-          <div className="w-18 sm:w-20 shrink-0">
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="\d{4}"
-              maxLength={4}
-              className={inputCls}
-              value={yearStr}
-              onChange={(e) => handleYearInput(e.target.value)}
-              placeholder="YYYY"
-              aria-label="Year"
-            />
-          </div>
+        {/* Year — text input restricted to 4 digits */}
+        <div className="col-span-2 min-w-0 @min-[18rem]:col-span-1">
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="\d{4}"
+            maxLength={4}
+            className={inputCls}
+            value={yearStr}
+            onChange={(e) => handleYearInput(e.target.value)}
+            placeholder="YYYY"
+            aria-label="Year"
+          />
         </div>
       </div>
 

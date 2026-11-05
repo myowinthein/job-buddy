@@ -44,7 +44,7 @@ button:disabled { cursor:default; opacity:.65; }
 .links { display:flex; gap:10px; color:var(--muted); }
 .links button { font-size:11px; padding:3px 0; text-decoration:none; text-underline-offset:3px; }
 .links button:hover,.links button:focus-visible { color:var(--fg); text-decoration:underline; }
-.menu { position:absolute; right:0; bottom:calc(100% + 8px); width:210px; background:var(--bg); border:1px solid var(--line); border-radius:12px; box-shadow:0 4px 18px #0002; padding:5px; }
+.menu { position:absolute; bottom:calc(100% + 8px); width:210px; max-width:calc(100vw - 24px); overflow-y:auto; overscroll-behavior:contain; background:var(--bg); border:1px solid var(--line); border-radius:12px; box-shadow:0 4px 18px #0002; padding:5px; }
 .menu[data-below] { top:calc(100% + 8px); bottom:auto; }
 .menu button { display:block; text-align:left; width:100%; padding:9px 10px; }
 [hidden] { display:none!important; }
@@ -107,7 +107,7 @@ export class QuickFillWidget {
       const opening = this.menu.hidden;
       this.menu.hidden = !opening;
       this.more.setAttribute('aria-expanded', String(opening));
-      this.menu.toggleAttribute('data-below', this.host.getBoundingClientRect().top < 210);
+      this.placeMenu();
       if (opening) this.menu.querySelector('button')?.focus();
     });
     this.root.addEventListener('focusout', (event) => {
@@ -173,6 +173,18 @@ export class QuickFillWidget {
     this.menu.hidden = true;
     this.more.setAttribute('aria-expanded', 'false');
   }
+  private placeMenu() {
+    if (this.menu.hidden) return;
+    const rect = this.host.getBoundingClientRect();
+    const width = this.menu.getBoundingClientRect().width;
+    const above = Math.max(0, rect.top - 20);
+    const below = Math.max(0, innerHeight - rect.bottom - 20);
+    const openBelow = above < this.menu.scrollHeight + 2 && below > above;
+    this.menu.toggleAttribute('data-below', openBelow);
+    this.menu.style.maxHeight = `${openBelow ? below : above}px`;
+    const left = Math.max(12, Math.min(rect.right - width, innerWidth - width - 12));
+    this.menu.style.left = `${left - rect.left}px`;
+  }
   private move(left: number, top: number) {
     const rect = this.host.getBoundingClientRect();
     const width = Math.max(1, innerWidth - rect.width - 24),
@@ -199,6 +211,7 @@ export class QuickFillWidget {
     );
     this.host.style.setProperty('right', 'auto', 'important');
     this.host.style.setProperty('bottom', 'auto', 'important');
+    this.placeMenu();
   }
   preferences(prefs: QuickFillPreferences, dark: boolean) {
     this.position = prefs.position;

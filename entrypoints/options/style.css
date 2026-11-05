@@ -65,3 +65,16 @@ select:not([multiple]):not([size]) {
 .dark .completion-details-scroll::-webkit-scrollbar-thumb {
   background: #64748b;
 }
+
+/* In short windows, fixed review headers/footers can consume the entire modal.
+   Scroll the whole dialog so both its contents and actions remain reachable. */
+@media (max-height: 480px) {
+  .review-dialog {
+    display: block;
+    overflow-y: auto;
+  }
+
+  .review-dialog-body {
+    overflow: visible;
+  }
+}

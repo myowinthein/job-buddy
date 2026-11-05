@@ -37,7 +37,7 @@ export function SearchableLanguageSelect({ id, value, onChange, error, placehold
   return (
     <SearchableDropdown
       dropdown={dropdown}
-      panelClassName="w-full min-w-[min(220px,calc(100vw-6rem))]"
+      minPanelWidth={220}
       searchPlaceholder="Search language…"
       emptyText="No languages found."
       getKey={(l) => l.code}

@@ -106,7 +106,7 @@ export default function ImportReviewScreen({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-2xl mx-4 flex flex-col max-h-[90vh] outline-none"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-2xl mx-4 review-dialog flex flex-col max-h-[90dvh] outline-none"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 shrink-0">
@@ -152,7 +152,7 @@ export default function ImportReviewScreen({
           </div>
           <ImportWarnings warnings={warnings} summary={warningsSummary} />
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-3">
+        <div className="review-dialog-body flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-3">
           {sections.map((section, index) => {
             const fields = grouped.get(section)!;
             const expanded = expandedSection === section;

@@ -1,21 +1,42 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Info } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { useAnchoredPanel } from '@/src/components/options/shared/useAnchoredPanel';
 import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 
 export function FillDetailsHelp() {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const position = useAnchoredPanel(open, root, 384, 360, true);
   const pinned = useRef(false);
   const id = useId();
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
   const close = () => {
+    clearTimeout(closeTimer.current);
     pinned.current = false;
     setOpen(false);
+  };
+  const enter = () => {
+    clearTimeout(closeTimer.current);
+    setOpen(true);
+  };
+  const leave = () => {
+    clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => {
+      if (!pinned.current && !root.current?.contains(document.activeElement)) setOpen(false);
+    }, 150);
   };
   useEscapeToClose(open ? close : undefined);
   useEffect(() => {
     if (!open) return;
     const outside = (event: PointerEvent) => {
-      if (event.target instanceof Node && !root.current?.contains(event.target)) {
+      if (
+        event.target instanceof Node &&
+        !root.current?.contains(event.target) &&
+        !panel.current?.contains(event.target)
+      ) {
         pinned.current = false;
         setOpen(false);
       }
@@ -28,12 +49,14 @@ export function FillDetailsHelp() {
     <div
       ref={root}
       className="shrink-0"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => {
-        if (!pinned.current && !root.current?.contains(document.activeElement)) setOpen(false);
-      }}
+      onMouseEnter={enter}
+      onMouseLeave={leave}
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) close();
+        if (
+          !event.currentTarget.contains(event.relatedTarget) &&
+          !panel.current?.contains(event.relatedTarget)
+        )
+          close();
       }}
     >
       <button
@@ -51,16 +74,20 @@ export function FillDetailsHelp() {
       >
         <Info aria-hidden="true" className="h-4 w-4" />
       </button>
-      {open && (
-        <div className="absolute left-0 top-full z-40 w-96 max-w-[calc(100vw-6rem)] pt-2">
+      {open &&
+        createPortal(
           <div
+            ref={panel}
+            onMouseEnter={enter}
+            onMouseLeave={leave}
+            style={position}
             id={id}
             role="tooltip"
-            className="max-h-[70dvh] space-y-3 overflow-y-auto rounded-lg border border-gray-200 bg-white p-3 text-xs leading-relaxed text-gray-600 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+            className="z-40 space-y-3 overflow-y-auto overscroll-contain rounded-lg border border-gray-200 bg-white p-3 text-xs leading-relaxed text-gray-600 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
           >
             <p className="text-pretty">
-              For each field, autofill tries learned mappings → rules → AI and stops when it finds
-              a reliable answer.
+              For each field, autofill tries learned mappings → rules → AI and stops when it finds a
+              reliable answer.
             </p>
             <p>Each fill attempt can have one of these results:</p>
             <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-2 [&_dd]:text-balance">
@@ -77,9 +104,9 @@ export function FillDetailsHelp() {
               <p>Fields such as consent questions are always skipped.</p>
               <p>Existing answers are kept in “Empty fields only” mode.</p>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

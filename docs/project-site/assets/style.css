@@ -46,6 +46,7 @@ body {
 }
 a { color: var(--brand); text-decoration: none; }
 a:hover { text-decoration: underline; }
+code { overflow-wrap: anywhere; }
 img { max-width: 100%; }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
@@ -227,6 +228,7 @@ img { max-width: 100%; }
   margin-top: 20px;
 }
 .feature-card {
+  min-width: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -456,6 +458,8 @@ body.tech-mode .tech-only { display: block; }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 680px) {
+  .site-header { padding-inline: 16px; gap: 12px; }
+  .site-header .btn-ghost { padding-inline: 8px; }
   .hero h1 { font-size: 26px; }
   .hero-tagline { font-size: 16px; }
   .header-nav { display: none; }
@@ -465,4 +469,8 @@ body.tech-mode .tech-only { display: block; }
   .links-grid { grid-template-columns: 1fr 1fr; }
   .page-wrap { padding: 0 16px 60px; }
   .btn-ghost.theme-btn-label { display: none; }
+}
+
+@media (max-width: 380px) {
+  .glance-grid, .stack-grid, .links-grid { grid-template-columns: 1fr; }
 }

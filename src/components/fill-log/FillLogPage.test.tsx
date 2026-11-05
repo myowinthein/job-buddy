@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FillLogPage } from './FillLogPage';
 import { loadFillLog, returnToForm } from '@/src/fill-log/client';
@@ -241,7 +241,7 @@ describe('Fill Details page', () => {
       expect(within(tooltip).getByText(explanation)).toBeTruthy();
     expect(help.getAttribute('aria-describedby')).toBe(tooltip.id);
     fireEvent.mouseLeave(help.parentElement!);
-    expect(screen.queryByRole('tooltip')).toBeNull();
+    await waitFor(() => expect(screen.queryByRole('tooltip')).toBeNull());
     fireEvent.focus(help);
     expect(screen.getByRole('tooltip')).toBeTruthy();
     fireEvent.keyDown(help, { key: 'Escape' });

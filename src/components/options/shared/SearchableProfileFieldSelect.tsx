@@ -5,7 +5,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type KeyboardEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
@@ -20,6 +19,7 @@ import {
 import { buildPickerTree } from '@/src/autofill/profileFieldTree';
 import type { Section, SectionItem, OptionRow } from '@/src/autofill/profileFieldTree';
 import { useDropdownPanel } from './useDropdownPanel';
+import { useAnchoredPanel } from './useAnchoredPanel';
 
 interface Props {
   profile: Partial<Profile>;
@@ -91,7 +91,6 @@ export function SearchableProfileFieldSelect({
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const listId = useId();
-  const [position, setPosition] = useState<CSSProperties | null>(null);
   const sections = useMemo(
     () => buildPickerTree(profile as Profile, includeEmpty),
     [profile, includeEmpty],
@@ -146,38 +145,10 @@ export function SearchableProfileFieldSelect({
     requestAnimationFrame(() => triggerRef.current?.focus());
   };
 
+  const position = useAnchoredPanel(open, triggerRef, 320);
   useLayoutEffect(() => {
-    if (!open) return;
-    let frame = 0;
-    const place = () => {
-      const rect = triggerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const width = Math.min(Math.max(rect.width, 320), window.innerWidth - 24);
-      const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
-      const below = window.innerHeight - rect.bottom - 20;
-      const above = rect.top - 20;
-      const flip = below < 240 && above > below;
-      setPosition({
-        position: 'fixed',
-        left,
-        width,
-        maxHeight: Math.max(100, Math.min(360, flip ? above : below)),
-        ...(flip ? { bottom: window.innerHeight - rect.top + 8 } : { top: rect.bottom + 8 }),
-      });
-    };
-    const schedule = () => {
-      if (frame) cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(place);
-    };
-    place();
-    window.addEventListener('resize', schedule);
-    window.addEventListener('scroll', schedule, true);
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener('resize', schedule);
-      window.removeEventListener('scroll', schedule, true);
-    };
-  }, [open]);
+    if (open && position.visibility !== 'hidden') searchRef.current?.focus({ preventScroll: true });
+  }, [open, position.visibility, searchRef]);
 
   const q = search.trim().toLowerCase();
 
@@ -378,7 +349,7 @@ export function SearchableProfileFieldSelect({
         createPortal(
           <div
             ref={panelRef}
-            style={position ?? { visibility: 'hidden', position: 'fixed' }}
+            style={position}
             onKeyDown={(event) => {
               if (event.key === 'Escape') {
                 close();

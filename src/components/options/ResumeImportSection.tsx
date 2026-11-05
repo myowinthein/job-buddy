@@ -346,7 +346,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
           onClick={closeSection}
         >
           <div
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-lg mx-4"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-lg mx-4 max-h-[90dvh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -446,7 +446,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex flex-wrap justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               {apiKey && model ? (
                 <>
                   <button
@@ -484,7 +484,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
           ════════════════════════════════════════════════════════════════════ */}
       {screen === 'progress' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-sm mx-4 px-6 py-8">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-sm mx-4 px-6 py-8 max-h-[90dvh] overflow-y-auto">
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-6 text-center">
               Analyzing Resume
             </h3>
@@ -550,7 +550,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
                 ) : (
                   <p className="text-sm text-red-700 dark:text-red-400 mb-4">{errorMsg}</p>
                 )}
-                <div className="flex justify-end gap-3">
+                <div className="flex flex-wrap justify-end gap-3">
                   <button
                     type="button"
                     onClick={closeSection}
@@ -632,7 +632,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
           ════════════════════════════════════════════════════════════════════ */}
       {screen === 'done' && summary && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-sm mx-4 px-6 py-8">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-sm mx-4 px-6 py-8 max-h-[90dvh] overflow-y-auto">
             <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
               Import Complete
             </h3>

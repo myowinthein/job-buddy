@@ -104,6 +104,18 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     await page.goto(new URL('options.html', worker.url()).href);
     const bar = page.getByRole('complementary', { name: 'Development controls' });
     await expect(bar).toBeVisible();
+    for (const width of [320, 390, 640, 1280]) {
+      await page.setViewportSize({ width, height: 600 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      for (const button of await bar.getByRole('button').all()) {
+        const rect = await button.boundingBox();
+        expect(rect!.x).toBeGreaterThanOrEqual(0);
+        expect(rect!.x + rect!.width).toBeLessThanOrEqual(width);
+      }
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
     await expect(page.getByRole('button', { name: 'Dev Tools', exact: true })).toHaveCount(0);
     await expect(page.getByLabel('First Name', { exact: false })).toBeVisible();
     const original = await worker.evaluate(() =>
@@ -171,6 +183,19 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     await expect(toggle).toHaveAttribute('aria-checked', 'false');
     await app.getByRole('button', { name: 'Settings', exact: true }).click();
     await expect(app.getByRole('button', { name: 'Disconnect', exact: true })).toBeVisible();
+    for (const width of [320, 640]) {
+      await page.setViewportSize({ width, height: 600 });
+      await expect.poll(() => app.locator('main').evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+      await app.getByRole('button', { name: 'Disconnect', exact: true }).click();
+      const disconnect = app.getByRole('dialog', { name: 'Disconnect Google Drive' });
+      await disconnect.getByRole('checkbox').check();
+      expect(await disconnect.evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+      await expect(
+        disconnect.getByRole('button', { name: 'Delete & Disconnect', exact: true }),
+      ).toBeInViewport({ ratio: 1 });
+      await disconnect.getByRole('button', { name: 'Cancel', exact: true }).click();
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
     await driveControl.click();
     await expect(
       app.getByRole('button', { name: 'Connect Google Drive', exact: true }),

@@ -1,6 +1,15 @@
-import { cloneElement, isValidElement, useId, type MouseEventHandler, type ReactNode } from 'react';
+import {
+  cloneElement,
+  isValidElement,
+  useId,
+  useLayoutEffect,
+  type MouseEventHandler,
+  type ReactNode,
+} from 'react';
 import type { useSearchableDropdown } from './useSearchableDropdown';
 import { deferPointerFocus, focusOnClick } from './stableControlFocus';
+import { createPortal } from 'react-dom';
+import { useAnchoredPanel } from './useAnchoredPanel';
 
 interface Props<T> {
   // Full hook result from useSearchableDropdown<T> — owns open/search/highlight
@@ -11,7 +20,7 @@ interface Props<T> {
   // style) to force into one template.
   trigger: ReactNode;
   containerClassName?: string;
-  panelClassName?: string;
+  minPanelWidth?: number;
   searchPlaceholder: string;
   emptyText: string;
   getKey: (item: T) => string;
@@ -23,7 +32,7 @@ export function SearchableDropdown<T>({
   dropdown,
   trigger,
   containerClassName = 'relative w-full',
-  panelClassName = 'w-full min-w-[min(240px,calc(100vw-6rem))]',
+  minPanelWidth = 240,
   searchPlaceholder,
   emptyText,
   getKey,
@@ -36,6 +45,7 @@ export function SearchableDropdown<T>({
     hlIdx,
     filtered,
     containerRef,
+    panelRef,
     searchRef,
     listRef,
     setHlIdx,
@@ -44,6 +54,11 @@ export function SearchableDropdown<T>({
     handleKeyDown,
   } = dropdown;
   const listId = useId();
+  const position = useAnchoredPanel(open, containerRef, minPanelWidth, 288);
+  useLayoutEffect(() => {
+    // The first portal render is hidden until its position is measured.
+    if (open && position.visibility !== 'hidden') searchRef.current?.focus({ preventScroll: true });
+  }, [open, position.visibility, searchRef]);
   const button =
     isValidElement<{
       onMouseDown?: MouseEventHandler<HTMLButtonElement>;
@@ -65,56 +80,65 @@ export function SearchableDropdown<T>({
     <div ref={containerRef} className={containerClassName}>
       {button}
 
-      {open && (
-        <div
-          className={`absolute top-full left-0 mt-1.5 ${panelClassName} bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg dark:shadow-black/40 z-50`}
-        >
-          <div className="p-2 border-b border-gray-100 dark:border-gray-700">
-            <input
-              ref={searchRef}
-              type="text"
-              role="combobox"
-              aria-label={searchPlaceholder}
-              aria-expanded={open}
-              aria-controls={listId}
-              aria-autocomplete="list"
-              aria-activedescendant={filtered[hlIdx] ? `${listId}-${hlIdx}` : undefined}
-              autoComplete="off"
-              className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder={searchPlaceholder}
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
-          </div>
-          <ul id={listId} ref={listRef} role="listbox" className="max-h-56 overflow-y-auto py-1">
-            {filtered.length === 0 ? (
-              <li className="px-3 py-3 text-sm text-gray-500 dark:text-gray-400 text-center select-none">
-                {emptyText}
-              </li>
-            ) : (
-              filtered.map((item, idx) => (
-                <li
-                  key={getKey(item)}
-                  id={`${listId}-${idx}`}
-                  role="option"
-                  aria-selected={isSelected(item)}
-                  className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer select-none ${
-                    idx === hlIdx
-                      ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-                  }`}
-                  onMouseEnter={() => setHlIdx(idx)}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => select(item)}
-                >
-                  {renderRow(item)}
+      {open &&
+        createPortal(
+          <div
+            ref={panelRef}
+            style={position}
+            className="z-50 flex min-h-0 flex-col overflow-hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg dark:shadow-black/40"
+          >
+            <div className="shrink-0 p-2 border-b border-gray-100 dark:border-gray-700">
+              <input
+                ref={searchRef}
+                type="text"
+                role="combobox"
+                aria-label={searchPlaceholder}
+                aria-expanded={open}
+                aria-controls={listId}
+                aria-autocomplete="list"
+                aria-activedescendant={filtered[hlIdx] ? `${listId}-${hlIdx}` : undefined}
+                autoComplete="off"
+                className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder={searchPlaceholder}
+                value={search}
+                onChange={(e) => onSearchChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+            </div>
+            <ul
+              id={listId}
+              ref={listRef}
+              role="listbox"
+              className="min-h-0 max-h-56 overflow-y-auto overscroll-contain py-1"
+            >
+              {filtered.length === 0 ? (
+                <li className="px-3 py-3 text-sm text-gray-500 dark:text-gray-400 text-center select-none">
+                  {emptyText}
                 </li>
-              ))
-            )}
-          </ul>
-        </div>
-      )}
+              ) : (
+                filtered.map((item, idx) => (
+                  <li
+                    key={getKey(item)}
+                    id={`${listId}-${idx}`}
+                    role="option"
+                    aria-selected={isSelected(item)}
+                    className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer select-none ${
+                      idx === hlIdx
+                        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
+                    onMouseEnter={() => setHlIdx(idx)}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => select(item)}
+                  >
+                    {renderRow(item)}
+                  </li>
+                ))
+              )}
+            </ul>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
