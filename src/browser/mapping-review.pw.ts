@@ -129,14 +129,14 @@ test('selects all sites by default and supports searchable multi-selection', asy
   const firstSite = dialog.getByRole('group', { name: 'Findings for jobs.example.test' });
   const secondSite = dialog.getByRole('group', { name: 'Findings for other.example.test' });
   await expect(
-    firstSite.getByRole('heading', { name: 'jobs.example.test (5)', exact: true }),
+    firstSite.getByRole('heading', { name: 'jobs.example.test', exact: true }),
   ).toBeVisible();
   await expect(firstSite.getByRole('region')).toHaveCount(5);
   await expect(
-    secondSite.getByRole('heading', { name: 'other.example.test (1)', exact: true }),
+    secondSite.getByRole('heading', { name: 'other.example.test', exact: true }),
   ).toBeVisible();
-  const firstToggle = firstSite.getByRole('button', { name: 'jobs.example.test (5)' });
-  const secondToggle = secondSite.getByRole('button', { name: 'other.example.test (1)' });
+  await expect(secondSite.getByRole('region')).toHaveCount(1);
+  await expect(dialog.getByRole('group', { name: 'Review status' })).toHaveCount(0);
   const longTitle = firstSite.getByRole('heading', { name: longQuestion, exact: true });
   await expect(longTitle).toHaveAttribute('title', longQuestion);
   await expect(longTitle).toHaveAttribute('tabindex', '0');
@@ -149,24 +149,13 @@ test('selects all sites by default and supports searchable multi-selection', asy
   await expect
     .poll(() => longTitle.evaluate((element) => element.clientHeight))
     .toBeGreaterThan(40);
-  await firstToggle.focus();
+  await selector.focus();
   await expect.poll(() => longTitle.evaluate((element) => element.clientHeight)).toBe(40);
-  await expect(firstToggle).toHaveAttribute('aria-expanded', 'true');
-  await expect(secondToggle).toHaveAttribute('aria-expanded', 'false');
-  await expect(secondSite.getByRole('region')).toHaveCount(0);
   await dialog.getByLabel('Action for Location preference').selectOption('inactive');
-  await firstToggle.click();
-  await expect(firstSite.getByRole('region')).toHaveCount(0);
   await expect(dialog.getByRole('button', { name: 'Apply Changes (1)' })).toBeEnabled();
-  await secondToggle.focus();
-  await secondToggle.press('Space');
-  await expect(secondSite.getByRole('region')).toHaveCount(1);
   await dialog.getByLabel('Action for City').selectOption('inactive');
-  await expect(firstToggle).toHaveAttribute('aria-expanded', 'false');
-  await firstToggle.focus();
-  await firstToggle.press('Enter');
+  await expect(dialog.getByRole('button', { name: 'Apply Changes (2)' })).toBeEnabled();
   await expect(firstSite.getByLabel('Action for Location preference')).toHaveValue('inactive');
-  await expect(secondToggle).toHaveAttribute('aria-expanded', 'true');
   await dialog.getByLabel('Action for City').selectOption('keep');
   await options.setViewportSize({ width: 1200, height: 1000 });
   await options.screenshot({ path: info.outputPath('mapping-sites-dark.png') });
@@ -179,12 +168,7 @@ test('selects all sites by default and supports searchable multi-selection', asy
   await dialog.getByRole('checkbox', { name: 'other.example.test', exact: true }).check();
   await search.press('Escape');
   await expect(dialog.getByRole('button', { name: 'Apply Changes', exact: true })).toBeDisabled();
-  const onlyContext = dialog.getByRole('group', { name: 'Review status' });
-  await expect(onlyContext.getByRole('button')).toHaveCount(1);
-  await expect(onlyContext.getByRole('button', { name: 'Needs context (1)' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  await expect(dialog.getByRole('group', { name: 'Review status' })).toHaveCount(0);
   await dialog.getByLabel('Action for City').selectOption('inactive');
   await dialog.getByRole('button', { name: 'Apply Changes (1)' }).click();
   await expect(dialog).toHaveCount(0);
@@ -267,33 +251,29 @@ test('preselects fresh and cached suggestions while preserving explicit choices'
   await dialog.getByRole('searchbox', { name: 'Search sites' }).press('Escape');
   await dialog.getByRole('button', { name: 'Review Mappings', exact: true }).click();
   await expect(dialog).toContainText('Reviewed 5 of 5 mappings.');
-  const statusFilters = dialog.getByRole('group', { name: 'Review status' });
-  await expect(statusFilters.getByRole('button', { name: 'Better field (1)' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
-  await expect(statusFilters.getByRole('button')).toHaveCount(3);
-  await expect(statusFilters.getByRole('button', { name: /^All findings/ })).toHaveCount(0);
-  await statusFilters.getByRole('button', { name: 'Better field (1)' }).click();
-  await expect(dialog.getByRole('region')).toHaveCount(1);
-  await expect(dialog.getByLabel('Action for Expected salary')).toBeVisible();
-  await expect(dialog.getByRole('region').getByText('Better field', { exact: true })).toHaveCount(
-    0,
-  );
-  await statusFilters.getByRole('button', { name: 'Needs context (2)' }).click();
-  await expect(dialog.getByRole('region')).toHaveCount(2);
+  await expect(dialog.getByRole('group', { name: 'Review status' })).toHaveCount(0);
+  await expect(dialog.getByRole('region')).toHaveCount(4);
+  await expect(dialog.getByRole('heading', { level: 5 })).toHaveText([
+    'I agree to the privacy policy',
+    'Unlabelled field',
+    'Expected salary',
+    longQuestion,
+  ]);
   await expect(dialog.getByRole('button', { name: 'Use clear suggestions' })).toHaveCount(0);
+  await expect(
+    dialog.getByRole('region', { name: 'Review Expected salary', exact: true }),
+  ).toContainText('Better field');
+  await expect(
+    dialog.getByRole('region', { name: 'Review Location preference', exact: true }),
+  ).toContainText('Needs context');
+  await expect(
+    dialog.getByRole('region', { name: 'Review I agree to the privacy policy', exact: true }),
+  ).toContainText('No suitable field');
   await expect(dialog.getByLabel('Action for Location preference')).toHaveValue('keep');
-  await statusFilters.getByRole('button', { name: 'No suitable field (1)' }).click();
-  await expect(dialog.getByRole('region')).toHaveCount(1);
   await expect(dialog.getByLabel('Action for I agree to the privacy policy')).toHaveValue(
     'inactive',
   );
-  await statusFilters.getByRole('button', { name: 'Better field (1)' }).click();
   await expect(dialog.getByRole('region', { name: 'Review Email', exact: true })).toHaveCount(0);
-  await expect(
-    dialog.getByRole('region', { name: 'Review Expected salary', exact: true }),
-  ).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Apply Changes (2)' })).toBeEnabled();
   expect(requests).toBe(1);
   const unchanged = await extension.worker.evaluate(
@@ -309,17 +289,13 @@ test('preselects fresh and cached suggestions while preserving explicit choices'
   expect(requests).toBe(1);
   await dialog.getByLabel('Action for Expected salary').selectOption('keep');
   await expect(dialog.getByRole('button', { name: 'Apply Changes (1)' })).toBeEnabled();
-  await statusFilters.getByRole('button', { name: 'No suitable field (1)' }).click();
   await dialog.getByLabel('Action for I agree to the privacy policy').selectOption('keep');
   await expect(dialog.getByRole('button', { name: 'Apply Changes', exact: true })).toBeDisabled();
-  await statusFilters.getByRole('button', { name: 'Better field (1)' }).click();
   await expect(dialog.getByLabel('Action for Expected salary')).toHaveValue('keep');
   await dialog.getByLabel('Action for Expected salary').selectOption('change');
-  await statusFilters.getByRole('button', { name: 'No suitable field (1)' }).click();
   await expect(dialog.getByLabel('Action for I agree to the privacy policy')).toHaveValue('keep');
   await dialog.getByLabel('Action for I agree to the privacy policy').selectOption('inactive');
   await expect(dialog.getByRole('button', { name: 'Apply Changes (2)' })).toBeEnabled();
-  await statusFilters.getByRole('button', { name: 'Needs context (2)' }).click();
   await dialog.getByLabel('Action for Location preference').selectOption('change');
   await dialog.getByRole('button', { name: 'Profile field: Address → City' }).click();
   const chooser = options.getByRole('combobox', { name: 'Search profile fields' });
@@ -332,12 +308,10 @@ test('preselects fresh and cached suggestions while preserving explicit choices'
     dialog.getByRole('button', { name: /^Profile field: Personal.*Date of Birth/ }),
   ).toBeVisible();
   await dialog.getByLabel('Action for Location preference').selectOption('keep');
-  await statusFilters.getByRole('button', { name: 'No suitable field (1)' }).click();
   await expect(dialog.getByLabel('Action for I agree to the privacy policy')).toHaveValue(
     'inactive',
   );
   await expect(dialog.getByRole('button', { name: 'Apply Changes (2)' })).toBeEnabled();
-  await statusFilters.getByRole('button', { name: 'Better field (1)' }).click();
   await options.screenshot({ path: info.outputPath('mapping-review-dark.png') });
   await options.setViewportSize({ width: 620, height: 800 });
   await expect(dialog.getByLabel('Action for Expected salary')).toBeVisible();
@@ -442,7 +416,7 @@ test('retains completed batches when stopped and starts a fresh review on every 
   await expect(dialog).toContainText('Reviewed 25 of 25 mappings.');
 });
 
-test('keeps site tabs independent while paginating and saving collapsed choices', async ({
+test('paginates one ordered findings list and saves selected changes across sites', async ({
   context,
   extension,
 }) => {
@@ -501,40 +475,27 @@ test('keeps site tabs independent while paginating and saving collapsed choices'
   await expect(dialog).toContainText('Reviewed 24 of 24 mappings.');
   const firstSite = dialog.getByRole('group', { name: 'Findings for batch.test' });
   const secondSite = dialog.getByRole('group', { name: 'Findings for other.test' });
-  await expect(firstSite.getByRole('button', { name: 'batch.test (22)' })).toBeVisible();
-  const firstTabs = firstSite.getByRole('group', { name: 'Review status' });
-  await expect(firstTabs.getByRole('button', { name: 'Better field (1)' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  await expect(firstSite.getByRole('heading', { name: 'batch.test', exact: true })).toBeVisible();
+  await expect(firstSite.getByRole('region')).toHaveCount(20);
+  await expect(secondSite).toHaveCount(0);
   await expect(firstSite.getByLabel('Action for Country')).toHaveValue('change');
   await expect(dialog.getByRole('button', { name: 'Apply Changes (2)' })).toBeEnabled();
-  await firstTabs.getByRole('button', { name: 'Needs context (21)' }).click();
-  await expect(firstSite.getByRole('region')).toHaveCount(20);
-  await expect(secondSite.getByRole('button', { name: 'other.test (2)' })).toBeVisible();
-  await expect(secondSite.getByRole('region')).toHaveCount(0);
-  await firstSite.getByRole('button', { name: 'Show 1 more' }).click();
-  await expect(firstSite.getByRole('region')).toHaveCount(21);
-  await firstSite.getByRole('region').first().getByRole('combobox').selectOption('inactive');
-  await secondSite.getByRole('button', { name: 'other.test (2)' }).click();
-  const secondTabs = secondSite.getByRole('group', { name: 'Review status' });
-  await expect(secondTabs.getByRole('button', { name: 'Needs context (1)' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
+  const initialOrder = await dialog.getByRole('heading', { level: 5 }).allTextContents();
+  await dialog.getByRole('button', { name: 'Show 4 more' }).click();
+  await expect(dialog.getByRole('region')).toHaveCount(24);
+  await expect(firstSite.getByRole('region')).toHaveCount(22);
+  await expect(secondSite.getByRole('region')).toHaveCount(2);
+  expect((await dialog.getByRole('heading', { level: 5 }).allTextContents()).slice(0, 20)).toEqual(
+    initialOrder,
   );
-  await expect(secondTabs.getByRole('button', { name: 'Better field (1)' })).toHaveCount(0);
-  await secondTabs.getByRole('button', { name: 'No suitable field (1)' }).click();
+  await expect(dialog.getByRole('group', { name: 'Review status' })).toHaveCount(0);
+  await firstSite
+    .getByLabel('Action for Email address 0', { exact: true })
+    .selectOption('inactive');
   await expect(secondSite.getByLabel('Action for I agree to the privacy policy')).toHaveValue(
     'inactive',
   );
-  await expect(firstTabs.getByRole('button', { name: 'Needs context (21)' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
-  await expect(firstSite.getByRole('region')).toHaveCount(21);
-  await firstSite.getByRole('button', { name: 'batch.test (22)' }).click();
-  await secondSite.getByRole('button', { name: 'other.test (2)' }).click();
-  await expect(dialog.getByRole('region')).toHaveCount(0);
+  await expect(secondSite.getByLabel('Action for City')).toHaveValue('keep');
   await dialog.getByRole('button', { name: 'Apply Changes (3)' }).click();
   await expect(dialog).toHaveCount(0);
   const saved = (await extension.worker.evaluate(

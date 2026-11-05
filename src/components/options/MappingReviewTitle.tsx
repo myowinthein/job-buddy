@@ -21,7 +21,7 @@ export function MappingReviewTitle({ text }: { text: string }) {
       ref={heading}
       title={truncated ? text : undefined}
       tabIndex={truncated ? 0 : undefined}
-      className="line-clamp-2 break-words rounded-sm text-sm leading-5 font-medium text-gray-900 focus:line-clamp-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-gray-100"
+      className="min-w-0 line-clamp-2 break-words rounded-sm text-sm leading-5 font-medium text-gray-900 focus:line-clamp-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-gray-100"
     >
       {text}
     </h5>
