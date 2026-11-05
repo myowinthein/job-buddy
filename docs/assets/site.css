@@ -585,11 +585,11 @@ pre code {
   max-width: 1400px;
   margin: auto;
   display: grid;
+  align-items: center;
   grid-template-columns: 180px minmax(0, 1fr);
   gap: 60px;
 }
 .site-footer .brand {
-  align-self: start;
   font-size: 15px;
 }
 .site-footer .brand img {
