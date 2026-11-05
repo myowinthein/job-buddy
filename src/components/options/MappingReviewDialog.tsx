@@ -34,9 +34,9 @@ const primary =
   'rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-40';
 const verdicts = {
   correct: { label: 'Looks correct', color: 'text-green-700 dark:text-green-400' },
-  change: { label: 'Better field', color: 'text-amber-700 dark:text-amber-400' },
-  uncertain: { label: 'Needs context', color: 'text-gray-500 dark:text-gray-400' },
-  inactive: { label: 'No suitable field', color: 'text-amber-700 dark:text-amber-400' },
+  change: { label: 'Better match', color: 'text-amber-700 dark:text-amber-400' },
+  uncertain: { label: 'Unclear match', color: 'text-gray-500 dark:text-gray-400' },
+  inactive: { label: 'No matching field', color: 'text-amber-700 dark:text-amber-400' },
 };
 
 export function MappingReviewDialog({
@@ -459,7 +459,7 @@ export function MappingReviewDialog({
                                       {mappingDestination(item.path, labels)}
                                       {item.status === 'Inactive' ? ' (Inactive)' : ''}
                                     </dd>
-                                    <dt className="text-gray-500 dark:text-gray-400">Status</dt>
+                                    <dt className="text-gray-500 dark:text-gray-400">Review result</dt>
                                     <dd className={`min-w-0 break-words ${verdict.color}`}>
                                       {verdict.label}
                                     </dd>

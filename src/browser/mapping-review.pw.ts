@@ -262,13 +262,13 @@ test('preselects fresh and cached suggestions while preserving explicit choices'
   await expect(dialog.getByRole('button', { name: 'Use clear suggestions' })).toHaveCount(0);
   await expect(
     dialog.getByRole('region', { name: 'Review Expected salary', exact: true }),
-  ).toContainText('Better field');
+  ).toContainText('Better match');
   await expect(
     dialog.getByRole('region', { name: 'Review Location preference', exact: true }),
-  ).toContainText('Needs context');
+  ).toContainText('Unclear match');
   await expect(
     dialog.getByRole('region', { name: 'Review I agree to the privacy policy', exact: true }),
-  ).toContainText('No suitable field');
+  ).toContainText('No matching field');
   await expect(dialog.getByLabel('Action for Location preference')).toHaveValue('keep');
   await expect(dialog.getByLabel('Action for I agree to the privacy policy')).toHaveValue(
     'inactive',
