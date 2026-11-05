@@ -60,6 +60,9 @@ export function MappingReviewDialog({
   const [loading, setLoading] = useState(true);
   const [hasKey, setHasKey] = useState(false);
   const [selectedSites, setSelectedSites] = useState<Set<string> | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'change' | 'uncertain' | 'inactive'>(
+    'all',
+  );
   const [limit, setLimit] = useState(20);
   const [results, setResults] = useState<Record<string, MappingAssessment>>({});
   const [decisions, setDecisions] = useState<Record<string, MappingReviewDecision>>({});
@@ -86,6 +89,17 @@ export function MappingReviewDialog({
     const verdict = results[item.id].verdict;
     return verdict !== 'correct' && !(verdict === 'inactive' && item.status === 'Inactive');
   });
+  const statusOptions = [
+    { value: 'all', label: 'All findings', count: attention.length },
+    ...(['change', 'uncertain', 'inactive'] as const).map((value) => ({
+      value,
+      label: verdicts[value].label,
+      count: attention.filter((item) => results[item.id].verdict === value).length,
+    })),
+  ] as const;
+  const shown = attention.filter(
+    (item) => statusFilter === 'all' || results[item.id].verdict === statusFilter,
+  );
   const changes = scoped.filter((item) => {
     const choice = decisions[item.id];
     return (
@@ -165,6 +179,7 @@ export function MappingReviewDialog({
     const controller = new AbortController();
     abortRef.current = controller;
     setWorking(true);
+    setStatusFilter('all');
     setError(null);
     setWarning(null);
     try {
@@ -319,6 +334,7 @@ export function MappingReviewDialog({
                       disabled={working || applying || stale}
                       onChange={(selected) => {
                         setSelectedSites(selected);
+                        setStatusFilter('all');
                         setLimit(20);
                       }}
                     />
@@ -384,16 +400,35 @@ export function MappingReviewDialog({
             <>
               {!!attention.length && (
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-3 dark:border-gray-700">
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                    {attention.length} {attention.length === 1 ? 'mapping' : 'mappings'} to review
-                  </p>
+                  <div
+                    role="group"
+                    aria-label="Review status"
+                    className="flex flex-wrap gap-x-4 gap-y-2 text-sm"
+                  >
+                    {statusOptions
+                      .filter((option) => option.count > 0)
+                      .map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          aria-pressed={statusFilter === option.value}
+                          onClick={() => {
+                            setStatusFilter(option.value);
+                            setLimit(20);
+                          }}
+                          className={`rounded-sm py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${statusFilter === option.value ? 'font-medium text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+                        >
+                          {option.label} ({option.count})
+                        </button>
+                      ))}
+                  </div>
                   <button
                     type="button"
                     disabled={
                       working ||
                       applying ||
                       stale ||
-                      !attention.some((item) =>
+                      !shown.some((item) =>
                         ['change', 'inactive'].includes(results[item.id].verdict),
                       )
                     }
@@ -402,7 +437,7 @@ export function MappingReviewDialog({
                       setDecisions((current) => ({
                         ...current,
                         ...Object.fromEntries(
-                          attention.flatMap<[string, MappingReviewDecision]>((item) => {
+                          shown.flatMap<[string, MappingReviewDecision]>((item) => {
                             const result = results[item.id];
                             return result.verdict === 'change'
                               ? [[item.id, { action: 'change', path: result.path! }]]
@@ -423,7 +458,7 @@ export function MappingReviewDialog({
                   No changes suggested for the reviewed mappings.
                 </p>
               )}
-              {attention.slice(0, limit).map((item, index) => {
+              {shown.slice(0, limit).map((item, index) => {
                 const assessment = results[item.id];
                 const verdict = verdicts[assessment.verdict];
                 const choice = decisions[item.id] ?? { action: 'keep' as const };
@@ -433,7 +468,7 @@ export function MappingReviewDialog({
                     aria-label={`Review ${item.title}`}
                     className="border-b border-gray-200 py-4 last:border-0 dark:border-gray-700"
                   >
-                    {(index === 0 || attention[index - 1].domain !== item.domain) && (
+                    {(index === 0 || shown[index - 1].domain !== item.domain) && (
                       <h4 className="mb-3 break-all text-xs font-medium text-gray-500 dark:text-gray-400">
                         {item.domain}
                       </h4>
@@ -504,13 +539,13 @@ export function MappingReviewDialog({
                   </section>
                 );
               })}
-              {attention.length > limit && (
+              {shown.length > limit && (
                 <button
                   type="button"
                   className={`${secondary} mt-3`}
                   onClick={() => setLimit((current) => current + 20)}
                 >
-                  Show {Math.min(20, attention.length - limit)} more
+                  Show {Math.min(20, shown.length - limit)} more
                 </button>
               )}
             </>
