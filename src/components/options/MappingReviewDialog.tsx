@@ -459,10 +459,11 @@ export function MappingReviewDialog({
                                       {mappingDestination(item.path, labels)}
                                       {item.status === 'Inactive' ? ' (Inactive)' : ''}
                                     </dd>
+                                    <dt className="text-gray-500 dark:text-gray-400">Status</dt>
+                                    <dd className={`min-w-0 break-words ${verdict.color}`}>
+                                      {verdict.label}
+                                    </dd>
                                   </dl>
-                                  <p className={`mt-1 text-xs leading-5 ${verdict.color}`}>
-                                    {verdict.label}
-                                  </p>
                                 </div>
                                 <div className="flex min-w-0 flex-col gap-2">
                                   <select
