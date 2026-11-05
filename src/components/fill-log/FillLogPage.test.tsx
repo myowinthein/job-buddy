@@ -228,13 +228,13 @@ describe('Fill Details page', () => {
     fireEvent.mouseEnter(help.parentElement!);
     const tooltip = screen.getByRole('tooltip');
     for (const explanation of [
-      'Colors show each field’s final result.',
-      'Filled, high confidence.',
-      'Filled, needs review.',
-      'Not filled, needs input.',
-      'Not filled, no saved data.',
-      'Existing answers stay when filling empty fields only.',
-      'Consent questions and other excluded fields are left for you.',
+      'Each fill attempt can have one of these results:',
+      'Filled, high confidence or confirmed by you.',
+      'Filled, but needs your review.',
+      'Not filled, no safe match or the form rejected it.',
+      'Not filled, profile match found but no saved data.',
+      'Fields such as consent questions are always skipped.',
+      'Existing answers are kept in “Empty fields only” mode.',
     ])
       expect(within(tooltip).getByText(explanation)).toBeTruthy();
     expect(help.getAttribute('aria-describedby')).toBe(tooltip.id);

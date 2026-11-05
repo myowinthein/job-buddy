@@ -59,23 +59,24 @@ export function FillDetailsHelp() {
             className="max-h-[70dvh] space-y-3 overflow-y-auto rounded-lg border border-gray-200 bg-white p-3 text-xs leading-relaxed text-gray-600 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
           >
             <p className="text-pretty">
-              Autofill tries learned mappings → rules → AI and stops after a high-confidence fill.
+              For each field, autofill tries learned mappings → rules → AI, stopping when a reliable
+              answer is found.
             </p>
-            <p>Colors show each field’s final result.</p>
+            <p>Each fill attempt can have one of these results:</p>
             <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-2 [&_dd]:text-balance">
               <dt className="font-medium text-green-700 dark:text-green-400">Green</dt>
-              <dd>Filled, high confidence.</dd>
+              <dd>Filled, high confidence or confirmed by you.</dd>
               <dt className="font-medium text-amber-700 dark:text-amber-400">Yellow</dt>
-              <dd>Filled, needs review.</dd>
+              <dd>Filled, but needs your review.</dd>
               <dt className="font-medium text-red-700 dark:text-red-400">Red</dt>
-              <dd>Not filled, needs input.</dd>
+              <dd>Not filled, no safe match or the form rejected it.</dd>
               <dt className="font-medium text-gray-500 dark:text-gray-400">Gray</dt>
-              <dd>Not filled, no saved data.</dd>
-              <dt className="font-medium text-gray-900 dark:text-gray-100">Kept current</dt>
-              <dd>Existing answers stay when filling empty fields only.</dd>
-              <dt className="font-medium text-gray-900 dark:text-gray-100">Skipped</dt>
-              <dd>Consent questions and other excluded fields are left for you.</dd>
+              <dd>Not filled, profile match found but no saved data.</dd>
             </dl>
+            <div className="space-y-1 text-pretty">
+              <p>Fields such as consent questions are always skipped.</p>
+              <p>Existing answers are kept in “Empty fields only” mode.</p>
+            </div>
           </div>
         </div>
       )}

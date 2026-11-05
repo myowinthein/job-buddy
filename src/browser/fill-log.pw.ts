@@ -57,10 +57,10 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   const outcomeHelp = logPage.getByRole('button', { name: 'How Fill Details works' });
   await outcomeHelp.hover();
   await expect(logPage.getByRole('tooltip')).toContainText(
-    'Autofill tries learned mappings → rules → AI and stops after a high-confidence fill.',
+    'For each field, autofill tries learned mappings → rules → AI, stopping when a reliable answer is found.',
   );
   await expect(logPage.getByRole('tooltip')).toContainText(
-    'Consent questions and other excluded fields are left for you.',
+    'Fields such as consent questions are always skipped.',
   );
   await logPage.screenshot({ path: testInfo.outputPath('fill-log-filter-help-dark.png') });
   await logPage.keyboard.press('Escape');
