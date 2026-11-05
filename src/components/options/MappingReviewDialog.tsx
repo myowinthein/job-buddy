@@ -96,6 +96,16 @@ export function MappingReviewDialog({
   const activeStatus =
     statusOptions.find((option) => option.value === statusFilter)?.value ?? statusOptions[0]?.value;
   const shown = attention.filter((item) => results[item.id].verdict === activeStatus);
+  const findingSites = new Map<string, { count: number; items: typeof shown }>();
+  for (const [index, item] of shown.entries()) {
+    let group = findingSites.get(item.domain);
+    if (!group) {
+      group = { count: 0, items: [] };
+      findingSites.set(item.domain, group);
+    }
+    group.count++;
+    if (index < limit) group.items.push(item);
+  }
   const changes = scoped.filter((item) => {
     const choice = decisions[item.id];
     return (
@@ -452,83 +462,100 @@ export function MappingReviewDialog({
                   No changes suggested for the reviewed mappings.
                 </p>
               )}
-              {shown.slice(0, limit).map((item, index) => {
-                const assessment = results[item.id];
-                const choice = decisions[item.id] ?? { action: 'keep' as const };
-                return (
-                  <section
-                    key={item.id}
-                    aria-label={`Review ${item.title}`}
-                    className="border-b border-gray-200 py-4 last:border-0 dark:border-gray-700"
-                  >
-                    {(index === 0 || shown[index - 1].domain !== item.domain) && (
-                      <h4 className="mb-3 break-all text-xs font-medium text-gray-500 dark:text-gray-400">
-                        {item.domain}
+              <div>
+                {[...findingSites]
+                  .filter(([, group]) => group.items.length > 0)
+                  .map(([domain, group]) => (
+                    <div
+                      key={domain}
+                      role="group"
+                      aria-label={`Findings for ${domain}`}
+                      className="border-t border-gray-200 py-4 first:border-t-0 dark:border-gray-700"
+                    >
+                      <h4 className="mb-3 flex items-baseline gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                        <span className="min-w-0 break-all">{domain}</span>
+                        <span className="shrink-0 font-normal text-gray-500 dark:text-gray-400">
+                          ({group.count})
+                        </span>
                       </h4>
-                    )}
-                    <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_15rem] md:gap-5">
-                      <div className="min-w-0">
-                        <h5 className="break-words text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {item.question || item.title}
-                        </h5>
-                        <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
-                          <dt className="text-gray-500 dark:text-gray-400">Current</dt>
-                          <dd className="min-w-0 break-words text-gray-600 dark:text-gray-300">
-                            {mappingDestination(item.path, labels)}
-                            {item.status === 'Inactive' ? ' (Inactive)' : ''}
-                          </dd>
-                          {assessment.verdict === 'change' && (
-                            <>
-                              <dt className="text-gray-500 dark:text-gray-400">Suggested</dt>
-                              <dd className="min-w-0 break-words text-gray-900 dark:text-gray-100">
-                                {mappingDestination(assessment.path!, labels)}
-                              </dd>
-                            </>
-                          )}
-                        </dl>
-                        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                          {assessment.reason}
-                        </p>
-                      </div>
-                      <div className="flex min-w-0 flex-col gap-2">
-                        <select
-                          aria-label={`Action for ${item.title}`}
-                          className={fieldCls()}
-                          value={choice.action}
-                          disabled={working || applying || stale}
-                          onChange={(event) =>
-                            setDecisions((current) => ({
-                              ...current,
-                              [item.id]:
-                                event.target.value === 'change'
-                                  ? { action: 'change', path: assessment.path ?? item.path }
-                                  : { action: event.target.value as 'keep' | 'inactive' },
-                            }))
-                          }
-                        >
-                          <option value="keep">Keep current</option>
-                          <option value="change">Change field</option>
-                          <option value="inactive">Make inactive</option>
-                        </select>
-                        {choice.action === 'change' && (
-                          <SearchableProfileFieldSelect
-                            profile={profile}
-                            includeEmpty
-                            value={choice.path}
-                            disabled={working || applying || stale}
-                            onChange={(path) =>
-                              setDecisions((current) => ({
-                                ...current,
-                                [item.id]: { action: 'change', path },
-                              }))
-                            }
-                          />
-                        )}
+                      <div className="space-y-4">
+                        {group.items.map((item) => {
+                          const assessment = results[item.id];
+                          const choice = decisions[item.id] ?? { action: 'keep' as const };
+                          return (
+                            <section key={item.id} aria-label={`Review ${item.title}`}>
+                              <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_15rem] md:gap-5">
+                                <div className="min-w-0">
+                                  <h5 className="break-words text-sm font-medium text-gray-900 dark:text-gray-100">
+                                    {item.question || item.title}
+                                  </h5>
+                                  <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
+                                    <dt className="text-gray-500 dark:text-gray-400">Current</dt>
+                                    <dd className="min-w-0 break-words text-gray-600 dark:text-gray-300">
+                                      {mappingDestination(item.path, labels)}
+                                      {item.status === 'Inactive' ? ' (Inactive)' : ''}
+                                    </dd>
+                                    {assessment.verdict === 'change' && (
+                                      <>
+                                        <dt className="text-gray-500 dark:text-gray-400">
+                                          Suggested
+                                        </dt>
+                                        <dd className="min-w-0 break-words text-gray-900 dark:text-gray-100">
+                                          {mappingDestination(assessment.path!, labels)}
+                                        </dd>
+                                      </>
+                                    )}
+                                  </dl>
+                                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                    {assessment.reason}
+                                  </p>
+                                </div>
+                                <div className="flex min-w-0 flex-col gap-2">
+                                  <select
+                                    aria-label={`Action for ${item.title}`}
+                                    className={fieldCls()}
+                                    value={choice.action}
+                                    disabled={working || applying || stale}
+                                    onChange={(event) =>
+                                      setDecisions((current) => ({
+                                        ...current,
+                                        [item.id]:
+                                          event.target.value === 'change'
+                                            ? {
+                                                action: 'change',
+                                                path: assessment.path ?? item.path,
+                                              }
+                                            : { action: event.target.value as 'keep' | 'inactive' },
+                                      }))
+                                    }
+                                  >
+                                    <option value="keep">Keep current</option>
+                                    <option value="change">Change field</option>
+                                    <option value="inactive">Make inactive</option>
+                                  </select>
+                                  {choice.action === 'change' && (
+                                    <SearchableProfileFieldSelect
+                                      profile={profile}
+                                      includeEmpty
+                                      value={choice.path}
+                                      disabled={working || applying || stale}
+                                      onChange={(path) =>
+                                        setDecisions((current) => ({
+                                          ...current,
+                                          [item.id]: { action: 'change', path },
+                                        }))
+                                      }
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                            </section>
+                          );
+                        })}
                       </div>
                     </div>
-                  </section>
-                );
-              })}
+                  ))}
+              </div>
               {shown.length > limit && (
                 <button
                   type="button"

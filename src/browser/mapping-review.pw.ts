@@ -123,6 +123,20 @@ test('selects all sites by default and supports searchable multi-selection', asy
   await expect(dialog).toContainText('Reviewed 6 of 6 mappings.');
   expect(questions[0]).toHaveLength(5);
   expect(questions[0]).toContain('City');
+  const firstSite = dialog.getByRole('group', { name: 'Findings for jobs.example.test' });
+  const secondSite = dialog.getByRole('group', { name: 'Findings for other.example.test' });
+  await expect(
+    firstSite.getByRole('heading', { name: 'jobs.example.test (5)', exact: true }),
+  ).toBeVisible();
+  await expect(firstSite.getByRole('region')).toHaveCount(5);
+  await expect(
+    secondSite.getByRole('heading', { name: 'other.example.test (1)', exact: true }),
+  ).toBeVisible();
+  await expect(secondSite.getByRole('region')).toHaveCount(1);
+  await options.setViewportSize({ width: 1200, height: 1000 });
+  await options.screenshot({ path: info.outputPath('mapping-sites-dark.png') });
+  await options.setViewportSize({ width: 620, height: 800 });
+  await options.screenshot({ path: info.outputPath('mapping-sites-narrow.png') });
   await dialog.getByLabel('Action for Location preference').selectOption('inactive');
   await expect(dialog.getByRole('button', { name: 'Apply Changes (1)' })).toBeEnabled();
   await selector.click();
