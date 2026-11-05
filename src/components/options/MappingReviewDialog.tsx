@@ -34,8 +34,8 @@ const primary =
   'rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-40';
 const verdicts = {
   correct: { label: 'Looks correct', color: 'text-green-700 dark:text-green-400' },
-  change: { label: 'Better match', color: 'text-amber-700 dark:text-amber-400' },
-  uncertain: { label: 'Unclear match', color: 'text-gray-500 dark:text-gray-400' },
+  change: { label: 'Better match found', color: 'text-amber-700 dark:text-amber-400' },
+  uncertain: { label: 'Unclear match', color: 'text-amber-700 dark:text-amber-400' },
   inactive: { label: 'No matching field', color: 'text-amber-700 dark:text-amber-400' },
 };
 

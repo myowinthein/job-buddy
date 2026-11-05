@@ -262,7 +262,7 @@ test('preselects fresh and cached suggestions while preserving explicit choices'
   await expect(dialog.getByRole('button', { name: 'Use clear suggestions' })).toHaveCount(0);
   await expect(
     dialog.getByRole('region', { name: 'Review Expected salary', exact: true }),
-  ).toContainText('Better match');
+  ).toContainText('Better match found');
   await expect(
     dialog.getByRole('region', { name: 'Review Location preference', exact: true }),
   ).toContainText('Unclear match');
