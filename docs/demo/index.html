@@ -3,68 +3,67 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Apply for the Frontend Engineer role at Fieldwork." />
+    <meta
+      name="description"
+      content="A fictional Frontend Engineer application at Morrow Studio. Demo only; no application is sent."
+    />
     <meta
       http-equiv="Content-Security-Policy"
       content="form-action 'none'; base-uri 'none'; object-src 'none'"
     />
-    <title>Frontend Engineer · Fieldwork</title>
+    <title>Frontend Engineer · Morrow Studio</title>
+    <script src="../assets/theme-init.js"></script>
     <link rel="stylesheet" href="style.css" />
     <script src="demo.js" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#application">Skip to application</a>
-    <header class="site-header">
-      <div class="site-header-inner">
-        <span class="company"
-          ><span class="company-mark" aria-hidden="true">f.</span>Fieldwork</span
-        >
+    <header class="masthead">
+      <div class="masthead-inner">
+        <span class="wordmark">morrow<span>studio</span></span
+        ><span class="careers">Careers</span
+        ><button id="theme" type="button" aria-label="Switch theme">Theme</button>
       </div>
     </header>
-
-    <main class="layout">
-      <aside class="role-details" aria-labelledby="role-title">
-        <p class="role-team">Engineering</p>
+    <main class="application-layout">
+      <aside class="job-description" aria-labelledby="role-title">
+        <p class="team">Product & Engineering</p>
         <h1 id="role-title">Frontend Engineer</h1>
-        <ul class="role-meta" aria-label="Role details">
-          <li>Remote · United States</li>
-          <li>Full-time</li>
-        </ul>
-        <p class="role-description">
-          Help a small team build useful, accessible tools for everyday work. Bring your experience
-          with modern web applications and an eye for the details.
+        <p class="job-meta">Remote, United States<br />Full-time · $115,000–$145,000 USD</p>
+        <p>
+          Build thoughtful software for people who work together. We’re a small product studio
+          making everyday planning simpler for distributed teams.
         </p>
-        <div class="job-description">
-          <h2>What you’ll do</h2>
-          <ul>
-            <li>Build accessible interfaces with React and TypeScript.</li>
-            <li>Turn product designs into reliable, well-tested features.</li>
-            <li>Work with designers and engineers to improve usability and performance.</li>
-          </ul>
-          <h2>What you’ll bring</h2>
-          <ul>
-            <li>Experience building modern web applications.</li>
-            <li>Strong JavaScript, TypeScript, and CSS fundamentals.</li>
-            <li>An interest in accessibility and clear, maintainable code.</li>
-          </ul>
-        </div>
+        <h2>What you’ll do</h2>
+        <ul>
+          <li>Build clear, accessible interfaces in React and TypeScript.</li>
+          <li>Work closely with product design, from the first sketch to the shipped feature.</li>
+          <li>Improve performance and help the team write code that lasts.</li>
+        </ul>
+        <h2>What you’ll bring</h2>
+        <ul>
+          <li>Experience shipping web applications and caring for them afterward.</li>
+          <li>A good understanding of semantic HTML, CSS and browser behavior.</li>
+          <li>Clear communication and a willingness to ask useful questions.</li>
+        </ul>
+        <h2>How we work</h2>
+        <p>
+          Small teams, shared decisions and time to focus. We value thoughtful work and welcome
+          different paths into engineering.
+        </p>
       </aside>
-
       <article class="application-panel" aria-labelledby="application-title">
-        <header class="application-header">
-          <h2 id="application-title">Your application</h2>
-          <p>
-            Required fields are marked
-            <span aria-hidden="true">*</span><span class="sr-only">with an asterisk</span>.
-          </p>
+        <header class="form-heading">
+          <p>Apply for this role</p>
+          <h2 id="application-title">Tell us about yourself</h2>
+          <p>Required fields are marked with an asterisk (*).</p>
         </header>
-
-        <form id="application" aria-label="Job application" autocomplete="off">
-          <section class="form-section" aria-labelledby="contact-heading">
-            <h3 id="contact-heading">Contact information</h3>
-            <div class="field-grid">
-              <div class="field">
-                <label for="first-name">First name <span aria-hidden="true">*</span></label
+        <form id="application">
+          <section aria-labelledby="contact-title">
+            <h3 id="contact-title">Contact details</h3>
+            <div class="fields">
+              <div>
+                <label for="first-name">First name <span>*</span></label
                 ><input
                   id="first-name"
                   name="firstName"
@@ -73,12 +72,12 @@
                   maxlength="100"
                 />
               </div>
-              <div class="field">
+              <div>
                 <label for="last-name">Last name</label
                 ><input id="last-name" name="lastName" autocomplete="family-name" maxlength="100" />
               </div>
-              <div class="field">
-                <label for="email">Email address <span aria-hidden="true">*</span></label
+              <div>
+                <label for="email">Email address <span>*</span></label
                 ><input
                   id="email"
                   name="email"
@@ -88,8 +87,8 @@
                   maxlength="254"
                 />
               </div>
-              <div class="field">
-                <label for="phone">Phone number <span aria-hidden="true">*</span></label
+              <div>
+                <label for="phone">Phone number <span>*</span></label
                 ><input
                   id="phone"
                   name="phone"
@@ -99,142 +98,125 @@
                   maxlength="40"
                 />
               </div>
-            </div>
-          </section>
-
-          <section class="form-section" aria-labelledby="location-heading">
-            <h3 id="location-heading">Location</h3>
-            <div class="field-grid">
-              <div class="field full">
-                <label for="street">Street address</label
-                ><input
-                  id="street"
-                  name="streetAddress"
-                  autocomplete="street-address"
-                  maxlength="200"
-                />
-              </div>
-              <div class="field">
+              <div>
                 <label for="city">City</label
-                ><input id="city" name="city" autocomplete="address-level2" maxlength="100" />
+                ><input id="city" name="city" autocomplete="address-level2" maxlength="120" />
               </div>
-              <div class="field">
-                <label for="state">State or province</label
-                ><input id="state" name="state" autocomplete="address-level1" maxlength="100" />
-              </div>
-              <div class="field">
-                <label for="postal-code">Postal code</label
-                ><input
-                  id="postal-code"
-                  name="postalCode"
-                  autocomplete="postal-code"
-                  maxlength="20"
-                />
-              </div>
-              <div class="field">
+              <div>
                 <label for="country">Country</label
                 ><select id="country" name="country" autocomplete="country">
-                  <option value="">Select a country</option>
+                  <option value="">Choose your country</option>
                   <option value="US">United States</option>
-                  <option value="GB">United Kingdom</option>
                   <option value="CA">Canada</option>
-                  <option value="DE">Germany</option>
-                  <option value="SG">Singapore</option>
+                  <option value="GB">United Kingdom</option>
+                  <option value="MM">Myanmar</option>
                   <option value="TH">Thailand</option>
-                  <option value="MY">Malaysia</option>
+                  <option value="DE">Germany</option>
                   <option value="AU">Australia</option>
-                  <option value="other">Other</option>
                 </select>
               </div>
             </div>
           </section>
-
-          <section class="form-section" aria-labelledby="links-heading">
-            <h3 id="links-heading">Professional links</h3>
-            <div class="field-grid">
-              <div class="field full">
-                <label for="linkedin">LinkedIn</label
-                ><input id="linkedin" name="linkedin" type="url" maxlength="500" />
+          <section aria-labelledby="experience-title">
+            <h3 id="experience-title">Your experience</h3>
+            <div class="fields">
+              <div class="full">
+                <label for="linkedin">LinkedIn profile</label
+                ><input id="linkedin" name="linkedin" type="url" maxlength="2000" />
               </div>
-              <div class="field">
+              <div>
                 <label for="portfolio">Portfolio or website</label
-                ><input id="portfolio" name="portfolio" type="url" maxlength="500" />
+                ><input id="portfolio" name="portfolio" type="url" maxlength="2000" />
               </div>
-              <div class="field">
-                <label for="github">GitHub</label
-                ><input id="github" name="github" type="url" maxlength="500" />
+              <div>
+                <label for="github">GitHub profile</label
+                ><input id="github" name="github" type="url" maxlength="2000" />
+              </div>
+              <div>
+                <label for="company">Current company</label
+                ><input
+                  id="company"
+                  name="currentCompany"
+                  autocomplete="organization"
+                  maxlength="200"
+                />
+              </div>
+              <div>
+                <label for="job-title">Current job title</label
+                ><input
+                  id="job-title"
+                  name="currentJobTitle"
+                  autocomplete="organization-title"
+                  maxlength="200"
+                />
+              </div>
+              <div class="full">
+                <label for="resume">Resume <span>*</span></label
+                ><input id="resume" name="resume" type="file" accept=".pdf,.doc,.docx" required />
+                <p class="help">PDF or Word document.</p>
               </div>
             </div>
           </section>
-
-          <section class="form-section" aria-labelledby="application-heading">
-            <h3 id="application-heading">Application details</h3>
-            <div class="field-grid">
-              <div class="field full">
-                <label for="resume">Resume <span aria-hidden="true">*</span></label
-                ><input
-                  id="resume"
-                  name="resume"
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  required
-                  aria-describedby="resume-help"
-                />
-                <p id="resume-help" class="field-help">
-                  PDF or Word document. The file stays on this page.
-                </p>
-              </div>
-              <div class="field full">
-                <label for="authorized">Are you authorized to work in the United States?</label
-                ><select id="authorized" name="workAuthorization">
-                  <option value="">Select an answer</option>
+          <section aria-labelledby="questions-title">
+            <h3 id="questions-title">A few final questions</h3>
+            <div class="fields">
+              <div>
+                <label for="authorized"
+                  >Are you authorized to work in the United States? <span>*</span></label
+                ><select id="authorized" name="workAuthorization" required>
+                  <option value="">Choose an answer</option>
                   <option value="yes">Yes</option>
                   <option value="no">No</option>
                 </select>
               </div>
-              <fieldset class="field full">
-                <legend>Will you require visa sponsorship?</legend>
-                <div class="choices">
-                  <label><input type="radio" name="sponsorship" value="yes" /> Yes</label
-                  ><label><input type="radio" name="sponsorship" value="no" /> No</label>
+              <fieldset>
+                <legend>Will you need visa sponsorship? <span>*</span></legend>
+                <div class="radio-options">
+                  <label><input type="radio" name="sponsorship" value="yes" required />Yes</label
+                  ><label><input type="radio" name="sponsorship" value="no" />No</label>
                 </div>
               </fieldset>
-              <div class="field full">
-                <label for="interest">What interests you about this role?</label
-                ><textarea id="interest" name="motivation" rows="4" maxlength="2000"></textarea>
+              <div>
+                <label for="salary">Expected annual salary (USD)</label
+                ><input id="salary" name="expectedSalary" type="number" min="0" step="1" />
+              </div>
+              <div>
+                <label for="available">Available start date</label
+                ><input id="available" name="availableDate" type="date" />
+              </div>
+              <div class="full">
+                <label for="interest">What interests you about this position?</label
+                ><textarea id="interest" name="motivation" rows="4" maxlength="3000"></textarea>
               </div>
             </div>
           </section>
-
-          <div class="form-footer">
+          <footer class="form-actions">
             <label class="consent"
               ><input type="checkbox" name="consent" required /><span
-                >I confirm that the information provided is accurate.
-                <span aria-hidden="true">*</span></span
+                >I confirm that the information provided is accurate. *</span
               ></label
             >
-            <div id="completion" class="completion" role="status" tabindex="-1" hidden>
+            <div class="completion" id="completion" role="status" tabindex="-1" hidden>
               <h3>Application complete</h3>
-              <p>No application was sent. Reset the form to try again.</p>
+              <p>This is a demo. No application was sent.</p>
             </div>
-            <div class="form-actions">
-              <button type="reset" class="text-button">Reset form</button
-              ><button type="submit" class="primary-button" id="finish-demo" disabled>
+            <div class="actions">
+              <button type="reset" class="reset">Reset form</button
+              ><button type="submit" id="submit" disabled>
                 Submit application <span aria-hidden="true">→</span>
               </button>
             </div>
-          </div>
+          </footer>
         </form>
         <noscript
-          ><p class="noscript-note">
+          ><p>
             Enable JavaScript to finish this local demo. Applications cannot be sent from this page.
           </p></noscript
         >
       </article>
     </main>
-
     <footer class="page-footer">
-      <span>Fieldwork and this role are fictional. This demo does not send applications.</span>
+      <p>Morrow Studio and this role are fictional. This demo does not send applications.</p>
     </footer>
   </body>
 </html>

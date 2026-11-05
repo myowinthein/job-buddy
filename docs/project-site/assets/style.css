@@ -1,6 +1,6 @@
 /* ── Tokens ─────────────────────────────────────────────────────────────── */
-/* --brand/--navy mirror docs/index.html's Tailwind brand/navy colors.
-   No shared build step; keep both copies in sync by hand. */
+/* Legacy styling retained for the legal documents. The main website and
+   developer guide now share docs/assets/site.css. */
 :root {
   --brand:      #4B79F7;
   --brand-dim:  #EEF3FF;

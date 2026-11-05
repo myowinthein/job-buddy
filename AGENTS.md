@@ -23,7 +23,7 @@ Use Node 22 (`.nvmrc`) and pnpm 11.7.0 (`package.json`).
 - `pnpm build:firefox`: Firefox build; production release workflow targets Chrome.
 - `pnpm format`: Prettier writes; scope formatting to the task.
 - `pnpm serve:landing`: serve `docs/`.
-- Integration setup is documented in `.github/SETUP.md`; env template is `.env.example`.
+- User guidance is in `docs/index.html`; developer and integration setup is in `docs/developers/index.html`. `.github/SETUP.md` and the Markdown guides link there; the env template is `.env.example`.
 
 CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a separate workflow with compile, lint, tests, zip, Chrome Web Store upload, and GitHub release creation.
 
@@ -47,7 +47,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 - `src/utils/driveSync.ts` owns Drive OAuth, appdata backup, and retry state. Web Locks serialize uploads/review/disconnect across extension contexts; backup fingerprints and conditional writes protect remote changes. Both restore paths are in `SettingsSection.tsx`.
 - `src/devtools/registerContentScript.ts` bootstraps WXT’s dynamic page-script registration without its websocket, using WXT’s existing script ID so hot reload updates the same registration. The dev server binds and connects through `127.0.0.1`; production uses the static manifest entry. WXT’s reload command is disabled; the config transform removes its otherwise unconditional dev listener so Chrome can start the worker with no commands declared.
 - `src/devtools/` is development-only. Its compact options-page bar opens isolated profile presets with API key and Google Drive On/Off controls while preserving the current section and unsaved-edits guard; integration toggles retain edits and use simulated credentials, and the Original profile option returns to saved storage. The bar stays mounted while an embedded options document loads, and swaps views only after profile loading finishes. Each document owns its Chrome APIs and provider mocks; never swap storage beneath a running App. Seeds copy only profile, mappings, and appearance; refresh resets temporary edits. Preview boot replaces Chrome APIs and provider fetches before App modules load, uses in-memory storage and Drive backups, and namespaces Web Locks. Preview integration adapters delegate to real flow code only inside these simulations.
-- `docs/index.html` is a static Tailwind-CDN landing page; `docs/project-site/` is a static overview. `docs/demo/` is an original, standalone application form for a fictional Fieldwork role; it never submits an application and contains no extension links or testing tools. `src/browser/demo.pw.ts` uses the internal synthetic fixture `src/browser/fixtures/demo-profile.json` to verify real extension fills and capture the shared README/site screenshot.
+- `docs/index.html` is the buildless user walkthrough; `docs/developers/index.html` contains setup, architecture, commands and release configuration. Both share local `docs/assets/site.css`, `site.js` and `theme-init.js`, without third-party fonts, analytics or a CDN runtime. `docs/project-site/` redirects legacy links; its old stylesheet remains a dependency of the unchanged legal documents. `docs/demo/` is an original, standalone Morrow Studio application form with local completion and no extension links or testing tools. `src/browser/demo.pw.ts` verifies real fills using the internal synthetic fixture `src/browser/fixtures/demo-profile.json`; `site-captures.pw.ts` captures real UI with isolated data and mocked providers for reviewed website images.
 
 ## Domain Rules
 
@@ -85,7 +85,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 - Loading feedback follows the visible action area: when a progress indicator is visible, keep the action label stable and disable it while the indicator reports progress. Without a visible indicator, put progress in the disabled action button. A section indicator behind a dialog does not count. Preserve retry/reconnect labels throughout pending actions, and do not delay fast operations to display loading.
 - Vitest defaults to Node; DOM tests opt in with per-file `// @vitest-environment jsdom`. React Testing Library is installed. Keep tests under `src/`, never under WXT's `entrypoints/`.
 - Autofill-matching changes require a build and live verification in a Playwright-driven Chromium against a throwaway form, in addition to relevant unit tests; verify real filled values and form validation/events.
-- Preserve Tailwind v4's `@tailwindcss/postcss` setup in the extension; the static landing page has its own CDN setup.
+- Preserve Tailwind v4's `@tailwindcss/postcss` setup in the extension; the static website uses local CSS without a CDN runtime.
 
 ## Hard Safety Rules
 
@@ -109,9 +109,9 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 - Dev builds use amber icons (`wxt.config.ts` and `branding.ts`); production uses blue. Theme initializes before React and follows system/light/dark through the root `.dark` class.
 - Drive uses implicit-token OAuth with `drive.appdata`. Development setup requires Web Application OAuth clients with separate dev/prod redirect IDs; see `.github/SETUP.md`.
 - Document uploads, Resume Import, and JSON/Drive import validation share the 4 MB file limit in `src/utils/documentLimits.ts`. Existing stored files are preserved; the per-file cap does not guarantee the whole profile fits local storage.
-- Parts of `docs/project-site/` still mention a removed picker. Background backup reacts to both profile and learned-mapping saves; deletes during reset do not queue uploads.
+- Background backup reacts to both profile and learned-mapping saves; deletes during reset do not queue uploads.
 - Restart the WXT dev server after adding an HTML entrypoint; HMR may update existing pages without emitting the new HTML. Already-open forms can retain older content scripts. On status restore, empty sandbox runs cannot supersede a nonempty form run; explicit Fill results use the requested run ID. Legacy results without detailed logs require a form refresh, never a misleading zero-field report.
-- Static site brand colors are duplicated across landing and overview; update both copies together.
+- The walkthrough and developer guide share `docs/assets/site.css`; legal documents still use the legacy `docs/project-site/assets/style.css`. Website logo assets mirror `public/icon.svg`. Preserve project-site redirect destinations when changing page anchors.
 
 ## Rules
 

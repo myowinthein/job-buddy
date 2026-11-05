@@ -1,811 +1,1111 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <title>Job Buddy – Fill any job form. Once, not every time.</title>
-  <meta name="description" content="Set up your profile once. Job Buddy reads any job application form, matches every field to your profile, and fills what it can, with color-coded confidence on every answer. Free Chrome extension." />
-
-  <!-- Open Graph -->
-  <meta property="og:type"        content="website" />
-  <meta property="og:title"       content="Job Buddy – Fill any job form. Once, not every time." />
-  <meta property="og:description" content="Set up your profile once. Job Buddy auto-fills job application forms with color-coded confidence. Free, local-first Chrome extension." />
-  <meta property="og:image"       content="./assets/images/banner.webp" />
-  <meta property="og:image:width"  content="1280" />
-  <meta property="og:image:height" content="640" />
-
-  <!-- Twitter / X -->
-  <meta name="twitter:card"        content="summary_large_image" />
-  <meta name="twitter:title"       content="Job Buddy – Fill any job form. Once, not every time." />
-  <meta name="twitter:description" content="Auto-fill job application forms from a profile you set up once. Free Chrome extension." />
-  <meta name="twitter:image"       content="./assets/images/banner.webp" />
-
-  <!-- Favicon (extension icon) -->
-  <link rel="icon" type="image/svg+xml" href="./assets/icons/icon.svg" />
-
-  <!-- Inter via Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-
-  <!-- Anti-FOUC: apply saved theme before first paint -->
-  <script>
-    (function () {
-      var saved = localStorage.getItem('theme');
-      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (saved === 'dark' || (!saved && prefersDark)) {
-        document.documentElement.classList.add('dark');
-      }
-    })();
-  </script>
-
-  <!-- Tailwind CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          // Canonical brand colors. Also hardcoded independently in
-          // docs/project-site/assets/style.css (no shared build step
-          // across these static sites). Keep both copies in sync by hand.
-          colors: {
-            brand:  { DEFAULT: '#4B79F7', dark: '#3461E8', light: '#EEF3FF', muted: '#7B9EFA' },
-            navy:   { DEFAULT: '#0D1B3E', light: '#1A2D5A', muted: '#2A3F6A' },
-            surface:'#F4F7FF',
-          },
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-          },
-          boxShadow: {
-            card:   '0 2px 12px 0 rgba(13,27,62,0.08), 0 1px 3px 0 rgba(13,27,62,0.06)',
-            screen: '0 24px 80px -12px rgba(13,27,62,0.40)',
-            blue:   '0 8px 32px -4px rgba(75,121,247,0.35)',
-          },
-        }
-      }
-    }
-  </script>
-
-  <style>
-    * { box-sizing: border-box; }
-
-    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
-
-    /* Smooth scroll */
-    html { scroll-behavior: smooth; }
-
-    /* Nav blur */
-    .nav-blur {
-      background: rgba(255,255,255,0.97);
-      border-bottom: 1px solid rgba(75,121,247,0.10);
-      transform: translateZ(0); /* own compositing layer — no repaint on scroll */
-    }
-    .dark .nav-blur {
-      background: rgba(12,24,41,0.96);
-      border-bottom-color: rgba(75,121,247,0.14);
-    }
-
-    /* Hero gradient */
-    .hero-bg {
-      background: radial-gradient(ellipse 80% 60% at 50% 0%, #1A2D5A 0%, #0D1B3E 60%);
-    }
-
-    /* Subtle dot grid texture on hero */
-    .hero-bg::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background-image: radial-gradient(rgba(75,121,247,0.15) 1px, transparent 1px);
-      background-size: 28px 28px;
-      pointer-events: none;
-    }
-
-    /* Browser chrome frame */
-    .browser-frame {
-      background: #1e293b;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 32px 96px -16px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06);
-    }
-    .browser-bar {
-      background: #27374d;
-      height: 38px;
-      display: flex;
-      align-items: center;
-      padding: 0 14px;
-      gap: 8px;
-      flex-shrink: 0;
-    }
-    .browser-dot {
-      width: 11px; height: 11px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .browser-address {
-      background: rgba(0,0,0,0.25);
-      border-radius: 6px;
-      height: 22px;
-      flex: 1;
-      margin-left: 10px;
-    }
-
-    /* Confidence badge colours */
-    .badge-green  { background: #d1fae5; color: #065f46; }
-    .badge-yellow { background: #fef3c7; color: #92400e; }
-    .badge-red    { background: #fee2e2; color: #991b1b; }
-    .badge-gray   { background: #f3f4f6; color: #374151; }
-
-    /* Step connector line */
-    .step-connector {
-      position: absolute;
-      top: 22px;
-      left: calc(50% + 22px);
-      right: calc(-50% + 22px);
-      height: 2px;
-      background: linear-gradient(90deg, #4B79F7, #7B9EFA);
-      opacity: 0.3;
-    }
-
-    /* Screenshot gallery — horizontal scroll on small screens */
-    .screenshot-track {
-      display: flex;
-      gap: 20px;
-      overflow-x: auto;
-      scroll-snap-type: x mandatory;
-      -webkit-overflow-scrolling: touch;
-      padding-bottom: 8px;
-    }
-    .screenshot-track::-webkit-scrollbar { height: 4px; }
-    .screenshot-track::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 2px; }
-    .screenshot-track::-webkit-scrollbar-thumb { background: rgba(75,121,247,0.4); border-radius: 2px; }
-    .screenshot-item {
-      flex-shrink: 0;
-      width: min(85vw, 640px);
-      scroll-snap-align: start;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.35);
-    }
-    .screenshot-item img { width: 100%; display: block; }
-
-    /* Feature card hover */
-    .feature-card {
-      background: #fff;
-      border-radius: 16px;
-      padding: 28px;
-      box-shadow: 0 2px 12px rgba(13,27,62,0.07), 0 1px 3px rgba(13,27,62,0.05);
-      transition: transform 0.18s ease, box-shadow 0.18s ease;
-    }
-    .feature-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 28px rgba(13,27,62,0.12), 0 2px 6px rgba(13,27,62,0.06);
-    }
-    .dark .feature-card {
-      background: #162d4a;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.15);
-      border: 1px solid rgba(75,121,247,0.08);
-    }
-    .dark .feature-card:hover {
-      box-shadow: 0 8px 28px rgba(0,0,0,0.35), 0 2px 6px rgba(0,0,0,0.2);
-      border-color: rgba(75,121,247,0.15);
-    }
-
-    /* Privacy pill */
-    .privacy-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(16,185,129,0.12);
-      color: #34d399;
-      border: 1px solid rgba(16,185,129,0.2);
-      border-radius: 999px;
-      padding: 6px 16px;
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.01em;
-    }
-
-    /* CTA glow */
-    .btn-glow {
-      box-shadow: 0 6px 24px -4px rgba(75,121,247,0.55);
-      transition: box-shadow 0.2s ease, transform 0.15s ease;
-    }
-    .btn-glow:hover {
-      box-shadow: 0 10px 32px -4px rgba(75,121,247,0.70);
-      transform: translateY(-1px);
-    }
-
-    /* Ghost button */
-    .btn-ghost {
-      transition: background 0.15s ease, color 0.15s ease;
-    }
-    .btn-ghost:hover {
-      background: rgba(255,255,255,0.10);
-    }
-
-    /* Nav links */
-    .nav-link {
-      position: relative;
-      color: #374151;
-      font-size: 14px;
-      font-weight: 500;
-      text-decoration: none;
-      padding: 2px 0;
-      transition: color 0.15s ease;
-    }
-    .dark .nav-link { color: rgba(226,232,240,0.65); }
-    /* Hover: sliding blue underline */
-    .nav-link::after {
-      content: '';
-      position: absolute;
-      left: 0; bottom: -2px;
-      width: 0; height: 2px;
-      background: #4B79F7;
-      border-radius: 1px;
-      transition: width 0.2s ease;
-    }
-    .nav-link:hover::after { width: 100%; }
-    /* Active section: text turns brand blue, slightly heavier — no underline */
-    .nav-link.active {
-      color: #4B79F7;
-      font-weight: 600;
-    }
-    .dark .nav-link.active { color: #4B79F7; }
-    .nav-link.active::after { width: 0; }
-
-    /* Theme toggle icon visibility */
-    #icon-moon.hidden, #icon-sun.hidden { display: none; }
-  </style>
-</head>
-
-<body class="bg-white dark:bg-[#0c1829] text-navy dark:text-[#d8e8f8] antialiased">
-
-  <!-- ── NAV ─────────────────────────────────────────────────── -->
-  <header class="nav-blur sticky top-0 z-50">
-    <nav class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-      <!-- Logo -->
-      <a href="/" class="flex items-center gap-2.5 no-underline">
-        <img src="./assets/icons/icon.svg" width="32" height="32" alt="Job Buddy icon" class="rounded-lg" />
-        <span class="font-bold text-navy dark:text-white text-[17px] tracking-tight">Job Buddy</span>
-      </a>
-
-      <!-- Nav links (hidden on mobile) + theme toggle -->
-      <div class="flex items-center gap-6">
-        <div class="hidden md:flex items-center gap-8">
-          <a href="#how-it-works" class="nav-link">How it works</a>
-          <a href="#features"     class="nav-link">Features</a>
-          <a href="#privacy"      class="nav-link">Privacy</a>
-          <a href="./demo/"       class="nav-link">Try demo</a>
-          <a href="https://github.com/myowinthein/job-buddy" target="_blank" rel="noopener" class="nav-link">GitHub</a>
-        </div>
-
-        <!-- Dark mode toggle -->
-        <button id="theme-toggle" aria-label="Toggle dark mode"
-          class="w-9 h-9 rounded-lg flex items-center justify-center text-navy/40 hover:text-navy/70 hover:bg-navy/5 dark:text-white/40 dark:hover:text-white/70 dark:hover:bg-white/10 transition-colors">
-          <!-- Moon — shown in light mode -->
-          <svg id="icon-moon" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-            <path d="M15.5 11.5A7 7 0 0 1 6.5 2.5a7 7 0 1 0 9 9Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <!-- Sun — shown in dark mode -->
-          <svg id="icon-sun" class="hidden" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-            <circle cx="9" cy="9" r="3.5" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.22 3.22l1.42 1.42M13.36 13.36l1.42 1.42M14.78 3.22l-1.42 1.42M4.64 13.36l-1.42 1.42" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Job Buddy · Your profile, ready for the next application</title>
+    <meta
+      name="description"
+      content="A free, open-source Chrome extension that fills job application forms from your saved profile. Learn the workflow, manage your data, and explore the code."
+    />
+    <link rel="canonical" href="https://myowinthein.github.io/job-buddy/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Job Buddy · Your profile, ready for the next application" />
+    <meta
+      property="og:description"
+      content="A free, open-source Chrome extension that fills job application forms from your saved profile. Learn the workflow, manage your data, and explore the code."
+    />
+    <meta
+      property="og:image"
+      content="https://myowinthein.github.io/job-buddy/assets/images/autofill-demo.jpg"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="./assets/icons/icon.svg" type="image/svg+xml" />
+    <script src="./assets/theme-init.js"></script>
+    <link rel="stylesheet" href="./assets/site.css" />
+    <script src="./assets/site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="./"
+          ><img src="./assets/icons/icon.svg" width="32" height="32" alt="" />Job Buddy</a
+        >
+        <nav class="header-nav" aria-label="Main navigation">
+          <a class="walkthrough-link" href="./#start" aria-current="page">Walkthrough</a>
+          <a href="./developers/">For developers</a>
+          <a class="demo-nav" href="./demo/">Try the demo</a>
+        </nav>
+        <button class="theme-toggle" type="button" aria-label="Switch theme" aria-pressed="false">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            aria-hidden="true"
+          >
+            <path d="M20.9 13.2A9 9 0 0 1 10.8 3.1a9 9 0 1 0 10.1 10.1Z" /></svg
+          ><span>Theme</span>
         </button>
       </div>
-
-    </nav>
-  </header>
-
-
-  <!-- ── HERO ────────────────────────────────────────────────── -->
-  <section class="hero-bg relative overflow-hidden pt-24 pb-0">
-    <div class="relative z-10 max-w-4xl mx-auto px-6 text-center">
-
-      <!-- Badge -->
-      <div class="privacy-pill mx-auto mb-6 w-fit">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-          <path d="M6 1L7.5 4.5H11L8.5 6.5L9.5 10L6 8L2.5 10L3.5 6.5L1 4.5H4.5L6 1Z" fill="#34d399"/>
-        </svg>
-        Free · Open Source · Local-first
-      </div>
-
-      <!-- Headline -->
-      <h1 class="text-white text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.05] mb-6">
-        <span class="block">Fill any job form.</span>
-        <span class="text-brand-muted">Once, not every time.</span>
-      </h1>
-
-      <!-- Sub -->
-      <p class="text-slate-300 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto mb-10">
-        Set up your profile once. Job Buddy reads any application form, matches every field to your profile, and fills what it can, with color-coded confidence on every answer.
-      </p>
-
-      <!-- CTAs -->
-      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-        <a href="https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk"
-           target="_blank" rel="noopener"
-           class="btn-glow flex items-center gap-2.5 bg-brand text-white font-bold text-base px-7 py-4 rounded-xl no-underline w-full sm:w-auto justify-center">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <path d="M10 2.5C13.45 2.5 16.25 5 16.25 8.5V9.75H17.5V12.5C17.5 13.88 16.38 15 15 15H12.5V17.5H7.5V15H5C3.62 15 2.5 13.88 2.5 12.5V9.75H3.75V8.5C3.75 5 6.55 2.5 10 2.5Z" stroke="white" stroke-width="1.5" fill="none"/>
-          </svg>
-          Add to Chrome. It's free.
-        </a>
-        <a href="./demo/" class="flex items-center justify-center gap-2 text-white font-semibold text-base px-7 py-4 rounded-xl border border-white/30 hover:bg-white/10 no-underline w-full sm:w-auto">
-          Try the demo <span aria-hidden="true">→</span>
-        </a>
-      </div>
-    </div>
-
-    <!-- Hero screenshot in browser frame -->
-    <div class="relative z-10 max-w-5xl mx-auto px-6">
-      <div class="browser-frame">
-        <div class="browser-bar">
-          <div class="browser-dot" style="background:#FF5F57"></div>
-          <div class="browser-dot" style="background:#FEBC2E"></div>
-          <div class="browser-dot" style="background:#28C840"></div>
-          <div class="browser-address"></div>
-        </div>
-        <img src="./assets/images/autofill-demo.jpg"
-             alt="Job Buddy autofilling the original Fieldwork demo application with sample profile details"
-             width="1440" height="1000"
-             class="w-full block" />
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ── CONFIDENCE COLOUR KEY ───────────────────────────────── -->
-  <section class="bg-surface dark:bg-[#0c1829] py-12">
-    <div class="max-w-3xl mx-auto px-6">
-      <p class="text-center text-sm font-semibold text-navy/40 dark:text-white/40 uppercase tracking-widest mb-6">What the colours mean</p>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div class="flex items-start gap-3 bg-white dark:bg-[#162d4a] rounded-xl p-4 shadow-card dark:shadow-none">
-          <span class="w-3 h-3 rounded-full mt-0.5 flex-shrink-0" style="background:#22c55e"></span>
-          <div>
-            <p class="font-semibold text-sm text-navy dark:text-white">Green</p>
-            <p class="text-xs text-navy/50 dark:text-white/40 mt-0.5 leading-snug">High confidence, filled automatically</p>
-          </div>
-        </div>
-        <div class="flex items-start gap-3 bg-white dark:bg-[#162d4a] rounded-xl p-4 shadow-card dark:shadow-none">
-          <span class="w-3 h-3 rounded-full mt-0.5 flex-shrink-0" style="background:#f59e0b"></span>
-          <div>
-            <p class="font-semibold text-sm text-navy dark:text-white">Yellow</p>
-            <p class="text-xs text-navy/50 dark:text-white/40 mt-0.5 leading-snug">Medium confidence, worth a glance</p>
-          </div>
-        </div>
-        <div class="flex items-start gap-3 bg-white dark:bg-[#162d4a] rounded-xl p-4 shadow-card dark:shadow-none">
-          <span class="w-3 h-3 rounded-full mt-0.5 flex-shrink-0" style="background:#ef4444"></span>
-          <div>
-            <p class="font-semibold text-sm text-navy dark:text-white">Red</p>
-            <p class="text-xs text-navy/50 dark:text-white/40 mt-0.5 leading-snug">Low confidence, pick from your profile</p>
-          </div>
-        </div>
-        <div class="flex items-start gap-3 bg-white dark:bg-[#162d4a] rounded-xl p-4 shadow-card dark:shadow-none">
-          <span class="w-3 h-3 rounded-full mt-0.5 flex-shrink-0" style="background:#9ca3af"></span>
-          <div>
-            <p class="font-semibold text-sm text-navy dark:text-white">Gray</p>
-            <p class="text-xs text-navy/50 dark:text-white/40 mt-0.5 leading-snug">Field matched but profile is empty</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ── HOW IT WORKS ────────────────────────────────────────── -->
-  <section id="how-it-works" class="bg-white dark:bg-[#0c1829] py-24">
-    <div class="max-w-6xl mx-auto px-6">
-
-      <div class="text-center mb-16">
-        <p class="text-brand font-semibold text-sm uppercase tracking-widest mb-3">How it works</p>
-        <h2 class="text-navy dark:text-white text-4xl md:text-5xl font-extrabold tracking-tight">Three steps, then you're done</h2>
-      </div>
-
-      <div class="grid md:grid-cols-3 gap-8 md:gap-10">
-
-        <!-- Step 1 -->
-        <div class="flex flex-col">
-          <div class="w-11 h-11 rounded-2xl bg-brand/10 flex items-center justify-center mb-5 flex-shrink-0">
-            <span class="text-brand font-black text-lg">1</span>
-          </div>
-          <h3 class="font-bold text-xl text-navy dark:text-white mb-3">Build your profile</h3>
-          <p class="text-navy/60 dark:text-white/50 leading-relaxed text-[15px]">
-            Fill in your details once: name, address, work history, education, salary expectations, work authorization per country, and more. Or upload your résumé and Job Buddy reads it, pulling your roles, education, and contact details into a review screen.
+    </header>
+    <div class="site-layout">
+      <aside class="chapter-nav" aria-label="On this page">
+        <p>From setup to your next form</p>
+        <a href="#start">Start here</a><a href="#ai">Set up Gemini</a
+        ><a href="#profile">Build your profile</a><a href="#resume">Import your resume</a
+        ><a href="#autofill">Fill a form</a><a href="#quick-fill">Use Quick Fill</a
+        ><a href="#fill-details">Read the results</a
+        ><a href="#learned-mappings">Learn from corrections</a><a href="#backups">Move & back up</a
+        ><a href="#drive">Connect Google Drive</a><a href="#your-data">Your data & reset</a>
+      </aside>
+      <main id="main">
+        <details class="mobile-contents">
+          <summary>On this page</summary>
+          <nav aria-label="Page sections">
+            <a href="#start">Start here</a><a href="#ai">Set up Gemini</a
+            ><a href="#profile">Build your profile</a><a href="#resume">Import your resume</a
+            ><a href="#autofill">Fill a form</a><a href="#quick-fill">Use Quick Fill</a
+            ><a href="#fill-details">Read the results</a
+            ><a href="#learned-mappings">Learn from corrections</a
+            ><a href="#backups">Move & back up</a><a href="#drive">Connect Google Drive</a
+            ><a href="#your-data">Your data & reset</a>
+          </nav>
+        </details>
+        <div class="intro" id="start">
+          <p class="intro-note">A Chrome extension for your daily job search</p>
+          <h1>Same details.<br />Next application.</h1>
+          <p class="lede">
+            Keep your profile in your browser. Let Job Buddy fill the familiar questions, then
+            review your answers before you submit.
           </p>
-          <div class="mt-6 rounded-xl overflow-hidden border border-navy/5 dark:border-white/8 shadow-card dark:shadow-none">
-            <img src="./assets/images/1.webp"
-                 alt="Job Buddy profile editor showing the Personal Information section"
-                 width="1400" height="875" loading="lazy"
-                 class="w-full block" />
+          <div class="intro-actions">
+            <a
+              class="button primary"
+              href="https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk"
+              >Add to Chrome <span aria-hidden="true">↗</span></a
+            ><a class="text-link" href="./demo/">Try it on a demo form</a
+            ><a class="text-link" href="https://github.com/myowinthein/job-buddy"
+              >Explore the source</a
+            >
           </div>
+          <p class="intro-footnote">Free and open source, using your own Gemini key.</p>
         </div>
-
-        <!-- Step 2 -->
-        <div class="flex flex-col">
-          <div class="w-11 h-11 rounded-2xl bg-brand/10 flex items-center justify-center mb-5 flex-shrink-0">
-            <span class="text-brand font-black text-lg">2</span>
+        <figure class="hero-figure">
+          <div class="figure-toolbar">
+            <span>A fictional role. The real extension.</span>
+            <div class="segmented" data-compare role="group" aria-label="Demo screenshot state">
+              <button type="button" data-show="after" aria-pressed="true">After filling</button
+              ><button type="button" data-show="before" aria-pressed="false">Before filling</button>
+            </div>
           </div>
-          <h3 class="font-bold text-xl text-navy dark:text-white mb-3">Click Fill Form ✨</h3>
-          <p class="text-navy/60 dark:text-white/50 leading-relaxed text-[15px]">
-            Visit any job application page. Click the Job Buddy icon and press Fill Form. The extension scans every field, runs it through a four-layer matching pipeline, and fills what it can confidently.
-          </p>
-          <div class="mt-6 rounded-xl overflow-hidden border border-navy/5 dark:border-white/8 shadow-card dark:shadow-none">
-            <img src="./assets/images/autofill-demo.jpg"
-                 alt="Job Buddy filling a job application form with green-highlighted fields"
-                 width="1440" height="1000" loading="lazy"
-                 class="w-full block" />
+          <div class="capture" data-comparison="after">
+            <button type="button" data-enlarge aria-label="Enlarge filled demo form">
+              <img
+                src="./assets/screenshots/application-after-light.webp"
+                data-light="./assets/screenshots/application-after-light.webp"
+                data-dark="./assets/screenshots/application-after-dark.webp"
+                alt="Job Buddy fills a fictional Morrow Studio application using sample profile data"
+                width="1440"
+                height="1050"
+                fetchpriority="high"
+              />
+            </button>
           </div>
-        </div>
-
-        <!-- Step 3 -->
-        <div class="flex flex-col">
-          <div class="w-11 h-11 rounded-2xl bg-brand/10 flex items-center justify-center mb-5 flex-shrink-0">
-            <span class="text-brand font-black text-lg">3</span>
+          <div class="capture" data-comparison="before" hidden>
+            <button type="button" data-enlarge aria-label="Enlarge empty demo form">
+              <img
+                src="./assets/screenshots/application-before-light.webp"
+                data-light="./assets/screenshots/application-before-light.webp"
+                data-dark="./assets/screenshots/application-before-dark.webp"
+                alt="The same Morrow Studio application before autofill"
+                width="1440"
+                height="1050"
+              />
+            </button>
           </div>
-          <h3 class="font-bold text-xl text-navy dark:text-white mb-3">Review, adjust, apply</h3>
-          <p class="text-navy/60 dark:text-white/50 leading-relaxed text-[15px]">
-            Click any highlighted field to see your profile options in a quick overlay. Correct a field and Job Buddy remembers that mapping for next time. Undo everything with one click.
-          </p>
-          <div class="mt-6 rounded-xl overflow-hidden border border-navy/5 dark:border-white/8 shadow-card dark:shadow-none">
-            <img src="./assets/images/5.webp"
-                 alt="Job Buddy field picker overlay showing profile value options"
-                 width="1280" height="800" loading="lazy"
-                 class="w-full block" />
+          <figcaption>
+            Fresh captures of Job Buddy on an original demo form, with fictional data. You review
+            and submit applications yourself. Select any screenshot to enlarge.
+          </figcaption>
+        </figure>
+        <section class="chapter" id="ai" aria-labelledby="ai-title">
+          <div class="chapter-heading">
+            <span>First, connect AI</span>
+            <h2 id="ai-title">Bring a free Gemini key</h2>
           </div>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ── FEATURES ────────────────────────────────────────────── -->
-  <section id="features" class="bg-surface dark:bg-[#0f2236] py-24">
-    <div class="max-w-6xl mx-auto px-6">
-
-      <div class="text-center mb-16">
-        <p class="text-brand font-semibold text-sm uppercase tracking-widest mb-3">Features</p>
-        <h2 class="text-navy dark:text-white text-4xl md:text-5xl font-extrabold tracking-tight">Built for real application forms</h2>
-        <p class="text-navy/50 dark:text-white/40 text-lg mt-4 max-w-xl mx-auto">Workday, Greenhouse, Lever, and custom ATS forms. Job Buddy handles the quirks of each.</p>
-      </div>
-
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-
-        <!-- Feature 1: Four-layer matching -->
-        <div class="feature-card">
-          <div class="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center mb-4">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <circle cx="10" cy="10" r="8" stroke="#4B79F7" stroke-width="1.5"/>
-              <circle cx="10" cy="10" r="4" stroke="#4B79F7" stroke-width="1.5"/>
-              <circle cx="10" cy="10" r="1.5" fill="#4B79F7"/>
-            </svg>
+          <div class="prose">
+            <p>
+              Job Buddy uses Gemini to read resumes and understand form questions that fixed rules
+              cannot resolve. You bring your own API key, so there is no Job Buddy subscription or
+              account to create.
+            </p>
+            <p>
+              Gemini’s free tier is a practical starting point for everyday applications. How far it
+              goes depends on your forms, model and Google’s current limits; it is not an unlimited
+              allowance.
+            </p>
           </div>
-          <h3 class="font-bold text-navy dark:text-white text-[17px] mb-2">Four-layer field matching</h3>
-          <p class="text-navy/55 dark:text-white/45 text-sm leading-relaxed">
-            Learned mappings → HTML autocomplete → dictionary exact match → fuzzy text comparison. Every layer has a confidence score, and the highest-confidence win is always chosen.
-          </p>
-        </div>
-
-        <!-- Feature 2: Works everywhere -->
-        <div class="feature-card">
-          <div class="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center mb-4">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <circle cx="10" cy="10" r="8" stroke="#4B79F7" stroke-width="1.5"/>
-              <path d="M10 2C10 2 7 6 7 10C7 14 10 18 10 18" stroke="#4B79F7" stroke-width="1.5"/>
-              <path d="M10 2C10 2 13 6 13 10C13 14 10 18 10 18" stroke="#4B79F7" stroke-width="1.5"/>
-              <path d="M2 10H18" stroke="#4B79F7" stroke-width="1.5"/>
-            </svg>
-          </div>
-          <h3 class="font-bold text-navy dark:text-white text-[17px] mb-2">Works on any field type</h3>
-          <p class="text-navy/55 dark:text-white/45 text-sm leading-relaxed">
-            Native inputs, textareas, selects, ARIA comboboxes, contenteditable fields, React-Select dropdowns, click-to-open listboxes, and date inputs. All supported out of the box.
-          </p>
-        </div>
-
-        <!-- Feature 3: Learns your corrections -->
-        <div class="feature-card">
-          <div class="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center mb-4">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <path d="M3 10C3 6.13 6.13 3 10 3s7 3.13 7 7" stroke="#4B79F7" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M10 3V1M10 3L8 5M10 3L12 5" stroke="#4B79F7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <rect x="6" y="12" width="8" height="5" rx="2" stroke="#4B79F7" stroke-width="1.5"/>
-              <path d="M10 12V11" stroke="#4B79F7" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <h3 class="font-bold text-navy dark:text-white text-[17px] mb-2">Learns from your corrections</h3>
-          <p class="text-navy/55 dark:text-white/45 text-sm leading-relaxed">
-            Correct a field via the overlay and Job Buddy records that mapping for that site. Confirm it twice and it's promoted to top priority. Future visits fill that field automatically at high confidence.
-          </p>
-        </div>
-
-        <!-- Feature 4: AI resume import -->
-        <div class="feature-card">
-          <div class="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center mb-4">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <path d="M10 2L11.5 6.5H16.5L12.5 9L14 13.5L10 11L6 13.5L7.5 9L3.5 6.5H8.5L10 2Z" stroke="#7C3AED" stroke-width="1.5" stroke-linejoin="round"/>
-            </svg>
-          </div>
-          <h3 class="font-bold text-navy dark:text-white text-[17px] mb-2">Résumé import</h3>
-          <p class="text-navy/55 dark:text-white/45 text-sm leading-relaxed">
-            Upload a PDF or DOCX and Gemini reads your résumé end-to-end, pulling out your work history, education, skills, and contact details into a field-by-field review. Nothing saves until you confirm.
-          </p>
-        </div>
-
-        <!-- Feature 5: Google Drive backup -->
-        <div class="feature-card">
-          <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center mb-4">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <path d="M10 13V5M10 5L7 8M10 5L13 8" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M5 13.5C3.34 13.5 2 12.16 2 10.5C2 9.02 3.02 7.78 4.41 7.54C4.7 5.56 6.41 4 8.5 4C9.4 4 10.22 4.3 10.88 4.8" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M15 13.5C16.66 13.5 18 12.16 18 10.5C18 8.84 16.66 7.5 15 7.5C14.96 7.5 14.92 7.5 14.88 7.5C14.44 6.04 13.09 5 11.5 5" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M5 17H15" stroke="#2563EB" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <h3 class="font-bold text-navy dark:text-white text-[17px] mb-2">Google Drive backup</h3>
-          <p class="text-navy/55 dark:text-white/45 text-sm leading-relaxed">
-            Optionally sync your profile, including learned mappings, to a private folder in your own Google Drive. Restore to any machine instantly. Your data, your Drive, your control.
-          </p>
-        </div>
-
-        <!-- Feature 6: Multi-country -->
-        <div class="feature-card">
-          <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center mb-4">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <rect x="2" y="5" width="16" height="10" rx="2" stroke="#059669" stroke-width="1.5"/>
-              <path d="M2 8H18" stroke="#059669" stroke-width="1.5"/>
-              <path d="M7 8V15" stroke="#059669" stroke-width="1.5"/>
-            </svg>
-          </div>
-          <h3 class="font-bold text-navy dark:text-white text-[17px] mb-2">Multi-country ready</h3>
-          <p class="text-navy/55 dark:text-white/45 text-sm leading-relaxed">
-            Per-country salary expectations, per-country work authorization and visa status, structured international phone numbers, and ISO country/currency lists. Built for job seekers applying globally.
-          </p>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ── AI RESUME IMPORT FEATURE ────────────────────────────── -->
-  <section class="bg-white dark:bg-[#0c1829] py-24 overflow-hidden">
-    <div class="max-w-6xl mx-auto px-6">
-      <div class="grid md:grid-cols-2 gap-12 items-center">
-
-        <div>
-          <span class="inline-block bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full mb-5">Reads your résumé</span>
-          <h2 class="text-navy dark:text-white text-3xl md:text-4xl font-extrabold tracking-tight leading-tight mb-5">
-            Import your résumé.<br />Skip the typing.
-          </h2>
-          <p class="text-navy/60 dark:text-white/50 leading-relaxed mb-6">
-            Upload a PDF or DOCX and Gemini reads it end-to-end, pulling your work history, education, contact details, and links into a review screen. Hyperlinks come directly from the PDF annotation layer, so your LinkedIn and portfolio URLs arrive exactly as written.
-          </p>
-          <ul class="space-y-3">
-            <li class="flex items-start gap-3">
-              <svg class="mt-0.5 flex-shrink-0" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <circle cx="8" cy="8" r="7" fill="#d1fae5"/>
-                <path d="M5 8L7 10L11 6" stroke="#059669" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span class="text-navy/70 dark:text-white/55 text-sm leading-relaxed">Review every extracted field before a single thing is saved</span>
+          <ol class="steps">
+            <li>
+              <div>
+                <strong
+                  >Open <a href="https://aistudio.google.com/api-keys">Google AI Studio</a></strong
+                >Sign in with Google and create an API key. A free-tier key does not require setting
+                up paid billing.
+              </div>
             </li>
-            <li class="flex items-start gap-3">
-              <svg class="mt-0.5 flex-shrink-0" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <circle cx="8" cy="8" r="7" fill="#d1fae5"/>
-                <path d="M5 8L7 10L11 6" stroke="#059669" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span class="text-navy/70 dark:text-white/55 text-sm leading-relaxed">Education dates are never inferred; only extracted when explicitly stated</span>
+            <li>
+              <div>
+                <strong>Save the key in Job Buddy</strong>Open Settings → AI Features, paste your
+                key, and select Save Key. Job Buddy checks it and finds a working model.
+              </div>
             </li>
-            <li class="flex items-start gap-3">
-              <svg class="mt-0.5 flex-shrink-0" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <circle cx="8" cy="8" r="7" fill="#d1fae5"/>
-                <path d="M5 8L7 10L11 6" stroke="#059669" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <span class="text-navy/70 dark:text-white/55 text-sm leading-relaxed">Add a Gemini API key to use AI-assisted autofill and resume import.</span>
+            <li>
+              <div>
+                <strong>Choose a model when you need to</strong>The model control lets you switch
+                between the supported Flash-Lite and Flash models. Your key and model preference
+                stay in this browser.
+              </div>
             </li>
+          </ol>
+          <figure class="component-figure">
+            <div class="capture">
+              <button
+                type="button"
+                data-enlarge
+                aria-label="Enlarge screenshot: AI Features settings with the Gemini key and model controls"
+              >
+                <img
+                  src="./assets/screenshots/ai-light.webp"
+                  data-light="./assets/screenshots/ai-light.webp"
+                  data-dark="./assets/screenshots/ai-dark.webp"
+                  alt="AI Features settings with the Gemini key and model controls"
+                  width="992"
+                  height="289"
+                  loading="lazy"
+                />
+              </button>
+            </div>
+            <figcaption>Keys are excluded from JSON exports and Drive backups.</figcaption>
+          </figure>
+          <div class="split">
+            <div>
+              <h3>Flash-Lite for speed</h3>
+              <p>
+                Gemini 3.5 Flash-Lite is the default candidate. Google positions it for fast,
+                high-volume tasks, making it a useful first choice for routine extraction and
+                matching.
+              </p>
+            </div>
+            <div>
+              <h3>Flash for harder questions</h3>
+              <p>
+                Gemini 3.8 Flash offers stronger reasoning for complex tasks. It may take longer;
+                switching models does not guarantee that every form will be filled.
+              </p>
+            </div>
+          </div>
+          <div class="detail-list">
+            <details>
+              <summary>What happens when a model is busy or a limit is reached?</summary>
+              <p>
+                Requests try the selected model first. On supported temporary failures, including
+                timeouts, rate limits or an unavailable model, Job Buddy can try the other supported
+                model. Invalid credentials and unrelated documents need your action instead.
+                Changing keys in the same Google project does not create a new quota.
+              </p>
+            </details>
+            <details>
+              <summary>Where can I check usage?</summary>
+              <p>
+                Use View usage and limits in AI Features to see your usage and quota in Google AI
+                Studio. Limits vary by model and project. If you reach a limit, check when it resets
+                in AI Studio.
+              </p>
+            </details>
+          </div>
+          <p class="sources">
+            Google references:
+            <a href="https://ai.google.dev/gemini-api/docs/models">model capabilities</a>,
+            <a href="https://ai.google.dev/gemini-api/docs/billing">free-tier setup</a>,
+            <a href="https://ai.google.dev/gemini-api/docs/rate-limits">usage limits</a>. Checked
+            November 5, 2026.
+          </p>
+        </section>
+        <section class="chapter" id="profile" aria-labelledby="profile-title">
+          <div class="chapter-heading">
+            <span>Then, save your details</span>
+            <h2 id="profile-title">A profile you can keep using</h2>
+          </div>
+          <div class="prose">
+            <p>
+              Type your details yourself, import a resume, or combine the two. Your profile is
+              organized into nine sections, so you can revisit one part without working through
+              everything again. Save each section after editing.
+            </p>
+          </div>
+          <ul class="category-list">
+            <li>Personal: name, contact details and background</li>
+            <li>Address: city, country and postal address</li>
+            <li>Work Authorization: status by country</li>
+            <li>Work History: summary, experience and notice period</li>
+            <li>Education: institutions, qualifications and dates</li>
+            <li>Languages: languages and proficiency</li>
+            <li>Links: LinkedIn, portfolio, GitHub and custom links</li>
+            <li>Documents: CV and cover letter files or links</li>
+            <li>Salary: expected and current pay</li>
           </ul>
-        </div>
-
-        <div class="rounded-2xl overflow-hidden shadow-screen border border-navy/5 dark:border-white/8">
-          <img src="./assets/images/2.webp"
-               alt="Job Buddy's AI resume import showing a review suggestions dialog with extracted profile fields"
-               width="1400" height="875" loading="lazy"
-               class="w-full block" />
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-
-  <!-- ── PRIVACY ─────────────────────────────────────────────── -->
-  <section id="privacy" class="bg-navy py-24">
-    <div class="max-w-5xl mx-auto px-6 text-center">
-
-      <div class="privacy-pill mx-auto mb-6 w-fit">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-          <path d="M6 1L7.5 4H10.5L8 6L9 9L6 7.5L3 9L4 6L1.5 4H4.5L6 1Z" fill="#34d399"/>
-        </svg>
-        Local-first by design
-      </div>
-
-      <h2 class="text-white text-4xl md:text-5xl font-extrabold tracking-tight mb-5">
-        Your data stays with you.
-      </h2>
-      <p class="text-slate-400 text-lg mb-16 max-w-xl mx-auto">
-        Job Buddy has no servers. Your profile lives in your browser's local storage and goes nowhere unless you explicitly opt in.
-      </p>
-
-      <div class="grid sm:grid-cols-3 gap-6 mb-16">
-
-        <div class="bg-white/5 border border-white/8 rounded-2xl p-8 text-left">
-          <div class="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center mb-5">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <rect x="3" y="9" width="14" height="9" rx="2" stroke="#34d399" stroke-width="1.5"/>
-              <path d="M6 9V6a4 4 0 0 1 8 0v3" stroke="#34d399" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
+          <figure class="">
+            <div class="capture">
+              <button
+                type="button"
+                data-enlarge
+                aria-label="Enlarge screenshot: Personal profile editor and the saved completion bar"
+              >
+                <img
+                  src="./assets/screenshots/profile-light.webp"
+                  data-light="./assets/screenshots/profile-light.webp"
+                  data-dark="./assets/screenshots/profile-dark.webp"
+                  alt="Personal profile editor and the saved completion bar"
+                  width="1280"
+                  height="900"
+                  loading="lazy"
+                />
+              </button>
+            </div>
+            <figcaption>Sample details in the real profile editor.</figcaption>
+          </figure>
+          <div class="split">
+            <div>
+              <h3>Completion is a checklist</h3>
+              <p>
+                The percentage tracks 10 required checks, using your saved data. At 100%, required
+                details are complete; optional details can still be added. Last name, salary,
+                LinkedIn, work history and personal background details do not increase the
+                percentage.
+              </p>
+              <p>
+                Select the remaining-details button at the top right to see what is missing. Select
+                a section or field to go directly to the relevant input.
+              </p>
+            </div>
+            <div>
+              <h3>You can start before 100%</h3>
+              <p>
+                Autofill needs a saved <strong>first name</strong>, a <strong>valid email</strong>,
+                and a <strong>Gemini key</strong>. More profile information gives it more to work
+                with. Missing information is left for you to enter on the form.
+              </p>
+              <p>
+                Documents support saved files and URLs. You can view a PDF or download a saved
+                attachment. Upload and import files are limited to 4 MB each, within the browser’s
+                total storage capacity.
+              </p>
+            </div>
           </div>
-          <h3 class="text-white font-bold text-lg mb-2">No servers</h3>
-          <p class="text-slate-400 text-sm leading-relaxed">
-            All profile data is stored in <code class="text-slate-300">chrome.storage.local</code> on your device. Job Buddy makes no network requests by default.
-          </p>
-        </div>
-
-        <div class="bg-white/5 border border-white/8 rounded-2xl p-8 text-left">
-          <div class="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center mb-5">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <circle cx="10" cy="10" r="8" stroke="#34d399" stroke-width="1.5"/>
-              <path d="M7 10l2 2 4-4" stroke="#34d399" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
+          <figure class="">
+            <div class="capture">
+              <button
+                type="button"
+                data-enlarge
+                aria-label="Enlarge screenshot: Missing details popup grouped by profile section"
+              >
+                <img
+                  src="./assets/screenshots/completion-light.webp"
+                  data-light="./assets/screenshots/completion-light.webp"
+                  data-dark="./assets/screenshots/completion-dark.webp"
+                  alt="Missing details popup grouped by profile section"
+                  width="1280"
+                  height="900"
+                  loading="lazy"
+                />
+              </button>
+            </div>
+            <figcaption>The completion checklist takes you to missing inputs.</figcaption>
+          </figure>
+        </section>
+        <section class="chapter" id="resume" aria-labelledby="resume-title">
+          <div class="chapter-heading">
+            <span>Skip the retyping</span>
+            <h2 id="resume-title">Import a resume, then decide</h2>
           </div>
-          <h3 class="text-white font-bold text-lg mb-2">No tracking</h3>
-          <p class="text-slate-400 text-sm leading-relaxed">
-            Zero analytics. Zero telemetry. No cookies, no third-party trackers, no usage data sent anywhere. Ever.
-          </p>
-        </div>
-
-        <div class="bg-white/5 border border-white/8 rounded-2xl p-8 text-left">
-          <div class="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center mb-5">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <path d="M4 4l12 0" stroke="#34d399" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M4 8h8" stroke="#34d399" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M4 12h6" stroke="#34d399" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M13 13l4 4M13 17l4-4" stroke="#34d399" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
+          <div class="prose">
+            <p>
+              With your Gemini key saved, choose Import Resume and upload a PDF or DOCX, up to 4 MB.
+              Job Buddy checks the file, sends it to Gemini, and compares the extracted details with
+              your saved profile locally.
+            </p>
+            <p>
+              You get to choose what enters your profile. A resume is a starting point: check names,
+              dates, locations and any information it does not contain.
+            </p>
           </div>
-          <h3 class="text-white font-bold text-lg mb-2">Open source</h3>
-          <p class="text-slate-400 text-sm leading-relaxed">
-            Every line of code is on GitHub under the MIT License. Read it, fork it, audit it. You don't have to take our word for anything.
+          <figure class="dialog-figure">
+            <div class="capture">
+              <button
+                type="button"
+                data-enlarge
+                aria-label="Enlarge screenshot: Resume import file selection dialog"
+              >
+                <img
+                  src="./assets/screenshots/resume-light.webp"
+                  data-light="./assets/screenshots/resume-light.webp"
+                  data-dark="./assets/screenshots/resume-dark.webp"
+                  alt="Resume import file selection dialog"
+                  width="512"
+                  height="366"
+                  loading="lazy"
+                />
+              </button>
+            </div>
+            <figcaption>
+              The selected document goes to Gemini for extraction. This capture uses a fictional
+              resume.
+            </figcaption>
+          </figure>
+          <dl class="facts">
+            <div>
+              <dt>Keep Current</dt>
+              <dd>Close the import and leave your saved profile as it is.</dd>
+            </div>
+            <div>
+              <dt>Import All</dt>
+              <dd>Apply the incoming details without choosing each change separately.</dd>
+            </div>
+            <div>
+              <dt>Review Changes</dt>
+              <dd>
+                Work through the sections and choose which details or entries to import. New entries
+                show incoming data; changed entries let you compare both versions.
+              </dd>
+            </div>
+            <div>
+              <dt>A possible different person</dt>
+              <dd>
+                A name or email mismatch can prompt Update or Replace. Update keeps omitted details;
+                Replace starts fresh with your selected import and clears omitted profile data,
+                documents and mappings.
+              </dd>
+            </div>
+          </dl>
+          <figure class="">
+            <div class="capture">
+              <button
+                type="button"
+                data-enlarge
+                aria-label="Enlarge screenshot: Import review showing current and incoming profile details"
+              >
+                <img
+                  src="./assets/screenshots/review-light.webp"
+                  data-light="./assets/screenshots/review-light.webp"
+                  data-dark="./assets/screenshots/review-dark.webp"
+                  alt="Import review showing current and incoming profile details"
+                  width="672"
+                  height="512"
+                  loading="lazy"
+                />
+              </button>
+            </div>
+            <figcaption>
+              Resume, JSON and Drive review share the same selection interface.
+            </figcaption>
+          </figure>
+          <p class="note">
+            Resume updates keep missing details in uniquely matched entries and retain saved entries
+            omitted from the resume. Replacing a profile keeps local appearance and Gemini settings,
+            but pauses connected Drive backups for review.
           </p>
-        </div>
-
-      </div>
-
-      <p class="text-slate-500 text-sm">
-        A Gemini API key is required for autofill and résumé import. Cloud Backup is optional.
-        They only activate if you explicitly enable them.
-      </p>
-      <p class="mt-3">
-        <a href="./legal/privacy/" class="text-slate-400 text-sm underline hover:text-white transition-colors">Read the privacy policy →</a>
-      </p>
-
+          <div class="detail-list">
+            <details>
+              <summary>What if the document is not a resume?</summary>
+              <p>
+                Unrelated documents are rejected. If the document type is uncertain, Job Buddy asks
+                you before continuing. A file extension alone is not enough to pass the local file
+                checks.
+              </p>
+            </details>
+          </div>
+        </section>
+        <section class="chapter" id="autofill" aria-labelledby="autofill-title">
+          <div class="chapter-heading">
+            <span>Now, open an application</span>
+            <h2 id="autofill-title">Fill the form. Keep the final say.</h2>
+          </div>
+          <div class="prose">
+            <p>
+              Open an application page, select the Job Buddy icon in Chrome’s toolbar, and choose
+              Fill Form. Pin the extension in Chrome if you want to reach it more easily.
+            </p>
+            <p>
+              If the form already has answers, choose <strong>Fill empty fields</strong> to preserve
+              them, or <strong>Fill all matched fields</strong> to also replace existing answers
+              that Job Buddy can match. Unmatched fields remain yours to complete.
+            </p>
+          </div>
+          <figure class="popup-figure">
+            <div class="capture">
+              <button
+                type="button"
+                data-enlarge
+                aria-label="Enlarge screenshot: Job Buddy toolbar popup after filling the demo application"
+              >
+                <img
+                  src="./assets/screenshots/popup-light.webp"
+                  data-light="./assets/screenshots/popup-light.webp"
+                  data-dark="./assets/screenshots/popup-dark.webp"
+                  alt="Job Buddy toolbar popup after filling the demo application"
+                  width="400"
+                  height="270"
+                  loading="lazy"
+                />
+              </button>
+            </div>
+            <figcaption>
+              The popup shows profile readiness, fill results, Undo and View details.
+            </figcaption>
+          </figure>
+          <p>
+            Closing the popup does not stop an accepted fill request. Job Buddy continues on the
+            source page; reopen the popup to see progress or answer a pending choice. Refreshing,
+            navigating away or closing the form cancels the run.
+          </p>
+          <h3>The colors tell you where to look</h3>
+          <dl class="color-key">
+            <div>
+              <dt class="green">Green</dt>
+              <dd>Filled with high confidence, or confirmed by you.</dd>
+            </div>
+            <div>
+              <dt class="yellow">Yellow</dt>
+              <dd>Filled, but needs your review.</dd>
+            </div>
+            <div>
+              <dt class="red">Red</dt>
+              <dd>Not filled: no safe match, or the form rejected the value.</dd>
+            </div>
+            <div>
+              <dt class="gray">Gray</dt>
+              <dd>Not filled: a profile match exists, but no data is saved.</dd>
+            </div>
+          </dl>
+          <p class="prose">
+            Consent questions are skipped, and existing answers stay unchanged in empty-fields mode.
+            Review all answers and attachments before submitting on the employer’s website. Job
+            Buddy never submits for you.
+          </p>
+          <div class="detail-list">
+            <details>
+              <summary>Missing key or profile details</summary>
+              <p>
+                The popup points you to Settings or the profile inputs you need. A key, first name
+                and valid email are required to start a new fill. You can still manage your profile
+                and backups without a key.
+              </p>
+            </details>
+            <details>
+              <summary>No fields detected, or the page cannot be reached</summary>
+              <p>
+                Open the application form itself, let it load, and try again. Refresh a page that
+                was already open when the extension was installed or updated. Chrome’s internal
+                pages and some custom or closed-shadow controls cannot be filled.
+              </p>
+            </details>
+            <details>
+              <summary>AI is unavailable, or only part of the form is filled</summary>
+              <p>
+                Accepted rule-based fills remain. Complete the remaining fields yourself, check the
+                key or model in Settings, or try again later. The warning explains an actual AI
+                failure, rather than treating every unfilled field as an AI error.
+              </p>
+            </details>
+            <details>
+              <summary>Undo, interruptions and the previous fill</summary>
+              <p>
+                Undo restores the values recorded before filling where possible, while preserving
+                your later manual edits. Some custom controls cannot be restored completely. After
+                an interruption, accepted writes and available Undo are retained. Results are
+                associated with the source form, rather than a different tab you happen to open.
+              </p>
+            </details>
+          </div>
+        </section>
+        <section class="chapter" id="quick-fill" aria-labelledby="quick-fill-title">
+          <div class="chapter-heading">
+            <span>One less click next time</span>
+            <h2 id="quick-fill-title">Keep Fill Form beside the form</h2>
+          </div>
+          <div class="prose">
+            <p>
+              Quick Fill places a movable Fill Form control on pages that look like job
+              applications. It uses the same autofill process as the toolbar popup.
+            </p>
+          </div>
+          <figure class="component-figure">
+            <div class="capture">
+              <button
+                type="button"
+                data-enlarge
+                aria-label="Enlarge screenshot: Quick Fill preferences and the hidden-site controls"
+              >
+                <img
+                  src="./assets/screenshots/quick-fill-light.webp"
+                  data-light="./assets/screenshots/quick-fill-light.webp"
+                  data-dark="./assets/screenshots/quick-fill-dark.webp"
+                  alt="Quick Fill preferences and the hidden-site controls"
+                  width="992"
+                  height="307"
+                  loading="lazy"
+                />
+              </button>
+            </div>
+            <figcaption>
+              Choose the default fill mode and manage sites where the floating control is hidden.
+            </figcaption>
+          </figure>
+          <div class="split">
+            <div>
+              <h3>Choose how it fills</h3>
+              <p>
+                In Settings → Quick Fill, use <strong>Empty fields only</strong> to preserve
+                existing answers, or <strong>Empty and existing fields</strong> to fill all matched
+                fields. Empty fields only is the default. You can turn the floating control off
+                entirely.
+              </p>
+            </div>
+            <div>
+              <h3>Move it or hide it</h3>
+              <p>
+                Drag the handle to move it. Its menu can hide it until refresh or hide it for that
+                site. To show it again, find the site in Settings → Quick Fill → Hidden sites and
+                select Show.
+              </p>
+              <p>
+                Position, fill mode and hidden sites stay saved in this browser across restarts.
+                Hiding or moving the control does not cancel a fill already running.
+              </p>
+            </div>
+          </div>
+          <p class="note">
+            If the floating control does not appear on an unusual form, use the Chrome toolbar
+            popup. After a fill, Undo and View details are available from the control.
+          </p>
+        </section>
+        <section class="chapter" id="fill-details" aria-labelledby="fill-details-title">
+          <div class="chapter-heading">
+            <span>When you want to look closer</span>
+            <h2 id="fill-details-title">Follow each field through the fill</h2>
+          </div>
+          <div class="prose">
+            <p>
+              Tools → Fill Details shows the latest selected fill report. View details in the popup
+              or floating control takes you there; the report is recorded even if you never press
+              that button.
+            </p>
+            <p>
+              It updates while you edit the source form. A new nonempty fill replaces the report.
+              View details on another open form can select its report again. This is a record of
+              filling, not a history of submitted applications.
+            </p>
+          </div>
+          <figure class="">
+            <div class="capture">
+              <button
+                type="button"
+                data-enlarge
+                aria-label="Enlarge screenshot: Fill Details with outcome filters and an expanded processing stage"
+              >
+                <img
+                  src="./assets/screenshots/fill-details-light.webp"
+                  data-light="./assets/screenshots/fill-details-light.webp"
+                  data-dark="./assets/screenshots/fill-details-dark.webp"
+                  alt="Fill Details with outcome filters and an expanded processing stage"
+                  width="1280"
+                  height="900"
+                  loading="lazy"
+                />
+              </button>
+            </div>
+            <figcaption>
+              The real report from the fictional demo application. It records decisions, not the
+              contents of your answers.
+            </figcaption>
+          </figure>
+          <h3>How an answer reaches a field</h3>
+          <ol class="pipeline">
+            <li>
+              <strong>Learned mappings</strong>
+              <p>Try a trusted correction previously saved for this site and question.</p>
+            </li>
+            <li>
+              <strong>Rules</strong>
+              <p>
+                Look at browser autocomplete hints, labels, identifiers and nearby context to match
+                a profile field.
+              </p>
+            </li>
+            <li>
+              <strong>Gemini</strong>
+              <p>
+                Review eligible fields that still need help, including uncertain rule matches.
+                High-confidence AI may refine a yellow rule fill.
+              </p>
+            </li>
+          </ol>
+          <p class="prose">
+            A reliable result can finish the process early. Not every field reaches every stage, and
+            a successful match still needs a value that the form accepts.
+          </p>
+          <div class="detail-list">
+            <details open>
+              <summary>Read the summary and filters</summary>
+              <div>
+                <p>
+                  Detected fields are divided into Filled, Not filled, Kept current and Skipped. A
+                  choice group counts once. Filled can be green or yellow; Not filled can be red or
+                  gray. Skipped covers excluded questions such as consent. Kept current means an
+                  existing answer was preserved.
+                </p>
+                <p>
+                  Search titles and readable profile paths, then narrow the results by outcome,
+                  color or final source. Checked by rules and Sent to AI count processing stages, so
+                  they can overlap. Final source counts identify which stage or manual action
+                  supplied the final fill.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>Read a field’s expanded stages</summary>
+              <p>
+                Select Learned mappings, Rules or AI to see the recorded decision at that stage.
+                Rules show the method, original match score and profile field. Learned mappings show
+                trust and confirmation information. AI shows qualitative confidence, not an invented
+                percentage. A match can still fail if the form rejects the write.
+              </p>
+            </details>
+            <details>
+              <summary>What do the rule methods and percentages mean?</summary>
+              <div>
+                <div class="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Method</th>
+                        <th>How it helps</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Autocomplete attribute</td>
+                        <td>
+                          Uses a standard browser hint such as given-name. Usually scores 95%.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Exact dictionary match</td>
+                        <td>Matches a known field label or alias. Normally scores 85%.</td>
+                      </tr>
+                      <tr>
+                        <td>Similar field label</td>
+                        <td>
+                          Allows similar wording; the score varies with similarity and safeguards.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Custom link label</td>
+                        <td>Matches one of your named custom links.</td>
+                      </tr>
+                      <tr>
+                        <td>Current-status checkbox</td>
+                        <td>Uses a restricted set of known current-work or current-study terms.</td>
+                      </tr>
+                      <tr>
+                        <td>Nearby context</td>
+                        <td>
+                          Uses surrounding question text when the direct signals are insufficient.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p>
+                  Rules fill at 60% or higher and use green at 85% or higher. These are matching
+                  scores, not measured probabilities of correctness. Option matching or a rejected
+                  write can change the final result. Trusted learned mappings use a separate trust
+                  signal; Gemini confidence remains High or Low.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>What happens when the source form closes?</summary>
+              <p>
+                The last report stays for this browser session. Return to Form focuses the original
+                open tab. If it has closed or navigated away, Open Form opens the saved address in a
+                fresh tab, without restoring answers. Reset and profile replacement clear the
+                report; JSON and Drive backups never include it.
+              </p>
+            </details>
+          </div>
+        </section>
+        <section class="chapter" id="learned-mappings" aria-labelledby="learned-mappings-title">
+          <div class="chapter-heading">
+            <span>Make repeated corrections count</span>
+            <h2 id="learned-mappings-title">Teach the questions you meet again</h2>
+          </div>
+          <div class="prose">
+            <p>
+              After autofill, you may need to correct an answer. If the value uniquely matches
+              information saved in your profile, Job Buddy can remember which profile field you used
+              for that question. Type the correction, then move to another field to record it.
+            </p>
+            <p>
+              One recorded confirmation makes a mapping Learning. Confirm the same match again and
+              it becomes Trusted, ready for future fills on that site. Autofill alone, or focusing
+              and leaving a field without editing it, does not teach a mapping.
+            </p>
+          </div>
+          <figure class="">
+            <div class="capture">
+              <button
+                type="button"
+                data-enlarge
+                aria-label="Enlarge screenshot: Learned Mappings with site groups, status filters and edit and delete actions"
+              >
+                <img
+                  src="./assets/screenshots/mappings-light.webp"
+                  data-light="./assets/screenshots/mappings-light.webp"
+                  data-dark="./assets/screenshots/mappings-dark.webp"
+                  alt="Learned Mappings with site groups, status filters and edit and delete actions"
+                  width="1280"
+                  height="900"
+                  loading="lazy"
+                />
+              </button>
+            </div>
+            <figcaption>
+              Search sites, questions and destination fields. The chooser uses the same field
+              catalog as the profile editor.
+            </figcaption>
+          </figure>
+          <dl class="facts">
+            <div>
+              <dt>Learning</dt>
+              <dd>
+                One manual confirmation. It is not trusted for autofill yet; a conflicting
+                correction starts learning the new match.
+              </dd>
+            </div>
+            <div>
+              <dt>Trusted</dt>
+              <dd>
+                Two confirmations, or an explicit edit in this page. Eligible trusted mappings take
+                priority over rules and AI.
+              </dd>
+            </div>
+            <div>
+              <dt>Inactive</dt>
+              <dd>
+                Saved but excluded from filling, for example when a referenced profile entry was
+                removed or became ambiguous.
+              </dd>
+            </div>
+            <div>
+              <dt>Edit and delete</dt>
+              <dd>
+                The pencil changes the destination using the profile-field chooser. Saving trusts
+                your choice immediately. The bin removes a mapping after confirmation; a site-level
+                bin removes that site’s mappings.
+              </dd>
+            </div>
+          </dl>
+          <h3>Review what has been learned</h3>
+          <p class="prose">
+            Review Mappings uses Gemini to check selected sites. It sends saved questions and
+            profile-field names, then presents better matches, unclear matches and unavailable
+            fields for your decision. You review changes before applying them.
+          </p>
+          <h3>Older mappings can be repaired automatically</h3>
+          <p class="prose">
+            When you fill a form, Job Buddy can repair known issues in older mappings when the form
+            provides clear evidence. Unchanged work is not repeated; changed mappings, new evidence
+            or a newer repair version can be checked again. These repairs do not use Gemini or
+            silently choose a different profile field. Use Review Mappings when you want AI to check
+            the pairing.
+          </p>
+        </section>
+        <section class="chapter" id="backups" aria-labelledby="backups-title">
+          <div class="chapter-heading">
+            <span>Take it with you</span>
+            <h2 id="backups-title">A profile is a file you can move</h2>
+          </div>
+          <div class="prose">
+            <p>
+              Settings → Export Profile downloads a Job Buddy JSON file containing your profile,
+              learned mappings and safe export metadata. Use it to keep a copy or move to another
+              browser or device.
+            </p>
+            <p>
+              Settings → Import Profile reads that file, checks its structure and compares it with
+              the saved profile. An empty profile imports valid data directly; identical data leaves
+              it unchanged. Differences use the same Keep Current, Import All and Review Changes
+              flow as resume import.
+            </p>
+          </div>
+          <figure class="">
+            <div class="capture">
+              <button
+                type="button"
+                data-enlarge
+                aria-label="Enlarge screenshot: Settings for importing and exporting a Job Buddy profile"
+              >
+                <img
+                  src="./assets/screenshots/backup-light.webp"
+                  data-light="./assets/screenshots/backup-light.webp"
+                  data-dark="./assets/screenshots/backup-dark.webp"
+                  alt="Settings for importing and exporting a Job Buddy profile"
+                  width="1280"
+                  height="900"
+                  loading="lazy"
+                />
+              </button>
+            </div>
+            <figcaption>
+              A Job Buddy JSON export carries your profile and learned mappings, including stored
+              documents.
+            </figcaption>
+          </figure>
+          <p class="note">
+            JSON and Drive updates reconcile imported learned mappings with saved ones. Local
+            conflicting choices are kept and matching snapshots do not add confirmations. Replace
+            adopts the selected incoming data and mappings. JSON and Drive review apply accepted
+            incoming lists; resume updates additionally retain saved entries omitted from the
+            resume.
+          </p>
+          <p class="prose">
+            The field catalog is part of Job Buddy’s code: it gives fields shared labels, ordering
+            and references across the editor, chooser and review screens. Your personal values live
+            in the profile JSON in this browser’s local extension storage. An export includes the
+            values and mappings, not your Gemini key, appearance or Drive connection.
+          </p>
+        </section>
+        <section class="chapter" id="drive" aria-labelledby="drive-title">
+          <div class="chapter-heading">
+            <span>For an automatic copy</span>
+            <h2 id="drive-title">Back up to your own Google Drive</h2>
+          </div>
+          <div class="prose">
+            <p>
+              Connect Google Drive in Settings to save your profile and learned mappings in Drive’s
+              private app-data area. No Job Buddy server sits between your browser and your Google
+              account.
+            </p>
+            <p>
+              If Drive is empty, Job Buddy creates a backup. Matching data is reconciled. If the
+              backup differs, review it before continuing, using the same shared comparison
+              controls. A possible different person also gives you the Update or Replace choice.
+            </p>
+          </div>
+          <figure class="component-figure">
+            <div class="capture">
+              <button
+                type="button"
+                data-enlarge
+                aria-label="Enlarge screenshot: Cloud Backup settings in the connected state"
+              >
+                <img
+                  src="./assets/screenshots/drive-light.webp"
+                  data-light="./assets/screenshots/drive-light.webp"
+                  data-dark="./assets/screenshots/drive-dark.webp"
+                  alt="Cloud Backup settings in the connected state"
+                  width="992"
+                  height="187"
+                  loading="lazy"
+                />
+              </button>
+            </div>
+            <figcaption>
+              The connected view shows backup status and provides Back Up Now and Disconnect. This
+              capture uses an isolated simulated connection.
+            </figcaption>
+          </figure>
+          <dl class="facts">
+            <div>
+              <dt>After saving changes</dt>
+              <dd>
+                A profile or mapping save queues backup after about five seconds. Backups follow
+                saved changes rather than a fixed timer.
+              </dd>
+            </div>
+            <div>
+              <dt>Back Up Now</dt>
+              <dd>
+                Check and update the backup manually. Temporary failures can retry automatically; an
+                expired authorization may need Reconnect.
+              </dd>
+            </div>
+            <div>
+              <dt>Disconnect</dt>
+              <dd>
+                Keep the last successful backup, or choose to delete it. Disconnect does not first
+                upload pending edits; use Back Up Now if you want a current copy.
+              </dd>
+            </div>
+            <div>
+              <dt>Imports and exports</dt>
+              <dd>
+                Saved imports normally queue backup while connected. A local profile replacement
+                pauses Drive for review. Export only downloads a file; it does not trigger a backup.
+              </dd>
+            </div>
+          </dl>
+          <div class="detail-list">
+            <details>
+              <summary>Keep Current means something different in Drive review</summary>
+              <p>
+                Explicitly keeping this browser’s profile uploads that profile to Drive. Closing or
+                cancelling the dialog only dismisses the review and leaves uploads paused.
+                Replacement from a resume or JSON also pauses backups so you can decide what to do
+                with the existing Drive copy.
+              </p>
+            </details>
+          </div>
+          <p class="note">
+            Drive backs up profile data and learned mappings. It excludes Gemini credentials,
+            appearance, Quick Fill preferences, connection tokens and Fill Details reports.
+          </p>
+        </section>
+        <section class="chapter" id="your-data" aria-labelledby="your-data-title">
+          <div class="chapter-heading">
+            <span>The data stays yours</span>
+            <h2 id="your-data-title">Keep control of what you share</h2>
+          </div>
+          <div class="prose">
+            <p>
+              Job Buddy is free, open source, and has no ads, analytics or Job Buddy account. The
+              extension stores your profile and settings in this browser. There is no Job Buddy
+              backend holding your applications.
+            </p>
+            <p>
+              AI features do make requests to Google. Resume import sends the selected document and
+              extracted links. Autofill sends relevant form questions and profile details, excluding
+              stored document files. Background details are disclosed only when the question asks
+              for them. AI mapping review sends saved questions and profile-field names. Google’s
+              own service and data-use terms apply.
+            </p>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Where it goes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Profile and learned mappings</td>
+                  <td>
+                    Local extension storage; JSON when you export; Google Drive when connected.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Gemini key and model preference</td>
+                  <td>
+                    Local settings. The key authenticates requests to Gemini; it is excluded from
+                    profile backups.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Appearance and Quick Fill preferences</td>
+                  <td>This browser only.</td>
+                </tr>
+                <tr>
+                  <td>Fill Details</td>
+                  <td>
+                    One metadata-only report for the browser session, outside profile backups.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <h3>Start over when you need to</h3>
+          <p class="prose">
+            Settings → Reset All Data clears the local profile, documents, learned mappings,
+            settings and retained Fill Details. It removes the Gemini key, disconnects Drive, resets
+            appearance and Quick Fill preferences, and requires you to type DELETE.
+          </p>
+          <p class="prose">
+            If Drive is connected, choose whether to delete its backup too. Leaving that choice off
+            keeps the remote backup. If a requested backup deletion fails, reset stops so you can
+            retry. Keep an export first if you want your data back later.
+          </p>
+          <figure class="dialog-figure">
+            <div class="capture">
+              <button
+                type="button"
+                data-enlarge
+                aria-label="Enlarge screenshot: Reset All Data confirmation with the required DELETE entry"
+              >
+                <img
+                  src="./assets/screenshots/reset-light.webp"
+                  data-light="./assets/screenshots/reset-light.webp"
+                  data-dark="./assets/screenshots/reset-dark.webp"
+                  alt="Reset All Data confirmation with the required DELETE entry"
+                  width="384"
+                  height="268"
+                  loading="lazy"
+                />
+              </button>
+            </div>
+            <figcaption>
+              Reset is explicit. Keeping or deleting the Drive copy is a separate choice when
+              connected.
+            </figcaption>
+          </figure>
+          <div class="intro-actions">
+            <a
+              class="button primary"
+              href="https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk"
+              >Get Job Buddy</a
+            ><a class="text-link" href="./developers/">See how it is built</a>
+          </div>
+          <p class="sources">
+            For the full terms, see the <a href="./legal/privacy/">Privacy Policy</a> and
+            <a href="./legal/disclaimer/">Autofill & AI Disclaimer</a>.
+          </p>
+        </section>
+      </main>
     </div>
-  </section>
-
-
-  <!-- ── SCREENSHOT GALLERY ───────────────────────────────────── -->
-  <section class="bg-navy/95 py-16">
-    <div class="max-w-7xl mx-auto px-6">
-      <p class="text-slate-500 text-sm font-semibold uppercase tracking-widest text-center mb-8">See it in action</p>
-      <div class="screenshot-track">
-        <div class="screenshot-item">
-          <img src="./assets/images/1.webp" alt="Job Buddy profile editor, Personal Information section" width="1400" height="875" loading="lazy" />
-        </div>
-        <div class="screenshot-item">
-          <img src="./assets/images/autofill-demo.jpg" alt="Job Buddy autofilling a sample application with the Quick Fill control" width="1440" height="1000" loading="lazy" />
-        </div>
-        <div class="screenshot-item">
-          <img src="./assets/images/5.webp" alt="Job Buddy field picker overlay" width="1280" height="800" loading="lazy" />
-        </div>
-        <div class="screenshot-item">
-          <img src="./assets/images/2.webp" alt="Job Buddy AI résumé import review dialog" width="1400" height="875" loading="lazy" />
-        </div>
-        <div class="screenshot-item">
-          <img src="./assets/images/3.webp" alt="Job Buddy settings and Cloud Backup" width="1400" height="875" loading="lazy" />
-        </div>
+    <footer class="site-footer">
+      <a class="brand" href="./"
+        ><img src="./assets/icons/icon.svg" alt="" width="25" height="25" />Job Buddy</a
+      >
+      <div>
+        <nav class="footer-links" aria-label="Project links">
+          <a
+            href="https://github.com/myowinthein/job-buddy/issues/new?template=report-a-problem.yml"
+            >Report an issue</a
+          ><a
+            href="https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk"
+            >Chrome Web Store</a
+          ><a href="https://github.com/myowinthein/job-buddy">GitHub</a
+          ><a href="https://ko-fi.com/myowinthein">Support on Ko-fi</a
+          ><a href="./legal/privacy/">Privacy Policy</a><a href="./legal/disclaimer/">Disclaimer</a
+          ><a href="https://github.com/myowinthein/job-buddy/blob/main/LICENSE">MIT license</a>
+        </nav>
+        <p class="footer-note">
+          Built by <a href="https://github.com/myowinthein">Myo Win Thein</a> for his own job
+          search. Free and open source.
+        </p>
       </div>
-    </div>
-  </section>
-
-
-  <!-- ── FOOTER ───────────────────────────────────────────────── -->
-  <footer class="bg-surface dark:bg-[#0f2236] border-t border-navy/5 dark:border-white/6 py-10">
-    <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
-
-      <!-- Logo + copy -->
-      <div class="flex items-center gap-2.5">
-        <img src="./assets/icons/icon.svg" width="24" height="24" alt="" class="rounded-md opacity-70" />
-        <span class="text-navy/50 dark:text-white/40 text-sm font-medium">Job Buddy</span>
-        <span class="text-navy/20 dark:text-white/15 text-sm">·</span>
-        <span class="text-navy/35 dark:text-white/25 text-sm">MIT License © 2026 Myo Win Thein</span>
-      </div>
-
-      <!-- Links -->
-      <nav class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-        <a href="https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk"
-           target="_blank" rel="noopener"
-           class="text-navy/50 dark:text-white/40 hover:text-brand text-sm font-medium transition-colors no-underline">
-          Chrome Web Store
-        </a>
-        <a href="https://github.com/myowinthein/job-buddy" target="_blank" rel="noopener"
-           class="text-navy/50 dark:text-white/40 hover:text-brand text-sm font-medium transition-colors no-underline">
-          GitHub
-        </a>
-        <a href="./legal/privacy/"
-           class="text-navy/50 dark:text-white/40 hover:text-brand text-sm font-medium transition-colors no-underline">
-          Privacy Policy
-        </a>
-        <a href="./legal/disclaimer/"
-           class="text-navy/50 dark:text-white/40 hover:text-brand text-sm font-medium transition-colors no-underline">
-          Disclaimer
-        </a>
-        <a href="https://ko-fi.com/myowinthein" target="_blank" rel="noopener"
-           class="text-navy/35 dark:text-white/25 hover:text-brand text-sm transition-colors no-underline">
-          Support on Ko-fi
-        </a>
-      </nav>
-
-    </div>
-  </footer>
-
-  <script>
-    // Scroll-based active nav highlighting.
-    // Active = brand-blue text + bold (distinct from hover's sliding underline).
-    (function () {
-      const links = document.querySelectorAll('.nav-link[href^="#"]');
-      const sections = Array.from(links)
-        .map(l => document.querySelector(l.getAttribute('href')))
-        .filter(Boolean);
-
-      function setActive(id) {
-        links.forEach(l => {
-          l.classList.toggle('active', l.getAttribute('href') === '#' + id);
-        });
-      }
-
-      const observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) setActive(entry.target.id);
-        });
-      }, { rootMargin: '-20% 0px -65% 0px' });
-
-      sections.forEach(s => observer.observe(s));
-    })();
-
-    // Dark mode toggle — saves preference to localStorage.
-    (function () {
-      var root = document.documentElement;
-      var btn = document.getElementById('theme-toggle');
-      var iconMoon = document.getElementById('icon-moon');
-      var iconSun = document.getElementById('icon-sun');
-
-      function apply(dark) {
-        root.classList.toggle('dark', dark);
-        iconMoon.classList.toggle('hidden', dark);
-        iconSun.classList.toggle('hidden', !dark);
-      }
-
-      // Sync icons with whatever the anti-FOUC script already applied.
-      apply(root.classList.contains('dark'));
-
-      btn.addEventListener('click', function () {
-        var nowDark = !root.classList.contains('dark');
-        localStorage.setItem('theme', nowDark ? 'dark' : 'light');
-        apply(nowDark);
-      });
-    })();
-  </script>
-</body>
+    </footer>
+    <dialog class="image-dialog" aria-label="Screenshot viewer">
+      <header>
+        <p></p>
+        <button type="button" autofocus>Close</button>
+      </header>
+      <img alt="" />
+    </dialog>
+  </body>
 </html>

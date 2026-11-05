@@ -1,29 +1,36 @@
 :root {
   color-scheme: light;
-  --ink: #24312c;
-  --muted: #66716b;
-  --accent: #315c49;
-  --line: #dce1db;
+  --paper: #f4f5f7;
+  --surface: #fff;
+  --ink: #262a35;
+  --muted: #626b7c;
+  --line: #d5dae3;
+  --input: #fff;
+  --accent: #394e9a;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: var(--ink);
-  background: #f5f6f2;
-  font-synthesis: none;
+}
+:root.dark {
+  color-scheme: dark;
+  --paper: #161b27;
+  --surface: #202737;
+  --ink: #f0f2f7;
+  --muted: #b0bacd;
+  --line: #46516a;
+  --input: #222c3e;
+  --accent: #a8baff;
 }
 * {
   box-sizing: border-box;
 }
 body {
   margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.7;
 }
 [hidden] {
   display: none !important;
-}
-a {
-  color: var(--accent);
-  text-underline-offset: 3px;
-}
-a:hover {
-  text-decoration-thickness: 2px;
 }
 button,
 input,
@@ -34,395 +41,376 @@ textarea {
 button {
   cursor: pointer;
 }
-button:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
 :focus-visible {
-  outline: 2px solid #376fbd;
-  outline-offset: 3px;
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
 }
 .skip-link {
-  position: fixed;
-  top: 8px;
-  left: 8px;
+  position: absolute;
+  top: -70px;
+  left: 16px;
+  padding: 10px;
+  background: var(--surface);
+  color: var(--ink);
   z-index: 10;
-  padding: 12px;
-  background: white;
-  transform: translateY(-150%);
 }
 .skip-link:focus {
-  transform: none;
+  top: 10px;
 }
-.site-header {
+.masthead {
+  background: var(--surface);
   border-bottom: 1px solid var(--line);
-  background: #fff;
 }
-.site-header-inner {
-  max-width: 1240px;
+.masthead-inner {
+  max-width: 1250px;
   margin: auto;
-  padding: 20px 30px;
+  padding: 22px 32px;
   display: flex;
+  gap: 30px;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
 }
-.company {
-  display: inline-flex;
-  align-items: center;
-  gap: 11px;
-  font-size: 20px;
-  font-weight: 650;
-  letter-spacing: -0.5px;
-}
-.company-mark {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border: 1px solid var(--accent);
-  border-radius: 7px;
-  color: var(--accent);
-  font-size: 28px;
-  font-weight: 500;
+.wordmark {
+  font-size: 29px;
+  font-weight: 750;
   line-height: 1;
-  padding-bottom: 5px;
+  letter-spacing: -1.5px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
-.site-header a {
+.wordmark > span {
+  font-size: 12px;
+  letter-spacing: 1px;
+  font-weight: 500;
+}
+.careers {
+  color: var(--muted);
+  border-left: 1px solid var(--line);
+  padding-left: 28px;
   font-size: 13px;
-  text-decoration: none;
 }
-.layout,
+#theme {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: 5px 10px;
+  border-radius: 4px;
+}
+.application-layout,
 .page-footer {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: 72px;
-  max-width: 1240px;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 64px;
+  max-width: 1250px;
   margin: auto;
+  padding-inline: 32px;
 }
-.layout {
-  padding: 46px 30px 32px;
+.application-layout {
+  padding-block: 46px 30px;
   align-items: start;
 }
-.role-details {
-  min-width: 0;
+.job-description {
+  padding-top: 4px;
 }
-.role-team {
-  font-size: 13px;
+.team {
+  margin: 0 0 12px;
   color: var(--accent);
-  margin: 6px 0 14px;
+  font-size: 13px;
+}
+h1,
+h2,
+h3 {
+  line-height: 1.25;
 }
 h1 {
-  font-size: 32px;
-  letter-spacing: -1.3px;
-  line-height: 1.16;
-  margin: 0 0 22px;
-  font-weight: 650;
+  font-size: 31px;
+  letter-spacing: -1.2px;
+  margin: 0 0 20px;
+  font-weight: 680;
 }
-.role-meta {
-  display: flex;
-  flex-wrap: wrap;
-  list-style: none;
-  padding: 0;
-  margin: 0 0 28px;
-  gap: 8px 18px;
+.job-meta {
   font-size: 13px;
-  color: var(--muted);
+  line-height: 1.9;
+  margin-bottom: 25px;
 }
-.role-description {
-  font-size: 15px;
-  line-height: 1.75;
-  color: var(--muted);
-  margin: 0;
+p {
+  margin: 0 0 16px;
 }
-.job-description {
-  margin-top: 28px;
+.job-description p:not(.team),
+.job-description li {
+  color: var(--muted);
 }
 .job-description h2 {
   font-size: 15px;
-  font-weight: 600;
-  margin: 24px 0 10px;
+  margin: 28px 0 10px;
+  font-weight: 650;
 }
 .job-description ul {
-  padding-left: 18px;
-  margin: 0;
-  color: var(--muted);
+  padding-left: 19px;
   font-size: 14px;
-  line-height: 1.7;
+  margin: 0;
 }
-.job-description li + li {
-  margin-top: 8px;
+.job-description li {
+  margin: 9px 0;
 }
 .application-panel {
-  min-width: 0;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 7px;
   padding: 32px 36px;
+  min-width: 0;
 }
-.application-header {
-  margin-bottom: 27px;
+.form-heading > p:first-child {
+  color: var(--accent);
+  font-size: 12px;
+  margin-bottom: 8px;
 }
-.application-header h2 {
-  font-size: 25px;
-  line-height: 1.25;
-  letter-spacing: -0.6px;
-  margin: 0 0 8px;
+.form-heading h2 {
+  font-size: 27px;
   font-weight: 650;
+  letter-spacing: -0.8px;
+  margin: 0 0 10px;
 }
-.application-header p {
-  font-size: 13px;
+.form-heading > p:last-child {
   color: var(--muted);
-  line-height: 1.6;
-  margin: 0;
+  font-size: 12px;
 }
-.form-section + .form-section {
-  margin-top: 27px;
+form section {
+  margin-top: 29px;
 }
-.form-section h3 {
-  margin: 0 0 14px;
-  font-size: 14px;
+form section + section {
+  border-top: 1px solid var(--line);
+  padding-top: 25px;
+}
+h3 {
+  font-size: 15px;
+  margin: 0 0 19px;
   font-weight: 650;
 }
-.field-grid {
+.fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 17px 20px;
+  gap: 18px 20px;
 }
-.field {
+.fields > div,
+.fields fieldset {
   min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
 }
-.full {
+.fields .full {
   grid-column: 1 / -1;
 }
-.field > label,
+label,
 legend {
   display: block;
   font-size: 12px;
-  font-weight: 550;
-  line-height: 1.5;
-  margin-bottom: 6px;
+  font-weight: 560;
+  line-height: 1.6;
+  margin-bottom: 7px;
 }
-input:not([type='checkbox']):not([type='radio']),
+input:not([type='radio'], [type='checkbox']),
 select,
 textarea {
-  width: 100%;
-  min-width: 0;
-  padding: 10px 12px;
-  min-height: 42px;
-  border: 1px solid #cbd3cb;
-  border-radius: 6px;
-  background-color: #fff;
-  color: var(--ink);
-  font-size: 14px;
-  line-height: 1.4;
-}
-textarea {
   display: block;
-  resize: vertical;
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 9px 11px;
+  background: var(--input);
+  color: var(--ink);
+  line-height: 1.5;
+  font-size: 14px;
 }
 select {
-  padding-right: 8px;
+  padding-right: 28px;
+}
+textarea {
+  resize: vertical;
 }
 input[type='file'] {
+  padding: 7px;
   font-size: 12px;
 }
-input[type='file']::file-selector-button {
-  border: 0;
-  border-radius: 3px;
-  padding: 4px 7px;
-  margin-right: 10px;
-  background: #edf0eb;
+input::file-selector-button {
+  background: var(--paper);
   color: var(--ink);
-  cursor: pointer;
-}
-.field-help {
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--muted);
-  margin: 8px 0 0;
-}
-.form-section > .field-help {
-  margin: -6px 0 18px;
-}
-.choices {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  padding: 5px 0;
-}
-.choices label,
-.consent {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  font-size: 13px;
-  line-height: 1.6;
+  border: 0;
+  padding: 5px 9px;
+  border-radius: 3px;
+  margin-right: 9px;
 }
 input[type='checkbox'],
 input[type='radio'] {
-  accent-color: var(--accent);
   width: 16px;
   height: 16px;
-  flex-shrink: 0;
-  margin: 3px 0 0;
+  accent-color: #394e9a;
 }
-.form-footer {
-  border-top: 1px solid var(--line);
-  margin-top: 28px;
-  padding-top: 23px;
+.help {
+  color: var(--muted);
+  font-size: 11px;
+  margin: 5px 0 0;
+}
+fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.radio-options {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-height: 42px;
+}
+.radio-options label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
 }
 .form-actions {
+  margin-top: 28px;
+  padding-top: 25px;
+  border-top: 1px solid var(--line);
+}
+.consent {
   display: flex;
-  flex-wrap: wrap;
+  align-items: start;
+  gap: 8px;
+  color: var(--muted);
+  font-weight: 400;
+}
+.consent input {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.actions {
+  margin-top: 25px;
+  display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 18px;
-  margin-top: 24px;
+  gap: 20px;
 }
-.primary-button {
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: white;
-  border-radius: 6px;
-  padding: 12px 18px;
+.actions button {
+  border: 0;
+  padding: 11px 17px;
   font-size: 13px;
+  border-radius: 4px;
+}
+.actions #submit {
+  background: #394e9a;
+  color: white;
   font-weight: 600;
 }
-.primary-button:hover {
-  background: #254a3a;
+.actions #submit span {
+  margin-left: 15px;
 }
-.primary-button span {
-  margin-left: 12px;
-}
-.text-button {
-  padding: 7px 0;
-  border: 0;
-  background: transparent;
-  color: var(--accent);
-  font-size: 13px;
+.actions .reset {
+  background: none;
+  color: var(--muted);
+  padding-left: 0;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 .completion {
-  background: #edf5ed;
-  color: #254f35;
-  padding: 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 15px;
   margin-top: 20px;
-  border-radius: 6px;
 }
 .completion h3 {
-  font-size: 15px;
-  margin: 0 0 5px;
+  margin-bottom: 6px;
 }
 .completion p {
   font-size: 13px;
-  line-height: 1.6;
   margin: 0;
 }
 .page-footer {
-  padding: 0 30px 32px;
-  font-size: 12px;
-  color: var(--muted);
+  padding-bottom: 30px;
 }
-.page-footer > span {
+.page-footer p {
   grid-column: 2;
-}
-.noscript-note {
+  margin: 0;
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 11px;
 }
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-@media (max-width: 960px) {
-  .layout,
+@media (max-width: 1000px) {
+  .application-layout,
   .page-footer {
-    grid-template-columns: 230px minmax(0, 1fr);
+    grid-template-columns: 250px minmax(0, 1fr);
     gap: 32px;
-  }
-  .field-grid {
-    grid-template-columns: 1fr;
+    padding-inline: 26px;
   }
   h1 {
-    font-size: 31px;
+    font-size: 26px;
   }
   .application-panel {
-    padding: 28px;
+    padding: 28px 25px;
   }
 }
-@media (max-width: 700px) {
-  .layout,
+@media (max-width: 750px) {
+  .application-layout,
   .page-footer {
     grid-template-columns: 1fr;
+    padding-inline: 22px;
   }
-  .page-footer > span {
-    grid-column: 1;
-  }
-  .layout {
+  .application-layout {
     padding-top: 30px;
     gap: 28px;
   }
-  .role-details {
-    position: static;
+  .page-footer p {
+    grid-column: 1;
   }
-  .role-description {
-    max-width: 40rem;
+  .job-description {
+    max-width: 600px;
   }
-  .application-panel {
-    padding: 26px 24px;
-  }
-  .field-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  h1 {
+    font-size: 32px;
   }
 }
 @media (max-width: 460px) {
-  .site-header-inner {
-    padding: 17px 20px;
-    gap: 12px;
+  .masthead-inner {
+    padding: 19px 18px;
+    gap: 15px;
   }
-  .site-header a {
-    font-size: 12px;
+  .careers {
+    padding-left: 15px;
   }
-  .company {
-    font-size: 18px;
-    gap: 8px;
+  .wordmark {
+    font-size: 25px;
+    gap: 5px;
   }
-  .layout {
-    padding: 26px 16px;
-    gap: 24px;
+  .wordmark > span {
+    font-size: 10px;
   }
-  .role-details {
-    padding: 0 4px;
-  }
-  h1 {
-    font-size: 31px;
-    max-width: 19rem;
+  .application-layout,
+  .page-footer {
+    padding-inline: 16px;
   }
   .application-panel {
     padding: 25px 20px;
   }
-  .field-grid {
+  .fields {
     grid-template-columns: 1fr;
   }
-  .page-footer {
-    padding-inline: 20px;
+  .actions {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .form-heading h2 {
+    font-size: 24px;
+  }
+  h1 {
+    font-size: 30px;
   }
 }
 @media (forced-colors: active) {
-  .primary-button {
+  .actions #submit {
     border: 1px solid ButtonText;
   }
 }
