@@ -5,6 +5,7 @@ import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 export function LearnedMappingsHelp() {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const [pinned, setPinned] = useState(false);
   const id = useId();
   const close = () => {
@@ -36,9 +37,12 @@ export function LearnedMappingsHelp() {
       }}
     >
       <button
+        ref={trigger}
         type="button"
         aria-label="How learned mappings work"
+        aria-haspopup="dialog"
         aria-expanded={open}
+        aria-controls={open ? id : undefined}
         aria-describedby={open ? id : undefined}
         onFocus={() => setOpen(true)}
         onClick={() => {
@@ -53,7 +57,8 @@ export function LearnedMappingsHelp() {
         <div className="absolute left-0 top-full z-40 w-96 max-w-[calc(100vw-6rem)] pt-2">
           <div
             id={id}
-            role="tooltip"
+            role="dialog"
+            aria-label="How learned mappings work"
             className="space-y-3 rounded-lg border border-gray-200 bg-white p-3 text-xs leading-relaxed text-gray-600 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
           >
             <p>
@@ -84,7 +89,16 @@ export function LearnedMappingsHelp() {
                 <p>Save an edit here to make the mapping Trusted.</p>
               </div>
             ) : (
-              <p className="text-gray-500 dark:text-gray-400">Click for more details</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setPinned(true);
+                  trigger.current?.focus();
+                }}
+                className="rounded text-blue-600 underline underline-offset-2 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
+              >
+                Click for more details
+              </button>
             )}
           </div>
         </div>

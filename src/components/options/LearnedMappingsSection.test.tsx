@@ -295,25 +295,28 @@ describe('Learned Mappings presentation and discovery', () => {
     await screen.findByRole('button', { name: 'How learned mappings work' });
     const help = screen.getByRole('button', { name: 'How learned mappings work' });
     fireEvent.focus(help);
-    const tooltip = screen.getByRole('tooltip');
+    const tooltip = screen.getByRole('dialog', { name: 'How learned mappings work' });
     expect(tooltip.textContent).toContain('Job Buddy remembers your corrections');
     expect(within(tooltip).getByText('Learning')).toBeTruthy();
     expect(within(tooltip).getByText('Trusted')).toBeTruthy();
     expect(within(tooltip).getByText('Inactive')).toBeTruthy();
     expect(tooltip.textContent).not.toContain('AI answers do not teach mappings.');
     expect(tooltip.textContent).toContain('Click for more details');
-    fireEvent.click(help);
-    expect(screen.getByRole('tooltip').textContent).toContain('AI answers do not teach mappings.');
-    expect(screen.getByRole('tooltip').textContent).toContain('a profile entry is removed');
-    expect(screen.getByRole('tooltip').textContent).not.toContain('Click for more details');
+    fireEvent.click(screen.getByRole('button', { name: 'Click for more details' }));
+    expect(tooltip.textContent).toContain('AI answers do not teach mappings.');
+    expect(tooltip.textContent).toContain('a profile entry is removed');
+    expect(tooltip.textContent).not.toContain('Click for more details');
+    expect(document.activeElement).toBe(help);
     fireEvent.mouseLeave(help.parentElement!);
-    expect(screen.getByRole('tooltip')).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: 'How learned mappings work' })).toBeTruthy();
     fireEvent.keyDown(help, { key: 'Escape' });
-    expect(screen.queryByRole('tooltip')).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'How learned mappings work' })).toBeNull();
     fireEvent.click(help);
-    expect(screen.getByRole('tooltip')).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: 'How learned mappings work' }).textContent).toContain(
+      'AI answers do not teach mappings.',
+    );
     fireEvent.pointerDown(document.body);
-    expect(screen.queryByRole('tooltip')).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'How learned mappings work' })).toBeNull();
   });
 });
 
