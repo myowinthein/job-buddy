@@ -14,6 +14,7 @@ function updateTheme() {
   document.querySelectorAll('img[data-light][data-dark]').forEach((img) => {
     img.src = dark ? img.dataset.dark : img.dataset.light;
   });
+  document.dispatchEvent(new Event('jb-theme-change'));
 }
 themeButton?.addEventListener('click', () => {
   root.classList.toggle('dark');

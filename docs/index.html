@@ -24,6 +24,7 @@
     <script src="./assets/theme-init.js"></script>
     <link rel="stylesheet" href="./assets/site.css" />
     <script src="./assets/site.js" defer></script>
+    <script src="./assets/demo-player.js" defer></script>
   </head>
   <body class="walkthrough">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -109,13 +110,33 @@
           </div>
           <p class="intro-footnote">Free and open source, using your own Gemini key.</p>
         </div>
-        <figure class="hero-figure">
+        <figure class="hero-figure" data-demo-player>
           <div class="figure-toolbar">
             <span>A fictional role. The real extension.</span>
-            <div class="segmented" data-compare role="group" aria-label="Demo screenshot state">
-              <button type="button" data-show="after" aria-pressed="true">After autofill</button
-              ><button type="button" data-show="before" aria-pressed="false">Before autofill</button>
+            <div class="demo-controls">
+              <div class="segmented" data-compare role="group" aria-label="Autofill demonstration">
+                <button type="button" data-show="demo" aria-pressed="false" hidden>Watch demo</button>
+                <button type="button" data-show="before" aria-pressed="false">Before autofill</button>
+                <button type="button" data-show="after" aria-pressed="true">After autofill</button>
+              </div>
+              <button class="demo-toggle" type="button" data-demo-toggle hidden>Play demo</button>
             </div>
+          </div>
+          <div class="capture" data-comparison="demo" hidden>
+            <video
+              width="1440"
+              height="1050"
+              controls
+              muted
+              loop
+              playsinline
+              preload="none"
+              data-light="./assets/videos/autofill-light.mp4?v=670a0342af24"
+              data-dark="./assets/videos/autofill-dark.mp4?v=1a91d55602ab"
+              data-poster-light="./assets/screenshots/application-before-light.webp?v=1f55fe599115"
+              data-poster-dark="./assets/screenshots/application-before-dark.webp?v=a1297809f723"
+              aria-label="An empty application form, followed by a cursor clicking Fill Form and Job Buddy entering sample profile details. The application is not submitted."
+            ></video>
           </div>
           <div class="capture" data-comparison="after">
             <button type="button" data-enlarge aria-label="Enlarge filled demo form">
@@ -143,8 +164,7 @@
             </button>
           </div>
           <figcaption>
-            Fictional details, filled by the real extension. Select any screenshot for a closer
-            look.
+            A real Fill Form action with fictional profile details. Nothing is submitted.
           </figcaption>
         </figure>
         <section class="chapter" id="ai" aria-labelledby="ai-title">

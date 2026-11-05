@@ -22,6 +22,7 @@ async function serveSite(context: BrowserContext) {
           '.jpg': 'image/jpeg',
           '.png': 'image/png',
           '.svg': 'image/svg+xml',
+          '.mp4': 'video/mp4',
         }[extname(path)] ?? 'application/octet-stream';
       await route.fulfill({ body: await readFile(path), contentType });
     } catch {
@@ -83,6 +84,72 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
     'git clone https://github.com/myowinthein/job-buddy.git',
   );
   expect(errors).toEqual([]);
+});
+
+test('autofill recording plays, pauses, follows the theme, and stops offscreen', async ({
+  context,
+  page,
+}) => {
+  await serveSite(context);
+  await page.goto(origin + prefix);
+  const figure = page.locator('[data-demo-player]');
+  const video = figure.locator('video');
+  await figure.scrollIntoViewIfNeeded();
+  await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).videoWidth)).toBe(2880);
+  await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(false);
+  await figure.getByRole('button', { name: 'Pause demo', exact: true }).click();
+  const stopped = await video.evaluate((el) => (el as HTMLVideoElement).currentTime);
+  await page.waitForTimeout(200);
+  expect(await video.evaluate((el) => (el as HTMLVideoElement).currentTime)).toBe(stopped);
+  await figure.getByRole('button', { name: 'Play demo', exact: true }).click();
+  await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(false);
+  await page.getByRole('button', { name: /Switch to .* mode/ }).click();
+  const dark = await page.locator('html').evaluate((el) => el.classList.contains('dark'));
+  await expect(video).toHaveAttribute(
+    'src',
+    new RegExp(`autofill-${dark ? 'dark' : 'light'}\\.mp4`),
+  );
+  await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(false);
+  await figure.getByRole('button', { name: 'Before autofill', exact: true }).click();
+  await expect(video).toBeHidden();
+  expect(await video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
+  await figure.getByRole('button', { name: 'Watch demo', exact: true }).click();
+  await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(false);
+  await page.locator('#profile').scrollIntoViewIfNeeded();
+  await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
+  await figure.scrollIntoViewIfNeeded();
+  await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(false);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(video).toBeHidden();
+  expect(await video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
+});
+
+test('reduced motion starts with a still and permits explicit playback', async ({
+  context,
+  page,
+}) => {
+  await serveSite(context);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(origin + prefix);
+  const figure = page.locator('[data-demo-player]');
+  const video = figure.locator('video');
+  await expect(figure.locator('[data-comparison="after"]')).toBeVisible();
+  expect(await video.getAttribute('src')).toBeNull();
+  await figure.getByRole('button', { name: 'Watch demo', exact: true }).click();
+  await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(false);
+  await figure.getByRole('button', { name: 'Pause demo', exact: true }).click();
+  expect(await video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
+});
+
+test('an unavailable recording falls back to the completed still', async ({ context, page }) => {
+  await serveSite(context);
+  await context.route('**/assets/videos/**', (route) => route.abort());
+  await page.goto(origin + prefix);
+  const figure = page.locator('[data-demo-player]');
+  await figure.scrollIntoViewIfNeeded();
+  await expect(figure.getByRole('button', { name: 'Watch demo', exact: true })).toBeHidden();
+  await expect(figure.locator('[data-comparison="after"]')).toBeVisible();
+  await expect(figure.locator('video')).toBeHidden();
 });
 
 test('demo opens separately, offers installation guidance, and rechecks availability', async ({
