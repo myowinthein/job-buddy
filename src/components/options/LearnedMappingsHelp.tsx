@@ -62,7 +62,8 @@ export function LearnedMappingsHelp() {
             className="space-y-3 rounded-lg border border-gray-200 bg-white p-3 text-xs leading-relaxed text-gray-600 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
           >
             <p>
-              Job Buddy remembers your corrections to improve future autofills on each site.
+              Job Buddy remembers your corrections to improve future autofills on job
+              application forms.
             </p>
             <dl className="grid grid-cols-[4.25rem_minmax(0,1fr)] gap-x-3 gap-y-2">
               <dt className="font-medium text-amber-700 dark:text-amber-400">Learning</dt>
@@ -70,21 +71,20 @@ export function LearnedMappingsHelp() {
               <dt className="font-medium text-green-700 dark:text-green-400">Trusted</dt>
               <dd>Confirmed again and ready for future autofills.</dd>
               <dt className="font-medium text-gray-500 dark:text-gray-400">Inactive</dt>
-              <dd>Saved but excluded from autofill because the mapping needs review.</dd>
+              <dd>
+                Excluded when its profile field is removed, its match is unclear, or you make it
+                inactive.
+              </dd>
             </dl>
             <p>
-              Correct a field using your saved profile information, then move to another field
-              to record it.
+              Corrections can contain mistakes. Review mappings manually here, or use the
+              Review Mappings button for an AI check.
             </p>
             {pinned ? (
               <div className="space-y-2">
                 <p>
                   Learning works on detected fields, including those left empty or filled
                   incorrectly. AI answers do not teach mappings.
-                </p>
-                <p>
-                  Mappings can become inactive after a profile entry is removed, an older
-                  mapping becomes ambiguous, or you approve making it inactive in a review.
                 </p>
                 <p>Save an edit here to make the mapping Trusted.</p>
               </div>

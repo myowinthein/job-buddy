@@ -304,7 +304,7 @@ describe('Learned Mappings presentation and discovery', () => {
     expect(tooltip.textContent).toContain('Click for more details');
     fireEvent.click(screen.getByRole('button', { name: 'Click for more details' }));
     expect(tooltip.textContent).toContain('AI answers do not teach mappings.');
-    expect(tooltip.textContent).toContain('a profile entry is removed');
+    expect(tooltip.textContent).toContain('profile field is removed');
     expect(tooltip.textContent).not.toContain('Click for more details');
     expect(document.activeElement).toBe(help);
     fireEvent.mouseLeave(help.parentElement!);
