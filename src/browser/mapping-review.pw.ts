@@ -42,6 +42,92 @@ async function open(options: Page) {
   return options.getByRole('dialog', { name: 'Review Mappings' });
 }
 
+test('selects all sites by default and supports searchable multi-selection', async ({
+  context,
+  extension,
+}, info) => {
+  await extension.worker.evaluate(async (data) => {
+    await chrome.storage.local.set({ learnedMappings: data, themePreference: 'dark' });
+  }, mappings);
+  const questions: string[][] = [];
+  await context.route('https://generativelanguage.googleapis.com/**', async (route) => {
+    const prompt = route.request().postDataJSON().contents[0].parts[0].text as string;
+    const payload = JSON.parse(prompt.slice(prompt.lastIndexOf('\n') + 1));
+    questions.push(payload.mappings.map((item: { question: string }) => item.question));
+    await route.fulfill({
+      json: {
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify(
+                    payload.mappings.map((item: { id: string }) => ({
+                      id: item.id,
+                      verdict: 'uncertain',
+                      path: null,
+                      reason: 'Review the saved field.',
+                    })),
+                  ),
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
+  });
+  const options = await context.newPage();
+  await options.setViewportSize({ width: 1200, height: 1000 });
+  await options.goto(new URL('options.html', extension.worker.url()).href);
+  const dialog = await open(options);
+  const selector = dialog.getByLabel('Sites to review');
+  const review = dialog.getByRole('button', { name: 'Review Mappings', exact: true });
+  await expect(selector).toContainText('All sites (2)');
+  await selector.click();
+  const all = dialog.getByRole('checkbox', { name: 'All sites (2)' });
+  const search = dialog.getByRole('searchbox', { name: 'Search sites' });
+  await expect(all).toBeChecked();
+  await all.uncheck();
+  await expect(review).toBeDisabled();
+  await search.fill('other');
+  await expect(dialog.getByRole('checkbox')).toHaveCount(2);
+  await dialog.getByRole('checkbox', { name: 'other.example.test', exact: true }).check();
+  await expect(all).toBeChecked({ indeterminate: true });
+  await search.fill('no-matching-site');
+  await expect(dialog).toContainText('No sites found.');
+  // Select all includes sites outside the search results.
+  await all.check();
+  await expect(selector).toContainText('All sites (2)');
+  await search.fill('');
+  await options.screenshot({ path: info.outputPath('site-selection-dark.png') });
+  await options.setViewportSize({ width: 360, height: 740 });
+  await options.screenshot({ path: info.outputPath('site-selection-narrow.png') });
+  await search.press('Escape');
+  await expect(dialog).toBeVisible();
+  await expect(selector).toBeFocused();
+  await expect(dialog.getByRole('group', { name: 'Site selection' })).toHaveCount(0);
+  await review.click();
+  await expect(dialog).toContainText('Reviewed 6 of 6 mappings.');
+  expect(questions[0]).toHaveLength(5);
+  expect(questions[0]).toContain('City');
+  await dialog.getByLabel('Action for Location preference').selectOption('inactive');
+  await expect(dialog.getByRole('button', { name: 'Apply Changes (1)' })).toBeEnabled();
+  await selector.click();
+  await all.uncheck();
+  await dialog.getByRole('checkbox', { name: 'other.example.test', exact: true }).check();
+  await search.press('Escape');
+  await expect(dialog.getByRole('button', { name: 'Apply Changes', exact: true })).toBeDisabled();
+  await dialog.getByLabel('Action for City').selectOption('inactive');
+  await dialog.getByRole('button', { name: 'Apply Changes (1)' }).click();
+  await expect(dialog).toHaveCount(0);
+  const saved = (await extension.worker.evaluate(
+    async () => (await chrome.storage.local.get('learnedMappings')).learnedMappings,
+  )) as LearnedMappings;
+  expect(saved['jobs.example.test']).toEqual(mappings['jobs.example.test']);
+  expect(saved['other.example.test'].city).toMatchObject({ inactive: true });
+});
+
 test('requires Gemini setup and takes the user to the focused API key input', async ({
   context,
   extension,
@@ -100,9 +186,12 @@ test('reviews one site, applies only approved corrections and reuses local revie
   await options.setViewportSize({ width: 1200, height: 1000 });
   await options.goto(new URL('options.html', extension.worker.url()).href);
   let dialog = await open(options);
-  await dialog.getByLabel('Sites to review').selectOption('jobs.example.test');
+  await dialog.getByLabel('Sites to review').click();
+  await dialog.getByRole('checkbox', { name: 'All sites (2)' }).uncheck();
+  await dialog.getByRole('checkbox', { name: 'jobs.example.test', exact: true }).check();
+  await dialog.getByRole('searchbox', { name: 'Search sites' }).press('Escape');
   await dialog.getByRole('button', { name: 'Review Mappings', exact: true }).click();
-  await expect(dialog).toContainText('5 reviewed · 0 remaining');
+  await expect(dialog).toContainText('Reviewed 5 of 5 mappings.');
   await expect(dialog.getByRole('button', { name: 'Needs review (4)' })).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Apply Changes', exact: true })).toBeDisabled();
   expect(requests).toBe(1);
@@ -147,12 +236,15 @@ test('reviews one site, applies only approved corrections and reuses local revie
   expect(after['other.example.test']).toEqual(mappings['other.example.test']);
   await options.getByRole('button', { name: 'Review Mappings', exact: true }).click();
   dialog = options.getByRole('dialog', { name: 'Review Mappings' });
-  await dialog.getByLabel('Sites to review').selectOption('jobs.example.test');
-  await expect(dialog).toContainText('3 reviewed · 2 remaining');
+  await dialog.getByLabel('Sites to review').click();
+  await dialog.getByRole('checkbox', { name: 'All sites (2)' }).uncheck();
+  await dialog.getByRole('checkbox', { name: 'jobs.example.test', exact: true }).check();
+  await dialog.getByRole('searchbox', { name: 'Search sites' }).press('Escape');
+  await expect(dialog).toContainText('Reviewed 3 of 5 mappings.');
   expect(requests).toBe(1);
 });
 
-test('retains completed batches when stopped and retries only unreviewed mappings', async ({
+test('retains completed batches when stopped and starts a fresh review on every click', async ({
   context,
   extension,
 }) => {
@@ -199,15 +291,16 @@ test('retains completed batches when stopped and retries only unreviewed mapping
   await dialog.getByRole('button', { name: 'Review Mappings', exact: true }).click();
   await expect.poll(() => calls).toBe(2);
   await dialog.getByRole('button', { name: 'Stop review' }).click();
-  await expect(dialog).toContainText('20 reviewed · 5 remaining');
+  await expect(dialog).toContainText('Reviewed 20 of 25 mappings.');
   release();
   await dialog.getByRole('button', { name: 'Review Mappings', exact: true }).click();
-  await expect(dialog).toContainText('25 reviewed · 0 remaining');
-  expect(calls).toBe(3);
-  await dialog.getByRole('checkbox', { name: 'Review all again' }).check();
+  await expect(dialog).toContainText('Reviewed 25 of 25 mappings.');
+  expect(calls).toBe(4);
+  await expect(dialog.getByRole('checkbox', { name: 'Review all again' })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Review Mappings', exact: true })).toBeEnabled();
   await dialog.getByRole('button', { name: 'Review Mappings', exact: true }).click();
-  await expect.poll(() => calls).toBe(5);
-  await expect(dialog).toContainText('25 reviewed · 0 remaining');
+  await expect.poll(() => calls).toBe(6);
+  await expect(dialog).toContainText('Reviewed 25 of 25 mappings.');
 });
 
 test('blocks stale review decisions after profile or mapping edits', async ({

@@ -3,7 +3,7 @@ import { LoaderCircle, Sparkles, X } from 'lucide-react';
 import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings } from '@/src/types/storage';
 import { getGeminiSettings } from '@/src/utils/storage';
-import { toGeminiModel, MODEL_DISPLAY_NAMES } from '@/src/resume-ai/types';
+import { toGeminiModel } from '@/src/resume-ai/types';
 import { reviewMappingsWithAI } from '@/src/resume-ai/gemini';
 import {
   applyMappingReview,
@@ -22,6 +22,7 @@ import {
 import { groupMappings, mappingDestination, profileFieldLabels } from './learnedMappingsView';
 import { SearchableProfileFieldSelect } from './shared/SearchableProfileFieldSelect';
 import { fieldCls } from './shared/fieldCls';
+import { MappingReviewSites } from './MappingReviewSites';
 import { useDialogFocus } from '../ui/useDialogFocus';
 import { useEscapeToClose } from '../ui/useEscapeToClose';
 import { feedback } from '@/src/ui/feedback';
@@ -58,8 +59,7 @@ export function MappingReviewDialog({
   const setupReady = useRef(false);
   const [loading, setLoading] = useState(true);
   const [hasKey, setHasKey] = useState(false);
-  const [site, setSite] = useState('');
-  const [reviewAll, setReviewAll] = useState(false);
+  const [selectedSites, setSelectedSites] = useState<Set<string> | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [limit, setLimit] = useState(20);
   const [results, setResults] = useState<Record<string, MappingAssessment>>({});
@@ -69,7 +69,6 @@ export function MappingReviewDialog({
   const [stale, setStale] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
-  const [progress, setProgress] = useState('');
   const items = useMemo(
     () =>
       mappingReviewItems(
@@ -82,11 +81,11 @@ export function MappingReviewDialog({
   const catalog = useMemo(() => mappingReviewCatalog(profile), [profile]);
   const labels = useMemo(() => profileFieldLabels(profile), [profile]);
   const sites = useMemo(() => [...new Set(items.map((item) => item.domain))].sort(), [items]);
-  const scoped = items.filter((item) => !site || item.domain === site);
+  const scoped = items.filter((item) => selectedSites === null || selectedSites.has(item.domain));
   const completed = scoped.filter((item) => results[item.id]);
   const attention = completed.filter((item) => results[item.id].verdict !== 'correct');
   const shown = showAll ? completed : attention;
-  const changes = items.filter((item) => {
+  const changes = scoped.filter((item) => {
     const choice = decisions[item.id];
     return (
       results[item.id] &&
@@ -163,7 +162,6 @@ export function MappingReviewDialog({
     setWorking(true);
     setError(null);
     setWarning(null);
-    setProgress('Preparing review…');
     try {
       const settings = await getGeminiSettings();
       controller.signal.throwIfAborted();
@@ -172,26 +170,16 @@ export function MappingReviewDialog({
         return;
       }
       const model = toGeminiModel(settings.model);
-      const keys = await mappingReviewKeys(profile, items, model);
-      const cached = await readMappingReviews(profile, items, keys).catch(() => {
-        if (live.current) setWarning(feedback.mappingReviewCacheFailed);
-        return new Map();
-      });
+      const keys = await mappingReviewKeys(profile, scoped, model);
       controller.signal.throwIfAborted();
-      setResults(Object.fromEntries([...cached].map(([id, value]) => [id, value.assessment])));
-      const pending = scoped.filter((item) => reviewAll || !cached.has(item.id));
-      if (reviewAll) {
-        setResults((current) =>
-          Object.fromEntries(
-            Object.entries(current).filter(([id]) => !pending.some((item) => item.id === id)),
-          ),
-        );
-        setDecisions((current) =>
-          Object.fromEntries(
-            Object.entries(current).filter(([id]) => !pending.some((item) => item.id === id)),
-          ),
-        );
-      }
+      const selectedIds = new Set(scoped.map((item) => item.id));
+      setResults((current) =>
+        Object.fromEntries(Object.entries(current).filter(([id]) => !selectedIds.has(id))),
+      );
+      setDecisions((current) =>
+        Object.fromEntries(Object.entries(current).filter(([id]) => !selectedIds.has(id))),
+      );
+      setLimit(20);
       const accept = async (assessments: MappingAssessment[], usedModel: string) => {
         if (!live.current) return;
         setResults((current) => ({
@@ -199,12 +187,12 @@ export function MappingReviewDialog({
           ...Object.fromEntries(assessments.map((result) => [result.id, result])),
         }));
         try {
-          await saveMappingReviews(profile, items, keys, assessments, usedModel);
+          await saveMappingReviews(profile, scoped, keys, assessments, usedModel);
         } catch {
           if (live.current) setWarning(feedback.mappingReviewCacheFailed);
         }
       };
-      const missingContext = pending.filter((item) => !hasReviewQuestion(item));
+      const missingContext = scoped.filter((item) => !hasReviewQuestion(item));
       if (missingContext.length)
         await accept(
           missingContext.map((item) => ({
@@ -215,8 +203,7 @@ export function MappingReviewDialog({
           })),
           'local-context-check',
         );
-      let processed = scoped.length - pending.length + missingContext.length;
-      for (const batch of mappingReviewBatches(pending.filter(hasReviewQuestion), catalog)) {
+      for (const batch of mappingReviewBatches(scoped.filter(hasReviewQuestion), catalog)) {
         controller.signal.throwIfAborted();
         const result = await reviewMappingsWithAI(
           settings.apiKey,
@@ -224,16 +211,10 @@ export function MappingReviewDialog({
           batch,
           catalog,
           controller.signal,
-          (activeModel) =>
-            setProgress(
-              `Reviewing ${processed + 1}–${processed + batch.length} of ${scoped.length} with ${MODEL_DISPLAY_NAMES[activeModel]}…`,
-            ),
         );
         controller.signal.throwIfAborted();
         await accept(result.assessments, result.model);
-        processed += batch.length;
       }
-      if (live.current) setProgress('Review complete');
     } catch (failure) {
       if (live.current && !controller.signal.aborted)
         setError(failure instanceof Error ? failure.message : feedback.mappingReviewFailed);
@@ -248,7 +229,7 @@ export function MappingReviewDialog({
     setApplying(true);
     setError(null);
     try {
-      await applyMappingReview(profile, mappings, items, decisions);
+      await applyMappingReview(profile, mappings, scoped, decisions);
       if (live.current) onSaved();
     } catch (failure) {
       if (live.current)
@@ -322,48 +303,20 @@ export function MappingReviewDialog({
               )}
               {hasKey && (
                 <>
-                  <label
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-                    htmlFor={`${titleId}-site`}
-                  >
-                    Sites to review
-                  </label>
-                  <select
-                    id={`${titleId}-site`}
-                    value={site}
-                    disabled={working || applying || stale}
-                    className={`${fieldCls()} mt-1`}
-                    onChange={(event) => {
-                      setSite(event.target.value);
-                      setLimit(20);
-                    }}
-                  >
-                    <option value="">All sites ({sites.length})</option>
-                    {sites.map((domain) => (
-                      <option key={domain} value={domain}>
-                        {domain}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                    <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                      <input
-                        type="checkbox"
-                        checked={reviewAll}
-                        disabled={working || applying || stale}
-                        onChange={(event) => setReviewAll(event.target.checked)}
-                      />
-                      Review all again
-                    </label>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                    <MappingReviewSites
+                      sites={sites}
+                      selected={selectedSites}
+                      disabled={working || applying || stale}
+                      onChange={(selected) => {
+                        setSelectedSites(selected);
+                        setLimit(20);
+                      }}
+                    />
                     <button
                       type="button"
-                      className={primary}
-                      disabled={
-                        working ||
-                        applying ||
-                        stale ||
-                        (!reviewAll && completed.length === scoped.length)
-                      }
+                      className={`${primary} shrink-0 self-start sm:mt-6`}
+                      disabled={working || applying || stale || !scoped.length}
                       onClick={() => void run()}
                     >
                       <span className="flex items-center gap-1.5">
@@ -372,9 +325,6 @@ export function MappingReviewDialog({
                       </span>
                     </button>
                   </div>
-                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    Saved questions and profile field names are sent to Gemini.
-                  </p>
                   <div
                     role="status"
                     className="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-300"
@@ -387,9 +337,7 @@ export function MappingReviewDialog({
                       />
                     )}
                     <span>
-                      {working
-                        ? progress
-                        : `${completed.length} reviewed · ${scoped.length - completed.length} remaining`}
+                      Reviewed {completed.length} of {scoped.length} mappings.
                     </span>
                     {working && (
                       <button
