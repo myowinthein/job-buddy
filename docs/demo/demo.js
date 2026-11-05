@@ -17,7 +17,6 @@ function labelTheme() {
   const dark = document.documentElement.classList.contains('dark');
   theme.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
   theme.setAttribute('title', dark ? 'Switch to light mode' : 'Switch to dark mode');
-  theme.querySelector('[data-theme-label]').textContent = dark ? 'Light mode' : 'Dark mode';
 }
 theme.addEventListener('click', () => {
   const dark = document.documentElement.classList.toggle('dark');

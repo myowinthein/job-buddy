@@ -86,13 +86,14 @@ button {
 #theme {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
   margin-left: auto;
   color: var(--ink);
-  font-size: 12px;
   background: transparent;
   border: 1px solid var(--line);
-  padding: 6px 10px;
+  padding: 8px;
   border-radius: 4px;
 }
 #theme svg {
