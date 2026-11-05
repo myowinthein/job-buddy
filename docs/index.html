@@ -113,8 +113,8 @@
           <div class="figure-toolbar">
             <span>A fictional role. The real extension.</span>
             <div class="segmented" data-compare role="group" aria-label="Demo screenshot state">
-              <button type="button" data-show="after" aria-pressed="true">After filling</button
-              ><button type="button" data-show="before" aria-pressed="false">Before filling</button>
+              <button type="button" data-show="after" aria-pressed="true">After autofill</button
+              ><button type="button" data-show="before" aria-pressed="false">Before autofill</button>
             </div>
           </div>
           <div class="capture" data-comparison="after">
@@ -572,13 +572,13 @@
                     <button
                       type="button"
                       data-enlarge
-                      aria-label="Enlarge screenshot: Popup with completed fill results, Undo, and View details"
+                      aria-label="Enlarge screenshot: Popup with completed autofill results, Undo, and View details"
                     >
                       <img
                         src="./assets/screenshots/popup-light.webp?v=3af0e44475ec"
                         data-light="./assets/screenshots/popup-light.webp?v=3af0e44475ec"
                         data-dark="./assets/screenshots/popup-dark.webp?v=ff2878438f38"
-                        alt="Popup with completed fill results, Undo, and View details"
+                        alt="Popup with completed autofill results, Undo, and View details"
                         width="400"
                         height="270"
                         loading="lazy"
@@ -634,8 +634,9 @@
           </div>
 
           <p>
-            Quick Fill appears when Job Buddy detects a job application form. It runs the same
-            autofill without opening the toolbar popup.
+            Quick Fill appears when Job Buddy detects a job application form. Select
+            <strong>Fill Form</strong> on the floating control to start autofill without opening the
+            toolbar popup.
           </p>
           <div class="visual-tour" data-visual-tour>
             <div
@@ -877,7 +878,7 @@
                 questions such as consent. A radio or checkbox question group counts once.
               </p>
               <p>
-                Final sources identify who supplied the final fill. Checked by rules and Sent to AI
+                Final sources identify where each filled answer came from. Checked by rules and Sent to AI
                 count processing stages, so they can overlap. Search covers question titles and
                 readable profile paths.
               </p>
@@ -998,8 +999,8 @@
                     </button>
                   </div>
                   <figcaption>
-                    Inactive mappings stay saved but cannot fill. A removed or ambiguous profile
-                    entry can make a mapping inactive.
+                    Inactive mappings stay saved but are excluded from autofill. A removed or
+                    ambiguous profile entry can make a mapping inactive.
                   </figcaption>
                 </figure>
               </div>

@@ -41,7 +41,7 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     'Same details.Next application.',
   );
-  await page.getByRole('button', { name: 'Before filling', exact: true }).click();
+  await page.getByRole('button', { name: 'Before autofill', exact: true }).click();
   await expect(page.locator('[data-comparison="before"]')).toBeVisible();
   await expect(page.locator('[data-comparison="after"]')).toBeHidden();
   await page.getByRole('button', { name: 'Enlarge empty demo form', exact: true }).click();

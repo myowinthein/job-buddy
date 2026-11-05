@@ -305,8 +305,9 @@ cp .env.example .env.production</code></pre>
           </div>
           <div class="prose">
             <p>
-              A popup or Quick Fill request is handed to the background coordinator. The coordinator
-              owns run state and sends work to the content scripts in the captured tab and frames.
+              Selecting <strong>Fill Form</strong> in the popup or Quick Fill sends an autofill
+              request to the background coordinator. The coordinator owns run state and sends work
+              to the content scripts in the captured tab and frames.
               Closing the popup does not cancel an accepted run.
             </p>
           </div>
@@ -381,7 +382,7 @@ cp .env.example .env.production</code></pre>
           <p>
             Do not put Gemini credentials or Drive tokens into profile exports. AI requests use a
             known-field projection and question-scoped sensitive data. Preserve the two-phase
-            scan/fill behavior and the manual-learning confirmation rules.
+            autofill flow and the manual-learning confirmation rules.
           </p>
           <p>
             For the detailed architecture and project conventions, read
@@ -522,7 +523,7 @@ pnpm exec playwright test --headed</code></pre>
                 </tr>
                 <tr>
                   <td><code>src/browser/demo.pw.ts</code></td>
-                  <td>Real extension fill, validation, events and Undo checks.</td>
+                  <td>Real extension autofill, validation, events and Undo checks.</td>
                 </tr>
                 <tr>
                   <td><code>src/browser/site-captures.pw.ts</code></td>
