@@ -3,16 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta
-      name="description"
-      content="Try Job Buddy on an original demo job application. Use your saved profile or download a sample profile to test autofill."
-    />
+    <meta name="description" content="Apply for the Frontend Engineer role at Fieldwork." />
     <meta
       http-equiv="Content-Security-Policy"
       content="form-action 'none'; base-uri 'none'; object-src 'none'"
     />
-    <title>Demo application · Job Buddy</title>
-    <link rel="icon" href="../assets/icons/icon.svg" type="image/svg+xml" />
+    <title>Frontend Engineer · Fieldwork</title>
     <link rel="stylesheet" href="style.css" />
     <script src="demo.js" defer></script>
   </head>
@@ -23,14 +19,13 @@
         <span class="company"
           ><span class="company-mark" aria-hidden="true">f.</span>Fieldwork</span
         >
-        <a href="../">A Job Buddy demo <span aria-hidden="true">↗</span></a>
       </div>
     </header>
 
     <main class="layout">
       <aside class="role-details" aria-labelledby="role-title">
         <p class="role-team">Engineering</p>
-        <h1 id="role-title">Senior Frontend Engineer</h1>
+        <h1 id="role-title">Frontend Engineer</h1>
         <ul class="role-meta" aria-label="Role details">
           <li>Remote · United States</li>
           <li>Full-time</li>
@@ -39,33 +34,19 @@
           Help a small team build useful, accessible tools for everyday work. Bring your experience
           with modern web applications and an eye for the details.
         </p>
-        <div class="demo-guide">
-          <h2>Try autofill here</h2>
-          <p>
-            Open Job Buddy and select <strong>Fill Form</strong>, then review the highlighted
-            answers.
-          </p>
-          <a href="sample-profile.json" download="job-buddy-demo-profile.json"
-            >Download sample profile <span aria-hidden="true">↓</span></a
-          >
-          <p class="sample-help">
-            To use the sample, import it from Settings → Import Profile in Job Buddy.
-          </p>
-        </div>
-        <p class="demo-note">
-          Fieldwork and this role are fictional. Finishing this demo does not send a job
-          application.
-        </p>
-        <div id="test-controls" class="test-controls" hidden>
-          <h2>Local testing</h2>
-          <button type="button" id="test-mode" aria-pressed="false" aria-controls="test-fields">
-            Show test fields
-          </button>
-          <button type="button" id="existing-answers">Load existing answers</button>
-          <p>
-            Extra fields are available on localhost for testing repeated entries and different
-            controls.
-          </p>
+        <div class="job-description">
+          <h2>What you’ll do</h2>
+          <ul>
+            <li>Build accessible interfaces with React and TypeScript.</li>
+            <li>Turn product designs into reliable, well-tested features.</li>
+            <li>Work with designers and engineers to improve usability and performance.</li>
+          </ul>
+          <h2>What you’ll bring</h2>
+          <ul>
+            <li>Experience building modern web applications.</li>
+            <li>Strong JavaScript, TypeScript, and CSS fundamentals.</li>
+            <li>An interest in accessibility and clear, maintainable code.</li>
+          </ul>
         </div>
       </aside>
 
@@ -225,77 +206,21 @@
             </div>
           </section>
 
-          <section id="test-fields" class="form-section" aria-labelledby="test-heading" hidden>
-            <h3 id="test-heading">Additional test fields</h3>
-            <p class="field-help">
-              These controls exercise dates, repeated entries, multi-selects, and missing profile
-              data.
-            </p>
-            <div class="field-grid">
-              <div class="field">
-                <label for="available-date">Available from</label
-                ><input id="available-date" name="availableDate" type="date" disabled />
-              </div>
-              <div class="field">
-                <label for="expected-salary">Expected annual salary in USD</label
-                ><input
-                  id="expected-salary"
-                  name="expectedSalary"
-                  type="number"
-                  min="0"
-                  step="1"
-                  disabled
-                />
-              </div>
-              <div class="field">
-                <label for="work-arrangement">Preferred work arrangement</label
-                ><select id="work-arrangement" name="workArrangement" disabled>
-                  <option value="">Select an arrangement</option>
-                  <option value="remote">Remote</option>
-                  <option value="hybrid">Hybrid</option>
-                  <option value="onsite">On-site</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="languages">Languages spoken</label
-                ><select id="languages" name="languages" multiple size="4" disabled>
-                  <option value="English">English</option>
-                  <option value="Spanish">Spanish</option>
-                  <option value="Burmese">Burmese</option>
-                  <option value="German">German</option>
-                </select>
-              </div>
-              <div class="field full">
-                <label for="reference-code">Employee referral code</label
-                ><input id="reference-code" name="referralCode" maxlength="80" disabled />
-              </div>
-            </div>
-            <div class="repeated-section">
-              <h4>Work experience</h4>
-              <div id="work-entries"></div>
-              <button type="button" class="text-button" id="add-work">Add experience</button>
-            </div>
-            <div class="repeated-section">
-              <h4>Education</h4>
-              <div id="education-entries"></div>
-              <button type="button" class="text-button" id="add-education">Add education</button>
-            </div>
-          </section>
-
           <div class="form-footer">
             <label class="consent"
-              ><input type="checkbox" name="demoConsent" required /><span
-                >I understand this is a demo application. <span aria-hidden="true">*</span></span
+              ><input type="checkbox" name="consent" required /><span
+                >I confirm that the information provided is accurate.
+                <span aria-hidden="true">*</span></span
               ></label
             >
             <div id="completion" class="completion" role="status" tabindex="-1" hidden>
-              <h3>Demo complete</h3>
+              <h3>Application complete</h3>
               <p>No application was sent. Reset the form to try again.</p>
             </div>
             <div class="form-actions">
               <button type="reset" class="text-button">Reset form</button
               ><button type="submit" class="primary-button" id="finish-demo" disabled>
-                Finish demo <span aria-hidden="true">→</span>
+                Submit application <span aria-hidden="true">→</span>
               </button>
             </div>
           </div>
@@ -309,7 +234,7 @@
     </main>
 
     <footer class="page-footer">
-      <span>Demo form by Job Buddy</span><a href="../">Back to Job Buddy</a>
+      <span>Fieldwork and this role are fictional. This demo does not send applications.</span>
     </footer>
   </body>
 </html>

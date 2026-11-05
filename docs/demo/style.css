@@ -102,8 +102,6 @@ button:disabled {
   align-items: start;
 }
 .role-details {
-  position: sticky;
-  top: 32px;
   min-width: 0;
 }
 .role-team {
@@ -112,7 +110,7 @@ button:disabled {
   margin: 6px 0 14px;
 }
 h1 {
-  font-size: 36px;
+  font-size: 32px;
   letter-spacing: -1.3px;
   line-height: 1.16;
   margin: 0 0 22px;
@@ -134,36 +132,23 @@ h1 {
   color: var(--muted);
   margin: 0;
 }
-.demo-guide {
-  border-top: 1px solid var(--line);
-  margin-top: 30px;
-  padding-top: 25px;
+.job-description {
+  margin-top: 28px;
 }
-.demo-guide h2,
-.test-controls h2 {
-  margin: 0 0 10px;
+.job-description h2 {
   font-size: 15px;
   font-weight: 600;
+  margin: 24px 0 10px;
 }
-.demo-guide p {
-  font-size: 13px;
+.job-description ul {
+  padding-left: 18px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
   line-height: 1.7;
-  color: var(--muted);
-  margin: 0 0 16px;
 }
-.demo-guide a {
-  font-size: 13px;
-  font-weight: 600;
-}
-.demo-guide .sample-help {
-  margin-top: 10px;
-  font-size: 12px;
-}
-.demo-note {
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.65;
-  margin: 24px 0 0;
+.job-description li + li {
+  margin-top: 8px;
 }
 .application-panel {
   min-width: 0;
@@ -346,48 +331,6 @@ input[type='radio'] {
   font-size: 12px;
   color: var(--muted);
 }
-.test-controls {
-  border-top: 1px solid var(--line);
-  padding-top: 20px;
-  margin-top: 24px;
-}
-.test-controls > button {
-  display: block;
-  padding: 7px 10px;
-  margin: 8px 0;
-  background: white;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  font-size: 12px;
-  color: var(--ink);
-}
-.test-controls p {
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.6;
-}
-.repeated-section {
-  margin-top: 24px;
-}
-.repeated-section h4 {
-  font-size: 14px;
-  margin: 0 0 12px;
-}
-.entry {
-  border-top: 1px solid var(--line);
-  padding-top: 16px;
-  margin-top: 18px;
-}
-.entry legend {
-  font-size: 13px;
-  font-weight: 600;
-  padding-right: 10px;
-}
-.entry-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
-}
 .noscript-note {
   color: var(--muted);
   font-size: 13px;
@@ -430,10 +373,6 @@ input[type='radio'] {
   }
   .role-description {
     max-width: 40rem;
-  }
-  .demo-guide {
-    margin-top: 22px;
-    padding-top: 20px;
   }
   .application-panel {
     padding: 26px 24px;

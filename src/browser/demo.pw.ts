@@ -7,15 +7,16 @@ import type { FrameFillLog } from '../autofill/fillLog';
 import type { AIFieldPayload } from '../resume-ai/types';
 
 const publicURL = 'http://demo.example.test/demo/';
-const localURL = 'http://127.0.0.1/demo/';
-const sample = JSON.parse(await readFile(resolve('docs/demo/sample-profile.json'), 'utf8')) as {
+const sample = JSON.parse(
+  await readFile(resolve('src/browser/fixtures/demo-profile.json'), 'utf8'),
+) as {
   profile: Profile;
 };
 
 async function serveDemo(context: BrowserContext) {
   const files: Map<string, { body: Buffer; contentType: string }> = new Map(
     await Promise.all(
-      ['index.html', 'style.css', 'demo.js', 'sample-profile.json'].map(
+      ['index.html', 'style.css', 'demo.js'].map(
         async (name) =>
           [
             `/demo/${name === 'index.html' ? '' : name}`,
@@ -58,7 +59,7 @@ async function serveDemo(context: BrowserContext) {
 }
 
 async function ready(page: Page, send: (action: string, mode?: string) => Promise<unknown[]>) {
-  await expect(page.getByRole('button', { name: /Finish demo/ })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /Submit application/ })).toBeEnabled();
   await expect
     .poll(async () => {
       const logs = (await send('AUTOFILL_SCAN')) as { totalMatched?: number }[];
@@ -83,7 +84,16 @@ test('the original demo fills with the production extension and produces the pub
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(publicURL);
   await ready(page, extension.send);
-  await expect(page.getByRole('heading', { name: 'Local testing' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Frontend Engineer', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'What you’ll do' })).toBeVisible();
+  expect(await page.locator('body').innerText()).not.toContain('Job Buddy');
+  await expect(page.locator('a[href="../"], #test-controls, #test-fields')).toHaveCount(0);
+  const title = page.locator('#role-title');
+  expect(
+    await title.evaluate(
+      (el) => el.getBoundingClientRect().height <= parseFloat(getComputedStyle(el).lineHeight) + 1,
+    ),
+  ).toBe(true);
   await page.evaluate(() => {
     for (const input of document.querySelectorAll<HTMLInputElement>(
       '#first-name, #email, #country',
@@ -103,7 +113,7 @@ test('the original demo fills with the production extension and produces the pub
     .poll(() => page.locator('#resume').evaluate((el) => (el as HTMLInputElement).files?.length))
     .toBe(1);
   await expect(page.locator('#interest')).toHaveValue('');
-  await expect(page.locator('[name="demoConsent"]')).not.toBeChecked();
+  await expect(page.locator('[name="consent"]')).not.toBeChecked();
   await expect(host.getByRole('button', { name: 'View details' })).toBeVisible();
   const logs = (await extension.send('GET_FILL_LOG')) as unknown as FrameFillLog[];
   expect(
@@ -126,40 +136,6 @@ test('the original demo fills with the production extension and produces the pub
     .toBe(0);
 });
 
-test('local test fields cover repeated rows, dynamic entries, and merge versus overwrite', async ({
-  context,
-  page,
-  extension,
-}) => {
-  await serveDemo(context);
-  await extension.worker.evaluate(
-    (profile) => chrome.storage.local.set({ profile }),
-    sample.profile,
-  );
-  await page.goto(`${localURL}?test=1`);
-  await ready(page, extension.send);
-  await expect(page.getByRole('group', { name: /^Experience \d/ })).toHaveCount(2);
-  await expect(page.getByRole('group', { name: /^Education \d/ })).toHaveCount(2);
-  await page.getByRole('button', { name: 'Load existing answers' }).click();
-  await extension.send('AUTOFILL_SCAN');
-  await extension.send('AUTOFILL_FILL', 'merge');
-  await expect(page.locator('#first-name')).toHaveValue('Existing name');
-  await expect(page.locator('#city')).toHaveValue('Existing city');
-  await expect(page.locator('#work-0-company')).toHaveValue('Example Studio');
-  await expect(page.locator('#work-1-company')).toHaveValue('Sample Labs');
-  await expect(page.locator('#education-0-institution')).toHaveValue('Example University');
-  await expect(page.locator('#education-1-institution')).toHaveValue('Sample Institute');
-  await page.getByRole('button', { name: 'Add experience', exact: true }).click();
-  await expect(page.locator('#work-2-company')).toBeFocused();
-  await extension.send('AUTOFILL_SCAN');
-  await extension.send('AUTOFILL_FILL', 'overwrite');
-  await expect(page.locator('#first-name')).toHaveValue('Alex');
-  await expect(page.locator('#city')).toHaveValue('Seattle');
-  await expect(page.locator('#work-2-company')).toHaveValue('');
-  await page.getByRole('button', { name: 'Remove experience 3', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Add experience', exact: true })).toBeFocused();
-});
-
 test('demo submission stays on the page, validates required answers, and resets cleanly', async ({
   context,
   page,
@@ -176,13 +152,13 @@ test('demo submission stays on the page, validates required answers, and resets 
   });
   await page.goto(publicURL);
   await ready(page, extension.send);
-  await page.getByRole('button', { name: /Finish demo/ }).click();
+  await page.getByRole('button', { name: /Submit application/ }).click();
   await expect(page.locator('#first-name')).toBeFocused();
   await expect(page.locator('#completion')).toBeHidden();
   await extension.send('AUTOFILL_FILL', 'merge');
-  await page.locator('[name="demoConsent"]').check();
-  await page.getByRole('button', { name: /Finish demo/ }).click();
-  await expect(page.getByRole('heading', { name: 'Demo complete' })).toBeVisible();
+  await page.locator('[name="consent"]').check();
+  await page.getByRole('button', { name: /Submit application/ }).click();
+  await expect(page.getByRole('heading', { name: 'Application complete' })).toBeVisible();
   await expect(page).toHaveURL(publicURL);
   expect(writes.filter((url) => url.startsWith(publicURL))).toEqual([]);
   await Promise.all([
@@ -201,38 +177,5 @@ test('demo submission stays on the page, validates required answers, and resets 
       await page.screenshot({ path: info.outputPath('demo-mobile.png'), fullPage: true });
   }
   await page.goto(`${publicURL}?test=1`);
-  await expect(page.getByRole('heading', { name: 'Local testing' })).toHaveCount(0);
-  await expect(page.locator('#test-fields')).toBeHidden();
-});
-
-test('the downloadable sample imports into an empty Job Buddy profile', async ({
-  context,
-  page,
-  extension,
-}) => {
-  await serveDemo(context);
-  await page.goto(publicURL);
-  const download = page.waitForEvent('download');
-  await page.getByRole('link', { name: /Download sample profile/ }).click();
-  expect((await download).suggestedFilename()).toBe('job-buddy-demo-profile.json');
-  await extension.worker.evaluate(() =>
-    chrome.storage.local.set({ profile: { id: 'empty-demo-test' }, learnedMappings: {} }),
-  );
-  const options = await context.newPage();
-  await options.goto(new URL('options.html', extension.worker.url()).href);
-  await options.getByRole('button', { name: 'Settings', exact: true }).click();
-  await options
-    .locator('input[type="file"][accept=".json"]')
-    .setInputFiles(resolve('docs/demo/sample-profile.json'));
-  await expect
-    .poll(() =>
-      extension.worker.evaluate(async () => {
-        const { profile } = await chrome.storage.local.get('profile');
-        return (profile as Profile).personal?.email;
-      }),
-    )
-    .toBe('alex.morgan@example.com');
-  await expect(
-    options.getByRole('progressbar', { name: 'Saved required profile details' }),
-  ).toHaveAttribute('aria-valuenow', '100');
+  await expect(page.locator('#test-controls, #test-fields')).toHaveCount(0);
 });
