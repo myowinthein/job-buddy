@@ -59,19 +59,18 @@ export function FillDetailsHelp() {
             className="max-h-[70dvh] space-y-3 overflow-y-auto rounded-lg border border-gray-200 bg-white p-3 text-xs leading-relaxed text-gray-600 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
           >
             <p className="text-pretty">
-              Job Buddy checks learned mappings first, then uses rules and AI for fields that
-              still need attention. Fields filled with high confidence skip the remaining stages.
+              Autofill tries learned mappings → rules → AI and stops after a high-confidence fill.
             </p>
             <p>Colors show each field’s final result.</p>
             <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-2 [&_dd]:text-balance">
               <dt className="font-medium text-green-700 dark:text-green-400">Green</dt>
-              <dd>Filled with high confidence or confirmed by you.</dd>
+              <dd>Filled, high confidence.</dd>
               <dt className="font-medium text-amber-700 dark:text-amber-400">Yellow</dt>
-              <dd>Filled, but needs your review.</dd>
+              <dd>Filled, needs review.</dd>
               <dt className="font-medium text-red-700 dark:text-red-400">Red</dt>
-              <dd>Not filled: no safe match or the value was rejected.</dd>
+              <dd>Not filled, needs input.</dd>
               <dt className="font-medium text-gray-500 dark:text-gray-400">Gray</dt>
-              <dd>Not filled: the matched profile field is empty.</dd>
+              <dd>Not filled, no saved data.</dd>
               <dt className="font-medium text-gray-900 dark:text-gray-100">Kept current</dt>
               <dd>Existing answers stay when filling empty fields only.</dd>
               <dt className="font-medium text-gray-900 dark:text-gray-100">Skipped</dt>

@@ -229,10 +229,10 @@ describe('Fill Details page', () => {
     const tooltip = screen.getByRole('tooltip');
     for (const explanation of [
       'Colors show each field’s final result.',
-      'Filled with high confidence or confirmed by you.',
-      'Filled, but needs your review.',
-      'Not filled: no safe match or the value was rejected.',
-      'Not filled: the matched profile field is empty.',
+      'Filled, high confidence.',
+      'Filled, needs review.',
+      'Not filled, needs input.',
+      'Not filled, no saved data.',
       'Existing answers stay when filling empty fields only.',
       'Consent questions and other excluded fields are left for you.',
     ])
