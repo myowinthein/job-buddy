@@ -152,6 +152,7 @@ for (const density of [1, 2, 3]) {
       context,
       page,
     }, info) => {
+      test.setTimeout(60_000);
       await serveSite(context);
       await page.setViewportSize({ width: 1440, height: 1000 });
       await page.goto(origin + prefix);
@@ -161,7 +162,10 @@ for (const density of [1, 2, 3]) {
           (theme === 'dark')
         )
           await page.getByRole('button', { name: /Switch to .* mode/ }).click();
-        for (const image of await page.locator('[data-enlarge] img:visible').all()) {
+        for (const image of await page.locator('[data-enlarge] img').all()) {
+          const panelId = await image.evaluate((img) => img.closest('[data-visual-panel]')?.id);
+          if (panelId) await page.locator(`[aria-controls="${panelId}"]`).click();
+          else if (!(await image.isVisible())) continue;
           await image.scrollIntoViewIfNeeded();
           await image.evaluate((img: HTMLImageElement) => img.decode());
           const dimensions = await image.evaluate((img: HTMLImageElement) => ({
@@ -195,13 +199,77 @@ for (const density of [1, 2, 3]) {
           await page.setViewportSize({ width: 1440, height: 1000 });
         }
       }
-      const review = page.locator('[data-enlarge] img[src*="review-dark"]');
+      await page.locator('[aria-controls="resume-views-2"]').click();
+      const review = page.locator('#resume [data-enlarge] img[src*="/review-dark"]');
       await review.locator('..').click();
       await page.locator('.image-dialog img').evaluate((img: HTMLImageElement) => img.decode());
       await page.screenshot({ path: info.outputPath('review-viewer.png'), animations: 'disabled' });
     });
   });
 }
+
+test('screenshot selectors work with mouse, keyboard, themes, and narrow layouts', async ({
+  context,
+  page,
+}, info) => {
+  await serveSite(context);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  for (const width of [1440, 320]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto(origin + prefix);
+    for (const theme of ['light', 'dark']) {
+      if (
+        (await page.locator('html').evaluate((el) => el.classList.contains('dark'))) !==
+        (theme === 'dark')
+      )
+        await page.getByRole('button', { name: /Switch to .* mode/ }).click();
+      for (const tour of await page.locator('[data-visual-tour]').all()) {
+        for (const button of await tour.locator('[data-show-visual]').all()) {
+          await button.click();
+          await expect(button).toHaveAttribute('aria-pressed', 'true');
+          await expect(tour.locator('[data-visual-panel]:visible')).toHaveCount(1);
+          const image = tour.locator('[data-visual-panel]:visible img');
+          await image.evaluate((img: HTMLImageElement) => img.decode());
+          await expect(image).toHaveAttribute('src', new RegExp(`-${theme}\\.webp`));
+          expect(
+            await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+          ).toBe(true);
+        }
+      }
+    }
+    const resume = page.locator('#resume');
+    const first = resume.locator('[data-show-visual]').first();
+    await first.focus();
+    await page.keyboard.press('End');
+    await expect(resume.locator('[data-show-visual]').last()).toBeFocused();
+    await page.keyboard.press('Home');
+    await expect(first).toBeFocused();
+    await expect(first).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('ArrowRight');
+    await expect(resume.locator('[data-show-visual]').nth(1)).toBeFocused();
+    await expect(resume.locator('.visual-status')).toContainText('2 of 3');
+    await resume.screenshot({
+      path: info.outputPath(`resume-${width}.png`),
+      animations: 'disabled',
+    });
+  }
+  expect(errors).toEqual([]);
+});
+
+test('all walkthrough images remain available without JavaScript', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  try {
+    await serveSite(context);
+    const page = await context.newPage();
+    await page.goto(origin + prefix);
+    for (const panel of await page.locator('[data-visual-panel]').all())
+      await expect(panel).toBeVisible();
+    await expect(page.locator('[data-visual-nav]:visible')).toHaveCount(0);
+  } finally {
+    await context.close();
+  }
+});
 
 for (const theme of ['light', 'dark'] as const) {
   test(`all public pages fit narrow and wide screens in ${theme} mode`, async ({

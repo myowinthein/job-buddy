@@ -76,6 +76,36 @@ document.querySelectorAll('[data-compare]').forEach((group) => {
   });
 });
 
+document.querySelectorAll('[data-visual-tour]').forEach((tour) => {
+  const controls = [...tour.querySelectorAll('[data-show-visual]')];
+  const panels = [...tour.querySelectorAll('[data-visual-panel]')];
+  const status = tour.querySelector('.visual-status');
+  function select(button, announce = true) {
+    controls.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
+    panels.forEach((panel) => { panel.hidden = panel.id !== button.dataset.showVisual; });
+    if (announce) {
+      status.textContent = `${controls.indexOf(button) + 1} of ${controls.length}: ${button.textContent.trim()}`;
+      scheduleChapter();
+    }
+  }
+  controls.forEach((button, index) => {
+    button.addEventListener('click', () => select(button));
+    button.addEventListener('keydown', (event) => {
+      let next;
+      if (event.key === 'ArrowRight') next = (index + 1) % controls.length;
+      if (event.key === 'ArrowLeft') next = (index + controls.length - 1) % controls.length;
+      if (event.key === 'Home') next = 0;
+      if (event.key === 'End') next = controls.length - 1;
+      if (next === undefined) return;
+      event.preventDefault();
+      controls[next].focus();
+      select(controls[next]);
+    });
+  });
+  tour.classList.add('is-enhanced');
+  select(controls[0], false);
+});
+
 const chapters = [...document.querySelectorAll('main > [id]')];
 const links = [...document.querySelectorAll('.chapter-nav a')];
 // Use the current positions rather than only the last observer transition.

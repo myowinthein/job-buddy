@@ -2,6 +2,7 @@ import type { Locator, Page, TestInfo } from '@playwright/test';
 import { test, expect } from './fixtures';
 import { serveDemo, ready, sample, publicURL } from './demoSupport';
 import type { Profile } from '../types/profile';
+import { readFile } from 'node:fs/promises';
 
 // Keep CSS dimensions unchanged while recording enough pixels for Retina displays.
 test.use({ deviceScaleFactor: 3 });
@@ -14,6 +15,23 @@ async function capture(page: Page, info: TestInfo, name: string, target?: Locato
     await target.scrollIntoViewIfNeeded();
     await target.screenshot({ path: info.outputPath(`${name}.png`), animations: 'disabled' });
   } else await page.screenshot({ path: info.outputPath(`${name}.png`), animations: 'disabled' });
+}
+
+async function captureRegion(page: Page, info: TestInfo, name: string, targets: Locator[]) {
+  const boxes = (await Promise.all(targets.map((target) => target.boundingBox()))).filter(
+    (box) => box !== null,
+  );
+  if (boxes.length !== targets.length) throw new Error(`Missing capture target: ${name}`);
+  const x = Math.floor(Math.min(...boxes.map((box) => box.x)));
+  const y = Math.floor(Math.min(...boxes.map((box) => box.y)));
+  const right = Math.ceil(Math.max(...boxes.map((box) => box.x + box.width)));
+  const bottom = Math.ceil(Math.max(...boxes.map((box) => box.y + box.height)));
+  await page.mouse.move(0, 0);
+  await page.screenshot({
+    path: info.outputPath(`${name}.png`),
+    clip: { x, y, width: right - x, height: bottom - y },
+    animations: 'disabled',
+  });
 }
 
 for (const theme of ['light', 'dark'] as const) {
@@ -40,6 +58,14 @@ for (const theme of ['light', 'dark'] as const) {
           geminiApiKey: 'synthetic-key',
           geminiModel: 'gemini-3.5-flash-lite',
           learnedMappings: {
+            'myowinthein.github.io': {
+              firstname: {
+                path: 'personal.firstName',
+                count: 2,
+                label: 'First name',
+                question: 'First name',
+              },
+            },
             'careers.morrow.example': {
               firstname: {
                 path: 'personal.firstName',
@@ -54,7 +80,7 @@ for (const theme of ['light', 'dark'] as const) {
                 question: 'Portfolio or website',
               },
               expectedpay: {
-                path: 'salary.expected.0.amount',
+                path: 'salary.current.amount',
                 count: 1,
                 label: 'Expected annual salary',
                 question: 'Expected annual salary',
@@ -81,11 +107,34 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto(publicURL);
     await ready(page, extension.send);
     await capture(page, info, `application-before-${theme}`);
+    const readyPopup = await context.newPage();
+    await readyPopup.setViewportSize({ width: 400, height: 850 });
+    const capturedSource = await extension.worker.evaluate(
+      (id) => chrome.tabs.get(id),
+      extension.sourceTabId,
+    );
+    await readyPopup.addInitScript((tab) => {
+      Object.defineProperty(chrome.tabs, 'query', { value: () => Promise.resolve([tab]) });
+    }, capturedSource);
+    await readyPopup.goto(new URL('popup.html', extension.worker.url()).href);
+    await expect(readyPopup.getByRole('button', { name: 'Fill Form', exact: true })).toBeEnabled();
+    await capture(readyPopup, info, `popup-ready-${theme}`, readyPopup.locator('#root'));
+    await page.locator('#first-name').fill('Alex');
+    await readyPopup.getByRole('button', { name: 'Fill Form', exact: true }).click();
+    await expect(readyPopup.getByRole('radio').first()).toBeVisible();
+    await capture(readyPopup, info, `popup-choice-${theme}`, readyPopup.locator('#root'));
+    await readyPopup.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await readyPopup.close();
+    await page.locator('#first-name').fill('');
+    await page.bringToFront();
     const host = page.locator('[data-job-buddy-ui]');
     await host.getByRole('button', { name: 'Fill Form', exact: true }).click();
     await expect(host.getByRole('button', { name: 'View details' })).toBeVisible();
     await expect(page.locator('#first-name')).toHaveValue('Alex');
     await capture(page, info, `application-after-${theme}`);
+    await host.getByRole('button', { name: 'Quick fill options' }).click();
+    await captureRegion(page, info, `quick-fill-widget-${theme}`, [host, host.locator('.menu')]);
+    await host.getByRole('button', { name: 'Quick fill options' }).click();
 
     // A real retained report, selected by the same action the user presses.
     await host.getByRole('button', { name: 'View details' }).click();
@@ -101,9 +150,33 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(firstField).toBeVisible();
     await firstField.click();
     await capture(options, info, `fill-details-${theme}`);
+    for (const [name, label, stage] of [
+      ['stage-learned', 'First name', 'Learned mappings'],
+      ['stage-rules', 'Current company', 'Rules'],
+      ['stage-ai', 'Will you need visa sponsorship?', 'AI'],
+    ]) {
+      const summary = options
+        .locator('[aria-label="Field results"] summary')
+        .filter({ hasText: label });
+      const row = summary.locator('..');
+      if (!(await row.getAttribute('open'))) {
+        // An open boolean attribute has an empty string value.
+        if (!(await row.evaluate((el) => (el as HTMLDetailsElement).open))) await summary.click();
+      }
+      await row.getByRole('button', { name: new RegExp(`^${stage}:`) }).click();
+      await capture(options, info, `${name}-${theme}`, row);
+    }
     await options.getByRole('button', { name: 'Personal', exact: true }).click();
     await expect(options.getByLabel('First Name', { exact: false }).first()).toBeVisible();
     await capture(options, info, `profile-${theme}`);
+    for (const [name, section] of [
+      ['profile-work', 'Work History'],
+      ['profile-documents', 'Documents'],
+    ]) {
+      await options.getByRole('button', { name: section, exact: true }).click();
+      await expect(options.getByRole('heading', { name: section, exact: true })).toBeVisible();
+      await capture(options, info, `${name}-${theme}`);
+    }
 
     const partial = structuredClone(profile);
     delete (partial.personal as Partial<Profile['personal']>).phone;
@@ -123,6 +196,46 @@ for (const theme of ['light', 'dark'] as const) {
     ).toBeVisible();
     await options.getByRole('button', { name: /careers.morrow.example 4 mappings/ }).click();
     await capture(options, info, `mappings-${theme}`);
+    await options
+      .getByRole('button', {
+        name: 'Edit Portfolio or website on careers.morrow.example',
+        exact: true,
+      })
+      .click();
+    await options.getByRole('button', { name: /^Profile field:/ }).click();
+    await expect(options.getByRole('combobox', { name: 'Search profile fields' })).toBeVisible();
+    await capture(options, info, `mapping-edit-${theme}`);
+    await options.keyboard.press('Escape');
+    await options.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await context.route('https://generativelanguage.googleapis.com/**', (route) => {
+      const text = route.request().postDataJSON().contents[0].parts[0].text as string;
+      const payload = JSON.parse(text.slice(text.indexOf('{"fields":'))) as {
+        mappings: { id: string; currentPath: string }[];
+      };
+      const results = payload.mappings.map((item) => ({
+        id: item.id,
+        verdict:
+          item.currentPath === 'salary.current.amount'
+            ? 'change'
+            : item.currentPath.includes('.9.')
+              ? 'uncertain'
+              : 'correct',
+        path: item.currentPath === 'salary.current.amount' ? 'salary.expected.0.amount' : null,
+        reason:
+          item.currentPath === 'salary.current.amount'
+            ? 'The question asks about expected pay.'
+            : 'Review the saved question in context.',
+      }));
+      return route.fulfill({
+        json: { candidates: [{ content: { parts: [{ text: JSON.stringify(results) }] } }] },
+      });
+    });
+    await options.getByRole('button', { name: 'Review Mappings', exact: true }).click();
+    const mappingReview = options.getByRole('dialog');
+    await mappingReview.getByRole('button', { name: 'Review Mappings', exact: true }).click();
+    await expect(mappingReview.getByText('Better match found', { exact: true })).toBeVisible();
+    await capture(options, info, `mapping-review-${theme}`, mappingReview);
+    await mappingReview.getByRole('button', { name: 'Close review' }).click();
     await options.getByRole('button', { name: 'Settings', exact: true }).click();
     await expect(options.getByRole('heading', { name: 'AI Features', exact: true })).toBeVisible();
     await options
@@ -149,6 +262,34 @@ for (const theme of ['light', 'dark'] as const) {
       .getByRole('heading', { name: 'Export Profile', exact: true })
       .scrollIntoViewIfNeeded();
     await capture(options, info, `backup-${theme}`);
+    await capture(
+      options,
+      info,
+      `export-profile-${theme}`,
+      options.getByRole('heading', { name: 'Export Profile', exact: true }).locator('..'),
+    );
+    await capture(
+      options,
+      info,
+      `import-profile-${theme}`,
+      options.getByRole('heading', { name: 'Import Profile', exact: true }).locator('..'),
+    );
+    const [download] = await Promise.all([
+      options.waitForEvent('download'),
+      options.getByRole('button', { name: 'Download File', exact: true }).click(),
+    ]);
+    const exported = JSON.parse(await readFile((await download.path())!, 'utf8'));
+    exported.profile.address.city = 'Portland';
+    await options.locator('input[accept=".json"]').setInputFiles({
+      name: 'job-buddy-sample-profile.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(exported)),
+    });
+    await expect(
+      options.getByRole('button', { name: 'Review Changes', exact: true }),
+    ).toBeVisible();
+    await capture(options, info, `json-decision-${theme}`, options.getByRole('dialog'));
+    await options.getByRole('button', { name: 'Keep Current', exact: true }).click();
 
     await options.getByRole('button', { name: 'Reset Now', exact: true }).click();
     await expect(options.getByRole('dialog')).toBeVisible();
@@ -186,6 +327,7 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(
       options.getByRole('button', { name: 'Review Changes', exact: true }),
     ).toBeVisible();
+    await capture(options, info, `resume-decision-${theme}`, options.getByRole('dialog'));
     await options.getByRole('button', { name: 'Review Changes', exact: true }).click();
     await expect(
       options.getByRole('heading', { name: 'Review Resume', exact: true }),
@@ -233,5 +375,10 @@ for (const theme of ['light', 'dark'] as const) {
       `drive-${theme}`,
       preview.getByRole('heading', { name: 'Cloud Backup', exact: true }).locator('..'),
     );
+    await preview.getByRole('button', { name: 'Disconnect', exact: true }).click();
+    await expect(
+      preview.getByRole('heading', { name: 'Disconnect Google Drive', exact: true }),
+    ).toBeVisible();
+    await capture(preview, info, `drive-disconnect-${theme}`, preview.getByRole('dialog'));
   });
 }

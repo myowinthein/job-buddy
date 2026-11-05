@@ -25,7 +25,7 @@
     <link rel="stylesheet" href="./assets/site.css" />
     <script src="./assets/site.js" defer></script>
   </head>
-  <body>
+  <body class="walkthrough">
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
       <div class="header-inner">
@@ -143,8 +143,8 @@
             </button>
           </div>
           <figcaption>
-            Fresh captures of Job Buddy on an original demo form, with fictional data. You review
-            and submit applications yourself. Select any screenshot to enlarge.
+            Fictional details, filled by the real extension. Select any screenshot for a closer
+            look.
           </figcaption>
         </figure>
         <section class="chapter" id="ai" aria-labelledby="ai-title">
@@ -152,295 +152,341 @@
             <span>First, connect AI</span>
             <h2 id="ai-title">Bring a free Gemini key</h2>
           </div>
-          <div class="prose">
-            <p>
-              Job Buddy uses Gemini to read resumes and understand form questions that fixed rules
-              cannot resolve. You bring your own API key, so there is no Job Buddy subscription or
-              account to create.
-            </p>
-            <p>
-              Gemini’s free tier is a practical starting point for everyday applications. How far it
-              goes depends on your forms, model and Google’s current limits; it is not an unlimited
-              allowance.
-            </p>
-          </div>
-          <ol class="steps">
-            <li>
-              <div>
-                <strong
-                  >Open <a href="https://aistudio.google.com/api-keys">Google AI Studio</a></strong
-                >Sign in with Google and create an API key. A free-tier key does not require setting
-                up paid billing.
-              </div>
-            </li>
-            <li>
-              <div>
-                <strong>Save the key in Job Buddy</strong>Open Settings → AI Features, paste your
-                key, and select Save Key. Job Buddy checks it and finds a working model.
-              </div>
-            </li>
-            <li>
-              <div>
-                <strong>Choose a model when you need to</strong>The model control lets you switch
-                between the supported Flash-Lite and Flash models. Your key and model preference
-                stay in this browser.
-              </div>
-            </li>
-          </ol>
+
+          <p class="prose">
+            Start with a key from
+            <a href="https://aistudio.google.com/api-keys">Google AI Studio</a>. Gemini offers a
+            free tier, with limits that depend on your model and Google project. No Job Buddy
+            account is needed.
+          </p>
           <figure class="component-figure">
             <div class="capture">
               <button
                 type="button"
                 data-enlarge
-                aria-label="Enlarge screenshot: AI Features settings with the Gemini key and model controls"
+                aria-label="Enlarge screenshot: AI Features with a saved Gemini key, model options, and usage link"
               >
                 <img
                   src="./assets/screenshots/ai-light.webp?v=34f38a328578"
                   data-light="./assets/screenshots/ai-light.webp?v=34f38a328578"
                   data-dark="./assets/screenshots/ai-dark.webp?v=36940750ca8e"
-                  alt="AI Features settings with the Gemini key and model controls"
+                  alt="AI Features with a saved Gemini key, model options, and usage link"
                   width="992"
                   height="289"
                   loading="lazy"
                 />
               </button>
             </div>
-            <figcaption>Keys are excluded from JSON exports and Drive backups.</figcaption>
+            <figcaption>
+              Your key is saved locally, authenticates requests to Google, and stays out of profile
+              backups.
+            </figcaption>
           </figure>
-          <div class="split">
-            <div>
-              <h3>Flash-Lite for speed</h3>
-              <p>
-                Gemini 3.5 Flash-Lite is the default candidate. Google positions it for fast,
-                high-volume tasks, making it a useful first choice for routine extraction and
-                matching.
-              </p>
-            </div>
-            <div>
-              <h3>Flash for harder questions</h3>
-              <p>
-                Gemini 3.8 Flash offers stronger reasoning for complex tasks. It may take longer;
-                switching models does not guarantee that every form will be filled.
-              </p>
-            </div>
-          </div>
           <div class="detail-list">
             <details>
-              <summary>What happens when a model is busy or a limit is reached?</summary>
+              <summary>Which model, and what happens at its limit?</summary>
               <p>
-                Requests try the selected model first. On supported temporary failures, including
-                timeouts, rate limits or an unavailable model, Job Buddy can try the other supported
-                model. Invalid credentials and unrelated documents need your action instead.
-                Changing keys in the same Google project does not create a new quota.
+                Flash-Lite is the default for speed; Flash is an alternative for more demanding
+                questions. Job Buddy tries your selected model first, then another supported model
+                after a timeout, rate limit or temporary failure. Invalid keys need your attention.
+                Switching keys in the same Google project does not create extra quota.
               </p>
-            </details>
-            <details>
-              <summary>Where can I check usage?</summary>
               <p>
-                Use View usage and limits in AI Features to see your usage and quota in Google AI
-                Studio. Limits vary by model and project. If you reach a limit, check when it resets
-                in AI Studio.
+                Check
+                <a href="https://ai.google.dev/gemini-api/docs/models"
+                  >Google’s model information</a
+                >
+                and <a href="https://ai.google.dev/gemini-api/docs/rate-limits">current limits</a>.
+                The usage link in AI Features opens Google’s dashboard.
               </p>
             </details>
           </div>
-          <p class="sources">
-            Google references:
-            <a href="https://ai.google.dev/gemini-api/docs/models">model capabilities</a>,
-            <a href="https://ai.google.dev/gemini-api/docs/billing">free-tier setup</a>,
-            <a href="https://ai.google.dev/gemini-api/docs/rate-limits">usage limits</a>. Checked
-            November 5, 2026.
-          </p>
         </section>
         <section class="chapter" id="profile" aria-labelledby="profile-title">
           <div class="chapter-heading">
             <span>Then, save your details</span>
             <h2 id="profile-title">A profile you can keep using</h2>
           </div>
-          <div class="prose">
-            <p>
-              Type your details yourself, import a resume, or combine the two. Your profile is
-              organized into nine sections, so you can revisit one part without working through
-              everything again. Save each section after editing.
-            </p>
-          </div>
-          <ul class="category-list">
-            <li>Personal: name, contact details and background</li>
-            <li>Address: city, country and postal address</li>
-            <li>Work Authorization: status by country</li>
-            <li>Work History: summary, experience and notice period</li>
-            <li>Education: institutions, qualifications and dates</li>
-            <li>Languages: languages and proficiency</li>
-            <li>Links: LinkedIn, portfolio, GitHub and custom links</li>
-            <li>Documents: CV and cover letter files or links</li>
-            <li>Salary: expected and current pay</li>
-          </ul>
-          <figure class="">
-            <div class="capture">
+
+          <p class="prose">
+            Your saved profile supplies the answers. Add it by hand, from a resume, or both.
+          </p>
+          <div class="visual-tour" data-visual-tour>
+            <div
+              class="visual-controls"
+              data-visual-nav
+              role="group"
+              aria-label="Profile screenshots"
+            >
               <button
                 type="button"
-                data-enlarge
-                aria-label="Enlarge screenshot: Personal profile editor and the saved completion bar"
+                data-show-visual="profile-views-0"
+                aria-controls="profile-views-0"
+                aria-pressed="true"
               >
-                <img
-                  src="./assets/screenshots/profile-light.webp?v=15e947a86377"
-                  data-light="./assets/screenshots/profile-light.webp?v=15e947a86377"
-                  data-dark="./assets/screenshots/profile-dark.webp?v=032c55fee8c4"
-                  alt="Personal profile editor and the saved completion bar"
-                  width="1280"
-                  height="900"
-                  loading="lazy"
-                />
-              </button>
-            </div>
-            <figcaption>Sample details in the real profile editor.</figcaption>
-          </figure>
-          <div class="split">
-            <div>
-              <h3>Completion is a checklist</h3>
-              <p>
-                The percentage tracks 10 required checks, using your saved data. At 100%, required
-                details are complete; optional details can still be added. Last name, salary,
-                LinkedIn, work history and personal background details do not increase the
-                percentage.
-              </p>
-              <p>
-                Select the remaining-details button at the top right to see what is missing. Select
-                a section or field to go directly to the relevant input.
-              </p>
-            </div>
-            <div>
-              <h3>You can start before 100%</h3>
-              <p>
-                Autofill needs a saved <strong>first name</strong>, a <strong>valid email</strong>,
-                and a <strong>Gemini key</strong>. More profile information gives it more to work
-                with. Missing information is left for you to enter on the form.
-              </p>
-              <p>
-                Documents support saved files and URLs. You can view a PDF or download a saved
-                attachment. Upload and import files are limited to 4 MB each, within the browser’s
-                total storage capacity.
-              </p>
-            </div>
-          </div>
-          <figure class="">
-            <div class="capture">
-              <button
+                Personal</button
+              ><button
                 type="button"
-                data-enlarge
-                aria-label="Enlarge screenshot: Missing details popup grouped by profile section"
+                data-show-visual="profile-views-1"
+                aria-controls="profile-views-1"
+                aria-pressed="false"
               >
-                <img
-                  src="./assets/screenshots/completion-light.webp?v=0d4c603f4081"
-                  data-light="./assets/screenshots/completion-light.webp?v=0d4c603f4081"
-                  data-dark="./assets/screenshots/completion-dark.webp?v=e3d224dda1ba"
-                  alt="Missing details popup grouped by profile section"
-                  width="1280"
-                  height="900"
-                  loading="lazy"
-                />
+                Work history</button
+              ><button
+                type="button"
+                data-show-visual="profile-views-2"
+                aria-controls="profile-views-2"
+                aria-pressed="false"
+              >
+                Documents</button
+              ><button
+                type="button"
+                data-show-visual="profile-views-3"
+                aria-controls="profile-views-3"
+                aria-pressed="false"
+              >
+                Missing details
               </button>
             </div>
-            <figcaption>The completion checklist takes you to missing inputs.</figcaption>
-          </figure>
+            <div class="visual-panels">
+              <div id="profile-views-0" data-visual-panel>
+                <figure class="">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Personal editor with nine profile categories and contact details"
+                    >
+                      <img
+                        src="./assets/screenshots/profile-light.webp?v=15e947a86377"
+                        data-light="./assets/screenshots/profile-light.webp?v=15e947a86377"
+                        data-dark="./assets/screenshots/profile-dark.webp?v=032c55fee8c4"
+                        alt="Personal editor with nine profile categories and contact details"
+                        width="1280"
+                        height="900"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>Only saved changes are used in applications.</figcaption>
+                </figure>
+              </div>
+              <div id="profile-views-1" data-visual-panel>
+                <figure class="">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Work history with career summary, experience entries, and notice period"
+                    >
+                      <img
+                        src="./assets/screenshots/profile-work-light.webp?v=253188066d0d"
+                        data-light="./assets/screenshots/profile-work-light.webp?v=253188066d0d"
+                        data-dark="./assets/screenshots/profile-work-dark.webp?v=a292211590c4"
+                        alt="Work history with career summary, experience entries, and notice period"
+                        width="1280"
+                        height="900"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Employment history is optional. Overlapping jobs count once toward total
+                    experience.
+                  </figcaption>
+                </figure>
+              </div>
+              <div id="profile-views-2" data-visual-panel>
+                <figure class="">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Documents with CV and cover letter files, links, and attachment actions"
+                    >
+                      <img
+                        src="./assets/screenshots/profile-documents-light.webp?v=0c2c0cb041ac"
+                        data-light="./assets/screenshots/profile-documents-light.webp?v=0c2c0cb041ac"
+                        data-dark="./assets/screenshots/profile-documents-dark.webp?v=7534a77ba86b"
+                        alt="Documents with CV and cover letter files, links, and attachment actions"
+                        width="1280"
+                        height="900"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Files and URLs can coexist. Stored attachments go with your profile backups.
+                  </figcaption>
+                </figure>
+              </div>
+              <div id="profile-views-3" data-visual-panel>
+                <figure class="">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Completion checklist with direct links to missing profile fields"
+                    >
+                      <img
+                        src="./assets/screenshots/completion-light.webp?v=9497a3b47674"
+                        data-light="./assets/screenshots/completion-light.webp?v=9497a3b47674"
+                        data-dark="./assets/screenshots/completion-dark.webp?v=ad8fe9d430e9"
+                        alt="Completion checklist with direct links to missing profile fields"
+                        width="1280"
+                        height="900"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Progress counts 10 required checks using saved data. At 100%, optional details
+                    can still be empty.
+                  </figcaption>
+                </figure>
+              </div>
+            </div>
+            <p class="visual-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          </div>
+          <p class="prose essential">
+            You can start autofill before 100%: a saved <strong>first name</strong>,
+            <strong>valid email</strong> and <strong>Gemini key</strong> are enough. More saved
+            information means fewer blanks to complete yourself.
+          </p>
         </section>
         <section class="chapter" id="resume" aria-labelledby="resume-title">
           <div class="chapter-heading">
             <span>Skip the retyping</span>
             <h2 id="resume-title">Import a resume, then decide</h2>
           </div>
-          <div class="prose">
-            <p>
-              With your Gemini key saved, choose Import Resume and upload a PDF or DOCX, up to 4 MB.
-              Job Buddy checks the file, sends it to Gemini, and compares the extracted details with
-              your saved profile locally.
-            </p>
-            <p>
-              You get to choose what enters your profile. A resume is a starting point: check names,
-              dates, locations and any information it does not contain.
-            </p>
-          </div>
-          <figure class="dialog-figure">
-            <div class="capture">
-              <button
-                type="button"
-                data-enlarge
-                aria-label="Enlarge screenshot: Resume import file selection dialog"
-              >
-                <img
-                  src="./assets/screenshots/resume-light.webp?v=fc25b7afa83a"
-                  data-light="./assets/screenshots/resume-light.webp?v=fc25b7afa83a"
-                  data-dark="./assets/screenshots/resume-dark.webp?v=f5c2bf0f7951"
-                  alt="Resume import file selection dialog"
-                  width="512"
-                  height="366"
-                  loading="lazy"
-                />
-              </button>
-            </div>
-            <figcaption>
-              The selected document goes to Gemini for extraction. This capture uses a fictional
-              resume.
-            </figcaption>
-          </figure>
-          <dl class="facts">
-            <div>
-              <dt>Keep Current</dt>
-              <dd>Close the import and leave your saved profile as it is.</dd>
-            </div>
-            <div>
-              <dt>Import All</dt>
-              <dd>Apply the incoming details without choosing each change separately.</dd>
-            </div>
-            <div>
-              <dt>Review Changes</dt>
-              <dd>
-                Work through the sections and choose which details or entries to import. New entries
-                show incoming data; changed entries let you compare both versions.
-              </dd>
-            </div>
-            <div>
-              <dt>A possible different person</dt>
-              <dd>
-                A name or email mismatch can prompt Update or Replace. Update keeps omitted details;
-                Replace starts fresh with your selected import and clears omitted profile data,
-                documents and mappings.
-              </dd>
-            </div>
-          </dl>
-          <figure class="">
-            <div class="capture">
-              <button
-                type="button"
-                data-enlarge
-                aria-label="Enlarge screenshot: Import review showing current and incoming profile details"
-              >
-                <img
-                  src="./assets/screenshots/review-light.webp?v=29afed09cd61"
-                  data-light="./assets/screenshots/review-light.webp?v=29afed09cd61"
-                  data-dark="./assets/screenshots/review-dark.webp?v=6778b0e0162a"
-                  alt="Import review showing current and incoming profile details"
-                  width="672"
-                  height="512"
-                  loading="lazy"
-                />
-              </button>
-            </div>
-            <figcaption>
-              Resume, JSON and Drive review share the same selection interface.
-            </figcaption>
-          </figure>
-          <p class="note">
-            Resume updates keep missing details in uniquely matched entries and retain saved entries
-            omitted from the resume. Replacing a profile keeps local appearance and Gemini settings,
-            but pauses connected Drive backups for review.
+
+          <p class="prose">
+            A resume gives you a starting point. Nothing changes until you accept the import.
           </p>
+          <div class="visual-tour sequence-tour" data-visual-tour>
+            <div
+              class="visual-controls"
+              data-visual-nav
+              role="group"
+              aria-label="Resume import screenshots"
+            >
+              <button
+                type="button"
+                data-show-visual="resume-views-0"
+                aria-controls="resume-views-0"
+                aria-pressed="true"
+              >
+                <span>1</span> Your resume</button
+              ><button
+                type="button"
+                data-show-visual="resume-views-1"
+                aria-controls="resume-views-1"
+                aria-pressed="false"
+              >
+                <span>2</span> Import choices</button
+              ><button
+                type="button"
+                data-show-visual="resume-views-2"
+                aria-controls="resume-views-2"
+                aria-pressed="false"
+              >
+                <span>3</span> Selected changes
+              </button>
+            </div>
+            <div class="visual-panels">
+              <div id="resume-views-0" data-visual-panel>
+                <figure class="dialog-figure">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Import Resume dialog with PDF or DOCX upload and Analyze Resume action"
+                    >
+                      <img
+                        src="./assets/screenshots/resume-light.webp?v=fc25b7afa83a"
+                        data-light="./assets/screenshots/resume-light.webp?v=fc25b7afa83a"
+                        data-dark="./assets/screenshots/resume-dark.webp?v=f5c2bf0f7951"
+                        alt="Import Resume dialog with PDF or DOCX upload and Analyze Resume action"
+                        width="512"
+                        height="366"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    The selected file goes to Gemini. Comparison with your saved profile happens
+                    locally.
+                  </figcaption>
+                </figure>
+              </div>
+              <div id="resume-views-1" data-visual-panel>
+                <figure class="">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Resume comparison summary with Keep Current, Review Changes, and Import All actions"
+                    >
+                      <img
+                        src="./assets/screenshots/resume-decision-light.webp?v=352a7e612f11"
+                        data-light="./assets/screenshots/resume-decision-light.webp?v=352a7e612f11"
+                        data-dark="./assets/screenshots/resume-decision-dark.webp?v=bd632c1d8f44"
+                        alt="Resume comparison summary with Keep Current, Review Changes, and Import All actions"
+                        width="448"
+                        height="194"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Updating from a resume preserves saved details and jobs that the resume leaves
+                    out.
+                  </figcaption>
+                </figure>
+              </div>
+              <div id="resume-views-2" data-visual-panel>
+                <figure class="">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Resume review comparing current and incoming details with individual selections"
+                    >
+                      <img
+                        src="./assets/screenshots/review-light.webp?v=b5a5917a986c"
+                        data-light="./assets/screenshots/review-light.webp?v=b5a5917a986c"
+                        data-dark="./assets/screenshots/review-dark.webp?v=6778b0e0162a"
+                        alt="Resume review comparing current and incoming details with individual selections"
+                        width="672"
+                        height="512"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Work and education entries, languages, authorizations and custom links can be
+                    selected individually.
+                  </figcaption>
+                </figure>
+              </div>
+            </div>
+            <p class="visual-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          </div>
           <div class="detail-list">
+            <details>
+              <summary>What if the resume belongs to someone else?</summary>
+              <p>
+                A possible name or email mismatch adds an Update or Replace choice. Update keeps
+                details missing from the import. Replace starts fresh and clears omitted profile
+                data, documents and mappings; local replacement pauses connected Drive backups for
+                review.
+              </p>
+            </details>
             <details>
               <summary>What if the document is not a resume?</summary>
               <p>
-                Unrelated documents are rejected. If the document type is uncertain, Job Buddy asks
-                you before continuing. A file extension alone is not enough to pass the local file
-                checks.
+                Job Buddy rejects unrelated documents and asks before continuing with an uncertain
+                one. A valid PDF or DOCX extension alone is not enough.
               </p>
             </details>
           </div>
@@ -450,45 +496,119 @@
             <span>Now, open an application</span>
             <h2 id="autofill-title">Fill the form. Keep the final say.</h2>
           </div>
-          <div class="prose">
-            <p>
-              Open an application page, select the Job Buddy icon in Chrome’s toolbar, and choose
-              Fill Form. Pin the extension in Chrome if you want to reach it more easily.
-            </p>
-            <p>
-              If the form already has answers, choose <strong>Fill empty fields</strong> to preserve
-              them, or <strong>Fill all matched fields</strong> to also replace existing answers
-              that Job Buddy can match. Unmatched fields remain yours to complete.
-            </p>
-          </div>
-          <figure class="popup-figure">
-            <div class="capture">
+
+          <p class="prose">
+            Pin Job Buddy in Chrome for easier access. You can close the popup once filling starts;
+            it continues on the source form.
+          </p>
+          <div class="visual-tour" data-visual-tour>
+            <div
+              class="visual-controls"
+              data-visual-nav
+              role="group"
+              aria-label="Toolbar popup screenshots"
+            >
               <button
                 type="button"
-                data-enlarge
-                aria-label="Enlarge screenshot: Job Buddy toolbar popup after filling the demo application"
+                data-show-visual="popup-views-0"
+                aria-controls="popup-views-0"
+                aria-pressed="true"
               >
-                <img
-                  src="./assets/screenshots/popup-light.webp?v=3af0e44475ec"
-                  data-light="./assets/screenshots/popup-light.webp?v=3af0e44475ec"
-                  data-dark="./assets/screenshots/popup-dark.webp?v=ff2878438f38"
-                  alt="Job Buddy toolbar popup after filling the demo application"
-                  width="400"
-                  height="270"
-                  loading="lazy"
-                />
+                Ready</button
+              ><button
+                type="button"
+                data-show-visual="popup-views-1"
+                aria-controls="popup-views-1"
+                aria-pressed="false"
+              >
+                Existing answers</button
+              ><button
+                type="button"
+                data-show-visual="popup-views-2"
+                aria-controls="popup-views-2"
+                aria-pressed="false"
+              >
+                Finished
               </button>
             </div>
-            <figcaption>
-              The popup shows profile readiness, fill results, Undo and View details.
-            </figcaption>
-          </figure>
-          <p>
-            Closing the popup does not stop an accepted fill request. Job Buddy continues on the
-            source page; reopen the popup to see progress or answer a pending choice. Refreshing,
-            navigating away or closing the form cancels the run.
-          </p>
-          <h3>The colors tell you where to look</h3>
+            <div class="visual-panels">
+              <div id="popup-views-0" data-visual-panel>
+                <figure class="popup-figure">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Toolbar popup ready to fill with profile completion and Fill Form button"
+                    >
+                      <img
+                        src="./assets/screenshots/popup-ready-light.webp?v=551a724df953"
+                        data-light="./assets/screenshots/popup-ready-light.webp?v=551a724df953"
+                        data-dark="./assets/screenshots/popup-ready-dark.webp?v=07ad57b980a7"
+                        alt="Toolbar popup ready to fill with profile completion and Fill Form button"
+                        width="400"
+                        height="182"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Refreshing, navigating away, or closing the source form cancels its active fill.
+                  </figcaption>
+                </figure>
+              </div>
+              <div id="popup-views-1" data-visual-panel>
+                <figure class="popup-figure">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Popup offering empty-fields or all-matched-fields modes for a form with answers"
+                    >
+                      <img
+                        src="./assets/screenshots/popup-choice-light.webp?v=31ab1932cdc5"
+                        data-light="./assets/screenshots/popup-choice-light.webp?v=31ab1932cdc5"
+                        data-dark="./assets/screenshots/popup-choice-dark.webp?v=b0f710937777"
+                        alt="Popup offering empty-fields or all-matched-fields modes for a form with answers"
+                        width="400"
+                        height="338"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Both modes leave unmatched answers untouched. All matched fields also replaces
+                    existing answers that Job Buddy can match.
+                  </figcaption>
+                </figure>
+              </div>
+              <div id="popup-views-2" data-visual-panel>
+                <figure class="popup-figure">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Popup with completed fill results, Undo, and View details"
+                    >
+                      <img
+                        src="./assets/screenshots/popup-light.webp?v=3af0e44475ec"
+                        data-light="./assets/screenshots/popup-light.webp?v=3af0e44475ec"
+                        data-dark="./assets/screenshots/popup-dark.webp?v=ff2878438f38"
+                        alt="Popup with completed fill results, Undo, and View details"
+                        width="400"
+                        height="270"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Undo preserves edits you make after filling. Some custom controls may need
+                    manual restoration.
+                  </figcaption>
+                </figure>
+              </div>
+            </div>
+            <p class="visual-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          </div>
           <dl class="color-key">
             <div>
               <dt class="green">Green</dt>
@@ -504,47 +624,40 @@
             </div>
             <div>
               <dt class="gray">Gray</dt>
-              <dd>Not filled: a profile match exists, but no data is saved.</dd>
+              <dd>Not filled: a profile match exists, but its value is empty.</dd>
             </div>
           </dl>
           <p class="prose">
-            Consent questions are skipped, and existing answers stay unchanged in empty-fields mode.
-            Review all answers and attachments before submitting on the employer’s website. Job
-            Buddy never submits for you.
+            Consent questions are always skipped. Job Buddy never submits the application; check the
+            answers and attachments before you do.
           </p>
           <div class="detail-list">
             <details>
-              <summary>Missing key or profile details</summary>
-              <p>
-                The popup points you to Settings or the profile inputs you need. A key, first name
-                and valid email are required to start a new fill. You can still manage your profile
-                and backups without a key.
-              </p>
-            </details>
-            <details>
-              <summary>No fields detected, or the page cannot be reached</summary>
-              <p>
-                Open the application form itself, let it load, and try again. Refresh a page that
-                was already open when the extension was installed or updated. Chrome’s internal
-                pages and some custom or closed-shadow controls cannot be filled.
-              </p>
-            </details>
-            <details>
-              <summary>AI is unavailable, or only part of the form is filled</summary>
-              <p>
-                Accepted rule-based fills remain. Complete the remaining fields yourself, check the
-                key or model in Settings, or try again later. The warning explains an actual AI
-                failure, rather than treating every unfilled field as an AI error.
-              </p>
-            </details>
-            <details>
-              <summary>Undo, interruptions and the previous fill</summary>
-              <p>
-                Undo restores the values recorded before filling where possible, while preserving
-                your later manual edits. Some custom controls cannot be restored completely. After
-                an interruption, accepted writes and available Undo are retained. Results are
-                associated with the source form, rather than a different tab you happen to open.
-              </p>
+              <summary>When filling needs help</summary>
+              <dl class="compact-definitions">
+                <div>
+                  <dt>Setup is missing</dt>
+                  <dd>
+                    The popup links to the key or profile details it needs. Undo and previous
+                    results stay available.
+                  </dd>
+                </div>
+                <div>
+                  <dt>No form, or no connection</dt>
+                  <dd>
+                    Open the application itself and let it load. Refresh forms opened before an
+                    extension install or update. Chrome’s internal pages and some custom controls
+                    cannot be filled.
+                  </dd>
+                </div>
+                <div>
+                  <dt>AI is unavailable</dt>
+                  <dd>
+                    Accepted rule-based fills remain. Complete the rest yourself, check your key and
+                    usage limits, or retry later.
+                  </dd>
+                </div>
+              </dl>
             </details>
           </div>
         </section>
@@ -553,214 +666,298 @@
             <span>One less click next time</span>
             <h2 id="quick-fill-title">Keep Fill Form beside the form</h2>
           </div>
-          <div class="prose">
-            <p>
-              Quick Fill places a movable Fill Form control on pages that look like job
-              applications. It uses the same autofill process as the toolbar popup.
-            </p>
-          </div>
-          <figure class="component-figure">
-            <div class="capture">
+
+          <p class="prose">The floating control runs the same autofill as the toolbar popup.</p>
+          <div class="visual-tour" data-visual-tour>
+            <div
+              class="visual-controls"
+              data-visual-nav
+              role="group"
+              aria-label="Quick Fill screenshots"
+            >
               <button
                 type="button"
-                data-enlarge
-                aria-label="Enlarge screenshot: Quick Fill preferences and the hidden-site controls"
+                data-show-visual="quick-views-0"
+                aria-controls="quick-views-0"
+                aria-pressed="true"
               >
-                <img
-                  src="./assets/screenshots/quick-fill-light.webp?v=51ba23cf98e3"
-                  data-light="./assets/screenshots/quick-fill-light.webp?v=51ba23cf98e3"
-                  data-dark="./assets/screenshots/quick-fill-dark.webp?v=928df7746335"
-                  alt="Quick Fill preferences and the hidden-site controls"
-                  width="992"
-                  height="307"
-                  loading="lazy"
-                />
+                On the form</button
+              ><button
+                type="button"
+                data-show-visual="quick-views-1"
+                aria-controls="quick-views-1"
+                aria-pressed="false"
+              >
+                Your preferences
               </button>
             </div>
-            <figcaption>
-              Choose the default fill mode and manage sites where the floating control is hidden.
-            </figcaption>
-          </figure>
-          <div class="split">
-            <div>
-              <h3>Choose how it fills</h3>
-              <p>
-                In Settings → Quick Fill, use <strong>Empty fields only</strong> to preserve
-                existing answers, or <strong>Empty and existing fields</strong> to fill all matched
-                fields. Empty fields only is the default. You can turn the floating control off
-                entirely.
-              </p>
+            <div class="visual-panels">
+              <div id="quick-views-0" data-visual-panel>
+                <figure class="widget-figure">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Floating Fill Form control with results and its hide and settings menu"
+                    >
+                      <img
+                        src="./assets/screenshots/quick-fill-widget-light.webp?v=569a6961e28f"
+                        data-light="./assets/screenshots/quick-fill-widget-light.webp?v=569a6961e28f"
+                        data-dark="./assets/screenshots/quick-fill-widget-dark.webp?v=1185193c44c2"
+                        alt="Floating Fill Form control with results and its hide and settings menu"
+                        width="211"
+                        height="218"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Moving or hiding it does not cancel a fill. If it does not appear on an unusual
+                    form, use the Chrome toolbar instead.
+                  </figcaption>
+                </figure>
+              </div>
+              <div id="quick-views-1" data-visual-panel>
+                <figure class="component-figure">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Quick Fill settings with fill mode and searchable hidden sites"
+                    >
+                      <img
+                        src="./assets/screenshots/quick-fill-light.webp?v=51ba23cf98e3"
+                        data-light="./assets/screenshots/quick-fill-light.webp?v=51ba23cf98e3"
+                        data-dark="./assets/screenshots/quick-fill-dark.webp?v=928df7746335"
+                        alt="Quick Fill settings with fill mode and searchable hidden sites"
+                        width="992"
+                        height="307"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Position, fill mode and hidden sites stay saved in this browser across restarts.
+                    Empty fields only is the default.
+                  </figcaption>
+                </figure>
+              </div>
             </div>
-            <div>
-              <h3>Move it or hide it</h3>
-              <p>
-                Drag the handle to move it. Its menu can hide it until refresh or hide it for that
-                site. To show it again, find the site in Settings → Quick Fill → Hidden sites and
-                select Show.
-              </p>
-              <p>
-                Position, fill mode and hidden sites stay saved in this browser across restarts.
-                Hiding or moving the control does not cancel a fill already running.
-              </p>
-            </div>
+            <p class="visual-status" role="status" aria-live="polite" aria-atomic="true"></p>
           </div>
-          <p class="note">
-            If the floating control does not appear on an unusual form, use the Chrome toolbar
-            popup. After a fill, Undo and View details are available from the control.
-          </p>
         </section>
         <section class="chapter" id="fill-details" aria-labelledby="fill-details-title">
           <div class="chapter-heading">
             <span>When you want to look closer</span>
             <h2 id="fill-details-title">Follow each field through the fill</h2>
           </div>
-          <div class="prose">
-            <p>
-              Tools → Fill Details shows the latest selected fill report. View details in the popup
-              or floating control takes you there; the report is recorded even if you never press
-              that button.
-            </p>
-            <p>
-              It updates while you edit the source form. A new nonempty fill replaces the report.
-              View details on another open form can select its report again. This is a record of
-              filling, not a history of submitted applications.
-            </p>
-          </div>
-          <figure class="">
-            <div class="capture">
+
+          <p class="prose">
+            The latest report updates as you edit the application, even if you never select View
+            details.
+          </p>
+          <div class="visual-tour" data-visual-tour>
+            <div
+              class="visual-controls"
+              data-visual-nav
+              role="group"
+              aria-label="Fill Details screenshots"
+            >
               <button
                 type="button"
-                data-enlarge
-                aria-label="Enlarge screenshot: Fill Details with outcome filters and an expanded processing stage"
+                data-show-visual="report-views-0"
+                aria-controls="report-views-0"
+                aria-pressed="true"
               >
-                <img
-                  src="./assets/screenshots/fill-details-light.webp?v=620c78cf149d"
-                  data-light="./assets/screenshots/fill-details-light.webp?v=620c78cf149d"
-                  data-dark="./assets/screenshots/fill-details-dark.webp?v=118df9642b19"
-                  alt="Fill Details with outcome filters and an expanded processing stage"
-                  width="1280"
-                  height="900"
-                  loading="lazy"
-                />
+                The report</button
+              ><button
+                type="button"
+                data-show-visual="report-views-1"
+                aria-controls="report-views-1"
+                aria-pressed="false"
+              >
+                Learned match</button
+              ><button
+                type="button"
+                data-show-visual="report-views-2"
+                aria-controls="report-views-2"
+                aria-pressed="false"
+              >
+                Rules</button
+              ><button
+                type="button"
+                data-show-visual="report-views-3"
+                aria-controls="report-views-3"
+                aria-pressed="false"
+              >
+                AI
               </button>
             </div>
-            <figcaption>
-              The real report from the fictional demo application. It records decisions, not the
-              contents of your answers.
-            </figcaption>
-          </figure>
-          <h3>How an answer reaches a field</h3>
-          <ol class="pipeline">
-            <li>
-              <strong>Learned mappings</strong>
-              <p>Try a trusted correction previously saved for this site and question.</p>
-            </li>
-            <li>
-              <strong>Rules</strong>
-              <p>
-                Look at browser autocomplete hints, labels, identifiers and nearby context to match
-                a profile field.
-              </p>
-            </li>
-            <li>
-              <strong>Gemini</strong>
-              <p>
-                Review eligible fields that still need help, including uncertain rule matches.
-                High-confidence AI may refine a yellow rule fill.
-              </p>
-            </li>
-          </ol>
-          <p class="prose">
-            A reliable result can finish the process early. Not every field reaches every stage, and
-            a successful match still needs a value that the form accepts.
-          </p>
+            <div class="visual-panels">
+              <div id="report-views-0" data-visual-panel>
+                <figure class="">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Fill Details with outcome, source, color and search filters"
+                    >
+                      <img
+                        src="./assets/screenshots/fill-details-light.webp?v=d5652e921f1b"
+                        data-light="./assets/screenshots/fill-details-light.webp?v=d5652e921f1b"
+                        data-dark="./assets/screenshots/fill-details-dark.webp?v=9bcdaca742cb"
+                        alt="Fill Details with outcome, source, color and search filters"
+                        width="1280"
+                        height="900"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    A new nonempty fill replaces this report. It records fill decisions, not the
+                    contents of your answers.
+                  </figcaption>
+                </figure>
+              </div>
+              <div id="report-views-1" data-visual-panel>
+                <figure class="">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: First name filled by a trusted learned mapping with its recorded trust information"
+                    >
+                      <img
+                        src="./assets/screenshots/stage-learned-light.webp?v=2924bc3b3406"
+                        data-light="./assets/screenshots/stage-learned-light.webp?v=2924bc3b3406"
+                        data-dark="./assets/screenshots/stage-learned-dark.webp?v=4d763811106b"
+                        alt="First name filled by a trusted learned mapping with its recorded trust information"
+                        width="992"
+                        height="214"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    A trusted correction is tried first. A reliable answer can finish the process
+                    here.
+                  </figcaption>
+                </figure>
+              </div>
+              <div id="report-views-2" data-visual-panel>
+                <figure class="">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Current company filled by rules with the original match method, score and profile field"
+                    >
+                      <img
+                        src="./assets/screenshots/stage-rules-light.webp?v=1bee89cdc74f"
+                        data-light="./assets/screenshots/stage-rules-light.webp?v=1bee89cdc74f"
+                        data-dark="./assets/screenshots/stage-rules-dark.webp?v=e585369d3aa9"
+                        alt="Current company filled by rules with the original match method, score and profile field"
+                        width="992"
+                        height="215"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Rules use browser hints, known labels and context. The original match score is
+                    separate from whether the form accepts the value.
+                  </figcaption>
+                </figure>
+              </div>
+              <div id="report-views-3" data-visual-panel>
+                <figure class="">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Visa sponsorship field filled by AI with qualitative confidence and earlier stage results"
+                    >
+                      <img
+                        src="./assets/screenshots/stage-ai-light.webp?v=66eee2f43be0"
+                        data-light="./assets/screenshots/stage-ai-light.webp?v=66eee2f43be0"
+                        data-dark="./assets/screenshots/stage-ai-dark.webp?v=8ab21c783162"
+                        alt="Visa sponsorship field filled by AI with qualitative confidence and earlier stage results"
+                        width="992"
+                        height="186"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Gemini checks eligible fields that still need help and can refine an uncertain
+                    rule fill. Its confidence is qualitative, not a percentage.
+                  </figcaption>
+                </figure>
+              </div>
+            </div>
+            <p class="visual-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          </div>
           <div class="detail-list">
-            <details open>
-              <summary>Read the summary and filters</summary>
-              <div>
-                <p>
-                  Detected fields are divided into Filled, Not filled, Kept current and Skipped. A
-                  choice group counts once. Filled can be green or yellow; Not filled can be red or
-                  gray. Skipped covers excluded questions such as consent. Kept current means an
-                  existing answer was preserved.
-                </p>
-                <p>
-                  Search titles and readable profile paths, then narrow the results by outcome,
-                  color or final source. Checked by rules and Sent to AI count processing stages, so
-                  they can overlap. Final source counts identify which stage or manual action
-                  supplied the final fill.
-                </p>
-              </div>
-            </details>
             <details>
-              <summary>Read a field’s expanded stages</summary>
+              <summary>What counts, and what do the scores mean?</summary>
               <p>
-                Select Learned mappings, Rules or AI to see the recorded decision at that stage.
-                Rules show the method, original match score and profile field. Learned mappings show
-                trust and confirmation information. AI shows qualitative confidence, not an invented
-                percentage. A match can still fail if the form rejects the write.
+                Filled includes green and yellow. Not filled includes red and gray. Kept current
+                means an existing answer was preserved; Skipped includes excluded questions such as
+                consent. A radio or checkbox question group counts once.
+              </p>
+              <p>
+                Final sources identify who supplied the final fill. Checked by rules and Sent to AI
+                count processing stages, so they can overlap. Search covers question titles and
+                readable profile paths.
+              </p>
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Rule method</th>
+                      <th>What its score tells you</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Autocomplete attribute</td>
+                      <td>A standard browser hint, usually 95%.</td>
+                    </tr>
+                    <tr>
+                      <td>Exact dictionary match</td>
+                      <td>A known label or alias, normally 85%.</td>
+                    </tr>
+                    <tr>
+                      <td>Similar field label</td>
+                      <td>Wording similarity, adjusted by safeguards.</td>
+                    </tr>
+                    <tr>
+                      <td>Custom link label</td>
+                      <td>A match to one of your named links.</td>
+                    </tr>
+                    <tr>
+                      <td>Current-status checkbox</td>
+                      <td>A restricted set of current-work or current-study terms.</td>
+                    </tr>
+                    <tr>
+                      <td>Nearby context</td>
+                      <td>Surrounding question text when direct hints are insufficient.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p>
+                Rules fill at 60% and turn green at 85%. These are matching scores, not measured
+                probabilities of correctness. A rejected write or uncertain option match can change
+                the final outcome.
               </p>
             </details>
             <details>
-              <summary>What do the rule methods and percentages mean?</summary>
-              <div>
-                <div class="table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Method</th>
-                        <th>How it helps</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>Autocomplete attribute</td>
-                        <td>
-                          Uses a standard browser hint such as given-name. Usually scores 95%.
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>Exact dictionary match</td>
-                        <td>Matches a known field label or alias. Normally scores 85%.</td>
-                      </tr>
-                      <tr>
-                        <td>Similar field label</td>
-                        <td>
-                          Allows similar wording; the score varies with similarity and safeguards.
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>Custom link label</td>
-                        <td>Matches one of your named custom links.</td>
-                      </tr>
-                      <tr>
-                        <td>Current-status checkbox</td>
-                        <td>Uses a restricted set of known current-work or current-study terms.</td>
-                      </tr>
-                      <tr>
-                        <td>Nearby context</td>
-                        <td>
-                          Uses surrounding question text when the direct signals are insufficient.
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <p>
-                  Rules fill at 60% or higher and use green at 85% or higher. These are matching
-                  scores, not measured probabilities of correctness. Option matching or a rejected
-                  write can change the final result. Trusted learned mappings use a separate trust
-                  signal; Gemini confidence remains High or Low.
-                </p>
-              </div>
-            </details>
-            <details>
-              <summary>What happens when the source form closes?</summary>
+              <summary>After the source form closes</summary>
               <p>
-                The last report stays for this browser session. Return to Form focuses the original
-                open tab. If it has closed or navigated away, Open Form opens the saved address in a
-                fresh tab, without restoring answers. Reset and profile replacement clear the
-                report; JSON and Drive backups never include it.
+                The report stays for this browser session. Return to Form focuses the original tab;
+                Open Form reopens its saved address without restoring answers. Reset or profile
+                replacement clears the report. It is excluded from JSON and Drive backups.
               </p>
             </details>
           </div>
@@ -770,140 +967,264 @@
             <span>Make repeated corrections count</span>
             <h2 id="learned-mappings-title">Teach the questions you meet again</h2>
           </div>
-          <div class="prose">
-            <p>
-              After autofill, you may need to correct an answer. If the value uniquely matches
-              information saved in your profile, Job Buddy can remember which profile field you used
-              for that question. Type the correction, then move to another field to record it.
-            </p>
-            <p>
-              One recorded confirmation makes a mapping Learning. Confirm the same match again and
-              it becomes Trusted, ready for future fills on that site. Autofill alone, or focusing
-              and leaving a field without editing it, does not teach a mapping.
-            </p>
-          </div>
-          <figure class="">
-            <div class="capture">
+
+          <ol class="learning-timeline" aria-label="How a mapping becomes trusted">
+            <li>
+              <strong>Correct an answer</strong
+              ><span>Edit a field after autofill, then leave it.</span>
+            </li>
+            <li>
+              <strong>Learning</strong><span>One confirmation of a saved profile value.</span>
+            </li>
+            <li><strong>Trusted</strong><span>Two confirmations. Used on future fills.</span></li>
+          </ol>
+          <p class="prose">
+            The correction must uniquely match a value in your profile. Autofill alone, or focusing
+            a field without editing, does not teach a mapping.
+          </p>
+          <div class="visual-tour" data-visual-tour>
+            <div
+              class="visual-controls"
+              data-visual-nav
+              role="group"
+              aria-label="Learned Mappings screenshots"
+            >
               <button
                 type="button"
-                data-enlarge
-                aria-label="Enlarge screenshot: Learned Mappings with site groups, status filters and edit and delete actions"
+                data-show-visual="mapping-views-0"
+                aria-controls="mapping-views-0"
+                aria-pressed="true"
               >
-                <img
-                  src="./assets/screenshots/mappings-light.webp?v=fb8ad2a2a41c"
-                  data-light="./assets/screenshots/mappings-light.webp?v=fb8ad2a2a41c"
-                  data-dark="./assets/screenshots/mappings-dark.webp?v=4b03b00889ed"
-                  alt="Learned Mappings with site groups, status filters and edit and delete actions"
-                  width="1280"
-                  height="900"
-                  loading="lazy"
-                />
+                Saved matches</button
+              ><button
+                type="button"
+                data-show-visual="mapping-views-1"
+                aria-controls="mapping-views-1"
+                aria-pressed="false"
+              >
+                Change a match</button
+              ><button
+                type="button"
+                data-show-visual="mapping-views-2"
+                aria-controls="mapping-views-2"
+                aria-pressed="false"
+              >
+                AI review
               </button>
             </div>
-            <figcaption>
-              Search sites, questions and destination fields. The chooser uses the same field
-              catalog as the profile editor.
-            </figcaption>
-          </figure>
-          <dl class="facts">
-            <div>
-              <dt>Learning</dt>
-              <dd>
-                One manual confirmation. It is not trusted for autofill yet; a conflicting
-                correction starts learning the new match.
-              </dd>
+            <div class="visual-panels">
+              <div id="mapping-views-0" data-visual-panel>
+                <figure class="">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Learned Mappings with site groups, statuses, edit and delete controls"
+                    >
+                      <img
+                        src="./assets/screenshots/mappings-light.webp?v=20ca71b009d9"
+                        data-light="./assets/screenshots/mappings-light.webp?v=20ca71b009d9"
+                        data-dark="./assets/screenshots/mappings-dark.webp?v=b5d27185689f"
+                        alt="Learned Mappings with site groups, statuses, edit and delete controls"
+                        width="1280"
+                        height="900"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Inactive mappings stay saved but cannot fill. A removed or ambiguous profile
+                    entry can make a mapping inactive.
+                  </figcaption>
+                </figure>
+              </div>
+              <div id="mapping-views-1" data-visual-panel>
+                <figure class="">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Profile-field chooser open while editing a learned mapping"
+                    >
+                      <img
+                        src="./assets/screenshots/mapping-edit-light.webp?v=b31799a7af13"
+                        data-light="./assets/screenshots/mapping-edit-light.webp?v=b31799a7af13"
+                        data-dark="./assets/screenshots/mapping-edit-dark.webp?v=e223b46593a2"
+                        alt="Profile-field chooser open while editing a learned mapping"
+                        width="1280"
+                        height="900"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Saving a destination trusts it immediately. The bin removes a mapping, or a
+                    whole site, after confirmation.
+                  </figcaption>
+                </figure>
+              </div>
+              <div id="mapping-views-2" data-visual-panel>
+                <figure class="">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: AI review findings with suggested destinations awaiting user approval"
+                    >
+                      <img
+                        src="./assets/screenshots/mapping-review-light.webp?v=2bd7e75f2037"
+                        data-light="./assets/screenshots/mapping-review-light.webp?v=2bd7e75f2037"
+                        data-dark="./assets/screenshots/mapping-review-dark.webp?v=c0421ccd55cb"
+                        alt="AI review findings with suggested destinations awaiting user approval"
+                        width="768"
+                        height="568"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Gemini receives saved questions and profile-field names, not your profile
+                    values. You decide which suggestions to apply.
+                  </figcaption>
+                </figure>
+              </div>
             </div>
-            <div>
-              <dt>Trusted</dt>
-              <dd>
-                Two confirmations, or an explicit edit in this page. Eligible trusted mappings take
-                priority over rules and AI.
-              </dd>
-            </div>
-            <div>
-              <dt>Inactive</dt>
-              <dd>
-                Saved but excluded from filling, for example when a referenced profile entry was
-                removed or became ambiguous.
-              </dd>
-            </div>
-            <div>
-              <dt>Edit and delete</dt>
-              <dd>
-                The pencil changes the destination using the profile-field chooser. Saving trusts
-                your choice immediately. The bin removes a mapping after confirmation; a site-level
-                bin removes that site’s mappings.
-              </dd>
-            </div>
-          </dl>
-          <h3>Review what has been learned</h3>
-          <p class="prose">
-            Review Mappings uses Gemini to check selected sites. It sends saved questions and
-            profile-field names, then presents better matches, unclear matches and unavailable
-            fields for your decision. You review changes before applying them.
-          </p>
-          <h3>Older mappings can be repaired automatically</h3>
-          <p class="prose">
-            When you fill a form, Job Buddy can repair known issues in older mappings when the form
-            provides clear evidence. Unchanged work is not repeated; changed mappings, new evidence
-            or a newer repair version can be checked again. These repairs do not use Gemini or
-            silently choose a different profile field. Use Review Mappings when you want AI to check
-            the pairing.
-          </p>
+            <p class="visual-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          </div>
+          <div class="detail-list">
+            <details>
+              <summary>Automatic repair and AI review do different jobs</summary>
+              <p>
+                Automatic repair uses clear evidence from the form to fix known mapping issues
+                locally. It does not silently choose a different profile field. Unchanged work is
+                not repeated; changed mappings, new evidence or a newer repair version can be
+                checked again. Review Mappings asks Gemini to check the pairing itself.
+              </p>
+            </details>
+          </div>
         </section>
         <section class="chapter" id="backups" aria-labelledby="backups-title">
           <div class="chapter-heading">
             <span>Take it with you</span>
             <h2 id="backups-title">A profile is a file you can move</h2>
           </div>
-          <div class="prose">
-            <p>
-              Settings → Export Profile downloads a Job Buddy JSON file containing your profile,
-              learned mappings and safe export metadata. Use it to keep a copy or move to another
-              browser or device.
-            </p>
-            <p>
-              Settings → Import Profile reads that file, checks its structure and compares it with
-              the saved profile. An empty profile imports valid data directly; identical data leaves
-              it unchanged. Differences use the same Keep Current, Import All and Review Changes
-              flow as resume import.
-            </p>
-          </div>
-          <figure class="">
-            <div class="capture">
+
+          <p class="prose">
+            Your JSON copy carries stored documents and learned mappings along with the profile.
+          </p>
+          <div class="visual-tour" data-visual-tour>
+            <div
+              class="visual-controls"
+              data-visual-nav
+              role="group"
+              aria-label="Profile import and export screenshots"
+            >
               <button
                 type="button"
-                data-enlarge
-                aria-label="Enlarge screenshot: Settings for importing and exporting a Job Buddy profile"
+                data-show-visual="backup-views-0"
+                aria-controls="backup-views-0"
+                aria-pressed="true"
               >
-                <img
-                  src="./assets/screenshots/backup-light.webp?v=2fd9ded17d3a"
-                  data-light="./assets/screenshots/backup-light.webp?v=2fd9ded17d3a"
-                  data-dark="./assets/screenshots/backup-dark.webp?v=c3ca56682971"
-                  alt="Settings for importing and exporting a Job Buddy profile"
-                  width="1280"
-                  height="900"
-                  loading="lazy"
-                />
+                Export</button
+              ><button
+                type="button"
+                data-show-visual="backup-views-1"
+                aria-controls="backup-views-1"
+                aria-pressed="false"
+              >
+                Import</button
+              ><button
+                type="button"
+                data-show-visual="backup-views-2"
+                aria-controls="backup-views-2"
+                aria-pressed="false"
+              >
+                Different data
               </button>
             </div>
-            <figcaption>
-              A Job Buddy JSON export carries your profile and learned mappings, including stored
-              documents.
-            </figcaption>
-          </figure>
-          <p class="note">
-            JSON and Drive updates reconcile imported learned mappings with saved ones. Local
-            conflicting choices are kept and matching snapshots do not add confirmations. Replace
-            adopts the selected incoming data and mappings. JSON and Drive review apply accepted
-            incoming lists; resume updates additionally retain saved entries omitted from the
-            resume.
-          </p>
+            <div class="visual-panels">
+              <div id="backup-views-0" data-visual-panel>
+                <figure class="component-figure">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Export Profile settings with Download File action"
+                    >
+                      <img
+                        src="./assets/screenshots/export-profile-light.webp?v=9cd0f81bf697"
+                        data-light="./assets/screenshots/export-profile-light.webp?v=9cd0f81bf697"
+                        data-dark="./assets/screenshots/export-profile-dark.webp?v=546f8055701b"
+                        alt="Export Profile settings with Download File action"
+                        width="992"
+                        height="133"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Export only downloads a file. It does not change your profile or trigger a Drive
+                    backup.
+                  </figcaption>
+                </figure>
+              </div>
+              <div id="backup-views-1" data-visual-panel>
+                <figure class="component-figure">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Import Profile settings for choosing a Job Buddy JSON export"
+                    >
+                      <img
+                        src="./assets/screenshots/import-profile-light.webp?v=95895db3d11c"
+                        data-light="./assets/screenshots/import-profile-light.webp?v=95895db3d11c"
+                        data-dark="./assets/screenshots/import-profile-dark.webp?v=cd9df4e01f2b"
+                        alt="Import Profile settings for choosing a Job Buddy JSON export"
+                        width="992"
+                        height="135"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    An empty profile imports directly; identical data stays unchanged. JSON is
+                    checked locally and is not sent to Gemini.
+                  </figcaption>
+                </figure>
+              </div>
+              <div id="backup-views-2" data-visual-panel>
+                <figure class="">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Import Profile comparison with Keep Current, Review Changes and Import All actions"
+                    >
+                      <img
+                        src="./assets/screenshots/json-decision-light.webp?v=d54b5e2675bc"
+                        data-light="./assets/screenshots/json-decision-light.webp?v=d54b5e2675bc"
+                        data-dark="./assets/screenshots/json-decision-dark.webp?v=8a9aadfabb64"
+                        alt="Import Profile comparison with Keep Current, Review Changes and Import All actions"
+                        width="448"
+                        height="194"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Differences use the same review as a resume. Saved mapping corrections take
+                    priority over conflicting imported mappings.
+                  </figcaption>
+                </figure>
+              </div>
+            </div>
+            <p class="visual-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          </div>
           <p class="prose">
-            The field catalog is part of Job Buddy’s code: it gives fields shared labels, ordering
-            and references across the editor, chooser and review screens. Your personal values live
-            in the profile JSON in this browser’s local extension storage. An export includes the
-            values and mappings, not your Gemini key, appearance or Drive connection.
+            A possible different person adds the same Update or Replace choice as
+            <a href="#resume">resume import</a>. Replace clears omitted data and pauses connected
+            Drive backups for review.
           </p>
         </section>
         <section class="chapter" id="drive" aria-labelledby="drive-title">
@@ -911,164 +1232,155 @@
             <span>For an automatic copy</span>
             <h2 id="drive-title">Back up to your own Google Drive</h2>
           </div>
-          <div class="prose">
-            <p>
-              Connect Google Drive in Settings to save your profile and learned mappings in Drive’s
-              private app-data area. No Job Buddy server sits between your browser and your Google
-              account.
-            </p>
-            <p>
-              If Drive is empty, Job Buddy creates a backup. Matching data is reconciled. If the
-              backup differs, review it before continuing, using the same shared comparison
-              controls. A possible different person also gives you the Update or Replace choice.
-            </p>
-          </div>
-          <figure class="component-figure">
-            <div class="capture">
+
+          <p class="prose">
+            Saved profile and mapping changes queue a backup after about five seconds.
+          </p>
+          <div class="visual-tour" data-visual-tour>
+            <div
+              class="visual-controls"
+              data-visual-nav
+              role="group"
+              aria-label="Google Drive backup screenshots"
+            >
               <button
                 type="button"
-                data-enlarge
-                aria-label="Enlarge screenshot: Cloud Backup settings in the connected state"
+                data-show-visual="drive-views-0"
+                aria-controls="drive-views-0"
+                aria-pressed="true"
               >
-                <img
-                  src="./assets/screenshots/drive-light.webp?v=a0686959bea1"
-                  data-light="./assets/screenshots/drive-light.webp?v=a0686959bea1"
-                  data-dark="./assets/screenshots/drive-dark.webp?v=c8fa54cf0d2a"
-                  alt="Cloud Backup settings in the connected state"
-                  width="992"
-                  height="187"
-                  loading="lazy"
-                />
+                Connected</button
+              ><button
+                type="button"
+                data-show-visual="drive-views-1"
+                aria-controls="drive-views-1"
+                aria-pressed="false"
+              >
+                Disconnect
               </button>
             </div>
-            <figcaption>
-              The connected view shows backup status and provides Back Up Now and Disconnect. This
-              capture uses an isolated simulated connection.
-            </figcaption>
-          </figure>
-          <dl class="facts">
-            <div>
-              <dt>After saving changes</dt>
-              <dd>
-                A profile or mapping save queues backup after about five seconds. Backups follow
-                saved changes rather than a fixed timer.
-              </dd>
+            <div class="visual-panels">
+              <div id="drive-views-0" data-visual-panel>
+                <figure class="component-figure">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Connected Cloud Backup settings with backup status, Back Up Now and Disconnect"
+                    >
+                      <img
+                        src="./assets/screenshots/drive-light.webp?v=a0686959bea1"
+                        data-light="./assets/screenshots/drive-light.webp?v=a0686959bea1"
+                        data-dark="./assets/screenshots/drive-dark.webp?v=c8fa54cf0d2a"
+                        alt="Connected Cloud Backup settings with backup status, Back Up Now and Disconnect"
+                        width="992"
+                        height="187"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    An empty Drive gets a new backup. Matching data syncs automatically. Different
+                    data opens review.
+                  </figcaption>
+                </figure>
+              </div>
+              <div id="drive-views-1" data-visual-panel>
+                <figure class="dialog-figure">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: Disconnect Google Drive dialog with an option to delete the remote backup"
+                    >
+                      <img
+                        src="./assets/screenshots/drive-disconnect-light.webp?v=8859ebb69813"
+                        data-light="./assets/screenshots/drive-disconnect-light.webp?v=8859ebb69813"
+                        data-dark="./assets/screenshots/drive-disconnect-dark.webp?v=b6c2feab51d3"
+                        alt="Disconnect Google Drive dialog with an option to delete the remote backup"
+                        width="448"
+                        height="218"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                  <figcaption>
+                    Disconnect does not first upload pending changes. Use Back Up Now before
+                    disconnecting if you want the latest copy.
+                  </figcaption>
+                </figure>
+              </div>
             </div>
-            <div>
-              <dt>Back Up Now</dt>
-              <dd>
-                Check and update the backup manually. Temporary failures can retry automatically; an
-                expired authorization may need Reconnect.
-              </dd>
-            </div>
-            <div>
-              <dt>Disconnect</dt>
-              <dd>
-                Keep the last successful backup, or choose to delete it. Disconnect does not first
-                upload pending edits; use Back Up Now if you want a current copy.
-              </dd>
-            </div>
-            <div>
-              <dt>Imports and exports</dt>
-              <dd>
-                Saved imports normally queue backup while connected. A local profile replacement
-                pauses Drive for review. Export only downloads a file; it does not trigger a backup.
-              </dd>
-            </div>
-          </dl>
+            <p class="visual-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          </div>
           <div class="detail-list">
             <details>
-              <summary>Keep Current means something different in Drive review</summary>
+              <summary>What happens during a Drive review?</summary>
               <p>
-                Explicitly keeping this browser’s profile uploads that profile to Drive. Closing or
-                cancelling the dialog only dismisses the review and leaves uploads paused.
-                Replacement from a resume or JSON also pauses backups so you can decide what to do
-                with the existing Drive copy.
+                Explicitly choosing Keep Current uploads this browser’s profile to Drive. Closing or
+                cancelling only dismisses the review and leaves uploads paused. Saved imports
+                normally queue a backup; a local profile replacement pauses it for review.
+              </p>
+            </details>
+            <details>
+              <summary>What if a backup stops working?</summary>
+              <p>
+                Temporary failures can retry automatically. If Google authorization expires,
+                reconnect the account. Disconnecting keeps the last successful backup unless you
+                choose to delete it.
               </p>
             </details>
           </div>
-          <p class="note">
-            Drive backs up profile data and learned mappings. It excludes Gemini credentials,
-            appearance, Quick Fill preferences, connection tokens and Fill Details reports.
-          </p>
         </section>
         <section class="chapter" id="your-data" aria-labelledby="your-data-title">
           <div class="chapter-heading">
             <span>The data stays yours</span>
             <h2 id="your-data-title">Keep control of what you share</h2>
           </div>
-          <div class="prose">
-            <p>
-              Job Buddy is free, open source, and has no ads, analytics or Job Buddy account. The
-              extension stores your profile and settings in this browser. There is no Job Buddy
-              backend holding your applications.
-            </p>
-            <p>
-              AI features do make requests to Google. Resume import sends the selected document and
-              extracted links. Autofill sends relevant form questions and profile details, excluding
-              stored document files. Background details are disclosed only when the question asks
-              for them. AI mapping review sends saved questions and profile-field names. Google’s
-              own service and data-use terms apply.
-            </p>
-          </div>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Where it goes</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>Profile and learned mappings</td>
-                  <td>
-                    Local extension storage; JSON when you export; Google Drive when connected.
-                  </td>
-                </tr>
-                <tr>
-                  <td>Gemini key and model preference</td>
-                  <td>
-                    Local settings. The key authenticates requests to Gemini; it is excluded from
-                    profile backups.
-                  </td>
-                </tr>
-                <tr>
-                  <td>Appearance and Quick Fill preferences</td>
-                  <td>This browser only.</td>
-                </tr>
-                <tr>
-                  <td>Fill Details</td>
-                  <td>
-                    One metadata-only report for the browser session, outside profile backups.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <h3>Start over when you need to</h3>
+
           <p class="prose">
-            Settings → Reset All Data clears the local profile, documents, learned mappings,
-            settings and retained Fill Details. It removes the Gemini key, disconnects Drive, resets
-            appearance and Quick Fill preferences, and requires you to type DELETE.
+            Free and open source, with no ads, analytics or Job Buddy backend. Your profile and
+            settings live in this browser.
           </p>
-          <p class="prose">
-            If Drive is connected, choose whether to delete its backup too. Leaving that choice off
-            keeps the remote backup. If a requested backup deletion fails, reset stops so you can
-            retry. Keep an export first if you want your data back later.
-          </p>
+          <dl class="data-ledger">
+            <div>
+              <dt>In this browser</dt>
+              <dd>
+                Profile, files, learned mappings, Gemini settings, appearance and Quick Fill
+                preferences.
+              </dd>
+            </div>
+            <div>
+              <dt>With Gemini</dt>
+              <dd>
+                Resume import sends the selected document and extracted links. Autofill sends
+                relevant questions and profile details, excluding stored document bytes; background
+                details are included only when asked. Mapping review sends questions and field
+                names.
+              </dd>
+            </div>
+            <div>
+              <dt>In your backups</dt>
+              <dd>
+                JSON and optional Drive backups include profile data, stored documents and learned
+                mappings. They exclude credentials, appearance, Quick Fill preferences and Fill
+                Details reports.
+              </dd>
+            </div>
+          </dl>
+          <h3>When you want to start over</h3>
           <figure class="dialog-figure">
             <div class="capture">
               <button
                 type="button"
                 data-enlarge
-                aria-label="Enlarge screenshot: Reset All Data confirmation with the required DELETE entry"
+                aria-label="Enlarge screenshot: Reset All Data confirmation requiring DELETE before clearing local data"
               >
                 <img
-                  src="./assets/screenshots/reset-light.webp?v=d80b1d1bd758"
-                  data-light="./assets/screenshots/reset-light.webp?v=d80b1d1bd758"
+                  src="./assets/screenshots/reset-light.webp?v=87a6aed78675"
+                  data-light="./assets/screenshots/reset-light.webp?v=87a6aed78675"
                   data-dark="./assets/screenshots/reset-dark.webp?v=96263adbed74"
-                  alt="Reset All Data confirmation with the required DELETE entry"
+                  alt="Reset All Data confirmation requiring DELETE before clearing local data"
                   width="384"
                   height="268"
                   loading="lazy"
@@ -1076,10 +1388,14 @@
               </button>
             </div>
             <figcaption>
-              Reset is explicit. Keeping or deleting the Drive copy is a separate choice when
-              connected.
+              Reset removes the Gemini key and disconnects Drive. A kept Drive copy can be restored
+              later; requested backup deletion must succeed before local reset continues.
             </figcaption>
           </figure>
+          <p class="prose">
+            Export a copy first if you want to keep your data. Google’s own service and data-use
+            terms apply when you use Gemini or Drive.
+          </p>
           <div class="intro-actions">
             <a
               class="button primary"
@@ -1087,10 +1403,6 @@
               >Get Job Buddy</a
             ><a class="text-link" href="./developers/">See how it is built</a>
           </div>
-          <p class="sources">
-            For the full terms, see the <a href="./legal/privacy/">Privacy Policy</a> and
-            <a href="./legal/disclaimer/">Autofill & AI Disclaimer</a>.
-          </p>
         </section>
       </main>
     </div>
