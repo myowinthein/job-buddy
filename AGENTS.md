@@ -120,6 +120,7 @@ This project follows the rules shipped in agent-helm:
 - .claude/rules/git.md
 - .claude/rules/safety.md
 - .claude/rules/writing.md
+- .claude/rules/design.md
 
 At the start of every session, read the rule files at the paths above and follow them.
 
