@@ -70,6 +70,13 @@ browser.
 
 ## Development tools
 
+Every development options page has a compact bar with **Empty**, **Required only**,
+and **Complete** profile presets, plus a **Missing API key** toggle. These controls
+open a temporary preview in the same tab, keep the current section, and respect
+unsaved edits. Key toggling preserves preview edits. **Exit preview** returns to
+saved extension data. Preview changes reset on refresh; Gemini and Drive are
+simulated. Popup and job-form data are unaffected.
+
 Development builds include **Dev Tools** in the sidebar for inspecting local JSON,
 completion checks, storage usage, and diagnostics. Scenarios use the real interface
 with temporary storage and simulated providers. **Exit Simulation** returns to

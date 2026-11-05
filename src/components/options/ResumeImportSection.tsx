@@ -102,22 +102,37 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
   const abortControllerRef = useRef<AbortController | null>(null);
   const longWaitTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load API key on mount
+  // Keep setup current when credentials change while this dialog is open.
   useEffect(() => {
     let active = true;
-    Promise.all([getGeminiApiKey(), getGeminiModel()])
-      .then(([key, mdl]) => {
-        if (!active) return;
-        setApiKey(key ?? '');
-        setModel(mdl);
-      })
-      .catch(() => {
-        if (!active) return;
-        setApiKey('');
-        setErrorMsg(feedback.resumeSetupLoadFailed);
-      });
+    let sequence = 0;
+    const loadSettings = () => {
+      const request = ++sequence;
+      return Promise.all([getGeminiApiKey(), getGeminiModel()])
+        .then(([key, mdl]) => {
+          if (!active || request !== sequence) return;
+          setApiKey(key ?? '');
+          setModel(mdl);
+        })
+        .catch(() => {
+          if (!active || request !== sequence) return;
+          setApiKey('');
+          setErrorMsg(feedback.resumeSetupLoadFailed);
+        });
+    };
+    void loadSettings();
+    const changed = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      if (
+        area === 'local' &&
+        ['geminiApiKey', 'geminiModel', 'geminiSettingsMeta'].some((key) => key in changes)
+      )
+        void loadSettings();
+    };
+    const events = typeof chrome !== 'undefined' ? chrome.storage?.onChanged : undefined;
+    events?.addListener(changed);
     return () => {
       active = false;
+      events?.removeListener(changed);
       abortControllerRef.current?.abort();
       if (longWaitTimerRef.current) clearTimeout(longWaitTimerRef.current);
     };

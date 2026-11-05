@@ -39,6 +39,15 @@ it('never makes a network request or starts OAuth through preview integration fu
   await expect(
     gemini.resolveFieldsWithAI('synthetic-key', DEFAULT_GEMINI_MODEL, [], DEV_PROFILE),
   ).rejects.toThrow('disabled');
+  await expect(
+    gemini.reviewMappingsWithAI(
+      'synthetic-key',
+      DEFAULT_GEMINI_MODEL,
+      [],
+      [],
+      new AbortController().signal,
+    ),
+  ).rejects.toThrow('disabled');
   expect(fetch).not.toHaveBeenCalled();
   expect(launchWebAuthFlow).not.toHaveBeenCalled();
 });

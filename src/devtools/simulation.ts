@@ -45,8 +45,13 @@ export class DevSimulation {
     readonly scenario: Scenario,
     extensionId: string,
     version: string,
+    options: {
+      profile?: Partial<Profile>;
+      initialData?: Record<string, unknown>;
+      noKey?: boolean;
+    } = {},
   ) {
-    const profile = profilePreset(scenario.id);
+    const profile = options.profile ?? profilePreset(scenario.id);
     const sample = structuredClone(DEV_PROFILE);
     const {
       id: _id,
@@ -103,7 +108,7 @@ export class DevSimulation {
       initialData: {
         devProfileDisabled: true,
         geminiDevDisabled: true,
-        ...(scenario.id !== 'ai-no-key'
+        ...(scenario.id !== 'ai-no-key' && !options.noKey
           ? {
               geminiApiKey: 'simulated-key',
               geminiModel: DEFAULT_GEMINI_MODEL,
@@ -129,6 +134,7 @@ export class DevSimulation {
               },
             }
           : {}),
+        ...options.initialData,
       },
       failWrite: (items) =>
         scenario.id === 'resume-save-failure' && 'profile' in items
@@ -232,7 +238,10 @@ export class DevSimulation {
         ? '{"education":"invalid"}'
         : this.scenario.id === 'resume-not-resume'
           ? JSON.stringify({ documentType: 'other' })
-          : JSON.stringify({ documentType: this.scenario.id === 'resume-uncertain' ? 'uncertain' : 'resume', ...this.extracted });
+          : JSON.stringify({
+              documentType: this.scenario.id === 'resume-uncertain' ? 'uncertain' : 'resume',
+              ...this.extracted,
+            });
     this.lastResponseText = text;
     return json({ candidates: [{ content: { parts: [{ text }] } }] });
   }

@@ -96,6 +96,33 @@ describe('ResumeImportSection — no API key state', () => {
     fireEvent.click(await screen.findByText('Go to Settings →'));
     expect(onGoToApiKey).toHaveBeenCalled();
   });
+
+  it('updates the open dialog when the preview key is removed and restored', async () => {
+    let changed:
+      | ((changes: Record<string, chrome.storage.StorageChange>, area: string) => void)
+      | undefined;
+    vi.stubGlobal('chrome', {
+      storage: {
+        onChanged: {
+          addListener: (listener: typeof changed) => { changed = listener; },
+          removeListener: vi.fn(),
+        },
+      },
+    });
+    try {
+      renderSection();
+      await screen.findByText(/Drop your resume here/);
+      vi.mocked(getGeminiApiKey).mockResolvedValue('');
+      await act(async () => changed?.({ geminiApiKey: { oldValue: 'fake-key' } }, 'local'));
+      expect(await screen.findByText('Add a Gemini API key to import your resume.')).toBeTruthy();
+      vi.mocked(getGeminiApiKey).mockResolvedValue('fake-key');
+      await act(async () => changed?.({ geminiApiKey: { newValue: 'fake-key' } }, 'local'));
+      expect(await screen.findByText(/Drop your resume here/)).toBeTruthy();
+    } finally {
+      cleanup();
+      vi.unstubAllGlobals();
+    }
+  });
 });
 
 describe('ResumeImportSection — cancel/abort during analysis', () => {

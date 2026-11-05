@@ -3,6 +3,7 @@ export interface DevContext {
   id: string;
   extensionId: string;
   version: string;
+  quickPreview?: import('./quickPreview').PreviewPreset;
 }
 
 declare global {

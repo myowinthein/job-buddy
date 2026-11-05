@@ -21,3 +21,7 @@ export const resolveFieldsWithAI: typeof Gemini.resolveFieldsWithAI = async (...
   if (devContext()) return (await import('../resume-ai/gemini')).resolveFieldsWithAI(...args);
   throw new Error(message);
 };
+export const reviewMappingsWithAI: typeof Gemini.reviewMappingsWithAI = async (...args) => {
+  if (devContext()) return (await import('../resume-ai/gemini')).reviewMappingsWithAI(...args);
+  throw new Error(message);
+};

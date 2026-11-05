@@ -52,6 +52,34 @@ it('rejects unknown scenarios before installing any simulated APIs', async () =>
   expect(chrome).toBe(original);
 });
 
+it('keeps the selected page when starting a required-only preview with a missing key', async () => {
+  const original = createPreviewChrome({ id: 'original' });
+  vi.stubGlobal('chrome', original);
+  sessionStorage.setItem('jb:ui:section', 'education');
+  history.replaceState(null, '', '?devPreview=required&devNoKey=1');
+  const { initializeDevTools } = await import('./bootstrap');
+  dispose = initializeDevTools();
+  expect(sessionStorage.getItem('jb:ui:section')).toBe('education');
+  expect(globalThis.__JB_DEV_CONTEXT__?.quickPreview).toBe('required');
+  const data = await new Promise<Record<string, unknown>>((resolve) =>
+    chrome.storage.local.get(['profile', 'geminiApiKey'], (data: Record<string, unknown>) =>
+      resolve(data),
+    ),
+  );
+  expect(data.geminiApiKey).toBeUndefined();
+  expect((data.profile as { id: string }).id).toBe('dev-tools-sample');
+  expect(chrome.storage).not.toBe(original.storage);
+});
+
+it('does not mount a saved-profile preview without its isolated seed', async () => {
+  const original = createPreviewChrome({ id: 'original' });
+  vi.stubGlobal('chrome', original);
+  history.replaceState(null, '', '?devPreview=saved');
+  const { initializeDevTools } = await import('./bootstrap');
+  expect(initializeDevTools).toThrow('Saved profile preview is unavailable');
+  expect(chrome).toBe(original);
+});
+
 it('ignores simulation URLs in production', async () => {
   vi.stubEnv('DEV', false);
   const original = createPreviewChrome();
