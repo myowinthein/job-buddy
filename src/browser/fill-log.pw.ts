@@ -57,7 +57,7 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   const outcomeHelp = logPage.getByRole('button', { name: 'How Fill Details works' });
   await outcomeHelp.hover();
   await expect(logPage.getByRole('tooltip')).toContainText(
-    'High-confidence fills skip later stages.',
+    'Fields filled with high confidence skip the remaining stages.',
   );
   await expect(logPage.getByRole('tooltip')).toContainText(
     'Consent questions and other excluded fields are left for you.',

@@ -58,29 +58,25 @@ export function FillDetailsHelp() {
             role="tooltip"
             className="max-h-[70dvh] space-y-3 overflow-y-auto rounded-lg border border-gray-200 bg-white p-3 text-xs leading-relaxed text-gray-600 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
           >
-            <p>
-              Autofill checks learned mappings, then rules, then AI. High-confidence fills skip
-              later stages.
+            <p className="text-pretty">
+              Job Buddy checks learned mappings first, then uses rules and AI for fields that
+              still need attention. Fields filled with high confidence skip the remaining stages.
             </p>
             <p>Colors show each field’s final result.</p>
-            <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-2">
+            <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-2 [&_dd]:text-balance">
               <dt className="font-medium text-green-700 dark:text-green-400">Green</dt>
-              <dd>Filled with high confidence, or confirmed by you.</dd>
+              <dd>Filled with high confidence or confirmed by you.</dd>
               <dt className="font-medium text-amber-700 dark:text-amber-400">Yellow</dt>
               <dd>Filled, but needs your review.</dd>
               <dt className="font-medium text-red-700 dark:text-red-400">Red</dt>
-              <dd>Not filled: no reliable match, or the form rejected the value.</dd>
+              <dd>Not filled: no safe match or the value was rejected.</dd>
               <dt className="font-medium text-gray-500 dark:text-gray-400">Gray</dt>
-              <dd>Not filled: a profile match has no usable saved data.</dd>
+              <dd>Not filled: the matched profile field is empty.</dd>
               <dt className="font-medium text-gray-900 dark:text-gray-100">Kept current</dt>
               <dd>Existing answers stay when filling empty fields only.</dd>
               <dt className="font-medium text-gray-900 dark:text-gray-100">Skipped</dt>
               <dd>Consent questions and other excluded fields are left for you.</dd>
             </dl>
-            <p>
-              Filter the results, then expand a field to inspect each stage. Checked by rules and
-              Sent to AI can overlap with the final fill source.
-            </p>
           </div>
         </div>
       )}
