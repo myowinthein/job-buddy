@@ -103,6 +103,7 @@ export interface FillLogSnapshot {
   selectedAt?: number;
   needsRefresh?: boolean;
   sourceClosed?: boolean;
+  sourceNavigated?: boolean;
 }
 
 export const isFilled = (field: FillLogField) =>

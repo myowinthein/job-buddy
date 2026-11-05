@@ -118,7 +118,7 @@ async function notify() {
 }
 
 describe('Fill Details page', () => {
-  it('shows a compact source link and minute-level times while retaining the full metadata', async () => {
+  it('keeps the source URL on the return button and preserves both timestamps', async () => {
     const data = snapshot();
     data.pageUrl = 'https://example.test/careers/101?source=LinkedIn';
     const filled = new Date(2026, 10, 2, 21, 8, 5);
@@ -129,13 +129,17 @@ describe('Fill Details page', () => {
     });
     vi.mocked(loadFillLog).mockResolvedValue(data);
     await showFields();
-    const link = screen.getByRole('link', {
-      name: 'example.test/careers/101 (opens in a new tab)',
-    });
-    expect(link.getAttribute('href')).toBe(data.pageUrl);
-    expect(link.getAttribute('title')).toBe(data.pageUrl);
-    expect(link.getAttribute('target')).toBe('_blank');
-    expect(link.getAttribute('rel')).toContain('noopener');
+    expect(screen.queryByRole('link')).toBeNull();
+    const button = screen.getByRole('button', { name: 'Return to Form' });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    fireEvent.mouseEnter(button.parentElement!);
+    expect(screen.getByRole('tooltip').textContent).toBe(data.pageUrl);
+    fireEvent.mouseLeave(button.parentElement!);
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    fireEvent.focus(button);
+    expect(screen.getByRole('tooltip').textContent).toBe(data.pageUrl);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('tooltip')).toBeNull();
     const times = document.querySelectorAll('time');
     expect(times).toHaveLength(2);
     expect(times[0].getAttribute('datetime')).toBe(filled.toISOString());
@@ -594,18 +598,28 @@ describe('Fill Details page', () => {
     expect(screen.getByRole('button', { name: 'Return to Form' })).toBeTruthy();
   });
 
-  it('keeps closed-form details with a neutral notice and no Return action', async () => {
+  it('keeps closed-form details and offers to open the saved URL', async () => {
     vi.mocked(loadFillLog).mockResolvedValue({ ...snapshot(), sourceClosed: true });
     await showFields();
     expect(screen.getByText('This form is closed. Showing its last fill details.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Return to Form' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Open Form' }));
+    expect(returnToForm).toHaveBeenCalledWith(10, 'https://example.test/');
+  });
+
+  it('offers Open Form when the original tab has navigated elsewhere', async () => {
+    vi.mocked(loadFillLog).mockResolvedValue({ ...snapshot(), sourceNavigated: true });
+    await showFields();
+    expect(screen.getByText(/The form’s tab is now on another page/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Return to Form' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Open Form' })).toBeTruthy();
   });
 
   it('returns to the report source after another form becomes selected', async () => {
     vi.mocked(loadFillLog).mockResolvedValue({ ...snapshot(), tabId: 20 });
     await showFields();
     fireEvent.click(screen.getByRole('button', { name: 'Return to Form' }));
-    expect(returnToForm).toHaveBeenCalledWith(20);
+    expect(returnToForm).toHaveBeenCalledWith(20, 'https://example.test/');
   });
 
   it('reports return failures', async () => {
@@ -614,7 +628,7 @@ describe('Fill Details page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Return to Form' }));
     expect(await screen.findByRole('alert')).toHaveProperty(
       'textContent',
-      expect.stringContaining('Could not open the source form'),
+      expect.stringContaining('Could not open the form'),
     );
   });
 

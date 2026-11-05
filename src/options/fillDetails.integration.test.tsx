@@ -25,6 +25,13 @@ const mount = () =>
       </ToastProvider>
     </StrictMode>,
   );
+async function expectSource(id: number) {
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Return to Form' }).getAttribute('aria-description'),
+    ).toBe(`https://form${id}.test/`),
+  );
+}
 beforeEach(() => {
   sessionStorage.clear();
   history.replaceState(null, '', '/');
@@ -100,17 +107,19 @@ it('routes repeated requests to the exact source, resets old results and remembe
   mount();
   await screen.findByLabelText('First Name*');
   await act(async () => openFillLog(10));
-  await screen.findByRole('link', { name: /form10\.test/ });
+  await expectSource(10);
   await act(async () => openFillLog(20));
-  await screen.findByRole('link', { name: /form20\.test/ });
-  expect(screen.queryByRole('link', { name: /form10\.test/ })).toBeNull();
+  await expectSource(20);
+  expect(
+    screen.getByRole('button', { name: 'Return to Form' }).getAttribute('aria-description'),
+  ).not.toContain('form10.test');
   await act(async () => {
     await Promise.all([openFillLog(25), openFillLog(30)]);
   });
-  await screen.findByRole('link', { name: /form30\.test/ });
+  await expectSource(30);
   cleanup();
   mount();
-  await screen.findByRole('link', { name: /form30\.test/ });
+  await expectSource(30);
   expect(document.title).toBe('Job Buddy: Fill Details');
   expect(tabs.create).not.toHaveBeenCalled();
   expect(
@@ -131,23 +140,23 @@ it('preserves a dirty profile when navigation is declined and asks once per requ
   ).toBe(true);
   confirm.mockReturnValue(true);
   await act(async () => openFillLog(20));
-  await screen.findByRole('link', { name: /form20\.test/ });
+  await expectSource(20);
   expect(confirm).toHaveBeenCalledTimes(2);
 });
 it('honors a deep link once, then keeps later navigation and sources on reload', async () => {
   history.replaceState(null, '', '?section=fillDetails&tabId=10');
   mount();
-  await screen.findByRole('link', { name: /form10\.test/ });
+  await expectSource(10);
   expect(location.search).toBe('');
   await act(async () => openFillLog(20));
-  await screen.findByRole('link', { name: /form20\.test/ });
+  await expectSource(20);
   fireEvent.click(screen.getByRole('button', { name: 'Personal' }));
   await screen.findByLabelText('First Name*');
   cleanup();
   mount();
   await screen.findByLabelText('First Name*');
   fireEvent.click(screen.getByRole('button', { name: 'Fill Details' }));
-  await screen.findByRole('link', { name: /form20\.test/ });
+  await expectSource(20);
 });
 it('shows a closed source without silently loading another tab', async () => {
   tabs.get.mockRejectedValue(new Error('Closed source'));

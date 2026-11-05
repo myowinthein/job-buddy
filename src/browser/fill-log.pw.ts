@@ -4,6 +4,73 @@ import type { FrameFillLog } from '../autofill/fillLog';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
 import type { AIFieldPayload } from '../resume-ai/types';
 
+test('source navigation returns to an open form and reopens a fresh form after navigation or closure', async ({
+  page,
+  context,
+  extension,
+}, testInfo) => {
+  await extension.send('AUTOFILL_FILL', 'merge');
+  await page.locator('[name="lastName"]').fill('Edited answer');
+  const url = page.url();
+  const options = await context.newPage();
+  await options.goto(new URL('options.html?section=fillDetails', extension.worker.url()).href);
+  const back = options.getByRole('button', { name: 'Return to Form', exact: true });
+  await expect(back).toBeVisible();
+  await expect(options.getByText(/^Modified/)).toBeVisible();
+  await back.focus();
+  await expect(options.getByRole('tooltip')).toHaveText(url);
+  await options.keyboard.press('Escape');
+  await expect(options.getByRole('tooltip')).toHaveCount(0);
+  await back.click();
+  await expect
+    .poll(() =>
+      extension.worker.evaluate(
+        async () => (await chrome.tabs.query({ active: true, currentWindow: true }))[0]?.id,
+      ),
+    )
+    .toBe(extension.sourceTabId);
+  await expect(page.locator('[name="firstName"]')).toHaveValue('Jane');
+  await expect(page.locator('[name="lastName"]')).toHaveValue('Edited answer');
+  await page.goto('http://127.0.0.1/unrelated-page');
+  await options.bringToFront();
+  const reopen = options.getByRole('button', { name: 'Open Form', exact: true });
+  await expect(reopen).toBeVisible();
+  await expect(options.getByText(/The form’s tab is now on another page/)).toBeVisible();
+  await options.emulateMedia({ colorScheme: 'dark' });
+  await options.screenshot({
+    path: testInfo.outputPath('source-navigated-dark.png'),
+    animations: 'disabled',
+  });
+  const opened = context.waitForEvent('page');
+  await reopen.click();
+  const fresh = await opened;
+  await expect(fresh).toHaveURL(url);
+  await expect(fresh.locator('[name="firstName"]')).toHaveValue('');
+  await expect(page).toHaveURL('http://127.0.0.1/unrelated-page');
+  await fresh.close();
+  await page.close();
+  await options.bringToFront();
+  await expect(
+    options.getByText('This form is closed. Showing its last fill details.'),
+  ).toBeVisible();
+  await expect(reopen).toBeVisible();
+  await options.setViewportSize({ width: 390, height: 844 });
+  await reopen.focus();
+  await expect(options.getByRole('tooltip')).toHaveText(url);
+  const tip = await options.getByRole('tooltip').boundingBox();
+  expect(tip!.x).toBeGreaterThanOrEqual(0);
+  expect(tip!.x + tip!.width).toBeLessThanOrEqual(390);
+  await options.screenshot({
+    path: testInfo.outputPath('source-closed-narrow.png'),
+    animations: 'disabled',
+  });
+  const reopened = context.waitForEvent('page');
+  await reopen.click();
+  const freshAfterClose = await reopened;
+  await expect(freshAfterClose).toHaveURL(url);
+  await expect(freshAfterClose.locator('[name="firstName"]')).toHaveValue('');
+});
+
 test('the production Fill Details combines frames, reports real outcomes, tracks edits and identifies Undo', async ({
   page,
   context,
@@ -34,11 +101,10 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   const logPage = await context.newPage();
   await logPage.goto(`${new URL('fill-log.html', extension.worker.url()).href}?tabId=${sourceId}`);
   await expect(logPage.getByRole('heading', { name: 'Fill Details', exact: true })).toBeVisible();
-  const sourceLink = logPage.getByRole('link', { name: /127\.0\.0\.1.*application/ });
-  await expect(sourceLink).toHaveAttribute('href', page.url());
-  await expect(sourceLink).toHaveAttribute('title', page.url());
-  await expect(sourceLink).toHaveAttribute('target', '_blank');
-  await expect(sourceLink).not.toContainText('http://');
+  const sourceButton = logPage.getByRole('button', { name: 'Return to Form', exact: true });
+  await sourceButton.hover();
+  await expect(logPage.getByRole('tooltip')).toHaveText(page.url());
+  await logPage.keyboard.press('Escape');
   await expect(logPage.getByText(/AI assistance was unavailable for part or all/)).toBeVisible();
   const detected = logPage.getByText('Detected', { exact: true }).locator('..');
   await expect(detected).toContainText(String(counts.detected));
@@ -508,8 +574,8 @@ test('an open empty report populates automatically and explicit actions select t
   await expect(options.getByRole('button', { name: /^Detected \(/ })).toBeVisible();
   await expect(options.getByRole('tab')).toHaveCount(0);
   await expect(
-    options.getByRole('link', { name: '127.0.0.1/application (opens in a new tab)', exact: true }),
-  ).toBeVisible();
+    options.getByRole('button', { name: 'Return to Form', exact: true }),
+  ).toHaveAttribute('aria-description', 'http://127.0.0.1/application');
   const firstRow = options.locator('summary').filter({ hasText: 'First name' }).first();
   await expect(firstRow.locator('.sr-only')).toHaveText(' required');
   await firstRow.focus();
@@ -544,11 +610,8 @@ test('an open empty report populates automatically and explicit actions select t
   await sendB('AUTOFILL_FILL');
   await options.bringToFront();
   await expect(
-    options.getByRole('link', {
-      name: '127.0.0.1/application-b (opens in a new tab)',
-      exact: true,
-    }),
-  ).toBeVisible();
+    options.getByRole('button', { name: 'Return to Form', exact: true }),
+  ).toHaveAttribute('aria-description', 'http://127.0.0.1/application-b');
   await expect(options.getByRole('button', { name: 'Detected (2)', exact: true })).toBeVisible();
   await expect(options.getByRole('button', { name: 'Gray (1)', exact: true })).toBeVisible();
 
@@ -556,11 +619,8 @@ test('an open empty report populates automatically and explicit actions select t
   await page.locator('[name="firstName"]').fill('Changed in A');
   await options.bringToFront();
   await expect(
-    options.getByRole('link', {
-      name: '127.0.0.1/application-b (opens in a new tab)',
-      exact: true,
-    }),
-  ).toBeVisible();
+    options.getByRole('button', { name: 'Return to Form', exact: true }),
+  ).toHaveAttribute('aria-description', 'http://127.0.0.1/application-b');
 
   // View details is an explicit selection of A, with no rescan or fill.
   const popup = await context.newPage();
@@ -570,8 +630,8 @@ test('an open empty report populates automatically and explicit actions select t
   await popup.goto(new URL('popup.html', extension.worker.url()).href);
   await popup.getByRole('button', { name: 'View details', exact: true }).click();
   await expect(
-    options.getByRole('link', { name: '127.0.0.1/application (opens in a new tab)', exact: true }),
-  ).toBeVisible();
+    options.getByRole('button', { name: 'Return to Form', exact: true }),
+  ).toHaveAttribute('aria-description', 'http://127.0.0.1/application');
   await expect(options.getByText('Confirmed by you').first()).toBeVisible();
   await expect(options.getByText(/^Modified/)).toBeVisible();
 
@@ -580,11 +640,8 @@ test('an open empty report populates automatically and explicit actions select t
   await sendB('AUTOFILL_FILL');
   await options.bringToFront();
   await expect(
-    options.getByRole('link', {
-      name: '127.0.0.1/application-b (opens in a new tab)',
-      exact: true,
-    }),
-  ).toBeVisible();
+    options.getByRole('button', { name: 'Return to Form', exact: true }),
+  ).toHaveAttribute('aria-description', 'http://127.0.0.1/application-b');
   await options.emulateMedia({ colorScheme: 'dark' });
   await expect(options.locator('html')).toHaveClass(/dark/);
   await options.screenshot({

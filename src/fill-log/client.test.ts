@@ -11,6 +11,7 @@ import {
 
 const tabs = { get: vi.fn(), sendMessage: vi.fn(), create: vi.fn(), update: vi.fn() };
 const getAllFrames = vi.fn();
+const getFrame = vi.fn();
 const openOptionsPage = vi.fn();
 const log = (runId: string, startedAt: number) => ({
   version: 1,
@@ -26,10 +27,11 @@ beforeEach(() => {
   tabs.create.mockResolvedValue({});
   tabs.update.mockResolvedValue({});
   getAllFrames.mockResolvedValue([{ frameId: 0 }, { frameId: 3 }, { frameId: 9 }]);
+  getFrame.mockResolvedValue(null);
   vi.stubGlobal('chrome', {
     storage: createPreviewChrome({}).storage,
     tabs,
-    webNavigation: { getAllFrames },
+    webNavigation: { getAllFrames, getFrame },
     runtime: { getURL: (path: string) => `chrome-extension://test/${path}`, openOptionsPage },
   });
 });
@@ -98,6 +100,39 @@ describe('reading a source form log', () => {
     expect((await loadFillLog(10)).frames).toEqual([]);
   });
 
+  it('keeps the selected report when its source tab navigates to a different page', async () => {
+    const retained = {
+      tabId: 10,
+      pageUrl: 'https://form.test/application',
+      frames: [{ frameId: 0, log: { ...log('retained', 5), status: 'completed' } }],
+    };
+    await new Promise<void>((resolve) =>
+      chrome.storage.session.set({ [RETAINED_FILL_DETAILS]: retained }, resolve),
+    );
+    tabs.get.mockResolvedValue({ id: 10 });
+    getFrame.mockResolvedValue({ url: 'https://form.test/another-job' });
+    expect(await loadFillLog(10)).toMatchObject({
+      pageUrl: retained.pageUrl,
+      sourceNavigated: true,
+      frames: [{ log: { runId: 'retained' } }],
+    });
+    expect(tabs.sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('keeps returning to the same form when only its fragment changes', async () => {
+    const retained = {
+      tabId: 10,
+      pageUrl: 'https://form.test/application',
+      frames: [{ frameId: 0, log: { ...log('retained', 5), status: 'completed' } }],
+    };
+    await new Promise<void>((resolve) =>
+      chrome.storage.session.set({ [RETAINED_FILL_DETAILS]: retained }, resolve),
+    );
+    tabs.get.mockResolvedValue({ id: 10, url: retained.pageUrl + '#education' });
+    tabs.sendMessage.mockResolvedValue(null);
+    expect((await loadFillLog(10)).sourceNavigated).toBeUndefined();
+  });
+
   it('follows a newer fill on another tab and uses its live details and source', async () => {
     const retained = {
       tabId: 20,
@@ -151,6 +186,51 @@ describe('reading a source form log', () => {
     await returnToForm(10);
     expect(focus).toHaveBeenCalledWith(3, { focused: true });
   });
+
+  it('focuses the existing source without reloading its answers', async () => {
+    tabs.get.mockResolvedValue({ id: 10, url: 'https://form.test/application#contact' });
+    await returnToForm(10, 'https://form.test/application');
+    expect(tabs.update).toHaveBeenCalledWith(10, { active: true });
+    expect(tabs.create).not.toHaveBeenCalled();
+  });
+
+  it('checks the top frame when Chrome withholds the tab URL', async () => {
+    getFrame.mockResolvedValue({ url: 'https://form.test/another-job' });
+    await returnToForm(10, 'https://form.test/application');
+    expect(getFrame).toHaveBeenCalledWith({ tabId: 10, frameId: 0 });
+    expect(tabs.create).toHaveBeenCalledWith({ url: 'https://form.test/application' });
+    expect(tabs.update).not.toHaveBeenCalled();
+  });
+
+  it.each(['closed', 'navigated', 'closed-during-click'])(
+    'opens a fresh form when %s',
+    async (state) => {
+      if (state === 'closed') tabs.get.mockRejectedValueOnce(new Error('closed'));
+      else
+        tabs.get.mockResolvedValue({
+          id: 10,
+          url:
+            state === 'navigated'
+              ? 'https://form.test/another-job'
+              : 'https://form.test/application',
+        });
+      if (state === 'closed-during-click') tabs.update.mockRejectedValueOnce(new Error('closed'));
+      await returnToForm(10, 'https://form.test/application');
+      expect(tabs.create).toHaveBeenCalledWith({ url: 'https://form.test/application' });
+      if (state !== 'closed-during-click') expect(tabs.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects unsafe source URLs and reports new-tab failures', async () => {
+    await expect(returnToForm(10, 'javascript:alert(1)')).rejects.toThrow(
+      'Invalid source form URL',
+    );
+    expect(tabs.get).not.toHaveBeenCalled();
+    expect(tabs.create).not.toHaveBeenCalled();
+    tabs.get.mockRejectedValueOnce(new Error('closed'));
+    tabs.create.mockRejectedValueOnce(new Error('blocked'));
+    await expect(returnToForm(10, 'https://form.test/application')).rejects.toThrow('blocked');
+  });
   it('uses existing completed run metadata when details have not been requested before', async () => {
     await new Promise<void>((resolve) =>
       chrome.storage.session.set(
@@ -179,9 +259,11 @@ describe('reading a source form log', () => {
   it('keeps the latest concurrent navigation request and never scans a form', async () => {
     await Promise.all([openFillLog(10), openFillLog(20)]);
     expect(await takeFillDetailsRequest()).toEqual({ tabId: 20 });
-    expect(tabs.sendMessage.mock.calls.every(([, message]) =>
-      ['GET_FILL_LOG', 'GET_STATUS'].includes(message.action),
-    )).toBe(true);
+    expect(
+      tabs.sendMessage.mock.calls.every(([, message]) =>
+        ['GET_FILL_LOG', 'GET_STATUS'].includes(message.action),
+      ),
+    ).toBe(true);
   });
   it('does not open an options page without a valid source or a saved request', async () => {
     await expect(openFillLog(-1)).rejects.toThrow('Invalid source form');

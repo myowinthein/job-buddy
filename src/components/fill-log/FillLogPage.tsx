@@ -2,12 +2,15 @@ import { useEffect, useId, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
+  ExternalLink,
   ChevronDown,
   Info,
   ListChecks,
   LoaderCircle,
 } from 'lucide-react';
 import { FillDetailsHelp } from './FillDetailsHelp';
+import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
+import { feedback } from '@/src/ui/feedback';
 import { loadFillLog, returnToForm } from '@/src/fill-log/client';
 import { RETAINED_FILL_DETAILS } from '@/src/fill-log/retention';
 import { defaultStage, fillStages, type StageId } from '@/src/fill-log/stages';
@@ -75,8 +78,12 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
   const [checkedRules, setCheckedRules] = useState(false);
   const [search, setSearch] = useState('');
   const [returnError, setReturnError] = useState(false);
+  const [openingSource, setOpeningSource] = useState(false);
+  const [sourceTooltipOpen, setSourceTooltipOpen] = useState(false);
   const currentReport = useRef<string | null>(null);
   const prefix = useId();
+  const sourceTooltipId = useId();
+  useEscapeToClose(sourceTooltipOpen ? () => setSourceTooltipOpen(false) : undefined);
   useEffect(() => {
     let active = true;
     let sequence = 0;
@@ -95,10 +102,10 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
           setCheckedRules(false);
           setSearch('');
           setReturnError(false);
+          setSourceTooltipOpen(false);
         }
         setSnapshot(next);
         setUnavailable(false);
-        if (next.sourceClosed) setReturnError(false);
       } catch {
         if (active && request === sequence) {
           currentReport.current = null;
@@ -187,20 +194,23 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
       frames[0]?.log.url ??
       frames[0]?.log.origin,
   );
-  const sourceAddress = sourceUrl ? new URL(sourceUrl) : null;
-  const sourceLabel = sourceAddress
-    ? sourceAddress.host + (sourceAddress.pathname === '/' ? '' : sourceAddress.pathname)
-    : null;
   const sourceTab = snapshot?.tabId ?? tabId;
+  const canReturn =
+    sourceTab !== null && sourceTab >= 0 && !snapshot?.sourceClosed && !snapshot?.sourceNavigated;
   const hasReport = fields.length > 0 || snapshot?.needsRefresh;
   const undone = frames.length > 0 && frames.every((frame) => frame.log.status === 'undone');
   const aiFailed = frames.some((frame) => frame.log.aiStatus === 'unavailable');
   const openSource = async () => {
+    if (openingSource) return;
+    setOpeningSource(true);
+    setSourceTooltipOpen(false);
     setReturnError(false);
     try {
-      if (sourceTab !== null && sourceTab >= 0) await returnToForm(sourceTab);
+      await returnToForm(sourceTab ?? -1, sourceUrl);
     } catch {
       setReturnError(true);
+    } finally {
+      setOpeningSource(false);
     }
   };
   const neutralChip = (selected: boolean) =>
@@ -213,7 +223,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
 
   return (
     <section aria-label="Fill Details" className="min-w-0 text-gray-900 dark:text-gray-100">
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <header className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row">
         <div className="min-w-0 max-w-full sm:flex-1">
           <div className="relative flex w-fit max-w-full items-center gap-2">
             <h2 className="text-xl font-semibold">Fill Details</h2>
@@ -222,44 +232,69 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             See how Job Buddy filled your form
           </p>
-          {hasReport && (sourceUrl || filledAt > 0) && (
-            <div className="mt-3 space-y-0.5 text-xs text-gray-500 dark:text-gray-400">
-              {sourceUrl && (
-                <a
-                  href={sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={sourceUrl}
-                  aria-label={sourceLabel + ' (opens in a new tab)'}
-                  className="block w-fit max-w-full truncate rounded-sm underline decoration-gray-300 underline-offset-2 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:decoration-gray-600 dark:hover:text-blue-300"
-                >
-                  {sourceLabel}
-                </a>
-              )}
-              {filledAt > 0 && (
-                <div className="flex flex-wrap gap-x-4 gap-y-0.5">
-                  <span>
-                    Filled <ReportTime timestamp={filledAt} />
-                  </span>
-                  {modifiedAt > filledAt && (
-                    <span>
-                      Modified <ReportTime timestamp={modifiedAt} />
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
         </div>
-        {hasReport && sourceTab !== null && sourceTab >= 0 && !snapshot?.sourceClosed && (
-          <button type="button" className={buttonCls} onClick={() => void openSource()}>
-            <ArrowLeft aria-hidden="true" className="h-4 w-4" /> Return to Form
-          </button>
+        {hasReport && (canReturn || sourceUrl || filledAt > 0) && (
+          <div className="flex w-full min-w-0 flex-col items-start gap-2 sm:w-auto sm:items-end">
+            {(canReturn || sourceUrl) && (
+              <div
+                className="relative w-full sm:w-fit"
+                onMouseEnter={() => setSourceTooltipOpen(true)}
+                onMouseLeave={(event) => {
+                  if (!event.currentTarget.contains(document.activeElement))
+                    setSourceTooltipOpen(false);
+                }}
+                onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget))
+                    setSourceTooltipOpen(false);
+                }}
+              >
+                <button
+                  type="button"
+                  className={buttonCls}
+                  disabled={openingSource}
+                  onClick={() => void openSource()}
+                  onFocus={() => setSourceTooltipOpen(true)}
+                  aria-description={sourceUrl}
+                  aria-describedby={sourceUrl && sourceTooltipOpen ? sourceTooltipId : undefined}
+                >
+                  {canReturn ? (
+                    <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+                  ) : (
+                    <ExternalLink aria-hidden="true" className="h-4 w-4" />
+                  )}
+                  {openingSource ? 'Opening…' : canReturn ? 'Return to Form' : 'Open Form'}
+                </button>
+                {sourceUrl && sourceTooltipOpen && (
+                  <div className="absolute left-0 top-full z-30 w-full pt-2 sm:left-auto sm:right-0 sm:w-max sm:max-w-md">
+                    <div
+                      id={sourceTooltipId}
+                      role="tooltip"
+                      className="break-all rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-xs leading-relaxed text-gray-700 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                    >
+                      {sourceUrl}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            {filledAt > 0 && (
+              <div className="space-y-0.5 text-xs text-gray-500 sm:text-right dark:text-gray-400">
+                <span>
+                  Filled <ReportTime timestamp={filledAt} />
+                </span>
+                {modifiedAt > filledAt && (
+                  <span className="block">
+                    Modified <ReportTime timestamp={modifiedAt} />
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </header>
       {returnError && (
         <p role="alert" className="mb-4 text-sm text-red-700 dark:text-red-400">
-          Could not open the source form. Its tab may have closed.
+          {feedback.fillDetailsFormOpenFailed}
         </p>
       )}
       {loading ? (
@@ -317,7 +352,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
         </div>
       ) : (
         <>
-          {snapshot?.sourceClosed && (
+          {(snapshot?.sourceClosed || snapshot?.sourceNavigated) && (
             <div
               role="status"
               className="mb-4 flex items-start gap-2 rounded-lg bg-gray-100 p-3 text-sm leading-relaxed text-gray-700 dark:bg-gray-800/60 dark:text-gray-300"
@@ -326,7 +361,11 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
                 aria-hidden="true"
                 className="h-[1lh] w-4 shrink-0 text-gray-500 dark:text-gray-400"
               />
-              <span>This form is closed. Showing its last fill details.</span>
+              <span>
+                {snapshot.sourceClosed
+                  ? 'This form is closed. Showing its last fill details.'
+                  : feedback.fillDetailsSourceNavigated}
+              </span>
             </div>
           )}
           {undone && (

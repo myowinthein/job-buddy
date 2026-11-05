@@ -76,6 +76,9 @@ export const feedback = {
   quickFillStartFailed: 'Open the Job Buddy popup to try again.',
   geminiKeyFormatInvalid: 'Paste the API key only, without spaces or extra text.',
   fillDetailsOpenFailed: 'Please try opening Fill Details again.',
+  fillDetailsFormOpenFailed: 'Could not open the form. Please try again.',
+  fillDetailsSourceNavigated:
+    'The form’s tab is now on another page. Showing its last fill details.',
   driveBackupSucceeded: 'Profile backed up to Google Drive.',
   profileExportSucceeded: 'Profile exported successfully',
   profileImportSucceeded: 'Profile imported successfully',

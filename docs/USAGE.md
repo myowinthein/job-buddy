@@ -73,6 +73,9 @@ Final totals count each field or question group once. Processing counts such as
 both stages.
 
 The report stays available for the browser session after the source form closes.
+**Return to Form** focuses its original tab. If that tab has closed or moved to
+another page, **Open Form** opens the saved address in a fresh tab without restoring
+previous answers. Hover or focus the button to see the address.
 A newer fill replaces it; **View details** can select another open form's report.
 It contains field metadata rather than answer values, document contents, or keys.
 Reports are excluded from exports and Drive backups and are cleared by reset or

@@ -3,6 +3,19 @@ import type { FillLogFrame, FillLogSnapshot, FrameFillLog } from '@/src/autofill
 import { requestFillDetails, sourceTabId } from './navigation';
 import { readRetainedFillLog, fillDetailsClearedAt, selectRetainedFillLog } from './retention';
 
+async function readSourceTab(tabId: number): Promise<chrome.tabs.Tab> {
+  const tab = await chrome.tabs.get(tabId);
+  if (tab.url) return tab;
+  // Chrome can withhold Tab.url without the tabs permission. webNavigation is
+  // already granted and can still identify the top-level page.
+  try {
+    const frame = await chrome.webNavigation.getFrame({ tabId, frameId: 0 });
+    return { ...tab, url: frame?.url };
+  } catch {
+    return tab;
+  }
+}
+
 /** Read only: never scan, fill, or switch the source tab while opening its log. */
 export async function loadFillLog(tabId: number | null): Promise<FillLogSnapshot> {
   const cached = await readRetainedFillLog();
@@ -13,7 +26,14 @@ export async function loadFillLog(tabId: number | null): Promise<FillLogSnapshot
   const source = retained?.tabId ?? tabId;
   if (source === null) return { tabId: -1, frames: [] };
   try {
-    const live = await readLiveFillLog(source, clearedAt);
+    const expectedUrl = safeFormUrl(
+      retained?.pageUrl ??
+        retained?.frames.find((frame) => frame.frameId === 0)?.log.url ??
+        retained?.frames[0]?.log.url ??
+        retained?.frames[0]?.log.origin,
+    );
+    const live = await readLiveFillLog(source, clearedAt, expectedUrl);
+    if (retained && live.sourceNavigated) return { ...retained, sourceNavigated: true };
     // Keep the completed report through a refresh or an in-progress retry.
     if (retained && !live.frames.some((frame) => frame.log.status !== 'scanning')) return retained;
     return live;
@@ -30,9 +50,15 @@ export async function selectFillLog(tabId: number): Promise<void> {
   await selectRetainedFillLog(snapshot, requestedAt);
 }
 
-async function readLiveFillLog(tabId: number, clearedAt: number): Promise<FillLogSnapshot> {
+async function readLiveFillLog(
+  tabId: number,
+  clearedAt: number,
+  expectedUrl?: string,
+): Promise<FillLogSnapshot> {
   // Distinguish a closed source tab from a page with no completed fill.
-  const tab = await chrome.tabs.get(tabId);
+  const tab = await readSourceTab(tabId);
+  if (expectedUrl && tab.url && safeFormUrl(tab.url) !== expectedUrl)
+    return { tabId, frames: [], sourceNavigated: true };
   let ids = [0];
   try {
     const frames = await chrome.webNavigation.getAllFrames({ tabId });
@@ -87,8 +113,31 @@ export async function openFillLog(tabId: number): Promise<void> {
   await requestFillDetails(tabId);
 }
 
-export async function returnToForm(tabId: number): Promise<void> {
-  const tab = await chrome.tabs.update(tabId, { active: true });
+export async function returnToForm(tabId: number, sourceUrl?: string): Promise<void> {
+  const url = safeFormUrl(sourceUrl);
+  if (sourceUrl && !url) throw new Error('Invalid source form URL');
+  if (url) {
+    let source: chrome.tabs.Tab;
+    try {
+      source = await readSourceTab(tabId);
+    } catch {
+      await chrome.tabs.create({ url });
+      return;
+    }
+    if (source.url && safeFormUrl(source.url) !== url) {
+      await chrome.tabs.create({ url });
+      return;
+    }
+  }
+  let tab: chrome.tabs.Tab | undefined;
+  try {
+    tab = await chrome.tabs.update(tabId, { active: true });
+  } catch (error) {
+    // The source can close between the availability check and this click.
+    if (!url) throw error;
+    await chrome.tabs.create({ url });
+    return;
+  }
   if (typeof tab?.windowId === 'number')
     await chrome.windows.update(tab.windowId, { focused: true });
 }
