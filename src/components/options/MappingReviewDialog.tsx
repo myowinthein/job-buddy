@@ -93,8 +93,17 @@ export function MappingReviewDialog({
     group.push(item);
     findingSites.set(item.domain, group);
   }
+  const selectedDecisions: Record<string, MappingReviewDecision> = Object.fromEntries(
+    completed.map((item) => {
+      const assessment = results[item.id];
+      let suggested: MappingReviewDecision = { action: 'keep' };
+      if (assessment.verdict === 'change') suggested = { action: 'change', path: assessment.path! };
+      else if (assessment.verdict === 'inactive') suggested = { action: 'inactive' };
+      return [item.id, decisions[item.id] ?? suggested];
+    }),
+  );
   const changes = scoped.filter((item) => {
-    const choice = decisions[item.id];
+    const choice = selectedDecisions[item.id];
     return (
       results[item.id] &&
       choice &&
@@ -241,7 +250,7 @@ export function MappingReviewDialog({
     setApplying(true);
     setError(null);
     try {
-      await applyMappingReview(profile, mappings, scoped, decisions);
+      await applyMappingReview(profile, mappings, scoped, selectedDecisions);
       if (live.current) onSaved();
     } catch (failure) {
       if (live.current)
@@ -444,64 +453,33 @@ export function MappingReviewDialog({
                       </h4>
                       <div id={panelId} hidden={!expanded} className="mt-3 space-y-4">
                         {expanded && (
-                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 pb-3 dark:border-gray-700">
-                            <div
-                              role="group"
-                              aria-label="Review status"
-                              className="flex flex-wrap gap-x-4 gap-y-2 text-sm"
-                            >
-                              {statusOptions.map((option) => (
-                                <button
-                                  key={option.value}
-                                  type="button"
-                                  aria-pressed={activeStatus === option.value}
-                                  onClick={() =>
-                                    setSiteViews((current) => ({
-                                      ...current,
-                                      [domain]: { expanded: true, limit: 20, status: option.value },
-                                    }))
-                                  }
-                                  className={`rounded-sm py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${activeStatus === option.value ? 'font-medium text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
-                                >
-                                  {option.label} ({option.count})
-                                </button>
-                              ))}
-                            </div>
-                            <button
-                              type="button"
-                              disabled={
-                                working ||
-                                applying ||
-                                stale ||
-                                !shown.some((item) =>
-                                  ['change', 'inactive'].includes(results[item.id].verdict),
-                                )
-                              }
-                              className="text-sm text-blue-600 disabled:opacity-40 dark:text-blue-400"
-                              onClick={() =>
-                                setDecisions((current) => ({
-                                  ...current,
-                                  ...Object.fromEntries(
-                                    shown.flatMap<[string, MappingReviewDecision]>((item) => {
-                                      const result = results[item.id];
-                                      return result.verdict === 'change'
-                                        ? [[item.id, { action: 'change', path: result.path! }]]
-                                        : result.verdict === 'inactive'
-                                          ? [[item.id, { action: 'inactive' }]]
-                                          : [];
-                                    }),
-                                  ),
-                                }))
-                              }
-                            >
-                              Use clear suggestions
-                            </button>
+                          <div
+                            role="group"
+                            aria-label="Review status"
+                            className="flex flex-wrap gap-x-4 gap-y-2 border-b border-gray-200 pb-3 text-sm dark:border-gray-700"
+                          >
+                            {statusOptions.map((option) => (
+                              <button
+                                key={option.value}
+                                type="button"
+                                aria-pressed={activeStatus === option.value}
+                                onClick={() =>
+                                  setSiteViews((current) => ({
+                                    ...current,
+                                    [domain]: { expanded: true, limit: 20, status: option.value },
+                                  }))
+                                }
+                                className={`rounded-sm py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${activeStatus === option.value ? 'font-medium text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+                              >
+                                {option.label} ({option.count})
+                              </button>
+                            ))}
                           </div>
                         )}
                         {expanded &&
                           shown.slice(0, siteLimit).map((item) => {
                             const assessment = results[item.id];
-                            const choice = decisions[item.id] ?? { action: 'keep' as const };
+                            const choice = selectedDecisions[item.id];
                             return (
                               <section key={item.id} aria-label={`Review ${item.title}`}>
                                 <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_15rem] md:gap-5">

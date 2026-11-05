@@ -202,7 +202,7 @@ test('requires Gemini setup and takes the user to the focused API key input', as
   await expect(options.getByLabel('Gemini API Key', { exact: true })).toBeFocused();
 });
 
-test('reviews one site, applies only approved corrections and reuses local reviews', async ({
+test('preselects fresh and cached suggestions while preserving explicit choices', async ({
   context,
   extension,
 }, info) => {
@@ -265,24 +265,43 @@ test('reviews one site, applies only approved corrections and reuses local revie
   );
   await statusFilters.getByRole('button', { name: 'Needs context (2)' }).click();
   await expect(dialog.getByRole('region')).toHaveCount(2);
-  await expect(dialog.getByRole('button', { name: 'Use clear suggestions' })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Use clear suggestions' })).toHaveCount(0);
+  await expect(dialog.getByLabel('Action for Location preference')).toHaveValue('keep');
   await statusFilters.getByRole('button', { name: 'No suitable field (1)' }).click();
   await expect(dialog.getByRole('region')).toHaveCount(1);
-  await expect(dialog.getByLabel('Action for I agree to the privacy policy')).toBeVisible();
+  await expect(dialog.getByLabel('Action for I agree to the privacy policy')).toHaveValue(
+    'inactive',
+  );
   await statusFilters.getByRole('button', { name: 'Better field (1)' }).click();
   await expect(dialog.getByRole('region', { name: 'Review Email', exact: true })).toHaveCount(0);
   await expect(
     dialog.getByRole('region', { name: 'Review Expected salary', exact: true }),
   ).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Apply Changes', exact: true })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Apply Changes (2)' })).toBeEnabled();
   expect(requests).toBe(1);
   const unchanged = await extension.worker.evaluate(
     async () => (await chrome.storage.local.get('learnedMappings')).learnedMappings,
   );
   expect(unchanged).toEqual(mappings);
-  await statusFilters.getByRole('button', { name: 'Better field (1)' }).click();
-  await dialog.getByRole('button', { name: 'Use clear suggestions' }).click();
+  await expect(dialog.getByLabel('Action for Expected salary')).toHaveValue('change');
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await options.getByRole('button', { name: 'Review Mappings', exact: true }).click();
+  dialog = options.getByRole('dialog', { name: 'Review Mappings' });
+  await expect(dialog).toContainText('Reviewed 5 of 6 mappings.');
+  await expect(dialog.getByRole('button', { name: 'Apply Changes (2)' })).toBeEnabled();
+  expect(requests).toBe(1);
+  await dialog.getByLabel('Action for Expected salary').selectOption('keep');
   await expect(dialog.getByRole('button', { name: 'Apply Changes (1)' })).toBeEnabled();
+  await statusFilters.getByRole('button', { name: 'No suitable field (1)' }).click();
+  await dialog.getByLabel('Action for I agree to the privacy policy').selectOption('keep');
+  await expect(dialog.getByRole('button', { name: 'Apply Changes', exact: true })).toBeDisabled();
+  await statusFilters.getByRole('button', { name: 'Better field (1)' }).click();
+  await expect(dialog.getByLabel('Action for Expected salary')).toHaveValue('keep');
+  await dialog.getByLabel('Action for Expected salary').selectOption('change');
+  await statusFilters.getByRole('button', { name: 'No suitable field (1)' }).click();
+  await expect(dialog.getByLabel('Action for I agree to the privacy policy')).toHaveValue('keep');
+  await dialog.getByLabel('Action for I agree to the privacy policy').selectOption('inactive');
+  await expect(dialog.getByRole('button', { name: 'Apply Changes (2)' })).toBeEnabled();
   await statusFilters.getByRole('button', { name: 'Needs context (2)' }).click();
   await dialog.getByLabel('Action for Location preference').selectOption('change');
   await dialog.getByRole('button', { name: 'Profile field: Address → City' }).click();
@@ -297,7 +316,9 @@ test('reviews one site, applies only approved corrections and reuses local revie
   ).toBeVisible();
   await dialog.getByLabel('Action for Location preference').selectOption('keep');
   await statusFilters.getByRole('button', { name: 'No suitable field (1)' }).click();
-  await dialog.getByRole('button', { name: 'Use clear suggestions' }).click();
+  await expect(dialog.getByLabel('Action for I agree to the privacy policy')).toHaveValue(
+    'inactive',
+  );
   await expect(dialog.getByRole('button', { name: 'Apply Changes (2)' })).toBeEnabled();
   await statusFilters.getByRole('button', { name: 'Better field (1)' }).click();
   await options.screenshot({ path: info.outputPath('mapping-review-dark.png') });
@@ -469,8 +490,8 @@ test('keeps site tabs independent while paginating and saving collapsed choices'
     'aria-pressed',
     'true',
   );
-  await firstSite.getByRole('button', { name: 'Use clear suggestions' }).click();
-  await expect(dialog.getByRole('button', { name: 'Apply Changes (1)' })).toBeEnabled();
+  await expect(firstSite.getByLabel('Action for Country')).toHaveValue('change');
+  await expect(dialog.getByRole('button', { name: 'Apply Changes (2)' })).toBeEnabled();
   await firstTabs.getByRole('button', { name: 'Needs context (21)' }).click();
   await expect(firstSite.getByRole('region')).toHaveCount(20);
   await expect(secondSite.getByRole('button', { name: 'other.test (2)' })).toBeVisible();
@@ -486,7 +507,9 @@ test('keeps site tabs independent while paginating and saving collapsed choices'
   );
   await expect(secondTabs.getByRole('button', { name: 'Better field (1)' })).toHaveCount(0);
   await secondTabs.getByRole('button', { name: 'No suitable field (1)' }).click();
-  await secondSite.getByRole('button', { name: 'Use clear suggestions' }).click();
+  await expect(secondSite.getByLabel('Action for I agree to the privacy policy')).toHaveValue(
+    'inactive',
+  );
   await expect(firstTabs.getByRole('button', { name: 'Needs context (21)' })).toHaveAttribute(
     'aria-pressed',
     'true',
