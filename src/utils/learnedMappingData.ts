@@ -2,7 +2,7 @@ import { PROFILE_MAPPING_PATH_TEMPLATES } from '../profile/fieldCatalog';
 import type { LearnedMappingValue, LearnedMappings } from '../types/storage';
 
 export const safeMappingKey = (key: string): boolean =>
-  !!key.trim() && key.length <= 1000 && !['__proto__', 'constructor', 'prototype'].includes(key);
+  !!key.trim() && !['__proto__', 'constructor', 'prototype'].includes(key);
 
 const learnedPathPattern = new RegExp(
   `^(?:${PROFILE_MAPPING_PATH_TEMPLATES.map((template) =>
@@ -31,10 +31,8 @@ function mappingShape(value: unknown): value is LearnedMappingValue {
     pathShape(entry.path) &&
     Number.isSafeInteger(entry.count) &&
     Number(entry.count) >= 0 &&
-    (entry.label === undefined ||
-      (typeof entry.label === 'string' && entry.label.length <= 1000)) &&
-    (entry.question === undefined ||
-      (typeof entry.question === 'string' && entry.question.length <= 1000)) &&
+    (entry.label === undefined || typeof entry.label === 'string') &&
+    (entry.question === undefined || typeof entry.question === 'string') &&
     (entry.scope === undefined || entry.scope === 'field' || entry.scope === 'entry') &&
     (entry.inactive === undefined || entry.inactive === true)
   );

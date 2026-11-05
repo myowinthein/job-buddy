@@ -45,12 +45,12 @@ function getLabelText(element: HTMLElement, context?: LabelContext): string {
 function getNearbyText(element: HTMLElement, context?: LabelContext): string {
   const description = ariaReference(element, 'aria-describedby');
   const wrapper = element.closest(WRAPPER_SELECTORS);
-  if (!wrapper) return description.slice(0, 500);
+  if (!wrapper) return description;
   // Shared wrappers are not evidence that another control's label belongs here.
   const controls = [...wrapper.querySelectorAll<HTMLElement>(CONTROL_SELECTOR)].filter(
     (control) => !control.parentElement?.closest('[role="combobox"],[contenteditable]'),
   );
-  if (controls.length !== 1 || controls[0] !== element) return description.slice(0, 500);
+  if (controls.length !== 1 || controls[0] !== element) return description;
   const text =
     [...wrapper.querySelectorAll('label,span,p')]
       .filter(
@@ -61,7 +61,7 @@ function getNearbyText(element: HTMLElement, context?: LabelContext): string {
       )
       .map((node) => ownText(node, context))
       .find(Boolean) ?? '';
-  return [description, text].filter(Boolean).join(' ').slice(0, 500);
+  return [description, text].filter(Boolean).join(' ');
 }
 
 export function bestLabel(signals: FieldSignals): string {
@@ -70,7 +70,7 @@ export function bestLabel(signals: FieldSignals): string {
 
 export function displayLabel(signals: FieldSignals): string | undefined {
   const label = (bestLabel(signals) || signals.nearbyText || '').trim();
-  return label ? label.slice(0, 120) : undefined;
+  return label || undefined;
 }
 
 export function extractSignals(element: HTMLElement, context?: LabelContext): FieldSignals {

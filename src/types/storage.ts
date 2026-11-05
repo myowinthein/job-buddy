@@ -8,7 +8,7 @@ export interface LearnedMappingEntry {
   // normalized (lowercased, punctuation/spaces stripped) and unreadable on its own.
   // Absent on entries written before this field existed.
   label?: string;
-  /** Full question context, separate from the shortened display label. */
+  /** Full question context. Display truncation belongs in the UI, never storage. */
   question?: string;
   /** Generic repeated fields follow their row; explicit editor choices keep an entry. */
   scope?: 'field' | 'entry';

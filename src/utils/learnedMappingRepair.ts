@@ -41,8 +41,7 @@ export function validRepairFields(value: unknown): value is LearnedRepairField[]
         Array.isArray(field.keys) &&
         field.keys.length <= 5 &&
         field.keys.every((key: unknown) => typeof key === 'string' && safeMappingKey(key)) &&
-        typeof field.question === 'string' &&
-        field.question.length <= 1000,
+        typeof field.question === 'string',
     )
   );
 }
@@ -97,7 +96,7 @@ function recoverQuestion(
   if (metadata?.label && metadata.question) return value;
   return {
     ...(metadata ?? { path, count: 2 }),
-    label: question.slice(0, 120),
+    label: question,
     question,
   };
 }

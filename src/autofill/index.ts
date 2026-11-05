@@ -542,8 +542,9 @@ export async function scanAutofill(
   if (Object.keys(learnedMappings[domain] ?? {}).length) {
     const context = await getLearningContext(profile);
     if (context) {
-      const evidence = fields.map((element) => learnedRepairField(snapshot.signals(element)))
-        .filter((field) => field.question.length <= 1000).slice(0, 1000);
+      const evidence = fields
+        .slice(0, 1000)
+        .map((element) => learnedRepairField(snapshot.signals(element)));
       try {
         learnedMappings = await repairLearnedMappings(domain, evidence, context);
       } catch {

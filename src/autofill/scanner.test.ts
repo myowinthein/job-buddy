@@ -34,6 +34,16 @@ it('excludes site language controls while keeping application language questions
   expect(scanAriaFields()).toHaveLength(1);
 });
 
+it('captures the full preceding prompt for an unstructured choice question', () => {
+  const question =
+    'Explain which working arrangement is suitable for this application. '.repeat(20) +
+    'Final context';
+  document.body.innerHTML =
+    '<form><p></p><label><input type="radio" name="arrangement" value="one">One</label><label><input type="radio" name="arrangement" value="two">Two</label></form>';
+  document.querySelector('p')!.textContent = question;
+  expect(scanRadioGroups()[0].groupLabel).toBe(question);
+});
+
 describe('scanFields', () => {
   it('includes a standard visible text input', () => {
     addInput({ type: 'text', name: 'username' });

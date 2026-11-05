@@ -59,6 +59,32 @@ it('repairs the four Audi-style aliases without an edit or additional confirmati
   expect((await getLearnedMappings())[domain]).toEqual(result[domain]);
 });
 
+it('recovers a full long question from the live form without truncating its label', async () => {
+  const question =
+    'Which contact detail should be used for this application? '.repeat(24) + 'Final context';
+  await new Promise<void>((resolve) =>
+    chrome.storage.local.set(
+      {
+        learnedMappings: {
+          [domain]: { q7: { path: 'personal.email', count: 1, label: question.slice(0, 120) } },
+        },
+      },
+      resolve,
+    ),
+  );
+  const repaired = await repairLearnedMappings(
+    domain,
+    [{ keys: ['q7'], question }],
+    await context(),
+  );
+  expect(repaired[domain].q7).toEqual({
+    path: 'personal.email',
+    count: 1,
+    label: question,
+    question,
+  });
+});
+
 it('writes nothing on a repeat scan and keeps checkpoints out of mapping data', async () => {
   const captured = await context();
   await repairLearnedMappings(domain, evidence, captured);

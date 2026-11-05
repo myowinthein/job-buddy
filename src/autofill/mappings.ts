@@ -35,7 +35,6 @@ export async function saveElementMappings(
   const captured = context ?? (profile ? await getLearningContext(profile) : null);
   if (!captured) return;
   const question = learningQuestion(sigs);
-  if (question.length > 1000) return;
   await saveLearnedObservation(domain, {
     signals,
     path: fieldPath,

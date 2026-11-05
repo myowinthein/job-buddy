@@ -18,6 +18,7 @@ import { mapField } from '../autofill/mapper';
 import { extractSignals } from '../autofill/signals';
 import { saveElementMappings } from '../autofill/mappings';
 import type { LearnedObservation } from '../types/storage';
+import { normalize } from '../autofill/normalizer';
 
 beforeEach(() => {
   vi.stubEnv('DEV', false);
@@ -48,6 +49,33 @@ async function observation(): Promise<LearnedObservation> {
 }
 
 describe('mapping storage integrity', () => {
+  it('preserves full questions through capture, storage, backup validation and import', async () => {
+    const question =
+      'Which saved contact detail should be used for this question? '.repeat(24) +
+      'The complete ending.';
+    document.body.innerHTML = '<label for="long-question"></label><input id="long-question">';
+    document.querySelector('label')!.textContent = question;
+    const element = document.querySelector('input')!;
+    expect(extractSignals(element).label).toBe(question);
+    await saveElementMappings('example.test', element, 'personal.email');
+    await saveElementMappings('example.test', element, 'personal.email');
+    const saved = await getLearnedMappings();
+    expect(saved['example.test'].longquestion).toMatchObject({
+      label: question,
+      question,
+      count: 2,
+    });
+    expect(saved['example.test'][normalize(question)]).toEqual(saved['example.test'].longquestion);
+    expect(mapField(extractSignals(element), RULE_PROFILE, saved, 'example.test').fieldPath).toBe(
+      'personal.email',
+    );
+    const backup = validateBackupData(JSON.parse(JSON.stringify({ learnedMappings: saved })));
+    expect(backup.invalidFields).toEqual([]);
+    expect(backup.learnedMappings).toEqual(saved);
+    await set({ learnedMappings: {} });
+    await saveLearnedMappings(backup.learnedMappings!);
+    expect(await getLearnedMappings()).toEqual(saved);
+  });
   it('rejects a stale editor even when a replacement reuses the same mapping keys', async () => {
     const obs = await observation();
     await saveLearnedObservationLocally('example.test', obs);

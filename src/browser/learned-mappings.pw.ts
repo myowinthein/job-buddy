@@ -20,6 +20,57 @@ test.beforeEach(async ({ page, context, extension }) => {
 async function settle(page: import('@playwright/test').Page) {
   await page.waitForTimeout(200);
 }
+
+test('records full long questions and reuses the trusted mapping after real corrections', async ({
+  page,
+  extension,
+}) => {
+  const question =
+    'Which contact detail should be used for this application? '.repeat(24) +
+    'Keep this complete ending.';
+  await page.locator('form').evaluate((form, text) => {
+    const label = document.createElement('label');
+    label.textContent = text;
+    const input = document.createElement('input');
+    input.id = 'long-question';
+    input.type = 'email';
+    input.required = true;
+    input.addEventListener('input', () => (input.dataset.inputEvent = 'received'));
+    label.append(input);
+    form.append(label);
+  }, question);
+  const input = page.locator('#long-question');
+  for (const count of [1, 2]) {
+    await input.evaluate((el) => {
+      (el as HTMLInputElement).value = '';
+    });
+    await extension.send('AUTOFILL_SCAN');
+    await extension.send('AUTOFILL_FILL', 'overwrite');
+    await expect(input).toHaveValue('');
+    await input.fill(RULE_PROFILE.personal.email);
+    await page.locator('#outside').focus();
+    await expect
+      .poll(() =>
+        extension.worker.evaluate(async () => {
+          const mappings = (await chrome.storage.local.get('learnedMappings'))
+            .learnedMappings as LearnedMappings;
+          return mappings['127.0.0.1']?.longquestion;
+        }),
+      )
+      .toEqual({ path: 'personal.email', count, label: question, question });
+  }
+  // A later run fills from the saved mapping, preserving the framework input event.
+  await input.evaluate((el) => {
+    (el as HTMLInputElement).value = '';
+    delete (el as HTMLElement).dataset.inputEvent;
+  });
+  await extension.send('AUTOFILL_SCAN');
+  await extension.send('AUTOFILL_FILL', 'overwrite');
+  await expect(input).toHaveValue(RULE_PROFILE.personal.email);
+  await expect(input).toHaveAttribute('data-input-event', 'received');
+  expect(await input.evaluate((el) => (el as HTMLInputElement).checkValidity())).toBe(true);
+});
+
 test('JSON import keeps a trusted school mapping attached after reordering, then fills the real form', async ({ page, context, extension }) => {
   await extension.worker.evaluate(async () => {
     await chrome.storage.local.set({ learnedMappings: { '127.0.0.1': {

@@ -162,7 +162,7 @@ export function questionLabel(element: HTMLElement, context?: LabelContext): str
         }
         if (sibling.matches('p,label,legend,span,div,h3,h4,h5,h6')) {
           const text = ownText(sibling, context).trim();
-          if (text && text.length <= 500) return text;
+          if (text) return text;
         }
       }
       if (parent === controlForm(element) || parent === element.ownerDocument.body) break;

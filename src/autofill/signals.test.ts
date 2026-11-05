@@ -338,10 +338,24 @@ describe('displayLabel', () => {
     expect(displayLabel(signals())).toBeUndefined();
   });
 
-  it('truncates to 120 characters', () => {
-    const long = 'x'.repeat(200);
-    const result = displayLabel(signals({ nearbyText: long }));
-    expect(result).toHaveLength(120);
+  it.each(['label', 'ariaLabel', 'placeholder', 'name', 'nearbyText'] as const)(
+    'preserves the full %s text for display consumers',
+    (key) => {
+      const long = 'Full question context '.repeat(80) + 'including the final words';
+      expect(displayLabel(signals({ [key]: long }))).toBe(long);
+    },
+  );
+
+  it('captures a long nearby question without cutting its ending', () => {
+    const long = 'Question context '.repeat(80) + 'final words';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'form-field';
+    const prompt = document.createElement('p');
+    prompt.textContent = long;
+    const el = document.createElement('input');
+    wrapper.append(prompt, el);
+    document.body.append(wrapper);
+    expect(displayLabel(extractSignals(el))).toBe(long);
   });
 });
 
