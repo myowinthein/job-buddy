@@ -51,8 +51,13 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
     page.getByRole('button', { name: 'Enlarge empty demo form', exact: true }),
   ).toBeFocused();
   const mode = await page.locator('html').evaluate((el) => el.classList.contains('dark'));
+  const themeToggle = page.locator('.theme-toggle');
+  await expect(themeToggle).toHaveText('');
+  await expect(themeToggle.locator(mode ? '.theme-sun' : '.theme-moon')).toBeVisible();
   await page.getByRole('button', { name: /Switch to .* mode/ }).click();
   await expect(page.locator('html')).toHaveClass(mode ? '' : 'dark');
+  await expect(themeToggle.locator(mode ? '.theme-moon' : '.theme-sun')).toBeVisible();
+  await expect(themeToggle.locator(mode ? '.theme-sun' : '.theme-moon')).toBeHidden();
   await expect(page.locator('[data-comparison="before"] img')).toHaveAttribute(
     'src',
     mode ? /-light\.webp(?:\?v=[a-f0-9]+)?$/ : /-dark\.webp(?:\?v=[a-f0-9]+)?$/,
