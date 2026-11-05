@@ -366,9 +366,9 @@ export function MappingReviewDialog({
                       }
                       onClick={() => void run()}
                     >
-                      <span className="flex items-center gap-2">
-                        <Sparkles size={15} aria-hidden="true" />
+                      <span className="flex items-center gap-1.5">
                         Review Mappings
+                        <Sparkles aria-hidden="true" className="w-3.5 h-3.5 shrink-0 text-white" />
                       </span>
                     </button>
                   </div>

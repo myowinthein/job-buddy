@@ -701,8 +701,12 @@ export function LearnedMappingsSection({
             disabled={loading || loadError || !!busy || !Object.keys(mappings).length}
             onClick={() => setReviewBase(structuredClone({ profile, mappings }))}
           >
-            <span className="flex items-center gap-2">
-              <Sparkles size={15} aria-hidden="true" />Review Mappings
+            <span className="flex items-center gap-1.5">
+              Review Mappings
+              <Sparkles
+                aria-hidden="true"
+                className="w-3.5 h-3.5 shrink-0 text-blue-500 dark:text-blue-400"
+              />
             </span>
           </button>
         </div>
