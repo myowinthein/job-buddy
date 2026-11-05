@@ -17,7 +17,7 @@
     />
     <meta
       property="og:image"
-      content="https://myowinthein.github.io/job-buddy/assets/images/autofill-demo.jpg?v=66f82fb81d2c"
+      content="https://myowinthein.github.io/job-buddy/assets/images/autofill-demo.png?v=109e0d8f927a"
     />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="../assets/icons/icon.svg" type="image/svg+xml" />
@@ -269,9 +269,9 @@ cp .env.example .env.production</code></pre>
                 aria-label="Enlarge screenshot: Development toolbar with profile presets and integration toggles"
               >
                 <img
-                  src="../assets/screenshots/dev-bar-light.webp"
-                  data-light="../assets/screenshots/dev-bar-light.webp"
-                  data-dark="../assets/screenshots/dev-bar-dark.webp"
+                  src="../assets/screenshots/dev-bar-light.webp?v=cff326baff41"
+                  data-light="../assets/screenshots/dev-bar-light.webp?v=cff326baff41"
+                  data-dark="../assets/screenshots/dev-bar-dark.webp?v=8bc593978f91"
                   alt="Development toolbar with profile presets and integration toggles"
                   width="1280"
                   height="900"
@@ -517,19 +517,21 @@ pnpm exec playwright test --headed</code></pre>
                 </tr>
                 <tr>
                   <td><code>docs/assets/screenshots/</code></td>
-                  <td>Reviewed website screenshots. Regenerate when the UI changes.</td>
+                  <td>Reviewed 3× lossless website screenshots. Regenerate when the UI changes.</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <pre><code>pnpm build
-pnpm exec playwright test src/browser/demo.pw.ts
-JB_CAPTURE_SITE=1 pnpm exec playwright test src/browser/site-captures.pw.ts</code></pre>
+node scripts/capture-demo.mjs
+node scripts/capture-site.mjs</code></pre>
           <p>
             For website captures, keep <code>pnpm dev:preview</code> running at port 4173 in another
             terminal. They are opt-in and skipped during ordinary browser tests. Capture output is
-            written under <code>.output/browser-results/</code>. Review it before replacing
-            published image assets. The website and README use the same current demo rather than
+            written under <code>.output/browser-results/</code>. The scripts update the image
+            assets and cache versions; website conversion requires <code>cwebp</code>. Review the
+            results before committing. Keep HTML image dimensions in CSS pixels, not the 3× bitmap
+            dimensions. The website and README use the same current demo rather than
             older ATS screenshots.
           </p>
         </section>

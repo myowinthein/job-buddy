@@ -2,6 +2,8 @@ import type { FrameFillLog } from '../autofill/fillLog';
 import { test, expect } from './fixtures';
 import { serveDemo, ready, sample, publicURL } from './demoSupport';
 
+test.use({ deviceScaleFactor: 3 });
+
 test('the original demo fills with the production extension and produces the public screenshot', async ({
   context,
   page,
@@ -60,9 +62,7 @@ test('the original demo fills with the production extension and produces the pub
   );
   await page.mouse.move(0, 0);
   await page.screenshot({
-    path: info.outputPath('demo-autofill.jpg'),
-    type: 'jpeg',
-    quality: 92,
+    path: info.outputPath('demo-autofill.png'),
     animations: 'disabled',
   });
   await host.getByRole('button', { name: 'Undo', exact: true }).click();

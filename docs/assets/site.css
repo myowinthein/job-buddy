@@ -253,6 +253,8 @@ figure {
   min-width: 0;
 }
 .capture {
+  width: fit-content;
+  max-width: 100%;
   border: 1px solid var(--line);
   border-radius: 9px;
   background: var(--surface);
@@ -265,9 +267,6 @@ figure {
   padding: 0;
   width: 100%;
   cursor: zoom-in;
-}
-.capture img {
-  width: 100%;
 }
 figcaption {
   margin-top: 11px;
@@ -607,7 +606,7 @@ pre code {
   margin: 15px 0 0;
 }
 .image-dialog {
-  width: min(96vw, 1500px);
+  width: min(96vw, 1500px, var(--image-width, 1500px));
   max-height: 94dvh;
   border: 1px solid var(--line);
   border-radius: 10px;

@@ -37,6 +37,14 @@ const dialog = document.querySelector('.image-dialog');
 const dialogImage = dialog?.querySelector('img');
 const dialogCaption = dialog?.querySelector('p');
 let lastTrigger;
+function sizeViewer() {
+  if (dialogImage?.naturalWidth) {
+    // One source pixel per screen pixel, including browser zoom / Retina density.
+    dialog.style.setProperty('--image-width', `${dialogImage.naturalWidth / devicePixelRatio}px`);
+  }
+}
+dialogImage?.addEventListener('load', sizeViewer);
+window.addEventListener('resize', sizeViewer);
 document.querySelectorAll('[data-enlarge]').forEach((button) => {
   button.addEventListener('click', () => {
     const img = button.querySelector('img');
@@ -44,6 +52,7 @@ document.querySelectorAll('[data-enlarge]').forEach((button) => {
     dialogImage.src = img.currentSrc || img.src;
     dialogImage.alt = img.alt;
     dialogCaption.textContent = img.alt;
+    sizeViewer();
     dialog.showModal();
   });
 });

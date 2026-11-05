@@ -12,11 +12,12 @@ export const test = base.extend<{
     ) => Promise<Record<string, number | string | boolean | undefined>[]>;
   };
 }>({
-  context: async ({ browserName: _browserName }, provide, info) => {
+  context: async ({ browserName: _browserName, deviceScaleFactor }, provide, info) => {
     const extensionPath = resolve('.output/chrome-mv3');
     const context = await chromium.launchPersistentContext('', {
       channel: 'chromium',
       headless: info.project.use.headless !== false,
+      deviceScaleFactor: deviceScaleFactor ?? 1,
       args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
     });
     try {
@@ -73,7 +74,11 @@ export const test = base.extend<{
       worker.evaluate(
         async ({ action, mode, sourceTabId }) => {
           const frames = await chrome.webNavigation.getAllFrames({ tabId: sourceTabId });
-          const message = { action, mode, ...(action === 'AUTOFILL_SCAN' ? { runId: crypto.randomUUID() } : {}) };
+          const message = {
+            action,
+            mode,
+            ...(action === 'AUTOFILL_SCAN' ? { runId: crypto.randomUUID() } : {}),
+          };
           return Promise.all(
             (frames ?? [{ frameId: 0 }]).map(async ({ frameId }) => {
               try {

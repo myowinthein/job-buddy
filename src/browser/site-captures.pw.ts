@@ -3,6 +3,9 @@ import { test, expect } from './fixtures';
 import { serveDemo, ready, sample, publicURL } from './demoSupport';
 import type { Profile } from '../types/profile';
 
+// Keep CSS dimensions unchanged while recording enough pixels for Retina displays.
+test.use({ deviceScaleFactor: 3 });
+
 // Reproducible captures of production components. Only fictional values are used.
 // No installed Chrome profile, real provider credential or OAuth account is read.
 async function capture(page: Page, info: TestInfo, name: string, target?: Locator) {

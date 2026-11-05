@@ -20,6 +20,7 @@ async function serveSite(context: BrowserContext) {
           '.js': 'application/javascript',
           '.webp': 'image/webp',
           '.jpg': 'image/jpeg',
+          '.png': 'image/png',
           '.svg': 'image/svg+xml',
         }[extname(path)] ?? 'application/octet-stream';
       await route.fulfill({ body: await readFile(path), contentType });
@@ -72,6 +73,64 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   );
   expect(errors).toEqual([]);
 });
+
+for (const density of [1, 2, 3]) {
+  test.describe(`screenshot clarity at ${density}× density`, () => {
+    test.use({ deviceScaleFactor: density });
+    test('inline images and the viewer stay within their source resolution', async ({
+      context,
+      page,
+    }, info) => {
+      await serveSite(context);
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page.goto(origin + prefix);
+      for (const theme of ['light', 'dark']) {
+        if (
+          (await page.locator('html').evaluate((el) => el.classList.contains('dark'))) !==
+          (theme === 'dark')
+        )
+          await page.getByRole('button', { name: /Switch to .* mode/ }).click();
+        for (const image of await page.locator('[data-enlarge] img:visible').all()) {
+          await image.scrollIntoViewIfNeeded();
+          await image.evaluate((img: HTMLImageElement) => img.decode());
+          const dimensions = await image.evaluate((img: HTMLImageElement) => ({
+            source: img.naturalWidth,
+            logical: Number(img.getAttribute('width')),
+            rendered: img.getBoundingClientRect().width,
+          }));
+          expect(dimensions.source).toBeGreaterThanOrEqual(dimensions.logical * 3);
+          expect(dimensions.rendered).toBeLessThanOrEqual(dimensions.logical);
+          expect(dimensions.rendered * density).toBeLessThanOrEqual(dimensions.source);
+          await image.locator('..').click();
+          const enlarged = page.locator('.image-dialog img');
+          await enlarged.evaluate((img: HTMLImageElement) => img.decode());
+          for (const width of [1440, 390]) {
+            await page.setViewportSize({ width, height: 1000 });
+            await expect
+              .poll(() =>
+                enlarged.evaluate(
+                  (img: HTMLImageElement) =>
+                    img.getBoundingClientRect().width * devicePixelRatio <= img.naturalWidth + 1,
+                ),
+              )
+              .toBe(true);
+            expect(
+              await page
+                .locator('.image-dialog')
+                .evaluate((el) => el.getBoundingClientRect().width),
+            ).toBeLessThanOrEqual(width);
+          }
+          await page.keyboard.press('Escape');
+          await page.setViewportSize({ width: 1440, height: 1000 });
+        }
+      }
+      const review = page.locator('[data-enlarge] img[src*="review-dark"]');
+      await review.locator('..').click();
+      await page.locator('.image-dialog img').evaluate((img: HTMLImageElement) => img.decode());
+      await page.screenshot({ path: info.outputPath('review-viewer.png'), animations: 'disabled' });
+    });
+  });
+}
 
 for (const theme of ['light', 'dark'] as const) {
   test(`all public pages fit narrow and wide screens in ${theme} mode`, async ({
