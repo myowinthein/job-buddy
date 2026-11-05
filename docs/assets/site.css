@@ -592,12 +592,8 @@ pre code {
   grid-template-columns: 180px minmax(0, 1fr);
   gap: 60px;
 }
-.site-footer .brand {
-  font-size: 15px;
-}
-.site-footer .brand img {
-  width: 25px;
-  height: 25px;
+.site-footer > div {
+  grid-column: 2;
 }
 .footer-links {
   display: flex;
@@ -711,9 +707,6 @@ pre code {
   .site-footer {
     display: block;
     padding: 28px 24px;
-  }
-  .site-footer .brand {
-    margin-bottom: 20px;
   }
   .chapter {
     padding-block: 45px;
