@@ -20,23 +20,24 @@ function IntegrationControl({
   onChange: (enabled: boolean) => void;
 }) {
   return (
-    <div className="flex items-center gap-3">
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      aria-disabled={disabled}
+      onClick={() => onChange(!enabled)}
+      className="inline-flex items-center gap-2 rounded-md py-1"
+    >
       <span className="text-amber-800 dark:text-amber-200">{label}</span>
-      <div role="group" aria-label={label} className={groupCls}>
-        {[true, false].map((value) => (
-          <button
-            key={String(value)}
-            type="button"
-            aria-pressed={enabled === value}
-            aria-disabled={disabled}
-            onClick={() => onChange(value)}
-            className={optionCls(enabled === value)}
-          >
-            {value ? 'On' : 'Off'}
-          </button>
-        ))}
-      </div>
-    </div>
+      <span
+        aria-hidden="true"
+        className={`flex h-4 w-7 items-center rounded-full p-0.5 ${enabled ? 'bg-amber-700 dark:bg-amber-500' : 'bg-amber-950/20 dark:bg-amber-100/20'}`}
+      >
+        <span
+          className={`h-3 w-3 rounded-full bg-white transition-transform ${enabled ? 'translate-x-3' : ''}`}
+        />
+      </span>
+    </button>
   );
 }
 

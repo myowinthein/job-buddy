@@ -72,7 +72,7 @@ browser.
 
 Every development options page has a **Profile** segmented control with
 **Original**, **Empty**, **Required only**, and **Complete** modes, plus
-**API key** and **Google Drive** On/Off controls. These controls
+**API key** and **Google Drive** toggles. These controls
 open temporary data in the same tab, keep the current section, and respect
 unsaved edits. The bar stays in place while the next isolated view loads.
 Integration changes preserve edits. **Original** returns to saved extension data.

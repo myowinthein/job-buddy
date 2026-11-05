@@ -145,10 +145,10 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     await app.getByRole('button', { name: 'Personal', exact: true }).click();
     const name = app.getByLabel('First Name', { exact: false });
     await name.fill('Draft in preview');
-    const keyControl = bar.getByRole('group', { name: 'API key' });
-    const toggle = keyControl.getByRole('button', { name: 'Off', exact: true });
+    const keyControl = bar.getByRole('switch', { name: 'API key' });
+    const toggle = keyControl;
     await toggle.click();
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
     await expect(name).toHaveValue('Draft in preview');
     const cancelled = page.waitForEvent('dialog');
     const presetClick = bar.getByRole('button', { name: 'Empty', exact: true }).click();
@@ -159,23 +159,23 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     await expect(name).toHaveValue('Draft in preview');
     await app.getByRole('button', { name: 'Save Personal', exact: true }).click();
     await expect(app.getByText('Saved', { exact: true })).toBeVisible();
-    const driveControl = bar.getByRole('group', { name: 'Google Drive' });
-    await driveControl.getByRole('button', { name: 'On', exact: true }).click();
+    const driveControl = bar.getByRole('switch', { name: 'Google Drive' });
+    await driveControl.click();
     await expect(page).toHaveURL(/devDrive=1/);
     await expect(name).toHaveValue('Draft in preview');
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
     await app.getByRole('button', { name: 'Settings', exact: true }).click();
     await expect(app.getByRole('button', { name: 'Disconnect', exact: true })).toBeVisible();
-    await driveControl.getByRole('button', { name: 'Off', exact: true }).click();
+    await driveControl.click();
     await expect(
       app.getByRole('button', { name: 'Connect Google Drive', exact: true }),
     ).toBeVisible();
-    await driveControl.getByRole('button', { name: 'On', exact: true }).click();
+    await driveControl.click();
     await expect(app.getByRole('button', { name: 'Disconnect', exact: true })).toBeVisible();
 
     await app.getByRole('button', { name: /Import Resume/ }).click();
     await expect(app.getByText('Add a Gemini API key to import your resume.')).toBeVisible();
-    await keyControl.getByRole('button', { name: 'On', exact: true }).click();
+    await keyControl.click();
     await expect(app.getByText(/Drop your resume here/)).toBeVisible();
     await toggle.click();
     await expect(app.getByText('Add a Gemini API key to import your resume.')).toBeVisible();
@@ -199,11 +199,8 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     expect(box!.x + box!.width).toBeLessThanOrEqual(390);
     await bar.getByRole('button', { name: 'Empty', exact: true }).click();
     await expect(progress).toHaveAttribute('aria-valuenow', '0');
-    await expect(driveControl.getByRole('button', { name: 'On', exact: true })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await expect(driveControl).toHaveAttribute('aria-checked', 'true');
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
     await bar.getByRole('button', { name: 'Original', exact: true }).click();
     await expect(page).not.toHaveURL(/devPreview/);
     await expect(bar.getByRole('button', { name: 'Original', exact: true })).toHaveAttribute(

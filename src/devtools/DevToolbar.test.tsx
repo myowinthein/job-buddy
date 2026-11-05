@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import DevToolbar from './DevToolbar';
 import SimulationShell from './SimulationShell';
@@ -41,15 +41,11 @@ afterEach(() => {
 it('enters an isolated missing-key preview without touching saved profile data', async () => {
   renderToolbar();
   await waitFor(() =>
-    expect(
-      within(screen.getByRole('group', { name: 'API key' }))
-        .getByRole('button', { name: 'Off' })
-        .getAttribute('aria-disabled'),
-    ).toBe('false'),
+    expect(screen.getByRole('switch', { name: 'API key' }).getAttribute('aria-disabled')).toBe(
+      'false',
+    ),
   );
-  fireEvent.click(
-    within(screen.getByRole('group', { name: 'API key' })).getByRole('button', { name: 'Off' }),
-  );
+  fireEvent.click(screen.getByRole('switch', { name: 'API key' }));
   await waitFor(() => expect(onNavigate).toHaveBeenCalledOnce());
   const url = new URL(vi.mocked(onNavigate).mock.calls[0][0]);
   expect(url.searchParams.get('devPreview')).toBe('saved');
@@ -69,9 +65,7 @@ it('rejects direct credential changes on the saved-data surface', async () => {
 
 it('opens an isolated connected-Drive state from Original without copying credentials', async () => {
   renderToolbar();
-  const on = within(screen.getByRole('group', { name: 'Google Drive' })).getByRole('button', {
-    name: 'On',
-  });
+  const on = screen.getByRole('switch', { name: 'Google Drive' });
   await waitFor(() => expect(on.getAttribute('aria-disabled')).toBe('false'));
   fireEvent.click(on);
   await waitFor(() => expect(onNavigate).toHaveBeenCalledOnce());
@@ -103,15 +97,15 @@ it('changes Drive state independently of profile edits, the API key, and its bac
   const fetch = vi.fn();
   vi.stubGlobal('fetch', fetch);
   renderToolbar();
-  const control = within(screen.getByRole('group', { name: 'Google Drive' }));
-  const on = control.getByRole('button', { name: 'On' });
+  const control = screen.getByRole('switch', { name: 'Google Drive' });
+  const on = control;
   await waitFor(() => expect(on.getAttribute('aria-disabled')).toBe('false'));
   fireEvent.click(on);
-  await waitFor(() => expect(on.getAttribute('aria-pressed')).toBe('true'));
+  await waitFor(() => expect(on.getAttribute('aria-checked')).toBe('true'));
   expect(location.search).toContain('devDrive=1');
   await waitFor(() => expect(on.getAttribute('aria-disabled')).toBe('false'));
-  fireEvent.click(control.getByRole('button', { name: 'Off' }));
-  await waitFor(() => expect(on.getAttribute('aria-pressed')).toBe('false'));
+  fireEvent.click(control);
+  await waitFor(() => expect(on.getAttribute('aria-checked')).toBe('false'));
   expect(location.search).not.toContain('devDrive');
   expect(await getProfile()).toEqual(profile);
   expect(await getGeminiSettings()).toEqual(key);
@@ -136,9 +130,7 @@ it('blocks rapid duplicate actions while a switch is pending', async () => {
   await waitFor(() => expect(onNavigate).toHaveBeenCalledOnce());
   expect(empty.getAttribute('aria-disabled')).toBe('true');
   fireEvent.click(screen.getByRole('button', { name: 'Required only' }));
-  fireEvent.click(
-    within(screen.getByRole('group', { name: 'API key' })).getByRole('button', { name: 'Off' }),
-  );
+  fireEvent.click(screen.getByRole('switch', { name: 'API key' }));
   expect(onNavigate).toHaveBeenCalledOnce();
   await act(async () => finish());
   await waitFor(() => expect(empty.getAttribute('aria-disabled')).toBe('false'));
@@ -161,20 +153,16 @@ it('toggles the simulated key while keeping profile edits and the selected model
   await new Promise<void>((resolve) => chrome.storage.local.set({ profile: edited }, resolve));
   const before = await getGeminiSettings();
   renderToolbar();
-  const toggle = within(screen.getByRole('group', { name: 'API key' })).getByRole('button', {
-    name: 'Off',
-  });
+  const toggle = screen.getByRole('switch', { name: 'API key' });
   await waitFor(() => expect(toggle.getAttribute('aria-disabled')).toBe('false'));
   fireEvent.click(toggle);
-  await waitFor(() => expect(toggle.getAttribute('aria-pressed')).toBe('true'));
+  await waitFor(() => expect(toggle.getAttribute('aria-checked')).toBe('false'));
   expect((await getGeminiSettings()).apiKey).toBeNull();
   expect(location.search).toContain('devNoKey=1');
   await act(async () => {
-    fireEvent.click(
-      within(screen.getByRole('group', { name: 'API key' })).getByRole('button', { name: 'On' }),
-    );
+    fireEvent.click(screen.getByRole('switch', { name: 'API key' }));
   });
-  await waitFor(() => expect(toggle.getAttribute('aria-pressed')).toBe('false'));
+  await waitFor(() => expect(toggle.getAttribute('aria-checked')).toBe('true'));
   expect(await getGeminiSettings()).toMatchObject({ apiKey: before.apiKey, model: before.model });
   expect((await getProfile())?.personal.firstName).toBe('Preview edit');
   expect(location.search).not.toContain('devNoKey');
