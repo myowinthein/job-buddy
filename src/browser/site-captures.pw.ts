@@ -17,15 +17,21 @@ async function capture(page: Page, info: TestInfo, name: string, target?: Locato
   } else await page.screenshot({ path: info.outputPath(`${name}.png`), animations: 'disabled' });
 }
 
-async function captureRegion(page: Page, info: TestInfo, name: string, targets: Locator[]) {
+async function captureRegion(
+  page: Page,
+  info: TestInfo,
+  name: string,
+  targets: Locator[],
+  padding = 0,
+) {
   const boxes = (await Promise.all(targets.map((target) => target.boundingBox()))).filter(
     (box) => box !== null,
   );
   if (boxes.length !== targets.length) throw new Error(`Missing capture target: ${name}`);
-  const x = Math.floor(Math.min(...boxes.map((box) => box.x)));
-  const y = Math.floor(Math.min(...boxes.map((box) => box.y)));
-  const right = Math.ceil(Math.max(...boxes.map((box) => box.x + box.width)));
-  const bottom = Math.ceil(Math.max(...boxes.map((box) => box.y + box.height)));
+  const x = Math.max(0, Math.floor(Math.min(...boxes.map((box) => box.x))) - padding);
+  const y = Math.max(0, Math.floor(Math.min(...boxes.map((box) => box.y))) - padding);
+  const right = Math.ceil(Math.max(...boxes.map((box) => box.x + box.width))) + padding;
+  const bottom = Math.ceil(Math.max(...boxes.map((box) => box.y + box.height))) + padding;
   await page.mouse.move(0, 0);
   await page.screenshot({
     path: info.outputPath(`${name}.png`),
@@ -34,7 +40,58 @@ async function captureRegion(page: Page, info: TestInfo, name: string, targets: 
   });
 }
 
+async function captureQuickFill(page: Page, info: TestInfo, theme: string) {
+  const host = page.locator('[data-job-buddy-ui]');
+  const contact = page.locator('[aria-labelledby="contact-title"]');
+  const fields = await contact.boundingBox();
+  const heading = await page.locator('.form-heading').boundingBox();
+  const widget = await host.boundingBox();
+  const grip = await host.getByRole('button', { name: 'Move Job Buddy' }).boundingBox();
+  if (!fields || !heading || !widget || !grip)
+    throw new Error('Missing Quick Fill capture targets');
+  const from = { x: grip.x + grip.width / 2, y: grip.y + grip.height / 2 };
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(
+    from.x + fields.x + fields.width - widget.width - 8 - widget.x,
+    from.y + heading.y + 8 - widget.y,
+    { steps: 8 },
+  );
+  await page.mouse.up();
+  await captureRegion(
+    page,
+    info,
+    `quick-fill-widget-${theme}`,
+    [page.locator('.form-heading'), contact, host],
+    20,
+  );
+}
+
 for (const theme of ['light', 'dark'] as const) {
+  test(`Quick Fill on a job form in ${theme} mode`, async ({ context, page, extension }, info) => {
+    test.skip(process.env.JB_CAPTURE_QUICK_FILL !== '1', 'Opt-in Quick Fill capture.');
+    await serveDemo(context);
+    await context.addInitScript((theme) => localStorage.setItem('theme', theme), theme);
+    await extension.worker.evaluate(
+      async ({ profile, theme }) => {
+        await chrome.storage.local.set({
+          profile,
+          themePreference: theme,
+          quickFillPreferences: { enabled: true, disabledSites: [], position: { x: 0.06, y: 0.9 } },
+        });
+      },
+      { profile: sample.profile, theme },
+    );
+    await page.setViewportSize({ width: 1440, height: 1050 });
+    await page.goto(publicURL);
+    await ready(page, extension.send);
+    const host = page.locator('[data-job-buddy-ui]');
+    await host.getByRole('button', { name: 'Fill Form', exact: true }).click();
+    await expect(host.getByRole('button', { name: 'View details' })).toBeVisible();
+    await expect(page.locator('#first-name')).toHaveValue('Alex');
+    await captureQuickFill(page, info, theme);
+  });
+
   test(`AI setup without a key in ${theme} mode`, async ({ context, extension }, info) => {
     test.skip(process.env.JB_CAPTURE_SITE !== '1', 'Opt-in website capture.');
     await extension.worker.evaluate(async (theme) => {
@@ -150,9 +207,7 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(host.getByRole('button', { name: 'View details' })).toBeVisible();
     await expect(page.locator('#first-name')).toHaveValue('Alex');
     await capture(page, info, `application-after-${theme}`);
-    await host.getByRole('button', { name: 'Quick fill options' }).click();
-    await captureRegion(page, info, `quick-fill-widget-${theme}`, [host, host.locator('.menu')]);
-    await host.getByRole('button', { name: 'Quick fill options' }).click();
+    await captureQuickFill(page, info, theme);
 
     // A real retained report, selected by the same action the user presses.
     await host.getByRole('button', { name: 'View details' }).click();

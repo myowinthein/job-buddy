@@ -900,9 +900,6 @@ pre code {
   clip-path: inset(50%);
   white-space: nowrap;
 }
-.widget-figure {
-  max-width: 440px;
-}
 .essential {
   margin-top: 24px;
 }
