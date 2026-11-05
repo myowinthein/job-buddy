@@ -191,6 +191,18 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
   const sourceLabel = sourceAddress
     ? sourceAddress.host + (sourceAddress.pathname === '/' ? '' : sourceAddress.pathname)
     : null;
+  const lastSlash = sourceLabel?.lastIndexOf('/') ?? -1;
+  const sourceTail =
+    sourceLabel &&
+    sourceAddress &&
+    lastSlash > sourceAddress.host.length &&
+    sourceLabel.length - lastSlash <= 24
+      ? sourceLabel.slice(lastSlash)
+      : '';
+  const sourcePrefix = sourceTail ? sourceLabel!.slice(0, -sourceTail.length) : sourceLabel;
+  const hasModification = modifiedAt > filledAt;
+  const sharedDate =
+    !hasModification || new Date(filledAt).toDateString() === new Date(modifiedAt).toDateString();
   const sourceTab = snapshot?.tabId ?? tabId;
   const hasReport = fields.length > 0 || snapshot?.needsRefresh;
   const undone = frames.length > 0 && frames.every((frame) => frame.log.status === 'undone');
@@ -223,7 +235,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
             See how Job Buddy filled your form
           </p>
           {hasReport && (sourceUrl || filledAt > 0) && (
-            <div className="mt-3 space-y-0.5 text-xs text-gray-500 dark:text-gray-400">
+            <div className="mt-3 space-y-1.5 text-xs text-gray-500 dark:text-gray-400">
               {sourceUrl && (
                 <a
                   href={sourceUrl}
@@ -231,19 +243,35 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
                   rel="noopener noreferrer"
                   title={sourceUrl}
                   aria-label={sourceLabel + ' (opens in a new tab)'}
-                  className="block w-fit max-w-full truncate rounded-sm underline decoration-gray-300 underline-offset-2 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:decoration-gray-600 dark:hover:text-blue-300"
+                  className="flex w-fit max-w-full rounded-sm underline decoration-gray-300 underline-offset-2 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 sm:max-w-[64ch] dark:decoration-gray-600 dark:hover:text-blue-300"
                 >
-                  {sourceLabel}
+                  <span className="truncate">{sourcePrefix}</span>
+                  {sourceTail && <span className="shrink-0">{sourceTail}</span>}
                 </a>
               )}
               {filledAt > 0 && (
-                <div className="flex flex-wrap gap-x-4 gap-y-0.5">
-                  <span>
-                    Filled <ReportTime timestamp={filledAt} />
+                <div
+                  role="group"
+                  aria-label="Fill timestamps"
+                  className="flex flex-wrap items-baseline gap-x-4 gap-y-1"
+                >
+                  {sharedDate && (
+                    <span className="whitespace-nowrap text-gray-600 dark:text-gray-300">
+                      {new Date(filledAt).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </span>
+                  )}
+                  <span className="inline-flex items-baseline gap-1.5">
+                    <span>Filled</span>
+                    <ReportTime timestamp={filledAt} includeDate={!sharedDate} />
                   </span>
-                  {modifiedAt > filledAt && (
-                    <span>
-                      Modified <ReportTime timestamp={modifiedAt} />
+                  {hasModification && (
+                    <span className="inline-flex items-baseline gap-1.5">
+                      <span>Modified</span>
+                      <ReportTime timestamp={modifiedAt} includeDate={!sharedDate} />
                     </span>
                   )}
                 </div>
@@ -477,14 +505,17 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
   );
 }
 
-function ReportTime({ timestamp }: { timestamp: number }) {
+function ReportTime({ timestamp, includeDate }: { timestamp: number; includeDate: boolean }) {
   const date = new Date(timestamp);
   return (
-    <time dateTime={date.toISOString()} title={date.toLocaleString()} className="whitespace-nowrap">
+    <time
+      dateTime={date.toISOString()}
+      title={date.toLocaleString()}
+      aria-label={date.toLocaleString()}
+      className="whitespace-nowrap text-gray-600 dark:text-gray-300"
+    >
       {date.toLocaleString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
+        ...(includeDate ? ({ month: 'short', day: 'numeric', year: 'numeric' } as const) : {}),
         hour: 'numeric',
         minute: '2-digit',
       })}

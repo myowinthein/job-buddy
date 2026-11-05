@@ -141,11 +141,49 @@ describe('Fill Details page', () => {
     expect(times[0].getAttribute('datetime')).toBe(filled.toISOString());
     expect(times[1].getAttribute('datetime')).toBe(modified.toISOString());
     expect(times[0].title).toContain('2026');
-    expect(times[0].textContent).toContain('2026');
-    expect(times[1].textContent).toContain('2026');
+    const timestamps = screen.getByRole('group', { name: 'Fill timestamps' });
+    expect(timestamps.textContent?.match(/2026/g)).toHaveLength(1);
+    expect(times[0].textContent).not.toContain('2026');
+    expect(times[1].textContent).not.toContain('2026');
+    expect(times[0].getAttribute('aria-label')).toBe(filled.toLocaleString());
+    expect(times[1].getAttribute('aria-label')).toBe(modified.toLocaleString());
     expect(times[0].textContent).not.toContain(':05');
     expect(times[1].textContent).not.toContain(':42');
     expect(screen.getByRole('button', { name: 'Return to Form' })).toBeTruthy();
+  });
+
+  it('shows each date when a modification falls on a different local day', async () => {
+    const data = snapshot();
+    const filled = new Date(2026, 11, 31, 23, 58);
+    const modified = new Date(2027, 0, 1, 0, 2);
+    data.frames.forEach((frame) => {
+      frame.log.completedAt = filled.getTime();
+      frame.log.modifiedAt = modified.getTime();
+    });
+    vi.mocked(loadFillLog).mockResolvedValue(data);
+    await showFields();
+    const timestamps = screen.getByRole('group', { name: 'Fill timestamps' });
+    const times = timestamps.querySelectorAll('time');
+    expect(times).toHaveLength(2);
+    expect(times[0].textContent).toContain('2026');
+    expect(times[1].textContent).toContain('2027');
+    expect(times[0].getAttribute('datetime')).toBe(filled.toISOString());
+    expect(times[1].getAttribute('datetime')).toBe(modified.toISOString());
+  });
+
+  it('shows the fill date without inventing a modification time', async () => {
+    const data = snapshot();
+    const filled = new Date(2026, 10, 2, 21, 8);
+    data.frames.forEach((frame) => {
+      frame.log.completedAt = filled.getTime();
+    });
+    vi.mocked(loadFillLog).mockResolvedValue(data);
+    await showFields();
+    const timestamps = screen.getByRole('group', { name: 'Fill timestamps' });
+    expect(timestamps.textContent).toContain('2026');
+    expect(timestamps.textContent).toContain('Filled');
+    expect(timestamps.textContent).not.toContain('Modified');
+    expect(timestamps.querySelectorAll('time')).toHaveLength(1);
   });
 
   it('shows one page with reconciled totals, colors, final sources and a separate AI handoff count', async () => {
