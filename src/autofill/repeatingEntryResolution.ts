@@ -12,6 +12,7 @@ import { normalize } from './normalizer';
 import { composedParent } from './dom';
 import { scopeRoot, entryIndex, containsControl, sectionFamily } from './ruleContext';
 import { mostRecentIdx } from './entryRecency';
+import { CONF_FILL } from './constants';
 
 // Shared by education/work-history sibling-detection (see
 // educationResolution.ts / workHistoryResolution.ts) — same reasoning as
@@ -63,12 +64,16 @@ export function adjustRepeatingEntryMatches(
     scopes.set(scope, group);
   }
   for (const group of scopes.values()) {
-    const byMarker = markers.map((marker) => group.filter((match) => match.fieldPath === marker));
+    // Weak guesses remain available for review, but cannot establish a row.
+    // An essay mentioning a role must not shift real employment entries.
+    const byMarker = markers.map((marker) =>
+      group.filter((match) => match.fieldPath === marker && match.confidence >= CONF_FILL),
+    );
     const anchors = byMarker.reduce((a, b) => (a.length >= b.length ? a : b), [] as FieldMatch[]);
     for (const match of group) {
       let idx = mostRecentIdx(entries);
       if (anchors.length > 1) {
-        const own = byMarker.find((items) => items.includes(match))!;
+        const own = byMarker.find((items) => items.includes(match));
         idx =
           match.element && anchors.every((anchor) => anchor.element)
             ? entryIndex(
@@ -76,7 +81,7 @@ export function adjustRepeatingEntryMatches(
                 anchors.map((anchor) => anchor.element!),
                 group.map((field) => field.element!),
               )
-            : own.indexOf(match);
+            : (own?.indexOf(match) ?? idx);
       }
       const fieldPath = `${prefix}${idx}.${match.fieldPath!.slice(prefix.length)}`;
       match.fieldPath = fieldPath;
