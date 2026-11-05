@@ -415,13 +415,17 @@ export function MappingReviewDialog({
                       <h4 className="rounded-t-xl border-b border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold break-all text-gray-800 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-200">
                         {domain}
                       </h4>
-                      <div className="space-y-5 p-4">
+                      <div className="divide-y divide-gray-200/70 p-4 dark:divide-gray-700/60">
                         {group.map((item) => {
                           const assessment = results[item.id];
                           const verdict = verdicts[assessment.verdict];
                           const choice = selectedDecisions[item.id];
                           return (
-                            <section key={item.id} aria-label={`Review ${item.title}`}>
+                            <section
+                              key={item.id}
+                              aria-label={`Review ${item.title}`}
+                              className="py-2.5 first:pt-0 last:pb-0"
+                            >
                               <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_15rem] md:gap-5">
                                 <div className="min-w-0">
                                   <div className="flex items-start gap-2">
