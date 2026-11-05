@@ -452,12 +452,7 @@ export function MappingReviewDialog({
                             >
                               <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_15rem] md:gap-5">
                                 <div className="min-w-0">
-                                  <div className="flex items-start gap-2">
-                                    <MappingReviewTitle text={item.question || item.title} />
-                                    <span className={`shrink-0 text-xs leading-5 ${verdict.color}`}>
-                                      {verdict.label}
-                                    </span>
-                                  </div>
+                                  <MappingReviewTitle text={item.question || item.title} />
                                   <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
                                     <dt className="text-gray-500 dark:text-gray-400">Current</dt>
                                     <dd className="min-w-0 break-words text-gray-600 dark:text-gray-300">
@@ -465,6 +460,9 @@ export function MappingReviewDialog({
                                       {item.status === 'Inactive' ? ' (Inactive)' : ''}
                                     </dd>
                                   </dl>
+                                  <p className={`mt-1 text-xs leading-5 ${verdict.color}`}>
+                                    {verdict.label}
+                                  </p>
                                 </div>
                                 <div className="flex min-w-0 flex-col gap-2">
                                   <select
