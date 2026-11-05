@@ -131,7 +131,7 @@ test('selects all sites by default and supports searchable multi-selection', asy
 test('requires Gemini setup and takes the user to the focused API key input', async ({
   context,
   extension,
-}) => {
+}, info) => {
   await extension.worker.evaluate(async (data) => {
     await chrome.storage.local.set({ learnedMappings: data });
     await chrome.storage.local.remove(['geminiApiKey', 'geminiModel']);
@@ -140,9 +140,14 @@ test('requires Gemini setup and takes the user to the focused API key input', as
   await options.goto(new URL('options.html', extension.worker.url()).href);
   const dialog = await open(options);
   await expect(dialog).toContainText('Add a Gemini API key to review learned mappings.');
-  await expect(dialog.getByRole('button')).toHaveCount(2);
+  await expect(dialog.getByRole('button')).toHaveCount(3);
+  await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeVisible();
   await expect(dialog.getByLabel('Sites to review')).toHaveCount(0);
   await expect(dialog.getByRole('button', { name: 'Apply Changes' })).toHaveCount(0);
+  await options.screenshot({ path: info.outputPath('missing-key.png') });
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await options.getByRole('button', { name: 'Review Mappings', exact: true }).click();
   await dialog.getByRole('button', { name: 'Go to Settings →' }).click();
   await expect(options.getByLabel('Gemini API Key', { exact: true })).toBeFocused();
 });
@@ -249,7 +254,8 @@ test('reviews one site, applies only approved corrections and reuses local revie
     chrome.storage.local.remove(['geminiApiKey', 'geminiModel']),
   );
   await expect(dialog).toContainText('Add a Gemini API key to review learned mappings.');
-  await expect(dialog.getByRole('button')).toHaveCount(2);
+  await expect(dialog.getByRole('button')).toHaveCount(3);
+  await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeVisible();
   await expect(dialog.getByRole('group', { name: 'Review results' })).toHaveCount(0);
   await dialog.getByRole('button', { name: 'Go to Settings →' }).click();
   await expect(options.getByLabel('Gemini API Key', { exact: true })).toBeFocused();

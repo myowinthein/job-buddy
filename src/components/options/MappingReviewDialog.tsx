@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { LoaderCircle, Sparkles, X } from 'lucide-react';
+import { LoaderCircle, Sparkles } from 'lucide-react';
 import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings } from '@/src/types/storage';
 import { getGeminiSettings } from '@/src/utils/storage';
@@ -262,28 +262,28 @@ export function MappingReviewDialog({
         className={`flex max-h-[90vh] w-full ${!loading && !hasKey ? 'max-w-lg' : 'max-w-3xl'} flex-col rounded-xl bg-white shadow-2xl outline-none dark:bg-gray-800`}
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="shrink-0 px-6 pt-5 pb-4">
-          <div className="flex items-center justify-between gap-3">
-            <h3 id={titleId} className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <header className="flex shrink-0 items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+          <div>
+            <h3 id={titleId} className="text-base font-semibold text-gray-900 dark:text-gray-100">
               Review Mappings
             </h3>
-            <button
-              type="button"
-              aria-label="Close review"
-              disabled={applying}
-              onClick={close}
-              className={secondary}
-            >
-              <X size={16} aria-hidden="true" />
-            </button>
-          </div>
-          {hasKey && (
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-0.5 text-pretty text-xs text-gray-500 dark:text-gray-400">
               Check saved matches with Gemini and choose any corrections.
             </p>
-          )}
+          </div>
+          <button
+            type="button"
+            aria-label="Close review"
+            disabled={applying}
+            onClick={close}
+            className="ml-4 shrink-0 text-xl leading-none text-gray-400 transition-colors hover:text-gray-600 active:scale-95 disabled:opacity-40 dark:text-gray-500 dark:hover:text-gray-300"
+          >
+            ×
+          </button>
         </header>
-        <div className="min-h-0 overflow-y-auto px-6 pb-4">
+        <div
+          className={`min-h-0 overflow-y-auto px-6 ${!loading && !hasKey ? 'py-5' : 'pt-4 pb-4'}`}
+        >
           {loading ? (
             <p role="status" className="text-sm text-gray-500">
               Loading AI settings…
@@ -532,11 +532,16 @@ export function MappingReviewDialog({
             </>
           )}
         </div>
-        {hasKey && (
-          <footer className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-gray-200 p-4 dark:border-gray-700">
-            <button type="button" className={secondary} disabled={applying} onClick={close}>
-              Close
-            </button>
+        <footer className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-gray-200 px-6 py-4 dark:border-gray-700">
+          <button
+            type="button"
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 active:scale-95 disabled:opacity-40 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+            disabled={applying}
+            onClick={close}
+          >
+            Close
+          </button>
+          {hasKey && (
             <button
               type="button"
               className={primary}
@@ -547,8 +552,8 @@ export function MappingReviewDialog({
                 ? 'Applying…'
                 : `Apply Changes${changes.length ? ` (${changes.length})` : ''}`}
             </button>
-          </footer>
-        )}
+          )}
+        </footer>
       </div>
     </div>
   );
