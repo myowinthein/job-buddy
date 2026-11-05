@@ -770,7 +770,8 @@ pre code {
     padding-block: 24px;
   }
 }
-.component-figure .capture {
+.component-figure .capture,
+.stage-figure .capture {
   padding: 22px;
 }
 .component-figure {

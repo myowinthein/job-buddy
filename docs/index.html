@@ -590,7 +590,7 @@
             </div>
             <p class="visual-status" role="status" aria-live="polite" aria-atomic="true"></p>
           </div>
-          <p>Autofill highlights fields with these colors:</p>
+          <p id="fill-colors">Autofill highlights fields with these colors:</p>
           <ul class="color-key">
             <li>
               <strong class="green">Green:</strong> Filled with high confidence or confirmed by you.
@@ -716,9 +716,9 @@
             <h2 id="fill-details-title">Read fill details</h2>
           </div>
 
-          <p class="prose">
-            The latest report updates as you edit the application, even if you never select View
-            details.
+          <p>
+            After autofill, Fill Details shows the latest results and updates as you edit the
+            application.
           </p>
           <div class="visual-tour" data-visual-tour>
             <div
@@ -777,14 +777,10 @@
                       />
                     </button>
                   </div>
-                  <figcaption>
-                    A new nonempty fill replaces this report. It records fill decisions, not the
-                    contents of your answers.
-                  </figcaption>
                 </figure>
               </div>
               <div id="report-views-1" data-visual-panel>
-                <figure class="">
+                <figure class="stage-figure">
                   <div class="capture">
                     <button
                       type="button"
@@ -802,14 +798,10 @@
                       />
                     </button>
                   </div>
-                  <figcaption>
-                    A trusted correction is tried first. A reliable answer can finish the process
-                    here.
-                  </figcaption>
                 </figure>
               </div>
               <div id="report-views-2" data-visual-panel>
-                <figure class="">
+                <figure class="stage-figure">
                   <div class="capture">
                     <button
                       type="button"
@@ -827,14 +819,10 @@
                       />
                     </button>
                   </div>
-                  <figcaption>
-                    Rules use browser hints, known labels and context. The original match score is
-                    separate from whether the form accepts the value.
-                  </figcaption>
                 </figure>
               </div>
               <div id="report-views-3" data-visual-panel>
-                <figure class="">
+                <figure class="stage-figure">
                   <div class="capture">
                     <button
                       type="button"
@@ -852,22 +840,41 @@
                       />
                     </button>
                   </div>
-                  <figcaption>
-                    Gemini checks eligible fields that still need help and can refine an uncertain
-                    rule fill. Its confidence is qualitative, not a percentage.
-                  </figcaption>
                 </figure>
               </div>
             </div>
             <p class="visual-status" role="status" aria-live="polite" aria-atomic="true"></p>
           </div>
+          <p>
+            Autofill tries up to three stages for each field. It stops early when it fills a reliable
+            answer.
+          </p>
+          <ol>
+            <li>
+              <strong>Learned mappings</strong> reuse trusted matches from your earlier
+              corrections.
+            </li>
+            <li>
+              <strong>Rules</strong> match browser hints, field labels and nearby context to
+              your saved profile.
+            </li>
+            <li>
+              <strong>AI</strong> uses Gemini to match remaining questions to your profile and improve
+              uncertain rule-based answers.
+            </li>
+          </ol>
           <div class="detail-list">
             <details>
               <summary>What counts, and what do the scores mean?</summary>
               <p>
-                Filled includes green and yellow. Not filled includes red and gray. Kept current
-                means an existing answer was preserved; Skipped includes excluded questions such as
-                consent. A radio or checkbox question group counts once.
+                Filled includes <span class="green">green</span> and
+                <span class="yellow">yellow</span>. Not filled includes
+                <span class="red">red</span> and <span class="gray">gray</span>. See the
+                <a href="#fill-colors">color explanations under Fill a form</a>.
+              </p>
+              <p>
+                Kept current means an existing answer was preserved. Skipped includes excluded
+                questions such as consent. A radio or checkbox question group counts once.
               </p>
               <p>
                 Final sources identify who supplied the final fill. Checked by rules and Sent to AI
@@ -911,17 +918,12 @@
                 </table>
               </div>
               <p>
-                Rules fill at 60% and turn green at 85%. These are matching scores, not measured
-                probabilities of correctness. A rejected write or uncertain option match can change
-                the final outcome.
+                Rules fill at 60% and turn <span class="green">green</span> at 85%. These are
+                matching scores, not measured probabilities of correctness. A rejected write or
+                uncertain option match can change the final outcome.
               </p>
-            </details>
-            <details>
-              <summary>After the source form closes</summary>
               <p>
-                The report stays for this browser session. Return to Form focuses the original tab;
-                Open Form reopens its saved address without restoring answers. Reset or profile
-                replacement clears the report. It is excluded from JSON and Drive backups.
+                Gemini reports confidence as high or low, rather than a percentage.
               </p>
             </details>
           </div>
