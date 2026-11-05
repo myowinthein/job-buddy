@@ -125,6 +125,12 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     );
     const progress = app.getByRole('progressbar', { name: 'Saved required profile details' });
     await expect(progress).toHaveAttribute('aria-valuenow', '0');
+    const surface = page.locator('iframe[title="Job Buddy options"]');
+    await surface.evaluate((frame) => frame.setAttribute('data-repeat-check', 'unchanged'));
+    for (let click = 0; click < 5; click++) {
+      await bar.getByRole('button', { name: 'Empty', exact: true }).click();
+    }
+    await expect(surface).toHaveAttribute('data-repeat-check', 'unchanged');
     await bar.getByRole('button', { name: 'Required only', exact: true }).click();
     await expect(page).toHaveURL(/devPreview=required/);
     await expect(progress).toHaveAttribute('aria-valuenow', '100');

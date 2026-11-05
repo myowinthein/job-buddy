@@ -36,9 +36,9 @@ afterEach(() => {
 it('enters an isolated missing-key preview without touching saved profile data', async () => {
   renderToolbar();
   await waitFor(() =>
-    expect(screen.getByRole('switch', { name: 'Missing API key' }).hasAttribute('disabled')).toBe(
-      false,
-    ),
+    expect(
+      screen.getByRole('switch', { name: 'Missing API key' }).getAttribute('aria-disabled'),
+    ).toBe('false'),
   );
   fireEvent.click(screen.getByRole('switch', { name: 'Missing API key' }));
   await waitFor(() => expect(onNavigate).toHaveBeenCalledOnce());
@@ -51,6 +51,28 @@ it('enters an isolated missing-key preview without touching saved profile data',
 it('rejects direct credential changes on the saved-data surface', async () => {
   await expect(createDevSurface().toggleKey()).rejects.toThrow('Temporary data is required');
   expect((await getProfile())?.id).toBe('original-profile');
+});
+
+it('blocks rapid duplicate actions while a switch is pending', async () => {
+  let finish!: () => void;
+  onNavigate.mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  renderToolbar();
+  const empty = screen.getByRole('button', { name: 'Empty' });
+  await waitFor(() => expect(empty.getAttribute('aria-disabled')).toBe('false'));
+  fireEvent.click(empty);
+  fireEvent.click(empty);
+  await waitFor(() => expect(onNavigate).toHaveBeenCalledOnce());
+  expect(empty.getAttribute('aria-disabled')).toBe('true');
+  fireEvent.click(screen.getByRole('button', { name: 'Required only' }));
+  fireEvent.click(screen.getByRole('switch', { name: 'Missing API key' }));
+  expect(onNavigate).toHaveBeenCalledOnce();
+  await act(async () => finish());
+  await waitFor(() => expect(empty.getAttribute('aria-disabled')).toBe('false'));
 });
 
 it('toggles the simulated key while keeping profile edits and the selected model', async () => {
@@ -71,7 +93,7 @@ it('toggles the simulated key while keeping profile edits and the selected model
   const before = await getGeminiSettings();
   renderToolbar();
   const toggle = screen.getByRole('switch', { name: 'Missing API key' });
-  await waitFor(() => expect(toggle.hasAttribute('disabled')).toBe(false));
+  await waitFor(() => expect(toggle.getAttribute('aria-disabled')).toBe('false'));
   fireEvent.click(toggle);
   await waitFor(() => expect(toggle.getAttribute('aria-checked')).toBe('true'));
   expect((await getGeminiSettings()).apiKey).toBeNull();
@@ -93,9 +115,9 @@ it('keeps the current page and reports snapshot failures without navigating', as
     throw new Error('quota');
   });
   await waitFor(() =>
-    expect(screen.getByRole('button', { name: 'Required only' }).hasAttribute('disabled')).toBe(
-      false,
-    ),
+    expect(
+      screen.getByRole('button', { name: 'Required only' }).getAttribute('aria-disabled'),
+    ).toBe('false'),
   );
   fireEvent.click(screen.getByRole('button', { name: 'Required only' }));
   expect(await screen.findByRole('alert')).toHaveProperty(

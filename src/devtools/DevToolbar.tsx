@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PROFILE_PRESETS, type PreviewPreset } from './quickPreview';
 import type { DevSurface, SurfaceState } from './surface';
 
@@ -13,6 +13,7 @@ export default function DevToolbar({
 }) {
   const [state, setState] = useState<SurfaceState>();
   const [busy, setBusy] = useState(false);
+  const pending = useRef(false);
   const [error, setError] = useState('');
   const context = state?.context;
   const missingKey = state?.missingKey ?? false;
@@ -38,7 +39,8 @@ export default function DevToolbar({
   }, [surface]);
 
   const perform = async (action: () => Promise<void>) => {
-    if (busy) return;
+    if (pending.current) return;
+    pending.current = true;
     setBusy(true);
     setError('');
     try {
@@ -46,16 +48,19 @@ export default function DevToolbar({
     } catch {
       setError('Could not switch test data. Try again.');
     } finally {
+      pending.current = false;
       setBusy(false);
     }
   };
 
   const startPreview = async (preset: PreviewPreset, noKey = missingKey) => {
+    if (!state || pending.current || (state.preset === preset && noKey === missingKey)) return;
     if (!surface.canLeave()) return;
     await perform(async () => onNavigate(await surface.prepare(preset, noKey)));
   };
 
   const toggleKey = async () => {
+    if (!state || pending.current) return;
     if (!state?.preset) return startPreview('saved', !missingKey);
     await perform(async () => {
       await surface.toggleKey();
@@ -64,7 +69,7 @@ export default function DevToolbar({
   };
 
   const exit = async () => {
-    if (!context) return;
+    if (!context || pending.current) return;
     if (!surface.canLeave()) return;
     await perform(() => onNavigate(surface.exitUrl()));
   };
@@ -100,10 +105,10 @@ export default function DevToolbar({
                 <button
                   key={preset.id}
                   type="button"
-                  disabled={busy || !state}
+                  aria-disabled={busy || !state}
                   aria-pressed={selected}
                   onClick={() => void (preset.id === 'original' ? exit() : startPreview(preset.id))}
-                  className={`px-2.5 py-1 transition-colors focus-visible:relative focus-visible:z-10 focus-visible:outline-offset-[-2px] disabled:opacity-50 ${selected ? 'bg-amber-200 font-medium dark:bg-amber-700' : 'hover:bg-amber-100 dark:hover:bg-amber-800'}`}
+                  className={`px-2.5 py-1 transition-colors focus-visible:relative focus-visible:z-10 focus-visible:outline-offset-[-2px] ${selected ? 'bg-amber-200 font-medium dark:bg-amber-700' : 'hover:bg-amber-100 dark:hover:bg-amber-800'}`}
                 >
                   {preset.label}
                 </button>
@@ -115,9 +120,9 @@ export default function DevToolbar({
           type="button"
           role="switch"
           aria-checked={missingKey}
-          disabled={busy || !state}
+          aria-disabled={busy || !state}
           onClick={() => void toggleKey()}
-          className="inline-flex items-center gap-2 rounded-md py-1 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md py-1"
         >
           <span>Missing API key</span>
           <span
