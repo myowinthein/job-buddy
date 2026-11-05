@@ -56,6 +56,35 @@ async function captureInPage(page: Page, info: TestInfo, name: string, target: L
   });
 }
 
+async function captureProfile(page: Page, info: TestInfo, name: string, saveLabel: string) {
+  const save = page.getByRole('button', { name: saveLabel, exact: true });
+  await expect(save).toBeVisible();
+  const button = await save.boundingBox();
+  const lastCategory = await page
+    .getByRole('navigation', { name: 'Profile sections' })
+    .getByRole('button', { name: 'Salary', exact: true })
+    .boundingBox();
+  const tools = await page.locator('aside').getByText('Tools', { exact: true }).boundingBox();
+  if (!button || !lastCategory || !tools) throw new Error(`Missing profile crop targets: ${name}`);
+  const bottom = Math.ceil(
+    Math.max(button.y + button.height, lastCategory.y + lastCategory.height) + 24,
+  );
+  expect(bottom, 'The Save button and profile categories must fit above Tools').toBeLessThan(
+    tools.y,
+  );
+  await page.mouse.move(0, 0);
+  await page.screenshot({
+    path: info.outputPath(`${name}.png`),
+    clip: {
+      x: 0,
+      y: 0,
+      width: page.viewportSize()!.width,
+      height: bottom,
+    },
+    animations: 'disabled',
+  });
+}
+
 async function captureRegion(
   page: Page,
   info: TestInfo,
@@ -138,7 +167,7 @@ for (const theme of ['light', 'dark'] as const) {
       await chrome.storage.local.set({ themePreference: theme });
     }, theme);
     const options = await context.newPage();
-    await options.setViewportSize({ width: 1280, height: 900 });
+    await options.setViewportSize({ width: 800, height: 900 });
     await options.goto(new URL('options.html', extension.worker.url()).href);
     await options.getByRole('button', { name: 'Settings', exact: true }).click();
     const section = options
@@ -278,16 +307,17 @@ for (const theme of ['light', 'dark'] as const) {
       await row.getByRole('button', { name: new RegExp(`^${stage}:`) }).click();
       await captureInPage(options, info, `${name}-${theme}`, row);
     }
+    await options.setViewportSize({ width: 1280, height: 1300 });
     await options.getByRole('button', { name: 'Personal', exact: true }).click();
     await expect(options.getByLabel('First Name', { exact: false }).first()).toBeVisible();
-    await capture(options, info, `profile-${theme}`);
+    await captureProfile(options, info, `profile-${theme}`, 'Save Personal');
     for (const [name, section] of [
       ['profile-work', 'Work History'],
       ['profile-documents', 'Documents'],
     ]) {
       await options.getByRole('button', { name: section, exact: true }).click();
       await expect(options.getByRole('heading', { name: section, exact: true })).toBeVisible();
-      await capture(options, info, `${name}-${theme}`);
+      await captureProfile(options, info, `${name}-${theme}`, `Save ${section}`);
     }
 
     const partial = structuredClone(profile);
@@ -297,11 +327,12 @@ for (const theme of ['light', 'dark'] as const) {
     await options.reload();
     await expect(options.getByRole('button', { name: /required remaining/ })).toBeVisible();
     await options.getByRole('button', { name: /required remaining/ }).click();
-    await capture(options, info, `completion-${theme}`);
+    await captureProfile(options, info, `completion-${theme}`, 'Save Documents');
     await options.keyboard.press('Escape');
     await extension.worker.evaluate((profile) => chrome.storage.local.set({ profile }), profile);
     await options.reload();
 
+    await options.setViewportSize({ width: 1280, height: 900 });
     await options.getByRole('button', { name: 'Learned Mappings', exact: true }).click();
     await expect(
       options.getByRole('heading', { name: 'Learned Mappings', exact: true }),
@@ -348,6 +379,7 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(mappingReview.getByText('Better match found', { exact: true })).toBeVisible();
     await capture(options, info, `mapping-review-${theme}`, mappingReview);
     await mappingReview.getByRole('button', { name: 'Close review' }).click();
+    await options.setViewportSize({ width: 800, height: 900 });
     await options.getByRole('button', { name: 'Settings', exact: true }).click();
     await expect(options.getByRole('heading', { name: 'AI Features', exact: true })).toBeVisible();
     await options
@@ -464,7 +496,7 @@ for (const theme of ['light', 'dark'] as const) {
     await context.unroute('http://127.0.0.1/**');
     await context.route('http://127.0.0.1:4173/**', (route) => route.continue());
     const preview = await context.newPage();
-    await preview.setViewportSize({ width: 1280, height: 900 });
+    await preview.setViewportSize({ width: 800, height: 900 });
     await preview.addInitScript((theme) => {
       sessionStorage.setItem('jb:ui:section', 'settings');
       sessionStorage.setItem(
@@ -492,5 +524,19 @@ for (const theme of ['light', 'dark'] as const) {
       preview.getByRole('heading', { name: 'Disconnect Google Drive', exact: true }),
     ).toBeVisible();
     await capture(preview, info, `drive-disconnect-${theme}`, preview.getByRole('dialog'));
+    await preview.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await preview.getByRole('button', { name: 'Reset Now', exact: true }).click();
+    const resetDialog = preview.getByRole('dialog');
+    const deleteBackup = resetDialog.getByRole('checkbox', {
+      name: 'Also delete the Drive backup',
+    });
+    await expect(deleteBackup).not.toBeChecked();
+    await capture(preview, info, `reset-keep-drive-${theme}`, resetDialog);
+    await deleteBackup.check();
+    await expect(
+      resetDialog.getByText('Your Drive backup will also be permanently deleted.'),
+    ).toBeVisible();
+    await capture(preview, info, `reset-delete-drive-${theme}`, resetDialog);
+    await resetDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   });
 }

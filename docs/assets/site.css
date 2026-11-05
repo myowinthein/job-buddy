@@ -887,20 +887,20 @@ pre code {
 .visual-tour:not(.is-enhanced) [data-visual-panel] + [data-visual-panel] {
   margin-top: 28px;
 }
-.sequence-tour.is-enhanced {
+:is(.sequence-tour, .side-tour).is-enhanced {
   display: grid;
   grid-template-columns: 190px minmax(0, 1fr);
   gap: 28px;
   align-items: start;
 }
-.sequence-tour.is-enhanced > .visual-controls {
+:is(.sequence-tour, .side-tour).is-enhanced > .visual-controls {
   display: flex;
   flex-direction: column;
   gap: 8px;
   border: 0;
   margin: 0;
 }
-.sequence-tour .visual-controls button {
+:is(.sequence-tour, .side-tour) .visual-controls button {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -908,13 +908,18 @@ pre code {
   border: 0;
   border-left: 2px solid transparent;
 }
-.sequence-tour .visual-controls [aria-pressed='true'] {
+:is(.sequence-tour, .side-tour) .visual-controls [aria-pressed='true'] {
   border-color: var(--link);
   background: var(--soft);
 }
-.sequence-tour .visual-controls span {
+:is(.sequence-tour, .side-tour) .visual-controls span {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+}
+.side-tour.is-enhanced {
+  grid-template-columns: 160px minmax(0, 1fr);
+  width: calc(188px + var(--visual-width, 576px));
+  max-width: 100%;
 }
 .visual-status {
   position: absolute;
@@ -986,21 +991,22 @@ pre code {
   .walkthrough {
     --chapter-gap: 40px;
   }
-  .sequence-tour.is-enhanced {
+  :is(.sequence-tour, .side-tour).is-enhanced {
     display: block;
+    width: 100%;
   }
-  .sequence-tour.is-enhanced > .visual-controls {
+  :is(.sequence-tour, .side-tour).is-enhanced > .visual-controls {
     flex-direction: row;
     gap: 5px 16px;
     margin-bottom: var(--divider-gap);
   }
-  .sequence-tour .visual-controls button {
+  :is(.sequence-tour, .side-tour) .visual-controls button {
     padding: 12px 0;
     gap: 7px;
     border-left: 0;
     border-bottom: 2px solid transparent;
   }
-  .sequence-tour .visual-controls [aria-pressed='true'] {
+  :is(.sequence-tour, .side-tour) .visual-controls [aria-pressed='true'] {
     background: none;
     border-color: var(--link);
   }
@@ -1036,7 +1042,8 @@ pre code {
     display: block !important;
     margin-top: 24px;
   }
-  .sequence-tour.is-enhanced {
+  :is(.sequence-tour, .side-tour).is-enhanced {
     display: block;
+    width: 100%;
   }
 }

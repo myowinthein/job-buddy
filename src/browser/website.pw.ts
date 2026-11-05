@@ -53,10 +53,10 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   ).toBeFocused();
   const geminiStates = page.getByRole('group', { name: 'Gemini setup screenshots' });
   await geminiStates.getByRole('button', { name: 'With a key', exact: true }).click();
-  await expect(page.locator('[data-comparison="with-key"]')).toBeVisible();
-  await expect(page.locator('[data-comparison="without-key"]')).toBeHidden();
+  await expect(page.locator('#gemini-views-1')).toBeVisible();
+  await expect(page.locator('#gemini-views-0')).toBeHidden();
   await geminiStates.getByRole('button', { name: 'Without a key', exact: true }).click();
-  await expect(page.locator('[data-comparison="without-key"]')).toBeVisible();
+  await expect(page.locator('#gemini-views-0')).toBeVisible();
   const mode = await page.locator('html').evaluate((el) => el.classList.contains('dark'));
   const themeToggle = page.locator('.theme-toggle');
   await expect(themeToggle).toHaveText('');

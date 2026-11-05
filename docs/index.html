@@ -178,55 +178,57 @@
             free tier, with limits that depend on your model and Google project. No Job Buddy
             account is needed.
           </p>
-          <figure class="component-figure">
-            <div class="figure-toolbar">
-              <div
-                class="segmented"
-                data-compare
-                role="group"
-                aria-label="Gemini setup screenshots"
-              >
-                <button type="button" data-show="without-key" aria-pressed="true">
-                  Without a key
-                </button>
-                <button type="button" data-show="with-key" aria-pressed="false">With a key</button>
+          <div class="visual-tour side-tour" data-visual-tour style="--visual-width: 576px">
+            <div class="visual-controls" data-visual-nav role="group" aria-label="Gemini setup screenshots">
+              <button type="button" data-show-visual="gemini-views-0" aria-controls="gemini-views-0" aria-pressed="true">Without a key</button>
+              <button type="button" data-show-visual="gemini-views-1" aria-controls="gemini-views-1" aria-pressed="false">With a key</button>
+            </div>
+            <div class="visual-panels">
+              <div id="gemini-views-0" data-visual-panel>
+                <figure class="component-figure">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: AI Features before adding a Gemini key"
+                    >
+                      <img
+                        src="./assets/screenshots/ai-empty-light.webp?v=c441974f22f8"
+                        data-light="./assets/screenshots/ai-empty-light.webp?v=c441974f22f8"
+                        data-dark="./assets/screenshots/ai-empty-dark.webp?v=8f5215425136"
+                        alt="AI Features before adding a Gemini key"
+                        width="576"
+                        height="250"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                </figure>
+              </div>
+              <div id="gemini-views-1" data-visual-panel>
+                <figure class="component-figure">
+                  <div class="capture">
+                    <button
+                      type="button"
+                      data-enlarge
+                      aria-label="Enlarge screenshot: AI Features with a saved Gemini key, model options, and usage link"
+                    >
+                      <img
+                        src="./assets/screenshots/ai-light.webp?v=26013bb08812"
+                        data-light="./assets/screenshots/ai-light.webp?v=26013bb08812"
+                        data-dark="./assets/screenshots/ai-dark.webp?v=72040ae3275e"
+                        alt="AI Features with a saved Gemini key, model options, and usage link"
+                        width="576"
+                        height="312"
+                        loading="lazy"
+                      />
+                    </button>
+                  </div>
+                </figure>
               </div>
             </div>
-            <div class="capture" data-comparison="without-key">
-              <button
-                type="button"
-                data-enlarge
-                aria-label="Enlarge screenshot: AI Features before adding a Gemini key"
-              >
-                <img
-                  src="./assets/screenshots/ai-empty-light.webp?v=3995916d13fe"
-                  data-light="./assets/screenshots/ai-empty-light.webp?v=3995916d13fe"
-                  data-dark="./assets/screenshots/ai-empty-dark.webp?v=8607cc343cb6"
-                  alt="AI Features before adding a Gemini key"
-                  width="1056"
-                  height="250"
-                  loading="lazy"
-                />
-              </button>
-            </div>
-            <div class="capture" data-comparison="with-key" hidden>
-              <button
-                type="button"
-                data-enlarge
-                aria-label="Enlarge screenshot: AI Features with a saved Gemini key, model options, and usage link"
-              >
-                <img
-                  src="./assets/screenshots/ai-light.webp?v=016b217a7919"
-                  data-light="./assets/screenshots/ai-light.webp?v=016b217a7919"
-                  data-dark="./assets/screenshots/ai-dark.webp?v=f00bcf3eab14"
-                  alt="AI Features with a saved Gemini key, model options, and usage link"
-                  width="1056"
-                  height="312"
-                  loading="lazy"
-                />
-              </button>
-            </div>
-          </figure>
+            <p class="visual-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          </div>
           <div class="detail-list">
             <details>
               <summary>Which model, and what happens at its limit?</summary>
@@ -300,12 +302,12 @@
                       aria-label="Enlarge screenshot: Personal editor with nine profile categories and contact details"
                     >
                       <img
-                        src="./assets/screenshots/profile-light.webp?v=15e947a86377"
-                        data-light="./assets/screenshots/profile-light.webp?v=15e947a86377"
-                        data-dark="./assets/screenshots/profile-dark.webp?v=032c55fee8c4"
+                        src="./assets/screenshots/profile-light.webp?v=b001e74cc566"
+                        data-light="./assets/screenshots/profile-light.webp?v=b001e74cc566"
+                        data-dark="./assets/screenshots/profile-dark.webp?v=0c66ba13cfcc"
                         alt="Personal editor with nine profile categories and contact details"
                         width="1280"
-                        height="900"
+                        height="569"
                         loading="lazy"
                       />
                     </button>
@@ -321,12 +323,12 @@
                       aria-label="Enlarge screenshot: Work history with career summary, experience entries, and notice period"
                     >
                       <img
-                        src="./assets/screenshots/profile-work-light.webp?v=253188066d0d"
-                        data-light="./assets/screenshots/profile-work-light.webp?v=253188066d0d"
-                        data-dark="./assets/screenshots/profile-work-dark.webp?v=a292211590c4"
+                        src="./assets/screenshots/profile-work-light.webp?v=a4854b0e562d"
+                        data-light="./assets/screenshots/profile-work-light.webp?v=a4854b0e562d"
+                        data-dark="./assets/screenshots/profile-work-dark.webp?v=403c8f8020e5"
                         alt="Work history with career summary, experience entries, and notice period"
                         width="1280"
-                        height="900"
+                        height="776"
                         loading="lazy"
                       />
                     </button>
@@ -342,12 +344,12 @@
                       aria-label="Enlarge screenshot: Documents with CV and cover letter files, links, and attachment actions"
                     >
                       <img
-                        src="./assets/screenshots/profile-documents-light.webp?v=0c2c0cb041ac"
-                        data-light="./assets/screenshots/profile-documents-light.webp?v=0c2c0cb041ac"
-                        data-dark="./assets/screenshots/profile-documents-dark.webp?v=7534a77ba86b"
+                        src="./assets/screenshots/profile-documents-light.webp?v=53d9263807db"
+                        data-light="./assets/screenshots/profile-documents-light.webp?v=53d9263807db"
+                        data-dark="./assets/screenshots/profile-documents-dark.webp?v=c20d46d2c0cb"
                         alt="Documents with CV and cover letter files, links, and attachment actions"
                         width="1280"
-                        height="900"
+                        height="639"
                         loading="lazy"
                       />
                     </button>
@@ -363,12 +365,12 @@
                       aria-label="Enlarge screenshot: Completion checklist with direct links to missing profile fields"
                     >
                       <img
-                        src="./assets/screenshots/completion-light.webp?v=9497a3b47674"
-                        data-light="./assets/screenshots/completion-light.webp?v=9497a3b47674"
-                        data-dark="./assets/screenshots/completion-dark.webp?v=ad8fe9d430e9"
+                        src="./assets/screenshots/completion-light.webp?v=82f686534e04"
+                        data-light="./assets/screenshots/completion-light.webp?v=82f686534e04"
+                        data-dark="./assets/screenshots/completion-dark.webp?v=7b7b4ec37837"
                         alt="Completion checklist with direct links to missing profile fields"
                         width="1280"
-                        height="900"
+                        height="639"
                         loading="lazy"
                       />
                     </button>
@@ -513,7 +515,7 @@
             Pin Job Buddy in Chrome for easier access. On a job application form, open the Job Buddy
             popup and select <strong>Fill Form</strong>.
           </p>
-          <div class="visual-tour" data-visual-tour>
+          <div class="visual-tour side-tour" data-visual-tour style="--visual-width: 400px">
             <div
               class="visual-controls"
               data-visual-nav
@@ -712,11 +714,11 @@
                       aria-label="Enlarge screenshot: Quick Fill settings with fill mode and searchable hidden sites"
                     >
                       <img
-                        src="./assets/screenshots/quick-fill-light.webp?v=335f78b7f3a2"
-                        data-light="./assets/screenshots/quick-fill-light.webp?v=335f78b7f3a2"
-                        data-dark="./assets/screenshots/quick-fill-dark.webp?v=d57ed777038a"
+                        src="./assets/screenshots/quick-fill-light.webp?v=5e89cc5a3864"
+                        data-light="./assets/screenshots/quick-fill-light.webp?v=5e89cc5a3864"
+                        data-dark="./assets/screenshots/quick-fill-dark.webp?v=ac09368d5faa"
                         alt="Quick Fill settings with fill mode and searchable hidden sites"
-                        width="1056"
+                        width="576"
                         height="330"
                         loading="lazy"
                       />
@@ -1105,7 +1107,7 @@
           <p class="prose">
             Your JSON copy carries stored documents and learned mappings along with the profile.
           </p>
-          <div class="visual-tour" data-visual-tour>
+          <div class="visual-tour side-tour" data-visual-tour style="--visual-width: 576px">
             <div
               class="visual-controls"
               data-visual-nav
@@ -1145,11 +1147,11 @@
                       aria-label="Enlarge screenshot: Export Profile settings with Download File action"
                     >
                       <img
-                        src="./assets/screenshots/export-profile-light.webp?v=95a1406656da"
-                        data-light="./assets/screenshots/export-profile-light.webp?v=95a1406656da"
-                        data-dark="./assets/screenshots/export-profile-dark.webp?v=c6ce1708d32f"
+                        src="./assets/screenshots/export-profile-light.webp?v=8b056c7190e2"
+                        data-light="./assets/screenshots/export-profile-light.webp?v=8b056c7190e2"
+                        data-dark="./assets/screenshots/export-profile-dark.webp?v=9af6aa0062e9"
                         alt="Export Profile settings with Download File action"
-                        width="1056"
+                        width="576"
                         height="156"
                         loading="lazy"
                       />
@@ -1170,11 +1172,11 @@
                       aria-label="Enlarge screenshot: Import Profile settings for choosing a Job Buddy JSON export"
                     >
                       <img
-                        src="./assets/screenshots/import-profile-light.webp?v=448627d548b0"
-                        data-light="./assets/screenshots/import-profile-light.webp?v=448627d548b0"
-                        data-dark="./assets/screenshots/import-profile-dark.webp?v=b41049f4b6f0"
+                        src="./assets/screenshots/import-profile-light.webp?v=b12df5aa7a79"
+                        data-light="./assets/screenshots/import-profile-light.webp?v=b12df5aa7a79"
+                        data-dark="./assets/screenshots/import-profile-dark.webp?v=8b49d0550e7e"
                         alt="Import Profile settings for choosing a Job Buddy JSON export"
-                        width="1056"
+                        width="576"
                         height="158"
                         loading="lazy"
                       />
@@ -1228,7 +1230,7 @@
           <p class="prose">
             Saved profile and mapping changes queue a backup after about five seconds.
           </p>
-          <div class="visual-tour" data-visual-tour>
+          <div class="visual-tour side-tour" data-visual-tour style="--visual-width: 576px">
             <div
               class="visual-controls"
               data-visual-nav
@@ -1261,11 +1263,11 @@
                       aria-label="Enlarge screenshot: Connected Cloud Backup settings with backup status, Back Up Now and Disconnect"
                     >
                       <img
-                        src="./assets/screenshots/drive-light.webp?v=7f72424998cd"
-                        data-light="./assets/screenshots/drive-light.webp?v=7f72424998cd"
-                        data-dark="./assets/screenshots/drive-dark.webp?v=93405a6d4edd"
+                        src="./assets/screenshots/drive-light.webp?v=aecb4ebf93a3"
+                        data-light="./assets/screenshots/drive-light.webp?v=aecb4ebf93a3"
+                        data-dark="./assets/screenshots/drive-dark.webp?v=070143c5fd9d"
                         alt="Connected Cloud Backup settings with backup status, Back Up Now and Disconnect"
-                        width="1056"
+                        width="576"
                         height="210"
                         loading="lazy"
                       />
@@ -1360,8 +1362,16 @@
             </div>
           </dl>
           <h3>When you want to start over</h3>
-          <figure class="dialog-figure">
-            <div class="capture">
+          <div class="visual-tour side-tour" data-visual-tour style="--visual-width: 384px">
+            <div class="visual-controls" data-visual-nav role="group" aria-label="Reset data screenshots">
+              <button type="button" data-show-visual="reset-views-0" aria-controls="reset-views-0" aria-pressed="true">Without Drive</button>
+              <button type="button" data-show-visual="reset-views-1" aria-controls="reset-views-1" aria-pressed="false">Keep Drive backup</button>
+              <button type="button" data-show-visual="reset-views-2" aria-controls="reset-views-2" aria-pressed="false">Delete Drive backup</button>
+            </div>
+            <div class="visual-panels">
+              <div id="reset-views-0" data-visual-panel>
+                <figure class="dialog-figure">
+                  <div class="capture">
               <button
                 type="button"
                 data-enlarge
@@ -1378,11 +1388,31 @@
                 />
               </button>
             </div>
-            <figcaption>
-              Reset removes the Gemini key and disconnects Drive. A kept Drive copy can be restored
-              later; requested backup deletion must succeed before local reset continues.
-            </figcaption>
-          </figure>
+                </figure>
+              </div>
+              <div id="reset-views-1" data-visual-panel>
+                <figure class="dialog-figure">
+                  <div class="capture">
+                    <button type="button" data-enlarge aria-label="Enlarge screenshot: Reset All Data keeping the Drive backup">
+                      <img src="./assets/screenshots/reset-keep-drive-light.webp?v=05515b1dae81" data-light="./assets/screenshots/reset-keep-drive-light.webp?v=05515b1dae81" data-dark="./assets/screenshots/reset-keep-drive-dark.webp?v=a521b48501c2" alt="Reset All Data keeping the Drive backup" width="384" height="304" loading="lazy" />
+                    </button>
+                  </div>
+                </figure>
+              </div>
+              <div id="reset-views-2" data-visual-panel>
+                <figure class="dialog-figure">
+                  <div class="capture">
+                    <button type="button" data-enlarge aria-label="Enlarge screenshot: Reset All Data with Drive backup deletion selected and a warning">
+                      <img src="./assets/screenshots/reset-delete-drive-light.webp?v=a2e2c3d010c6" data-light="./assets/screenshots/reset-delete-drive-light.webp?v=a2e2c3d010c6" data-dark="./assets/screenshots/reset-delete-drive-dark.webp?v=7fb9b2a272b7" alt="Reset All Data with Drive backup deletion selected and a warning" width="384" height="328" loading="lazy" />
+                    </button>
+                  </div>
+                </figure>
+              </div>
+            </div>
+            <p class="visual-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          </div>
+          <p class="prose">Reset removes the Gemini key and disconnects Drive. A kept Drive copy can be restored
+              later; requested backup deletion must succeed before local reset continues.</p>
           <p class="prose">
             Export a copy first if you want to keep your data. Google’s own service and data-use
             terms apply when you use Gemini or Drive.
