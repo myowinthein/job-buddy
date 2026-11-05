@@ -24,11 +24,17 @@ import './style.css';
     }
     return;
   }
+  if (import.meta.env.DEV) {
+    const { createDevSurface } = await import('@/src/devtools/surface');
+    window.__JB_DEV_SURFACE__ = createDevSurface();
+    if (new URLSearchParams(location.search).has('devEmbedded'))
+      document.getElementById('root')!.style.height = '100vh';
+  }
   const [{ default: App }, { initTheme }] = await Promise.all([
     import('./App'),
     import('@/src/utils/theme'),
   ]);
-  const DevShell = import.meta.env.DEV
+  const DevShell = import.meta.env.DEV && !new URLSearchParams(location.search).has('devEmbedded')
     ? (await import('@/src/devtools/SimulationShell')).default
     : React.Fragment;
   await initTheme();

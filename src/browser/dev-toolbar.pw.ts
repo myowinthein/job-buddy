@@ -67,7 +67,9 @@ test.afterAll(async () => {
   });
 });
 
-test('the dev bar previews profiles and missing keys without changing saved extension data', async ({ playwright }, info) => {
+test('the dev bar previews profiles and missing keys without changing saved extension data', async ({
+  playwright,
+}, info) => {
   const extensionPath = resolve(buildRoot, 'chrome-mv3-dev');
   const context = await playwright.chromium.launchPersistentContext('', {
     channel: 'chromium',
@@ -92,6 +94,8 @@ test('the dev bar previews profiles and missing keys without changing saved exte
       { profile: DEV_PROFILE, model: DEFAULT_GEMINI_MODEL },
     );
     const page = await context.newPage();
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(new URL('options.html', worker.url()).href);
     const bar = page.getByRole('complementary', { name: 'Development controls' });
     await expect(bar).toBeVisible();
@@ -100,19 +104,30 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     const original = await worker.evaluate(() =>
       chrome.storage.local.get(['profile', 'geminiApiKey', 'geminiModel']),
     );
+    const initialDocument = await page.evaluate(() => {
+      const id = crypto.randomUUID();
+      (window as Window & { testDocument?: string }).testDocument = id;
+      return id;
+    });
     await page.getByRole('button', { name: 'Education', exact: true }).click();
     await bar.getByRole('button', { name: 'Empty', exact: true }).click();
     await expect(page).toHaveURL(/devPreview=empty/);
-    await expect(page.getByRole('heading', { name: 'Education', exact: true })).toBeVisible();
-    const progress = page.getByRole('progressbar', { name: 'Saved required profile details' });
+    const app = page.frameLocator('iframe[title="Job Buddy options"]');
+    await expect(app.getByRole('heading', { name: 'Education', exact: true })).toBeVisible();
+    expect(
+      await page.evaluate(() => (window as Window & { testDocument?: string }).testDocument),
+    ).toBe(initialDocument);
+    await expect(bar.getByText('DEV', { exact: true })).toHaveCount(0);
+    await expect(bar.getByText('Temporary data', { exact: true })).toBeVisible();
+    const progress = app.getByRole('progressbar', { name: 'Saved required profile details' });
     await expect(progress).toHaveAttribute('aria-valuenow', '0');
     await bar.getByRole('button', { name: 'Required only', exact: true }).click();
     await expect(page).toHaveURL(/devPreview=required/);
     await expect(progress).toHaveAttribute('aria-valuenow', '100');
     await bar.getByRole('button', { name: 'Complete', exact: true }).click();
     await expect(page).toHaveURL(/devPreview=complete/);
-    await page.getByRole('button', { name: 'Personal', exact: true }).click();
-    const name = page.getByLabel('First Name', { exact: false });
+    await app.getByRole('button', { name: 'Personal', exact: true }).click();
+    const name = app.getByLabel('First Name', { exact: false });
     await name.fill('Draft in preview');
     const toggle = bar.getByRole('switch', { name: 'Missing API key' });
     await toggle.click();
@@ -125,33 +140,46 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     await presetClick;
     await expect(page).toHaveURL(/devPreview=complete/);
     await expect(name).toHaveValue('Draft in preview');
-    await page.getByRole('button', { name: 'Save Personal', exact: true }).click();
-    await expect(page.getByText('Saved', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: /Import Resume/ }).click();
-    await expect(page.getByText('Add a Gemini API key to import your resume.')).toBeVisible();
+    await app.getByRole('button', { name: 'Save Personal', exact: true }).click();
+    await expect(app.getByText('Saved', { exact: true })).toBeVisible();
+    await app.getByRole('button', { name: /Import Resume/ }).click();
+    await expect(app.getByText('Add a Gemini API key to import your resume.')).toBeVisible();
     await toggle.click();
-    await expect(page.getByText(/Drop your resume here/)).toBeVisible();
+    await expect(app.getByText(/Drop your resume here/)).toBeVisible();
     await toggle.click();
-    await expect(page.getByText('Add a Gemini API key to import your resume.')).toBeVisible();
-    await page.getByLabel('Close', { exact: true }).click();
-    await page.getByRole('button', { name: 'Personal', exact: true }).click();
+    await expect(app.getByText('Add a Gemini API key to import your resume.')).toBeVisible();
+    await app.getByLabel('Close', { exact: true }).click();
+    await app.getByRole('button', { name: 'Personal', exact: true }).click();
     await expect(name).toHaveValue('Draft in preview');
     await page.emulateMedia({ colorScheme: 'dark' });
+    const dimensions = await page
+      .locator('iframe[title="Job Buddy options"]')
+      .evaluate((frame) => ({
+        viewport: (frame as HTMLIFrameElement).contentWindow!.innerHeight,
+        content: (frame as HTMLIFrameElement)
+          .contentDocument!.getElementById('root')!
+          .getBoundingClientRect().height,
+      }));
+    expect(dimensions.content).toBe(dimensions.viewport);
     await page.screenshot({ path: info.outputPath('dev-bar-dark.png'), animations: 'disabled' });
     await page.setViewportSize({ width: 390, height: 844 });
     await bar.screenshot({ path: info.outputPath('dev-bar-narrow.png'), animations: 'disabled' });
     const box = await bar.boundingBox();
     expect(box!.x + box!.width).toBeLessThanOrEqual(390);
-    await bar.getByRole('button', { name: 'Exit preview', exact: true }).click();
+    await bar.getByRole('button', { name: 'Use saved data', exact: true }).click();
     await expect(page).not.toHaveURL(/devPreview/);
+    expect(
+      await page.evaluate(() => (window as Window & { testDocument?: string }).testDocument),
+    ).toBe(initialDocument);
     await expect(name).toHaveValue(DEV_PROFILE.personal.firstName);
     expect(
       await worker.evaluate(() =>
         chrome.storage.local.get(['profile', 'geminiApiKey', 'geminiModel']),
       ),
     ).toEqual(original);
-    await page.getByRole('button', { name: 'Dev Tools', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Dev Tools', exact: true })).toBeVisible();
+    await app.getByRole('button', { name: 'Dev Tools', exact: true }).click();
+    await expect(app.getByRole('heading', { name: 'Dev Tools', exact: true })).toBeVisible();
+    expect(errors).toEqual([]);
   } finally {
     await context.close();
   }

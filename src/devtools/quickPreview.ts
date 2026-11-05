@@ -45,10 +45,6 @@ export function exitPreviewUrl(): string {
   return url.href;
 }
 
-export function navigatePreview(url: string): void {
-  location.assign(url); // The editor's native beforeunload guard protects unsaved changes.
-}
-
 export function cleanupPreviewSeeds(keepId: string | null): void {
   const keep = keepId ? PREVIEW_SEED_PREFIX + keepId : null;
   for (let index = sessionStorage.length - 1; index >= 0; index--) {
@@ -58,7 +54,7 @@ export function cleanupPreviewSeeds(keepId: string | null): void {
 }
 
 export async function preparePreview(preset: PreviewPreset): Promise<string> {
-  // A unique seed leaves the active preview intact if beforeunload is cancelled.
+  // A unique seed leaves the active data intact if the replacement fails to load.
   cleanupPreviewSeeds(readQuickPreview()?.seedId ?? null);
   const local = wrapStorageArea(() => chrome.storage.local, 'development preview');
   const data = await local.get(

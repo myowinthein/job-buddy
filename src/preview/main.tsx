@@ -37,6 +37,9 @@ try {
   }
   throw new Error('Development simulation could not start.');
 }
+const { createDevSurface } = await import('@/src/devtools/surface');
+window.__JB_DEV_SURFACE__ = createDevSurface();
+const embedded = new URLSearchParams(location.search).has('devEmbedded');
 
 const [{ default: App }, { ToastProvider }, { initTheme }] = await Promise.all([
   import('@/entrypoints/options/App'),
@@ -45,33 +48,36 @@ const [{ default: App }, { ToastProvider }, { initTheme }] = await Promise.all([
 ]);
 
 const { default: DevShell } = await import('@/src/devtools/SimulationShell');
+const SurfaceShell = embedded ? React.Fragment : DevShell;
 await initTheme();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <div className="preview-shell">
-      <aside className="preview-notice" aria-label="Preview information">
-        <strong>Preview · sample data</strong>
-        <span>
-          {devTools.getSimulation()
-            ? 'Scenario data and appearance reset on refresh. Providers are simulated.'
-            : 'Profile changes reset on refresh. Appearance is remembered. Gemini and Google Drive are disabled.'}
-        </span>
-        <span>
-          <a className="underline" href="/">
-            Sample profile
-          </a>{' '}
-          ·{' '}
-          <a className="underline" href="/?profile=empty">
-            Empty profile
-          </a>
-        </span>
-      </aside>
+      {!embedded && (
+        <aside className="preview-notice" aria-label="Preview information">
+          <strong>Preview · sample data</strong>
+          <span>
+            {devTools.getSimulation()
+              ? 'Scenario data and appearance reset on refresh. Providers are simulated.'
+              : 'Profile changes reset on refresh. Appearance is remembered. Gemini and Google Drive are disabled.'}
+          </span>
+          <span>
+            <a className="underline" href="/">
+              Sample profile
+            </a>{' '}
+            ·{' '}
+            <a className="underline" href="/?profile=empty">
+              Empty profile
+            </a>
+          </span>
+        </aside>
+      )}
       <div className="preview-app">
         <ToastProvider>
-          <DevShell>
+          <SurfaceShell>
             <App />
-          </DevShell>
+          </SurfaceShell>
         </ToastProvider>
       </div>
     </div>

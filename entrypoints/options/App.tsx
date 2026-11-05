@@ -538,7 +538,7 @@ function App() {
           onFocusField={handleFocusField}
         />
         <main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-8">
-          <div data-profile-section={activeSection} className={SECTION_WIDTHS[activeSection] ?? 'max-w-2xl'}
+          <div data-profile-section={activeSection} data-dev-ready={import.meta.env.DEV && !loading ? '' : undefined} className={SECTION_WIDTHS[activeSection] ?? 'max-w-2xl'}
             onBlurCapture={() => {
               if (dirtyInputsRef.current.size > 0) setUnsavedStatusVisible(true);
             }}>

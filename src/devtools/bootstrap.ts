@@ -79,7 +79,8 @@ export function initializeDevTools() {
       instance.dispose();
     };
   }
-  cleanupPreviewSeeds(quick?.seedId ?? null);
+  // The host keeps the current seed until the replacement surface is ready.
+  if (!params.has('devEmbedded')) cleanupPreviewSeeds(quick?.seedId ?? null);
   const stopDiagnostics = installDevDiagnostics();
   const stop = () => {
     stopBackground();

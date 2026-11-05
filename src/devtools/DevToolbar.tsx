@@ -1,108 +1,69 @@
-import { useEffect, useRef, useState } from 'react';
-import { devContext } from './context';
-import { getSimulation } from './bootstrap';
-import {
-  PROFILE_PRESETS,
-  exitPreviewUrl,
-  navigatePreview,
-  preparePreview,
-  previewUrl,
-  readQuickPreview,
-  type PreviewPreset,
-} from './quickPreview';
-import {
-  clearGeminiSettings,
-  getGeminiSettings,
-  saveGeminiSettings,
-  type GeminiSettings,
-} from '@/src/utils/storage';
-import { DEFAULT_GEMINI_MODEL } from '@/src/resume-ai/types';
+import { useEffect, useState } from 'react';
+import { PROFILE_PRESETS, type PreviewPreset } from './quickPreview';
+import type { DevSurface, SurfaceState } from './surface';
 
-export default function DevToolbar() {
-  const context = devContext();
-  const quick = readQuickPreview();
-  const quickPreset = quick?.preset;
-  const quickSeedId = quick?.seedId;
-  const [missingKey, setMissingKey] = useState(
-    quick?.missingKey ?? context?.scenario === 'ai-no-key',
-  );
+export default function DevToolbar({
+  surface,
+  onNavigate,
+}: {
+  surface: DevSurface;
+  onNavigate: (url: string) => Promise<void>;
+}) {
+  const [state, setState] = useState<SurfaceState>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const savedSettings = useRef<GeminiSettings | null>(null);
+  const context = state?.context;
+  const missingKey = state?.missingKey ?? false;
 
   useEffect(() => {
-    if (!quickPreset || !getSimulation()) return;
     let active = true;
+    let sequence = 0;
     const refresh = async () => {
+      const revision = ++sequence;
       try {
-        const settings = await getGeminiSettings();
-        if (!active) return;
-        const missing = !settings.apiKey;
-        setMissingKey(missing);
-        const url = new URL(location.href);
-        if (missing) url.searchParams.set('devNoKey', '1');
-        else url.searchParams.delete('devNoKey');
-        history.replaceState(history.state, '', url);
+        const next = await surface.state();
+        if (active && revision === sequence) setState(next);
       } catch {
-        if (active) setError('Could not read the preview key state.');
+        if (active) setError('Could not read the test data.');
       }
     };
     void refresh();
-    const changed = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
-      if (area === 'local' && ('geminiApiKey' in changes || 'geminiSettingsMeta' in changes))
-        void refresh();
-    };
-    chrome.storage.onChanged.addListener(changed);
+    const unsubscribe = surface.subscribe(() => void refresh());
     return () => {
       active = false;
-      chrome.storage.onChanged.removeListener(changed);
+      unsubscribe();
     };
-  }, [quickPreset, quickSeedId]);
+  }, [surface]);
 
-  const startPreview = async (preset: PreviewPreset, noKey = missingKey) => {
+  const perform = async (action: () => Promise<void>) => {
     if (busy) return;
     setBusy(true);
     setError('');
     try {
-      const seed = await preparePreview(preset);
-      navigatePreview(previewUrl(preset, noKey, seed));
+      await action();
     } catch {
-      setError('Could not open the preview. Try a profile preset again.');
+      setError('Could not switch test data. Try again.');
     } finally {
       setBusy(false);
     }
   };
 
+  const startPreview = async (preset: PreviewPreset, noKey = missingKey) => {
+    if (!surface.canLeave()) return;
+    await perform(async () => onNavigate(await surface.prepare(preset, noKey)));
+  };
+
   const toggleKey = async () => {
-    if (!quick || !getSimulation()) {
-      await startPreview('saved', !missingKey);
-      return;
-    }
-    if (busy) return;
-    setBusy(true);
-    setError('');
-    try {
-      const settings = await getGeminiSettings();
-      if (!missingKey) {
-        savedSettings.current = settings;
-        await clearGeminiSettings();
-        setMissingKey(true);
-      } else {
-        const saved = savedSettings.current;
-        const result = await saveGeminiSettings(
-          saved?.apiKey ?? 'simulated-key',
-          saved?.model ?? DEFAULT_GEMINI_MODEL,
-          saved?.preference ?? 'auto',
-          settings.revision,
-        );
-        if (!result) throw new Error('Preview key changed');
-        setMissingKey(false);
-      }
-    } catch {
-      setError('Could not change the preview key state. Try again.');
-    } finally {
-      setBusy(false);
-    }
+    if (!state?.preset) return startPreview('saved', !missingKey);
+    await perform(async () => {
+      await surface.toggleKey();
+      setState(await surface.state());
+    });
+  };
+
+  const exit = async () => {
+    if (!surface.canLeave()) return;
+    await perform(() => onNavigate(surface.exitUrl()));
   };
 
   return (
@@ -111,35 +72,24 @@ export default function DevToolbar() {
       className="relative z-[60] shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100"
     >
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-        <span
-          title={
-            context
-              ? 'Changes stay in this tab and reset on refresh. Providers are simulated.'
-              : 'Preview controls use isolated data. Your saved extension data stays unchanged.'
-          }
-          className="inline-flex items-center gap-2"
-        >
-          <strong className="text-[11px] tracking-wide">DEV</strong>
-          <span className="text-amber-800 dark:text-amber-200">
-            {context
-              ? quick?.preset === 'saved'
-                ? 'Preview · saved profile'
-                : 'Preview'
-              : chrome.runtime.id
-                ? 'Saved data'
-                : 'Sample data'}
+        {context && (
+          <span
+            title="Changes stay in this tab and reset on refresh. Gemini and Drive are simulated."
+            className="font-medium text-amber-800 dark:text-amber-200"
+          >
+            Temporary data
           </span>
-        </span>
+        )}
         <div role="group" aria-label="Profile preset" className="flex flex-wrap items-center gap-1">
-          <span className="mr-1">Profile</span>
+          <span className="mr-2 text-amber-800 dark:text-amber-200">Profile</span>
           {PROFILE_PRESETS.map((preset) => (
             <button
               key={preset.id}
               type="button"
-              disabled={busy}
-              aria-pressed={quick?.preset === preset.id}
+              disabled={busy || !state}
+              aria-pressed={state?.preset === preset.id}
               onClick={() => void startPreview(preset.id)}
-              className={`rounded-md border px-2.5 py-1 transition-colors disabled:opacity-50 ${quick?.preset === preset.id ? 'border-amber-600 bg-amber-200 font-medium dark:border-amber-500 dark:bg-amber-800' : 'border-transparent hover:border-amber-300 hover:bg-amber-100 dark:hover:border-amber-800 dark:hover:bg-amber-900'}`}
+              className={`rounded-md border px-2.5 py-1 transition-colors disabled:opacity-50 ${state?.preset === preset.id ? 'border-amber-600 bg-amber-200 font-medium dark:border-amber-500 dark:bg-amber-800' : 'border-amber-300 bg-white/70 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/50 dark:hover:bg-amber-800'}`}
             >
               {preset.label}
             </button>
@@ -149,7 +99,7 @@ export default function DevToolbar() {
           type="button"
           role="switch"
           aria-checked={missingKey}
-          disabled={busy}
+          disabled={busy || !state}
           onClick={() => void toggleKey()}
           className="inline-flex items-center gap-2 rounded-md py-1 disabled:opacity-50"
         >
@@ -166,13 +116,14 @@ export default function DevToolbar() {
         {context && (
           <button
             type="button"
-            onClick={() => navigatePreview(exitPreviewUrl())}
+            disabled={busy || !state}
+            onClick={() => void exit()}
             className="rounded-sm underline underline-offset-2 sm:ml-auto"
           >
-            Exit preview
+            Use saved data
           </button>
         )}
-        {busy && <span role="status">Updating preview…</span>}
+        {busy && <span role="status">Switching data…</span>}
       </div>
       {error && (
         <p role="alert" className="mt-2 text-red-700 dark:text-red-300">
