@@ -131,8 +131,8 @@ test('selects all sites by default and supports searchable multi-selection', asy
   await search.press('Escape');
   await expect(dialog.getByRole('button', { name: 'Apply Changes', exact: true })).toBeDisabled();
   const onlyContext = dialog.getByRole('group', { name: 'Review status' });
-  await expect(onlyContext.getByRole('button')).toHaveCount(2);
-  await expect(onlyContext.getByRole('button', { name: 'All findings (1)' })).toHaveAttribute(
+  await expect(onlyContext.getByRole('button')).toHaveCount(1);
+  await expect(onlyContext.getByRole('button', { name: 'Needs context (1)' })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
@@ -219,21 +219,25 @@ test('reviews one site, applies only approved corrections and reuses local revie
   await dialog.getByRole('button', { name: 'Review Mappings', exact: true }).click();
   await expect(dialog).toContainText('Reviewed 5 of 5 mappings.');
   const statusFilters = dialog.getByRole('group', { name: 'Review status' });
-  await expect(statusFilters.getByRole('button', { name: 'All findings (4)' })).toHaveAttribute(
+  await expect(statusFilters.getByRole('button', { name: 'Better field (1)' })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
-  await expect(statusFilters.getByRole('button')).toHaveCount(4);
+  await expect(statusFilters.getByRole('button')).toHaveCount(3);
+  await expect(statusFilters.getByRole('button', { name: /^All findings/ })).toHaveCount(0);
   await statusFilters.getByRole('button', { name: 'Better field (1)' }).click();
   await expect(dialog.getByRole('region')).toHaveCount(1);
   await expect(dialog.getByLabel('Action for Expected salary')).toBeVisible();
+  await expect(dialog.getByRole('region').getByText('Better field', { exact: true })).toHaveCount(
+    0,
+  );
   await statusFilters.getByRole('button', { name: 'Needs context (2)' }).click();
   await expect(dialog.getByRole('region')).toHaveCount(2);
   await expect(dialog.getByRole('button', { name: 'Use clear suggestions' })).toBeDisabled();
   await statusFilters.getByRole('button', { name: 'No suitable field (1)' }).click();
   await expect(dialog.getByRole('region')).toHaveCount(1);
   await expect(dialog.getByLabel('Action for I agree to the privacy policy')).toBeVisible();
-  await statusFilters.getByRole('button', { name: 'All findings (4)' }).click();
+  await statusFilters.getByRole('button', { name: 'Better field (1)' }).click();
   await expect(dialog.getByRole('region', { name: 'Review Email', exact: true })).toHaveCount(0);
   await expect(
     dialog.getByRole('region', { name: 'Review Expected salary', exact: true }),
@@ -263,7 +267,7 @@ test('reviews one site, applies only approved corrections and reuses local revie
   await statusFilters.getByRole('button', { name: 'No suitable field (1)' }).click();
   await dialog.getByRole('button', { name: 'Use clear suggestions' }).click();
   await expect(dialog.getByRole('button', { name: 'Apply Changes (2)' })).toBeEnabled();
-  await statusFilters.getByRole('button', { name: 'All findings (4)' }).click();
+  await statusFilters.getByRole('button', { name: 'Better field (1)' }).click();
   await options.screenshot({ path: info.outputPath('mapping-review-dark.png') });
   await options.setViewportSize({ width: 620, height: 800 });
   await expect(dialog.getByLabel('Action for Expected salary')).toBeVisible();

@@ -31,11 +31,10 @@ const secondary =
   'rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-40 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700';
 const primary =
   'rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-40';
-const verdicts = {
-  correct: { label: 'Looks correct', color: 'text-green-700 dark:text-green-400' },
-  change: { label: 'Better field', color: 'text-amber-700 dark:text-amber-400' },
-  uncertain: { label: 'Needs context', color: 'text-gray-500 dark:text-gray-400' },
-  inactive: { label: 'No suitable field', color: 'text-amber-700 dark:text-amber-400' },
+const verdictLabels = {
+  change: 'Better field',
+  uncertain: 'Needs context',
+  inactive: 'No suitable field',
 };
 
 export function MappingReviewDialog({
@@ -60,9 +59,7 @@ export function MappingReviewDialog({
   const [loading, setLoading] = useState(true);
   const [hasKey, setHasKey] = useState(false);
   const [selectedSites, setSelectedSites] = useState<Set<string> | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'change' | 'uncertain' | 'inactive'>(
-    'all',
-  );
+  const [statusFilter, setStatusFilter] = useState<keyof typeof verdictLabels | null>(null);
   const [limit, setLimit] = useState(20);
   const [results, setResults] = useState<Record<string, MappingAssessment>>({});
   const [decisions, setDecisions] = useState<Record<string, MappingReviewDecision>>({});
@@ -89,17 +86,16 @@ export function MappingReviewDialog({
     const verdict = results[item.id].verdict;
     return verdict !== 'correct' && !(verdict === 'inactive' && item.status === 'Inactive');
   });
-  const statusOptions = [
-    { value: 'all', label: 'All findings', count: attention.length },
-    ...(['change', 'uncertain', 'inactive'] as const).map((value) => ({
+  const statusOptions = (['change', 'uncertain', 'inactive'] as const)
+    .map((value) => ({
       value,
-      label: verdicts[value].label,
+      label: verdictLabels[value],
       count: attention.filter((item) => results[item.id].verdict === value).length,
-    })),
-  ] as const;
-  const shown = attention.filter(
-    (item) => statusFilter === 'all' || results[item.id].verdict === statusFilter,
-  );
+    }))
+    .filter((option) => option.count > 0);
+  const activeStatus =
+    statusOptions.find((option) => option.value === statusFilter)?.value ?? statusOptions[0]?.value;
+  const shown = attention.filter((item) => results[item.id].verdict === activeStatus);
   const changes = scoped.filter((item) => {
     const choice = decisions[item.id];
     return (
@@ -179,7 +175,7 @@ export function MappingReviewDialog({
     const controller = new AbortController();
     abortRef.current = controller;
     setWorking(true);
-    setStatusFilter('all');
+    setStatusFilter(null);
     setError(null);
     setWarning(null);
     try {
@@ -334,7 +330,7 @@ export function MappingReviewDialog({
                       disabled={working || applying || stale}
                       onChange={(selected) => {
                         setSelectedSites(selected);
-                        setStatusFilter('all');
+                        setStatusFilter(null);
                         setLimit(20);
                       }}
                     />
@@ -405,22 +401,20 @@ export function MappingReviewDialog({
                     aria-label="Review status"
                     className="flex flex-wrap gap-x-4 gap-y-2 text-sm"
                   >
-                    {statusOptions
-                      .filter((option) => option.count > 0)
-                      .map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          aria-pressed={statusFilter === option.value}
-                          onClick={() => {
-                            setStatusFilter(option.value);
-                            setLimit(20);
-                          }}
-                          className={`rounded-sm py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${statusFilter === option.value ? 'font-medium text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
-                        >
-                          {option.label} ({option.count})
-                        </button>
-                      ))}
+                    {statusOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        aria-pressed={activeStatus === option.value}
+                        onClick={() => {
+                          setStatusFilter(option.value);
+                          setLimit(20);
+                        }}
+                        className={`rounded-sm py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${activeStatus === option.value ? 'font-medium text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+                      >
+                        {option.label} ({option.count})
+                      </button>
+                    ))}
                   </div>
                   <button
                     type="button"
@@ -460,7 +454,6 @@ export function MappingReviewDialog({
               )}
               {shown.slice(0, limit).map((item, index) => {
                 const assessment = results[item.id];
-                const verdict = verdicts[assessment.verdict];
                 const choice = decisions[item.id] ?? { action: 'keep' as const };
                 return (
                   <section
@@ -475,12 +468,9 @@ export function MappingReviewDialog({
                     )}
                     <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_15rem] md:gap-5">
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <h5 className="min-w-0 break-words text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {item.question || item.title}
-                          </h5>
-                          <span className={`text-xs ${verdict.color}`}>{verdict.label}</span>
-                        </div>
+                        <h5 className="break-words text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {item.question || item.title}
+                        </h5>
                         <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
                           <dt className="text-gray-500 dark:text-gray-400">Current</dt>
                           <dd className="min-w-0 break-words text-gray-600 dark:text-gray-300">
