@@ -118,7 +118,7 @@ async function notify() {
 }
 
 describe('Fill Details page', () => {
-  it('keeps the source URL on the return button and preserves both timestamps', async () => {
+  it('keeps the source URL on the return button and shows only the filled timestamp', async () => {
     const data = snapshot();
     data.pageUrl = 'https://example.test/careers/101?source=LinkedIn';
     const filled = new Date(2026, 10, 2, 21, 8, 5);
@@ -141,14 +141,12 @@ describe('Fill Details page', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByRole('tooltip')).toBeNull();
     const times = document.querySelectorAll('time');
-    expect(times).toHaveLength(2);
+    expect(times).toHaveLength(1);
     expect(times[0].getAttribute('datetime')).toBe(filled.toISOString());
-    expect(times[1].getAttribute('datetime')).toBe(modified.toISOString());
     expect(times[0].title).toContain('2026');
     expect(times[0].textContent).toContain('2026');
-    expect(times[1].textContent).toContain('2026');
     expect(times[0].textContent).not.toContain(':05');
-    expect(times[1].textContent).not.toContain(':42');
+    expect(screen.queryByText(/^Modified/)).toBeNull();
     expect(screen.getByRole('button', { name: 'Return to Form' })).toBeTruthy();
   });
 
@@ -670,13 +668,14 @@ describe('Fill Details page', () => {
     expect(screen.getByText(/These fills were undone/)).toBeTruthy();
   });
 
-  it('keeps filled and modified times distinct and leaves filters intact during manual updates', async () => {
+  it('keeps the filled time and filters intact while hiding modification timestamps', async () => {
     vi.useFakeTimers();
     render(<FillLogPage tabId={10} />);
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);
     });
     fireEvent.click(screen.getByRole('button', { name: 'Red (2)' }));
+    const filledTime = document.querySelector('time')!.getAttribute('datetime');
     const data = snapshot();
     data.frames[1].log.fields[0].outcome = 'manual';
     data.frames[1].log.fields[0].source = 'manual';
@@ -689,7 +688,8 @@ describe('Fill Details page', () => {
       'true',
     );
     expect(screen.queryByText('Location')).toBeNull();
-    expect(screen.getByText(/^Modified/)).toBeTruthy();
-    expect(document.querySelectorAll('time')).toHaveLength(2);
+    expect(screen.queryByText(/^Modified/)).toBeNull();
+    expect(document.querySelectorAll('time')).toHaveLength(1);
+    expect(document.querySelector('time')!.getAttribute('datetime')).toBe(filledTime);
   });
 });

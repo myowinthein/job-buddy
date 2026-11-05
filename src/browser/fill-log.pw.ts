@@ -16,7 +16,19 @@ test('source navigation returns to an open form and reopens a fresh form after n
   await options.goto(new URL('options.html?section=fillDetails', extension.worker.url()).href);
   const back = options.getByRole('button', { name: 'Return to Form', exact: true });
   await expect(back).toBeVisible();
-  await expect(options.getByText(/^Modified/)).toBeVisible();
+  await expect(options.getByText(/^Modified/)).toHaveCount(0);
+  await expect
+    .poll(() =>
+      extension.worker.evaluate(async () => {
+        const report = (await chrome.storage.session.get('jb:last-fill-details'))[
+          'jb:last-fill-details'
+        ] as { frames: { log: FrameFillLog }[] };
+        return report.frames.some(
+          ({ log }) => (log.modifiedAt ?? 0) > (log.completedAt ?? log.startedAt),
+        );
+      }),
+    )
+    .toBe(true);
   await back.focus();
   await expect(options.getByRole('tooltip')).toHaveText(url);
   await options.keyboard.press('Escape');
@@ -633,7 +645,7 @@ test('an open empty report populates automatically and explicit actions select t
     options.getByRole('button', { name: 'Return to Form', exact: true }),
   ).toHaveAttribute('aria-description', 'http://127.0.0.1/application');
   await expect(options.getByText('Confirmed by you').first()).toBeVisible();
-  await expect(options.getByText(/^Modified/)).toBeVisible();
+  await expect(options.getByText(/^Modified/)).toHaveCount(0);
 
   // A new autofill on B becomes the selected report again.
   await sendB('AUTOFILL_SCAN');

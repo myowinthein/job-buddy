@@ -187,7 +187,6 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
     0,
     ...frames.map((frame) => frame.log.completedAt ?? frame.log.startedAt),
   );
-  const modifiedAt = Math.max(0, ...frames.map((frame) => frame.log.modifiedAt ?? 0));
   const sourceUrl = safeFormUrl(
     snapshot?.pageUrl ??
       frames.find((frame) => frame.frameId === 0)?.log.url ??
@@ -278,16 +277,9 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
               </div>
             )}
             {filledAt > 0 && (
-              <div className="space-y-0.5 text-xs text-gray-500 sm:text-right dark:text-gray-400">
-                <span>
-                  Filled <ReportTime timestamp={filledAt} />
-                </span>
-                {modifiedAt > filledAt && (
-                  <span className="block">
-                    Modified <ReportTime timestamp={modifiedAt} />
-                  </span>
-                )}
-              </div>
+              <p className="text-xs text-gray-500 sm:text-right dark:text-gray-400">
+                Filled <ReportTime timestamp={filledAt} />
+              </p>
             )}
           </div>
         )}
