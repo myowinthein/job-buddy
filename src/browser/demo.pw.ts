@@ -20,6 +20,8 @@ test('the original demo fills with the production extension and produces the pub
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(publicURL);
   await ready(page, extension.send);
+  await expect(page.locator('#job-buddy-setup')).toHaveAttribute('data-status', 'detected');
+  await expect(page.locator('#job-buddy-setup')).toBeHidden();
   await expect(page.getByRole('heading', { name: 'Frontend Engineer', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'What you’ll do' })).toBeVisible();
   expect(await page.locator('body').innerText()).not.toContain('Job Buddy');
@@ -114,4 +116,20 @@ test('demo submission stays on the page, validates required answers, and resets 
   }
   await page.goto(`${publicURL}?test=1`);
   await expect(page.locator('#test-controls, #test-fields')).toHaveCount(0);
+});
+
+test('presence works independently of Quick Fill visibility and Gemini setup', async ({
+  context,
+  page,
+  extension,
+}) => {
+  await serveDemo(context);
+  await extension.worker.evaluate(async () => {
+    await chrome.storage.local.set({ quickFillPreferences: { enabled: false, disabledSites: [] } });
+    await chrome.storage.local.remove(['geminiApiKey', 'geminiModel']);
+  });
+  await page.goto(publicURL);
+  await expect(page.locator('#job-buddy-setup')).toHaveAttribute('data-status', 'detected');
+  await expect(page.locator('#job-buddy-setup')).toBeHidden();
+  await expect(page.locator('[data-job-buddy-ui]')).toHaveCount(0);
 });

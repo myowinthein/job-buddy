@@ -79,6 +79,72 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   expect(errors).toEqual([]);
 });
 
+test('demo opens separately, offers installation guidance, and rechecks availability', async ({
+  context,
+  page,
+}, info) => {
+  await serveSite(context);
+  await page.goto(origin + prefix);
+  const links = page.locator('a[href="./demo/"]');
+  await expect(links).toHaveCount(2);
+  for (const link of await links.all()) {
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  }
+  const [demo] = await Promise.all([
+    context.waitForEvent('page'),
+    page.getByRole('link', { name: 'Try it on a demo form', exact: true }).click(),
+  ]);
+  await expect(demo).toHaveURL(origin + prefix + 'demo/');
+  expect(await demo.evaluate(() => window.opener === null)).toBe(true);
+  await expect(page).toHaveURL(origin + prefix);
+  const notice = demo.locator('#job-buddy-setup');
+  await expect(notice).toHaveAttribute('data-status', 'not-detected');
+  await expect(notice).toBeVisible();
+  await expect(notice.getByRole('link', { name: 'Add to Chrome' })).toHaveAttribute(
+    'href',
+    'https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk',
+  );
+  await demo.getByLabel('First name', { exact: false }).fill('Sample');
+  await expect(demo.getByLabel('First name', { exact: false })).toHaveValue('Sample');
+  await notice.screenshot({ path: info.outputPath('installation-guidance.png') });
+  // Ignore a response to an earlier/different request.
+  await demo.evaluate(() =>
+    window.postMessage(
+      {
+        channel: 'job-buddy-demo',
+        type: 'presence-response',
+        requestId: 'stale',
+      },
+      location.origin,
+    ),
+  );
+  await expect(notice).toBeVisible();
+  // Simulate a late extension injection after the initial detection timed out.
+  await demo.evaluate(() => {
+    const reply = (event: MessageEvent) => {
+      if (event.data?.type !== 'presence-request') return;
+      window.removeEventListener('message', reply);
+      window.postMessage(
+        {
+          channel: 'job-buddy-demo',
+          type: 'presence-response',
+          requestId: event.data.requestId,
+        },
+        location.origin,
+      );
+    };
+    window.addEventListener('message', reply);
+    window.postMessage({ channel: 'job-buddy-demo', type: 'presence-ready' }, location.origin);
+  });
+  await expect(notice).toHaveAttribute('data-status', 'detected');
+  await expect(notice).toBeHidden();
+  await demo.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await expect(notice).toHaveAttribute('data-status', 'not-detected');
+  await expect(notice).toBeVisible();
+  await demo.close();
+});
+
 for (const density of [1, 2, 3]) {
   test.describe(`screenshot clarity at ${density}× density`, () => {
     test.use({ deviceScaleFactor: density });
@@ -154,6 +220,7 @@ for (const theme of ['light', 'dark'] as const) {
       for (const width of [320, 390, 768, 1024, 1440]) {
         await page.setViewportSize({ width, height: 1000 });
         await page.goto(origin + prefix + path);
+        if (path === 'demo/') await expect(page.locator('#job-buddy-setup')).toBeVisible();
         await expect(page.locator('html')).toHaveClass(theme === 'dark' ? 'dark' : '');
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),

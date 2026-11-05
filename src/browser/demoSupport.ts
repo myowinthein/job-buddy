@@ -6,7 +6,7 @@ import { calculateDerivedFields } from '../utils/derivedFields';
 import type { Profile } from '../types/profile';
 import type { AIFieldPayload } from '../resume-ai/types';
 
-export const publicURL = 'http://demo.example.test/demo/';
+export const publicURL = 'https://myowinthein.github.io/job-buddy/demo/';
 export const sample = JSON.parse(
   await readFile(resolve('src/browser/fixtures/demo-profile.json'), 'utf8'),
 ) as { profile: Profile };
@@ -16,10 +16,10 @@ sample.profile.derived = calculateDerivedFields(sample.profile);
 export async function serveDemo(context: BrowserContext) {
   const files: Map<string, { body: Buffer; contentType: string }> = new Map(
     await Promise.all(
-      ['index.html', 'style.css', 'demo.js'].map(
+      ['index.html', 'style.css', 'demo.js', 'presence.js'].map(
         async (name) =>
           [
-            `/demo/${name === 'index.html' ? '' : name}`,
+            `/job-buddy/demo/${name === 'index.html' ? '' : name}`,
             {
               body: await readFile(resolve('docs/demo', name)),
               contentType: name.endsWith('.html')
@@ -34,15 +34,17 @@ export async function serveDemo(context: BrowserContext) {
       ),
     ),
   );
-  await context.route(/http:\/\/(?:demo\.example\.test|127\.0\.0\.1)\/demo\//, (route) => {
+  await context.route(`${publicURL}**`, (route) => {
     const file = files.get(new URL(route.request().url()).pathname);
     return route.fulfill(file ?? { status: 404, body: 'Not found' });
   });
-  await context.route('http://demo.example.test/assets/theme-init.js', async (route) =>
-    route.fulfill({
-      contentType: 'application/javascript',
-      body: await readFile(resolve('docs/assets/theme-init.js'), 'utf8'),
-    }),
+  await context.route(
+    'https://myowinthein.github.io/job-buddy/assets/theme-init.js',
+    async (route) =>
+      route.fulfill({
+        contentType: 'application/javascript',
+        body: await readFile(resolve('docs/assets/theme-init.js'), 'utf8'),
+      }),
   );
   // Keep capture and integration tests reproducible without a real API key.
   // The production matching, writing, feedback, and Undo code still runs.

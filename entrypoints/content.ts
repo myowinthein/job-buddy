@@ -9,6 +9,7 @@ import {
 } from '@/src/autofill/index';
 import { installQuickFill } from '@/src/quick-fill/content';
 import { getGeminiSettings } from '@/src/utils/storage';
+import { installDemoPresence } from '@/src/demo/presence';
 
 // Check fresh settings in each frame before an explicit scan or fill. Undo and
 // previous results remain available after a key is removed.
@@ -54,6 +55,7 @@ export default defineContentScript({
     const g = globalThis as unknown as { __jobBuddyInjected?: boolean };
     if (g.__jobBuddyInjected) return;
     g.__jobBuddyInjected = true;
+    installDemoPresence();
     installQuickFill();
 
     // Retries after a worker restart must reuse the same scan and fill, never

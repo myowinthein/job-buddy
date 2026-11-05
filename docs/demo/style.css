@@ -124,6 +124,31 @@ button {
 .job-description {
   padding-top: 4px;
 }
+.setup-notice {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 28px;
+  font-size: 13px;
+}
+.setup-notice strong {
+  display: block;
+  color: var(--ink);
+}
+.setup-notice p {
+  color: var(--muted);
+  margin: 4px 0 12px;
+}
+.setup-notice a {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 7px 12px;
+  background: #394e9a;
+  color: white;
+  font-weight: 600;
+  text-decoration: none;
+}
 .team {
   margin: 0 0 12px;
   color: var(--accent);

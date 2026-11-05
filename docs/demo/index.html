@@ -15,6 +15,7 @@
     <script src="../assets/theme-init.js"></script>
     <link rel="stylesheet" href="style.css" />
     <script src="demo.js" defer></script>
+    <script src="presence.js" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#application">Skip to application</a>
@@ -76,6 +77,16 @@
         </p>
       </aside>
       <article class="application-panel" aria-labelledby="application-title">
+        <aside id="job-buddy-setup" class="setup-notice" role="status" hidden>
+          <strong>Try autofill with Job Buddy</strong>
+          <p>Install the extension, add your Gemini key and profile, then refresh this page.</p>
+          <a
+            href="https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Add to Chrome</a
+          >
+        </aside>
         <header class="form-heading">
           <p>Apply for this role</p>
           <h2 id="application-title">Tell us about yourself</h2>
