@@ -132,7 +132,25 @@ test('selects all sites by default and supports searchable multi-selection', asy
   await expect(
     secondSite.getByRole('heading', { name: 'other.example.test (1)', exact: true }),
   ).toBeVisible();
+  const firstToggle = firstSite.getByRole('button', { name: 'jobs.example.test (5)' });
+  const secondToggle = secondSite.getByRole('button', { name: 'other.example.test (1)' });
+  await expect(firstToggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(secondToggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(secondSite.getByRole('region')).toHaveCount(0);
+  await dialog.getByLabel('Action for Location preference').selectOption('inactive');
+  await firstToggle.click();
+  await expect(firstSite.getByRole('region')).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Apply Changes (1)' })).toBeEnabled();
+  await secondToggle.focus();
+  await secondToggle.press('Space');
   await expect(secondSite.getByRole('region')).toHaveCount(1);
+  await dialog.getByLabel('Action for City').selectOption('inactive');
+  await expect(firstToggle).toHaveAttribute('aria-expanded', 'false');
+  await firstToggle.focus();
+  await firstToggle.press('Enter');
+  await expect(firstSite.getByLabel('Action for Location preference')).toHaveValue('inactive');
+  await expect(secondToggle).toHaveAttribute('aria-expanded', 'true');
+  await dialog.getByLabel('Action for City').selectOption('keep');
   await options.setViewportSize({ width: 1200, height: 1000 });
   await options.screenshot({ path: info.outputPath('mapping-sites-dark.png') });
   await options.setViewportSize({ width: 620, height: 800 });
@@ -384,6 +402,71 @@ test('retains completed batches when stopped and starts a fresh review on every 
   await dialog.getByRole('button', { name: 'Review Mappings', exact: true }).click();
   await expect.poll(() => calls).toBe(6);
   await expect(dialog).toContainText('Reviewed 25 of 25 mappings.');
+});
+
+test('paginates within sites and applies choices from collapsed sites', async ({
+  context,
+  extension,
+}) => {
+  const many = Object.fromEntries(
+    Array.from({ length: 21 }, (_, index) => [
+      `q${index}`,
+      {
+        path: 'personal.email',
+        count: 1,
+        label: `Email address ${index}`,
+        question: `Email address ${index}`,
+      },
+    ]),
+  );
+  await extension.worker.evaluate(async (data) => {
+    await chrome.storage.local.set({
+      learnedMappings: {
+        'batch.test': data,
+        'other.test': { city: { path: 'address.city', count: 1, label: 'City', question: 'City' } },
+      },
+    });
+  }, many);
+  await context.route('https://generativelanguage.googleapis.com/**', async (route) => {
+    const prompt = route.request().postDataJSON().contents[0].parts[0].text as string;
+    const payload = JSON.parse(prompt.slice(prompt.lastIndexOf('\n') + 1));
+    const answers = payload.mappings.map((item: { id: string }) => ({
+      id: item.id,
+      verdict: 'uncertain',
+      path: null,
+      reason: 'Review the saved field.',
+    }));
+    await route.fulfill({
+      json: { candidates: [{ content: { parts: [{ text: JSON.stringify(answers) }] } }] },
+    });
+  });
+  const options = await context.newPage();
+  await options.goto(new URL('options.html', extension.worker.url()).href);
+  const dialog = await open(options);
+  await dialog.getByRole('button', { name: 'Review Mappings', exact: true }).click();
+  await expect(dialog).toContainText('Reviewed 22 of 22 mappings.');
+  const firstSite = dialog.getByRole('group', { name: 'Findings for batch.test' });
+  const secondSite = dialog.getByRole('group', { name: 'Findings for other.test' });
+  await expect(firstSite.getByRole('region')).toHaveCount(20);
+  await expect(secondSite.getByRole('button', { name: 'other.test (1)' })).toBeVisible();
+  await expect(secondSite.getByRole('region')).toHaveCount(0);
+  await firstSite.getByRole('button', { name: 'Show 1 more' }).click();
+  await expect(firstSite.getByRole('region')).toHaveCount(21);
+  await firstSite.getByRole('region').first().getByRole('combobox').selectOption('inactive');
+  await firstSite.getByRole('button', { name: 'batch.test (21)' }).click();
+  await secondSite.getByRole('button', { name: 'other.test (1)' }).click();
+  await secondSite.getByLabel('Action for City').selectOption('inactive');
+  await secondSite.getByRole('button', { name: 'other.test (1)' }).click();
+  await expect(dialog.getByRole('region')).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Apply Changes (2)' }).click();
+  await expect(dialog).toHaveCount(0);
+  const saved = (await extension.worker.evaluate(
+    async () => (await chrome.storage.local.get('learnedMappings')).learnedMappings,
+  )) as LearnedMappings;
+  expect(
+    Object.values(saved['batch.test']).filter((item) => typeof item !== 'string' && item.inactive),
+  ).toHaveLength(1);
+  expect(saved['other.test'].city).toMatchObject({ inactive: true });
 });
 
 test('blocks stale review decisions after profile or mapping edits', async ({

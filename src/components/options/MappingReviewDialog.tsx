@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { LoaderCircle, Sparkles } from 'lucide-react';
+import { ChevronRight, LoaderCircle, Sparkles } from 'lucide-react';
 import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings } from '@/src/types/storage';
 import { getGeminiSettings } from '@/src/utils/storage';
@@ -60,7 +60,9 @@ export function MappingReviewDialog({
   const [hasKey, setHasKey] = useState(false);
   const [selectedSites, setSelectedSites] = useState<Set<string> | null>(null);
   const [statusFilter, setStatusFilter] = useState<keyof typeof verdictLabels | null>(null);
-  const [limit, setLimit] = useState(20);
+  const [siteViews, setSiteViews] = useState<Record<string, { expanded: boolean; limit: number }>>(
+    {},
+  );
   const [results, setResults] = useState<Record<string, MappingAssessment>>({});
   const [decisions, setDecisions] = useState<Record<string, MappingReviewDecision>>({});
   const [working, setWorking] = useState(false);
@@ -96,15 +98,11 @@ export function MappingReviewDialog({
   const activeStatus =
     statusOptions.find((option) => option.value === statusFilter)?.value ?? statusOptions[0]?.value;
   const shown = attention.filter((item) => results[item.id].verdict === activeStatus);
-  const findingSites = new Map<string, { count: number; items: typeof shown }>();
-  for (const [index, item] of shown.entries()) {
-    let group = findingSites.get(item.domain);
-    if (!group) {
-      group = { count: 0, items: [] };
-      findingSites.set(item.domain, group);
-    }
-    group.count++;
-    if (index < limit) group.items.push(item);
+  const findingSites = new Map<string, typeof shown>();
+  for (const item of shown) {
+    const group = findingSites.get(item.domain) ?? [];
+    group.push(item);
+    findingSites.set(item.domain, group);
   }
   const changes = scoped.filter((item) => {
     const choice = decisions[item.id];
@@ -186,6 +184,7 @@ export function MappingReviewDialog({
     abortRef.current = controller;
     setWorking(true);
     setStatusFilter(null);
+    setSiteViews({});
     setError(null);
     setWarning(null);
     try {
@@ -205,7 +204,6 @@ export function MappingReviewDialog({
       setDecisions((current) =>
         Object.fromEntries(Object.entries(current).filter(([id]) => !selectedIds.has(id))),
       );
-      setLimit(20);
       const accept = async (assessments: MappingAssessment[], usedModel: string) => {
         if (!live.current) return;
         setResults((current) => ({
@@ -341,7 +339,7 @@ export function MappingReviewDialog({
                       onChange={(selected) => {
                         setSelectedSites(selected);
                         setStatusFilter(null);
-                        setLimit(20);
+                        setSiteViews({});
                       }}
                     />
                     <button
@@ -416,10 +414,7 @@ export function MappingReviewDialog({
                         key={option.value}
                         type="button"
                         aria-pressed={activeStatus === option.value}
-                        onClick={() => {
-                          setStatusFilter(option.value);
-                          setLimit(20);
-                        }}
+                        onClick={() => setStatusFilter(option.value)}
                         className={`rounded-sm py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${activeStatus === option.value ? 'font-medium text-blue-600 dark:text-blue-400' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
                       >
                         {option.label} ({option.count})
@@ -463,108 +458,139 @@ export function MappingReviewDialog({
                 </p>
               )}
               <div>
-                {[...findingSites]
-                  .filter(([, group]) => group.items.length > 0)
-                  .map(([domain, group]) => (
+                {[...findingSites].map(([domain, group], siteIndex) => {
+                  const siteKey = `${activeStatus}:${domain}`;
+                  const view = siteViews[siteKey];
+                  const expanded = view?.expanded ?? siteIndex === 0;
+                  const siteLimit = view?.limit ?? 20;
+                  const panelId = `${titleId}-${activeStatus}-site-${siteIndex}`;
+                  return (
                     <div
-                      key={domain}
+                      key={siteKey}
                       role="group"
                       aria-label={`Findings for ${domain}`}
                       className="border-t border-gray-200 py-4 first:border-t-0 dark:border-gray-700"
                     >
-                      <h4 className="mb-3 flex items-baseline gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                        <span className="min-w-0 break-all">{domain}</span>
-                        <span className="shrink-0 font-normal text-gray-500 dark:text-gray-400">
-                          ({group.count})
-                        </span>
+                      <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                        <button
+                          type="button"
+                          aria-expanded={expanded}
+                          aria-controls={panelId}
+                          onClick={() =>
+                            setSiteViews((current) => ({
+                              ...current,
+                              [siteKey]: { expanded: !expanded, limit: siteLimit },
+                            }))
+                          }
+                          className="flex w-full items-center gap-2 rounded-sm py-1 text-left hover:text-blue-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:hover:text-blue-400"
+                        >
+                          <ChevronRight
+                            size={16}
+                            aria-hidden="true"
+                            className={`shrink-0 ${expanded ? 'rotate-90' : ''}`}
+                          />
+                          <span className="min-w-0 break-all">{domain}</span>
+                          <span className="shrink-0 font-normal text-gray-500 dark:text-gray-400">
+                            ({group.length})
+                          </span>
+                        </button>
                       </h4>
-                      <div className="space-y-4">
-                        {group.items.map((item) => {
-                          const assessment = results[item.id];
-                          const choice = decisions[item.id] ?? { action: 'keep' as const };
-                          return (
-                            <section key={item.id} aria-label={`Review ${item.title}`}>
-                              <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_15rem] md:gap-5">
-                                <div className="min-w-0">
-                                  <h5 className="break-words text-sm font-medium text-gray-900 dark:text-gray-100">
-                                    {item.question || item.title}
-                                  </h5>
-                                  <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
-                                    <dt className="text-gray-500 dark:text-gray-400">Current</dt>
-                                    <dd className="min-w-0 break-words text-gray-600 dark:text-gray-300">
-                                      {mappingDestination(item.path, labels)}
-                                      {item.status === 'Inactive' ? ' (Inactive)' : ''}
-                                    </dd>
-                                    {assessment.verdict === 'change' && (
-                                      <>
-                                        <dt className="text-gray-500 dark:text-gray-400">
-                                          Suggested
-                                        </dt>
-                                        <dd className="min-w-0 break-words text-gray-900 dark:text-gray-100">
-                                          {mappingDestination(assessment.path!, labels)}
-                                        </dd>
-                                      </>
-                                    )}
-                                  </dl>
-                                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                    {assessment.reason}
-                                  </p>
-                                </div>
-                                <div className="flex min-w-0 flex-col gap-2">
-                                  <select
-                                    aria-label={`Action for ${item.title}`}
-                                    className={fieldCls()}
-                                    value={choice.action}
-                                    disabled={working || applying || stale}
-                                    onChange={(event) =>
-                                      setDecisions((current) => ({
-                                        ...current,
-                                        [item.id]:
-                                          event.target.value === 'change'
-                                            ? {
-                                                action: 'change',
-                                                path: assessment.path ?? item.path,
-                                              }
-                                            : { action: event.target.value as 'keep' | 'inactive' },
-                                      }))
-                                    }
-                                  >
-                                    <option value="keep">Keep current</option>
-                                    <option value="change">Change field</option>
-                                    <option value="inactive">Make inactive</option>
-                                  </select>
-                                  {choice.action === 'change' && (
-                                    <SearchableProfileFieldSelect
-                                      profile={profile}
-                                      includeEmpty
-                                      value={choice.path}
+                      <div id={panelId} hidden={!expanded} className="mt-3 space-y-4">
+                        {expanded &&
+                          group.slice(0, siteLimit).map((item) => {
+                            const assessment = results[item.id];
+                            const choice = decisions[item.id] ?? { action: 'keep' as const };
+                            return (
+                              <section key={item.id} aria-label={`Review ${item.title}`}>
+                                <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_15rem] md:gap-5">
+                                  <div className="min-w-0">
+                                    <h5 className="break-words text-sm font-medium text-gray-900 dark:text-gray-100">
+                                      {item.question || item.title}
+                                    </h5>
+                                    <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
+                                      <dt className="text-gray-500 dark:text-gray-400">Current</dt>
+                                      <dd className="min-w-0 break-words text-gray-600 dark:text-gray-300">
+                                        {mappingDestination(item.path, labels)}
+                                        {item.status === 'Inactive' ? ' (Inactive)' : ''}
+                                      </dd>
+                                      {assessment.verdict === 'change' && (
+                                        <>
+                                          <dt className="text-gray-500 dark:text-gray-400">
+                                            Suggested
+                                          </dt>
+                                          <dd className="min-w-0 break-words text-gray-900 dark:text-gray-100">
+                                            {mappingDestination(assessment.path!, labels)}
+                                          </dd>
+                                        </>
+                                      )}
+                                    </dl>
+                                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                      {assessment.reason}
+                                    </p>
+                                  </div>
+                                  <div className="flex min-w-0 flex-col gap-2">
+                                    <select
+                                      aria-label={`Action for ${item.title}`}
+                                      className={fieldCls()}
+                                      value={choice.action}
                                       disabled={working || applying || stale}
-                                      onChange={(path) =>
+                                      onChange={(event) =>
                                         setDecisions((current) => ({
                                           ...current,
-                                          [item.id]: { action: 'change', path },
+                                          [item.id]:
+                                            event.target.value === 'change'
+                                              ? {
+                                                  action: 'change',
+                                                  path: assessment.path ?? item.path,
+                                                }
+                                              : {
+                                                  action: event.target.value as 'keep' | 'inactive',
+                                                },
                                         }))
                                       }
-                                    />
-                                  )}
+                                    >
+                                      <option value="keep">Keep current</option>
+                                      <option value="change">Change field</option>
+                                      <option value="inactive">Make inactive</option>
+                                    </select>
+                                    {choice.action === 'change' && (
+                                      <SearchableProfileFieldSelect
+                                        profile={profile}
+                                        includeEmpty
+                                        value={choice.path}
+                                        disabled={working || applying || stale}
+                                        onChange={(path) =>
+                                          setDecisions((current) => ({
+                                            ...current,
+                                            [item.id]: { action: 'change', path },
+                                          }))
+                                        }
+                                      />
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            </section>
-                          );
-                        })}
+                              </section>
+                            );
+                          })}
+                        {expanded && group.length > siteLimit && (
+                          <button
+                            type="button"
+                            className={secondary}
+                            onClick={() =>
+                              setSiteViews((current) => ({
+                                ...current,
+                                [siteKey]: { expanded: true, limit: siteLimit + 20 },
+                              }))
+                            }
+                          >
+                            Show {Math.min(20, group.length - siteLimit)} more
+                          </button>
+                        )}
                       </div>
                     </div>
-                  ))}
+                  );
+                })}
               </div>
-              {shown.length > limit && (
-                <button
-                  type="button"
-                  className={`${secondary} mt-3`}
-                  onClick={() => setLimit((current) => current + 20)}
-                >
-                  Show {Math.min(20, shown.length - limit)} more
-                </button>
-              )}
             </>
           )}
         </div>
