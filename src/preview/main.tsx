@@ -23,19 +23,19 @@ Object.defineProperty(window, 'chrome', {
   ),
 });
 
-const devTools = await import('@/src/devtools/bootstrap');
+const preview = await import('@/src/devtools/bootstrap');
 try {
-  devTools.initializeDevTools();
+  preview.initializeDevPreview();
 } catch {
   const root = document.getElementById('root');
   if (root) {
-    root.textContent = 'Could not start this simulation. ';
+    root.textContent = 'Could not load temporary data. ';
     const back = document.createElement('a');
-    back.href = `${location.pathname}?devTools=1`;
-    back.textContent = 'Return to Dev Tools';
+    back.href = location.pathname;
+    back.textContent = 'Use original data';
     root.append(back);
   }
-  throw new Error('Development simulation could not start.');
+  throw new Error('Temporary data could not load.');
 }
 const { createDevSurface } = await import('@/src/devtools/surface');
 window.__JB_DEV_SURFACE__ = createDevSurface();
@@ -58,8 +58,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <aside className="preview-notice" aria-label="Preview information">
           <strong>Preview · sample data</strong>
           <span>
-            {devTools.getSimulation()
-              ? 'Scenario data and appearance reset on refresh. Providers are simulated.'
+            {preview.getSimulation()
+              ? 'Temporary data and appearance reset on refresh. Providers are simulated.'
               : 'Profile changes reset on refresh. Appearance is remembered. Gemini and Google Drive are disabled.'}
           </span>
           <span>
@@ -83,6 +83,3 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </div>
   </React.StrictMode>,
 );
-
-const root = document.getElementById('root');
-if (root) devTools.startScenario(root);

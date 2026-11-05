@@ -3,9 +3,9 @@ import { wrapStorageArea } from '@/src/utils/storageArea';
 
 export const PREVIEW_SEED_PREFIX = 'jb:dev:quick-preview:';
 export const PROFILE_PRESETS = [
-  { id: 'empty', label: 'Empty', scenario: 'profile-empty' },
-  { id: 'required', label: 'Required only', scenario: 'profile-minimum' },
-  { id: 'complete', label: 'Complete', scenario: 'profile-complete' },
+  { id: 'empty', label: 'Empty' },
+  { id: 'required', label: 'Required only' },
+  { id: 'complete', label: 'Complete' },
 ] as const;
 export type PreviewPreset = (typeof PROFILE_PRESETS)[number]['id'] | 'saved';
 export interface QuickPreview {

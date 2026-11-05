@@ -28,11 +28,11 @@ it('replaces APIs before use and leaves the original storage and network untouch
   });
   const originalFetch = vi.fn();
   vi.stubGlobal('fetch', originalFetch);
-  history.replaceState(null, '', '?devScenario=profile-empty');
-  const { initializeDevTools, getSimulation } = await import('./bootstrap');
-  dispose = initializeDevTools();
+  history.replaceState(null, '', '?devPreview=empty');
+  const { initializeDevPreview, getSimulation } = await import('./bootstrap');
+  dispose = initializeDevPreview();
   expect(chrome.storage).not.toBe(original.storage);
-  expect(sessionStorage.getItem('jb:ui:section')).toBe('personal');
+  expect(sessionStorage.getItem('jb:ui:section')).toBeNull();
   await new Promise<void>((resolve) =>
     chrome.storage.local.set({ profile: { id: 'temporary-edit' } }, resolve),
   );
@@ -43,13 +43,15 @@ it('replaces APIs before use and leaves the original storage and network untouch
   getSimulation()?.dispose();
 });
 
-it('rejects unknown scenarios before installing any simulated APIs', async () => {
+it('ignores retired launcher URLs without changing storage or navigation', async () => {
   const original = createPreviewChrome();
   vi.stubGlobal('chrome', original);
-  history.replaceState(null, '', '?devScenario=unknown');
-  const { initializeDevTools } = await import('./bootstrap');
-  expect(initializeDevTools).toThrow('Unknown development scenario');
+  history.replaceState(null, '', '?devScenario=profile-empty&devTools=1');
+  const { initializeDevPreview, getSimulation } = await import('./bootstrap');
+  dispose = initializeDevPreview();
   expect(chrome).toBe(original);
+  expect(getSimulation()).toBeUndefined();
+  expect(sessionStorage.getItem('jb:ui:section')).toBeNull();
 });
 
 it('keeps the selected page when starting a required-only preview with a missing key', async () => {
@@ -57,8 +59,8 @@ it('keeps the selected page when starting a required-only preview with a missing
   vi.stubGlobal('chrome', original);
   sessionStorage.setItem('jb:ui:section', 'education');
   history.replaceState(null, '', '?devPreview=required&devNoKey=1&devDrive=1');
-  const { initializeDevTools } = await import('./bootstrap');
-  dispose = initializeDevTools();
+  const { initializeDevPreview } = await import('./bootstrap');
+  dispose = initializeDevPreview();
   expect(sessionStorage.getItem('jb:ui:section')).toBe('education');
   expect(globalThis.__JB_DEV_CONTEXT__?.quickPreview).toBe('required');
   const data = await new Promise<Record<string, unknown>>((resolve) =>
@@ -69,7 +71,7 @@ it('keeps the selected page when starting a required-only preview with a missing
   );
   expect(data.geminiApiKey).toBeUndefined();
   expect(data.driveToken).toBe('simulated-token');
-  expect((data.profile as { id: string }).id).toBe('dev-tools-sample');
+  expect((data.profile as { id: string }).id).toBe('dev-preview-sample');
   expect(chrome.storage).not.toBe(original.storage);
 });
 
@@ -77,8 +79,8 @@ it('does not mount a saved-profile preview without its isolated seed', async () 
   const original = createPreviewChrome({ id: 'original' });
   vi.stubGlobal('chrome', original);
   history.replaceState(null, '', '?devPreview=saved');
-  const { initializeDevTools } = await import('./bootstrap');
-  expect(initializeDevTools).toThrow('Saved profile preview is unavailable');
+  const { initializeDevPreview } = await import('./bootstrap');
+  expect(initializeDevPreview).toThrow('Saved profile preview is unavailable');
   expect(chrome).toBe(original);
 });
 
@@ -86,36 +88,9 @@ it('ignores simulation URLs in production', async () => {
   vi.stubEnv('DEV', false);
   const original = createPreviewChrome();
   vi.stubGlobal('chrome', original);
-  history.replaceState(null, '', '?devScenario=profile-empty');
-  const { initializeDevTools } = await import('./bootstrap');
-  initializeDevTools();
+  history.replaceState(null, '', '?devPreview=empty');
+  const { initializeDevPreview } = await import('./bootstrap');
+  initializeDevPreview();
   expect(chrome).toBe(original);
   expect(globalThis.__JB_DEV_CONTEXT__).toBeUndefined();
-});
-
-it('starts an automatic action once after its real control becomes enabled', async () => {
-  vi.stubGlobal('__JB_DEV_CONTEXT__', {
-    scenario: 'ai-checking',
-    id: 'instance',
-    extensionId: 'extension',
-    version: '1.0',
-  });
-  const root = document.createElement('div');
-  const button = document.createElement('button');
-  button.textContent = 'Check again';
-  button.disabled = true;
-  const clicked = vi.fn();
-  button.addEventListener('click', clicked);
-  root.append(button);
-  document.body.append(root);
-  const { startScenario } = await import('./bootstrap');
-  startScenario(root);
-  expect(clicked).not.toHaveBeenCalled();
-  button.disabled = false;
-  await Promise.resolve();
-  expect(clicked).toHaveBeenCalledOnce();
-  button.disabled = true;
-  button.disabled = false;
-  await Promise.resolve();
-  expect(clicked).toHaveBeenCalledOnce();
 });

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DevSimulation } from './simulation';
-import { profilePreset, scenarioById, SCENARIOS, sampleResumeText } from './scenarios';
+import { IntegrationSimulation as DevSimulation } from '@/src/testing/integrationSimulation';
+import { profilePreset } from './profilePresets';
+import { sampleResumeText } from '@/src/testing/sampleResume';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import { getProfile, saveProfile, getDriveBackupState } from '@/src/utils/storage';
 import {
@@ -13,14 +14,11 @@ import { extractFromResume, checkApiKey, RESUME_REQUEST_TIMEOUT_MS } from '@/src
 import { resumeChanges, resumeFileChange } from '@/src/resume-ai/resumeImport';
 import { DEFAULT_GEMINI_MODEL } from '@/src/resume-ai/types';
 import { devContext, devLockName } from './context';
-import { inspectProfile, readDevSnapshot } from './inspect';
-import { clearDevEvents, getDevEvents, recordDevEvent } from './diagnostics';
 
 let simulation: DevSimulation;
 function start(id: string) {
-  simulation = new DevSimulation(scenarioById(id)!, 'test-extension', '1.0');
+  simulation = new DevSimulation(id, 'test-extension', '1.0');
   vi.stubGlobal('__JB_DEV_CONTEXT__', {
-    scenario: id,
     id: 'test-instance',
     extensionId: 'test-extension',
     version: '1.0',
@@ -31,7 +29,6 @@ function start(id: string) {
 }
 beforeEach(() => {
   vi.stubEnv('DEV', true);
-  clearDevEvents();
 });
 afterEach(() => {
   simulation?.dispose();
@@ -64,10 +61,9 @@ describe('development isolation', () => {
     expect(chrome.runtime.lastError).toBeUndefined();
   });
   it('uses distinct valid preset states and a real PDF structure', () => {
-    expect(new Set(SCENARIOS.map((scenario) => scenario.id)).size).toBe(SCENARIOS.length);
-    expect(calculateCompletion(profilePreset('profile-empty')).percentage).toBe(0);
-    expect(calculateCompletion(profilePreset('profile-minimum')).percentage).toBe(100);
-    expect(calculateCompletion(profilePreset('profile-complete')).percentage).toBe(100);
+    expect(calculateCompletion(profilePreset('empty')).percentage).toBe(0);
+    expect(calculateCompletion(profilePreset('required')).percentage).toBe(100);
+    expect(calculateCompletion(profilePreset('complete')).percentage).toBe(100);
     expect(sampleResumeText()).toContain('xref');
     expect(sampleResumeText()).toMatch(/^%PDF-1.4/);
   });
@@ -125,7 +121,6 @@ describe('actual Gemini flows with fake responses', () => {
     expect(result.personal?.firstName).toBe('Jane');
     expect(attempts).toHaveBeenCalledTimes(2);
     expect(attempts.mock.calls[1][0].reason).toBe(id === 'ai-quota' ? 'rate_limit' : 'unavailable');
-    expect(simulation.lastResponseText).toContain('Jane');
   });
   it('rejects malformed responses through the real schema validator', async () => {
     start('resume-malformed');
@@ -188,46 +183,6 @@ describe('actual Drive flows with an in-memory remote', () => {
     await instance.fireAlarm('jb:drive-backup-retry');
     expect(instance.backup?.profile).toEqual(await getProfile());
     expect((await getDriveBackupState()).pendingSync).toBe(false);
-  });
-});
-
-describe('inspection and diagnostics', () => {
-  it('keeps malformed stored data inspectable without calculating a misleading completion value', async () => {
-    start('workspace');
-    await new Promise<void>((resolve) =>
-      chrome.storage.local.set(
-        { profile: { personal: { firstName: 42 }, documents: { cv: { file: 'invalid' } } } },
-        resolve,
-      ),
-    );
-    const snapshot = await readDevSnapshot();
-    expect(snapshot.completion).toBeNull();
-    expect(snapshot.profile.personal?.firstName).toBe(42);
-  });
-  it('omits credentials and bytes without mutating the stored profile', async () => {
-    start('resume-identical');
-    const profile = (await getProfile())!;
-    const redacted = inspectProfile({ ...profile, geminiApiKey: 'private', driveToken: 'private' });
-    expect(redacted.documents?.cv.file).not.toHaveProperty('base64');
-    expect(profile.documents.cv.file?.base64).toMatch(/^data:/);
-    const snapshot = await readDevSnapshot();
-    expect(JSON.stringify(snapshot)).not.toContain('simulated-key');
-    expect(JSON.stringify(snapshot)).not.toContain('simulated-token');
-    expect(JSON.stringify(snapshot)).not.toContain('data:application/pdf');
-    expect(snapshot.completion?.percentage).toBe(100);
-  });
-  it('logs allowlisted fields only', () => {
-    recordDevEvent({
-      operation: 'storage',
-      keys: ['profile', 'geminiApiKey', 'driveToken'],
-      model: 'secret key',
-      status: 200,
-      durationMs: 15,
-      ...{ body: 'private PDF bytes', token: 'secret' },
-    });
-    const log = JSON.stringify(getDevEvents());
-    expect(log).toContain('profile');
-    expect(log).not.toMatch(/geminiApiKey|driveToken|private|secret|body/);
   });
 });
 

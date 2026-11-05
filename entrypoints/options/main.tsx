@@ -9,17 +9,17 @@ import './style.css';
   // import.meta.env.DEV directly — swap it at runtime instead, same amber
   // vs. blue distinction as the in-app logo.
   document.querySelector<HTMLLinkElement>('link[rel="icon"]')?.setAttribute('href', LOGO_ICON_SRC);
-  const devTools = import.meta.env.DEV ? await import('@/src/devtools/bootstrap') : null;
+  const preview = import.meta.env.DEV ? await import('@/src/devtools/bootstrap') : null;
   // Fail closed if simulation setup fails: never mount a live App under a simulation URL.
   try {
-    devTools?.initializeDevTools();
+    preview?.initializeDevPreview();
   } catch {
     const root = document.getElementById('root');
     if (root) {
-      root.textContent = 'Could not start this simulation. ';
+      root.textContent = 'Could not load temporary data. ';
       const back = document.createElement('a');
-      back.href = `${location.pathname}?devTools=1`;
-      back.textContent = 'Return to Dev Tools';
+      back.href = location.pathname;
+      back.textContent = 'Use original data';
       root.append(back);
     }
     return;
@@ -47,6 +47,4 @@ import './style.css';
       </ToastProvider>
     </React.StrictMode>,
   );
-  const root = document.getElementById('root');
-  if (root) devTools?.startScenario(root);
 })();

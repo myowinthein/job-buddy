@@ -94,12 +94,17 @@ test('the dev bar previews profiles and missing keys without changing saved exte
       { profile: DEV_PROFILE, model: DEFAULT_GEMINI_MODEL },
     );
     const page = await context.newPage();
+    // A tab that remembered the removed menu must recover to the profile editor.
+    await page.addInitScript(() => {
+      if (!sessionStorage.getItem('jb:ui:section'))
+        sessionStorage.setItem('jb:ui:section', 'devTools');
+    });
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(new URL('options.html', worker.url()).href);
     const bar = page.getByRole('complementary', { name: 'Development controls' });
     await expect(bar).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Dev Tools', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Dev Tools', exact: true })).toHaveCount(0);
     await expect(page.getByLabel('First Name', { exact: false })).toBeVisible();
     const original = await worker.evaluate(() =>
       chrome.storage.local.get([
@@ -222,8 +227,7 @@ test('the dev bar previews profiles and missing keys without changing saved exte
         ]),
       ),
     ).toEqual(original);
-    await app.getByRole('button', { name: 'Dev Tools', exact: true }).click();
-    await expect(app.getByRole('heading', { name: 'Dev Tools', exact: true })).toBeVisible();
+    await expect(app.getByRole('button', { name: 'Dev Tools', exact: true })).toHaveCount(0);
     expect(errors).toEqual([]);
   } finally {
     await context.close();

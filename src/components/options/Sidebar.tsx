@@ -1,6 +1,6 @@
 import { DevBadge } from '@/src/components/ui/DevBadge';
 import { useEffect, useState } from 'react';
-import { FileUp, Brain, Menu, Settings, Check, Minus, Sparkles, FlaskConical, ListChecks } from 'lucide-react';
+import { FileUp, Brain, Menu, Settings, Check, Minus, Sparkles, ListChecks } from 'lucide-react';
 import { LOGO_ICON_SRC } from '@/src/utils/branding';
 import { getGeminiSettings } from '@/src/utils/storage';
 
@@ -240,13 +240,6 @@ export function Sidebar({
             <span className="hidden sm:block text-sm font-medium truncate">Settings</span>
           )}
         </button>
-        {import.meta.env.DEV && (
-          <button type="button" onClick={() => onSelect('devTools')} title="Inspect data and run development scenarios." aria-label="Dev Tools" aria-current={activeSection === 'devTools' ? 'page' : undefined}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center sm:justify-start'} ${activeSection === 'devTools' ? 'bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
-            <FlaskConical aria-hidden="true" className="w-5 h-5 shrink-0" />
-            {!collapsed && <span className="hidden sm:block text-sm font-medium truncate">Dev Tools</span>}
-          </button>
-        )}
       </div>
     </aside>
   );

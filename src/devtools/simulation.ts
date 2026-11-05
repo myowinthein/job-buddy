@@ -3,8 +3,6 @@ import type { DriveBackupFile } from '@/src/types/storage';
 import { createPreviewChrome } from '@/src/preview/chrome';
 import { DEV_PROFILE } from '@/src/utils/devProfile';
 import { DEFAULT_GEMINI_MODEL } from '@/src/resume-ai/types';
-import { profilePreset, sampleResumeText, type Scenario } from './scenarios';
-import { recordDevEvent } from './diagnostics';
 
 const json = (data: unknown, status = 200, headers?: HeadersInit) =>
   new Response(JSON.stringify(data), {
@@ -33,16 +31,11 @@ export class DevSimulation {
   readonly chrome;
   backup: DriveBackupFile | null;
   extracted: Partial<Profile>;
-  readonly initialProfile: Partial<Profile>;
-  lastResponseText: string | null = null;
   private revision = 1;
-  private generations = 0;
-  private uploads = 0;
   private alarms = new Map<string, { when: number; timer: ReturnType<typeof setTimeout> }>();
   onAlarm?: (name: string) => Promise<void>;
 
   constructor(
-    readonly scenario: Scenario,
     extensionId: string,
     version: string,
     options: {
@@ -50,9 +43,10 @@ export class DevSimulation {
       initialData?: Record<string, unknown>;
       noKey?: boolean;
       driveConnected?: boolean;
+      failWrite?: (items: Record<string, unknown>) => string | undefined;
     } = {},
   ) {
-    const profile = options.profile ?? profilePreset(scenario.id);
+    const profile = options.profile ?? structuredClone(DEV_PROFILE);
     const sample = structuredClone(DEV_PROFILE);
     const {
       id: _id,
@@ -62,51 +56,13 @@ export class DevSimulation {
       ...extracted
     } = sample;
     this.extracted = extracted;
-    if (scenario.id === 'resume-conflicts') {
-      this.extracted.personal!.nickname = 'Jane from resume';
-      this.extracted.workHistory![0].description =
-        'A new achievement extracted from the sample resume.';
-    }
-    if (scenario.id === 'resume-missing') {
-      this.extracted.education![0].startDate = '';
-      this.extracted.workHistory = this.extracted.workHistory!.slice(0, 1);
-    }
-    if (scenario.id === 'resume-identical')
-      profile.documents = {
-        ...profile.documents,
-        cv: {
-          ...profile.documents?.cv,
-          file: {
-            name: 'sample-resume.pdf',
-            size: sampleResumeText().length,
-            base64: `data:application/pdf;base64,${btoa(sampleResumeText())}`,
-          },
-        },
-      };
-    this.initialProfile = structuredClone(profile);
-    const hasBackup = [
-      'drive-identical',
-      'drive-different',
-      'drive-pending',
-      'drive-reconnect',
-    ].includes(scenario.id);
-    this.backup = hasBackup
-      ? {
-          profile: structuredClone(profile) as Profile,
-          learnedMappings: {},
-          lastModified: new Date(Date.now() - 60_000).toISOString(),
-        }
-      : null;
-    if (scenario.id === 'drive-different')
-      this.backup!.profile.personal.nickname = 'From simulated Drive';
-    const connected =
-      options.driveConnected ??
-      ['drive-syncing', 'drive-pending', 'drive-reconnect', 'drive-failure'].includes(scenario.id);
+    this.backup = null;
+    const connected = options.driveConnected ?? false;
     const base = createPreviewChrome(profile, undefined, {
       initialData: {
         devProfileDisabled: true,
         geminiDevDisabled: true,
-        ...(scenario.id !== 'ai-no-key' && !options.noKey
+        ...(!options.noKey
           ? {
               geminiApiKey: 'simulated-key',
               geminiModel: DEFAULT_GEMINI_MODEL,
@@ -121,12 +77,11 @@ export class DevSimulation {
           ? {
               driveToken: 'simulated-token',
               driveBackupState: {
-                fileId: this.backup ? 'simulated-backup' : null,
-                lastSynced: this.backup?.lastModified ?? null,
-                pendingSync: scenario.id === 'drive-pending',
-                error: scenario.id === 'drive-reconnect' ? 'token_expired' : null,
-                tokenExpiresAt:
-                  Date.now() + (scenario.id === 'drive-reconnect' ? -1_000 : 3_600_000),
+                fileId: null,
+                lastSynced: null,
+                pendingSync: false,
+                error: null,
+                tokenExpiresAt: Date.now() + 3_600_000,
                 accountEmail: 'simulation@example.test',
                 oauthClientId: 'simulation-client',
               },
@@ -134,10 +89,7 @@ export class DevSimulation {
           : {}),
         ...options.initialData,
       },
-      failWrite: (items) =>
-        scenario.id === 'resume-save-failure' && 'profile' in items
-          ? 'Simulated storage write failure'
-          : undefined,
+      failWrite: options.failWrite,
     });
     this.chrome = {
       ...base,
@@ -145,7 +97,6 @@ export class DevSimulation {
       identity: {
         getRedirectURL: () => 'https://simulation.invalid/',
         launchWebAuthFlow: (_options: unknown, callback: (url?: string) => void) => {
-          recordDevEvent({ operation: 'oauth', status: 200 });
           queueMicrotask(() =>
             callback('https://simulation.invalid/#access_token=simulated-token&expires_in=3600'),
           );
@@ -163,7 +114,6 @@ export class DevSimulation {
               Math.max(1, info.when - Date.now()),
             ),
           });
-          if (name.includes('retry')) recordDevEvent({ operation: 'retry' });
         },
         clear: async (name: string) => this.clearAlarm(name),
       },
@@ -217,7 +167,6 @@ export class DevSimulation {
     const url = new URL(
       typeof input === 'string' || input instanceof URL ? String(input) : input.url,
     );
-    const start = performance.now();
     const response =
       url.hostname === 'generativelanguage.googleapis.com'
         ? await this.gemini(url, init)
@@ -228,50 +177,22 @@ export class DevSimulation {
             : (() => {
                 throw new Error('External requests are disabled in simulations.');
               })();
-    if (url.hostname !== 'generativelanguage.googleapis.com')
-      recordDevEvent({
-        operation:
-          url.hostname === 'oauth2.googleapis.com'
-            ? 'oauth'
-            : init.method === 'DELETE'
-              ? 'drive-delete'
-              : ['POST', 'PATCH'].includes(init.method ?? '')
-                ? 'drive-upload'
-                : 'drive-read',
-        status: response.status,
-        durationMs: performance.now() - start,
-      });
     return response;
   }
 
-  private async gemini(url: URL, init: RequestInit): Promise<Response> {
-    await delay(this.scenario.id === 'ai-checking' ? 3_000 : 300, init.signal);
-    if (this.scenario.id === 'ai-invalid')
-      return json({ error: { details: [{ reason: 'API_KEY_INVALID' }] } }, 400);
+  protected async gemini(url: URL, init: RequestInit): Promise<Response> {
+    await delay(300, init.signal);
     if (!url.pathname.includes(':generateContent'))
       return json({ models: [{ name: DEFAULT_GEMINI_MODEL }] });
     const body = JSON.parse(String(init.body ?? '{}'));
-    if (body.generationConfig?.maxOutputTokens === 1)
-      return json({ candidates: [{ content: { parts: [{ text: 'OK' }] } }] });
-    const attempt = ++this.generations;
-    if (attempt === 1 && this.scenario.id === 'ai-quota') return json({}, 429);
-    if (attempt === 1 && this.scenario.id === 'ai-unavailable') return json({}, 503);
-    if (attempt === 1 && this.scenario.id === 'ai-timeout') await delay(60_000, init.signal);
-    if (this.scenario.id === 'resume-cancel') await delay(12_000, init.signal);
     const text =
-      this.scenario.id === 'resume-malformed'
-        ? '{"education":"invalid"}'
-        : this.scenario.id === 'resume-not-resume'
-          ? JSON.stringify({ documentType: 'other' })
-          : JSON.stringify({
-              documentType: this.scenario.id === 'resume-uncertain' ? 'uncertain' : 'resume',
-              ...this.extracted,
-            });
-    this.lastResponseText = text;
+      body.generationConfig?.maxOutputTokens === 1
+        ? 'OK'
+        : JSON.stringify({ documentType: 'resume', ...this.extracted });
     return json({ candidates: [{ content: { parts: [{ text }] } }] });
   }
 
-  private async drive(url: URL, init: RequestInit): Promise<Response> {
+  protected async drive(url: URL, init: RequestInit): Promise<Response> {
     await delay(150, init.signal);
     const method = init.method ?? 'GET';
     if (url.pathname.endsWith('/about'))
@@ -281,9 +202,6 @@ export class DevSimulation {
       return new Response(null, { status: 204 });
     }
     if (url.pathname.includes('/upload/')) {
-      if (++this.uploads === 1 && this.scenario.id === 'drive-failure')
-        return json({ error: { message: 'Simulated service failure' } }, 503);
-      if (this.scenario.id === 'drive-syncing') await delay(10_000, init.signal);
       const body = String(init.body ?? '');
       const marker = 'Content-Type: application/json\r\n\r\n';
       const payload = body.includes(marker)

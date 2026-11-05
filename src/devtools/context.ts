@@ -1,5 +1,4 @@
 export interface DevContext {
-  scenario: string;
   id: string;
   extensionId: string;
   version: string;

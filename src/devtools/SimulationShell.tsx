@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { scenarioById } from './scenarios';
 import DevToolbar from './DevToolbar';
-import { createDevSurface, type DevSurface, type SurfaceState } from './surface';
+import { createDevSurface, type DevSurface } from './surface';
 import { cleanupPreviewSeeds } from './quickPreview';
 
 export default function SimulationShell({ children }: { children: ReactNode }) {
@@ -13,23 +12,19 @@ function DevelopmentShell({ children }: { children: ReactNode }) {
   const [surface, setSurface] = useState<DevSurface>(
     () => window.__JB_DEV_SURFACE__ ?? createDevSurface(),
   );
-  const [state, setState] = useState<SurfaceState>();
   const container = useRef<HTMLDivElement>(null);
   const currentFrame = useRef<HTMLIFrameElement | null>(null);
   const pendingCleanup = useRef<(() => void) | null>(null);
   const activeCleanup = useRef<(() => void) | null>(null);
   const [embedded, setEmbedded] = useState(false);
-  const context = state?.context;
-  const scenario = scenarioById(context?.scenario ?? null);
 
   useEffect(() => {
     let active = true;
     const refresh = () =>
       void surface
         .state()
-        .then((next) => {
+        .then(() => {
           if (!active) return;
-          setState(next);
           const child = currentFrame.current?.contentWindow;
           if (child) {
             const url = new URL(child.location.href);
@@ -134,28 +129,6 @@ function DevelopmentShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex flex-col h-screen">
       <DevToolbar surface={surface} onNavigate={navigate} />
-      {context && !context.quickPreview && (
-        <aside
-          aria-label="Development simulation"
-          className="relative z-[60] flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2 bg-amber-100 text-amber-950 dark:bg-amber-950 dark:text-amber-100 text-xs shrink-0"
-        >
-          <p>
-            <strong>Simulation active</strong>: {scenario?.label}. Changes stay in this tab.
-          </p>
-          <div className="flex gap-4">
-            <button
-              type="button"
-              className="underline underline-offset-2"
-              onClick={() => window.dispatchEvent(new Event('jb:dev:open-tools'))}
-            >
-              Dev Tools
-            </button>
-            <a className="underline underline-offset-2" href={`${location.pathname}?devTools=1`}>
-              Exit Simulation
-            </a>
-          </div>
-        </aside>
-      )}
       <div ref={container} className="relative flex-1 min-h-0 [&>div]:h-full">
         {!embedded && children}
       </div>

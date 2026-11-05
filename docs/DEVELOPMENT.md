@@ -79,10 +79,7 @@ Integration changes preserve edits. **Original** returns to saved extension data
 Temporary changes reset on refresh. Gemini and Drive are simulated. Popup and
 job-form data are unaffected.
 
-Development builds include **Dev Tools** in the sidebar for inspecting local JSON,
-completion checks, storage usage, and diagnostics. Scenarios use the real interface
-with temporary storage and simulated providers. **Exit Simulation** returns to
-live inspection. Production builds exclude these tools.
+The top bar is the development interface. Production builds exclude it.
 
 ## Project references
 

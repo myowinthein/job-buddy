@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import DevToolbar from './DevToolbar';
 import SimulationShell from './SimulationShell';
 import { DevSimulation } from './simulation';
-import { scenarioById } from './scenarios';
+import { profilePreset } from './profilePresets';
 import { getSimulation } from './bootstrap';
 import { createDevSurface } from './surface';
 import { getGeminiSettings, getProfile } from '@/src/utils/storage';
@@ -77,10 +77,9 @@ it('opens an isolated connected-Drive state from Original without copying creden
 });
 
 it('changes Drive state independently of profile edits, the API key, and its backup', async () => {
-  simulation = new DevSimulation(scenarioById('profile-complete')!, 'extension', '1.0');
+  simulation = new DevSimulation('extension', '1.0', { profile: profilePreset('complete') });
   vi.stubGlobal('chrome', simulation.chrome);
   vi.stubGlobal('__JB_DEV_CONTEXT__', {
-    scenario: 'profile-complete',
     quickPreview: 'complete',
     id: 'preview',
     extensionId: 'extension',
@@ -137,10 +136,9 @@ it('blocks rapid duplicate actions while a switch is pending', async () => {
 });
 
 it('toggles the simulated key while keeping profile edits and the selected model', async () => {
-  simulation = new DevSimulation(scenarioById('profile-complete')!, 'extension', '1.0');
+  simulation = new DevSimulation('extension', '1.0', { profile: profilePreset('complete') });
   vi.stubGlobal('chrome', simulation.chrome);
   vi.stubGlobal('__JB_DEV_CONTEXT__', {
-    scenario: 'profile-complete',
     quickPreview: 'complete',
     id: 'preview',
     extensionId: 'extension',

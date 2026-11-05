@@ -11,8 +11,7 @@ import {
   saveProfile,
   getLearnedMappings,
 } from '@/src/utils/storage';
-import { DevSimulation } from '@/src/devtools/simulation';
-import { scenarioById } from '@/src/devtools/scenarios';
+import { IntegrationSimulation as DevSimulation } from '@/src/testing/integrationSimulation';
 import { DEFAULT_GEMINI_MODEL } from '@/src/resume-ai/types';
 import { extractFromResume } from '@/src/resume-ai/gemini';
 
@@ -115,12 +114,11 @@ it.each(['update', 'replace'] as const)(
 
 function setupDrive(profile = incoming() as typeof DEV_PROFILE) {
   sessionStorage.setItem('jb:ui:section', 'settings');
-  simulation = new DevSimulation(scenarioById('drive-different')!, 'test-extension', '1.0');
+  simulation = new DevSimulation('drive-different', 'test-extension', '1.0');
   simulation.backup!.profile = profile;
   vi.stubGlobal('chrome', simulation.chrome);
   vi.stubGlobal('fetch', simulation.fetch.bind(simulation));
   vi.stubGlobal('__JB_DEV_CONTEXT__', {
-    scenario: 'drive-different',
     id: 'drive-import-test',
     extensionId: 'test-extension',
     version: '1.0',

@@ -1,5 +1,5 @@
 import { feedback } from '@/src/ui/feedback';
-import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { devContext } from '@/src/devtools/context';
 import type { Profile } from '@/src/types/profile';
 import type { ProfileUpdate } from '@/src/resume-ai/resumeImport';
@@ -33,8 +33,6 @@ import { FillLogPage } from '@/src/components/fill-log/FillLogPage';
 import { selectFillLog } from '@/src/fill-log/client';
 import { FILL_DETAILS_REQUEST, takeFillDetailsRequest, lastFillDetailsSource, sourceFromQuery, sourceTabId } from '@/src/fill-log/navigation';
 
-const DevToolsPage = import.meta.env.DEV ? lazy(() => import('@/src/devtools/DevToolsPage')) : null;
-
 type SectionId =
   | 'personal'
   | 'address'
@@ -48,13 +46,11 @@ type SectionId =
   | 'resume'
   | 'learnedMappings'
   | 'fillDetails'
-  | 'settings'
-  | 'devTools';
+  | 'settings';
 
 // Profile forms use 672px. Settings and lists use 1024px, and reports use 1152px.
 const SECTION_WIDTHS: Partial<Record<SectionId, string>> = {
   settings: 'max-w-5xl',
-  devTools: 'max-w-5xl',
   learnedMappings: 'max-w-5xl',
   fillDetails: 'max-w-6xl',
 };
@@ -68,13 +64,11 @@ const UI_SCROLL_KEY   = (section: SectionId) => `jb:ui:scroll:${section}`;
 const VALID_SECTIONS = new Set<SectionId>([
   'personal', 'address', 'salary', 'workAuthorization',
   'workHistory', 'education', 'languages', 'links', 'documents', 'resume', 'learnedMappings', 'fillDetails', 'settings',
-  ...(import.meta.env.DEV ? ['devTools' as const] : []),
 ]);
 
 function readSection(): SectionId {
   try {
     if (new URLSearchParams(location.search).get('section') === 'fillDetails') return 'fillDetails';
-    if (import.meta.env.DEV && new URLSearchParams(location.search).has('devTools')) return 'devTools';
     const s = sessionStorage.getItem(UI_SECTION_KEY) as SectionId | null;
     return s && VALID_SECTIONS.has(s) ? s : 'personal';
   } catch { return 'personal'; }
@@ -245,13 +239,6 @@ function App() {
   // Skips the "autofocus first empty input" effect that would otherwise fire
   // on the section switch below, then focuses the specific target field once
   // it renders (via the focusTarget effect).
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    const openTools = () => { navigateSection('devTools'); };
-    window.addEventListener('jb:dev:open-tools', openTools);
-    return () => window.removeEventListener('jb:dev:open-tools', openTools);
-  }, [navigateSection]);
-
   const navigateAndFocus = useCallback((section: SectionId, field?: string | CompletionTarget) => {
     if (!navigateSection(section)) return;
     if (section !== activeSection) skipAutoFocusRef.current = true;
@@ -446,12 +433,10 @@ function App() {
     try {
       await saveProfile(synced);
     } catch (err) {
-      if (import.meta.env.DEV) window.dispatchEvent(new CustomEvent('jb:dev:request', { detail: { operation: 'profile-save', status: 500, section: activeSection } }));
       console.error('[Job Buddy] Failed to save profile:', err);
       showToast('error', feedback.profileStorageSaveFailed);
       throw new ReportedSaveError(feedback.profileStorageSaveFailed);
     }
-    if (import.meta.env.DEV) window.dispatchEvent(new CustomEvent('jb:dev:request', { detail: { operation: 'profile-save', status: 200, section: activeSection } }));
     setProfile(synced);
     setSavedFeedbackAt(Date.now());
     // Fire-and-forget Drive sync. Never blocks the local save flow.
@@ -513,7 +498,6 @@ function App() {
         if (link) navigateAndFocus(link.section, { ...link.target, fallbackId: link.target.fallbackId ?? getSectionStartTarget(link.section)?.id });
       }} />;
       case 'fillDetails':       return <FillLogPage key={`fillDetails-${fillDetailsTabId}`} tabId={fillDetailsTabId} />;
-      case 'devTools': return DevToolsPage ? <Suspense fallback={<p>Loading development tools…</p>}><DevToolsPage onFocusField={handleFocusField} /></Suspense> : null;
       case 'settings':          return <SettingsSection key="settings" onImportComplete={handleImportComplete} onResetComplete={handleResetComplete} />;
     }
   };
