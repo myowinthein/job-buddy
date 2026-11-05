@@ -404,13 +404,18 @@ export function MappingReviewDialog({
                 </p>
               )}
               {!!attention.length && (
-                <div className="mt-5 space-y-6">
+                <div className="mt-5 space-y-4">
                   {[...findingSites].map(([domain, group]) => (
-                    <div key={domain} role="group" aria-label={`Findings for ${domain}`}>
-                      <h4 className="mb-3 break-all text-xs font-medium text-gray-500 dark:text-gray-400">
+                    <div
+                      key={domain}
+                      role="group"
+                      aria-label={`Findings for ${domain}`}
+                      className="rounded-xl border border-gray-200 dark:border-gray-700"
+                    >
+                      <h4 className="rounded-t-xl border-b border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold break-all text-gray-800 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-200">
                         {domain}
                       </h4>
-                      <div className="space-y-4">
+                      <div className="space-y-5 p-4">
                         {group.map((item) => {
                           const assessment = results[item.id];
                           const verdict = verdicts[assessment.verdict];
