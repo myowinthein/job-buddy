@@ -291,58 +291,13 @@ figure {
   max-width: 1440px;
   height: auto;
 }
-.demo-controls {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.demo-toggle {
-  border: 0;
-  padding: 5px 0;
-  background: none;
-  color: var(--link);
-  font-size: 13px;
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
 figcaption {
   margin-top: 11px;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.6;
 }
-.figure-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-.figure-toolbar span {
-  font-size: 13px;
-  color: var(--muted);
-}
-.segmented {
-  display: inline-flex;
-  padding: 3px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  gap: 2px;
-}
-.segmented button {
-  border: 0;
-  border-radius: 5px;
-  padding: 5px 12px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 13px;
-}
-.segmented [aria-pressed='true'] {
-  background: var(--soft);
-  color: var(--ink);
-}
+
 .chapter {
   padding: 67px 0;
   border-top: 1px solid var(--line);

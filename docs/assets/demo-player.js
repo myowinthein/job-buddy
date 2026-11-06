@@ -2,19 +2,13 @@
   const figure = document.querySelector('[data-demo-player]');
   if (!figure) return;
   const video = figure.querySelector('video');
-  const toggle = figure.querySelector('[data-demo-toggle]');
-  const group = figure.querySelector('[data-compare]');
-  const demoButton = group.querySelector('[data-show="demo"]');
-  const stillButton = group.querySelector('[data-show="after"]');
+  const videoPanel = figure.querySelector('[data-demo-video]');
+  const still = figure.querySelector('[data-demo-still]');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   let visible = false;
-  let wantsPlay = false;
-  const selected = () => !video.closest('[data-comparison]').hidden;
+  let failed = false;
+  let playbackRevision = 0;
 
-  function updateControls() {
-    toggle.hidden = !selected();
-    toggle.textContent = video.paused ? 'Play demo' : 'Pause demo';
-  }
   function setSource() {
     const dark = document.documentElement.classList.contains('dark');
     const source = dark ? video.dataset.dark : video.dataset.light;
@@ -25,9 +19,12 @@
     }
   }
   async function syncPlayback() {
-    if (!selected() || !visible || document.hidden || !wantsPlay) {
+    const revision = ++playbackRevision;
+    const showVideo = !motion.matches && !failed;
+    videoPanel.hidden = !showVideo;
+    still.hidden = showVideo;
+    if (!showVideo || !visible || document.hidden) {
       video.pause();
-      updateControls();
       return;
     }
     setSource();
@@ -35,28 +32,18 @@
     try {
       await video.play();
     } catch {
-      // A browser can require an explicit Play action even for muted video.
+      // Ignore superseded play requests, such as a theme change during loading.
+      if (revision !== playbackRevision) return;
+      failed = true;
+      void syncPlayback();
     }
-    updateControls();
   }
-  video.controls = false;
-  demoButton.hidden = false;
-  group.addEventListener('click', (event) => {
-    if (!event.target.closest('[data-show]')) return;
-    wantsPlay = selected();
-    if (wantsPlay) video.currentTime = 0;
-    void syncPlayback();
+  video.addEventListener('play', () => {
+    if (!visible || document.hidden || motion.matches || failed) video.pause();
   });
-  toggle.addEventListener('click', () => {
-    wantsPlay = video.paused;
-    void syncPlayback();
-  });
-  video.addEventListener('play', updateControls);
-  video.addEventListener('pause', updateControls);
   video.addEventListener('error', () => {
-    wantsPlay = false;
-    stillButton.click();
-    demoButton.hidden = true;
+    failed = true;
+    void syncPlayback();
   });
   new IntersectionObserver(([entry]) => {
     visible = entry.isIntersecting;
@@ -64,12 +51,9 @@
   }).observe(figure);
   document.addEventListener('visibilitychange', () => void syncPlayback());
   document.addEventListener('jb-theme-change', () => {
-    if (video.hasAttribute('src')) setSource();
+    if (video.hasAttribute('src') && !motion.matches && !failed) setSource();
     void syncPlayback();
   });
-  motion.addEventListener('change', () => {
-    if (motion.matches) stillButton.click();
-  });
-  if (!motion.matches) demoButton.click();
-  updateControls();
+  motion.addEventListener('change', () => void syncPlayback());
+  void syncPlayback();
 })();

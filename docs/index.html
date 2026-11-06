@@ -125,22 +125,11 @@
           <p class="intro-footnote">Free and open source, using your own Gemini key.</p>
         </div>
         <figure class="hero-figure" data-demo-player>
-          <div class="figure-toolbar">
-            <span>A fictional role. The real extension.</span>
-            <div class="demo-controls">
-              <div class="segmented" data-compare role="group" aria-label="Autofill demonstration">
-                <button type="button" data-show="demo" aria-pressed="false" hidden>Watch demo</button>
-                <button type="button" data-show="before" aria-pressed="false">Before autofill</button>
-                <button type="button" data-show="after" aria-pressed="true">After autofill</button>
-              </div>
-              <button class="demo-toggle" type="button" data-demo-toggle hidden>Play demo</button>
-            </div>
-          </div>
-          <div class="capture" data-comparison="demo" hidden>
+          <div class="capture" data-demo-video hidden>
             <video
               width="1440"
               height="1050"
-              controls
+              autoplay
               muted
               loop
               playsinline
@@ -152,34 +141,17 @@
               aria-label="An empty application form, followed by a cursor clicking Fill Form and Job Buddy entering sample profile details. The application is not submitted."
             ></video>
           </div>
-          <div class="capture" data-comparison="after">
-            <button type="button" data-enlarge aria-label="Enlarge filled demo form">
-              <img
-                src="./assets/screenshots/application-after-light.webp?v=1b5e16119adf"
-                data-light="./assets/screenshots/application-after-light.webp?v=1b5e16119adf"
-                data-dark="./assets/screenshots/application-after-dark.webp?v=295d6c912857"
-                alt="Job Buddy fills a fictional Morrow Studio application using sample profile data"
-                width="1440"
-                height="1050"
-                fetchpriority="high"
-              />
-            </button>
+          <div class="capture" data-demo-still>
+            <img
+              src="./assets/screenshots/application-after-light.webp?v=1b5e16119adf"
+              data-light="./assets/screenshots/application-after-light.webp?v=1b5e16119adf"
+              data-dark="./assets/screenshots/application-after-dark.webp?v=295d6c912857"
+              alt="Job Buddy fills a fictional Morrow Studio application using sample profile data"
+              width="1440"
+              height="1050"
+              fetchpriority="high"
+            />
           </div>
-          <div class="capture" data-comparison="before" hidden>
-            <button type="button" data-enlarge aria-label="Enlarge empty demo form">
-              <img
-                src="./assets/screenshots/application-before-light.webp?v=1f55fe599115"
-                data-light="./assets/screenshots/application-before-light.webp?v=1f55fe599115"
-                data-dark="./assets/screenshots/application-before-dark.webp?v=a1297809f723"
-                alt="The same Morrow Studio application before autofill"
-                width="1440"
-                height="1050"
-              />
-            </button>
-          </div>
-          <figcaption>
-            A real Fill Form action with fictional profile details. Nothing is submitted.
-          </figcaption>
         </figure>
         <section class="chapter" id="ai" aria-labelledby="ai-title">
           <div class="chapter-heading">

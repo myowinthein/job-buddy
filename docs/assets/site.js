@@ -63,20 +63,6 @@ dialog?.addEventListener('click', (event) => {
 });
 dialog?.addEventListener('close', () => lastTrigger?.focus());
 
-document.querySelectorAll('[data-compare]').forEach((group) => {
-  const figure = group.closest('figure');
-  group.querySelectorAll('button').forEach((button) => {
-    button.addEventListener('click', () => {
-      group
-        .querySelectorAll('button')
-        .forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
-      figure.querySelectorAll('[data-comparison]').forEach((panel) => {
-        panel.hidden = panel.dataset.comparison !== button.dataset.show;
-      });
-    });
-  });
-});
-
 document.querySelectorAll('[data-visual-tour]').forEach((tour) => {
   const controls = [...tour.querySelectorAll('[data-show-visual]')];
   const panels = [...tour.querySelectorAll('[data-visual-panel]')];

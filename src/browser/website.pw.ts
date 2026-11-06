@@ -42,15 +42,13 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     'Same details.Next application.',
   );
-  await page.getByRole('button', { name: 'Before autofill', exact: true }).click();
-  await expect(page.locator('[data-comparison="before"]')).toBeVisible();
-  await expect(page.locator('[data-comparison="after"]')).toBeHidden();
-  await page.getByRole('button', { name: 'Enlarge empty demo form', exact: true }).click();
+  const screenshot = page.getByRole('button', {
+    name: 'Enlarge screenshot: AI Features before adding a Gemini key', exact: true,
+  });
+  await screenshot.click();
   await expect(page.getByRole('dialog', { name: 'Screenshot viewer' })).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(
-    page.getByRole('button', { name: 'Enlarge empty demo form', exact: true }),
-  ).toBeFocused();
+  await expect(screenshot).toBeFocused();
   const geminiStates = page.getByRole('group', { name: 'Gemini setup screenshots' });
   await geminiStates.getByRole('button', { name: 'With a key', exact: true }).click();
   await expect(page.locator('#gemini-views-1')).toBeVisible();
@@ -65,7 +63,7 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   await expect(page.locator('html')).toHaveClass(mode ? '' : 'dark');
   await expect(themeToggle.locator(mode ? '.theme-moon' : '.theme-sun')).toBeVisible();
   await expect(themeToggle.locator(mode ? '.theme-sun' : '.theme-moon')).toBeHidden();
-  await expect(page.locator('[data-comparison="before"] img')).toHaveAttribute(
+  await expect(page.locator('#gemini-views-0 img')).toHaveAttribute(
     'src',
     mode ? /-light\.webp(?:\?v=[a-f0-9]+)?$/ : /-dark\.webp(?:\?v=[a-f0-9]+)?$/,
   );
@@ -153,7 +151,7 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   expect(errors).toEqual([]);
 });
 
-test('autofill recording plays, pauses, follows the theme, and stops offscreen', async ({
+test('autofill recording autoplays without controls, follows the theme, and stops offscreen', async ({
   context,
   page,
 }) => {
@@ -161,26 +159,18 @@ test('autofill recording plays, pauses, follows the theme, and stops offscreen',
   await page.goto(origin + prefix);
   const figure = page.locator('[data-demo-player]');
   const video = figure.locator('video');
+  await expect(figure.locator('button, figcaption, [data-compare]')).toHaveCount(0);
+  expect(await video.evaluate((el) => (el as HTMLVideoElement).controls)).toBe(false);
   await figure.scrollIntoViewIfNeeded();
   await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).videoWidth)).toBe(2880);
   await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(false);
-  await figure.getByRole('button', { name: 'Pause demo', exact: true }).click();
-  const stopped = await video.evaluate((el) => (el as HTMLVideoElement).currentTime);
-  await page.waitForTimeout(200);
-  expect(await video.evaluate((el) => (el as HTMLVideoElement).currentTime)).toBe(stopped);
-  await figure.getByRole('button', { name: 'Play demo', exact: true }).click();
-  await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(false);
+  await expect(figure.locator('[data-demo-still]')).toBeHidden();
   await page.getByRole('button', { name: /Switch to .* mode/ }).click();
   const dark = await page.locator('html').evaluate((el) => el.classList.contains('dark'));
   await expect(video).toHaveAttribute(
     'src',
     new RegExp(`autofill-${dark ? 'dark' : 'light'}\\.mp4`),
   );
-  await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(false);
-  await figure.getByRole('button', { name: 'Before autofill', exact: true }).click();
-  await expect(video).toBeHidden();
-  expect(await video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
-  await figure.getByRole('button', { name: 'Watch demo', exact: true }).click();
   await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(false);
   await page.locator('#profile').scrollIntoViewIfNeeded();
   await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
@@ -189,9 +179,10 @@ test('autofill recording plays, pauses, follows the theme, and stops offscreen',
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(video).toBeHidden();
   expect(await video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
+  await expect(figure.locator('[data-demo-still]')).toBeVisible();
 });
 
-test('reduced motion starts with a still and permits explicit playback', async ({
+test('reduced motion starts with a still and resumes autoplay when disabled', async ({
   context,
   page,
 }) => {
@@ -200,12 +191,12 @@ test('reduced motion starts with a still and permits explicit playback', async (
   await page.goto(origin + prefix);
   const figure = page.locator('[data-demo-player]');
   const video = figure.locator('video');
-  await expect(figure.locator('[data-comparison="after"]')).toBeVisible();
+  await figure.scrollIntoViewIfNeeded();
+  await expect(figure.locator('[data-demo-still]')).toBeVisible();
   expect(await video.getAttribute('src')).toBeNull();
-  await figure.getByRole('button', { name: 'Watch demo', exact: true }).click();
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(false);
-  await figure.getByRole('button', { name: 'Pause demo', exact: true }).click();
-  expect(await video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
+  await expect(figure.locator('[data-demo-still]')).toBeHidden();
 });
 
 test('an unavailable recording falls back to the completed still', async ({ context, page }) => {
@@ -214,8 +205,7 @@ test('an unavailable recording falls back to the completed still', async ({ cont
   await page.goto(origin + prefix);
   const figure = page.locator('[data-demo-player]');
   await figure.scrollIntoViewIfNeeded();
-  await expect(figure.getByRole('button', { name: 'Watch demo', exact: true })).toBeHidden();
-  await expect(figure.locator('[data-comparison="after"]')).toBeVisible();
+  await expect(figure.locator('[data-demo-still]')).toBeVisible();
   await expect(figure.locator('video')).toBeHidden();
 });
 
@@ -356,10 +346,6 @@ for (const density of [1, 2, 3]) {
         )
           await page.getByRole('button', { name: /Switch to .* mode/ }).click();
         for (const image of await page.locator('[data-enlarge] img').all()) {
-          const comparison = await image.evaluate(
-            (img) => img.closest<HTMLElement>('[data-comparison]')?.dataset.comparison,
-          );
-          if (comparison) await page.locator(`[data-compare] [data-show="${comparison}"]`).click();
           const panelId = await image.evaluate((img) => img.closest('[data-visual-panel]')?.id);
           if (panelId) await page.locator(`[aria-controls="${panelId}"]`).click();
           else if (!(await image.isVisible())) continue;
