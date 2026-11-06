@@ -81,7 +81,7 @@
         ><a href="#autofill">Fill a form</a><a href="#quick-fill">Use Quick Fill</a
         ><a href="#fill-details">Read fill details</a
         ><a href="#learned-mappings">Learn from corrections</a><a href="#backups">Import and export</a
-        ><a href="#drive">Connect Google Drive</a><a href="#your-data">Your data and reset</a>
+        ><a href="#drive">Connect Google Drive</a><a href="#your-data">Reset your data</a>
       </aside>
       <main id="main">
         <details class="mobile-contents">
@@ -93,7 +93,7 @@
             ><a href="#fill-details">Read fill details</a
             ><a href="#learned-mappings">Learn from corrections</a
             ><a href="#backups">Import and export</a><a href="#drive">Connect Google Drive</a
-            ><a href="#your-data">Your data and reset</a>
+            ><a href="#your-data">Reset your data</a>
           </nav>
         </details>
         <div class="intro" id="start">
@@ -1558,40 +1558,14 @@
         </section>
         <section class="chapter" id="your-data" aria-labelledby="your-data-title">
           <div class="chapter-heading">
-            <h2 id="your-data-title">Your data and reset</h2>
+            <h2 id="your-data-title">Reset your data</h2>
           </div>
 
           <p class="prose">
-            Free and open source, with no ads, analytics or Job Buddy backend. Your profile and
-            settings live in this browser.
+            <strong>Reset All Data</strong> clears your profile, documents, learned mappings and
+            settings from this browser. <a href="#backups">Export a backup</a> first if you want
+            to keep a copy.
           </p>
-          <dl class="data-ledger">
-            <div>
-              <dt>In this browser</dt>
-              <dd>
-                Profile, files, learned mappings, Gemini settings, appearance and Quick Fill
-                preferences.
-              </dd>
-            </div>
-            <div>
-              <dt>With Gemini</dt>
-              <dd>
-                Resume import sends the selected document and extracted links. Autofill sends
-                relevant questions and profile details, excluding stored document bytes; background
-                details are included only when asked. Mapping review sends questions and field
-                names.
-              </dd>
-            </div>
-            <div>
-              <dt>In your backups</dt>
-              <dd>
-                JSON and optional Drive backups include profile data, stored documents and learned
-                mappings. They exclude credentials, appearance, Quick Fill preferences and Fill
-                Details reports.
-              </dd>
-            </div>
-          </dl>
-          <h3>When you want to start over</h3>
           <div class="visual-tour side-tour" data-visual-tour style="--visual-width: 384px">
             <div class="visual-controls" data-visual-nav role="group" aria-label="Reset data screenshots">
               <button type="button" data-show-visual="reset-views-0" aria-controls="reset-views-0" aria-pressed="true">Without Drive</button>
@@ -1641,22 +1615,10 @@
             </div>
             <p class="visual-status" role="status" aria-live="polite" aria-atomic="true"></p>
           </div>
-          <p class="prose">Reset removes the Gemini key and disconnects Drive. A kept Drive copy can be restored
-              later; requested backup deletion must succeed before local reset continues.</p>
           <p class="prose">
-            Export a copy first if you want to keep your data. Google’s own service and data-use
-            terms apply when you use Gemini or Drive.
+            Reset removes the Gemini key and disconnects Drive. You can keep the Drive backup to
+            restore later or delete it during reset.
           </p>
-          <div class="intro-actions">
-            <a
-              class="button primary"
-              href="https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-describedby="new-tab-hint"
-              >Get Job Buddy&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="./assets/icons/external-link.svg#external-link" /></svg></a
-            ><a class="text-link" href="./developers/">See how it is built</a>
-          </div>
         </section>
       </main>
     </div>

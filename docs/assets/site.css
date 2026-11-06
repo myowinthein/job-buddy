@@ -964,32 +964,6 @@ pre code {
 .essential {
   margin-top: 24px;
 }
-.data-ledger {
-  margin: 25px 0 32px;
-}
-.data-ledger > div {
-  display: grid;
-  grid-template-columns: 170px minmax(0, 1fr);
-  gap: 24px;
-  padding: var(--divider-gap) 0;
-}
-.data-ledger > div + div {
-  border-top: 1px solid var(--line);
-}
-.data-ledger > div:first-child {
-  padding-top: 0;
-}
-.data-ledger > div:last-child {
-  padding-bottom: 0;
-}
-.data-ledger dt {
-  font-weight: 600;
-}
-.data-ledger dd {
-  margin: 0;
-  max-width: var(--reading-width);
-  color: var(--muted);
-}
 @media (max-width: 800px) {
   .walkthrough {
     --chapter-gap: 40px;
@@ -1017,10 +991,6 @@ pre code {
 @media (max-width: 560px) {
   .visual-controls button {
     font-size: 13px;
-  }
-  .data-ledger > div {
-    grid-template-columns: 1fr;
-    gap: 5px;
   }
 }
 @media print {
