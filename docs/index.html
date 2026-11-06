@@ -522,7 +522,7 @@
             whether a document is a resume. A PDF or DOCX file extension alone is not enough.
           </p>
           <div class="detail-list">
-            <details>
+            <details id="resume-profile-choice">
               <summary>What if the resume belongs to someone else?</summary>
               <p>
                 If the name or email differs from your saved profile, you may be asked how to
@@ -1350,7 +1350,8 @@
           </div>
 
           <p class="prose">
-            Your JSON copy carries stored documents and learned mappings along with the profile.
+            Save your profile, documents and learned mappings as a JSON backup to restore later
+            or use in another browser or device.
           </p>
           <div class="visual-tour side-tour" data-visual-tour style="--visual-width: 576px">
             <div
@@ -1402,10 +1403,6 @@
                       />
                     </button>
                   </div>
-                  <figcaption>
-                    Export only downloads a file. It does not change your profile or trigger a Drive
-                    backup.
-                  </figcaption>
                 </figure>
               </div>
               <div id="backup-views-1" data-visual-panel>
@@ -1427,10 +1424,6 @@
                       />
                     </button>
                   </div>
-                  <figcaption>
-                    An empty profile imports directly; identical data stays unchanged. JSON is
-                    checked locally and is not sent to Gemini.
-                  </figcaption>
                 </figure>
               </div>
               <div id="backup-views-2" data-visual-panel>
@@ -1452,20 +1445,24 @@
                       />
                     </button>
                   </div>
-                  <figcaption>
-                    Differences use the same review as a resume. Saved mapping corrections take
-                    priority over conflicting imported mappings.
-                  </figcaption>
                 </figure>
               </div>
             </div>
             <p class="visual-status" role="status" aria-live="polite" aria-atomic="true"></p>
           </div>
           <p class="prose">
-            A possible different person adds the same Update or Replace choice as
-            <a href="#resume">resume import</a>. Replace clears omitted data and pauses connected
-            Drive backups for review.
+            Your Gemini key and model, Drive connection, appearance, Quick Fill preferences and
+            Fill Details report stay in this browser and aren’t included in JSON exports.
           </p>
+          <div class="detail-list">
+            <details id="json-profile-choice">
+              <summary>What if the imported profile belongs to someone else?</summary>
+              <p>
+                If the imported profile appears to belong to someone else, you’ll see the same
+                <a href="#resume-profile-choice" data-open-details>Update or Replace choices as resume import</a>.
+              </p>
+            </details>
+          </div>
         </section>
         <section class="chapter" id="drive" aria-labelledby="drive-title">
           <div class="chapter-heading">
