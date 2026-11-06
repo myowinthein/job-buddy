@@ -1085,40 +1085,25 @@
                     data-rule-method="custom_link"
                     data-rule-score="85"
                   >
-                    <figure class="component-figure">
-                      <div class="capture">
-                        <button
-                          type="button"
-                          data-enlarge
-                          aria-label="Enlarge example: Custom link label"
-                        >
-                          <img
-                            src="./assets/screenshots/rule-custom-light.webp?v=30cc5874336c"
-                            data-light="./assets/screenshots/rule-custom-light.webp?v=30cc5874336c"
-                            data-dark="./assets/screenshots/rule-custom-dark.webp?v=4867a1af7115"
-                            alt="Example application field Design journal after matching with Custom link label"
-                            width="600"
-                            height="160"
-                            loading="lazy"
-                          />
-                        </button>
-                      </div>
-                    </figure>
+                    <pre aria-label="Example HTML from the application form"><code>&lt;label for="entry"&gt;Design journal&lt;/label&gt;
+&lt;input id="entry" type="url"&gt;</code></pre>
                     <dl class="rule-trace">
                       <dt>Reads</dt>
                       <dd>
-                        The label “Design journal” and the custom link with that name in this
-                        sample profile.
+                        “Design journal” → <code>designjournal</code>
                       </dd>
                       <dt>Matches</dt>
                       <dd>Links → Custom Links → Design journal</dd>
                       <dt>Score</dt>
                       <dd>
-                        An exact normalized custom-link label gets a preset
-                        <strong>85%</strong>. Similar labels use the same scoring calculation as
-                        Similar field label.
+                        <strong>85%</strong> (preset for an exact custom link label)
                       </dd>
+                      <dt>Fills</dt>
+                      <dd><code>https://example.com/alex/journal</code> from your profile</dd>
                     </dl>
+                    <p class="rule-note">
+                      Similar labels use the same scoring as Similar field label.
+                    </p>
                   </div>
                   <div
                     id="rule-current"
