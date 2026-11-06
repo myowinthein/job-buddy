@@ -13,7 +13,7 @@ export function normalizePreferences(value: unknown): QuickFillPreferences {
   const position = source.position;
   return {
     enabled: source.enabled !== false,
-    fillMode: source.fillMode === 'overwrite' ? 'overwrite' : 'merge',
+    fillMode: source.fillMode === 'merge' ? 'merge' : 'overwrite',
     disabledSites: Array.isArray(source.disabledSites)
       ? [
           ...new Set(

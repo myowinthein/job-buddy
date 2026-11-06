@@ -64,7 +64,7 @@ export class QuickFillWidget {
   private menu: HTMLElement;
   private more: HTMLButtonElement;
   private position?: QuickFillPreferences['position'];
-  private fillMode: QuickFillPreferences['fillMode'] = 'merge';
+  private fillMode: QuickFillPreferences['fillMode'] = 'overwrite';
   private drag?: { x: number; y: number; left: number; top: number; moved: boolean };
   private busy = false;
   private resize = () => this.place();

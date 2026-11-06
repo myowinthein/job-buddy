@@ -108,7 +108,7 @@ export function QuickFillSettings() {
         </label>
         <select
           id="quick-fill-mode"
-          value={prefs?.fillMode ?? 'merge'}
+          value={prefs?.fillMode ?? 'overwrite'}
           disabled={!prefs || saving || !prefs.enabled}
           className={`${fieldCls(undefined, !prefs || saving || !prefs.enabled)} max-w-xs`}
           onChange={(event) =>

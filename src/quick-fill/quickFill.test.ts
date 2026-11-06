@@ -68,7 +68,7 @@ it('rejects forged and child-frame tab control and derives the real source tab',
 it('bounds positions and preserves disabled preferences without accepting invalid data', () => {
   expect(normalizePreferences(undefined)).toEqual({
     enabled: true,
-    fillMode: 'merge',
+    fillMode: 'overwrite',
     disabledSites: [],
   });
   expect(
@@ -79,14 +79,15 @@ it('bounds positions and preserves disabled preferences without accepting invali
     }),
   ).toEqual({
     enabled: false,
-    fillMode: 'merge',
+    fillMode: 'overwrite',
     disabledSites: ['example.test'],
     position: { x: 1, y: 0 },
   });
 });
-it('uses empty fields only for missing or invalid modes and preserves an explicit overwrite choice', () => {
+it('defaults to empty and existing fields and preserves either explicit mode', () => {
   for (const fillMode of [undefined, null, '', 'all', true])
-    expect(normalizePreferences({ fillMode }).fillMode).toBe('merge');
+    expect(normalizePreferences({ fillMode }).fillMode).toBe('overwrite');
+  expect(normalizePreferences({ fillMode: 'merge' }).fillMode).toBe('merge');
   expect(normalizePreferences({ fillMode: 'overwrite' }).fillMode).toBe('overwrite');
 });
 it('reports partial AI failure and counts review outcomes without counting kept answers as fills', () => {
@@ -156,8 +157,13 @@ it.each([
   ['unfilled field needing input', { totalScanned: 1, noData: 1 }, false],
 ])('shows details only when useful after %s', (_label, result, hidden) => {
   const widget = new QuickFillWidget({
-    fill: vi.fn(), undo: vi.fn(), details: vi.fn(), hide: vi.fn(),
-    disableSite: vi.fn(), settings: vi.fn(), position: vi.fn(),
+    fill: vi.fn(),
+    undo: vi.fn(),
+    details: vi.fn(),
+    hide: vi.fn(),
+    disableSite: vi.fn(),
+    settings: vi.fn(),
+    position: vi.fn(),
   });
   const root = widget.host.shadowRoot!;
   // A later empty result must also clear details from a previous successful fill.
