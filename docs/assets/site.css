@@ -250,6 +250,12 @@ h1 {
 .text-link {
   font-size: 14px;
 }
+.new-tab-icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  flex-shrink: 0;
+}
 .intro-footnote {
   margin: 18px 0 0;
   color: var(--muted);

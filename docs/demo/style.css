@@ -47,6 +47,12 @@ textarea {
 button {
   cursor: pointer;
 }
+.new-tab-icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  flex-shrink: 0;
+}
 :focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 4px;

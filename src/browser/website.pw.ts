@@ -240,7 +240,16 @@ test('task links open new tabs with a visual hint and accessible description', a
         await expect(link).toHaveAttribute('target', '_blank');
         await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
         await expect(link).toHaveAccessibleDescription('Opens in a new tab.');
-        await expect(link.locator('[aria-hidden="true"]')).toHaveText('↗');
+        const icon = link.locator('svg.new-tab-icon[aria-hidden="true"]');
+        await expect(icon).toHaveCount(1);
+        await expect(icon.locator('use')).toHaveAttribute(
+          'href',
+          /external-link\.svg#external-link$/,
+        );
+        // The shared SVG symbol must load, including on the standalone demo.
+        await expect
+          .poll(() => icon.evaluate((el: SVGSVGElement) => el.getBBox().width))
+          .toBeGreaterThan(0);
       } else {
         expect(await link.getAttribute('target')).not.toBe('_blank');
       }
