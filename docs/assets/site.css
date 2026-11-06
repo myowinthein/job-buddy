@@ -929,6 +929,23 @@ pre code {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+.rule-trace {
+  display: grid;
+  grid-template-columns: 65px minmax(0, 1fr);
+  gap: 10px 16px;
+  margin: 20px 0 0;
+}
+.rule-trace dt {
+  color: var(--muted);
+}
+.rule-trace dd {
+  margin: 0;
+}
+.rule-note {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
 .essential {
   margin-top: 24px;
 }

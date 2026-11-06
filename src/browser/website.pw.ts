@@ -229,6 +229,7 @@ for (const density of [1, 2, 3]) {
       await serveSite(context);
       await page.setViewportSize({ width: 1440, height: 1000 });
       await page.goto(origin + prefix);
+      await page.locator('#rule-methods > summary').click();
       for (const theme of ['light', 'dark']) {
         if (
           (await page.locator('html').evaluate((el) => el.classList.contains('dark'))) !==
@@ -301,6 +302,9 @@ test('screenshot selectors work with mouse, keyboard, themes, and narrow layouts
         (theme === 'dark')
       )
         await page.getByRole('button', { name: /Switch to .* mode/ }).click();
+      await page.locator('#rule-methods').evaluate((el: HTMLDetailsElement) => {
+        el.open = true;
+      });
       for (const tour of await page.locator('[data-visual-tour]').all()) {
         for (const button of await tour.locator('[data-show-visual]').all()) {
           await button.click();
@@ -340,6 +344,7 @@ test('all walkthrough images remain available without JavaScript', async ({ brow
     await serveSite(context);
     const page = await context.newPage();
     await page.goto(origin + prefix);
+    await page.locator('#rule-methods > summary').click();
     for (const panel of await page.locator('[data-visual-panel]').all())
       await expect(panel).toBeVisible();
     await expect(page.locator('[data-visual-nav]:visible')).toHaveCount(0);

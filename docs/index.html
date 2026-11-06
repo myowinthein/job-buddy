@@ -903,57 +903,351 @@
                 its matching profile field.
               </p>
             </details>
-            <details>
+            <details id="rule-methods">
               <summary>How do rule methods and match scores work?</summary>
               <p>
-                Rules connect a question on the form to a field in your saved profile. The method
-                tells you which clue was used. The percentage is Job Buddy’s rating of that match.
+                Each example shows the rule stage with fictional profile data. Select a method
+                to see what Job Buddy reads, where it finds the answer, and how it scores the
+                match.
               </p>
-              <div class="table-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Method shown</th>
-                      <th>How it finds a match</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Autocomplete attribute</td>
-                      <td>The website identifies the input as an email, name or another standard field.</td>
-                    </tr>
-                    <tr>
-                      <td>Exact dictionary match</td>
-                      <td>Recognizes a known label, such as “First name,” and connects it to your saved First Name.</td>
-                    </tr>
-                    <tr>
-                      <td>Similar field label</td>
-                      <td>Compares wording when a label is not an exact match, including small spelling differences.</td>
-                    </tr>
-                    <tr>
-                      <td>Custom link label</td>
-                      <td>Matches a question to the label of a custom link you saved, such as “Behance.”</td>
-                    </tr>
-                    <tr>
-                      <td>Current-status checkbox</td>
-                      <td>Recognizes a current-job or current-study checkbox and checks the corresponding profile entry.</td>
-                    </tr>
-                    <tr>
-                      <td>Nearby context</td>
-                      <td>Uses text around an input when its own label does not identify the profile field.</td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div
+                class="visual-tour side-tour rule-examples"
+                data-visual-tour
+                style="--visual-width: 600px"
+              >
+                <div
+                  class="visual-controls"
+                  data-visual-nav
+                  role="group"
+                  aria-label="Rule method examples"
+                >
+                  <button
+                    type="button"
+                    data-show-visual="rule-autocomplete"
+                    aria-controls="rule-autocomplete"
+                    aria-pressed="true"
+                  >
+                    Autocomplete attribute
+                  </button>
+                  <button
+                    type="button"
+                    data-show-visual="rule-exact"
+                    aria-controls="rule-exact"
+                    aria-pressed="false"
+                  >
+                    Exact dictionary match
+                  </button>
+                  <button
+                    type="button"
+                    data-show-visual="rule-similar"
+                    aria-controls="rule-similar"
+                    aria-pressed="false"
+                  >
+                    Similar field label
+                  </button>
+                  <button
+                    type="button"
+                    data-show-visual="rule-custom"
+                    aria-controls="rule-custom"
+                    aria-pressed="false"
+                  >
+                    Custom link label
+                  </button>
+                  <button
+                    type="button"
+                    data-show-visual="rule-current"
+                    aria-controls="rule-current"
+                    aria-pressed="false"
+                  >
+                    Current-status checkbox
+                  </button>
+                  <button
+                    type="button"
+                    data-show-visual="rule-context"
+                    aria-controls="rule-context"
+                    aria-pressed="false"
+                  >
+                    Nearby context
+                  </button>
+                </div>
+                <div class="visual-panels">
+                  <div
+                    id="rule-autocomplete"
+                    data-visual-panel
+                    data-rule-method="autocomplete"
+                    data-rule-score="95"
+                  >
+                    <figure class="component-figure">
+                      <div class="capture">
+                        <button
+                          type="button"
+                          data-enlarge
+                          aria-label="Enlarge example: Autocomplete attribute"
+                        >
+                          <img
+                            src="./assets/screenshots/rule-autocomplete-light.webp?v=f81fc0b26603"
+                            data-light="./assets/screenshots/rule-autocomplete-light.webp?v=f81fc0b26603"
+                            data-dark="./assets/screenshots/rule-autocomplete-dark.webp?v=0505759f5f4e"
+                            alt="Example application field Email address after matching with Autocomplete attribute"
+                            width="600"
+                            height="220"
+                            loading="lazy"
+                          />
+                        </button>
+                      </div>
+                    </figure>
+                    <dl class="rule-trace">
+                      <dt>Reads</dt>
+                      <dd>
+                        <code>autocomplete="email"</code>, a hint supplied by the website.
+                      </dd>
+                      <dt>Matches</dt>
+                      <dd>Personal → Email</dd>
+                      <dt>Score</dt>
+                      <dd>
+                        A recognized autocomplete hint gets a preset <strong>95%</strong>. Job
+                        Buddy reads this hint before trying the label.
+                      </dd>
+                    </dl>
+                  </div>
+                  <div
+                    id="rule-exact"
+                    data-visual-panel
+                    data-rule-method="dictionary_exact"
+                    data-rule-score="85"
+                  >
+                    <figure class="component-figure">
+                      <div class="capture">
+                        <button
+                          type="button"
+                          data-enlarge
+                          aria-label="Enlarge example: Exact dictionary match"
+                        >
+                          <img
+                            src="./assets/screenshots/rule-exact-light.webp?v=95957b20a584"
+                            data-light="./assets/screenshots/rule-exact-light.webp?v=95957b20a584"
+                            data-dark="./assets/screenshots/rule-exact-dark.webp?v=e278beb96ba0"
+                            alt="Example application field First name after matching with Exact dictionary match"
+                            width="600"
+                            height="220"
+                            loading="lazy"
+                          />
+                        </button>
+                      </div>
+                    </figure>
+                    <dl class="rule-trace">
+                      <dt>Reads</dt>
+                      <dd>The label “First name,” normalized to <code>firstname</code>.</dd>
+                      <dt>Matches</dt>
+                      <dd>Personal → First Name</dd>
+                      <dt>Score</dt>
+                      <dd>
+                        The normalized label is in Job Buddy’s dictionary, so it gets a preset
+                        <strong>85%</strong>. Case, spaces and punctuation are ignored.
+                      </dd>
+                    </dl>
+                    <p class="rule-note">
+                      If a visible question does not support a match found only in its internal
+                      name or ID, the score drops to 50% and rules leave it unfilled.
+                    </p>
+                  </div>
+                  <div
+                    id="rule-similar"
+                    data-visual-panel
+                    data-rule-method="fuzzy"
+                    data-rule-score="76"
+                  >
+                    <figure class="component-figure">
+                      <div class="capture">
+                        <button
+                          type="button"
+                          data-enlarge
+                          aria-label="Enlarge example: Similar field label"
+                        >
+                          <img
+                            src="./assets/screenshots/rule-similar-light.webp?v=a6b56b9cfd71"
+                            data-light="./assets/screenshots/rule-similar-light.webp?v=a6b56b9cfd71"
+                            data-dark="./assets/screenshots/rule-similar-dark.webp?v=14bf9c508bdb"
+                            alt="Example application field First nam after matching with Similar field label"
+                            width="600"
+                            height="220"
+                            loading="lazy"
+                          />
+                        </button>
+                      </div>
+                    </figure>
+                    <dl class="rule-trace">
+                      <dt>Reads</dt>
+                      <dd>“First nam” compared with the dictionary term “First name.”</dd>
+                      <dt>Matches</dt>
+                      <dd>Personal → First Name</dd>
+                      <dt>Score</dt>
+                      <dd>
+                        One missing letter out of nine gives 88.9% text similarity. The
+                        strong-match multiplier reduces this to 88.9% × 0.85 = 75.6%, shown as
+                        <strong>76%</strong>.
+                      </dd>
+                    </dl>
+                    <p class="rule-note">
+                      Text similarity measures how many letters must change. Above 75%
+                      similarity, the score is multiplied by 0.85. From 60% through 75%, it is
+                      multiplied by 0.75. For example, “Compayn” versus “Company” gives 71.4% ×
+                      0.75 = 53.6%, shown as 54%, which rules do not fill.
+                    </p>
+                  </div>
+                  <div
+                    id="rule-custom"
+                    data-visual-panel
+                    data-rule-method="custom_link"
+                    data-rule-score="85"
+                  >
+                    <figure class="component-figure">
+                      <div class="capture">
+                        <button
+                          type="button"
+                          data-enlarge
+                          aria-label="Enlarge example: Custom link label"
+                        >
+                          <img
+                            src="./assets/screenshots/rule-custom-light.webp?v=d5488bac42ae"
+                            data-light="./assets/screenshots/rule-custom-light.webp?v=d5488bac42ae"
+                            data-dark="./assets/screenshots/rule-custom-dark.webp?v=befa890fd0be"
+                            alt="Example application field Design journal after matching with Custom link label"
+                            width="600"
+                            height="220"
+                            loading="lazy"
+                          />
+                        </button>
+                      </div>
+                    </figure>
+                    <dl class="rule-trace">
+                      <dt>Reads</dt>
+                      <dd>
+                        The label “Design journal” and the custom link with that name in this
+                        sample profile.
+                      </dd>
+                      <dt>Matches</dt>
+                      <dd>Links → Custom Links → Design journal</dd>
+                      <dt>Score</dt>
+                      <dd>
+                        An exact normalized custom-link label gets a preset
+                        <strong>85%</strong>. Similar labels use the same scoring calculation as
+                        Similar field label.
+                      </dd>
+                    </dl>
+                  </div>
+                  <div
+                    id="rule-current"
+                    data-visual-panel
+                    data-rule-method="checkbox_status"
+                    data-rule-score="85"
+                  >
+                    <figure class="component-figure">
+                      <div class="capture">
+                        <button
+                          type="button"
+                          data-enlarge
+                          aria-label="Enlarge example: Current-status checkbox"
+                        >
+                          <img
+                            src="./assets/screenshots/rule-current-light.webp?v=050371ef7ed1"
+                            data-light="./assets/screenshots/rule-current-light.webp?v=050371ef7ed1"
+                            data-dark="./assets/screenshots/rule-current-dark.webp?v=075cb65f748f"
+                            alt="Example application field Currently working here after matching with Current-status checkbox"
+                            width="600"
+                            height="220"
+                            loading="lazy"
+                          />
+                        </button>
+                      </div>
+                    </figure>
+                    <dl class="rule-trace">
+                      <dt>Reads</dt>
+                      <dd>
+                        The recognized checkbox label “Currently working here” in Work
+                        experience.
+                      </dd>
+                      <dt>Matches</dt>
+                      <dd>Work History → Example Studio → Current job</dd>
+                      <dt>Score</dt>
+                      <dd>
+                        The matching saved job is marked as current. The checkbox gets a preset
+                        <strong>85%</strong> and is checked. Current-study checkboxes follow the
+                        same rule.
+                      </dd>
+                    </dl>
+                    <p class="rule-note">
+                      Only recognized current-status wording qualifies. These checkboxes do not
+                      use fuzzy matching, and a saved entry that is not current does not produce
+                      a checkbox match.
+                    </p>
+                  </div>
+                  <div
+                    id="rule-context"
+                    data-visual-panel
+                    data-rule-method="context"
+                    data-rule-score="70"
+                  >
+                    <figure class="component-figure">
+                      <div class="capture">
+                        <button
+                          type="button"
+                          data-enlarge
+                          aria-label="Enlarge example: Nearby context"
+                        >
+                          <img
+                            src="./assets/screenshots/rule-context-light.webp?v=6a336b6df46e"
+                            data-light="./assets/screenshots/rule-context-light.webp?v=6a336b6df46e"
+                            data-dark="./assets/screenshots/rule-context-dark.webp?v=23fc8306a5b0"
+                            alt="Example application field City after matching with Nearby context"
+                            width="600"
+                            height="220"
+                            loading="lazy"
+                          />
+                        </button>
+                      </div>
+                    </figure>
+                    <dl class="rule-trace">
+                      <dt>Reads</dt>
+                      <dd>
+                        The nearby text “City.” The input has no identifying label or
+                        autocomplete hint.
+                      </dd>
+                      <dt>Matches</dt>
+                      <dd>Address → City</dd>
+                      <dt>Score</dt>
+                      <dd>
+                        Nearby text gets a preset <strong>70%</strong>, even when it exactly
+                        matches a dictionary term. The input’s own signals are tried first.
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+                <p
+                  class="visual-status"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                ></p>
               </div>
               <p>
-                A website hint normally scores 95%, while a known label normally scores 85%.
-                Similar wording and surrounding context can receive lower scores. The percentage
-                is not a probability that the answer is correct.
+                Scores describe the match, not the probability that an answer is correct. Fill
+                Details rounds them to whole percentages. The fill decision uses the unrounded
+                score:
               </p>
               <ul>
-                <li><strong>85% or higher:</strong> Rules can enter the saved value as <span class="green">green</span>.</li>
-                <li><strong>60%–84%:</strong> Rules can enter it as <span class="yellow">yellow</span> for your review.</li>
-                <li><strong>Below 60%:</strong> Rules do not enter a value. AI may still find a usable match.</li>
+                <li>
+                  <strong>85% or higher:</strong> Rules can fill the value as
+                  <span class="green">green</span>.
+                </li>
+                <li>
+                  <strong>60% to below 85%:</strong> Rules can fill it as
+                  <span class="yellow">yellow</span> for your review.
+                </li>
+                <li>
+                  <strong>Below 60%:</strong> Rules leave it unfilled. AI may still find a
+                  usable match.
+                </li>
               </ul>
             </details>
           </div>
