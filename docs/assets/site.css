@@ -257,11 +257,6 @@ h1 {
   vertical-align: -2px;
   flex-shrink: 0;
 }
-.intro-footnote {
-  margin: 18px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-}
 .hero-figure {
   margin: 8px 0 0;
 }
