@@ -138,6 +138,14 @@ document.querySelectorAll('.mobile-contents a').forEach((link) => {
     link.closest('details').open = false;
   });
 });
+document.querySelectorAll('a[data-open-details]').forEach((link) => {
+  function openDetails() {
+    const target = document.getElementById(link.hash.slice(1));
+    if (target instanceof HTMLDetailsElement) target.open = true;
+  }
+  link.addEventListener('click', openDetails);
+  if (link.hash === location.hash) openDetails();
+});
 document.querySelectorAll('.copy-code').forEach((button) => {
   button.addEventListener('click', async () => {
     try {

@@ -69,6 +69,19 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
     'src',
     mode ? /-light\.webp(?:\?v=[a-f0-9]+)?$/ : /-dark\.webp(?:\?v=[a-f0-9]+)?$/,
   );
+  const ruleDetails = page.locator('#rule-methods');
+  const rulesLink = page.locator('#fill-details ol').getByRole('link', { name: 'Rules', exact: true });
+  await expect(ruleDetails).not.toHaveAttribute('open');
+  await rulesLink.click();
+  await expect(page).toHaveURL(origin + prefix + '#rule-methods');
+  await expect(ruleDetails).toHaveAttribute('open', '');
+  await expect(ruleDetails.locator('summary')).toBeInViewport();
+  await ruleDetails.locator('summary').click();
+  await rulesLink.focus();
+  await page.keyboard.press('Enter');
+  await expect(ruleDetails).toHaveAttribute('open', '');
+  await page.reload();
+  await expect(ruleDetails).toHaveAttribute('open', '');
   await page
     .getByRole('navigation', { name: 'Main navigation' })
     .getByRole('link', { name: 'For developers' })
