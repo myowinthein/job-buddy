@@ -912,8 +912,8 @@
               hints, field labels and nearby context to your saved profile.
             </li>
             <li>
-              <strong>AI</strong> uses Gemini to match remaining questions to your profile and improve
-              uncertain rule-based answers.
+              <strong><a href="#ai-matching" data-open-details>AI</a></strong> uses Gemini to match
+              remaining questions to your profile and improve uncertain rule-based answers.
             </li>
           </ol>
           <div class="detail-list">
@@ -1189,6 +1189,38 @@
                   <strong>Below 60%:</strong> Rules leave it unfilled and pass it to AI.
                 </li>
               </ul>
+            </details>
+            <details id="ai-matching">
+              <summary>How does AI match form fields?</summary>
+              <p>
+                AI reviews eligible fields left unfilled or uncertain after earlier stages. This
+                example shows one possible match.
+              </p>
+              <div>
+                <pre aria-label="Illustrative HTML from an application form"><code>&lt;label for="work-link"&gt;Where can we see your work?&lt;/label&gt;
+&lt;input id="work-link" type="url"&gt;</code></pre>
+                <dl class="rule-trace">
+                  <dt>Reads</dt>
+                  <dd>Question, nearby context and available choices</dd>
+                  <dt>Matches</dt>
+                  <dd>Links → Portfolio</dd>
+                  <dt>Confidence</dt>
+                  <dd>High (Gemini’s judgment, not a percentage)</dd>
+                  <dt>Fills</dt>
+                  <dd><code>https://alexmorgan.example.com</code> from your profile</dd>
+                </dl>
+              </div>
+              <ul>
+                <li><strong>High:</strong> Can fill in <span class="green">green</span>.</li>
+                <li>
+                  <strong>Low:</strong> Can fill in <span class="yellow">yellow</span> for review.
+                </li>
+                <li><strong>No match:</strong> Keeps the previous result.</li>
+              </ul>
+              <p>
+                Gemini is asked to use only saved information. Job Buddy checks its response before
+                filling.
+              </p>
             </details>
           </div>
         </section>
