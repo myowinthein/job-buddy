@@ -508,7 +508,12 @@ for (const theme of ['light', 'dark'] as const) {
       'http://127.0.0.1:4173/?devPreview=complete&devPreviewSeed=site-capture&devDrive=1',
     );
     await expect(preview.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
-    await capture(preview, info, `dev-bar-${theme}`);
+    await capture(
+      preview,
+      info,
+      `dev-bar-${theme}`,
+      preview.getByRole('complementary', { name: 'Development controls' }),
+    );
     await preview
       .getByRole('heading', { name: 'Cloud Backup', exact: true })
       .scrollIntoViewIfNeeded();

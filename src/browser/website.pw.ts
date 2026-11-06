@@ -141,13 +141,22 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   await expect(page).toHaveURL(origin + prefix + 'developers/');
   expect(await page.locator('html').evaluate((el) => el.classList.contains('dark'))).toBe(!mode);
   await expect(
-    page.getByRole('heading', { name: 'Add only the integrations you need' }),
+    page.getByRole('heading', { name: 'Configure integrations', exact: true }),
   ).toBeAttached();
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.getByRole('button', { name: 'Copy setup commands' }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
     'git clone https://github.com/myowinthein/job-buddy.git',
   );
+  await page.getByRole('link', { name: 'configure an OAuth client' }).click();
+  await expect(page.locator('#drive-oauth')).toHaveAttribute('open', '');
+  await expect(page.locator('#drive-oauth > summary')).toBeInViewport();
+  await page.reload();
+  await expect(page.locator('#drive-oauth')).toHaveAttribute('open', '');
+  const previewSetup = page.getByText('Can I preview the UI without loading an extension?', { exact: true });
+  await previewSetup.click();
+  await page.getByRole('button', { name: 'Copy preview command', exact: true }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('pnpm dev:preview');
   expect(errors).toEqual([]);
 });
 

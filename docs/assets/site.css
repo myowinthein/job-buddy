@@ -772,38 +772,41 @@ pre code {
   max-width: 400px;
 }
 
-/* Screenshot-led walkthrough. The developer guide keeps its existing layout. */
-.walkthrough {
+/* Shared spacing for the user walkthrough and developer guide. */
+:is(.walkthrough, .developer-guide) {
   --chapter-gap: 64px;
   --divider-gap: 16px;
 }
-.walkthrough .chapter {
+:is(.walkthrough, .developer-guide) .chapter {
   padding-block: var(--chapter-gap);
 }
-.walkthrough .chapter:first-of-type {
+:is(.walkthrough, .developer-guide) .chapter:first-of-type {
   margin-top: var(--chapter-gap);
 }
-.walkthrough .chapter > :last-child {
+:is(.walkthrough, .developer-guide) .chapter > :last-child {
   margin-bottom: 0;
 }
-.walkthrough .detail-list {
+:is(.walkthrough, .developer-guide) .detail-list {
   margin-top: 24px;
 }
-.walkthrough .detail-list details {
+:is(.walkthrough, .developer-guide) .detail-list details {
   border: 0;
   padding-block: var(--divider-gap);
 }
-.walkthrough .detail-list details + details {
+:is(.walkthrough, .developer-guide) .detail-list details + details {
   border-top: 1px solid var(--line);
 }
-.walkthrough .detail-list details:first-child {
+:is(.walkthrough, .developer-guide) .detail-list details:first-child {
   padding-top: 0;
 }
-.walkthrough .detail-list details:last-child {
+:is(.walkthrough, .developer-guide) .detail-list details:last-child {
   padding-bottom: 0;
 }
-.walkthrough .detail-list details > :last-child {
+:is(.walkthrough, .developer-guide) .detail-list details > :last-child {
   margin-bottom: 0;
+}
+.developer-guide :is(figure, .detail-list) + .prose {
+  margin-top: 24px;
 }
 .visual-tour {
   margin: 25px 0;
@@ -915,7 +918,7 @@ pre code {
   margin-top: 24px;
 }
 @media (max-width: 800px) {
-  .walkthrough {
+  :is(.walkthrough, .developer-guide) {
     --chapter-gap: 40px;
   }
   :is(.sequence-tour, .side-tour).is-enhanced {
@@ -944,7 +947,7 @@ pre code {
   }
 }
 @media print {
-  .walkthrough {
+  :is(.walkthrough, .developer-guide) {
     --chapter-gap: 24px;
   }
   .is-enhanced > .visual-controls {

@@ -25,7 +25,7 @@
     <link rel="stylesheet" href="../assets/site.css" />
     <script src="../assets/site.js" defer></script>
   </head>
-  <body>
+  <body class="developer-guide">
     <span id="new-tab-hint" hidden>Opens in a new tab.</span>
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
@@ -74,10 +74,10 @@
     </header>
     <div class="site-layout">
       <aside class="chapter-nav" aria-label="On this page">
-        <p>Build & contribute</p>
+        <p>Build and contribute</p>
         <a href="#build">Run locally</a><a href="#configuration">Configure integrations</a
         ><a href="#dev-bar">Use the dev bar</a><a href="#architecture">Follow the code</a
-        ><a href="#commands">Commands & checks</a><a href="#demo">Demo & captures</a
+        ><a href="#commands">Commands and checks</a><a href="#demo">Demo and captures</a
         ><a href="#release">Release setup</a>
       </aside>
       <main id="main">
@@ -86,34 +86,24 @@
           <nav aria-label="Page sections">
             <a href="#build">Run locally</a><a href="#configuration">Configure integrations</a
             ><a href="#dev-bar">Use the dev bar</a><a href="#architecture">Follow the code</a
-            ><a href="#commands">Commands & checks</a><a href="#demo">Demo & captures</a
+            ><a href="#commands">Commands and checks</a><a href="#demo">Demo and captures</a
             ><a href="#release">Release setup</a>
           </nav>
         </details>
         <div class="intro" id="build">
           <p class="intro-note">For developers</p>
-          <h1>A browser extension.<br />A local profile.<br />No backend to run.</h1>
+          <h1>Run locally</h1>
           <p class="lede">
-            Job Buddy is a single-package Chrome MV3 extension. Start it with WXT, work with
-            synthetic data, and test real form writes in an isolated browser.
+            Start the extension with WXT, try changes with sample data, then test them on a job
+            form. There is no backend to set up.
           </p>
           <div class="intro-actions">
-            <a class="button" href="https://github.com/myowinthein/job-buddy">Open the repository</a
-            ><a class="text-link" href="../">Read the user walkthrough</a>
+            <a class="button" href="https://github.com/myowinthein/job-buddy">Open the repository</a>
           </div>
         </div>
-        <div class="prose">
-          <p>
-            The UI uses <strong>React 19</strong>, <strong>TypeScript 5.9</strong> and
-            <strong>Tailwind CSS v4</strong>. <strong>WXT 0.20.26</strong> owns extension builds and
-            development. <strong>Vitest 4</strong> covers domain behavior;
-            <strong>Playwright</strong> checks actual browser interaction. Profile data lives in
-            <code>chrome.storage.local</code>.
-          </p>
-          <p>
-            Use Node.js 22 from <code>.nvmrc</code> and pnpm 11.7.0 from <code>package.json</code>.
-          </p>
-        </div>
+        <p class="prose">
+          Use Node.js 22 from <code>.nvmrc</code> and pnpm 11.7.0 from <code>package.json</code>.
+        </p>
         <div class="code-block">
           <button class="copy-code" type="button" aria-label="Copy setup commands">Copy</button>
           <pre><code>git clone https://github.com/myowinthein/job-buddy.git
@@ -123,543 +113,371 @@ corepack enable
 pnpm install
 pnpm dev</code></pre>
         </div>
-        <p>
-          <code>pnpm install</code> also runs <code>wxt prepare</code> to generate extension types.
-          <code>pnpm dev</code> starts the server at <code>127.0.0.1:3000</code> by default and
-          normally opens a development browser with the extension loaded.
+        <p class="prose">
+          Installation generates WXT’s extension types. The dev server runs at
+          <code>http://127.0.0.1:3000</code> by default and opens a browser with the extension loaded.
+          Development builds use an amber logo. Production uses blue.
         </p>
-        <h3>Use your regular Chrome when you need to</h3>
-        <p>
-          The auto-opened development browser is convenient for most UI and form work. Google
-          authentication may be restricted in an automated Chromium session. To test real Drive
-          sign-in, load the development build in regular Chrome:
-        </p>
-        <ol>
-          <li>Keep <code>pnpm dev</code> running.</li>
-          <li>Open <code>chrome://extensions/</code> and enable Developer mode.</li>
-          <li>Select Load unpacked and choose <code>.output/chrome-mv3-dev/</code>.</li>
-          <li>Use that extension’s own Settings to configure your key and Drive connection.</li>
-        </ol>
-        <p class="note">
-          The development logo is amber; production is blue. Restart WXT after adding an HTML
-          entrypoint. Reload the extension and refresh an already-open job form when a
-          content-script change has not reached it.
-        </p>
+        <div class="detail-list">
+          <details>
+            <summary>Can I use my regular Chrome profile?</summary>
+            <p>
+              Yes. This is useful for testing real Google sign-in, which may be restricted in the
+              browser opened by WXT.
+            </p>
+            <ol>
+              <li>Keep <code>pnpm dev</code> running.</li>
+              <li>Open <code>chrome://extensions/</code> and turn on Developer mode.</li>
+              <li>Click <strong>Load unpacked</strong> and choose <code>.output/chrome-mv3-dev/</code>.</li>
+              <li>Open the amber extension’s Settings to add your key or connect Drive.</li>
+            </ol>
+          </details>
+          <details>
+            <summary>When should I reload the extension or refresh a form?</summary>
+            <p>
+              WXT updates most edits while it runs. After changing content scripts, reload the
+              extension and refresh any form that was already open. Restart WXT after adding an
+              HTML entrypoint so it generates the new page.
+            </p>
+          </details>
+        </div>
         <section class="chapter" id="configuration" aria-labelledby="configuration-title">
           <div class="chapter-heading">
-            <span>Configuration</span>
-            <h2 id="configuration-title">Add only the integrations you need</h2>
+            <h2 id="configuration-title">Configure integrations</h2>
           </div>
-          <div class="prose">
-            <p>
-              There is no database, server deployment or environment file required to edit profile
-              UI. A Gemini key saved in Settings enables autofill, resume import and AI mapping
-              review. Drive needs a build-time OAuth client ID.
-            </p>
-          </div>
+          <p class="prose">
+            UI work needs no environment file. For real autofill, resume import and mapping review,
+            save your Gemini key in Settings. To connect Google Drive,
+            <a href="#drive-oauth" data-open-details>configure an OAuth client</a> for the build.
+          </p>
           <div class="code-block">
-            <button class="copy-code" type="button" aria-label="Copy environment setup commands">
-              Copy
-            </button>
-            <pre><code>cp .env.example .env.development
-cp .env.example .env.production</code></pre>
+            <button class="copy-code" type="button" aria-label="Copy environment setup commands">Copy</button>
+            <pre><code>cp .env.example .env.development</code></pre>
           </div>
-          <p>
-            Edit those local, ignored files yourself. Never commit real values. They are separate so
-            development and production can use different extension redirect IDs.
+          <p class="prose">
+            Fill in the local file and restart WXT. Keep real values out of Git.
           </p>
           <div class="table-scroll">
             <table>
-              <thead>
-                <tr>
-                  <th>Entry</th>
-                  <th>Where and why</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Environment entry</th><th>Use</th></tr></thead>
               <tbody>
                 <tr>
                   <td><code>VITE_GOOGLE_DRIVE_CLIENT_ID</code></td>
-                  <td>
-                    Web application OAuth client ID for Drive. Use separate dev/prod clients. The
-                    extension embeds the client ID, not a client secret.
-                  </td>
+                  <td>Drive Web application OAuth client ID. Use separate clients for development and production. Never embed a client secret.</td>
                 </tr>
                 <tr>
                   <td><code>VITE_GEMINI_API_KEY</code></td>
-                  <td>
-                    Optional development-only fallback. Put it in <code>.env.development</code>;
-                    production ignores it. An explicitly removed key or reset suppresses seeding
-                    until a key is saved again.
-                  </td>
+                  <td>Optional dev-only key fallback. Production ignores it. Removing the key or resetting data suppresses this fallback until you save a key again.</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <h3 id="drive-oauth">Set up Google Drive OAuth</h3>
-          <ol>
-            <li>
-              In <a
-                href="https://console.cloud.google.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-describedby="new-tab-hint"
-                >Google Cloud Console&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg></a
-              >, choose your
-              project and enable the Google Drive API.
-            </li>
-            <li>
-              Configure the Google Auth Platform consent screen. While it is in Testing, add the
-              Google accounts you will use as test users.
-            </li>
-            <li>
-              Create a <strong>Web application</strong> OAuth client for local development. A Chrome
-              Extension client is not the right type for this
-              <code>launchWebAuthFlow</code> implementation.
-            </li>
-            <li>
-              Load the unpacked extension in regular Chrome and copy its ID from
-              <code>chrome://extensions/</code>.
-            </li>
-            <li>
-              Register <code>https://&lt;DEV_EXTENSION_ID&gt;.chromiumapp.org/</code> as an
-              authorized redirect URI, including the trailing slash.
-            </li>
-            <li>
-              Put that client ID in <code>VITE_GOOGLE_DRIVE_CLIENT_ID</code> in
-              <code>.env.development</code>, then restart WXT.
-            </li>
-            <li>
-              Create a separate production Web application client using the published extension ID
-              and put its client ID in <code>.env.production</code>.
-            </li>
-            <li>
-              Test Connect Google Drive in the regular Chrome extension. Before public use, complete
-              Google’s consent-screen publishing and any applicable review requirements.
-            </li>
-          </ol>
-          <p class="note">
-            The requested scope is <code>drive.appdata</code>. Backups live in the app-data area,
-            not as normal files listed in My Drive. Do not put an OAuth client secret into the
-            extension.
-          </p>
-          <h3>Preview UI without real providers</h3>
-          <pre><code>pnpm dev:preview</code></pre>
-          <p>
-            This serves the actual options UI at <code>http://127.0.0.1:4173/</code> with sample
-            data. It disables environment-file loading and real Gemini and Drive calls. Sample
-            profile edits reset on refresh; the base preview remembers appearance. It does not
-            replace extension-browser checks for scanning, writing, OAuth or popup behavior.
+          <div class="detail-list">
+            <details id="drive-oauth">
+              <summary>How do I configure Google Drive OAuth?</summary>
+              <ol>
+                <li>
+                  Open <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" aria-describedby="new-tab-hint">Google Cloud Console&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg></a>
+                  and enable the Google Drive API in your project.
+                </li>
+                <li>Configure the consent screen. In Testing mode, add the Google accounts you will use as test users.</li>
+                <li>Create a <strong>Web application</strong> OAuth client for development. Job Buddy uses <code>launchWebAuthFlow</code>, not a Chrome Extension OAuth client.</li>
+                <li>Load the unpacked extension and copy its ID from <code>chrome://extensions/</code>.</li>
+                <li>Add <code>https://&lt;DEV_EXTENSION_ID&gt;.chromiumapp.org/</code> as an authorized redirect URI, including the trailing slash.</li>
+                <li>Set <code>VITE_GOOGLE_DRIVE_CLIENT_ID</code> in <code>.env.development</code>, restart WXT, then connect Drive in the extension.</li>
+              </ol>
+              <p>
+                Backups use the <a href="https://developers.google.com/workspace/drive/api/guides/appdata">Drive app-data area</a>
+                with the <code>drive.appdata</code> scope. They are hidden from My Drive.
+              </p>
+              <p>
+                For production, copy <code>.env.example</code> to <code>.env.production</code> and
+                use a separate Web application client with the published extension’s redirect ID.
+                Complete any Google consent-screen publishing requirements before public use.
+              </p>
+            </details>
+          </div>
+          <p class="prose">
+            To work without provider credentials, use the <a href="#dev-bar">dev bar and local preview</a>.
           </p>
         </section>
         <section class="chapter" id="dev-bar" aria-labelledby="dev-bar-title">
           <div class="chapter-heading">
-            <span>Work safely with sample data</span>
-            <h2 id="dev-bar-title">Try a profile state without losing yours</h2>
+            <h2 id="dev-bar-title">Use the dev bar</h2>
           </div>
-          <div class="prose">
-            <p>
-              The development options page has a compact bar above the regular interface. It is
-              absent from production builds.
-            </p>
-          </div>
-          <dl class="facts">
-            <div>
-              <dt>Original</dt>
-              <dd>Use the saved data in this development extension.</dd>
-            </div>
-            <div>
-              <dt>Empty, Required only, Complete</dt>
-              <dd>
-                Open isolated synthetic profiles while keeping the selected section. Temporary
-                profile changes reset on refresh.
-              </dd>
-            </div>
-            <div>
-              <dt>API key and Google Drive</dt>
-              <dd>
-                On/Off toggles simulate integration states in the temporary view. They do not send
-                sample credentials to real providers.
-              </dd>
-            </div>
-            <div>
-              <dt>Switching states</dt>
-              <dd>
-                The unsaved-edits guard still applies. Integration toggles preserve temporary edits.
-                Popup and job-form data are unaffected by these options-page simulations.
-              </dd>
-            </div>
-          </dl>
-          <figure class="">
+          <p class="prose">
+            Switch profile and integration states from the bar at the top of the development
+            options page. It is hidden in production.
+          </p>
+          <figure>
             <div class="capture">
-              <button
-                type="button"
-                data-enlarge
-                aria-label="Enlarge screenshot: Development toolbar with profile presets and integration toggles"
-              >
+              <button type="button" data-enlarge aria-label="Enlarge screenshot: Development toolbar with profile presets and integration toggles">
                 <img
-                  src="../assets/screenshots/dev-bar-light.webp?v=cff326baff41"
-                  data-light="../assets/screenshots/dev-bar-light.webp?v=cff326baff41"
-                  data-dark="../assets/screenshots/dev-bar-dark.webp?v=8bc593978f91"
-                  alt="Development toolbar with profile presets and integration toggles"
-                  width="1280"
-                  height="900"
+                  src="../assets/screenshots/dev-bar-light.webp?v=22ed1d303370"
+                  data-light="../assets/screenshots/dev-bar-light.webp?v=22ed1d303370"
+                  data-dark="../assets/screenshots/dev-bar-dark.webp?v=ef06833e7e91"
+                  alt="Development toolbar with Original, Empty, Required only and Complete profile modes, plus API key and Google Drive toggles"
+                  width="800"
+                  height="43"
                   loading="lazy"
                 />
               </button>
             </div>
-            <figcaption>The development interface, using temporary sample data.</figcaption>
           </figure>
+          <p class="prose">
+            Sample profiles run in an isolated view and reset on refresh. <strong>Original</strong>
+            returns to your saved data. Integration toggles keep temporary edits and simulate
+            Gemini and Drive without calling either provider.
+          </p>
+          <div class="detail-list">
+            <details>
+              <summary>Does this change the popup or forms I am testing?</summary>
+              <p>
+                No. The bar simulates the options page only. Use the unpacked extension to check
+                real autofill, the toolbar popup and Google sign-in. The unsaved-changes guard
+                still applies when switching profile modes.
+              </p>
+            </details>
+            <details>
+              <summary>Can I preview the UI without loading an extension?</summary>
+              <div class="code-block">
+                <button class="copy-code" type="button" aria-label="Copy preview command">Copy</button>
+                <pre><code>pnpm dev:preview</code></pre>
+              </div>
+              <p>
+                Open <code>http://127.0.0.1:4173/</code> for the options UI with sample data.
+                Environment files and real provider calls are disabled. Profile edits reset on
+                refresh. The base preview remembers appearance, while dev-bar simulations reset it.
+              </p>
+            </details>
+          </div>
         </section>
         <section class="chapter" id="architecture" aria-labelledby="architecture-title">
           <div class="chapter-heading">
-            <span>Follow the request</span>
-            <h2 id="architecture-title">From the page to a saved decision</h2>
+            <h2 id="architecture-title">Follow the code</h2>
           </div>
-          <div class="prose">
-            <p>
-              Selecting <strong>Fill Form</strong> in the popup or Quick Fill sends an autofill
-              request to the background coordinator. The coordinator owns run state and sends work
-              to the content scripts in the captured tab and frames.
-              Closing the popup does not cancel an accepted run.
-            </p>
-          </div>
+          <p class="prose">
+            Clicking <strong>Fill Form</strong> hands the request to the background coordinator.
+            It tracks the run and directs content scripts in the source tab and frames. Once the
+            request is accepted, closing the popup does not stop it.
+          </p>
+          <ol class="pipeline">
+            <li><strong>Scan</strong><p>Find eligible controls and their questions across frames and open shadow roots.</p></li>
+            <li><strong>Match</strong><p>Try learned mappings, rules, then AI for fields that still need help.</p></li>
+            <li><strong>Write</strong><p>Apply answers, verify retained values and keep snapshots for Undo.</p></li>
+          </ol>
+          <p class="prose">
+            Corrections can teach future runs. Fill Details follows the current run and later edits,
+            keeping one metadata-only report rather than an application history.
+          </p>
+          <h3>Stack and storage</h3>
+          <p class="prose">
+            WXT builds the Manifest V3 extension. React 19, TypeScript 5.9 and Tailwind CSS v4 power
+            the UI. Vitest covers domain behavior and Playwright checks browser interactions.
+            Profiles live in <code>chrome.storage.local</code>. Run coordination and the retained
+            fill report use session storage.
+          </p>
           <div class="table-scroll">
             <table>
-              <thead>
-                <tr>
-                  <th>Area</th>
-                  <th>Start here</th>
-                  <th>Responsibility</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Working on</th><th>Start here</th></tr></thead>
               <tbody>
-                <tr>
-                  <td>Entrypoints</td>
-                  <td><code>entrypoints/</code></td>
-                  <td>Background worker, content script, popup and options UI.</td>
-                </tr>
-                <tr>
-                  <td>Run coordination</td>
-                  <td><code>src/autofill/runCoordinator.ts</code></td>
-                  <td>Per-tab runs, pending choices, interruptions and recovery.</td>
-                </tr>
-                <tr>
-                  <td>Scan → match → write</td>
-                  <td><code>src/autofill/</code></td>
-                  <td>
-                    Eligible controls, learned/rule matching, AI handoff, verified writes, Undo and
-                    learning.
-                  </td>
-                </tr>
-                <tr>
-                  <td>Field catalog</td>
-                  <td><code>src/profile/fieldCatalog.ts</code></td>
-                  <td>
-                    Shared labels, layout order, input IDs, aliases and mapping paths. Metadata and
-                    policies feed review, completion, projections and disclosure.
-                  </td>
-                </tr>
-                <tr>
-                  <td>Profile schema</td>
-                  <td><code>src/types/profile.ts</code></td>
-                  <td>
-                    Canonical data. Validators, normalization and migrations still need explicit
-                    handling when fields change.
-                  </td>
-                </tr>
-                <tr>
-                  <td>AI requests</td>
-                  <td><code>src/resume-ai/</code></td>
-                  <td>Gemini calls, prompts, extraction, validation and import comparison.</td>
-                </tr>
-                <tr>
-                  <td>Backup</td>
-                  <td><code>src/utils/driveSync.ts</code></td>
-                  <td>OAuth, conditional writes, backup review and retries.</td>
-                </tr>
-                <tr>
-                  <td>Fill reports</td>
-                  <td><code>src/fill-log/</code></td>
-                  <td>Frame aggregation, metadata retention, presentation and navigation.</td>
-                </tr>
+                <tr><td>Extension surfaces</td><td><code>entrypoints/</code> for the worker, content script, popup and options UI.</td></tr>
+                <tr><td>Autofill runs</td><td><code>src/autofill/runCoordinator.ts</code> for run state, choices and recovery.</td></tr>
+                <tr><td>Scanning, matching and writing</td><td><code>src/autofill/</code> for the scanner, mapper, resolver, filler, Undo and learning.</td></tr>
+                <tr><td>Profile fields</td><td><code>src/profile/fieldCatalog.ts</code> for shared labels and order. <code>src/types/profile.ts</code> for the schema.</td></tr>
+                <tr><td>Gemini and resume import</td><td><code>src/resume-ai/</code> for requests, prompts, validation and comparison.</td></tr>
+                <tr><td>Backups</td><td><code>src/utils/driveSync.ts</code> for OAuth, writes, restore review and retries.</td></tr>
+                <tr><td>Fill reports</td><td><code>src/fill-log/</code> for aggregation, retention and navigation.</td></tr>
               </tbody>
             </table>
           </div>
-          <h3>Keep the shared contracts intact</h3>
-          <p>
-            New profile fields need catalog entries, typed UI bindings, domain validation,
-            import/export policies and migration decisions. The catalog reduces duplicate
-            definitions; it does not make a schema change automatically safe.
-          </p>
-          <p>
-            Do not put Gemini credentials or Drive tokens into profile exports. AI requests use a
-            known-field projection and question-scoped sensitive data. Preserve the two-phase
-            autofill flow and the manual-learning confirmation rules.
-          </p>
-          <p>
-            For the detailed architecture and project conventions, read
-            <a href="https://github.com/myowinthein/job-buddy/blob/main/AGENTS.md">AGENTS.md</a>.
-            This site is the user and developer guide; code remains the source of truth for
-            implementation details.
-          </p>
+          <div class="detail-list">
+            <details>
+              <summary>What needs updating when I add a profile field?</summary>
+              <p>
+                Add its schema and catalog entries, UI binding, validation, import/export policies
+                and migration handling. Check completion, extraction and AI disclosure rules.
+                The catalog shares definitions across features, but does not replace these decisions.
+              </p>
+              <p>
+                Run <code>src/profile/fieldCoverage.test.ts</code> to check coverage across profile
+                projections, review, extraction and prompts.
+              </p>
+            </details>
+            <details>
+              <summary>Which autofill and data rules should changes preserve?</summary>
+              <ul>
+                <li>Scan once, then use the saved matches for merge or overwrite.</li>
+                <li>Verify writes and preserve Undo when a form rejects a value.</li>
+                <li>Learn from confirmed manual corrections, never AI confidence alone.</li>
+                <li>Keep Gemini credentials and Drive tokens out of profile exports and backups.</li>
+                <li>Limit AI requests to permitted profile fields and question-specific sensitive data.</li>
+              </ul>
+              <p>Read <a href="https://github.com/myowinthein/job-buddy/blob/main/AGENTS.md">AGENTS.md</a> for the full architecture and project conventions.</p>
+            </details>
+          </div>
         </section>
         <section class="chapter" id="commands" aria-labelledby="commands-title">
           <div class="chapter-heading">
-            <span>Everyday development</span>
-            <h2 id="commands-title">Run the check that answers the question</h2>
+            <h2 id="commands-title">Commands and checks</h2>
           </div>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Command</th>
-                  <th>Purpose</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><code>pnpm dev</code></td>
-                  <td>Run WXT Chrome development with live updates.</td>
-                </tr>
-                <tr>
-                  <td><code>pnpm dev:preview</code></td>
-                  <td>Run isolated sample-data options UI at port 4173.</td>
-                </tr>
-                <tr>
-                  <td><code>pnpm compile</code></td>
-                  <td>Type-check without emitting files.</td>
-                </tr>
-                <tr>
-                  <td><code>pnpm lint</code></td>
-                  <td>Run ESLint.</td>
-                </tr>
-                <tr>
-                  <td><code>pnpm test</code> / <code>pnpm test:run</code></td>
-                  <td>Vitest in watch mode / a single run.</td>
-                </tr>
-                <tr>
-                  <td><code>pnpm build</code></td>
-                  <td>Build production Chrome output in <code>.output/chrome-mv3/</code>.</td>
-                </tr>
-                <tr>
-                  <td><code>pnpm zip</code></td>
-                  <td>Build and package a Chrome Web Store archive in <code>.output/</code>.</td>
-                </tr>
-                <tr>
-                  <td><code>pnpm test:browser</code></td>
-                  <td>Build, then run Playwright extension tests.</td>
-                </tr>
-                <tr>
-                  <td><code>pnpm serve:landing</code></td>
-                  <td>Serve this static website from <code>docs/</code>.</td>
-                </tr>
-                <tr>
-                  <td>
-                    <code>pnpm dev:firefox</code>, <code>pnpm build:firefox</code>,
-                    <code>pnpm zip:firefox</code>
-                  </td>
-                  <td>
-                    Firefox development, build and package scripts. Production distribution targets
-                    Chrome.
-                  </td>
-                </tr>
-                <tr>
-                  <td><code>pnpm format</code> / <code>pnpm lint:fix</code></td>
-                  <td>
-                    Formatting and automatic lint fixes. Scope edits to the work you intend to
-                    change.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <h3>Before sharing a change</h3>
-          <pre><code>pnpm compile
+          <p class="prose">
+            Run focused tests as you work. Before sharing a change, run the same four checks as CI:
+          </p>
+          <div class="code-block">
+            <button class="copy-code" type="button" aria-label="Copy validation commands">Copy</button>
+            <pre><code>pnpm compile
 pnpm lint
 pnpm test:run
 pnpm build</code></pre>
-          <p>
-            CI runs the same four checks on branch pushes and pull requests. Use focused existing
-            tests while working, for example:
-          </p>
-          <pre><code>pnpm exec vitest run src/autofill/mapper.test.ts</code></pre>
-          <p>
-            Vitest defaults to Node. DOM tests opt in with
-            <code>// @vitest-environment jsdom</code>. Keep tests under <code>src/</code>, outside
-            WXT’s entrypoints.
-          </p>
-          <h3>Check actual form behavior</h3>
-          <pre><code>pnpm exec playwright install chromium
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Task</th><th>Command</th></tr></thead>
+              <tbody>
+                <tr><td>Chrome development</td><td><code>pnpm dev</code></td></tr>
+                <tr><td>Options UI with sample data</td><td><code>pnpm dev:preview</code></td></tr>
+                <tr><td>Type-check / lint</td><td><code>pnpm compile</code> / <code>pnpm lint</code></td></tr>
+                <tr><td>Unit tests: watch / once</td><td><code>pnpm test</code> / <code>pnpm test:run</code></td></tr>
+                <tr><td>Production Chrome build</td><td><code>pnpm build</code> → <code>.output/chrome-mv3/</code></td></tr>
+                <tr><td>Chrome Web Store archive</td><td><code>pnpm zip</code> → <code>.output/</code></td></tr>
+                <tr><td>Build and run browser tests</td><td><code>pnpm test:browser</code></td></tr>
+                <tr><td>Serve this website</td><td><code>pnpm serve:landing</code></td></tr>
+                <tr><td>Firefox: develop / build / package</td><td><code>pnpm dev:firefox</code> / <code>pnpm build:firefox</code> / <code>pnpm zip:firefox</code></td></tr>
+                <tr><td>Format / fix lint issues</td><td><code>pnpm format</code> / <code>pnpm lint:fix</code>. Scope edits to your change.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="detail-list">
+            <details>
+              <summary>How do I run a focused unit test?</summary>
+              <div class="code-block">
+                <button class="copy-code" type="button" aria-label="Copy focused test command">Copy</button>
+                <pre><code>pnpm exec vitest run src/autofill/mapper.test.ts</code></pre>
+              </div>
+              <p>
+                Vitest defaults to Node. Use <code>// @vitest-environment jsdom</code> for DOM
+                tests. Keep tests under <code>src/</code>, outside WXT’s entrypoints.
+              </p>
+            </details>
+            <details>
+              <summary>How do I verify actual form behavior?</summary>
+              <div class="code-block">
+                <button class="copy-code" type="button" aria-label="Copy browser test commands">Copy</button>
+                <pre><code>pnpm exec playwright install chromium
 pnpm test:browser
-# After a build, inspect a run in a visible browser:
-pnpm exec playwright test --headed</code></pre>
-          <p>
-            Autofill-matching changes need browser verification as well as unit tests. Check
-            retained values, validation, events and Undo on a throwaway form. Browser tests use
-            isolated Chromium storage and synthetic data, not your installed extension’s personal
-            profile.
-          </p>
+# After building, watch a focused test:
+pnpm exec playwright test src/browser/demo.pw.ts --headed</code></pre>
+              </div>
+              <p>
+                Autofill-matching changes need a build and browser verification as well as unit
+                tests. Check actual values, validation, events and Undo on a throwaway form.
+                Browser tests use isolated storage and fictional data.
+              </p>
+            </details>
+          </div>
         </section>
         <section class="chapter" id="demo" aria-labelledby="demo-title">
           <div class="chapter-heading">
-            <span>A form you can test freely</span>
-            <h2 id="demo-title">An original application for a fictional role</h2>
+            <h2 id="demo-title">Demo and captures</h2>
           </div>
           <p class="prose">
-            The <a
-              href="../demo/"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-describedby="new-tab-hint"
-              >Morrow Studio demo&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg></a
-            >
-            is a standalone job application made for this project. Its layout and branding are original, rather than a reproduction of an
-            ATS. It does not send applications or save form entries. You can use it for manual
-            autofill checks and public screenshots.
+            Use the <a href="../demo/" target="_blank" rel="noopener noreferrer" aria-describedby="new-tab-hint">Morrow Studio demo&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg></a>
+            to test autofill or capture screenshots. It is an original job form for a fictional
+            role. Nothing is submitted and form entries are not saved.
           </p>
           <p class="prose">
-            The demo offers installation guidance when Job Buddy is not detected. The floating
-            control comes from the installed extension. Use synthetic profile information for
-            screenshots; do not publish your actual resume or credentials.
+            The floating control comes from your installed extension. Use fictional profile details
+            for public images. The browser fixtures already provide a complete sample profile.
           </p>
           <div class="table-scroll">
             <table>
-              <thead>
-                <tr>
-                  <th>Location</th>
-                  <th>Purpose</th>
-                </tr>
-              </thead>
+              <thead><tr><th>What you need</th><th>Location</th></tr></thead>
               <tbody>
-                <tr>
-                  <td><code>docs/demo/</code></td>
-                  <td>Buildless HTML, CSS and local form behavior.</td>
-                </tr>
-                <tr>
-                  <td><code>src/browser/fixtures/demo-profile.json</code></td>
-                  <td>Internal fictional profile used by browser checks and captures.</td>
-                </tr>
-                <tr>
-                  <td><code>src/browser/demo.pw.ts</code></td>
-                  <td>Real extension autofill, validation, events and Undo checks.</td>
-                </tr>
-                <tr>
-                  <td><code>src/browser/site-captures.pw.ts</code></td>
-                  <td>
-                    Reproducible light/dark website captures of the real UI, with isolated sample
-                    data and mocked providers.
-                  </td>
-                </tr>
-                <tr>
-                  <td><code>docs/assets/screenshots/</code></td>
-                  <td>Reviewed 3× lossless website screenshots. Regenerate when the UI changes.</td>
-                </tr>
+                <tr><td>The demo form</td><td><code>docs/demo/</code></td></tr>
+                <tr><td>A complete sample profile</td><td><code>src/browser/fixtures/demo-profile.json</code></td></tr>
+                <tr><td>Autofill and Undo checks</td><td><code>src/browser/demo.pw.ts</code></td></tr>
+                <tr><td>Website UI captures</td><td><code>src/browser/site-captures.pw.ts</code></td></tr>
+                <tr><td>The autoplay recording</td><td><code>src/browser/demo-motion.pw.ts</code></td></tr>
               </tbody>
             </table>
           </div>
-          <pre><code>pnpm build
-node scripts/capture-demo.mjs
-node scripts/capture-site.mjs</code></pre>
-          <p>
-            For website captures, keep <code>pnpm dev:preview</code> running at port 4173 in another
-            terminal. They are opt-in and skipped during ordinary browser tests. Capture output is
-            written under <code>.output/browser-results/</code>. The scripts update the image
-            assets and cache versions; website conversion requires <code>cwebp</code>. Review the
-            results before committing. Keep HTML image dimensions in CSS pixels, not the 3× bitmap
-            dimensions. The website and README use the same current demo rather than
-            older ATS screenshots.
-          </p>
+          <div class="detail-list">
+            <details>
+              <summary>How do I refresh the README screenshot?</summary>
+              <div class="code-block">
+                <button class="copy-code" type="button" aria-label="Copy README capture commands">Copy</button>
+                <pre><code>pnpm build
+node scripts/capture-demo.mjs</code></pre>
+              </div>
+              <p>
+                This captures real autofill with fictional data and updates the shared README
+                image. Review the result in <code>docs/assets/images/autofill-demo.png</code>.
+              </p>
+            </details>
+            <details>
+              <summary>How do I refresh website screenshots and the recording?</summary>
+              <p>
+                Install <code>cwebp</code> for screenshots and <code>ffmpeg</code> for the recording.
+                Start the sample-data preview in one terminal:
+              </p>
+              <div class="code-block">
+                <button class="copy-code" type="button" aria-label="Copy capture preview command">Copy</button>
+                <pre><code>pnpm dev:preview</code></pre>
+              </div>
+              <p>In another terminal, build and run the capture you need:</p>
+              <div class="code-block">
+                <button class="copy-code" type="button" aria-label="Copy website capture commands">Copy</button>
+                <pre><code>pnpm build
+# Website screenshots:
+node scripts/capture-site.mjs
+# Autoplay recording:
+node scripts/capture-demo-motion.mjs</code></pre>
+              </div>
+              <p>
+                These opt-in captures use isolated data and mocked providers. Scripts convert the
+                output in <code>.output/browser-results/</code> and update assets and cache versions.
+                Review both themes before committing. Keep HTML dimensions in CSS pixels, not the
+                3× screenshot dimensions.
+              </p>
+            </details>
+          </div>
         </section>
         <section class="chapter" id="release" aria-labelledby="release-title">
           <div class="chapter-heading">
-            <span>For maintainers</span>
-            <h2 id="release-title">Configure releases separately from development</h2>
+            <h2 id="release-title">Release setup</h2>
           </div>
           <p class="prose">
-            The release workflow runs when a <code>v*.*.*</code> tag is pushed. It checks, builds
-            and zips the extension, uploads it to Chrome Web Store and creates a GitHub release.
-            This is a publishing action, not a local test command. Store approval and Chrome’s
-            rollout are separate from the upload.
+            Pushing a <code>v*.*.*</code> tag runs the release workflow: checks, a production archive,
+            Chrome Web Store upload and a GitHub release. Only do this when you intend to publish.
+            Uploading does not complete store review or Chrome’s rollout.
           </p>
-          <h3>Prepare the publishing credentials</h3>
-          <ol>
-            <li>
-              In the Google Cloud project that owns publishing access, enable the Chrome Web Store
-              API.
-            </li>
-            <li>
-              For the CLI helper below, create a <strong>Desktop app</strong> OAuth client following
-              its <a href="https://github.com/fregante/chrome-webstore-upload-keys">setup guide</a>.
-              This is separate from the Web application clients used for Drive.
-            </li>
-            <li>Find the extension ID in the Chrome Web Store Developer Dashboard.</li>
-            <li>
-              Generate publishing credentials using the maintained
-              <code>chrome-webstore-upload-keys</code> utility and the account that owns the
-              listing. Keep the resulting tokens private.
-            </li>
-            <li>
-              Create a GitHub environment named <code>production</code> and add the secrets below.
-            </li>
-          </ol>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Secret</th>
-                  <th>Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><code>CHROME_EXTENSION_ID</code></td>
-                  <td>The published extension’s ID.</td>
-                </tr>
-                <tr>
-                  <td><code>CHROME_CLIENT_ID</code></td>
-                  <td>The publishing Desktop app OAuth client ID.</td>
-                </tr>
-                <tr>
-                  <td><code>CHROME_CLIENT_SECRET</code></td>
-                  <td>That publishing client’s secret.</td>
-                </tr>
-                <tr>
-                  <td><code>CHROME_REFRESH_TOKEN</code></td>
-                  <td>
-                    A refresh token authorized by the listing owner. Reauthorization is needed if it
-                    is revoked or expires.
-                  </td>
-                </tr>
-                <tr>
-                  <td><code>ENV_PRODUCTION</code></td>
-                  <td>
-                    Production environment-file text containing
-                    <code>VITE_GOOGLE_DRIVE_CLIENT_ID=&lt;PRODUCTION_DRIVE_CLIENT_ID&gt;</code>. Use
-                    the Drive Web application client ID, not its secret.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div class="detail-list">
+            <details>
+              <summary>Which publishing credentials does CI need?</summary>
+              <ol>
+                <li>Enable the Chrome Web Store API in the Google Cloud project used for publishing.</li>
+                <li>Follow the <a href="https://github.com/fregante/chrome-webstore-upload-keys">upload-keys setup guide</a> to create a Desktop app OAuth client and generate credentials with the listing owner’s account. This client is separate from Drive’s Web application clients.</li>
+                <li>Create a GitHub environment named <code>production</code> and add the secrets below.</li>
+              </ol>
+              <div class="table-scroll">
+                <table>
+                  <thead><tr><th>Secret</th><th>Value</th></tr></thead>
+                  <tbody>
+                    <tr><td><code>CHROME_EXTENSION_ID</code></td><td>The published extension’s ID.</td></tr>
+                    <tr><td><code>CHROME_CLIENT_ID</code></td><td>The publishing Desktop app client ID.</td></tr>
+                    <tr><td><code>CHROME_CLIENT_SECRET</code></td><td>That publishing client’s secret.</td></tr>
+                    <tr><td><code>CHROME_REFRESH_TOKEN</code></td><td>A refresh token authorized by the listing owner. Replace it if revoked or expired.</td></tr>
+                    <tr><td><code>ENV_PRODUCTION</code></td><td>Production env-file text containing <code>VITE_GOOGLE_DRIVE_CLIENT_ID=&lt;PRODUCTION_DRIVE_CLIENT_ID&gt;</code>. Use the Drive client ID, never its secret.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </details>
           </div>
-          <p>
-            See
-            <a
-              href="https://github.com/myowinthein/job-buddy/blob/main/.github/workflows/release.yml"
-              >release.yml</a
-            >
-            for the exact upload steps. Keep release approval, version choice and tag publication
-            explicit.
-          </p>
-          <p class="sources">
-            Related official guides:
-            <a href="https://developer.chrome.com/docs/webstore/using-api">Chrome Web Store API</a>,
-            <a
-              href="https://developer.chrome.com/docs/extensions/reference/api/identity#method-launchWebAuthFlow"
-              >Chrome identity flow</a
-            >,
-            <a href="https://developers.google.com/drive/api/guides/appdata"
-              >Drive app-data storage</a
-            >.
+          <p class="prose">
+            Check <a href="https://github.com/myowinthein/job-buddy/blob/main/.github/workflows/release.yml">release.yml</a>
+            for the exact steps and the <a href="https://developer.chrome.com/docs/webstore/using-api">Chrome Web Store API guide</a>
+            for Google’s publishing requirements. Production distribution targets Chrome, even though Firefox build scripts are available.
           </p>
         </section>
       </main>
