@@ -129,6 +129,13 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   await expect(page).toHaveURL(origin + prefix + '#resume-profile-choice');
   await expect(page.locator('#resume-profile-choice')).toHaveAttribute('open', '');
   await expect(page.locator('#resume-profile-choice > summary')).toBeInViewport();
+  await page.locator('#resume-profile-choice > summary').click();
+  const driveChoice = page.locator('#drive-profile-choice');
+  await driveChoice.locator('summary').click();
+  await driveChoice.getByRole('link', { name: 'Update or Replace choices as resume import' }).click();
+  await expect(page).toHaveURL(origin + prefix + '#resume-profile-choice');
+  await expect(page.locator('#resume-profile-choice')).toHaveAttribute('open', '');
+  await expect(page.locator('#resume-profile-choice > summary')).toBeInViewport();
   await page
     .getByRole('navigation', { name: 'Main navigation' })
     .getByRole('link', { name: 'For developers' })
