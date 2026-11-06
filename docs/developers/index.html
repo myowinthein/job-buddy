@@ -26,6 +26,7 @@
     <script src="../assets/site.js" defer></script>
   </head>
   <body>
+    <span id="new-tab-hint" hidden>Opens in a new tab.</span>
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
       <div class="header-inner">
@@ -35,8 +36,13 @@
         <nav class="header-nav" aria-label="Main navigation">
           <a class="walkthrough-link" href="../#start">Walkthrough</a>
           <a href="../developers/" aria-current="page">For developers</a>
-          <a class="demo-nav" href="../demo/" target="_blank" rel="noopener noreferrer"
-            >Try the demo</a
+          <a
+            class="demo-nav"
+            href="../demo/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-describedby="new-tab-hint"
+            >Try the demo&nbsp;<span aria-hidden="true">↗</span></a
           >
         </nav>
         <button class="theme-toggle" type="button" aria-label="Switch theme" aria-pressed="false">
@@ -192,7 +198,13 @@ cp .env.example .env.production</code></pre>
           <h3 id="drive-oauth">Set up Google Drive OAuth</h3>
           <ol>
             <li>
-              In <a href="https://console.cloud.google.com/">Google Cloud Console</a>, choose your
+              In <a
+                href="https://console.cloud.google.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-describedby="new-tab-hint"
+                >Google Cloud Console&nbsp;<span aria-hidden="true">↗</span></a
+              >, choose your
               project and enable the Google Drive API.
             </li>
             <li>
@@ -494,7 +506,13 @@ pnpm exec playwright test --headed</code></pre>
             <h2 id="demo-title">An original application for a fictional role</h2>
           </div>
           <p class="prose">
-            The <a href="../demo/" target="_blank" rel="noopener noreferrer">Morrow Studio demo</a>
+            The <a
+              href="../demo/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-describedby="new-tab-hint"
+              >Morrow Studio demo&nbsp;<span aria-hidden="true">↗</span></a
+            >
             is a standalone job application made for this project. Its layout and branding are original, rather than a reproduction of an
             ATS. It does not send applications or save form entries. You can use it for manual
             autofill checks and public screenshots.
@@ -654,7 +672,10 @@ node scripts/capture-site.mjs</code></pre>
             >Report an issue</a
           ><a
             href="https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk"
-            >Chrome Web Store</a
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-describedby="new-tab-hint"
+            >Chrome Web Store&nbsp;<span aria-hidden="true">↗</span></a
           ><a href="https://github.com/myowinthein/job-buddy">GitHub</a
           ><a href="https://ko-fi.com/myowinthein">Support on Ko-fi</a
           ><a href="../legal/privacy/">Privacy Policy</a

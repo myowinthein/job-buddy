@@ -218,6 +218,49 @@ test('demo opens separately, offers installation guidance, and rechecks availabi
   await demo.close();
 });
 
+test('task links open new tabs with a visual hint and accessible description', async ({
+  context,
+  page,
+}) => {
+  await serveSite(context);
+  const taskHosts = new Set([
+    'chromewebstore.google.com',
+    'aistudio.google.com',
+    'console.cloud.google.com',
+  ]);
+  for (const path of ['', 'developers/', 'demo/']) {
+    await page.goto(origin + prefix + path);
+    for (const link of await page.locator('a[href]').all()) {
+      const href = await link.getAttribute('href');
+      const url = new URL(href!, page.url());
+      const newTab =
+        taskHosts.has(url.hostname) ||
+        (!href!.startsWith('#') && url.pathname === prefix + 'demo/');
+      if (newTab) {
+        await expect(link).toHaveAttribute('target', '_blank');
+        await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+        await expect(link).toHaveAccessibleDescription('Opens in a new tab.');
+        await expect(link.locator('[aria-hidden="true"]')).toHaveText('↗');
+      } else {
+        expect(await link.getAttribute('target')).not.toBe('_blank');
+      }
+    }
+  }
+  // Intercept the destination so this check never visits the store or creates a key.
+  await page.goto(origin + prefix);
+  await context.route('https://chromewebstore.google.com/**', (route) =>
+    route.fulfill({ body: 'Store preview' }),
+  );
+  const [store] = await Promise.all([
+    context.waitForEvent('page'),
+    page.getByRole('link', { name: 'Add to Chrome', exact: true }).click(),
+  ]);
+  await expect(store).toHaveURL(/chromewebstore\.google\.com/);
+  expect(await store.evaluate(() => window.opener === null)).toBe(true);
+  await expect(page).toHaveURL(origin + prefix);
+  await store.close();
+});
+
 for (const density of [1, 2, 3]) {
   test.describe(`screenshot clarity at ${density}× density`, () => {
     test.use({ deviceScaleFactor: density });

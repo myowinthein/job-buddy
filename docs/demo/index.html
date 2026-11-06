@@ -18,6 +18,7 @@
     <script src="presence.js" defer></script>
   </head>
   <body>
+    <span id="new-tab-hint" hidden>Opens in a new tab.</span>
     <a class="skip-link" href="#application">Skip to application</a>
     <header class="masthead">
       <div class="masthead-inner">
@@ -69,7 +70,8 @@
           href="https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk"
           target="_blank"
           rel="noopener noreferrer"
-          >Add to Chrome</a
+          aria-describedby="new-tab-hint"
+          >Add to Chrome&nbsp;<span aria-hidden="true">↗</span></a
         >
       </aside>
       <aside class="job-description" aria-labelledby="role-title">
