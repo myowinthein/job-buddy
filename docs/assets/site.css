@@ -521,13 +521,15 @@ li {
   color: var(--muted);
   font-size: 14px;
 }
-.detail-list details ul {
+.detail-list details ul,
+.detail-list details ol {
   margin: 10px 0;
   max-width: 780px;
   color: var(--muted);
   font-size: 14px;
 }
-.detail-list details ul strong {
+.detail-list details ul strong,
+.detail-list details ol strong {
   color: var(--ink);
 }
 .table-scroll {

@@ -1193,23 +1193,21 @@
             <details id="ai-matching">
               <summary>How does AI match form fields?</summary>
               <p>
-                AI reviews eligible fields left unfilled or uncertain after earlier stages. This
-                example shows one possible match.
+                Gemini reviews fields left unfilled or uncertain after earlier stages.
               </p>
-              <div>
-                <pre aria-label="Illustrative HTML from an application form"><code>&lt;label for="work-link"&gt;Where can we see your work?&lt;/label&gt;
-&lt;input id="work-link" type="url"&gt;</code></pre>
-                <dl class="rule-trace">
-                  <dt>Reads</dt>
-                  <dd>Question, nearby context and available choices</dd>
-                  <dt>Matches</dt>
-                  <dd>Links → Portfolio</dd>
-                  <dt>Confidence</dt>
-                  <dd>High (Gemini’s judgment, not a percentage)</dd>
-                  <dt>Fills</dt>
-                  <dd><code>https://alexmorgan.example.com</code> from your profile</dd>
-                </dl>
-              </div>
+              <ol>
+                <li>
+                  <strong>Send:</strong> Questions, field details, nearby text and available choices
+                  go to Gemini with your saved profile data. Stored files are excluded.
+                </li>
+                <li>
+                  <strong>Review:</strong> Gemini suggests a profile field or choice and its
+                  confidence. Its reasoning is not returned.
+                </li>
+                <li>
+                  <strong>Apply:</strong> Job Buddy checks the response and attempts to fill the field.
+                </li>
+              </ol>
               <ul>
                 <li><strong>High:</strong> Can fill in <span class="green">green</span>.</li>
                 <li>
@@ -1218,8 +1216,8 @@
                 <li><strong>No match:</strong> Keeps the previous result.</li>
               </ul>
               <p>
-                Gemini is asked to use only saved information. Job Buddy checks its response before
-                filling.
+                Confidence is Gemini’s judgment, not a percentage. Missing data or an unsuccessful
+                fill can still leave the field unfilled.
               </p>
             </details>
           </div>
