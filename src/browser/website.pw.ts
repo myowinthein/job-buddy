@@ -499,6 +499,43 @@ test('all walkthrough images remain available without JavaScript', async ({ brow
   }
 });
 
+test('reading text uses the same responsive width across the documentation site', async ({
+  context,
+  page,
+}) => {
+  await serveSite(context);
+  for (const path of ['', 'developers/', 'legal/privacy/', 'legal/disclaimer/', '404.html']) {
+    for (const width of [390, 1440]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.goto(origin + prefix + path);
+      await page.locator('.detail-list details').evaluateAll((items) => {
+        items.forEach((item) => { (item as HTMLDetailsElement).open = true; });
+      });
+      const readingWidth = await page.evaluate(() =>
+        parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--reading-width')),
+      );
+      expect(readingWidth, path).toBe(730);
+      const oversized = await page.locator('main p, main ul, main ol, main dd, main figcaption')
+        .evaluateAll((items, limit) => items
+          .filter((item) => !item.classList.contains('pipeline'))
+          .filter((item) => item.getBoundingClientRect().width > limit + 1)
+          .map((item) => `${item.tagName}.${item.className}: ${item.getBoundingClientRect().width}`),
+        readingWidth);
+      expect(oversized, `${path} at ${width}px`).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      if (width === 1440 && path === '')
+        expect(await page.locator('.hero-figure').evaluate((el) => el.getBoundingClientRect().width))
+          .toBeGreaterThan(readingWidth);
+      if (width === 1440 && path === 'developers/') {
+        expect(await page.locator('.table-scroll').first().evaluate((el) => el.getBoundingClientRect().width))
+          .toBeGreaterThan(readingWidth);
+        expect(await page.locator('.code-block').first().evaluate((el) => el.getBoundingClientRect().width))
+          .toBeGreaterThan(readingWidth);
+      }
+    }
+  }
+});
+
 for (const theme of ['light', 'dark'] as const) {
   test(`all public pages fit narrow and wide screens in ${theme} mode`, async ({
     context,

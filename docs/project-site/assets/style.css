@@ -17,7 +17,8 @@
   --amber:      #d97706;
   --amber-bg:   #fef3c7;
   --header-h:   58px;
-  --content-w:  860px;
+  --reading-width: 730px;
+  --content-w: calc(var(--reading-width) + 48px);
 }
 
 [data-theme="dark"] {
@@ -110,6 +111,9 @@ img { max-width: 100%; }
   max-width: var(--content-w);
   margin: 0 auto;
   padding: 0 24px 80px;
+}
+.page-wrap :where(p, ul, ol, dd) {
+  max-width: var(--reading-width);
 }
 
 /* ── Sections ────────────────────────────────────────────────────────────── */

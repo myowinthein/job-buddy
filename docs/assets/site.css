@@ -11,6 +11,7 @@
   --green: #167544;
   --yellow: #88600d;
   --red: #b42d38;
+  --reading-width: 730px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-synthesis: none;
 }
@@ -215,7 +216,7 @@ h1 {
 .lede {
   font-size: 20px;
   line-height: 1.6;
-  max-width: 700px;
+  max-width: var(--reading-width);
   margin: 0 0 28px;
   color: var(--muted);
 }
@@ -377,8 +378,12 @@ h4 {
 p {
   margin: 0 0 16px;
 }
+/* Reading text shares one measure. Media, code and tables keep their own widths. */
+main :where(p, ul, ol, dd, figcaption) {
+  max-width: var(--reading-width);
+}
 .prose {
-  max-width: 730px;
+  max-width: var(--reading-width);
 }
 .prose > p:last-child {
   margin-bottom: 0;
@@ -409,7 +414,7 @@ li {
   list-style: none;
   padding: 0;
   margin: 28px 0;
-  max-width: 760px;
+  max-width: var(--reading-width);
 }
 .steps li {
   display: grid;
@@ -452,7 +457,7 @@ li {
   margin: 25px 0;
   color: var(--muted);
   font-size: 14px;
-  max-width: 760px;
+  max-width: var(--reading-width);
 }
 .category-list {
   columns: 2;
@@ -486,6 +491,7 @@ li {
   list-style: none;
   padding: 0;
   margin: 28px 0;
+  max-width: none;
 }
 .pipeline li {
   border-top: 2px solid var(--line);
@@ -517,18 +523,21 @@ li {
 .detail-list details > p,
 .detail-list details > div {
   margin: 14px 0 4px;
-  max-width: 780px;
+  max-width: var(--reading-width);
   color: var(--muted);
   font-size: 14px;
 }
 .detail-list details ul {
   margin: 10px 0;
-  max-width: 780px;
+  max-width: var(--reading-width);
   color: var(--muted);
   font-size: 14px;
 }
 .detail-list details ul strong {
   color: var(--ink);
+}
+.detail-list details > :is(.visual-tour, .table-scroll, .code-block) {
+  max-width: 100%;
 }
 .table-scroll {
   overflow-x: auto;
@@ -887,7 +896,7 @@ pre code {
   margin-top: 0;
 }
 .visual-panels figcaption {
-  max-width: 730px;
+  max-width: var(--reading-width);
   font-size: 14px;
 }
 .visual-tour:not(.is-enhanced) [data-visual-panel] + [data-visual-panel] {
@@ -978,7 +987,7 @@ pre code {
 }
 .data-ledger dd {
   margin: 0;
-  max-width: 730px;
+  max-width: var(--reading-width);
   color: var(--muted);
 }
 @media (max-width: 800px) {
