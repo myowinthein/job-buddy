@@ -80,7 +80,7 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   await expect(learnedDetails.locator('summary')).toBeInViewport();
   await expect(learnedDetails.locator('ul > li')).toHaveCount(2);
   await learnedDetails.locator('summary').click();
-  const learningIntro = page.locator('#learned-mappings > p.prose');
+  const learningIntro = page.locator('#learned-mappings > p.prose').first();
   const introLines = await learningIntro.evaluate((el) =>
     el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight),
   );
