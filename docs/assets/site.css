@@ -955,35 +955,6 @@ pre code {
 .essential {
   margin-top: 24px;
 }
-.learning-timeline {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 36px;
-  max-width: 850px;
-  list-style: none;
-  padding: 0;
-  margin: 26px 0;
-}
-.learning-timeline li {
-  position: relative;
-  margin: 0;
-}
-.learning-timeline li:not(:last-child)::after {
-  content: '→';
-  position: absolute;
-  right: -26px;
-  top: 0;
-  color: var(--link);
-}
-.learning-timeline strong,
-.learning-timeline span {
-  display: block;
-}
-.learning-timeline span {
-  font-size: 14px;
-  color: var(--muted);
-  margin-top: 5px;
-}
 .data-ledger {
   margin: 25px 0 32px;
 }
@@ -1037,17 +1008,6 @@ pre code {
 @media (max-width: 560px) {
   .visual-controls button {
     font-size: 13px;
-  }
-  .learning-timeline {
-    grid-template-columns: 1fr;
-    gap: 32px;
-  }
-  .learning-timeline li:not(:last-child)::after {
-    content: '↓';
-    left: 0;
-    right: auto;
-    top: auto;
-    bottom: -28px;
   }
   .data-ledger > div {
     grid-template-columns: 1fr;

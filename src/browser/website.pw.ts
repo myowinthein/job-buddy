@@ -80,6 +80,15 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   await expect(learnedDetails.locator('summary')).toBeInViewport();
   await expect(learnedDetails.locator('ul > li')).toHaveCount(2);
   await learnedDetails.locator('summary').click();
+  const learningIntro = page.locator('#learned-mappings > p.prose');
+  const introLines = await learningIntro.evaluate((el) =>
+    el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight),
+  );
+  expect(introLines).toBeLessThanOrEqual(2.01);
+  await learningIntro.getByRole('link', { name: 'how learned mappings become trusted' }).click();
+  await expect(learnedDetails).toHaveAttribute('open', '');
+  await expect(learnedDetails.locator('summary')).toBeInViewport();
+  await learnedDetails.locator('summary').click();
   await learnedLink.focus();
   await page.keyboard.press('Enter');
   await expect(learnedDetails).toHaveAttribute('open', '');
