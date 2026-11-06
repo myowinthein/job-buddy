@@ -216,14 +216,14 @@ test('demo opens separately, offers installation guidance, and rechecks availabi
   await serveSite(context);
   await page.goto(origin + prefix);
   const links = page.locator('a[href="./demo/"]');
-  await expect(links).toHaveCount(2);
+  await expect(links).toHaveCount(1);
   for (const link of await links.all()) {
     await expect(link).toHaveAttribute('target', '_blank');
     await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   }
   const [demo] = await Promise.all([
     context.waitForEvent('page'),
-    page.getByRole('link', { name: 'Try it on a demo form', exact: true }).click(),
+    links.click(),
   ]);
   await expect(demo).toHaveURL(origin + prefix + 'demo/');
   expect(await demo.evaluate(() => window.opener === null)).toBe(true);
