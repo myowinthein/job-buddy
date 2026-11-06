@@ -1057,42 +1057,24 @@
                     data-rule-method="fuzzy"
                     data-rule-score="76"
                   >
-                    <figure class="component-figure">
-                      <div class="capture">
-                        <button
-                          type="button"
-                          data-enlarge
-                          aria-label="Enlarge example: Similar field label"
-                        >
-                          <img
-                            src="./assets/screenshots/rule-similar-light.webp?v=e1bc87f78cbd"
-                            data-light="./assets/screenshots/rule-similar-light.webp?v=e1bc87f78cbd"
-                            data-dark="./assets/screenshots/rule-similar-dark.webp?v=fcfbbc1d73cb"
-                            alt="Example application field First nam after matching with Similar field label"
-                            width="600"
-                            height="160"
-                            loading="lazy"
-                          />
-                        </button>
-                      </div>
-                    </figure>
+                    <pre aria-label="Example HTML from the application form"><code>&lt;label for="entry"&gt;First nam&lt;/label&gt;
+&lt;input id="entry"&gt;</code></pre>
                     <dl class="rule-trace">
                       <dt>Reads</dt>
-                      <dd>“First nam” compared with the dictionary term “First name.”</dd>
+                      <dd>“First nam” ≈ “First name”</dd>
                       <dt>Matches</dt>
                       <dd>Personal → First Name</dd>
                       <dt>Score</dt>
                       <dd>
-                        One missing letter out of nine gives 88.9% text similarity. The
-                        strong-match multiplier reduces this to 88.9% × 0.85 = 75.6%, shown as
-                        <strong>76%</strong>.
+                        <strong>76%</strong> (88.9% similarity × 0.85, rounded)
                       </dd>
+                      <dt>Fills</dt>
+                      <dd><code>Alex</code> from your profile</dd>
                     </dl>
                     <p class="rule-note">
-                      Text similarity measures how many letters must change. Above 75%
-                      similarity, the score is multiplied by 0.85. From 60% through 75%, it is
-                      multiplied by 0.75. For example, “Compayn” versus “Company” gives 71.4% ×
-                      0.75 = 53.6%, shown as 54%, which rules do not fill.
+                      One missing letter out of nine gives 88.9% similarity. Above 75% similarity,
+                      multiply by 0.85. From 60% to 75%, multiply by 0.75. “Compayn” vs “Company”:
+                      71.4% × 0.75 ≈ 54%, too low to fill.
                     </p>
                   </div>
                   <div

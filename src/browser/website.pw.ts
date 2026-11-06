@@ -367,6 +367,12 @@ test('screenshot selectors work with mouse, keyboard, themes, and narrow layouts
           if (await image.count()) {
             await image.evaluate((img: HTMLImageElement) => img.decode());
             await expect(image).toHaveAttribute('src', new RegExp(`-${theme}\\.webp`));
+          } else if ((await panel.getAttribute('id')) === 'rule-similar') {
+            await expect(panel.locator('pre')).toContainText('<label for="entry">First nam</label>');
+            await expect(panel.locator('.rule-trace')).toContainText('Personal → First Name');
+            await expect(panel.locator('.rule-trace')).toContainText('76%');
+            await expect(panel.locator('.rule-trace')).toContainText('88.9% similarity × 0.85');
+            await expect(panel.locator('.rule-trace')).toContainText('Alex');
           } else if ((await panel.getAttribute('id')) === 'rule-exact') {
             await expect(panel.locator('pre')).toContainText('<label for="entry">First name</label>');
             await expect(panel.locator('.rule-trace')).toContainText('firstname');
