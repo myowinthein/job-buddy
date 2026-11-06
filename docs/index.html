@@ -1193,32 +1193,24 @@
             <details id="ai-matching">
               <summary>How does AI match form fields?</summary>
               <p>
-                Gemini reviews fields left unfilled or uncertain after earlier stages.
+                AI handles fields that learned mappings and rules couldn’t fill confidently.
               </p>
-              <ol>
-                <li>
-                  <strong>Send:</strong> Questions, field details, nearby text and available choices
-                  go to Gemini with your saved profile data. Stored files are excluded.
-                </li>
-                <li>
-                  <strong>Review:</strong> Gemini suggests a profile field or choice and its
-                  confidence. Its reasoning is not returned.
-                </li>
-                <li>
-                  <strong>Apply:</strong> Job Buddy checks the response and attempts to fill the field.
-                </li>
-              </ol>
-              <ul>
-                <li><strong>High:</strong> Can fill in <span class="green">green</span>.</li>
-                <li>
-                  <strong>Low:</strong> Can fill in <span class="yellow">yellow</span> for review.
-                </li>
-                <li><strong>No match:</strong> Keeps the previous result.</li>
-              </ul>
               <p>
-                Confidence is Gemini’s judgment, not a percentage. Missing data or an unsuccessful
-                fill can still leave the field unfilled.
+                Job Buddy sends the question, input details, nearby text and available choices to
+                Gemini, along with saved profile fields and their values.
               </p>
+              <p>Gemini responds in one of three ways:</p>
+              <ul>
+                <li>
+                  <strong>High confidence:</strong> AI can fill the value as
+                  <span class="green">green</span>.
+                </li>
+                <li>
+                  <strong>Low confidence:</strong> AI can fill it as
+                  <span class="yellow">yellow</span> for your review.
+                </li>
+                <li><strong>No match:</strong> AI leaves the field unchanged.</li>
+              </ul>
             </details>
           </div>
         </section>

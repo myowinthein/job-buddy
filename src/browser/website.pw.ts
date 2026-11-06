@@ -89,9 +89,9 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   await expect(page).toHaveURL(origin + prefix + '#ai-matching');
   await expect(aiDetails).toHaveAttribute('open', '');
   await expect(aiDetails.locator('summary')).toBeInViewport();
-  await expect(aiDetails.locator('ol > li')).toHaveCount(3);
+  await expect(aiDetails.locator('ol > li')).toHaveCount(0);
   await expect(aiDetails.locator('ul > li')).toHaveCount(3);
-  await expect(aiDetails).toContainText('not a percentage');
+  await expect(aiDetails).toContainText('saved profile fields and their values');
   await aiDetails.locator('summary').click();
   await aiLink.focus();
   await page.keyboard.press('Enter');
