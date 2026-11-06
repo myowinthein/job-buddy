@@ -370,7 +370,7 @@ test('screenshot selectors work with mouse, keyboard, themes, and narrow layouts
           } else {
             await expect(panel).toHaveAttribute('id', 'rule-autocomplete');
             await expect(panel.locator('pre')).toContainText('autocomplete="email"');
-            await expect(panel.locator('.rule-trace')).toContainText('personal.email');
+            await expect(panel.locator('.rule-trace')).toContainText('Personal → Email');
             await expect(panel.locator('.rule-trace')).toContainText('95%');
           }
           expect(
