@@ -78,7 +78,7 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   await expect(page).toHaveURL(origin + prefix + '#learned-matching');
   await expect(learnedDetails).toHaveAttribute('open', '');
   await expect(learnedDetails.locator('summary')).toBeInViewport();
-  await expect(learnedDetails.locator('ul > li')).toHaveCount(3);
+  await expect(learnedDetails.locator('ul > li')).toHaveCount(2);
   await learnedDetails.locator('summary').click();
   await learnedLink.focus();
   await page.keyboard.press('Enter');

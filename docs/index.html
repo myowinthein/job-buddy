@@ -920,27 +920,23 @@
             <details id="learned-matching">
               <summary>How do learned mappings fill form fields?</summary>
               <p>
-                Learned mappings run first to reuse your corrections on the same site.
-                Two matching corrections or a manual mapping edit establish trust.
+                Learned mappings remember corrections you make after autofill using saved profile
+                details, so the same questions are easier to fill next time.
               </p>
-              <p>
-                Job Buddy matches the question to a saved profile field and uses its current value.
-              </p>
-              <p>The saved mapping determines what happens next:</p>
               <ul>
                 <li>
-                  <strong>Trusted match:</strong> Can fill the value as
-                  <span class="green">green</span>.
+                  <strong>First correction:</strong> The mapping becomes
+                  <span class="yellow">Learning</span>.
                 </li>
                 <li>
-                  <strong>No usable mapping:</strong> Learning, inactive or unmatched mappings pass
-                  to Rules.
-                </li>
-                <li>
-                  <strong>Missing profile value:</strong> Leaves the field unfilled as
-                  <span class="gray">gray</span>.
+                  <strong>Second matching correction:</strong> The mapping becomes
+                  <span class="green">Trusted</span>.
                 </li>
               </ul>
+              <p>
+                Job Buddy first checks for a mapping for that site and question. If it is active
+                and Trusted, it uses the current profile value. Otherwise, it continues to Rules.
+              </p>
             </details>
             <details id="rule-methods">
               <summary>How do rule methods and match scores work?</summary>
