@@ -85,7 +85,7 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
     el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight),
   );
   expect(introLines).toBeLessThanOrEqual(2.01);
-  await learningIntro.getByRole('link', { name: 'how learned mappings become trusted' }).click();
+  await learningIntro.getByRole('link', { name: 'how learned mappings work' }).click();
   await expect(learnedDetails).toHaveAttribute('open', '');
   await expect(learnedDetails.locator('summary')).toBeInViewport();
   await learnedDetails.locator('summary').click();
