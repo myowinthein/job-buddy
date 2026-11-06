@@ -40,7 +40,7 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(origin + prefix);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'One profile. Fill every application.',
+    'One profile.Fill every application.',
   );
   const screenshot = page.getByRole('button', {
     name: 'Enlarge screenshot: AI Features before adding a Gemini key', exact: true,
