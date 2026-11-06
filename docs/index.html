@@ -904,8 +904,8 @@
           </p>
           <ol>
             <li>
-              <strong>Learned mappings</strong> reuse trusted matches from your earlier
-              corrections.
+              <strong><a href="#learned-matching" data-open-details>Learned mappings</a></strong>
+              reuse trusted matches from your earlier corrections.
             </li>
             <li>
               <strong><a href="#rule-methods" data-open-details>Rules</a></strong> match browser
@@ -917,6 +917,31 @@
             </li>
           </ol>
           <div class="detail-list">
+            <details id="learned-matching">
+              <summary>How do learned mappings fill form fields?</summary>
+              <p>
+                Learned mappings run first to reuse your corrections on the same site.
+                Two matching corrections or a manual mapping edit establish trust.
+              </p>
+              <p>
+                Job Buddy matches the question to a saved profile field and uses its current value.
+              </p>
+              <p>The saved mapping determines what happens next:</p>
+              <ul>
+                <li>
+                  <strong>Trusted match:</strong> Can fill the value as
+                  <span class="green">green</span>.
+                </li>
+                <li>
+                  <strong>No usable mapping:</strong> Learning, inactive or unmatched mappings pass
+                  to Rules.
+                </li>
+                <li>
+                  <strong>Missing profile value:</strong> Leaves the field unfilled as
+                  <span class="gray">gray</span>.
+                </li>
+              </ul>
+            </details>
             <details id="rule-methods">
               <summary>How do rule methods and match scores work?</summary>
               <p>

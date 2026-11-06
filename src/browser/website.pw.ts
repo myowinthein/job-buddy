@@ -69,6 +69,22 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
     'src',
     mode ? /-light\.webp(?:\?v=[a-f0-9]+)?$/ : /-dark\.webp(?:\?v=[a-f0-9]+)?$/,
   );
+  const learnedDetails = page.locator('#learned-matching');
+  const learnedLink = page.locator('#fill-details ol').getByRole('link', {
+    name: 'Learned mappings', exact: true,
+  });
+  await expect(learnedDetails).not.toHaveAttribute('open');
+  await learnedLink.click();
+  await expect(page).toHaveURL(origin + prefix + '#learned-matching');
+  await expect(learnedDetails).toHaveAttribute('open', '');
+  await expect(learnedDetails.locator('summary')).toBeInViewport();
+  await expect(learnedDetails.locator('ul > li')).toHaveCount(3);
+  await learnedDetails.locator('summary').click();
+  await learnedLink.focus();
+  await page.keyboard.press('Enter');
+  await expect(learnedDetails).toHaveAttribute('open', '');
+  await page.reload();
+  await expect(learnedDetails).toHaveAttribute('open', '');
   const ruleDetails = page.locator('#rule-methods');
   const rulesLink = page.locator('#fill-details ol').getByRole('link', { name: 'Rules', exact: true });
   await expect(ruleDetails).not.toHaveAttribute('open');
