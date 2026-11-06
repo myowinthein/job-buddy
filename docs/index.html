@@ -1337,13 +1337,25 @@
             <p class="visual-status" role="status" aria-live="polite" aria-atomic="true"></p>
           </div>
           <div class="detail-list">
+            <details id="mapping-review">
+              <summary>What does Review Mappings do?</summary>
+              <p>
+                Manual corrections can still point to the wrong profile field. Review Mappings
+                uses Gemini to check saved mappings from your selected sites.
+              </p>
+              <p>
+                It shows mappings that need attention, with suggestions to choose a better field
+                or make the mapping inactive when none fits.
+              </p>
+              <p>You review the suggestions before applying any changes.</p>
+            </details>
             <details>
-              <summary>Automatic repair and AI review do different jobs</summary>
+              <summary>What does automatic repair do?</summary>
               <p>
                 Automatic repair uses clear evidence from the form to fix known mapping issues
                 locally. It does not silently choose a different profile field. Unchanged work is
                 not repeated; changed mappings, new evidence or a newer repair version can be
-                checked again. Review Mappings asks Gemini to check the pairing itself.
+                checked again.
               </p>
             </details>
           </div>
