@@ -367,6 +367,13 @@ test('screenshot selectors work with mouse, keyboard, themes, and narrow layouts
           if (await image.count()) {
             await image.evaluate((img: HTMLImageElement) => img.decode());
             await expect(image).toHaveAttribute('src', new RegExp(`-${theme}\\.webp`));
+          } else if ((await panel.getAttribute('id')) === 'rule-current') {
+            await expect(panel.locator('pre')).toContainText('<input type="checkbox">');
+            await expect(panel.locator('pre')).toContainText('<legend>Work experience</legend>');
+            await expect(panel.locator('.rule-trace')).toContainText('Currently working here');
+            await expect(panel.locator('.rule-trace')).toContainText('Work History → Example Studio → Current job');
+            await expect(panel.locator('.rule-trace')).toContainText('85%');
+            await expect(panel.locator('.rule-trace')).toContainText('Checked');
           } else if ((await panel.getAttribute('id')) === 'rule-custom') {
             await expect(panel.locator('pre')).toContainText('<label for="entry">Design journal</label>');
             await expect(panel.locator('.rule-trace')).toContainText('designjournal');
