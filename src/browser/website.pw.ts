@@ -367,6 +367,13 @@ test('screenshot selectors work with mouse, keyboard, themes, and narrow layouts
           if (await image.count()) {
             await image.evaluate((img: HTMLImageElement) => img.decode());
             await expect(image).toHaveAttribute('src', new RegExp(`-${theme}\\.webp`));
+          } else if ((await panel.getAttribute('id')) === 'rule-context') {
+            await expect(panel.locator('pre')).toContainText('<p>City</p>');
+            await expect(panel.locator('pre')).toContainText('placeholder="Enter your answer"');
+            await expect(panel.locator('.rule-trace')).toContainText('Nearby text: “City”');
+            await expect(panel.locator('.rule-trace')).toContainText('Address → City');
+            await expect(panel.locator('.rule-trace')).toContainText('70%');
+            await expect(panel.locator('.rule-trace')).toContainText('Seattle');
           } else if ((await panel.getAttribute('id')) === 'rule-current') {
             await expect(panel.locator('pre')).toContainText('<input type="checkbox">');
             await expect(panel.locator('pre')).toContainText('<legend>Work experience</legend>');

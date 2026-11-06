@@ -1143,39 +1143,27 @@
                     data-rule-method="context"
                     data-rule-score="70"
                   >
-                    <figure class="component-figure">
-                      <div class="capture">
-                        <button
-                          type="button"
-                          data-enlarge
-                          aria-label="Enlarge example: Nearby context"
-                        >
-                          <img
-                            src="./assets/screenshots/rule-context-light.webp?v=2f281b79d3e1"
-                            data-light="./assets/screenshots/rule-context-light.webp?v=2f281b79d3e1"
-                            data-dark="./assets/screenshots/rule-context-dark.webp?v=a54bb908b5dc"
-                            alt="Example application field City after matching with Nearby context"
-                            width="600"
-                            height="160"
-                            loading="lazy"
-                          />
-                        </button>
-                      </div>
-                    </figure>
+                    <pre aria-label="Example HTML from the application form"><code>&lt;div class="form-field"&gt;
+  &lt;p&gt;City&lt;/p&gt;
+  &lt;input placeholder="Enter your answer"&gt;
+&lt;/div&gt;</code></pre>
                     <dl class="rule-trace">
                       <dt>Reads</dt>
                       <dd>
-                        The nearby text “City.” The input has no identifying label or
-                        autocomplete hint.
+                        Nearby text: “City”
                       </dd>
                       <dt>Matches</dt>
                       <dd>Address → City</dd>
                       <dt>Score</dt>
                       <dd>
-                        Nearby text gets a preset <strong>70%</strong>, even when it exactly
-                        matches a dictionary term. The input’s own signals are tried first.
+                        <strong>70%</strong> (preset for a nearby-text match)
                       </dd>
+                      <dt>Fills</dt>
+                      <dd><code>Seattle</code> from your profile</dd>
                     </dl>
+                    <p class="rule-note">
+                      Rules use nearby text only when the input’s own hints don’t match.
+                    </p>
                   </div>
                 </div>
                 <p
