@@ -938,9 +938,7 @@
             <details id="rule-methods">
               <summary>How do rule methods and match scores work?</summary>
               <p>
-                Each example shows the rule stage with fictional profile data. Select a method
-                to see what Job Buddy reads, where it finds the answer, and how it scores the
-                match.
+                Rules use six matching methods, each with its own strategy and match score.
               </p>
               <div
                 class="visual-tour side-tour rule-examples"
@@ -1009,37 +1007,27 @@
                     data-rule-method="autocomplete"
                     data-rule-score="95"
                   >
-                    <figure class="component-figure">
-                      <div class="capture">
-                        <button
-                          type="button"
-                          data-enlarge
-                          aria-label="Enlarge example: Autocomplete attribute"
-                        >
-                          <img
-                            src="./assets/screenshots/rule-autocomplete-light.webp?v=f81fc0b26603"
-                            data-light="./assets/screenshots/rule-autocomplete-light.webp?v=f81fc0b26603"
-                            data-dark="./assets/screenshots/rule-autocomplete-dark.webp?v=0505759f5f4e"
-                            alt="Example application field Email address after matching with Autocomplete attribute"
-                            width="600"
-                            height="220"
-                            loading="lazy"
-                          />
-                        </button>
-                      </div>
-                    </figure>
+                    <pre aria-label="Example HTML from the application form"><code>&lt;input
+  type="email"
+  autocomplete="email"
+&gt;</code></pre>
                     <dl class="rule-trace">
                       <dt>Reads</dt>
                       <dd>
-                        <code>autocomplete="email"</code>, a hint supplied by the website.
+                        The website’s <code>autocomplete</code> hint: <code>email</code>.
                       </dd>
                       <dt>Matches</dt>
-                      <dd>Personal → Email</dd>
+                      <dd>
+                        <code>email</code> maps to Personal → Email
+                        (<code>personal.email</code>) in your saved profile.
+                      </dd>
                       <dt>Score</dt>
                       <dd>
-                        A recognized autocomplete hint gets a preset <strong>95%</strong>. Job
-                        Buddy reads this hint before trying the label.
+                        <strong>95%</strong>, a preset for this recognized hint, not a calculated
+                        percentage.
                       </dd>
+                      <dt>Fills</dt>
+                      <dd><code>alex.morgan@example.com</code>, the saved email in this example.</dd>
                     </dl>
                   </div>
                   <div
@@ -1056,12 +1044,12 @@
                           aria-label="Enlarge example: Exact dictionary match"
                         >
                           <img
-                            src="./assets/screenshots/rule-exact-light.webp?v=95957b20a584"
-                            data-light="./assets/screenshots/rule-exact-light.webp?v=95957b20a584"
-                            data-dark="./assets/screenshots/rule-exact-dark.webp?v=e278beb96ba0"
+                            src="./assets/screenshots/rule-exact-light.webp?v=f6a258ed724f"
+                            data-light="./assets/screenshots/rule-exact-light.webp?v=f6a258ed724f"
+                            data-dark="./assets/screenshots/rule-exact-dark.webp?v=608dfe863fac"
                             alt="Example application field First name after matching with Exact dictionary match"
                             width="600"
-                            height="220"
+                            height="160"
                             loading="lazy"
                           />
                         </button>
@@ -1097,12 +1085,12 @@
                           aria-label="Enlarge example: Similar field label"
                         >
                           <img
-                            src="./assets/screenshots/rule-similar-light.webp?v=a6b56b9cfd71"
-                            data-light="./assets/screenshots/rule-similar-light.webp?v=a6b56b9cfd71"
-                            data-dark="./assets/screenshots/rule-similar-dark.webp?v=14bf9c508bdb"
+                            src="./assets/screenshots/rule-similar-light.webp?v=e1bc87f78cbd"
+                            data-light="./assets/screenshots/rule-similar-light.webp?v=e1bc87f78cbd"
+                            data-dark="./assets/screenshots/rule-similar-dark.webp?v=fcfbbc1d73cb"
                             alt="Example application field First nam after matching with Similar field label"
                             width="600"
-                            height="220"
+                            height="160"
                             loading="lazy"
                           />
                         </button>
@@ -1141,12 +1129,12 @@
                           aria-label="Enlarge example: Custom link label"
                         >
                           <img
-                            src="./assets/screenshots/rule-custom-light.webp?v=d5488bac42ae"
-                            data-light="./assets/screenshots/rule-custom-light.webp?v=d5488bac42ae"
-                            data-dark="./assets/screenshots/rule-custom-dark.webp?v=befa890fd0be"
+                            src="./assets/screenshots/rule-custom-light.webp?v=30cc5874336c"
+                            data-light="./assets/screenshots/rule-custom-light.webp?v=30cc5874336c"
+                            data-dark="./assets/screenshots/rule-custom-dark.webp?v=4867a1af7115"
                             alt="Example application field Design journal after matching with Custom link label"
                             width="600"
-                            height="220"
+                            height="160"
                             loading="lazy"
                           />
                         </button>
@@ -1182,12 +1170,12 @@
                           aria-label="Enlarge example: Current-status checkbox"
                         >
                           <img
-                            src="./assets/screenshots/rule-current-light.webp?v=050371ef7ed1"
-                            data-light="./assets/screenshots/rule-current-light.webp?v=050371ef7ed1"
-                            data-dark="./assets/screenshots/rule-current-dark.webp?v=075cb65f748f"
+                            src="./assets/screenshots/rule-current-light.webp?v=b232463fa694"
+                            data-light="./assets/screenshots/rule-current-light.webp?v=b232463fa694"
+                            data-dark="./assets/screenshots/rule-current-dark.webp?v=8c6f2390aacd"
                             alt="Example application field Currently working here after matching with Current-status checkbox"
                             width="600"
-                            height="220"
+                            height="160"
                             loading="lazy"
                           />
                         </button>
@@ -1228,12 +1216,12 @@
                           aria-label="Enlarge example: Nearby context"
                         >
                           <img
-                            src="./assets/screenshots/rule-context-light.webp?v=6a336b6df46e"
-                            data-light="./assets/screenshots/rule-context-light.webp?v=6a336b6df46e"
-                            data-dark="./assets/screenshots/rule-context-dark.webp?v=23fc8306a5b0"
+                            src="./assets/screenshots/rule-context-light.webp?v=2f281b79d3e1"
+                            data-light="./assets/screenshots/rule-context-light.webp?v=2f281b79d3e1"
+                            data-dark="./assets/screenshots/rule-context-dark.webp?v=a54bb908b5dc"
                             alt="Example application field City after matching with Nearby context"
                             width="600"
-                            height="220"
+                            height="160"
                             loading="lazy"
                           />
                         </button>

@@ -89,14 +89,14 @@ test.use({ deviceScaleFactor: 3 });
 for (const theme of ['light', 'dark'])
   for (const example of examples) {
     test(`${example.label} example matches production rules (${theme})`, async ({ page }, info) => {
-      await page.setViewportSize({ width: 600, height: 220 });
+      await page.setViewportSize({ width: 600, height: 160 });
       await page.setContent(`<!doctype html><html class="${theme}"><head><style>
       *{box-sizing:border-box}body{margin:0;font:16px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:#182335}
       .dark body{color-scheme:dark;background:#192232;color:#ecf0f7}
-      main{padding:28px 32px}header{font-size:13px;color:#536176;margin-bottom:16px}.dark header{color:#a5b2c6}
+      main{padding:28px 32px;min-height:160px;display:flex;align-items:center}form{width:100%}
       label,.form-field p{display:block;font-weight:600;margin:0 0 8px}input:not([type=checkbox]){display:block;width:100%;height:48px;border:1px solid #9ba6b6;border-radius:6px;padding:10px 12px;font:inherit;color:inherit;background:transparent}
       fieldset{margin:0;padding:0;border:0}legend{font-weight:600;margin-bottom:16px}.choice{display:flex;align-items:center;gap:10px;font-weight:400}input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:#2659cf}
-    </style></head><body><main><header>Example application field · After rules</header><form>${example.html}</form></main></body></html>`);
+    </style></head><body><main><form>${example.html}</form></main></body></html>`);
       await page.addScriptTag({ content: probe });
       const result = await page.evaluate(async () =>
         (

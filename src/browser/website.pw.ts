@@ -362,9 +362,17 @@ test('screenshot selectors work with mouse, keyboard, themes, and narrow layouts
           await button.click();
           await expect(button).toHaveAttribute('aria-pressed', 'true');
           await expect(tour.locator('[data-visual-panel]:visible')).toHaveCount(1);
-          const image = tour.locator('[data-visual-panel]:visible img');
-          await image.evaluate((img: HTMLImageElement) => img.decode());
-          await expect(image).toHaveAttribute('src', new RegExp(`-${theme}\\.webp`));
+          const panel = tour.locator('[data-visual-panel]:visible');
+          const image = panel.locator('img');
+          if (await image.count()) {
+            await image.evaluate((img: HTMLImageElement) => img.decode());
+            await expect(image).toHaveAttribute('src', new RegExp(`-${theme}\\.webp`));
+          } else {
+            await expect(panel).toHaveAttribute('id', 'rule-autocomplete');
+            await expect(panel.locator('pre')).toContainText('autocomplete="email"');
+            await expect(panel.locator('.rule-trace')).toContainText('personal.email');
+            await expect(panel.locator('.rule-trace')).toContainText('95%');
+          }
           expect(
             await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
           ).toBe(true);
