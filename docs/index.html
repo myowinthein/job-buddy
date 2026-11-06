@@ -1034,35 +1034,17 @@
                     data-rule-method="dictionary_exact"
                     data-rule-score="85"
                   >
-                    <figure class="component-figure">
-                      <div class="capture">
-                        <button
-                          type="button"
-                          data-enlarge
-                          aria-label="Enlarge example: Exact dictionary match"
-                        >
-                          <img
-                            src="./assets/screenshots/rule-exact-light.webp?v=f6a258ed724f"
-                            data-light="./assets/screenshots/rule-exact-light.webp?v=f6a258ed724f"
-                            data-dark="./assets/screenshots/rule-exact-dark.webp?v=608dfe863fac"
-                            alt="Example application field First name after matching with Exact dictionary match"
-                            width="600"
-                            height="160"
-                            loading="lazy"
-                          />
-                        </button>
-                      </div>
-                    </figure>
+                    <pre aria-label="Example HTML from the application form"><code>&lt;label for="entry"&gt;First name&lt;/label&gt;
+&lt;input id="entry"&gt;</code></pre>
                     <dl class="rule-trace">
                       <dt>Reads</dt>
-                      <dd>The label “First name,” normalized to <code>firstname</code>.</dd>
+                      <dd>“First name” → <code>firstname</code></dd>
                       <dt>Matches</dt>
                       <dd>Personal → First Name</dd>
                       <dt>Score</dt>
-                      <dd>
-                        The normalized label is in Job Buddy’s dictionary, so it gets a preset
-                        <strong>85%</strong>. Case, spaces and punctuation are ignored.
-                      </dd>
+                      <dd><strong>85%</strong> (preset for an exact dictionary match)</dd>
+                      <dt>Fills</dt>
+                      <dd><code>Alex</code> from your profile</dd>
                     </dl>
                     <p class="rule-note">
                       If a visible question does not support a match found only in its internal
