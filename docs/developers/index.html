@@ -602,8 +602,8 @@ pnpm build</code></pre>
                   <p>Each command runs once and exits. Resolve failures before continuing to the next check.</p>
                 </details>
                 <details id="unit-test-commands">
-                  <summary>Test</summary>
-                  <p>Automatically rerun affected unit tests when you save code or test changes.</p>
+                  <summary>Unit tests</summary>
+                  <p>Automatically rerun affected function and component tests when you save changes.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy watch test command">Copy</button>
                     <pre><code>pnpm test</code></pre>
@@ -620,32 +620,23 @@ pnpm build</code></pre>
                   </div>
                 </details>
                 <details id="browser-commands">
-                  <summary>Test autofill in a browser</summary>
-                  <p>
-                    Use this after changing scanning, matching, writing or Undo. The tests check
-                    actual field values, events and validation using isolated profiles and fictional data.
-                  </p>
-                  <p>Install Playwright’s Chromium once.</p>
+                  <summary>Browser tests</summary>
+                  <p>Install Chromium once so Playwright can run tests in a browser.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy browser Chromium install command">Copy</button>
                     <pre><code>pnpm exec playwright install chromium</code></pre>
                   </div>
-                  <p>Build the extension and run the browser tests.</p>
+                  <p>Build the extension and test autofill, Undo and the interface with fictional data.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy browser test commands">Copy</button>
                     <pre><code>pnpm test:browser</code></pre>
                   </div>
-                  <p>To watch just the demo’s autofill and Undo tests in a visible browser, run these instead.</p>
+                  <p>Watch autofill and Undo tests on the demo job application form in a visible browser.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy visible demo test commands">Copy</button>
                     <pre><code>pnpm build
 pnpm exec playwright test src/browser/demo.pw.ts --headed</code></pre>
                   </div>
-                  <p>
-                    For manual testing, open the
-                    <a href="../demo/" target="_blank" rel="noopener noreferrer" aria-describedby="new-tab-hint">Morrow Studio demo&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg></a>
-                    with the development extension installed.
-                  </p>
                 </details>
                 <details id="cleanup-commands">
                   <summary>Format code or fix lint issues</summary>
