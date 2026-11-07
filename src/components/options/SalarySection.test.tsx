@@ -5,8 +5,8 @@ import { SalarySection } from './SalarySection';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import type { Profile } from '@/src/types/profile';
 
-// jsdom doesn't implement Element.scrollIntoView; SearchableCountryWithCurrencyDropdown's
-// keyboard-highlight effect calls it whenever a panel opens.
+// jsdom doesn't implement Element.scrollIntoView; searchable dropdowns call it
+// when their highlighted option changes.
 Element.prototype.scrollIntoView = vi.fn();
 
 afterEach(cleanup);

@@ -88,7 +88,7 @@ test.use({ deviceScaleFactor: 3 });
 
 for (const theme of ['light', 'dark'])
   for (const example of examples) {
-    test(`${example.label} example matches production rules (${theme})`, async ({ page }, info) => {
+    test(`${example.label} example matches production rules (${theme})`, async ({ page }) => {
       await page.setViewportSize({ width: 600, height: 160 });
       await page.setContent(`<!doctype html><html class="${theme}"><head><style>
       *{box-sizing:border-box}body{margin:0;font:16px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#fff;color:#182335}
@@ -121,13 +121,6 @@ for (const theme of ['light', 'dark'])
       expect(site.replace(/\s+/g, ' ')).toContain(
         `data-rule-method="${example.layer}" data-rule-score="${example.score}"`,
       );
-      if (process.env.JB_CAPTURE_RULES === '1') {
-        await page.mouse.move(0, 0);
-        await page.screenshot({
-          path: info.outputPath(`rule-${example.id}-${theme}.png`),
-          animations: 'disabled',
-        });
-      }
       // Also verify the lower-scoring examples explained in the notes.
       if (example.id === 'exact' || example.id === 'similar') {
         await page.locator('label').evaluate((el, exact) => {

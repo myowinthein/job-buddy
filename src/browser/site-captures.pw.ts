@@ -402,10 +402,6 @@ for (const theme of ['light', 'dark'] as const) {
       `quick-fill-${theme}`,
       options.getByRole('heading', { name: 'Quick Fill', exact: true }).locator('..'),
     );
-    await options
-      .getByRole('heading', { name: 'Export Profile', exact: true })
-      .scrollIntoViewIfNeeded();
-    await capture(options, info, `backup-${theme}`);
     await captureInPage(
       options,
       info,
@@ -540,7 +536,6 @@ for (const theme of ['light', 'dark'] as const) {
       name: 'Also delete the Drive backup',
     });
     await expect(deleteBackup).not.toBeChecked();
-    await capture(preview, info, `reset-keep-drive-${theme}`, resetDialog);
     await deleteBackup.check();
     await expect(
       resetDialog.getByText('Your Drive backup will also be permanently deleted.'),
