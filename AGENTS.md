@@ -23,7 +23,7 @@ Use Node 22 (`.nvmrc`) and pnpm 11.7.0 (`package.json`).
 - `pnpm build:firefox`: Firefox build; production release workflow targets Chrome.
 - `pnpm format`: Prettier writes; scope formatting to the task.
 - `pnpm serve:landing`: serve `docs/`.
-- User guidance is in `docs/index.html`; developer and integration setup is in `docs/developers/index.html`. `.github/SETUP.md` and the Markdown guides link there; the env template is `.env.example`.
+- User guidance is in `docs/index.html`; developer and integration setup is in `docs/developers/index.html`. The env template is `.env.example`.
 
 CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a separate workflow with compile, lint, tests, zip, Chrome Web Store upload, and GitHub release creation.
 
@@ -107,7 +107,7 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 - Deep scanning reaches open shadow roots only; closed roots remain unsupported. Shadow labels must stay scoped to the correct root.
 - Dev content/background bundles cannot rely on custom `VITE_*` variables like live popup/options code can. Gemini development seeding persists through `storage.ts`, but explicit removal/reset suppresses it.
 - Dev builds use amber icons (`wxt.config.ts` and `branding.ts`); production uses blue. Theme initializes before React and follows system/light/dark through the root `.dark` class.
-- Drive uses implicit-token OAuth with `drive.appdata`. Development setup requires Web Application OAuth clients with separate dev/prod redirect IDs; see `.github/SETUP.md`.
+- Drive uses implicit-token OAuth with `drive.appdata`. Development setup requires Web Application OAuth clients with separate dev/prod redirect IDs; see the `drive-oauth` section in `docs/developers/index.html`.
 - Document uploads, Resume Import, and JSON/Drive import validation share the 4 MB file limit in `src/utils/documentLimits.ts`. Existing stored files are preserved; the per-file cap does not guarantee the whole profile fits local storage.
 - Background backup reacts to both profile and learned-mapping saves; deletes during reset do not queue uploads.
 - Restart the WXT dev server after adding an HTML entrypoint; HMR may update existing pages without emitting the new HTML. Already-open forms can retain older content scripts. On status restore, empty sandbox runs cannot supersede a nonempty form run; explicit Fill results use the requested run ID. Legacy results without detailed logs require a form refresh, never a misleading zero-field report.
