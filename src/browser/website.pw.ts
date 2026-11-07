@@ -143,7 +143,7 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   const developerActions = page.locator('#start .intro-actions a');
   await expect(developerActions).toHaveText(['Explore the source', 'Add to Chrome']);
   await expect(developerActions.first()).toHaveClass('button primary');
-  await expect(page.locator('#start').getByRole('link', { name: 'MIT licensed' }))
+  await expect(page.locator('#start').getByRole('link', { name: 'MIT license' }))
     .toHaveAttribute('href', 'https://github.com/myowinthein/job-buddy/blob/main/LICENSE');
   expect(await page.locator('html').evaluate((el) => el.classList.contains('dark'))).toBe(!mode);
   await expect(
