@@ -914,12 +914,6 @@ pre code {
 .capture-recipe .code-block + .code-block {
   margin-top: 12px;
 }
-#package-commands > p {
-  margin-bottom: 12px;
-}
-#package-commands > .code-block + p {
-  margin-top: 28px;
-}
 .visual-tour {
   margin: 25px 0;
   min-width: 0;
