@@ -176,11 +176,13 @@ test('command tabs support keyboard navigation, copying and links to hidden inst
   await expect(page.getByRole('button', { name: 'Copy validation commands' })).toBeVisible();
   await page.keyboard.press('End');
   await expect(tabs.getByRole('tab', { name: 'Capture', exact: true })).toBeFocused();
-  await page.locator('#website-captures > summary').click();
   await page.getByRole('button', { name: 'Copy website capture commands' }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
     'pnpm build\nnode scripts/capture-site.mjs',
   );
+  await page.locator('#website-captures').getByRole('link', { name: 'preview', exact: true }).click();
+  await expect(tabs.getByRole('tab', { name: 'Develop', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('button', { name: 'Copy UI preview command' })).toBeVisible();
   await page.goto(origin + prefix + 'developers/#browser-commands');
   await expect(tabs.getByRole('tab', { name: 'Check', exact: true })).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#browser-commands')).toHaveAttribute('open', '');
@@ -201,7 +203,6 @@ test('command instructions remain available without JavaScript', async ({ browse
     await page.goto(origin + prefix + 'developers/#commands');
     await expect(page.getByRole('tablist', { name: 'Command purpose' })).toBeHidden();
     await expect(page.getByRole('tabpanel')).toHaveCount(4);
-    await page.locator('#video-capture > summary').click();
     await expect(page.locator('#video-capture pre')).toContainText('node scripts/capture-demo-motion.mjs');
   } finally {
     await context.close();

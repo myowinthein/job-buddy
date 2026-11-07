@@ -696,69 +696,39 @@ pnpm lint:fix</code></pre>
             <div id="capture-panel" role="tabpanel" aria-labelledby="capture-tab" tabindex="0">
               <h3 class="command-purpose">Capture</h3>
               <p class="prose">
-                Captures use isolated profiles and fictional data. Install Playwright’s Chromium
-                once before running them.
+                The README and website use screenshots and autoplay videos of Job Buddy’s popup,
+                options pages and demo form. Update these captures when the interface changes.
               </p>
-              <div class="code-block">
-                <button class="copy-code" type="button" aria-label="Copy Chromium install command">Copy</button>
-                <pre><code>pnpm exec playwright install chromium</code></pre>
+              <div class="capture-recipe">
+                <p>Install <a href="https://playwright.dev/docs/browsers#install-browsers">Playwright’s Chromium</a> once to run the browser used for captures.</p>
+                <div class="code-block">
+                  <button class="copy-code" type="button" aria-label="Copy Chromium install command">Copy</button>
+                  <pre><code>pnpm exec playwright install chromium</code></pre>
+                </div>
               </div>
-              <div class="detail-list command-accordions">
-                <details id="demo" open>
-                  <summary>Update the README screenshot</summary>
-                  <p>Run these after changing the demo form or the autofill appearance shown in the README.</p>
-                  <div class="code-block">
-                    <button class="copy-code" type="button" aria-label="Copy README capture commands">Copy</button>
-                    <pre><code>pnpm build
+              <div class="capture-recipe" id="demo">
+                <p>Update the demo screenshot used in the README and website.</p>
+                <div class="code-block">
+                  <button class="copy-code" type="button" aria-label="Copy README capture commands">Copy</button>
+                  <pre><code>pnpm build
 node scripts/capture-demo.mjs</code></pre>
-                  </div>
-                  <p>
-                    Loads the production build in a temporary browser, fills the demo with
-                    <code>src/browser/fixtures/demo-profile.json</code> and captures the result.
-                    It replaces the PNG in <code>docs/assets/images/</code> and updates its README
-                    and website references. The browser closes afterward.
-                  </p>
-                </details>
-                <details id="website-captures">
-                  <summary>Update the website screenshots</summary>
-                  <p>
-                    Use this after changing extension pages or dialogs shown on the website. Install
-                    <code>cwebp</code> first to convert the captures to lossless WebP images.
-                  </p>
-                  <p>Keep the preview running in one terminal.</p>
-                  <div class="code-block">
-                    <button class="copy-code" type="button" aria-label="Copy capture preview command">Copy</button>
-                    <pre><code>pnpm dev:preview</code></pre>
-                  </div>
-                  <p>In another terminal, build the extension and capture the screenshots.</p>
-                  <div class="code-block">
-                    <button class="copy-code" type="button" aria-label="Copy website capture commands">Copy</button>
-                    <pre><code>pnpm build
+                </div>
+              </div>
+              <div class="capture-recipe" id="website-captures">
+                <p>Keep the <a href="#preview-commands" data-open-details>preview</a> running in another terminal, then update website screenshots (requires <code>cwebp</code>).</p>
+                <div class="code-block">
+                  <button class="copy-code" type="button" aria-label="Copy website capture commands">Copy</button>
+                  <pre><code>pnpm build
 node scripts/capture-site.mjs</code></pre>
-                  </div>
-                  <p>
-                    Replaces light and dark screenshots in <code>docs/assets/screenshots/</code>
-                    and updates image references and dimensions in the walkthrough and developer guide.
-                    The preview supplies the simulated integration and dev-bar states.
-                  </p>
-                </details>
-                <details id="video-capture">
-                  <summary>Update the autoplay videos</summary>
-                  <p>
-                    Use this after changing the demo or Quick Fill appearance shown in the introduction.
-                    Install <code>ffmpeg</code> first to encode the videos.
-                  </p>
-                  <div class="code-block">
-                    <button class="copy-code" type="button" aria-label="Copy video capture commands">Copy</button>
-                    <pre><code>pnpm build
+                </div>
+              </div>
+              <div class="capture-recipe" id="video-capture">
+                <p>Update the website’s autoplay videos with <code>ffmpeg</code> installed.</p>
+                <div class="code-block">
+                  <button class="copy-code" type="button" aria-label="Copy video capture commands">Copy</button>
+                  <pre><code>pnpm build
 node scripts/capture-demo-motion.mjs</code></pre>
-                  </div>
-                  <p>
-                    Creates light and dark MP4 videos showing the empty form, the cursor clicking
-                    <strong>Fill Form</strong> and the filled result. It replaces the files in
-                    <code>docs/assets/videos/</code> and updates the walkthrough’s video references.
-                  </p>
-                </details>
+                </div>
               </div>
             </div>
           </div>
