@@ -31,18 +31,17 @@ After installing Job Buddy, you need a
 A resume in PDF or DOCX format is optional. You can import your details from it or
 enter them manually.
 
-1. Open **Settings → AI Features**, enter your key, and select **Save Key**.
-2. Choose **Import Resume**, review and import your details, then complete your profile.
-3. Open a job application form and select **Fill Form** from Job Buddy.
-4. Review the answers, complete anything missing, and submit on the application site.
+Follow the [walkthrough](https://myowinthein.github.io/job-buddy/#start) to set up
+Job Buddy, add your profile and start autofill.
 
 Your profile stays in your browser. Resume import and autofill send relevant data
 to Gemini.
 
 ## Help me improve it
 
-If something doesn't work, or you have an idea that would make applying for jobs
-easier, [share it on GitHub](https://github.com/myowinthein/job-buddy/issues).
+[Report an issue](https://github.com/myowinthein/job-buddy/issues/new?template=report-a-problem.yml)
+if something doesn't work, or [share an idea](https://github.com/myowinthein/job-buddy/issues)
+on GitHub.
 
 [MIT](LICENSE) © 2026 Myo Win Thein (Martin).
 
