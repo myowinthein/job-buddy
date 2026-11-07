@@ -364,6 +364,7 @@ test('task links open new tabs with a visual hint and accessible description', a
     'https://pnpm.io/installation#installing-a-specific-version',
     'https://git-scm.com/install/',
     'https://www.google.com/chrome/',
+    'https://developer.chrome.com/docs/extensions/develop/migrate/what-is-mv3',
     'https://wxt.dev/',
     'https://react.dev/',
     'https://www.typescriptlang.org/',

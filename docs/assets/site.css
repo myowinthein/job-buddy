@@ -789,7 +789,7 @@ pre code {
 .developer-guide #tech-stack {
   border-top: 0;
 }
-#tech-stack td:first-child > a {
+#tech-stack a[target='_blank'] {
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
