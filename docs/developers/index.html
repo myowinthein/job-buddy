@@ -77,6 +77,7 @@
         <p>Build and contribute</p>
         <a href="#requirements">Requirements</a><a href="#build">Set up the project</a><a href="#configuration">Environment files</a
         ><a href="#dev-bar">Use the dev bar</a
+        ><a href="#tech-stack">Tech stack</a
         ><a href="#commands">Commands</a
         ><a href="#release">Release setup</a>
       </aside>
@@ -86,6 +87,7 @@
           <nav aria-label="Page sections">
             <a href="#requirements">Requirements</a><a href="#build">Set up the project</a><a href="#configuration">Environment files</a
             ><a href="#dev-bar">Use the dev bar</a
+            ><a href="#tech-stack">Tech stack</a
             ><a href="#commands">Commands</a
             ><a href="#release">Release setup</a>
           </nav>
@@ -457,6 +459,27 @@ pnpm dev</code></pre>
                 refresh. The base preview remembers appearance, while dev-bar simulations reset it.
               </p>
             </details>
+          </div>
+        </section>
+        <section class="chapter" id="tech-stack" aria-labelledby="tech-stack-title">
+          <div class="chapter-heading">
+            <h2 id="tech-stack-title">Tech stack</h2>
+          </div>
+          <p class="prose">
+            Job Buddy targets Chrome Manifest V3. Its website uses plain HTML, CSS and JavaScript.
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Technology</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td>WXT</td><td>Builds the extension and runs its development server through Vite.</td></tr>
+                <tr><td>React</td><td>Renders the popup and options page interfaces.</td></tr>
+                <tr><td>TypeScript</td><td>Checks types across profile data, autofill logic and extension messages.</td></tr>
+                <tr><td>Tailwind CSS</td><td>Styles extension interfaces, including themes and responsive layouts.</td></tr>
+                <tr><td>Vitest</td><td>Runs unit and component tests.</td></tr>
+                <tr><td>Playwright</td><td>Automates browser interaction tests and website captures.</td></tr>
+              </tbody>
+            </table>
           </div>
         </section>
         <section class="chapter" id="commands" aria-labelledby="commands-title">
