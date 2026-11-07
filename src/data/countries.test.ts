@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getFlag, COUNTRIES, findCountry, findCountryByNameOrCode } from './countries';
+import { getFlag, COUNTRIES, countryName, findCountry, findCountryByNameOrCode } from './countries';
 
 describe('getFlag', () => {
   it('returns a two-codepoint regional indicator string', () => {
@@ -55,5 +55,19 @@ describe('findCountryByNameOrCode', () => {
 
   it('returns undefined for an unrecognised value', () => {
     expect(findCountryByNameOrCode('Neverland')).toBeUndefined();
+  });
+});
+
+describe('countryName', () => {
+  it('returns the display name for a known code', () => {
+    expect(countryName('TH')).toBe('Thailand');
+  });
+
+  it('returns an unknown code unchanged', () => {
+    expect(countryName('ZZ')).toBe('ZZ');
+  });
+
+  it('returns an empty code unchanged', () => {
+    expect(countryName('')).toBe('');
   });
 });

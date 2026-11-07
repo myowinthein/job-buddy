@@ -1,5 +1,5 @@
 import type { Profile } from '../types/profile';
-import { COUNTRIES } from '../data/countries';
+import { countryName } from '../data/countries';
 import { languageName } from '../data/languages';
 import { resolveProfileValue } from './resolver';
 import { mostRecentIdx } from './entryRecency';
@@ -47,9 +47,6 @@ function readPath(value: unknown, path: string): unknown {
         node && typeof node === 'object' ? (node as Record<string, unknown>)[key] : undefined,
       value,
     );
-}
-function countryName(code: string): string {
-  return COUNTRIES.find((country) => country.code === code)?.name ?? code;
 }
 function entryHeading(
   entry: Record<string, unknown>,

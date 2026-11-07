@@ -204,6 +204,11 @@ export function findCountry(code: string): Country {
   return COUNTRIES.find((c) => c.code === code) ?? COUNTRIES[0];
 }
 
+/** Display name for a country code, or the code itself when it is unknown. */
+export function countryName(code: string): string {
+  return COUNTRIES.find((c) => c.code === code)?.name ?? code;
+}
+
 // Sort alphabetically by name so every dropdown using this list is consistent.
 COUNTRIES.sort((a, b) => a.name.localeCompare(b.name));
 Object.freeze(COUNTRIES);

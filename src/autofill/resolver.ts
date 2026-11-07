@@ -1,6 +1,6 @@
 import { calculateDerivedFields } from '../utils/derivedFields';
 import type { Profile } from '../types/profile';
-import { COUNTRIES } from '../data/countries';
+import { countryName } from '../data/countries';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
 import { languageName, LANGUAGE_PROFICIENCY_LABELS } from '../data/languages';
 import { fmtYearMonth, fmtAmount, formatISODate } from '../utils/dateFormat';
@@ -51,7 +51,7 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
     case 'address.countryName': {
       const code = profile.address?.country;
       if (!code) return '';
-      return COUNTRIES.find(c => c.code === code)?.name ?? code;
+      return countryName(code);
     }
 
     case 'salary.current.formatted': {
@@ -151,7 +151,7 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
       case 'location': {
         const parts: string[] = [];
         if (entry.location?.city) parts.push(entry.location.city);
-        if (entry.location?.countryCode) parts.push(COUNTRIES.find(c => c.code === entry.location!.countryCode)?.name ?? entry.location.countryCode);
+        if (entry.location?.countryCode) parts.push(countryName(entry.location.countryCode));
         return parts.join(', ');
       }
       // Separate city/country sub-fields — for a form that splits location
@@ -160,7 +160,7 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
       case 'location.countryName': {
         const code = entry.location?.countryCode;
         if (!code) return '';
-        return COUNTRIES.find(c => c.code === code)?.name ?? code;
+        return countryName(code);
       }
     }
     // Other sub-fields fall through to generic traversal.

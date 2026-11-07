@@ -5,7 +5,7 @@ import { normalize } from './normalizer';
 import { questionText, visibleQuestion } from './ruleContext';
 import { resolveProfileValue } from './resolver';
 import { CURRENCIES } from '../data/currencies';
-import { COUNTRIES } from '../data/countries';
+import { COUNTRIES, countryName } from '../data/countries';
 
 /** Format an identified profile value for this question, without inventing missing data. */
 export function resolveRuleValue(
@@ -30,7 +30,7 @@ export function resolveRuleValue(
       return code;
     return !isSelect && ac === 'country'
       ? code
-      : (COUNTRIES.find((country) => country.code === code)?.name ?? code);
+      : countryName(code);
   }
   if (path === 'workAuthorization') {
     const entries = profile.workAuthorization ?? [];
