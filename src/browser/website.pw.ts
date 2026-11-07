@@ -153,9 +153,9 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   await expect(page.locator('#drive-oauth > summary')).toBeInViewport();
   await page.reload();
   await expect(page.locator('#drive-oauth')).toHaveAttribute('open', '');
-  const previewSetup = page.getByText('Can I preview the UI without loading an extension?', { exact: true });
-  await previewSetup.click();
-  await page.getByRole('button', { name: 'Copy preview command', exact: true }).click();
+  await expect(page.locator('#dev-bar > ul > li')).toHaveCount(3);
+  await expect(page.locator('#dev-bar details')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Copy UI preview command', exact: true }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('pnpm dev:preview');
   expect(errors).toEqual([]);
 });

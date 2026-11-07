@@ -508,11 +508,14 @@ for (const theme of ['light', 'dark'] as const) {
       'http://127.0.0.1:4173/?devPreview=complete&devPreviewSeed=site-capture&devDrive=1',
     );
     await expect(preview.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
-    await capture(
+    await captureRegion(
       preview,
       info,
       `dev-bar-${theme}`,
-      preview.locator('.preview-app'),
+      [
+        preview.getByRole('complementary', { name: 'Development controls' }),
+        preview.getByRole('heading', { name: 'Appearance', exact: true }).locator('..'),
+      ],
     );
     await preview.setViewportSize({ width: 800, height: 900 });
     await preview

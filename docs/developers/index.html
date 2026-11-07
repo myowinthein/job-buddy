@@ -482,48 +482,30 @@ pnpm dev</code></pre>
             <div class="capture">
               <button type="button" data-enlarge aria-label="Enlarge screenshot: Development toolbar above the options page">
                 <img
-                  src="../assets/screenshots/dev-bar-light.webp?v=f182ece858e4"
-                  data-light="../assets/screenshots/dev-bar-light.webp?v=f182ece858e4"
-                  data-dark="../assets/screenshots/dev-bar-dark.webp?v=02f1a245e58f"
-                  alt="Development toolbar above the options page, with profile presets and integration toggles, the sidebar, completion banner and Settings content"
+                  src="../assets/screenshots/dev-bar-light.webp?v=6acd9a3993b4"
+                  data-light="../assets/screenshots/dev-bar-light.webp?v=6acd9a3993b4"
+                  data-dark="../assets/screenshots/dev-bar-dark.webp?v=1685234d70b5"
+                  alt="Development toolbar above the top of the options page, with profile presets and integration toggles, the sidebar, completion banner and Appearance settings"
                   width="1100"
-                  height="686"
+                  height="346"
                   loading="lazy"
                 />
               </button>
             </div>
           </figure>
-          <p class="prose">
-            <strong>Empty</strong>, <strong>Required only</strong> and <strong>Complete</strong> use
-            temporary profiles that reset on refresh. Select <strong>Original</strong> to edit your
-            saved data, where changes you save persist.
-          </p>
-          <p class="prose">
-            The <strong>API key</strong> and <strong>Google Drive</strong> toggles simulate on and off
-            states for dependent features, without repeating key setup or Google sign-in.
-          </p>
-          <div class="detail-list">
-            <details>
-              <summary>Does this change the popup or forms I am testing?</summary>
-              <p>
-                No. The bar simulates the options page only. Use the unpacked extension to check
-                real autofill, the toolbar popup and Google sign-in. The unsaved-changes guard
-                still applies when switching profile modes.
-              </p>
-            </details>
-            <details>
-              <summary>Can I preview the UI without loading an extension?</summary>
-              <div class="code-block">
-                <button class="copy-code" type="button" aria-label="Copy preview command">Copy</button>
-                <pre><code>pnpm dev:preview</code></pre>
-              </div>
-              <p>
-                Open <code>http://127.0.0.1:4173/</code> for the options UI with sample data.
-                Environment files and real provider calls are disabled. Profile edits reset on
-                refresh. The base preview remembers appearance, while dev-bar simulations reset it.
-              </p>
-            </details>
-          </div>
+          <ul class="prose">
+            <li>
+              <strong>Empty, Required only and Complete</strong> use temporary profiles that
+              reset on refresh.
+            </li>
+            <li>
+              <strong>Original</strong> uses your saved data. Changes you save persist.
+            </li>
+            <li>
+              <strong>API key and Google Drive</strong> simulate on/off states, so you can test
+              dependent features without repeating setup.
+            </li>
+          </ul>
         </section>
         <section class="chapter" id="commands" aria-labelledby="commands-title">
           <div class="chapter-heading">
