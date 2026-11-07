@@ -75,7 +75,7 @@
     <div class="site-layout">
       <aside class="chapter-nav" aria-label="On this page">
         <p>Build and contribute</p>
-        <a href="#build">Run locally</a><a href="#configuration">Configure integrations</a
+        <a href="#requirements">Requirements</a><a href="#build">Run locally</a><a href="#configuration">Configure integrations</a
         ><a href="#dev-bar">Use the dev bar</a><a href="#architecture">Follow the code</a
         ><a href="#commands">Commands and checks</a><a href="#demo">Demo and captures</a
         ><a href="#release">Release setup</a>
@@ -84,15 +84,52 @@
         <details class="mobile-contents">
           <summary>On this page</summary>
           <nav aria-label="Page sections">
-            <a href="#build">Run locally</a><a href="#configuration">Configure integrations</a
+            <a href="#requirements">Requirements</a><a href="#build">Run locally</a><a href="#configuration">Configure integrations</a
             ><a href="#dev-bar">Use the dev bar</a><a href="#architecture">Follow the code</a
             ><a href="#commands">Commands and checks</a><a href="#demo">Demo and captures</a
             ><a href="#release">Release setup</a>
           </nav>
         </details>
-        <div class="intro" id="build">
+        <div class="intro" id="requirements">
           <p class="intro-note">For developers</p>
-          <h1>Run locally</h1>
+          <h1>Requirements</h1>
+          <p class="lede">Install these tools to build and run Job Buddy on your device.</p>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Tool</th>
+                <th>Minimum or required version</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Node.js</td>
+                <td>22.13.0 or newer within Node 22</td>
+                <td>Runs the development server, build tools and tests.</td>
+              </tr>
+              <tr>
+                <td>pnpm</td>
+                <td>11.7.0, pinned by the project</td>
+                <td>Installs dependencies and runs project commands.</td>
+              </tr>
+              <tr>
+                <td>Git</td>
+                <td>No minimum specified</td>
+                <td>Clones the repository and tracks code changes.</td>
+              </tr>
+              <tr>
+                <td>Google Chrome</td>
+                <td>No minimum specified. Use the current stable release.</td>
+                <td>Loads the extension and tests autofill on job forms.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="intro" id="build">
+          <h2>Run locally</h2>
           <p class="lede">
             Start the extension with WXT, try changes with sample data, then test them on a job
             form. There is no backend to set up.

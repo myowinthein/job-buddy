@@ -578,7 +578,7 @@ for (const theme of ['light', 'dark'] as const) {
         if (width > 800 && (path === '' || path === 'developers/'))
           await expect(page.locator('.chapter-nav [aria-current="location"]')).toHaveAttribute(
             'href',
-            path === 'developers/' ? '#build' : '#start',
+            path === 'developers/' ? '#requirements' : '#start',
           );
         await expect
           .poll(() =>
