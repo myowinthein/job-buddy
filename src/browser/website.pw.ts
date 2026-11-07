@@ -176,11 +176,15 @@ test('command tabs support keyboard navigation, copying and links to hidden inst
   await expect(page.getByRole('button', { name: 'Copy validation commands' })).toBeVisible();
   await page.keyboard.press('End');
   await expect(tabs.getByRole('tab', { name: 'Capture', exact: true })).toBeFocused();
+  await page.getByRole('button', { name: 'Copy capture preview command' }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    '# Terminal 1 (keep running)\npnpm dev:preview',
+  );
   await page.getByRole('button', { name: 'Copy website capture commands' }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-    'pnpm build\nnode scripts/capture-site.mjs',
+    '# Terminal 2\npnpm build\nnode scripts/capture-site.mjs',
   );
-  const previewLink = page.locator('#website-captures').getByRole('link', { name: 'pnpm dev:preview', exact: true });
+  const previewLink = page.locator('#website-captures').getByRole('link', { name: 'preview', exact: true });
   await previewLink.click();
   await expect(tabs.getByRole('tab', { name: 'Develop', exact: true })).toHaveAttribute('aria-selected', 'true');
   await tabs.getByRole('tab', { name: 'Capture', exact: true }).click();

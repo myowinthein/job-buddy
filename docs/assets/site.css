@@ -911,6 +911,9 @@ pre code {
 .capture-recipe > p {
   margin-bottom: 12px;
 }
+.capture-recipe .code-block + .code-block {
+  margin-top: 12px;
+}
 .visual-tour {
   margin: 25px 0;
   min-width: 0;

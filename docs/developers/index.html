@@ -716,10 +716,16 @@ node scripts/capture-demo-motion.mjs</code></pre>
                 </div>
               </div>
               <div class="capture-recipe" id="website-captures">
-                <p>Run <a href="#preview-commands" data-open-details><code>pnpm dev:preview</code></a> in another terminal to capture website screenshots (requires <a href="https://developers.google.com/speed/webp/download"><code>cwebp</code></a>).</p>
+                <p>Update Job Buddy popup and options page screenshots (requires <a href="https://developers.google.com/speed/webp/download"><code>cwebp</code></a> and the <a href="#preview-commands" data-open-details>preview</a>).</p>
+                <div class="code-block">
+                  <button class="copy-code" type="button" aria-label="Copy capture preview command">Copy</button>
+                  <pre><code># Terminal 1 (keep running)
+pnpm dev:preview</code></pre>
+                </div>
                 <div class="code-block">
                   <button class="copy-code" type="button" aria-label="Copy website capture commands">Copy</button>
-                  <pre><code>pnpm build
+                  <pre><code># Terminal 2
+pnpm build
 node scripts/capture-site.mjs</code></pre>
                 </div>
               </div>
