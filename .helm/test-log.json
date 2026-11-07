@@ -228,8 +228,22 @@
       "reason": "A regression would silently drop results or Undo replies from embedded application forms, and nothing currently detects it.",
       "action": "add",
       "layer": "unit",
-      "state": "open",
-      "assessed_commit": "46ced73de6d9db79fc3f6f9eab17a504a92b0992"
+      "state": "resolved",
+      "assessed_commit": "46ced73de6d9db79fc3f6f9eab17a504a92b0992",
+      "tests": [
+        "src/autofill/frameMessaging.test.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/autofill/frameMessaging.test.ts"
+        ],
+        "method": "runtime",
+        "commit": "9f4840cb1f6638f20c1a5f38fc7b4f8d56667e69",
+        "command": "pnpm test:run",
+        "scope": "src/autofill/frameMessaging.test.ts",
+        "outcome": "Eight frame-messaging cases passed (top-frame fallback, re-injection, dropped failures); five mutations of frameMessaging.ts were each caught by a failing case. Full suite 2564 passed, 0 skipped."
+      }
     },
     {
       "id": "g-58fb42e4-28f3-45c4-bee1-61ec57a42e92",
@@ -672,8 +686,22 @@
       "reason": "The production Web Locks path and its cross-context lock names are never exercised, though atomic mapping and profile writes rely on them.",
       "action": "add",
       "layer": "unit",
-      "state": "open",
-      "assessed_commit": "46ced73de6d9db79fc3f6f9eab17a504a92b0992"
+      "state": "resolved",
+      "assessed_commit": "46ced73de6d9db79fc3f6f9eab17a504a92b0992",
+      "tests": [
+        "src/utils/writeLocks.test.ts"
+      ],
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          "src/utils/writeLocks.test.ts"
+        ],
+        "method": "runtime",
+        "commit": "543eae77650ee6393b585542bd440d611c5c6ce9",
+        "command": "pnpm test:run",
+        "scope": "src/utils/writeLocks.test.ts",
+        "outcome": "Eight lock cases passed for the in-memory fallback and the Web Locks path; mutations of serialization and the profile lock name were caught. Full suite 2564 passed, 0 skipped."
+      }
     },
     {
       "id": "g-d4338c3a-aea7-4e96-9393-daa8518e83d5",
