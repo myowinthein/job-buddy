@@ -139,6 +139,7 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
     .getByRole('link', { name: 'For developers' })
     .click();
   await expect(page).toHaveURL(origin + prefix + 'developers/');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Develop Job Buddy');
   expect(await page.locator('html').evaluate((el) => el.classList.contains('dark'))).toBe(!mode);
   await expect(
     page.getByRole('heading', { name: 'Environment files', exact: true }),
@@ -670,7 +671,7 @@ for (const theme of ['light', 'dark'] as const) {
         if (width > 800 && (path === '' || path === 'developers/'))
           await expect(page.locator('.chapter-nav [aria-current="location"]')).toHaveAttribute(
             'href',
-            path === 'developers/' ? '#tech-stack' : '#start',
+            '#start',
           );
         await expect
           .poll(() =>

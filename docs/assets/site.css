@@ -786,8 +786,11 @@ pre code {
 .developer-guide .chapter {
   margin-top: 0;
 }
-.developer-guide #tech-stack {
-  border-top: 0;
+.developer-guide .intro {
+  padding-block: var(--chapter-gap);
+}
+.developer-guide .intro > :last-child {
+  margin-bottom: 0;
 }
 #tech-stack a[target='_blank'] {
   display: inline-flex;
