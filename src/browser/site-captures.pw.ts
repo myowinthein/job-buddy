@@ -496,7 +496,7 @@ for (const theme of ['light', 'dark'] as const) {
     await context.unroute('http://127.0.0.1/**');
     await context.route('http://127.0.0.1:4173/**', (route) => route.continue());
     const preview = await context.newPage();
-    await preview.setViewportSize({ width: 800, height: 900 });
+    await preview.setViewportSize({ width: 1100, height: 720 });
     await preview.addInitScript((theme) => {
       sessionStorage.setItem('jb:ui:section', 'settings');
       sessionStorage.setItem(
@@ -512,8 +512,9 @@ for (const theme of ['light', 'dark'] as const) {
       preview,
       info,
       `dev-bar-${theme}`,
-      preview.getByRole('complementary', { name: 'Development controls' }),
+      preview.locator('.preview-app'),
     );
+    await preview.setViewportSize({ width: 800, height: 900 });
     await preview
       .getByRole('heading', { name: 'Cloud Backup', exact: true })
       .scrollIntoViewIfNeeded();
