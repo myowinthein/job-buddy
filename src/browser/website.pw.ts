@@ -291,6 +291,7 @@ test('task links open new tabs with a visual hint and accessible description', a
   await serveSite(context);
   const taskHosts = new Set([
     'chromewebstore.google.com',
+    'chrome.google.com',
     'aistudio.google.com',
     'console.cloud.google.com',
   ]);
