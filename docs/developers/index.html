@@ -310,13 +310,50 @@ pnpm dev</code></pre>
               <ol>
                 <li>
                   Open <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" aria-describedby="new-tab-hint">Google Cloud Console&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg></a>
-                  and enable the Google Drive API in your project.
+                  and select your project. Open <strong>APIs &amp; Services</strong>, then
+                  <strong>Library</strong>. Find <strong>Google Drive API</strong> and click
+                  <strong>Enable</strong> if it is not already enabled.
                 </li>
-                <li>Configure the consent screen. In Testing mode, add the Google accounts you will use as test users.</li>
-                <li>Create a <strong>Web application</strong> OAuth client for development. Job Buddy uses <code>launchWebAuthFlow</code>, not a Chrome Extension OAuth client.</li>
-                <li>Load the unpacked extension and copy its ID from <code>chrome://extensions/</code>.</li>
-                <li>Add <code>https://&lt;DEV_EXTENSION_ID&gt;.chromiumapp.org/</code> as an authorized redirect URI, including the trailing slash.</li>
-                <li>Set <code>VITE_GOOGLE_DRIVE_CLIENT_ID</code> in <code>.env.development</code>, restart WXT, then connect Drive in the extension.</li>
+                <li>
+                  Open <strong>APIs &amp; Services</strong>, then <strong>OAuth consent screen</strong>
+                  to reach <strong>Google Auth Platform</strong>. If setup is required, click
+                  <strong>Get Started</strong> and enter the app name, support email and contact
+                  email. Choose <strong>External</strong> for testing with personal Google accounts
+                  and complete the setup.
+                </li>
+                <li>
+                  Open <strong>Audience</strong>. If <strong>Publishing status</strong> is
+                  <strong>Testing</strong>, click <strong>Add users</strong> under
+                  <strong>Test users</strong>, add your test Google accounts and click <strong>Save</strong>.
+                </li>
+                <li>
+                  Open <strong>Data Access</strong> and click <strong>Add or remove scopes</strong>.
+                  Select <code>https://www.googleapis.com/auth/drive.appdata</code>, click
+                  <strong>Update</strong>, then <strong>Save</strong>.
+                </li>
+                <li>
+                  Load the development extension and copy the amber Job Buddy extension’s
+                  <strong>ID</strong> from <code>chrome://extensions/</code>.
+                </li>
+                <li>
+                  In <strong>Google Auth Platform</strong>, open <strong>Clients</strong> and click
+                  <strong>Create client</strong>. Set <strong>Application type</strong> to
+                  <strong>Web application</strong> and enter a name such as <strong>Job Buddy development</strong>.
+                </li>
+                <li>
+                  Under <strong>Authorized redirect URIs</strong>, click <strong>Add URI</strong>
+                  and enter <code>https://&lt;DEV_EXTENSION_ID&gt;.chromiumapp.org/</code> using the
+                  copied extension ID, including the trailing slash. Click <strong>Create</strong>.
+                </li>
+                <li>
+                  Copy the new client’s <strong>Client ID</strong> into
+                  <code>VITE_GOOGLE_DRIVE_CLIENT_ID</code> in <code>.env.development</code>.
+                </li>
+                <li>
+                  Restart <code>pnpm dev</code> and reload the development extension. In Job Buddy’s
+                  <strong>Settings</strong>, click <strong>Connect Google Drive</strong> under
+                  <strong>Cloud Backup</strong>.
+                </li>
               </ol>
               <p>
                 Backups use the <a href="https://developers.google.com/workspace/drive/api/guides/appdata">Drive app-data area</a>
@@ -326,6 +363,10 @@ pnpm dev</code></pre>
                 For production, copy <code>.env.example</code> to <code>.env.production</code> and
                 use a separate Web application client with the published extension’s redirect ID.
                 Complete any Google consent-screen publishing requirements before public use.
+              </p>
+              <p>
+                See Google’s <a href="https://developers.google.com/workspace/guides/configure-oauth-consent">OAuth setup guide</a>
+                and <a href="https://developers.google.com/workspace/guides/create-credentials#web-application">Web application client instructions</a> for more detail.
               </p>
             </details>
           </div>
