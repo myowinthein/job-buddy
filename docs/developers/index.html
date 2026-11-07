@@ -602,16 +602,21 @@ pnpm build</code></pre>
                   <p>Each command runs once and exits. Resolve failures before continuing to the next check.</p>
                 </details>
                 <details id="unit-test-commands">
-                  <summary>Run unit tests while editing</summary>
-                  <p>Keep Vitest watching for changes to rerun affected tests.</p>
+                  <summary>Test</summary>
+                  <p>Automatically rerun affected unit tests when you save code or test changes.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy watch test command">Copy</button>
                     <pre><code>pnpm test</code></pre>
                   </div>
-                  <p>To run one test file once, pass its path.</p>
+                  <p>Run all unit tests once, then exit.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy all unit tests command">Copy</button>
+                    <pre><code>pnpm test:run</code></pre>
+                  </div>
+                  <p>Run one test file once, replacing the example path with your file.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy focused test command">Copy</button>
-                    <pre><code>pnpm exec vitest run src/autofill/mapper.test.ts</code></pre>
+                    <pre><code>pnpm test:run src/autofill/mapper.test.ts</code></pre>
                   </div>
                 </details>
                 <details id="browser-commands">
