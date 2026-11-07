@@ -75,7 +75,7 @@
     <div class="site-layout">
       <aside class="chapter-nav" aria-label="On this page">
         <p>Build and contribute</p>
-        <a href="#requirements">Requirements</a><a href="#build">Set up the project</a><a href="#configuration">Configure integrations</a
+        <a href="#requirements">Requirements</a><a href="#build">Set up the project</a><a href="#configuration">Environment files</a
         ><a href="#dev-bar">Use the dev bar</a><a href="#architecture">Follow the code</a
         ><a href="#commands">Commands and checks</a><a href="#demo">Demo and captures</a
         ><a href="#release">Release setup</a>
@@ -84,7 +84,7 @@
         <details class="mobile-contents">
           <summary>On this page</summary>
           <nav aria-label="Page sections">
-            <a href="#requirements">Requirements</a><a href="#build">Set up the project</a><a href="#configuration">Configure integrations</a
+            <a href="#requirements">Requirements</a><a href="#build">Set up the project</a><a href="#configuration">Environment files</a
             ><a href="#dev-bar">Use the dev bar</a><a href="#architecture">Follow the code</a
             ><a href="#commands">Commands and checks</a><a href="#demo">Demo and captures</a
             ><a href="#release">Release setup</a>
@@ -262,35 +262,36 @@ pnpm dev</code></pre>
         </div>
         <section class="chapter" id="configuration" aria-labelledby="configuration-title">
           <div class="chapter-heading">
-            <h2 id="configuration-title">Configure integrations</h2>
+            <h2 id="configuration-title">Environment files</h2>
           </div>
           <p class="prose">
-            UI work needs no environment file. For real autofill, resume import and mapping review,
-            save your Gemini key in Settings. To connect Google Drive,
-            <a href="#drive-oauth" data-open-details>configure an OAuth client</a> for the build.
-          </p>
-          <div class="code-block">
-            <button class="copy-code" type="button" aria-label="Copy environment setup commands">Copy</button>
-            <pre><code>cp .env.example .env.development</code></pre>
-          </div>
-          <p class="prose">
-            Fill in the local file and restart WXT. Keep real values out of Git.
+            Copy <code>.env.example</code> to <code>.env.development</code> for local testing,
+            then set the values you need.
           </p>
           <div class="table-scroll">
             <table>
-              <thead><tr><th>Environment entry</th><th>Use</th></tr></thead>
+              <thead><tr><th>Variable</th><th>Use</th></tr></thead>
               <tbody>
                 <tr>
                   <td><code>VITE_GOOGLE_DRIVE_CLIENT_ID</code></td>
-                  <td>Drive Web application OAuth client ID. Use separate clients for development and production. Never embed a client secret.</td>
+                  <td>Developer-set <a href="#drive-oauth" data-open-details>OAuth client ID</a> that enables Drive backups for users of the build.</td>
                 </tr>
                 <tr>
                   <td><code>VITE_GEMINI_API_KEY</code></td>
-                  <td>Optional dev-only key fallback. Production ignores it. Removing the key or resetting data suppresses this fallback until you save a key again.</td>
+                  <td>Optional personal key that preloads Gemini in development builds only.</td>
                 </tr>
               </tbody>
             </table>
           </div>
+          <p class="prose">
+            <code>.env</code> loads in every mode. WXT uses <code>.env.development</code> for
+            <code>pnpm dev</code> and <code>.env.production</code> for <code>pnpm build</code> and
+            <code>pnpm zip</code>. It also supports
+            <a href="https://wxt.dev/guide/essentials/config/environment-variables.html">local and browser-specific files</a>.
+          </p>
+          <p class="prose">
+            Restart <code>pnpm dev</code> after changing an env file. Keep real values out of Git.
+          </p>
           <div class="detail-list">
             <details id="drive-oauth">
               <summary>How do I configure Google Drive OAuth?</summary>
@@ -316,9 +317,6 @@ pnpm dev</code></pre>
               </p>
             </details>
           </div>
-          <p class="prose">
-            To work without provider credentials, use the <a href="#dev-bar">dev bar and local preview</a>.
-          </p>
         </section>
         <section class="chapter" id="dev-bar" aria-labelledby="dev-bar-title">
           <div class="chapter-heading">
