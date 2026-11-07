@@ -1207,8 +1207,45 @@
         ],
         "invariant": "The ruleBlocked exclusion still applies only to the failed-fill and lowConfidence branches and the noData branch still requires match.fieldPath."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "dc600bc5d74f6ae6ebd851cd3defd00795937c21",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "executePendingAutofill names the file and checkbox exclusion once (textual) and adds AI text candidates through one local helper; conditions and ordering of the edit-watch and candidate pushes are unchanged (confirmed from the diff)."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/autofill src/content.test.ts src/popup",
+            "scope": "autofill, content and popup suites",
+            "outcome": "34 files, 954 tests passed"
+          },
+          {
+            "command": "temporary mutation of two guards (ruleBlocked on the lowConfidence candidate, textual on its edit-watch)",
+            "scope": "src/autofill",
+            "outcome": "both mutants survived: the existing tests do not pin those two guards, so equivalence rests on the reviewed diff; recorded as a test follow-up"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite on the combined tree",
+            "outcome": "141 files, 2563 tests passed in 2 clean runs"
+          },
+          {
+            "command": "pnpm test:browser",
+            "scope": "built production extension, 23 Playwright specs",
+            "outcome": "136 passed, 8 skipped, 3 failed in src/browser/quick-fill.pw.ts. The failures expect the old merge default for Quick Fill while commit 229dda7 changed the default to overwrite without updating that spec; unrelated to these changes."
+          }
+        ]
+      }
     },
     {
       "id": "r-8b61bbd9-1f64-4c12-9619-db8f4d85428e",
@@ -1236,8 +1273,45 @@
         ],
         "invariant": "Rejection reasons, LearnedCheck status order, the single onLearnedCheck call and metadata shapes stay identical."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "aa63b446c87dbc8c69a095944207a6c47f4387af",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "Layer 0 moved into matchLearned and the legacy string versus counted object is read once through entry; rejection reasons, check statuses and the returned match are unchanged."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/autofill src/utils src/content.test.ts",
+            "scope": "mapper and dependent suites",
+            "outcome": "54 files, 1325 tests passed"
+          },
+          {
+            "command": "temporary mutation of the trust threshold in matchLearned",
+            "scope": "src/autofill",
+            "outcome": "caught: 3 tests failed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite on the combined tree",
+            "outcome": "141 files, 2563 tests passed in 2 clean runs"
+          },
+          {
+            "command": "pnpm test:browser",
+            "scope": "built production extension, 23 Playwright specs",
+            "outcome": "136 passed, 8 skipped, 3 failed in src/browser/quick-fill.pw.ts. The failures expect the old merge default for Quick Fill while commit 229dda7 changed the default to overwrite without updating that spec; unrelated to these changes."
+          }
+        ]
+      }
     },
     {
       "id": "r-e27b4161-a82e-44a6-b939-5c7d3897e44f",
@@ -1295,8 +1369,45 @@
         ],
         "invariant": "Error paths and messages, omission of unset keys from sanitized, and the explicit linkedin and phone special cases stay unchanged."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "6953c415cc04089af6da3d75fccb6a2bdebd0105",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "Thirteen copied text and URL field blocks in profileValidator use copyText and copyUrl; error paths, messages and accepted-key order are unchanged."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/utils src/profile src/resume-ai src/components/options",
+            "scope": "validator and import suites",
+            "outcome": "76 files, 1308 tests passed"
+          },
+          {
+            "command": "temporary mutations of the text length limit and of empty-link acceptance",
+            "scope": "profile validator tests",
+            "outcome": "the limit mutant was caught; the empty-link mutant survived, so that rule is preserved by the reviewed diff and recorded as a test follow-up"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite on the combined tree",
+            "outcome": "141 files, 2563 tests passed in 2 clean runs"
+          },
+          {
+            "command": "pnpm test:browser",
+            "scope": "built production extension, 23 Playwright specs",
+            "outcome": "136 passed, 8 skipped, 3 failed in src/browser/quick-fill.pw.ts. The failures expect the old merge default for Quick Fill while commit 229dda7 changed the default to overwrite without updating that spec; unrelated to these changes."
+          }
+        ]
+      }
     },
     {
       "id": "r-092b5af7-a9af-42a7-96db-efd17ddaa220",
@@ -1420,8 +1531,40 @@
         ],
         "invariant": "Rendered class strings stay identical; the smaller Learned Mappings pair is left alone."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "bfa7f366d42ac77b785effd142eab7d478c16214",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "The identical primary and secondary button class strings in the settings, resume import and import review components now come from ui/buttonCls.ts; the strings are byte-identical so rendered classes are unchanged."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/components",
+            "scope": "component suites",
+            "outcome": "47 files, 681 tests passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite on the combined tree",
+            "outcome": "141 files, 2563 tests passed in 2 clean runs"
+          },
+          {
+            "command": "pnpm test:browser",
+            "scope": "built production extension, 23 Playwright specs",
+            "outcome": "136 passed, 8 skipped, 3 failed in src/browser/quick-fill.pw.ts. The failures expect the old merge default for Quick Fill while commit 229dda7 changed the default to overwrite without updating that spec; unrelated to these changes."
+          }
+        ]
+      }
     },
     {
       "id": "r-f2f5a5ab-e3fc-4f67-b37f-544564468835",
