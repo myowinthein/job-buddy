@@ -164,6 +164,95 @@ function resolveDictionaryHit(
   return { fieldPath, value };
 }
 
+/** Layer 0: a saved correction for this site, when a trusted one fits the field. */
+function matchLearned(
+  signals: FieldSignals,
+  profile: Profile,
+  normed: string[],
+  domainMappings: LearnedMappings[string],
+): { match: FieldMatch | null; check: LearnedCheck } {
+  let check: LearnedCheck = { status: 'no_match' };
+  const rejected = (next: LearnedCheck) => {
+    if (check.status === 'no_match') check = next;
+  };
+  for (const n of normed) {
+    const learned: LearnedMappingValue | undefined = domainMappings[n];
+    if (!validMapping(learned) || genericLearnedSignal(n)) continue;
+    // Legacy strings are trusted paths without counts; objects carry counts and metadata.
+    const entry = typeof learned === 'string' ? undefined : learned;
+    const fieldPath = typeof learned === 'string' ? learned : learned.path;
+    if (!learnedSensitiveQuestion(fieldPath, signals)) {
+      rejected({ status: 'incompatible' });
+      continue;
+    }
+    const section = signals.element ? sectionFamily(signals.element) : undefined;
+    const pathSection = /^(education|workHistory)\./.exec(fieldPath)?.[1];
+    if (section && pathSection && section !== pathSection) {
+      rejected({ status: 'incompatible' });
+      continue;
+    }
+    const primary = [signals.label, signals.ariaLabel].map(normalize).filter(Boolean);
+    const question = learningQuestion(signals);
+    const storedQuestion = entry?.question || entry?.label || '';
+    const compatible =
+      storedQuestion &&
+      (entry?.question
+        ? normalize(storedQuestion) === normalize(question)
+        : normalize(storedQuestion) === normalize(question.slice(0, 120)));
+    if (entry?.question && !compatible) {
+      rejected({ status: 'incompatible' });
+      continue;
+    }
+    // Secondary/internal keys cannot carry an answer into a different question.
+    if (question && !primary.includes(n) && !compatible) {
+      const visibleHit = dictionaryExact(normalize(signals.label || signals.ariaLabel));
+      const family = (path: string) =>
+        path
+          .replace(/\.\d+(?=\.)/g, '')
+          .replace(/personal\.phone\.(?:number|full)/, 'personal.phone.number');
+      if (!visibleHit || family(visibleHit) !== family(fieldPath)) {
+        rejected({ status: 'incompatible' });
+        continue;
+      }
+    }
+    if (storedQuestion && question && !compatible && !primary.includes(n)) {
+      rejected({ status: 'incompatible' });
+      continue;
+    }
+    const metadata = {
+      profilePath: fieldPath,
+      ...(entry ? { confirmations: entry.count } : { legacy: true as const }),
+    };
+    if (entry?.inactive) {
+      rejected({ status: 'inactive', ...metadata });
+      continue;
+    }
+    if (entry && entry.count < LEARNED_MAPPING_THRESHOLD) {
+      rejected({ status: 'unconfirmed', ...metadata });
+      continue;
+    }
+    const scope =
+      entry?.scope === 'entry'
+        ? 'entry'
+        : entry?.scope === 'field' || hasGenericEntryLabel(fieldPath, signals)
+          ? 'field'
+          : 'entry';
+    const resolved = resolveDictionaryHit(profile, fieldPath, signals);
+    const marker = scope === 'field' && resolved.value ? repeatedLearnedMarker(fieldPath) : null;
+    return {
+      match: {
+        fieldPath: marker || resolved.fieldPath,
+        confidence: CONF_CONFIRMED,
+        value: marker ? null : resolved.value,
+        matchLayer: 'learned',
+        learnedScope: scope,
+      },
+      check: { status: 'trusted', ...metadata },
+    };
+  }
+  return { match: null, check };
+}
+
 export function mapField(
   signals: FieldSignals,
   profile: Profile,
@@ -189,88 +278,9 @@ export function mapField(
   ].filter(Boolean);
   const normed = signalValues.map(normalize).filter(Boolean);
   const domainMappings = learnedMappings[domain] ?? {};
-  let learnedCheck: LearnedCheck = { status: 'no_match' };
-  const rejected = (check: LearnedCheck) => {
-    if (learnedCheck.status === 'no_match') learnedCheck = check;
-  };
-
-  // ── Layer 0: Learned mappings ──────────────────────────────────────────────
-  for (const n of normed) {
-    const learned: LearnedMappingValue | undefined = domainMappings[n];
-    if (!validMapping(learned) || genericLearnedSignal(n)) continue;
-    const fieldPath = typeof learned === 'string' ? learned : learned.path;
-    if (!learnedSensitiveQuestion(fieldPath, signals)) {
-      rejected({ status: 'incompatible' });
-      continue;
-    }
-    const section = signals.element ? sectionFamily(signals.element) : undefined;
-    const pathSection = /^(education|workHistory)\./.exec(fieldPath)?.[1];
-    if (section && pathSection && section !== pathSection) {
-      rejected({ status: 'incompatible' });
-      continue;
-    }
-    const primary = [signals.label, signals.ariaLabel].map(normalize).filter(Boolean);
-    const question = learningQuestion(signals);
-    const storedQuestion =
-      typeof learned === 'string' ? '' : learned.question || learned.label || '';
-    const compatible =
-      storedQuestion &&
-      (typeof learned !== 'string' && learned.question
-        ? normalize(storedQuestion) === normalize(question)
-        : normalize(storedQuestion) === normalize(question.slice(0, 120)));
-    if (typeof learned !== 'string' && learned.question && !compatible) {
-      rejected({ status: 'incompatible' });
-      continue;
-    }
-    // Secondary/internal keys cannot carry an answer into a different question.
-    if (question && !primary.includes(n) && !compatible) {
-      const visibleHit = dictionaryExact(normalize(signals.label || signals.ariaLabel));
-      const family = (path: string) =>
-        path
-          .replace(/\.\d+(?=\.)/g, '')
-          .replace(/personal\.phone\.(?:number|full)/, 'personal.phone.number');
-      if (!visibleHit || family(visibleHit) !== family(fieldPath)) {
-        rejected({ status: 'incompatible' });
-        continue;
-      }
-    }
-    if (storedQuestion && question && !compatible && !primary.includes(n)) {
-      rejected({ status: 'incompatible' });
-      continue;
-    }
-    const metadata = {
-      profilePath: fieldPath,
-      ...(typeof learned === 'string'
-        ? { legacy: true as const }
-        : { confirmations: learned.count }),
-    };
-    if (typeof learned !== 'string' && learned.inactive) {
-      rejected({ status: 'inactive', ...metadata });
-      continue;
-    }
-    if (typeof learned !== 'string' && learned.count < LEARNED_MAPPING_THRESHOLD) {
-      rejected({ status: 'unconfirmed', ...metadata });
-      continue;
-    }
-    const scope =
-      typeof learned !== 'string' && learned.scope === 'entry'
-        ? 'entry'
-        : (typeof learned !== 'string' && learned.scope === 'field') ||
-            hasGenericEntryLabel(fieldPath, signals)
-          ? 'field'
-          : 'entry';
-    const resolved = resolveDictionaryHit(profile, fieldPath, signals);
-    const marker = scope === 'field' && resolved.value ? repeatedLearnedMarker(fieldPath) : null;
-    onLearnedCheck?.({ status: 'trusted', ...metadata });
-    return {
-      fieldPath: marker || resolved.fieldPath,
-      confidence: CONF_CONFIRMED,
-      value: marker ? null : resolved.value,
-      matchLayer: 'learned',
-      learnedScope: scope,
-    };
-  }
-  onLearnedCheck?.(learnedCheck);
+  const learnedResult = matchLearned(signals, profile, normed, domainMappings);
+  onLearnedCheck?.(learnedResult.check);
+  if (learnedResult.match) return learnedResult.match;
 
   // ── Layer 1: Autocomplete attribute ───────────────────────────────────────
   const ac = signals.autocomplete
