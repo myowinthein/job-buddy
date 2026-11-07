@@ -362,11 +362,17 @@ pnpm dev</code></pre>
               <p>
                 For production, copy <code>.env.example</code> to <code>.env.production</code> and
                 use a separate Web application client with the published extension’s redirect ID.
-                Complete any Google consent-screen publishing requirements before public use.
               </p>
               <p>
-                See Google’s <a href="https://developers.google.com/workspace/guides/configure-oauth-consent">OAuth setup guide</a>
-                and <a href="https://developers.google.com/workspace/guides/create-credentials#web-application">Web application client instructions</a> for more detail.
+                Before public use, open <strong>Audience</strong> in <strong>Google Auth Platform</strong>
+                and click <strong>Publish app</strong> under <strong>Publishing status</strong>.
+                Confirm it shows <strong>In production</strong> and complete any checks requested
+                in <strong>Verification Center</strong>.
+              </p>
+              <p>
+                See Google’s <a href="https://developers.google.com/workspace/guides/configure-oauth-consent">OAuth setup guide</a>,
+                <a href="https://developers.google.com/workspace/guides/create-credentials#web-application">Web application client instructions</a>
+                and <a href="https://support.google.com/cloud/answer/15549945?hl=en">publishing settings</a> for more detail.
               </p>
             </details>
           </div>
