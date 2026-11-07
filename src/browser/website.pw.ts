@@ -140,6 +140,11 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
     .click();
   await expect(page).toHaveURL(origin + prefix + 'developers/');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Develop Job Buddy');
+  const developerActions = page.locator('#start .intro-actions a');
+  await expect(developerActions).toHaveText(['Explore the source', 'Add to Chrome']);
+  await expect(developerActions.first()).toHaveClass('button primary');
+  await expect(page.locator('#start').getByRole('link', { name: 'MIT licensed' }))
+    .toHaveAttribute('href', 'https://github.com/myowinthein/job-buddy/blob/main/LICENSE');
   expect(await page.locator('html').evaluate((el) => el.classList.contains('dark'))).toBe(!mode);
   await expect(
     page.getByRole('heading', { name: 'Environment files', exact: true }),
