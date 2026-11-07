@@ -72,6 +72,7 @@ import { clearHighlights, applyHighlight, applyMissingDataHighlight } from './hi
 import { resolveProfileValue } from './resolver';
 import { saveElementMappings } from './mappings';
 import { runAIAutofill } from './ai';
+import { flushPromises } from '../testing/flushPromises';
 import { CONF_CONFIRMED } from './constants';
 
 function makeProfile(): Profile {
@@ -424,7 +425,7 @@ describe('edit-watcher promotion (blur)', () => {
     // runSilentRefill if the entry were still tracked).
     vi.mocked(getProfile).mockClear();
     document.dispatchEvent(new Event('visibilitychange'));
-    await Promise.resolve();
+    await flushPromises();
     expect(getProfile).not.toHaveBeenCalled();
   });
 
@@ -535,8 +536,7 @@ describe('learned-mapping linking on blur (content-based, all tiers)', () => {
     el.value = 'I want to work here because of the great company culture';
     userBlur(el);
 
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises();
     expect(saveElementMappings).not.toHaveBeenCalled();
   });
 
@@ -551,8 +551,7 @@ describe('learned-mapping linking on blur (content-based, all tiers)', () => {
     el.value = 'Doe'; // 3 chars, below EDIT_LEARN_MIN_VALUE_LENGTH
     userBlur(el);
 
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises();
     expect(saveElementMappings).not.toHaveBeenCalled();
   });
 
@@ -567,8 +566,7 @@ describe('learned-mapping linking on blur (content-based, all tiers)', () => {
     el.value = '';
     userBlur(el);
 
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises();
     expect(saveElementMappings).not.toHaveBeenCalled();
   });
 });
@@ -600,8 +598,7 @@ describe('queueMappingSave serialization', () => {
 
     // Both blur handlers ran synchronously, but the second save must not have
     // started yet — it's chained behind the still-pending first save.
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises();
     expect(saveElementMappings).toHaveBeenCalledTimes(1);
 
     resolveFirst();
@@ -651,8 +648,7 @@ describe('AI green-filled elements are excluded from edit-watching', () => {
     el.value = 'something the user typed afterward';
     el.dispatchEvent(new Event('blur'));
 
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises();
     // No edit-watcher was attached for this element (it was filtered out of
     // editableFields before attachEditWatchers ran), so blurring it now does
     // nothing — no promotion highlight, no learned-mapping save.
@@ -752,8 +748,7 @@ describe('silent re-fill on visibilitychange', () => {
     vi.mocked(fillField).mockClear();
 
     document.dispatchEvent(new Event('visibilitychange'));
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises();
 
     expect(fillField).not.toHaveBeenCalled();
     expect(getLastResult()?.noData).toBe(1);
@@ -775,8 +770,7 @@ describe('silent re-fill on visibilitychange', () => {
     vi.mocked(fillField).mockClear();
 
     document.dispatchEvent(new Event('visibilitychange'));
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises();
 
     expect(fillField).not.toHaveBeenCalled();
   });
@@ -803,8 +797,7 @@ describe('silent re-fill on visibilitychange', () => {
     vi.mocked(fillField).mockClear();
 
     document.dispatchEvent(new Event('visibilitychange'));
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises();
 
     expect(fillField).not.toHaveBeenCalled();
 
@@ -1021,7 +1014,7 @@ describe('session ownership and asynchronous lifecycle', () => {
     vi.mocked(resolveProfileValue).mockReturnValue('new@example.test');
     document.dispatchEvent(new Event('visibilitychange'));
     await undoAutofill(); finish(makeProfile());
-    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    await flushPromises();
     expect(fillField).not.toHaveBeenCalled(); expect(getLastResult()).toBeNull(); input.remove();
   });
 
@@ -1092,7 +1085,7 @@ it('removes AI-yellow former gray fields from visibility refill without overwrit
   await scanAutofill(); await executeAutofill('overwrite');
   vi.mocked(getProfile).mockClear();
   document.dispatchEvent(new Event('visibilitychange'));
-  await Promise.resolve();
+  await flushPromises();
   expect(getProfile).not.toHaveBeenCalled(); expect(fillField).not.toHaveBeenCalled();
   expect(input.value).toBe('ai@example.test');
   expect(getLastResult()).toMatchObject({ noData: 0, needReview: 1, noReview: 0 });

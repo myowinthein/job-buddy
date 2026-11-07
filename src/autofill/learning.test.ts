@@ -8,6 +8,7 @@ import { saveElementMappings } from './mappings';
 import { mapField } from './mapper';
 import { extractSignals } from './signals';
 import { adjustEducationMatches } from './educationResolution';
+import { flushPromises } from '../testing/flushPromises';
 vi.mock('./mappings', async (original) => ({
   ...(await original<typeof import('./mappings')>()),
   saveElementMappings: vi.fn().mockResolvedValue(undefined),
@@ -23,9 +24,6 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
-const flush = async () => {
-  for (let i = 0; i < 40; i++) await Promise.resolve();
-};
 function field(html = '<label>Novel response<input id="q7"></label>', profile = RULE_PROFILE) {
   document.body.innerHTML = html;
   const element = document.querySelector<HTMLInputElement>('input,select')!;
@@ -86,7 +84,7 @@ describe('user learning lifecycle', () => {
       { ...RULE_PROFILE, personal: { ...RULE_PROFILE.personal, nickname: 'Choose' } },
     );
     edit('');
-    await flush();
+    await flushPromises();
     expect(saveElementMappings).not.toHaveBeenCalled();
   });
   it('learns a real correction to an already-filled field', async () => {
@@ -103,7 +101,7 @@ describe('user learning lifecycle', () => {
   it('keeps observing after an unrelated or cleared first edit', async () => {
     const { edit } = field();
     edit('still thinking');
-    await flush();
+    await flushPromises();
     edit('');
     edit('alex@example.test');
     await vi.waitFor(() => expect(saveElementMappings).toHaveBeenCalledOnce());
@@ -114,7 +112,7 @@ describe('user learning lifecycle', () => {
     element.focus();
     element.value = 'Sample';
     element.blur();
-    await flush();
+    await flushPromises();
     expect(saveElementMappings).not.toHaveBeenCalled();
   });
   it('learns the visible selected option rather than its opaque submission code', async () => {
@@ -128,7 +126,7 @@ describe('user learning lifecycle', () => {
   it('waits for valid final values and can learn after an invalid edit', async () => {
     const { edit } = field('<label>Novel response<input id="q7" type="email"></label>');
     edit('Alex');
-    await flush();
+    await flushPromises();
     expect(saveElementMappings).not.toHaveBeenCalled();
     edit('alex@example.test');
     await vi.waitFor(() => expect(saveElementMappings).toHaveBeenCalledOnce());
@@ -141,31 +139,31 @@ describe('user learning lifecycle', () => {
       else if (action === 'reuse') element.id = 'newquestion';
       else element.readOnly = true;
       edit('alex@example.test');
-      await flush();
+      await flushPromises();
       expect(saveElementMappings).not.toHaveBeenCalled();
     },
   );
   it('does not count revisiting the same answer twice in one run as two confirmations', async () => {
     const { edit } = field();
     edit('alex@example.test');
-    await flush();
+    await flushPromises();
     edit('');
     edit('alex@example.test');
-    await flush();
+    await flushPromises();
     expect(saveElementMappings).toHaveBeenCalledOnce();
   });
   it('stops after profile replacement or reset even if the form stays open', async () => {
     const { edit } = field();
     await new Promise<void>((resolve) => chrome.storage.local.remove('profile', resolve));
     edit('alex@example.test');
-    await flush();
+    await flushPromises();
     expect(saveElementMappings).not.toHaveBeenCalled();
   });
   it('does not let a pending observation read new field signals', async () => {
     const { element, edit } = field();
     edit('alex@example.test');
     element.id = 'newquestion';
-    await flush();
+    await flushPromises();
     expect(saveElementMappings).not.toHaveBeenCalled();
   });
 });
