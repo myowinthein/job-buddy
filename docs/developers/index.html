@@ -546,7 +546,7 @@ pnpm dev</code></pre>
                   <p>Install dependencies after cloning or pulling dependency changes, then start WXT.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy Chrome development commands">Copy</button>
-                    <pre><code>pnpm install
+                    <pre><code>pnpm i
 pnpm dev</code></pre>
                   </div>
                   <p>
@@ -624,7 +624,7 @@ pnpm build</code></pre>
                   <p>Install Chromium once so Playwright can run tests in a browser.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy browser Chromium install command">Copy</button>
-                    <pre><code>pnpm exec playwright install chromium</code></pre>
+                    <pre><code>pnpm playwright install chromium</code></pre>
                   </div>
                   <p>Build the extension and test autofill, Undo and the interface with fictional data.</p>
                   <div class="code-block">
@@ -634,8 +634,7 @@ pnpm build</code></pre>
                   <p>Watch autofill and Undo tests on the demo job application form in a visible browser.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy visible demo test commands">Copy</button>
-                    <pre><code>pnpm build
-pnpm exec playwright test src/browser/demo.pw.ts --headed</code></pre>
+                    <pre><code>pnpm test:browser src/browser/demo.pw.ts --headed</code></pre>
                   </div>
                 </details>
                 <details id="cleanup-commands">
@@ -643,8 +642,8 @@ pnpm exec playwright test src/browser/demo.pw.ts --headed</code></pre>
                   <p>Pass the paths you edited to limit formatting and automatic lint fixes to those files.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy scoped cleanup commands">Copy</button>
-                    <pre><code>pnpm exec prettier --write path/to/file
-pnpm exec eslint path/to/file --fix</code></pre>
+                    <pre><code>pnpm prettier -w path/to/file
+pnpm eslint path/to/file --fix</code></pre>
                   </div>
                   <p>For cleanup across the whole repository, use these shortcuts.</p>
                   <div class="code-block">
@@ -694,7 +693,7 @@ pnpm lint:fix</code></pre>
                   <p>Capture scripts use this browser for screenshots and videos.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy Chromium install command">Copy</button>
-                    <pre><code>pnpm exec playwright install chromium</code></pre>
+                    <pre><code>pnpm playwright install chromium</code></pre>
                   </div>
                 </details>
                 <details id="demo">
