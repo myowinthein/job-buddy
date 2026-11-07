@@ -4,6 +4,7 @@ import type { FieldChange } from '@/src/resume-ai/types';
 import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 import { useDialogFocus } from '@/src/components/ui/useDialogFocus';
 import { ImportWarnings } from './ImportWarnings';
+import { secondaryButtonCls as secondaryCls } from '@/src/components/ui/buttonCls';
 
 export interface ImportSummaryDialogProps {
   changes: FieldChange[];
@@ -63,8 +64,6 @@ export default function ImportSummaryDialog({
   const dialogRef = useDialogFocus(returnFocusRef);
   const dismiss = isProcessing ? undefined : onDismiss;
   useEscapeToClose(dismiss);
-  const secondaryCls =
-    'px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 active:scale-95 transition-colors';
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"

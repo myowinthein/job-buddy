@@ -27,6 +27,7 @@ import {
   ImportProfileChangedError,
   type ImportMode,
 } from '@/src/utils/importPolicy';
+import { primaryButtonCls } from '@/src/components/ui/buttonCls';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -460,7 +461,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
                     type="button"
                     disabled={!selectedFile}
                     onClick={handleExtract}
-                    className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
+                    className={primaryButtonCls}
                   >
                     Analyze Resume
                   </button>
