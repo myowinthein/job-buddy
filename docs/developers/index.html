@@ -702,27 +702,89 @@ node scripts/capture-demo-motion.mjs</code></pre>
           </p>
           <div class="detail-list">
             <details>
-              <summary>How do I configure the publishing credentials?</summary>
+              <summary>How do I get the Chrome Web Store upload credentials?</summary>
               <ol>
                 <li>
-                  Enable <strong>Chrome Web Store API</strong> in Google Cloud and create the
-                  publishing <strong>Desktop app</strong> OAuth client.
+                  <strong>Prepare the project</strong>
+                  <ul>
+                    <li>
+                      In <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" aria-describedby="new-tab-hint">Google Cloud Console&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg></a>,
+                      select the project used for publishing.
+                    </li>
+                    <li>
+                      Under <strong>APIs &amp; Services</strong>, open <strong>Library</strong>,
+                      find <strong>Chrome Web Store API</strong> and click <strong>Enable</strong> if needed.
+                    </li>
+                    <li>
+                      If <strong>Google Auth Platform</strong> needs setup, follow the app-details
+                      and test-user steps in the <a href="#drive-oauth" data-open-details>OAuth setup instructions above</a>.
+                    </li>
+                  </ul>
                 </li>
                 <li>
-                  Run the helper below. Enter that client’s ID and secret, then authorize it with
-                  the Google account that owns the listing.
-                  <div class="code-block">
-                    <button class="copy-code" type="button" aria-label="Copy publishing credential command">Copy</button>
-                    <pre><code>npx chrome-webstore-upload-keys</code></pre>
-                  </div>
+                  <strong>Create the publishing client</strong>
+                  <ul>
+                    <li>
+                      In <strong>Google Auth Platform</strong>, open <strong>Clients</strong> and
+                      click <strong>Create client</strong>. Set <strong>Application type</strong>
+                      to <strong>Desktop app</strong>, name it <strong>Job Buddy uploads</strong>
+                      and click <strong>Create</strong>.
+                    </li>
+                    <li>
+                      Save <strong>Client ID</strong> as <code>CHROME_CLIENT_ID</code> and
+                      <strong>Client secret</strong> as <code>CHROME_CLIENT_SECRET</code> before
+                      closing the creation dialog. Google shows the full secret only once.
+                    </li>
+                    <li>
+                      For an existing client, find <strong>Client ID</strong> under
+                      <strong>Additional information</strong>. Use your saved secret, or click
+                      <strong>Add client secret</strong> and save the newly generated value.
+                    </li>
+                  </ul>
                 </li>
                 <li>
-                  In GitHub, open <strong>Settings</strong>, then <strong>Environments</strong>,
-                  create <code>production</code> and add the five values under <strong>Environment secrets</strong>.
+                  <strong>Generate the refresh token</strong>
+                  <ul>
+                    <li>
+                      Run the credential helper in your terminal.
+                      <div class="code-block">
+                        <button class="copy-code" type="button" aria-label="Copy publishing credential command">Copy</button>
+                        <pre><code>npx chrome-webstore-upload-keys</code></pre>
+                      </div>
+                    </li>
+                    <li>
+                      Enter the saved values at the <strong>Client ID</strong> and
+                      <strong>Client secret</strong> prompts, then choose to open the authentication
+                      page in your browser.
+                    </li>
+                    <li>
+                      Sign in with the Google account that owns the store listing and approve
+                      the requested Chrome Web Store access.
+                    </li>
+                    <li>
+                      When the helper finishes, save the printed <code>REFRESH_TOKEN</code>
+                      value as <code>CHROME_REFRESH_TOKEN</code>.
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <strong>Save the GitHub secrets</strong>
+                  <ul>
+                    <li>
+                      In the GitHub repository, open <strong>Settings</strong>, then
+                      <strong>Environments</strong>. Open <code>production</code>, or create it
+                      with <strong>New environment</strong> and <strong>Configure environment</strong>.
+                    </li>
+                    <li>
+                      Under <strong>Environment secrets</strong>, use <strong>Add secret</strong>
+                      to save each name and value from the table above.
+                    </li>
+                  </ul>
                 </li>
               </ol>
               <p>
-                See the <a href="https://github.com/fregante/chrome-webstore-upload-keys">credential helper guide</a>
+                See Google’s <a href="https://support.google.com/cloud/answer/15549257?hl=en">OAuth client guidance</a>,
+                the <a href="https://github.com/fregante/chrome-webstore-upload-keys">credential helper guide</a>
                 and <a href="https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments#creating-an-environment">GitHub environment setup</a> for more detail.
               </p>
             </details>
