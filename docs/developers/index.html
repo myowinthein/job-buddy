@@ -664,32 +664,29 @@ pnpm lint:fix</code></pre>
               <div class="detail-list command-accordions">
                 <details id="package-commands" open>
                   <summary>Build or package for Chrome</summary>
-                  <p>Create production files to load unpacked or use in screenshot captures.</p>
+                  <p>Build production Chrome files in <code>.output/chrome-mv3/</code> to load unpacked or use in captures.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy Chrome build command">Copy</button>
                     <pre><code>pnpm build</code></pre>
                   </div>
-                  <p>The extension files are written to <code>.output/chrome-mv3/</code>.</p>
-                  <p>To build and create a ZIP for the Chrome Web Store, use this command instead.</p>
+                  <p>Build a Chrome Web Store ZIP in <code>.output/</code> for upload.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy Chrome ZIP command">Copy</button>
                     <pre><code>pnpm zip</code></pre>
                   </div>
-                  <p>The ZIP is written to <code>.output/</code>.</p>
                 </details>
                 <details id="firefox-packaging">
                   <summary>Build or package for Firefox</summary>
-                  <p>Create a production Firefox build.</p>
+                  <p>Build production Firefox files in <code>.output/</code>.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy Firefox build command">Copy</button>
                     <pre><code>pnpm build:firefox</code></pre>
                   </div>
-                  <p>To build and create a Firefox ZIP, use this command instead.</p>
+                  <p>Build a Firefox ZIP in <code>.output/</code> for distribution.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy Firefox ZIP command">Copy</button>
                     <pre><code>pnpm zip:firefox</code></pre>
                   </div>
-                  <p>Both commands write their output to <code>.output/</code>.</p>
                 </details>
               </div>
             </div>
