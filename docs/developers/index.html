@@ -708,28 +708,32 @@ pnpm lint:fix</code></pre>
                   <pre><code>pnpm exec playwright install chromium</code></pre>
                 </div>
               </div>
-              <div class="capture-recipe" id="demo">
-                <p>Update the demo job application form screenshot and autoplay videos (requires <a href="https://ffmpeg.org/download.html"><code>ffmpeg</code></a>).</p>
-                <div class="code-block" id="video-capture">
-                  <button class="copy-code" type="button" aria-label="Copy demo capture commands">Copy</button>
-                  <pre><code>pnpm build
+              <div class="detail-list command-accordions">
+                <details id="demo" open>
+                  <summary>Demo job application form</summary>
+                  <p>Update the demo job application form screenshot and autoplay videos (requires <a href="https://ffmpeg.org/download.html"><code>ffmpeg</code></a>).</p>
+                  <div class="code-block" id="video-capture">
+                    <button class="copy-code" type="button" aria-label="Copy demo capture commands">Copy</button>
+                    <pre><code>pnpm build
 node scripts/capture-demo.mjs
 node scripts/capture-demo-motion.mjs</code></pre>
-                </div>
-              </div>
-              <div class="capture-recipe" id="website-captures">
-                <p>Update Job Buddy popup and options page screenshots (requires <a href="https://developers.google.com/speed/webp/download"><code>cwebp</code></a>).</p>
-                <div class="code-block">
-                  <button class="copy-code" type="button" aria-label="Copy capture preview command">Copy</button>
-                  <pre><code># Terminal 1 (keep running)
+                  </div>
+                </details>
+                <details id="website-captures">
+                  <summary>Job Buddy popup and options pages</summary>
+                  <p>Update Job Buddy popup and options page screenshots (requires <a href="https://developers.google.com/speed/webp/download"><code>cwebp</code></a>).</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy capture preview command">Copy</button>
+                    <pre><code># Terminal 1 (keep running)
 pnpm dev:preview</code></pre>
-                </div>
-                <div class="code-block">
-                  <button class="copy-code" type="button" aria-label="Copy website capture commands">Copy</button>
-                  <pre><code># Terminal 2
+                  </div>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy website capture commands">Copy</button>
+                    <pre><code># Terminal 2
 pnpm build
 node scripts/capture-site.mjs</code></pre>
-                </div>
+                  </div>
+                </details>
               </div>
             </div>
           </div>

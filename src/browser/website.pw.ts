@@ -176,6 +176,7 @@ test('command tabs support keyboard navigation, copying and links to hidden inst
   await expect(page.getByRole('button', { name: 'Copy validation commands' })).toBeVisible();
   await page.keyboard.press('End');
   await expect(tabs.getByRole('tab', { name: 'Capture', exact: true })).toBeFocused();
+  await page.locator('#website-captures > summary').click();
   await page.getByRole('button', { name: 'Copy capture preview command' }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
     '# Terminal 1 (keep running)\npnpm dev:preview',
