@@ -581,6 +581,17 @@ for (const theme of ['light', 'dark'] as const) {
             await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
           ).toBe(true);
         }
+        if (path === 'developers/') {
+          const boundaries = await page.locator('main > .chapter').evaluateAll((chapters) =>
+            chapters.slice(1).map((chapter, index) => ({
+              from: chapters[index].id,
+              to: chapter.id,
+              gap: chapter.getBoundingClientRect().top - chapters[index].getBoundingClientRect().bottom,
+            })),
+          );
+          for (const boundary of boundaries)
+            expect(boundary.gap, `${boundary.from} → ${boundary.to} at ${width}px`).toBe(0);
+        }
         await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }));
         if (width > 800 && (path === '' || path === 'developers/'))
           await expect(page.locator('.chapter-nav [aria-current="location"]')).toHaveAttribute(

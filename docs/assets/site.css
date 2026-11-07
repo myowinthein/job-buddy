@@ -780,7 +780,7 @@ pre code {
 :is(.walkthrough, .developer-guide) .chapter {
   padding-block: var(--chapter-gap);
 }
-:is(.walkthrough, .developer-guide) .chapter:first-of-type {
+.walkthrough .chapter:first-of-type {
   margin-top: var(--chapter-gap);
 }
 :is(.walkthrough, .developer-guide) .chapter > :last-child {
@@ -808,9 +808,18 @@ pre code {
 .developer-guide :is(figure, .detail-list) + .prose {
   margin-top: 24px;
 }
-.developer-guide #requirements {
+.developer-guide .chapter {
   margin-top: 0;
+}
+.developer-guide #requirements {
   border-top: 0;
+}
+.developer-guide tbody tr:last-child > td {
+  border-bottom: 0;
+}
+.developer-guide .pipeline li {
+  border-top: 0;
+  padding-top: 0;
 }
 .visual-tour {
   margin: 25px 0;
