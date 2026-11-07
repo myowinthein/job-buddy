@@ -124,6 +124,48 @@ document.querySelectorAll('.mobile-contents a').forEach((link) => {
     link.closest('details').open = false;
   });
 });
+document.querySelectorAll('[data-command-tabs]').forEach((group) => {
+  const tabs = [...group.querySelectorAll('[role="tab"]')];
+  const panels = [...group.querySelectorAll('[role="tabpanel"]')];
+  function select(tab) {
+    tabs.forEach((item) => {
+      item.setAttribute('aria-selected', String(item === tab));
+      item.tabIndex = item === tab ? 0 : -1;
+    });
+    panels.forEach((panel) => {
+      panel.hidden = panel.id !== tab.getAttribute('aria-controls');
+    });
+    scheduleChapter();
+  }
+  function revealHash() {
+    const target = document.getElementById(location.hash.slice(1));
+    const panel = target?.closest('[role="tabpanel"]');
+    if (!panels.includes(panel)) return;
+    select(tabs.find((tab) => tab.getAttribute('aria-controls') === panel.id));
+    const details = target.closest('details');
+    if (details) details.open = true;
+    target.scrollIntoView();
+  }
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => select(tab));
+    tab.addEventListener('keydown', (event) => {
+      let next;
+      if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+      if (event.key === 'ArrowLeft') next = (index + tabs.length - 1) % tabs.length;
+      if (event.key === 'Home') next = 0;
+      if (event.key === 'End') next = tabs.length - 1;
+      if (next === undefined) return;
+      event.preventDefault();
+      select(tabs[next]);
+      tabs[next].focus();
+    });
+  });
+  group.classList.add('is-enhanced');
+  select(tabs[0]);
+  window.addEventListener('hashchange', revealHash);
+  revealHash();
+});
+
 document.querySelectorAll('a[data-open-details]').forEach((link) => {
   function openDetails() {
     const target = document.getElementById(link.hash.slice(1));

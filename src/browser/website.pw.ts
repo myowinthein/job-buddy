@@ -160,6 +160,54 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   expect(errors).toEqual([]);
 });
 
+test('command tabs support keyboard navigation, copying and links to hidden instructions', async ({
+  context,
+  page,
+}) => {
+  await serveSite(context);
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto(origin + prefix + 'developers/#commands');
+  const tabs = page.getByRole('tablist', { name: 'Command purpose' });
+  await expect(tabs.getByRole('tab', { name: 'Develop', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tabpanel')).toHaveCount(1);
+  await tabs.getByRole('tab', { name: 'Develop', exact: true }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(tabs.getByRole('tab', { name: 'Check', exact: true })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Copy validation commands' })).toBeVisible();
+  await page.keyboard.press('End');
+  await expect(tabs.getByRole('tab', { name: 'Capture', exact: true })).toBeFocused();
+  await page.locator('#website-captures > summary').click();
+  await page.getByRole('button', { name: 'Copy website capture commands' }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    'pnpm build\nnode scripts/capture-site.mjs',
+  );
+  await page.goto(origin + prefix + 'developers/#browser-commands');
+  await expect(tabs.getByRole('tab', { name: 'Check', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#browser-commands')).toHaveAttribute('open', '');
+  await expect(page.locator('#browser-commands > summary')).toBeInViewport();
+  await page.evaluate(() => { location.hash = '#demo'; });
+  await expect(tabs.getByRole('tab', { name: 'Capture', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('button', { name: 'Copy README capture commands' })).toBeVisible();
+  await page.goBack();
+  await expect(tabs.getByRole('tab', { name: 'Check', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#browser-commands > summary')).toBeInViewport();
+});
+
+test('command instructions remain available without JavaScript', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  try {
+    await serveSite(context);
+    const page = await context.newPage();
+    await page.goto(origin + prefix + 'developers/#commands');
+    await expect(page.getByRole('tablist', { name: 'Command purpose' })).toBeHidden();
+    await expect(page.getByRole('tabpanel')).toHaveCount(4);
+    await page.locator('#video-capture > summary').click();
+    await expect(page.locator('#video-capture pre')).toContainText('node scripts/capture-demo-motion.mjs');
+  } finally {
+    await context.close();
+  }
+});
+
 test('autofill recording autoplays without controls, follows the theme, and stops offscreen', async ({
   context,
   page,
@@ -311,6 +359,8 @@ test('task links open new tabs with a visual hint and accessible description', a
         installationPages.has(url.href) ||
         (!href!.startsWith('#') && url.pathname === prefix + 'demo/');
       if (newTab) {
+        const panelId = await link.evaluate((el) => el.closest('[role="tabpanel"]')?.id);
+        if (panelId) await page.locator(`[role="tab"][aria-controls="${panelId}"]`).click();
         await expect(link).toHaveAttribute('target', '_blank');
         await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
         await expect(link).toHaveAccessibleDescription('Opens in a new tab.');

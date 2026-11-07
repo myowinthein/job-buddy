@@ -821,6 +821,90 @@ pre code {
   border-top: 0;
   padding-top: 0;
 }
+.command-tabs {
+  margin-top: 24px;
+  min-width: 0;
+}
+.command-tab-list {
+  display: none;
+}
+.command-tabs.is-enhanced > .command-tab-list {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 24px;
+  overflow-x: auto;
+  padding: 5px;
+}
+.command-tab-list button {
+  flex-shrink: 0;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 10px 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 550;
+}
+.command-tab-list button:hover {
+  color: var(--ink);
+}
+.command-tab-list [aria-selected='true'] {
+  color: var(--link);
+  border-bottom-color: var(--link);
+}
+.command-tabs.is-enhanced .command-purpose {
+  display: none;
+}
+.command-tabs .command-accordions {
+  margin-top: 24px;
+}
+.command-tabs [role='tabpanel'] > .command-accordions:first-of-type {
+  margin-top: 0;
+}
+.command-accordions summary {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  list-style: none;
+  padding-block: 8px;
+}
+.command-accordions summary::-webkit-details-marker {
+  display: none;
+}
+.command-accordions summary::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  transform: rotate(-45deg);
+}
+.command-accordions [open] > summary::before {
+  transform: translateY(-2px) rotate(45deg);
+}
+.command-accordions details > :not(summary) {
+  margin-left: 19px;
+}
+.command-tabs .code-block {
+  display: flex;
+  align-items: flex-start;
+  background: var(--soft);
+  border-radius: 7px;
+}
+.command-tabs pre {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.command-tabs .copy-code {
+  position: static;
+  order: 1;
+  flex-shrink: 0;
+  margin: 10px 10px 0 0;
+}
 .visual-tour {
   margin: 25px 0;
   min-width: 0;

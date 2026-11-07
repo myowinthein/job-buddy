@@ -529,187 +529,238 @@ pnpm dev</code></pre>
             <h2 id="commands-title">Commands and checks</h2>
           </div>
           <p class="prose">
-            Choose a task to see which command to run, what it needs and which files it updates.
+            Choose what you want to do, then open a task for its commands and requirements.
           </p>
-          <div class="table-scroll">
-            <table>
-              <thead><tr><th>When you want to</th><th>Commands and instructions</th></tr></thead>
-              <tbody>
-                <tr><td>Develop the extension or preview its UI and website</td><td><a href="#development-commands" data-open-details>Development and preview commands</a></td></tr>
-                <tr><td>Check a change or test one feature as you edit</td><td><a href="#validation-commands" data-open-details>Code checks and unit tests</a></td></tr>
-                <tr><td>Verify autofill, form events and Undo in a browser</td><td><a href="#browser-commands" data-open-details>Browser tests</a></td></tr>
-                <tr><td>Create extension files or a ZIP for uploading</td><td><a href="#package-commands" data-open-details>Build and packaging commands</a></td></tr>
-                <tr><td>Format code or apply automatic lint fixes</td><td><a href="#cleanup-commands" data-open-details>Formatting and lint fixes</a></td></tr>
-                <tr><td>Replace the README’s demo screenshot</td><td><a href="#demo" data-open-details>README screenshot capture</a></td></tr>
-                <tr><td>Replace the website’s extension screenshots</td><td><a href="#website-captures" data-open-details>Website screenshot capture</a></td></tr>
-                <tr><td>Replace the walkthrough’s autoplay demo videos</td><td><a href="#video-capture" data-open-details>Autoplay video capture</a></td></tr>
-              </tbody>
-            </table>
-          </div>
-          <p class="prose">
-            Browser tests and captures use isolated profiles and fictional data. Install Playwright’s
-            Chromium once before running them.
-          </p>
-          <div class="code-block">
-            <button class="copy-code" type="button" aria-label="Copy Chromium install command">Copy</button>
-            <pre><code>pnpm exec playwright install chromium</code></pre>
-          </div>
-          <div class="detail-list">
-            <details id="development-commands">
-              <summary>Which command should I use while developing?</summary>
-              <div class="table-scroll">
-                <table>
-                  <thead><tr><th>Command</th><th>Use it when you want to</th></tr></thead>
-                  <tbody>
-                    <tr><td><code>pnpm install</code></td><td>Install dependencies after cloning or pulling dependency changes</td></tr>
-                    <tr><td><code>pnpm dev</code></td><td>Work on the Chrome extension and test real forms, Chrome APIs or Google sign-in</td></tr>
-                    <tr><td><code>pnpm dev:preview</code></td><td>Preview profile and settings layouts with sample data and simulated integrations at <code>127.0.0.1:4173</code></td></tr>
-                    <tr><td><code>pnpm serve:landing</code></td><td>View the walkthrough, developer guide and demo from <code>docs/</code> using the URL printed in the terminal</td></tr>
-                    <tr><td><code>pnpm dev:firefox</code></td><td>Start a Firefox development build</td></tr>
-                  </tbody>
-                </table>
+          <div class="command-tabs" data-command-tabs>
+            <div class="command-tab-list" role="tablist" aria-label="Command purpose">
+              <button type="button" id="develop-tab" role="tab" aria-controls="develop-panel" aria-selected="true">Develop</button>
+              <button type="button" id="check-tab" role="tab" aria-controls="check-panel" aria-selected="false" tabindex="-1">Check</button>
+              <button type="button" id="build-tab" role="tab" aria-controls="build-panel" aria-selected="false" tabindex="-1">Build</button>
+              <button type="button" id="capture-tab" role="tab" aria-controls="capture-panel" aria-selected="false" tabindex="-1">Capture</button>
+            </div>
+            <div id="develop-panel" role="tabpanel" aria-labelledby="develop-tab" tabindex="0">
+              <h3 class="command-purpose">Develop</h3>
+              <div class="detail-list command-accordions">
+                <details id="development-commands" open>
+                  <summary>Run the Chrome extension</summary>
+                  <p>Install dependencies after cloning or pulling dependency changes, then start WXT.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy Chrome development commands">Copy</button>
+                    <pre><code>pnpm install
+pnpm dev</code></pre>
+                  </div>
+                  <p>
+                    Opens Chrome with the amber development extension for testing real forms,
+                    Chrome APIs and Google sign-in. Keep the server running while you work.
+                    Press <code>Ctrl+C</code> to stop it.
+                  </p>
+                </details>
+                <details id="preview-commands">
+                  <summary>Preview the extension UI with sample data</summary>
+                  <p>Use the isolated preview to work on profile and settings layouts with simulated integrations.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy UI preview command">Copy</button>
+                    <pre><code>pnpm dev:preview</code></pre>
+                  </div>
+                  <p>Open <code>http://127.0.0.1:4173/</code>. Refreshing resets temporary edits.</p>
+                </details>
+                <details id="website-commands">
+                  <summary>Preview the website</summary>
+                  <p>Serve the walkthrough, developer guide and demo from <code>docs/</code>.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy website preview command">Copy</button>
+                    <pre><code>pnpm serve:landing</code></pre>
+                  </div>
+                  <p>
+                    Open the address printed in the terminal. Add <code>/developers/</code> for
+                    this guide or <code>/demo/</code> for the demo form.
+                  </p>
+                </details>
+                <details id="firefox-development">
+                  <summary>Run a Firefox development build</summary>
+                  <p>Start WXT with Firefox as the target browser.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy Firefox development command">Copy</button>
+                    <pre><code>pnpm dev:firefox</code></pre>
+                  </div>
+                </details>
               </div>
-              <p>Keep the chosen server running while you work. Press <code>Ctrl+C</code> to stop it.</p>
-            </details>
-            <details id="validation-commands">
-              <summary>Which checks should I run for a change?</summary>
-              <p>Before sharing a change, run the same four checks as CI.</p>
-              <div class="code-block">
-                <button class="copy-code" type="button" aria-label="Copy validation commands">Copy</button>
-                <pre><code>pnpm compile
+            </div>
+            <div id="check-panel" role="tabpanel" aria-labelledby="check-tab" tabindex="0">
+              <h3 class="command-purpose">Check</h3>
+              <div class="detail-list command-accordions">
+                <details id="validation-commands" open>
+                  <summary>Run the CI checks locally</summary>
+                  <p>Before sharing a change, check TypeScript types, ESLint, unit tests and the production build.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy validation commands">Copy</button>
+                    <pre><code>pnpm compile
 pnpm lint
 pnpm test:run
 pnpm build</code></pre>
-              </div>
-              <div class="table-scroll">
-                <table>
-                  <thead><tr><th>Command</th><th>What it checks</th></tr></thead>
-                  <tbody>
-                    <tr><td><code>pnpm compile</code></td><td>TypeScript types across the project</td></tr>
-                    <tr><td><code>pnpm lint</code></td><td>Code issues reported by ESLint</td></tr>
-                    <tr><td><code>pnpm test:run</code></td><td>The unit test suite, then exits</td></tr>
-                    <tr><td><code>pnpm build</code></td><td>Whether the production extension builds successfully</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <p>
-                While editing, use <code>pnpm test</code> to rerun unit tests when files change.
-                To run just one test file once, pass its path.
-              </p>
-              <div class="code-block">
-                <button class="copy-code" type="button" aria-label="Copy focused test command">Copy</button>
-                <pre><code>pnpm exec vitest run src/autofill/mapper.test.ts</code></pre>
-              </div>
-            </details>
-            <details id="browser-commands">
-              <summary>How do I test autofill in a browser?</summary>
-              <p>
-                Use this after changing scanning, matching, writing or Undo. It builds the extension
-                and runs browser tests that check real field values, events and validation.
-              </p>
-              <div class="code-block">
-                <button class="copy-code" type="button" aria-label="Copy browser test commands">Copy</button>
-                <pre><code>pnpm test:browser</code></pre>
-              </div>
-              <p>To watch just the demo’s autofill and Undo tests in a visible browser, run these instead.</p>
-              <div class="code-block">
-                <button class="copy-code" type="button" aria-label="Copy visible demo test commands">Copy</button>
-                <pre><code>pnpm build
+                  </div>
+                  <p>Each command runs once and exits. Resolve failures before continuing to the next check.</p>
+                </details>
+                <details id="unit-test-commands">
+                  <summary>Run unit tests while editing</summary>
+                  <p>Keep Vitest watching for changes to rerun affected tests.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy watch test command">Copy</button>
+                    <pre><code>pnpm test</code></pre>
+                  </div>
+                  <p>To run one test file once, pass its path.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy focused test command">Copy</button>
+                    <pre><code>pnpm exec vitest run src/autofill/mapper.test.ts</code></pre>
+                  </div>
+                </details>
+                <details id="browser-commands">
+                  <summary>Test autofill in a browser</summary>
+                  <p>
+                    Use this after changing scanning, matching, writing or Undo. The tests check
+                    actual field values, events and validation using isolated profiles and fictional data.
+                  </p>
+                  <p>Install Playwright’s Chromium once.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy browser Chromium install command">Copy</button>
+                    <pre><code>pnpm exec playwright install chromium</code></pre>
+                  </div>
+                  <p>Build the extension and run the browser tests.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy browser test commands">Copy</button>
+                    <pre><code>pnpm test:browser</code></pre>
+                  </div>
+                  <p>To watch just the demo’s autofill and Undo tests in a visible browser, run these instead.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy visible demo test commands">Copy</button>
+                    <pre><code>pnpm build
 pnpm exec playwright test src/browser/demo.pw.ts --headed</code></pre>
-              </div>
-              <p>
-                For manual testing, open the
-                <a href="../demo/" target="_blank" rel="noopener noreferrer" aria-describedby="new-tab-hint">Morrow Studio demo&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg></a>
-                with the development extension installed.
-              </p>
-            </details>
-            <details id="package-commands">
-              <summary>How do I build or package the extension?</summary>
-              <div class="table-scroll">
-                <table>
-                  <thead><tr><th>When you need</th><th>Command</th><th>Result</th></tr></thead>
-                  <tbody>
-                    <tr><td>A production Chrome build to load unpacked or use in captures</td><td><code>pnpm build</code></td><td>Extension files in <code>.output/chrome-mv3/</code></td></tr>
-                    <tr><td>A Chrome ZIP to upload to the store</td><td><code>pnpm zip</code></td><td>Builds and creates a Chrome ZIP in <code>.output/</code></td></tr>
-                    <tr><td>A production Firefox build</td><td><code>pnpm build:firefox</code></td><td>Firefox extension files in <code>.output/</code></td></tr>
-                    <tr><td>A Firefox ZIP to distribute</td><td><code>pnpm zip:firefox</code></td><td>Builds and creates a Firefox ZIP in <code>.output/</code></td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </details>
-            <details id="cleanup-commands">
-              <summary>How do I format code or fix lint issues?</summary>
-              <div class="table-scroll">
-                <table>
-                  <thead><tr><th>Command</th><th>What it changes</th></tr></thead>
-                  <tbody>
-                    <tr><td><code>pnpm format</code></td><td>Formats the whole repository with Prettier</td></tr>
-                    <tr><td><code>pnpm lint:fix</code></td><td>Applies ESLint’s automatic fixes across the repository</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <p>To keep cleanup limited to the files you edited, pass their paths directly.</p>
-              <div class="code-block">
-                <button class="copy-code" type="button" aria-label="Copy scoped cleanup commands">Copy</button>
-                <pre><code>pnpm exec prettier --write path/to/file
+                  </div>
+                  <p>
+                    For manual testing, open the
+                    <a href="../demo/" target="_blank" rel="noopener noreferrer" aria-describedby="new-tab-hint">Morrow Studio demo&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg></a>
+                    with the development extension installed.
+                  </p>
+                </details>
+                <details id="cleanup-commands">
+                  <summary>Format code or fix lint issues</summary>
+                  <p>Pass the paths you edited to limit formatting and automatic lint fixes to those files.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy scoped cleanup commands">Copy</button>
+                    <pre><code>pnpm exec prettier --write path/to/file
 pnpm exec eslint path/to/file --fix</code></pre>
+                  </div>
+                  <p>For cleanup across the whole repository, use these shortcuts.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy repository cleanup commands">Copy</button>
+                    <pre><code>pnpm format
+pnpm lint:fix</code></pre>
+                  </div>
+                </details>
               </div>
-            </details>
-            <details id="demo">
-              <summary>How do I refresh the README screenshot?</summary>
-              <p>Run these after changing the demo form or the autofill appearance shown in the README.</p>
+            </div>
+            <div id="build-panel" role="tabpanel" aria-labelledby="build-tab" tabindex="0">
+              <h3 class="command-purpose">Build</h3>
+              <div class="detail-list command-accordions">
+                <details id="package-commands" open>
+                  <summary>Build or package for Chrome</summary>
+                  <p>Create production files to load unpacked or use in screenshot captures.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy Chrome build command">Copy</button>
+                    <pre><code>pnpm build</code></pre>
+                  </div>
+                  <p>The extension files are written to <code>.output/chrome-mv3/</code>.</p>
+                  <p>To build and create a ZIP for the Chrome Web Store, use this command instead.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy Chrome ZIP command">Copy</button>
+                    <pre><code>pnpm zip</code></pre>
+                  </div>
+                  <p>The ZIP is written to <code>.output/</code>.</p>
+                </details>
+                <details id="firefox-packaging">
+                  <summary>Build or package for Firefox</summary>
+                  <p>Create a production Firefox build.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy Firefox build command">Copy</button>
+                    <pre><code>pnpm build:firefox</code></pre>
+                  </div>
+                  <p>To build and create a Firefox ZIP, use this command instead.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy Firefox ZIP command">Copy</button>
+                    <pre><code>pnpm zip:firefox</code></pre>
+                  </div>
+                  <p>Both commands write their output to <code>.output/</code>.</p>
+                </details>
+              </div>
+            </div>
+            <div id="capture-panel" role="tabpanel" aria-labelledby="capture-tab" tabindex="0">
+              <h3 class="command-purpose">Capture</h3>
+              <p class="prose">
+                Captures use isolated profiles and fictional data. Install Playwright’s Chromium
+                once before running them.
+              </p>
               <div class="code-block">
-                <button class="copy-code" type="button" aria-label="Copy README capture commands">Copy</button>
-                <pre><code>pnpm build
+                <button class="copy-code" type="button" aria-label="Copy Chromium install command">Copy</button>
+                <pre><code>pnpm exec playwright install chromium</code></pre>
+              </div>
+              <div class="detail-list command-accordions">
+                <details id="demo" open>
+                  <summary>Update the README screenshot</summary>
+                  <p>Run these after changing the demo form or the autofill appearance shown in the README.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy README capture commands">Copy</button>
+                    <pre><code>pnpm build
 node scripts/capture-demo.mjs</code></pre>
-              </div>
-              <p>
-                The script loads the latest production build in a temporary browser, fills the demo
-                with <code>src/browser/fixtures/demo-profile.json</code> and captures the result.
-                It replaces the PNG in <code>docs/assets/images/</code> and updates its README and
-                website references. The browser closes afterward.
-              </p>
-            </details>
-            <details id="website-captures">
-              <summary>How do I refresh the website screenshots?</summary>
-              <p>
-                Use this after changing extension pages or dialogs shown on the website. Install
-                <code>cwebp</code> first to convert the captures to lossless WebP images.
-              </p>
-              <p>Keep the preview running in one terminal.</p>
-              <div class="code-block">
-                <button class="copy-code" type="button" aria-label="Copy capture preview command">Copy</button>
-                <pre><code>pnpm dev:preview</code></pre>
-              </div>
-              <p>In another terminal, build the extension and capture the screenshots.</p>
-              <div class="code-block">
-                <button class="copy-code" type="button" aria-label="Copy website capture commands">Copy</button>
-                <pre><code>pnpm build
+                  </div>
+                  <p>
+                    Loads the production build in a temporary browser, fills the demo with
+                    <code>src/browser/fixtures/demo-profile.json</code> and captures the result.
+                    It replaces the PNG in <code>docs/assets/images/</code> and updates its README
+                    and website references. The browser closes afterward.
+                  </p>
+                </details>
+                <details id="website-captures">
+                  <summary>Update the website screenshots</summary>
+                  <p>
+                    Use this after changing extension pages or dialogs shown on the website. Install
+                    <code>cwebp</code> first to convert the captures to lossless WebP images.
+                  </p>
+                  <p>Keep the preview running in one terminal.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy capture preview command">Copy</button>
+                    <pre><code>pnpm dev:preview</code></pre>
+                  </div>
+                  <p>In another terminal, build the extension and capture the screenshots.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy website capture commands">Copy</button>
+                    <pre><code>pnpm build
 node scripts/capture-site.mjs</code></pre>
-              </div>
-              <p>
-                Replaces the light and dark screenshots in <code>docs/assets/screenshots/</code>
-                and updates image references and dimensions in the walkthrough and developer guide.
-                The preview supplies the simulated integration and dev-bar states.
-              </p>
-            </details>
-            <details id="video-capture">
-              <summary>How do I refresh the autoplay videos?</summary>
-              <p>
-                Use this after changing the demo or Quick Fill appearance shown in the introduction.
-                Install <code>ffmpeg</code> first to encode the videos.
-              </p>
-              <div class="code-block">
-                <button class="copy-code" type="button" aria-label="Copy video capture commands">Copy</button>
-                <pre><code>pnpm build
+                  </div>
+                  <p>
+                    Replaces light and dark screenshots in <code>docs/assets/screenshots/</code>
+                    and updates image references and dimensions in the walkthrough and developer guide.
+                    The preview supplies the simulated integration and dev-bar states.
+                  </p>
+                </details>
+                <details id="video-capture">
+                  <summary>Update the autoplay videos</summary>
+                  <p>
+                    Use this after changing the demo or Quick Fill appearance shown in the introduction.
+                    Install <code>ffmpeg</code> first to encode the videos.
+                  </p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy video capture commands">Copy</button>
+                    <pre><code>pnpm build
 node scripts/capture-demo-motion.mjs</code></pre>
+                  </div>
+                  <p>
+                    Creates light and dark MP4 videos showing the empty form, the cursor clicking
+                    <strong>Fill Form</strong> and the filled result. It replaces the files in
+                    <code>docs/assets/videos/</code> and updates the walkthrough’s video references.
+                  </p>
+                </details>
               </div>
-              <p>
-                Creates light and dark MP4 videos showing the empty form, the cursor clicking
-                <strong>Fill Form</strong> and the filled result. It replaces the files in
-                <code>docs/assets/videos/</code> and updates the walkthrough’s video references.
-              </p>
-            </details>
+            </div>
           </div>
         </section>
         <section class="chapter" id="release" aria-labelledby="release-title">
