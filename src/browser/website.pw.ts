@@ -42,6 +42,13 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     'One profile.Fill every application.',
   );
+  const updates = page.locator('#extension-updates');
+  await updates.locator('summary').click();
+  await expect(updates.locator('code')).toHaveText('chrome://extensions');
+  await expect(updates.locator('ol > li')).toHaveCount(3);
+  await expect(updates.getByRole('link', { name: 'Chrome’s extension update guide' }))
+    .toHaveAttribute('href', 'https://developer.chrome.com/docs/extensions/develop/concepts/extensions-update-lifecycle');
+  await updates.locator('summary').click();
   const screenshot = page.getByRole('button', {
     name: 'Enlarge screenshot: AI Features before adding a Gemini key', exact: true,
   });
