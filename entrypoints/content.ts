@@ -7,6 +7,7 @@ import {
   cancelAutofillRun,
 } from '@/src/autofill/index';
 import { installQuickFill } from '@/src/quick-fill/content';
+import { AUTOFILL_ERROR } from '@/src/autofill/errorCodes';
 import { getGeminiSettings } from '@/src/utils/storage';
 import { installDemoPresence } from '@/src/demo/presence';
 
@@ -17,9 +18,9 @@ async function withAISetup<T>(action: () => Promise<T>) {
   try {
     settings = await getGeminiSettings();
   } catch {
-    return { error: 'ai_settings_unavailable' };
+    return { error: AUTOFILL_ERROR.aiSettingsUnavailable };
   }
-  if (!settings.apiKey || !settings.model) return { error: 'ai_setup_required' };
+  if (!settings.apiKey || !settings.model) return { error: AUTOFILL_ERROR.aiSetupRequired };
   return action();
 }
 
@@ -77,25 +78,25 @@ export default defineContentScript({
           run = next;
           const scan = withAISetup<unknown>(() =>
             next && (run !== next || next.cancelled)
-              ? Promise.resolve({ error: 'autofill_failed' })
+              ? Promise.resolve({ error: AUTOFILL_ERROR.failed })
               : scanAutofill(id),
           );
           if (next) next.scan = scan;
-          scan.then(sendResponse).catch(() => sendResponse({ error: 'autofill_failed' }));
+          scan.then(sendResponse).catch(() => sendResponse({ error: AUTOFILL_ERROR.failed }));
           return true;
         }
-        (run.cancelled ? Promise.resolve({ error: 'autofill_failed' }) : run.scan)
+        (run.cancelled ? Promise.resolve({ error: AUTOFILL_ERROR.failed }) : run.scan)
           .then(sendResponse)
           .catch((err) => {
             console.error('[Job Buddy] AUTOFILL_SCAN failed:', err);
-            sendResponse({ error: 'autofill_failed' });
+            sendResponse({ error: AUTOFILL_ERROR.failed });
           });
         return true;
       }
 
       if (message.action === 'AUTOFILL_FILL') {
         if (message.runId && (message.runId !== run?.id || run?.cancelled)) {
-          sendResponse({ error: 'autofill_failed' });
+          sendResponse({ error: AUTOFILL_ERROR.failed });
           return true;
         }
         const mode: 'merge' | 'overwrite' = message.mode === 'merge' ? 'merge' : 'overwrite';
@@ -104,13 +105,13 @@ export default defineContentScript({
           current?.fill ??
           withAISetup<unknown>(() =>
             current && (run !== current || current.cancelled)
-              ? Promise.resolve({ error: 'autofill_failed' })
+              ? Promise.resolve({ error: AUTOFILL_ERROR.failed })
               : executeAutofill(mode),
           );
         if (run) run.fill = fill;
         fill.then(sendResponse).catch((err) => {
           console.error('[Job Buddy] AUTOFILL_FILL failed:', err);
-          sendResponse({ error: 'autofill_failed' });
+          sendResponse({ error: AUTOFILL_ERROR.failed });
         });
         return true;
       }

@@ -10,6 +10,7 @@ import { sessionSet } from '@/src/utils/sessionStorage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import { openFillLog } from '@/src/fill-log/client';
 import { sendToAllFrames } from '@/src/autofill/frameMessaging';
+import { AUTOFILL_ERROR } from '@/src/autofill/errorCodes';
 import { requestAutofillRun, type AutofillRun } from '@/src/autofill/runCoordinator';
 import { latestFillRunId } from '@/src/autofill/fillLog';
 import { FIELD_DEFS } from '@/src/resume-ai/parser';
@@ -185,12 +186,12 @@ function App() {
 
   const applySetupError = useCallback((responses: unknown[]) => {
     const errors = responses.map((r) => (r as { error?: string } | null)?.error);
-    if (errors.includes('ai_settings_unavailable')) {
+    if (errors.includes(AUTOFILL_ERROR.aiSettingsUnavailable)) {
       setKeyReadFailed(true);
       setHasGeminiKey(null);
       return true;
     }
-    if (errors.includes('ai_setup_required')) {
+    if (errors.includes(AUTOFILL_ERROR.aiSetupRequired)) {
       setKeyReadFailed(false);
       setHasGeminiKey(false);
       return true;

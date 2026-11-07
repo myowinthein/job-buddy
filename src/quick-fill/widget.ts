@@ -1,5 +1,6 @@
 import { feedback } from '@/src/ui/feedback';
 import type { AutofillRun } from '@/src/autofill/runCoordinator';
+import { isAISetupError, isProfileSetupError } from '@/src/autofill/errorCodes';
 import { quickFillSummary } from './status';
 import { QUICK_FILL_HOST } from './detect';
 import type { QuickFillPreferences } from './preferences';
@@ -270,8 +271,8 @@ export class QuickFillWidget {
       this.text.textContent = 'Existing answers will be kept.';
       this.status.dataset.tone = 'neutral';
     } else if (run?.stage === 'error') {
-      const profile = ['profile_setup_required', 'profile_unavailable'].includes(run.error ?? '');
-      const ai = ['ai_setup_required', 'ai_settings_unavailable'].includes(run.error ?? '');
+      const profile = isProfileSetupError(run.error);
+      const ai = isAISetupError(run.error);
       this.status.dataset.tone = profile || ai ? 'setup' : 'error';
       this.label.textContent = profile ? 'Set Up Profile' : ai ? 'Set Up AI Autofill' : 'Try Again';
       this.text.textContent = profile

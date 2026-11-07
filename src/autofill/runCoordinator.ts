@@ -1,6 +1,7 @@
 import { wrapStorageArea } from '@/src/utils/storageArea';
 import { getGeminiSettings, getProfile } from '@/src/utils/storage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
+import { AUTOFILL_ERROR } from './errorCodes';
 
 export const RUN_PREFIX = 'jb:autofill-run:';
 export const RUN_ALARM_PREFIX = 'jb:autofill-recover:';
@@ -76,7 +77,7 @@ export class AutofillCoordinator {
       let error = await this.deps.setup?.();
       const frames = error ? [] : await this.deps.frames(tabId);
       if (!error && sourceDocumentId && frames.find((frame) => frame.frameId === 0)?.documentId !== sourceDocumentId)
-        error = 'page_changed';
+        error = AUTOFILL_ERROR.pageChanged;
       const run: AutofillRun = {
         sourceDocumentId: frames.find((frame) => frame.frameId === 0)?.documentId,
         tabId,
@@ -119,7 +120,7 @@ export class AutofillCoordinator {
     const run = await this.deps.read(tabId);
     if (!run) return null;
     if (pending(run) && Date.now() > (run.expiresAt ?? run.startedAt + RUN_LIMIT_MS)) {
-      const expired: AutofillRun = { ...run, stage: 'error', error: 'autofill_failed' };
+      const expired: AutofillRun = { ...run, stage: 'error', error: AUTOFILL_ERROR.failed };
       if (!(await this.update(expired))) return this.deps.read(tabId);
       void Promise.all(
         run.frames.map((frame) =>
@@ -189,9 +190,9 @@ export class AutofillCoordinator {
       const original =
         run.sourceDocumentId ?? run.frames.find((frame) => frame.frameId === 0)?.documentId;
       if (original && frames.find((frame) => frame.frameId === 0)?.documentId !== original)
-        throw new Error('page_changed');
+        throw new Error(AUTOFILL_ERROR.pageChanged);
       if (Date.now() > (run.expiresAt ?? run.startedAt + RUN_LIMIT_MS))
-        throw new Error('autofill_failed');
+        throw new Error(AUTOFILL_ERROR.failed);
       if (run.stage === 'scanning') {
         const replies = await Promise.all(
           run.frames.map(async (frame) => ({
@@ -209,7 +210,7 @@ export class AutofillCoordinator {
           ({ reply }) =>
             typeof (reply as { preFilledCount?: unknown })?.preFilledCount === 'number',
         );
-        if (!scanned.length) throw new Error('autofill_failed');
+        if (!scanned.length) throw new Error(AUTOFILL_ERROR.failed);
         const needsChoice = run.mode === undefined && scanned.some(
           ({ reply }) => (reply as { preFilledCount: number }).preFilledCount > 0,
         );
@@ -222,7 +223,7 @@ export class AutofillCoordinator {
         if (!(await this.update(run))) return null;
       }
       if (run.stage === 'filling') {
-        if (run.mode !== 'merge' && run.mode !== 'overwrite') throw new Error('autofill_failed');
+        if (run.mode !== 'merge' && run.mode !== 'overwrite') throw new Error(AUTOFILL_ERROR.failed);
         const results = await Promise.all(
           run.frames.map((frame) =>
             this.deps
@@ -255,7 +256,7 @@ export class AutofillCoordinator {
                 .map((key) => [key, source[key]]),
             );
           });
-        if (!valid.length) throw new Error(error ?? 'autofill_failed');
+        if (!valid.length) throw new Error(error ?? AUTOFILL_ERROR.failed);
         run = { ...run, stage: 'completed', results: valid, ...(error ? { error } : {}) };
         if (!(await this.update(run))) return null;
       }
@@ -264,7 +265,7 @@ export class AutofillCoordinator {
       run = {
         ...run,
         stage: 'error',
-        error: error instanceof Error ? error.message : 'autofill_failed',
+        error: error instanceof Error ? error.message : AUTOFILL_ERROR.failed,
       };
       return (await this.update(run)) ? run : null;
     }
@@ -280,15 +281,15 @@ export function createAutofillCoordinator() {
       try {
         const completion = calculateCompletion((await getProfile()) ?? {});
         if (completion.missingFields.some((field) => field === 'First Name' || field === 'Email'))
-          return 'profile_setup_required';
+          return AUTOFILL_ERROR.profileSetupRequired;
       } catch {
-        return 'profile_unavailable';
+        return AUTOFILL_ERROR.profileUnavailable;
       }
       try {
         const settings = await getGeminiSettings();
-        return settings.apiKey && settings.model ? undefined : 'ai_setup_required';
+        return settings.apiKey && settings.model ? undefined : AUTOFILL_ERROR.aiSetupRequired;
       } catch {
-        return 'ai_settings_unavailable';
+        return AUTOFILL_ERROR.aiSettingsUnavailable;
       }
     },
     read: async (tabId) =>

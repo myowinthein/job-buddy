@@ -36,6 +36,7 @@ import {
 import { confirmFieldFeedback } from './fieldFeedback';
 import { watchLearning } from './learning';
 import { runAIAutofill } from './ai';
+import { AUTOFILL_ERROR } from './errorCodes';
 import type { AITextCandidate, AIAutofillStatus } from './ai';
 import { summarizeFillFields, safeFormUrl } from './fillLog';
 import { requiredField, reportTitle } from '@/src/fill-log/fieldMetadata';
@@ -700,7 +701,7 @@ export async function scanAutofill(
 // needReview, which AI can overwrite with a different value if it disagrees
 // with the rule pipeline's fill.
 export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<AutofillResult> {
-  if (!pendingReady && pendingCancelled) throw new Error('autofill_failed');
+  if (!pendingReady && pendingCancelled) throw new Error(AUTOFILL_ERROR.failed);
   if (!pendingReady) return { ...EMPTY_AUTOFILL_RESULT };
   const stopWatching = removeProfileWatcher;
   try {
@@ -721,12 +722,12 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   const abortSignal = sessionAbort.signal;
   const isActive = () => generation === sessionGeneration;
   const profile = await getProfile();
-  if (!isActive()) throw new Error('autofill_failed');
-  if (!profile) throw new Error('autofill_failed');
+  if (!isActive()) throw new Error(AUTOFILL_ERROR.failed);
+  if (!profile) throw new Error(AUTOFILL_ERROR.failed);
 
   const domain = fieldDomain();
   const learningContext = await getLearningContext(profile).catch(() => null);
-  if (!isActive()) throw new Error('autofill_failed');
+  if (!isActive()) throw new Error(AUTOFILL_ERROR.failed);
 
   const result: AutofillResult = {
     noReview: 0, needReview: 0, lowConfidence: 0, noData: 0,
@@ -748,7 +749,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       void publishFillLog(runLog, completedProfileId);
       return result;
     }
-    throw new Error('autofill_failed');
+    throw new Error(AUTOFILL_ERROR.failed);
   };
   const editableFields: EditableField[] = [];
   const aiTextCandidates: AITextCandidate[] = [];

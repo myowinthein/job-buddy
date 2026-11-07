@@ -2,11 +2,11 @@ import type { AutofillCoordinator } from '@/src/autofill/runCoordinator';
 import { openFillLog } from '@/src/fill-log/client';
 import { getQuickFillPreferences, updateQuickFillPreferences } from './preferences';
 import { sessionSet } from '@/src/utils/sessionStorage';
+import { isAISetupError, isProfileSetupError, isSetupError } from '@/src/autofill/errorCodes';
 
 async function openSetup(error?: string) {
-  if (error === 'ai_setup_required' || error === 'ai_settings_unavailable')
-    await sessionSet({ 'jb:focusOnLoad': 'gemini-api-key' });
-  if (error === 'profile_setup_required' || error === 'profile_unavailable')
+  if (isAISetupError(error)) await sessionSet({ 'jb:focusOnLoad': 'gemini-api-key' });
+  if (isProfileSetupError(error))
     await sessionSet({ 'jb:focusOnLoad': 'field-firstName' });
   await chrome.runtime.openOptionsPage();
 }
@@ -79,15 +79,7 @@ export function registerQuickFill(autofill: AutofillCoordinator): void {
           return frameCandidates(tabId);
         case 'JB_QUICK_ACK_SETUP': {
           const run = await autofill.status(tabId);
-          if (
-            run?.stage === 'error' &&
-            [
-              'profile_setup_required',
-              'profile_unavailable',
-              'ai_setup_required',
-              'ai_settings_unavailable',
-            ].includes(run.error ?? '')
-          )
+          if (run?.stage === 'error' && isSetupError(run.error))
             await autofill.cancel(tabId, run.runId);
           return true;
         }
@@ -100,16 +92,7 @@ export function registerQuickFill(autofill: AutofillCoordinator): void {
             current?.stage === 'confirming'
               ? await autofill.confirm(tabId, current.runId, fillMode)
               : await autofill.start(tabId, fillMode, sender.documentId);
-          if (
-            run?.error &&
-            [
-              'profile_setup_required',
-              'profile_unavailable',
-              'ai_setup_required',
-              'ai_settings_unavailable',
-            ].includes(run.error)
-          )
-            await openSetup(run.error);
+          if (run && isSetupError(run.error)) await openSetup(run.error);
           return run;
         }
         case 'JB_QUICK_UNDO': {
