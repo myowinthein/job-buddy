@@ -194,7 +194,10 @@ test('command tabs support keyboard navigation, copying and links to hidden inst
   await expect(page.locator('#browser-commands > summary')).toBeInViewport();
   await page.evaluate(() => { location.hash = '#demo'; });
   await expect(tabs.getByRole('tab', { name: 'Capture', exact: true })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('button', { name: 'Copy README capture commands' })).toBeVisible();
+  await page.getByRole('button', { name: 'Copy demo capture commands' }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    'pnpm build\nnode scripts/capture-demo.mjs\nnode scripts/capture-demo-motion.mjs',
+  );
   await page.goBack();
   await expect(tabs.getByRole('tab', { name: 'Check', exact: true })).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#browser-commands > summary')).toBeInViewport();
