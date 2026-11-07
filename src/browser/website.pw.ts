@@ -153,7 +153,7 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   await expect(page.locator('#drive-oauth > summary')).toBeInViewport();
   await page.reload();
   await expect(page.locator('#drive-oauth')).toHaveAttribute('open', '');
-  await expect(page.locator('#dev-bar > ul > li')).toHaveCount(3);
+  await expect(page.locator('#dev-bar > p.prose')).toHaveCount(3);
   await expect(page.locator('#dev-bar details')).toHaveCount(0);
   await page.getByRole('button', { name: 'Copy UI preview command', exact: true }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('pnpm dev:preview');
