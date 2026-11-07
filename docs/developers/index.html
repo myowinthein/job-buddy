@@ -77,7 +77,7 @@
         <p>Build and contribute</p>
         <a href="#requirements">Requirements</a><a href="#build">Set up the project</a><a href="#configuration">Environment files</a
         ><a href="#dev-bar">Use the dev bar</a><a href="#architecture">Follow the code</a
-        ><a href="#commands">Commands and checks</a><a href="#demo">Demo and captures</a
+        ><a href="#commands">Commands and checks</a
         ><a href="#release">Release setup</a>
       </aside>
       <main id="main">
@@ -86,7 +86,7 @@
           <nav aria-label="Page sections">
             <a href="#requirements">Requirements</a><a href="#build">Set up the project</a><a href="#configuration">Environment files</a
             ><a href="#dev-bar">Use the dev bar</a><a href="#architecture">Follow the code</a
-            ><a href="#commands">Commands and checks</a><a href="#demo">Demo and captures</a
+            ><a href="#commands">Commands and checks</a
             ><a href="#release">Release setup</a>
           </nav>
         </details>
@@ -529,123 +529,185 @@ pnpm dev</code></pre>
             <h2 id="commands-title">Commands and checks</h2>
           </div>
           <p class="prose">
-            Run focused tests as you work. Before sharing a change, run the same four checks as CI:
+            Choose a task to see which command to run, what it needs and which files it updates.
           </p>
-          <div class="code-block">
-            <button class="copy-code" type="button" aria-label="Copy validation commands">Copy</button>
-            <pre><code>pnpm compile
-pnpm lint
-pnpm test:run
-pnpm build</code></pre>
-          </div>
           <div class="table-scroll">
             <table>
-              <thead><tr><th>Task</th><th>Command</th></tr></thead>
+              <thead><tr><th>When you want to</th><th>Commands and instructions</th></tr></thead>
               <tbody>
-                <tr><td>Chrome development</td><td><code>pnpm dev</code></td></tr>
-                <tr><td>Options UI with sample data</td><td><code>pnpm dev:preview</code></td></tr>
-                <tr><td>Type-check / lint</td><td><code>pnpm compile</code> / <code>pnpm lint</code></td></tr>
-                <tr><td>Unit tests: watch / once</td><td><code>pnpm test</code> / <code>pnpm test:run</code></td></tr>
-                <tr><td>Production Chrome build</td><td><code>pnpm build</code> → <code>.output/chrome-mv3/</code></td></tr>
-                <tr><td>Chrome Web Store archive</td><td><code>pnpm zip</code> → <code>.output/</code></td></tr>
-                <tr><td>Build and run browser tests</td><td><code>pnpm test:browser</code></td></tr>
-                <tr><td>Serve this website</td><td><code>pnpm serve:landing</code></td></tr>
-                <tr><td>Firefox: develop / build / package</td><td><code>pnpm dev:firefox</code> / <code>pnpm build:firefox</code> / <code>pnpm zip:firefox</code></td></tr>
-                <tr><td>Format / fix lint issues</td><td><code>pnpm format</code> / <code>pnpm lint:fix</code>. Scope edits to your change.</td></tr>
+                <tr><td>Develop the extension or preview its UI and website</td><td><a href="#development-commands" data-open-details>Development and preview commands</a></td></tr>
+                <tr><td>Check a change or test one feature as you edit</td><td><a href="#validation-commands" data-open-details>Code checks and unit tests</a></td></tr>
+                <tr><td>Verify autofill, form events and Undo in a browser</td><td><a href="#browser-commands" data-open-details>Browser tests</a></td></tr>
+                <tr><td>Create extension files or a ZIP for uploading</td><td><a href="#package-commands" data-open-details>Build and packaging commands</a></td></tr>
+                <tr><td>Format code or apply automatic lint fixes</td><td><a href="#cleanup-commands" data-open-details>Formatting and lint fixes</a></td></tr>
+                <tr><td>Replace the README’s demo screenshot</td><td><a href="#demo" data-open-details>README screenshot capture</a></td></tr>
+                <tr><td>Replace the website’s extension screenshots</td><td><a href="#website-captures" data-open-details>Website screenshot capture</a></td></tr>
+                <tr><td>Replace the walkthrough’s autoplay demo videos</td><td><a href="#video-capture" data-open-details>Autoplay video capture</a></td></tr>
               </tbody>
             </table>
           </div>
+          <p class="prose">
+            Browser tests and captures use isolated profiles and fictional data. Install Playwright’s
+            Chromium once before running them.
+          </p>
+          <div class="code-block">
+            <button class="copy-code" type="button" aria-label="Copy Chromium install command">Copy</button>
+            <pre><code>pnpm exec playwright install chromium</code></pre>
+          </div>
           <div class="detail-list">
-            <details>
-              <summary>How do I run a focused unit test?</summary>
+            <details id="development-commands">
+              <summary>Which command should I use while developing?</summary>
+              <div class="table-scroll">
+                <table>
+                  <thead><tr><th>Command</th><th>Use it when you want to</th></tr></thead>
+                  <tbody>
+                    <tr><td><code>pnpm install</code></td><td>Install dependencies after cloning or pulling dependency changes</td></tr>
+                    <tr><td><code>pnpm dev</code></td><td>Work on the Chrome extension and test real forms, Chrome APIs or Google sign-in</td></tr>
+                    <tr><td><code>pnpm dev:preview</code></td><td>Preview profile and settings layouts with sample data and simulated integrations at <code>127.0.0.1:4173</code></td></tr>
+                    <tr><td><code>pnpm serve:landing</code></td><td>View the walkthrough, developer guide and demo from <code>docs/</code> using the URL printed in the terminal</td></tr>
+                    <tr><td><code>pnpm dev:firefox</code></td><td>Start a Firefox development build</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p>Keep the chosen server running while you work. Press <code>Ctrl+C</code> to stop it.</p>
+            </details>
+            <details id="validation-commands">
+              <summary>Which checks should I run for a change?</summary>
+              <p>Before sharing a change, run the same four checks as CI.</p>
+              <div class="code-block">
+                <button class="copy-code" type="button" aria-label="Copy validation commands">Copy</button>
+                <pre><code>pnpm compile
+pnpm lint
+pnpm test:run
+pnpm build</code></pre>
+              </div>
+              <div class="table-scroll">
+                <table>
+                  <thead><tr><th>Command</th><th>What it checks</th></tr></thead>
+                  <tbody>
+                    <tr><td><code>pnpm compile</code></td><td>TypeScript types across the project</td></tr>
+                    <tr><td><code>pnpm lint</code></td><td>Code issues reported by ESLint</td></tr>
+                    <tr><td><code>pnpm test:run</code></td><td>The unit test suite, then exits</td></tr>
+                    <tr><td><code>pnpm build</code></td><td>Whether the production extension builds successfully</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p>
+                While editing, use <code>pnpm test</code> to rerun unit tests when files change.
+                To run just one test file once, pass its path.
+              </p>
               <div class="code-block">
                 <button class="copy-code" type="button" aria-label="Copy focused test command">Copy</button>
                 <pre><code>pnpm exec vitest run src/autofill/mapper.test.ts</code></pre>
               </div>
-              <p>
-                Vitest defaults to Node. Use <code>// @vitest-environment jsdom</code> for DOM
-                tests. Keep tests under <code>src/</code>, outside WXT’s entrypoints.
-              </p>
             </details>
-            <details>
-              <summary>How do I verify actual form behavior?</summary>
+            <details id="browser-commands">
+              <summary>How do I test autofill in a browser?</summary>
+              <p>
+                Use this after changing scanning, matching, writing or Undo. It builds the extension
+                and runs browser tests that check real field values, events and validation.
+              </p>
               <div class="code-block">
                 <button class="copy-code" type="button" aria-label="Copy browser test commands">Copy</button>
-                <pre><code>pnpm exec playwright install chromium
-pnpm test:browser
-# After building, watch a focused test:
+                <pre><code>pnpm test:browser</code></pre>
+              </div>
+              <p>To watch just the demo’s autofill and Undo tests in a visible browser, run these instead.</p>
+              <div class="code-block">
+                <button class="copy-code" type="button" aria-label="Copy visible demo test commands">Copy</button>
+                <pre><code>pnpm build
 pnpm exec playwright test src/browser/demo.pw.ts --headed</code></pre>
               </div>
               <p>
-                Autofill-matching changes need a build and browser verification as well as unit
-                tests. Check actual values, validation, events and Undo on a throwaway form.
-                Browser tests use isolated storage and fictional data.
+                For manual testing, open the
+                <a href="../demo/" target="_blank" rel="noopener noreferrer" aria-describedby="new-tab-hint">Morrow Studio demo&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg></a>
+                with the development extension installed.
               </p>
             </details>
-          </div>
-        </section>
-        <section class="chapter" id="demo" aria-labelledby="demo-title">
-          <div class="chapter-heading">
-            <h2 id="demo-title">Demo and captures</h2>
-          </div>
-          <p class="prose">
-            Use the <a href="../demo/" target="_blank" rel="noopener noreferrer" aria-describedby="new-tab-hint">Morrow Studio demo&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg></a>
-            to test autofill or capture screenshots. It is an original job form for a fictional
-            role. Nothing is submitted and form entries are not saved.
-          </p>
-          <p class="prose">
-            The floating control comes from your installed extension. Use fictional profile details
-            for public images. The browser fixtures already provide a complete sample profile.
-          </p>
-          <div class="table-scroll">
-            <table>
-              <thead><tr><th>What you need</th><th>Location</th></tr></thead>
-              <tbody>
-                <tr><td>The demo form</td><td><code>docs/demo/</code></td></tr>
-                <tr><td>A complete sample profile</td><td><code>src/browser/fixtures/demo-profile.json</code></td></tr>
-                <tr><td>Autofill and Undo checks</td><td><code>src/browser/demo.pw.ts</code></td></tr>
-                <tr><td>Website UI captures</td><td><code>src/browser/site-captures.pw.ts</code></td></tr>
-                <tr><td>The autoplay recording</td><td><code>src/browser/demo-motion.pw.ts</code></td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="detail-list">
-            <details>
+            <details id="package-commands">
+              <summary>How do I build or package the extension?</summary>
+              <div class="table-scroll">
+                <table>
+                  <thead><tr><th>When you need</th><th>Command</th><th>Result</th></tr></thead>
+                  <tbody>
+                    <tr><td>A production Chrome build to load unpacked or use in captures</td><td><code>pnpm build</code></td><td>Extension files in <code>.output/chrome-mv3/</code></td></tr>
+                    <tr><td>A Chrome ZIP to upload to the store</td><td><code>pnpm zip</code></td><td>Builds and creates a Chrome ZIP in <code>.output/</code></td></tr>
+                    <tr><td>A production Firefox build</td><td><code>pnpm build:firefox</code></td><td>Firefox extension files in <code>.output/</code></td></tr>
+                    <tr><td>A Firefox ZIP to distribute</td><td><code>pnpm zip:firefox</code></td><td>Builds and creates a Firefox ZIP in <code>.output/</code></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </details>
+            <details id="cleanup-commands">
+              <summary>How do I format code or fix lint issues?</summary>
+              <div class="table-scroll">
+                <table>
+                  <thead><tr><th>Command</th><th>What it changes</th></tr></thead>
+                  <tbody>
+                    <tr><td><code>pnpm format</code></td><td>Formats the whole repository with Prettier</td></tr>
+                    <tr><td><code>pnpm lint:fix</code></td><td>Applies ESLint’s automatic fixes across the repository</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p>To keep cleanup limited to the files you edited, pass their paths directly.</p>
+              <div class="code-block">
+                <button class="copy-code" type="button" aria-label="Copy scoped cleanup commands">Copy</button>
+                <pre><code>pnpm exec prettier --write path/to/file
+pnpm exec eslint path/to/file --fix</code></pre>
+              </div>
+            </details>
+            <details id="demo">
               <summary>How do I refresh the README screenshot?</summary>
+              <p>Run these after changing the demo form or the autofill appearance shown in the README.</p>
               <div class="code-block">
                 <button class="copy-code" type="button" aria-label="Copy README capture commands">Copy</button>
                 <pre><code>pnpm build
 node scripts/capture-demo.mjs</code></pre>
               </div>
               <p>
-                This captures real autofill with fictional data and updates the shared README
-                image. Review the result in <code>docs/assets/images/autofill-demo.png</code>.
+                The script loads the latest production build in a temporary browser, fills the demo
+                with <code>src/browser/fixtures/demo-profile.json</code> and captures the result.
+                It replaces the PNG in <code>docs/assets/images/</code> and updates its README and
+                website references. The browser closes afterward.
               </p>
             </details>
-            <details>
-              <summary>How do I refresh website screenshots and the recording?</summary>
+            <details id="website-captures">
+              <summary>How do I refresh the website screenshots?</summary>
               <p>
-                Install <code>cwebp</code> for screenshots and <code>ffmpeg</code> for the recording.
-                Start the sample-data preview in one terminal:
+                Use this after changing extension pages or dialogs shown on the website. Install
+                <code>cwebp</code> first to convert the captures to lossless WebP images.
               </p>
+              <p>Keep the preview running in one terminal.</p>
               <div class="code-block">
                 <button class="copy-code" type="button" aria-label="Copy capture preview command">Copy</button>
                 <pre><code>pnpm dev:preview</code></pre>
               </div>
-              <p>In another terminal, build and run the capture you need:</p>
+              <p>In another terminal, build the extension and capture the screenshots.</p>
               <div class="code-block">
                 <button class="copy-code" type="button" aria-label="Copy website capture commands">Copy</button>
                 <pre><code>pnpm build
-# Website screenshots:
-node scripts/capture-site.mjs
-# Autoplay recording:
+node scripts/capture-site.mjs</code></pre>
+              </div>
+              <p>
+                Replaces the light and dark screenshots in <code>docs/assets/screenshots/</code>
+                and updates image references and dimensions in the walkthrough and developer guide.
+                The preview supplies the simulated integration and dev-bar states.
+              </p>
+            </details>
+            <details id="video-capture">
+              <summary>How do I refresh the autoplay videos?</summary>
+              <p>
+                Use this after changing the demo or Quick Fill appearance shown in the introduction.
+                Install <code>ffmpeg</code> first to encode the videos.
+              </p>
+              <div class="code-block">
+                <button class="copy-code" type="button" aria-label="Copy video capture commands">Copy</button>
+                <pre><code>pnpm build
 node scripts/capture-demo-motion.mjs</code></pre>
               </div>
               <p>
-                These opt-in captures use isolated data and mocked providers. Scripts convert the
-                output in <code>.output/browser-results/</code> and update assets and cache versions.
-                Review both themes before committing. Keep HTML dimensions in CSS pixels, not the
-                3× screenshot dimensions.
+                Creates light and dark MP4 videos showing the empty form, the cursor clicking
+                <strong>Fill Form</strong> and the filled result. It replaces the files in
+                <code>docs/assets/videos/</code> and updates the walkthrough’s video references.
               </p>
             </details>
           </div>
