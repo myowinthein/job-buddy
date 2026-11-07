@@ -1,6 +1,6 @@
 # Developing Job Buddy
 
-Setup, architecture, commands, the development toolbar and browser testing now
+Setup, commands, the development toolbar and browser testing now
 live in the [developer guide](https://myowinthein.github.io/job-buddy/developers/).
 
 - [Run locally](https://myowinthein.github.io/job-buddy/developers/#build)

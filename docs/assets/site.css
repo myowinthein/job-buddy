@@ -434,30 +434,6 @@ li {
 .gray {
   color: var(--muted);
 }
-.pipeline {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 26px;
-  list-style: none;
-  padding: 0;
-  margin: 28px 0;
-  max-width: none;
-}
-.pipeline li {
-  border-top: 2px solid var(--line);
-  padding-top: 14px;
-  position: relative;
-}
-.pipeline strong {
-  font-size: 15px;
-  display: block;
-  margin-bottom: 8px;
-}
-.pipeline p {
-  font-size: 14px;
-  color: var(--muted);
-  line-height: 1.6;
-}
 .detail-list {
   margin-top: 22px;
 }
@@ -705,8 +681,7 @@ pre code {
     font-size: 18px;
   }
   .split,
-  .facts,
-  .pipeline {
+  .facts {
     grid-template-columns: 1fr;
     gap: 19px;
   }
@@ -816,10 +791,6 @@ pre code {
 }
 .developer-guide tbody tr:last-child > td {
   border-bottom: 0;
-}
-.developer-guide .pipeline li {
-  border-top: 0;
-  padding-top: 0;
 }
 .command-tabs {
   margin-top: 24px;

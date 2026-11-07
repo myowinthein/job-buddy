@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Develop Job Buddy · Setup, architecture & testing</title>
+    <title>Develop Job Buddy · Setup, testing & releases</title>
     <meta
       name="description"
       content="Run Job Buddy locally, configure Gemini and Google Drive, use the development toolbar, and test real autofill behavior."
     />
     <link rel="canonical" href="https://myowinthein.github.io/job-buddy/developers/" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Develop Job Buddy · Setup, architecture & testing" />
+    <meta property="og:title" content="Develop Job Buddy · Setup, testing & releases" />
     <meta
       property="og:description"
       content="Run Job Buddy locally, configure Gemini and Google Drive, use the development toolbar, and test real autofill behavior."
@@ -76,7 +76,7 @@
       <aside class="chapter-nav" aria-label="On this page">
         <p>Build and contribute</p>
         <a href="#requirements">Requirements</a><a href="#build">Set up the project</a><a href="#configuration">Environment files</a
-        ><a href="#dev-bar">Use the dev bar</a><a href="#architecture">Follow the code</a
+        ><a href="#dev-bar">Use the dev bar</a
         ><a href="#commands">Commands</a
         ><a href="#release">Release setup</a>
       </aside>
@@ -85,7 +85,7 @@
           <summary>On this page</summary>
           <nav aria-label="Page sections">
             <a href="#requirements">Requirements</a><a href="#build">Set up the project</a><a href="#configuration">Environment files</a
-            ><a href="#dev-bar">Use the dev bar</a><a href="#architecture">Follow the code</a
+            ><a href="#dev-bar">Use the dev bar</a
             ><a href="#commands">Commands</a
             ><a href="#release">Release setup</a>
           </nav>
@@ -456,71 +456,6 @@ pnpm dev</code></pre>
                 Environment files and real provider calls are disabled. Profile edits reset on
                 refresh. The base preview remembers appearance, while dev-bar simulations reset it.
               </p>
-            </details>
-          </div>
-        </section>
-        <section class="chapter" id="architecture" aria-labelledby="architecture-title">
-          <div class="chapter-heading">
-            <h2 id="architecture-title">Follow the code</h2>
-          </div>
-          <p class="prose">
-            Clicking <strong>Fill Form</strong> hands the request to the background coordinator.
-            It tracks the run and directs content scripts in the source tab and frames. Once the
-            request is accepted, closing the popup does not stop it.
-          </p>
-          <ol class="pipeline">
-            <li><strong>Scan</strong><p>Find eligible controls and their questions across frames and open shadow roots.</p></li>
-            <li><strong>Match</strong><p>Try learned mappings, rules, then AI for fields that still need help.</p></li>
-            <li><strong>Write</strong><p>Apply answers, verify retained values and keep snapshots for Undo.</p></li>
-          </ol>
-          <p class="prose">
-            Corrections can teach future runs. Fill Details follows the current run and later edits,
-            keeping one metadata-only report rather than an application history.
-          </p>
-          <h3>Stack and storage</h3>
-          <p class="prose">
-            WXT builds the Manifest V3 extension. React 19, TypeScript 5.9 and Tailwind CSS v4 power
-            the UI. Vitest covers domain behavior and Playwright checks browser interactions.
-            Profiles live in <code>chrome.storage.local</code>. Run coordination and the retained
-            fill report use session storage.
-          </p>
-          <div class="table-scroll">
-            <table>
-              <thead><tr><th>Working on</th><th>Start here</th></tr></thead>
-              <tbody>
-                <tr><td>Extension surfaces</td><td><code>entrypoints/</code> for the worker, content script, popup and options UI.</td></tr>
-                <tr><td>Autofill runs</td><td><code>src/autofill/runCoordinator.ts</code> for run state, choices and recovery.</td></tr>
-                <tr><td>Scanning, matching and writing</td><td><code>src/autofill/</code> for the scanner, mapper, resolver, filler, Undo and learning.</td></tr>
-                <tr><td>Profile fields</td><td><code>src/profile/fieldCatalog.ts</code> for shared labels and order. <code>src/types/profile.ts</code> for the schema.</td></tr>
-                <tr><td>Gemini and resume import</td><td><code>src/resume-ai/</code> for requests, prompts, validation and comparison.</td></tr>
-                <tr><td>Backups</td><td><code>src/utils/driveSync.ts</code> for OAuth, writes, restore review and retries.</td></tr>
-                <tr><td>Fill reports</td><td><code>src/fill-log/</code> for aggregation, retention and navigation.</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="detail-list">
-            <details>
-              <summary>What needs updating when I add a profile field?</summary>
-              <p>
-                Add its schema and catalog entries, UI binding, validation, import/export policies
-                and migration handling. Check completion, extraction and AI disclosure rules.
-                The catalog shares definitions across features, but does not replace these decisions.
-              </p>
-              <p>
-                Run <code>src/profile/fieldCoverage.test.ts</code> to check coverage across profile
-                projections, review, extraction and prompts.
-              </p>
-            </details>
-            <details>
-              <summary>Which autofill and data rules should changes preserve?</summary>
-              <ul>
-                <li>Scan once, then use the saved matches for merge or overwrite.</li>
-                <li>Verify writes and preserve Undo when a form rejects a value.</li>
-                <li>Learn from confirmed manual corrections, never AI confidence alone.</li>
-                <li>Keep Gemini credentials and Drive tokens out of profile exports and backups.</li>
-                <li>Limit AI requests to permitted profile fields and question-specific sensitive data.</li>
-              </ul>
-              <p>Read <a href="https://github.com/myowinthein/job-buddy/blob/main/AGENTS.md">AGENTS.md</a> for the full architecture and project conventions.</p>
             </details>
           </div>
         </section>
