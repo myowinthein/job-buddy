@@ -1,4 +1,4 @@
-<!-- helm-rule: agent-helm@v3.2.1 -->
+<!-- helm-rule: agent-helm@v3.4.0 -->
 # Writing Rules
 
 Write clear, useful, natural prose for the reader and task. Prefer simple, approachable language that works for native and non-native English readers. This is a writing preference, not an authorship test or a promise of undetectable AI text.
@@ -46,7 +46,8 @@ Write clear, useful, natural prose for the reader and task. Prefer simple, appro
 - Use inline code for exact identifiers, paths, commands and literal values. Separate longer code, commands, configuration and output into code/preformatted blocks, labelled appropriately where supported. Keep excerpts exact and useful, distinguish input from output and identify placeholders.
 - Use bold or italic sparingly for meaningful emphasis, terminology or established conventions such as UI labels. Avoid emphasising whole paragraphs or repeatedly highlighting ordinary text.
 - Clearly distinguish quotations and retain their wording, attribution and source context. For useful notes or warnings, follow the project's existing callout convention; a labelled plain sentence works without special rendering. Do not add callouts merely to decorate routine explanation.
-- Use descriptive links for useful destinations and supporting sources when attribution or verification is needed. Footnotes can hold supporting references or asides where they render; they are not a place to bury required information.
+- Use descriptive link text that makes the destination or purpose clear in context, such as "Installation instructions" rather than an unexplained "Click here". Name an external source when it helps readers understand where they will go, and distinguish links with different purposes. Add links where they help readers act or verify a claim; avoid crowding sentences with unnecessary or repeated links.
+- Keep essential context and warnings beside the relevant claim or action. Footnotes can hold supporting references or asides where they render; they are not a place to bury required information.
 - Use images, figures or diagrams when showing the information helps more than prose alone. Provide text alternatives appropriate to their purpose and captions or explanations where useful; do not make essential meaning depend solely on seeing the visual. This authorises no new asset creation outside the task or unverified accessibility claim.
 - Put optional supporting detail after the main answer, link to existing reliable documentation or use clearly labelled collapsible details where supported. Keep essential warnings, required steps and decision context visible beside the relevant action. Do not create files or move content just to shorten a response, or replace a complete answer with an offer to explain more.
 - Use specialised markup for keys, abbreviations, math, subscript/superscript, dates or edits only when the subject and renderer warrant it. Thematic breaks can mark meaningful transitions or follow an established layout; avoid adding them mechanically between every section. This is no requirement to introduce HTML controls or redesign a page.

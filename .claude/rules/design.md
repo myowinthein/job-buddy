@@ -1,16 +1,16 @@
-<!-- helm-rule: agent-helm@v3.3.0 -->
+<!-- helm-rule: agent-helm@v3.4.0 -->
 # Design Rules
 
-Avoid the generic, interchangeable website patterns commonly called AI slop: familiar visual packages, filler sections and decorative signals repeated without regard to the actual subject. This rule identifies defaults to avoid; it is not a general design method or an authorship test.
+Avoid the generic, interchangeable website patterns commonly called AI slop: familiar visual packages, filler sections and decorative signals repeated without regard to the actual subject. Build responsive, accessible interfaces suited to the project's content and users. This rule supplies practical design constraints, not a complete design method or an authorship test.
 
-## Scope and precedence
+## Scope and project conventions
 
 - Apply to requested website/interface creation, edits, planning and critique, including documentation sites. It starts no review during unrelated work.
 - Follow applicable instruction precedence, explicit user choices, project branding and established components. During targeted edits, preserve surrounding conventions; loading this rule does not authorize an adjacent redesign or the removal of existing stylistic choices.
-- Follow the project's prose guidance for vague claims, hype, repetitive wording and invented facts. Writing can be adopted independently; this rule requires no sibling rule file. Its concern is the visual and structural packaging of content.
+- Follow the project's prose guidance for vague claims, hype, repetitive wording and invented facts. Writing can be adopted independently; this rule requires no sibling rule file. Design addresses visual structure, responsive behavior and usability.
 - Keep project-specific choices in existing local guidance or design-system sources by default, while respecting explicitly requested customization of this rule. No new brief, settings, files, tools, workflow, score or approval process is needed to apply it. Existing operational boundaries and required checks remain binding.
 
-## Avoid these defaults
+## Prevent generic AI design patterns
 
 Do not introduce the following patterns automatically to make a page look modern, polished, premium or complete. Use one when the brief, established project style, actual content or interaction gives it a concrete purpose. A technique appearing on this list is not by itself a defect; its repetition without context is the concern. No per-element justification report is required.
 
@@ -34,21 +34,39 @@ Do not introduce the following patterns automatically to make a page look modern
 
 The list is illustrative and maintained, not exhaustive. Check for the same habits in new forms rather than treating unlisted effects as automatically appropriate.
 
-## Avoid interchangeable output
-
 - Use the project's actual subject, content and existing choices to decide which of these defaults to leave out. Missing branding is not permission to apply a stock SaaS theme. Make reasonable reversible choices without a mandatory questionnaire, mood board or design-planning workflow; clarify only material missing facts or requirements.
 - Do not preserve an irrelevant section merely because the template supplied it. Recoloring the same layout, changing the font or replacing rounded cards with sharp boxes does not address content that is still interchangeable.
 - Do not demand novelty in familiar controls or replace existing design-system components just because they are common. Avoiding slop does not require a custom font, an unusual layout, fewer colors, plainness or a different style on every page.
-- Keep real functionality, content, accessibility and responsive behavior intact when removing a pattern. A working control, useful callout, meaningful status badge or required disclosure is not disposable decoration. [WCAG 2.2 Level AA](https://www.w3.org/TR/WCAG22/) remains the default accessibility reference unless applicable project requirements specify otherwise; preserve stronger requirements and report unresolved conflicts with branding.
+- A working control, useful callout, meaningful status badge or required disclosure is not disposable decoration. Preserve these when removing a pattern.
 
-## Before delivering
+## Responsive and accessible interfaces
+
+- Build new interfaces to remain usable across narrow and wide viewports. During targeted edits, preserve existing functionality, content, accessibility and responsive behavior, and address failures introduced by the change.
+- Use flexible layouts and media. Choose layout changes based on content and available space, respecting the project's established responsive system. For new layouts without an established system, start with a usable narrow layout and expand as the content benefits. Keep text readable on wide screens as well as narrow ones.
+- Preserve access to information and actions as the layout changes. Navigation may collapse and content may move, but essential functionality must remain available. Avoid unintended page overflow; give content that needs a two-dimensional layout, such as data tables or maps, an appropriate accessible presentation rather than clipping it.
+- Use [WCAG 2.2 Level AA](https://www.w3.org/TR/WCAG22/) as the default accessibility reference unless applicable project requirements specify otherwise; preserve stronger requirements and report unresolved conflicts with branding. Apply its reflow, text-resizing and orientation requirements with their stated exceptions. Do not disable user zoom to make a layout fit.
+- Keep controls usable with keyboard, touch and pointing devices. Do not infer input capabilities solely from viewport width or make essential information available only through hover.
+
+## Links and navigation
+
+- Use real links with working destinations for navigation, and buttons for actions. Link to the relevant page or section; section links must target existing IDs. Do not present invented URLs or placeholder destinations as working links. Keep each link's purpose clear from its label or associated context.
+- Open links in the current tab by default, including links to external websites. Preserve native browser choices such as modified clicks and opening a link in a new tab from its context menu.
+- Open a new tab only for a clear user-task reason or an explicit project requirement. Warn users before activation with a visible indication and equivalent accessible wording. An external destination alone does not justify a forced new tab; new-tab warnings are Helm's usability default, not a blanket WCAG AA requirement.
+- Follow the project's established external-link indicator convention. If indicators are used, apply their meaning consistently to external text links and distinguish leaving the site from opening a new tab. An arrow out of a square is optional; use the existing icon set and do not rely on the symbol alone to explain behavior.
+- Make links distinguishable from surrounding text, normally by underlining body-text links, and provide visible keyboard focus. Keep an accompanying icon inside the same link; hide it from assistive technology when redundant, and supply equivalent text when it adds information.
+
+## Review and verification
 
 Make a short silent check of the affected surface: could its sections, icons, mockups and ornamental treatments be reused for an unrelated product with only names changed? Which were added because templates habitually include them? Remove or revise those within the requested scope, while preserving deliberate choices and useful conventions. Do not equate a shared navigation pattern or component library with interchangeable content.
 
-For a requested review, identify the actual pattern and its location, explain why it is an ungrounded default in this context, and suggest a bounded change. Distinguish stylistic concerns from functional or accessibility failures. These patterns do not prove who authored a page; do not produce an AI-authorship verdict, probability or slop score.
+For a requested review, identify the actual issue and its location, explain the effect in that context, and suggest a bounded change. Distinguish ungrounded stylistic defaults from functional, responsive or accessibility failures. Design patterns do not prove who authored a page; do not produce an AI-authorship verdict, probability or slop score.
 
-Use rendering or interaction checks when the change warrants them and authorized tools are available. Source inspection, screenshots and observed behavior provide different evidence; none alone establishes overall accessibility or usability. Required project checks remain required, and unavailable checks stay unverified. Do not install a detector, start a scan or create a report artifact merely because this rule was loaded. Report important limitations and unfinished placeholder content through the task's normal handoff.
+Use rendering or interaction checks when the change warrants them and authorized tools are available. For layout, navigation or sizing changes, check the affected interface at narrow, intermediate and wide viewports, including transitions around changed breakpoints and relevant portrait/landscape layouts. Include applicable [reflow](https://www.w3.org/TR/WCAG22/#reflow) and [text-resizing](https://www.w3.org/TR/WCAG22/#resize-text) checks: ordinary vertically scrolling content reflows at 320 CSS pixels wide, and text can enlarge to 200% without loss of content or functionality, subject to each criterion's exceptions. These are accessibility checks, not a prescribed set of design breakpoints. For changed links, check destinations and fragment targets, keyboard activation, tab behavior and any indicators.
 
-## Pattern references
+Source inspection, screenshots and observed behavior provide different evidence; none alone establishes overall accessibility or usability. Required project checks remain required, and unavailable checks stay unverified. Do not install a detector, start a scan or create a report artifact merely because this rule was loaded. Report important limitations, unchecked behavior and unfinished placeholder content through the task's normal handoff.
 
-Examples are informed by [Anthropic's account of recurring frontend defaults](https://claude.com/resources/articles/improving-frontend-design-through-skills), its [frontend-design guidance](https://github.com/anthropics/skills/blob/main/skills/frontend-design/SKILL.md), [Impeccable's pattern catalog](https://impeccable.style/slop/) and the [kill-ai-slop project](https://github.com/yetone/kill-ai-slop). These are practitioner observations and editorial guidance, not universal usability findings or authorship evidence. They inform this maintained list; they are not instructions to load external skills, run their tools or research every edit.
+## References
+
+- **Accessibility and responsive implementation:** [W3C WCAG 2.2](https://www.w3.org/TR/WCAG22/) supplies the accessibility baseline. Google's [Responsive Web Design Basics](https://web.dev/articles/responsive-web-design-basics) and [Interaction](https://web.dev/learn/design/interaction) guidance inform flexible layouts, content-driven breakpoints and input handling. Keep project-specific grids, breakpoints, tokens and components in the existing design system. Consult detailed guidance when needed; this rule does not require loading whole guides on every task or adopting a framework.
+- **Links:** [W3C Link Purpose](https://www.w3.org/WAI/WCAG22/Understanding/link-purpose-in-context.html) explains the accessibility requirement; [G201](https://www.w3.org/WAI/WCAG22/Techniques/general/G201) gives advisory new-window warning techniques. [GOV.UK](https://design-system.service.gov.uk/styles/links/) and [USWDS](https://designsystem.digital.gov/components/link/) inform the usability guidance but differ on external-link icons. Their specific visual conventions are not universal requirements.
+- **Pattern examples:** [Anthropic's account of recurring frontend defaults](https://claude.com/resources/articles/improving-frontend-design-through-skills), its [frontend-design guidance](https://github.com/anthropics/skills/blob/main/skills/frontend-design/SKILL.md), [Impeccable's pattern catalog](https://impeccable.style/slop/) and the [kill-ai-slop project](https://github.com/yetone/kill-ai-slop) inform the pattern list. These are practitioner observations and editorial guidance, not universal usability findings or authorship evidence. They are not instructions to load external skills, run their tools or research every edit.
