@@ -212,6 +212,26 @@
       }
     },
     {
+      "id": "g-55aa5f66-59a9-4809-91a4-474f067f4581",
+      "expected": "sendToAllFrames always includes the top frame, falls back to it when frame enumeration fails, re-injects every frame without failing on rejected injections, and returns only replies from frames that answered",
+      "basis": [
+        "src/autofill/frameMessaging.ts: behavior and its comments reviewed at 46ced73de6d9db79fc3f6f9eab17a504a92b0992",
+        "entrypoints/popup/App.tsx: sole consumer for status, Undo and fill-log reads",
+        "AGENTS.md: Architecture Pointers (popup status and Undo reinject into enumerated frames with explicit frameId)",
+        "No unit or browser test references this module and no tested module imports it"
+      ],
+      "paths": [
+        "src/autofill/frameMessaging.ts",
+        "entrypoints/popup/App.tsx"
+      ],
+      "priority": "medium",
+      "reason": "A regression would silently drop results or Undo replies from embedded application forms, and nothing currently detects it.",
+      "action": "add",
+      "layer": "unit",
+      "state": "open",
+      "assessed_commit": "46ced73de6d9db79fc3f6f9eab17a504a92b0992"
+    },
+    {
       "id": "g-58fb42e4-28f3-45c4-bee1-61ec57a42e92",
       "expected": "Experience totals are invariant under reordered overlapping work histories",
       "basis": [
@@ -635,6 +655,25 @@
         "scope": "Production Chrome MV3 extension in isolated headless Chromium; synthetic local forms and mocked Gemini",
         "outcome": "Three Chromium scenarios passed: native values/file/events/validation/Merge/Undo; custom dropdown/shadow/about:blank iframe; non-consent AI radio fill and Undo. No real accounts or live submissions."
       }
+    },
+    {
+      "id": "g-d21686f6-3e24-43f1-bd1b-df325c2b287b",
+      "expected": "withLearnedMappingsLock and withProfileWriteLock serialize concurrent actions, keep running later actions after one rejects, and request the shared Web Lock name when navigator.locks exists",
+      "basis": [
+        "src/utils/learnedMappingsLock.ts and src/utils/profileWriteLock.ts: both code paths reviewed at 46ced73de6d9db79fc3f6f9eab17a504a92b0992",
+        "AGENTS.md: Domain Rules (extension-origin Web Locks serialize mapping reads, writes, imports and profile saves)",
+        "Node 22 has no navigator.locks, so existing tests only exercise the in-memory queue fallback"
+      ],
+      "paths": [
+        "src/utils/learnedMappingsLock.ts",
+        "src/utils/profileWriteLock.ts"
+      ],
+      "priority": "medium",
+      "reason": "The production Web Locks path and its cross-context lock names are never exercised, though atomic mapping and profile writes rely on them.",
+      "action": "add",
+      "layer": "unit",
+      "state": "open",
+      "assessed_commit": "46ced73de6d9db79fc3f6f9eab17a504a92b0992"
     },
     {
       "id": "g-d4338c3a-aea7-4e96-9393-daa8518e83d5",
