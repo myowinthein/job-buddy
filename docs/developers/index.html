@@ -697,18 +697,15 @@ pnpm lint:fix</code></pre>
             </div>
             <div id="capture-panel" role="tabpanel" aria-labelledby="capture-tab" tabindex="0">
               <h3 class="command-purpose">Capture</h3>
-              <p class="prose">
-                The README and website use screenshots and autoplay videos of Job Buddy’s popup,
-                options pages and demo job application form. Update these captures when the interface changes.
-              </p>
-              <div class="capture-recipe">
-                <p>Install <a href="https://playwright.dev/docs/browsers#install-browsers">Playwright’s Chromium</a> once to run the browser used for captures.</p>
-                <div class="code-block">
-                  <button class="copy-code" type="button" aria-label="Copy Chromium install command">Copy</button>
-                  <pre><code>pnpm exec playwright install chromium</code></pre>
-                </div>
-              </div>
               <div class="detail-list command-accordions">
+                <details id="capture-setup" open>
+                  <summary>Install Playwright’s Chromium</summary>
+                  <p>Capture scripts use this browser for screenshots and videos. <a href="https://playwright.dev/docs/browsers#install-browsers">Installation guide</a>.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy Chromium install command">Copy</button>
+                    <pre><code>pnpm exec playwright install chromium</code></pre>
+                  </div>
+                </details>
                 <details id="demo" open>
                   <summary>Demo job application form</summary>
                   <p>Save the filled form image to <code>docs/assets/images/</code> and videos to <code>docs/assets/videos/</code> (requires <a href="https://ffmpeg.org/download.html"><code>ffmpeg</code></a>).</p>

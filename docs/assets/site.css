@@ -905,12 +905,6 @@ pre code {
   flex-shrink: 0;
   margin: 10px 10px 0 0;
 }
-.capture-recipe {
-  margin-top: 28px;
-}
-.capture-recipe > p {
-  margin-bottom: 12px;
-}
 .visual-tour {
   margin: 25px 0;
   min-width: 0;
