@@ -614,8 +614,45 @@
         ],
         "invariant": "Wire and persisted strings stay identical; the profile group still focuses field-firstName, the AI group gemini-api-key, other errors stay Try Again."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "159092c55912314154e1e2eb60ffcfb3673c3985",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "All autofill setup and failure codes in the coordinator, engine, content script, popup and Quick Fill now come from src/autofill/errorCodes.ts; wire strings are unchanged and pinned by a new test, and existing tests keep the literal strings."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec eslint <changed files>",
+            "scope": "8 changed source files",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm exec vitest run src/autofill src/quick-fill src/popup src/content.test.ts src/background.test.ts",
+            "scope": "coordinator, engine, popup, Quick Fill and content suites",
+            "outcome": "36 files, 980 tests passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite on the combined tree",
+            "outcome": "141 files, 2563 tests passed in 2 runs. One run also reported one unhandled EnvironmentTeardownError originating in src/devtools/bootstrap.test.ts, a file and import chain these changes do not touch; the other run was clean."
+          },
+          {
+            "command": "pnpm test:browser",
+            "scope": "built production extension, 23 Playwright specs",
+            "outcome": "136 passed, 8 skipped, 3 failed in src/browser/quick-fill.pw.ts. The failures expect the old merge default for Quick Fill while commit 229dda7 changed the default to overwrite without updating that spec; unrelated to these changes."
+          }
+        ]
+      }
     },
     {
       "id": "r-22c67511-1b09-40c2-b7bf-b99fca385581",
@@ -907,8 +944,45 @@
         ],
         "invariant": "saveLearnedObservation[Locally], saveLearnedMappings and saveGeminiSettings semantics stay unchanged; test seeds are rewritten through live paths."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "5472e2fb164d974a189f2b30ca3d30e2b7bf6149",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "The legacy saveLearnedMapping, saveLearnedMappingLocally, the saveLearnedMappings merge option and the test-only saveGeminiApiKey and saveGeminiModel are removed; tests that used them now seed through the live observation and settings APIs, and the failure and no-AI-learning guarantees are retargeted to saveLearnedObservationLocally, saveLearnedObservation and saveLearnedMappings."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec eslint <changed files>",
+            "scope": "7 changed files",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm exec vitest run src/utils src/autofill src/components src/options src/background.test.ts src/devtools src/preview",
+            "scope": "storage and dependent suites",
+            "outcome": "110 files, 2052 tests passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite on the combined tree",
+            "outcome": "141 files, 2563 tests passed in 2 runs. One run also reported one unhandled EnvironmentTeardownError originating in src/devtools/bootstrap.test.ts, a file and import chain these changes do not touch; the other run was clean."
+          },
+          {
+            "command": "pnpm test:browser",
+            "scope": "built production extension, 23 Playwright specs",
+            "outcome": "136 passed, 8 skipped, 3 failed in src/browser/quick-fill.pw.ts. The failures expect the old merge default for Quick Fill while commit 229dda7 changed the default to overwrite without updating that spec; unrelated to these changes."
+          }
+        ]
+      }
     },
     {
       "id": "r-eda250fc-e702-40b3-9690-04cea88110ef",
@@ -1037,8 +1111,45 @@
         ],
         "invariant": "Every negative assertion keeps its meaning; the shared flush must outlast the production await depth."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "fedda6d2f29ec1f6f1447000594ca8d490d9711f",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "The index and learning tests drain promises through one flushPromises helper (40 ticks) instead of hand-counted awaits."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/autofill/index.test.ts src/autofill/learning.test.ts",
+            "scope": "the two edited suites",
+            "outcome": "2 files, 97 tests passed"
+          },
+          {
+            "command": "pnpm exec eslint <changed files>",
+            "scope": "3 changed files",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite on the combined tree",
+            "outcome": "141 files, 2563 tests passed in 2 runs. One run also reported one unhandled EnvironmentTeardownError originating in src/devtools/bootstrap.test.ts, a file and import chain these changes do not touch; the other run was clean."
+          },
+          {
+            "command": "pnpm test:browser",
+            "scope": "built production extension, 23 Playwright specs",
+            "outcome": "136 passed, 8 skipped, 3 failed in src/browser/quick-fill.pw.ts. The failures expect the old merge default for Quick Fill while commit 229dda7 changed the default to overwrite without updating that spec; unrelated to these changes."
+          }
+        ]
+      }
     },
     {
       "id": "r-a23d50af-df3a-42f4-8d32-86f9b8663abb",
@@ -1402,8 +1513,45 @@
         ],
         "invariant": "Unknown codes return the code unchanged and an empty code returns an empty string."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "f76ccca0cebacb3abc05ed9f651ad3e0fbf5fe91",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "The five inline country-name lookups use one countryName helper in src/data/countries.ts, with tests for known, unknown and empty codes."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/data src/autofill",
+            "scope": "data and autofill suites",
+            "outcome": "36 files, 902 tests passed"
+          },
+          {
+            "command": "pnpm exec eslint <changed files>",
+            "scope": "5 changed files",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite on the combined tree",
+            "outcome": "141 files, 2563 tests passed in 2 runs. One run also reported one unhandled EnvironmentTeardownError originating in src/devtools/bootstrap.test.ts, a file and import chain these changes do not touch; the other run was clean."
+          },
+          {
+            "command": "pnpm test:browser",
+            "scope": "built production extension, 23 Playwright specs",
+            "outcome": "136 passed, 8 skipped, 3 failed in src/browser/quick-fill.pw.ts. The failures expect the old merge default for Quick Fill while commit 229dda7 changed the default to overwrite without updating that spec; unrelated to these changes."
+          }
+        ]
+      }
     },
     {
       "id": "r-37a28914-8600-4b2a-bdae-46dab9b929c9",
