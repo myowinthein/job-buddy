@@ -808,6 +808,10 @@ pre code {
 .developer-guide :is(figure, .detail-list) + .prose {
   margin-top: 24px;
 }
+.developer-guide #requirements {
+  margin-top: 0;
+  border-top: 0;
+}
 .visual-tour {
   margin: 25px 0;
   min-width: 0;
