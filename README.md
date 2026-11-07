@@ -5,7 +5,7 @@ AI-powered job application assistant browser extension
 Save your profile once and use Job Buddy to fill supported job application forms.
 Import your resume, review your details, and fill forms with one click.
 
-[Chrome Web Store](https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk) · [Website & Docs](https://myowinthein.github.io/job-buddy/) · [Try Demo](https://myowinthein.github.io/job-buddy/demo/)
+[Chrome Web Store](https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk) · [Website & Docs](https://myowinthein.github.io/job-buddy/)
 
 <img src="docs/assets/images/autofill-demo.png?v=109e0d8f927a" alt="Job Buddy autofilling the original Morrow Studio demo application with sample profile details" width="1000">
 
