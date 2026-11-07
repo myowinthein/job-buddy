@@ -6,7 +6,7 @@
     <title>Page not found · Job Buddy</title>
     <base href="./" />
     <script>
-      // Keep the project-site 404 usable in both local previews and GitHub Pages.
+      // Resolve website assets in both local previews and GitHub Pages.
       document.querySelector('base').href = location.pathname.startsWith('/docs/')
         ? '/docs/'
         : location.pathname.startsWith('/job-buddy/')

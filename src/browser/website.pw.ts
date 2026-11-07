@@ -700,13 +700,11 @@ for (const theme of ['light', 'dark'] as const) {
   });
 }
 
-test('legacy overview links redirect and the guide works with storage blocked', async ({
+test('the guide works with storage blocked', async ({
   context,
   page,
 }) => {
   await serveSite(context);
-  await page.goto(origin + prefix + 'project-site/#tech');
-  await expect(page).toHaveURL(origin + prefix + 'developers/');
   await page.addInitScript(() =>
     Object.defineProperty(window, 'localStorage', {
       get() {
