@@ -239,10 +239,24 @@ pnpm dev</code></pre>
             <details>
               <summary>When should I reload the extension or refresh a form?</summary>
               <p>
-                WXT updates most edits while it runs. After changing content scripts, reload the
-                extension and refresh any form that was already open. Restart WXT after adding an
-                HTML entrypoint so it generates the new page.
+                Keep <code>pnpm dev</code> running while you edit. The action depends on what changed.
               </p>
+              <ul>
+                <li>
+                  <strong>Popup or options page changes</strong> usually appear automatically. If
+                  they do not, reopen the popup or refresh the options page.
+                </li>
+                <li>
+                  <strong>Autofill or content script changes</strong> need a fresh copy on the job
+                  form. Open <code>chrome://extensions/</code>, find the amber Job Buddy development
+                  extension and click <strong>Reload</strong>. Then refresh the job form.
+                </li>
+                <li>
+                  <strong>A new HTML entrypoint</strong> needs a server restart. Press
+                  <code>Ctrl+C</code> in the terminal running <code>pnpm dev</code>, then run
+                  <code>pnpm dev</code> again. Reload the development extension afterward.
+                </li>
+              </ul>
             </details>
           </div>
         </div>
