@@ -289,29 +289,21 @@ pnpm dev</code></pre>
           <div class="detail-list">
             <details>
               <summary>Which env files does WXT support?</summary>
-              <p>Keep real values out of Git.</p>
+              <p>
+                See <a href="https://wxt.dev/guide/essentials/config/environment-variables.html">WXT’s supported env files</a> for the full list.
+              </p>
               <div class="table-scroll">
                 <table>
-                  <thead><tr><th>Load order</th><th>Env file</th><th>Used for</th></tr></thead>
+                  <thead><tr><th>Env file</th><th>Used for</th></tr></thead>
                   <tbody>
-                    <tr><td>1</td><td><code>.env</code></td><td>All modes and browsers</td></tr>
-                    <tr><td>2</td><td><code>.env.local</code></td><td>Local overrides for all modes and browsers</td></tr>
-                    <tr><td>3</td><td><code>.env.[mode]</code></td><td><code>development</code> for <code>pnpm dev</code>, <code>production</code> for <code>pnpm build</code> or <code>pnpm zip</code></td></tr>
-                    <tr><td>4</td><td><code>.env.[mode].local</code></td><td>Local overrides for the selected mode</td></tr>
-                    <tr><td>5</td><td><code>.env.[browser]</code></td><td>The selected browser, such as <code>chrome</code> or <code>firefox</code></td></tr>
-                    <tr><td>6</td><td><code>.env.[browser].local</code></td><td>Local overrides for the selected browser</td></tr>
-                    <tr><td>7</td><td><code>.env.[mode].[browser]</code></td><td>The selected mode and browser together</td></tr>
-                    <tr><td>8</td><td><code>.env.[mode].[browser].local</code></td><td>Local overrides for that mode and browser</td></tr>
+                    <tr><td><code>.env</code></td><td>All modes and browsers</td></tr>
+                    <tr><td><code>.env.local</code></td><td>Local overrides for all modes and browsers</td></tr>
+                    <tr><td><code>.env.development</code></td><td><code>pnpm dev</code></td></tr>
+                    <tr><td><code>.env.production</code></td><td><code>pnpm build</code> and <code>pnpm zip</code></td></tr>
+                    <tr><td><code>.env.development.local</code></td><td>Local development overrides</td></tr>
                   </tbody>
                 </table>
               </div>
-              <p>
-                Later files override earlier files when they define the same variable.
-              </p>
-              <p>
-                See
-                <a href="https://wxt.dev/guide/essentials/config/environment-variables.html">WXT’s supported env files</a> for all variants.
-              </p>
             </details>
             <details id="drive-oauth">
               <summary>How do I configure Google Drive OAuth?</summary>
