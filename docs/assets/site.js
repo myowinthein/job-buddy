@@ -137,8 +137,8 @@ document.querySelectorAll('[data-command-tabs]').forEach((group) => {
     });
     scheduleChapter();
   }
-  function revealHash() {
-    const target = document.getElementById(location.hash.slice(1));
+  function revealHash(hash) {
+    const target = document.getElementById(hash.slice(1));
     const panel = target?.closest('[role="tabpanel"]');
     if (!panels.includes(panel)) return;
     select(tabs.find((tab) => tab.getAttribute('aria-controls') === panel.id));
@@ -162,8 +162,11 @@ document.querySelectorAll('[data-command-tabs]').forEach((group) => {
   });
   group.classList.add('is-enhanced');
   select(tabs[0]);
-  window.addEventListener('hashchange', revealHash);
-  revealHash();
+  window.addEventListener('hashchange', () => revealHash(location.hash));
+  document.querySelectorAll('a[data-open-details]').forEach((link) => {
+    link.addEventListener('click', () => revealHash(link.hash));
+  });
+  revealHash(location.hash);
 });
 
 document.querySelectorAll('a[data-open-details]').forEach((link) => {

@@ -180,7 +180,12 @@ test('command tabs support keyboard navigation, copying and links to hidden inst
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
     'pnpm build\nnode scripts/capture-site.mjs',
   );
-  await page.locator('#website-captures').getByRole('link', { name: 'preview', exact: true }).click();
+  const previewLink = page.locator('#website-captures').getByRole('link', { name: 'pnpm dev:preview', exact: true });
+  await previewLink.click();
+  await expect(tabs.getByRole('tab', { name: 'Develop', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await tabs.getByRole('tab', { name: 'Capture', exact: true }).click();
+  // Reusing the same anchor must reveal its tab even when the URL hash has not changed.
+  await previewLink.click();
   await expect(tabs.getByRole('tab', { name: 'Develop', exact: true })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('button', { name: 'Copy UI preview command' })).toBeVisible();
   await page.goto(origin + prefix + 'developers/#browser-commands');
