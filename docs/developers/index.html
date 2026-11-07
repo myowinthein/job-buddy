@@ -671,17 +671,17 @@ node scripts/capture-demo-motion.mjs</code></pre>
                   <td>The item ID in <a href="https://chrome.google.com/webstore/devconsole" target="_blank" rel="noopener noreferrer" aria-describedby="new-tab-hint">Chrome Web Store Developer Dashboard&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg></a></td>
                 </tr>
                 <tr>
-                  <td><code>CHROME_CLIENT_ID</code></td>
+                  <td><a href="#store-upload-credentials" data-open-details><code>CHROME_CLIENT_ID</code></a></td>
                   <td>Identifies the OAuth client used for uploads</td>
                   <td>Create a <strong>Desktop app</strong> client under Google Auth Platform’s <strong>Clients</strong></td>
                 </tr>
                 <tr>
-                  <td><code>CHROME_CLIENT_SECRET</code></td>
+                  <td><a href="#store-upload-credentials" data-open-details><code>CHROME_CLIENT_SECRET</code></a></td>
                   <td>Authenticates that publishing client</td>
                   <td>Save the secret generated with the same OAuth client</td>
                 </tr>
                 <tr>
-                  <td><code>CHROME_REFRESH_TOKEN</code></td>
+                  <td><a href="#store-upload-credentials" data-open-details><code>CHROME_REFRESH_TOKEN</code></a></td>
                   <td>Authorizes uploads using the listing owner’s account</td>
                   <td>Generate it with <code>chrome-webstore-upload-keys</code></td>
                 </tr>
@@ -701,7 +701,7 @@ node scripts/capture-demo-motion.mjs</code></pre>
             upload tool can automate it.
           </p>
           <div class="detail-list">
-            <details>
+            <details id="store-upload-credentials">
               <summary>How do I get the Chrome Web Store upload credentials?</summary>
               <ol>
                 <li>
