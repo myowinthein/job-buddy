@@ -724,24 +724,6 @@ node scripts/capture-demo-motion.mjs</code></pre>
                 and <a href="https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments#creating-an-environment">GitHub environment setup</a> for more detail.
               </p>
             </details>
-            <details>
-              <summary>What happens when I push a release tag?</summary>
-              <ol>
-                <li>Runs TypeScript, lint and unit tests.</li>
-                <li>Loads the production settings and builds the extension ZIP.</li>
-                <li>Uploads the ZIP as the store listing’s draft.</li>
-                <li>Creates a GitHub release with generated release notes and the ZIP attached.</li>
-              </ol>
-              <p>
-                Increase the version in <code>package.json</code> before releasing. Chrome requires
-                each uploaded update to have a higher version.
-              </p>
-              <p>
-                See <a href="https://github.com/myowinthein/job-buddy/blob/main/.github/workflows/release.yml">release.yml</a>
-                for the exact commands and the <a href="https://developer.chrome.com/docs/webstore/update">Chrome Web Store update guide</a>
-                for the review and publishing steps.
-              </p>
-            </details>
           </div>
         </section>
       </main>
