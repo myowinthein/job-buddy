@@ -173,7 +173,9 @@ test('command tabs support keyboard navigation, copying and links to hidden inst
   await tabs.getByRole('tab', { name: 'Develop', exact: true }).focus();
   await page.keyboard.press('ArrowRight');
   await expect(tabs.getByRole('tab', { name: 'Check', exact: true })).toBeFocused();
-  await expect(page.getByRole('button', { name: 'Copy validation commands' })).toBeVisible();
+  await page.getByRole('button', { name: 'Copy TypeScript check command' }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('pnpm compile');
+  await tabs.getByRole('tab', { name: 'Check', exact: true }).focus();
   await page.keyboard.press('End');
   await expect(tabs.getByRole('tab', { name: 'Capture', exact: true })).toBeFocused();
   await page.locator('#website-captures > summary').click();
