@@ -803,6 +803,10 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
 
     const isFileInput = element instanceof HTMLInputElement && element.type === 'file';
     const isCheckboxInput = isChoice(element);
+    // File and checkbox inputs are never edit-watched or sent to the text AI pass.
+    const textual = !isFileInput && !isCheckboxInput;
+    const addTextCandidate = (originalState: AITextCandidate['originalState']) =>
+      aiTextCandidates.push({ type: 'text', element, signals, originalState });
 
     if (match.confidence >= CONF_FILL && match.value) {
       // Confident match with profile data → fill and highlight.
@@ -832,15 +836,10 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // Reconstruction failed (corrupt base64, etc.). Log already emitted by
         // fillFileField; silently skip this element so the rest of the run
         // continues uninterrupted.
-        if (!isFileInput && !isCheckboxInput && !match.ruleBlocked) {
+        if (textual && !match.ruleBlocked) {
           applyHighlight(element, 0);
           editableFields.push({ element, state: 'lowConfidence' });
-          aiTextCandidates.push({
-            type: 'text',
-            element,
-            signals,
-            originalState: 'lowConfidence',
-          });
+          addTextCandidate('lowConfidence');
         }
         continue;
       }
@@ -859,14 +858,9 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // File/checkbox inputs are excluded from edit-watching — file
         // selection and checkbox state are handled silently by Auto Fill,
         // not manual typing.
-        if (!isFileInput && !isCheckboxInput) editableFields.push({ element, state: 'needReview' });
-        if (!isFileInput && !isCheckboxInput) {
-          aiTextCandidates.push({
-            type: 'text',
-            element,
-            signals,
-            originalState: 'needReview',
-          });
+        if (textual) {
+          editableFields.push({ element, state: 'needReview' });
+          addTextCandidate('needReview');
         }
       }
     } else if (match.confidence < CONF_FILL) {
@@ -875,15 +869,8 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       // Low or no confidence — red highlight; left for manual resolution.
       applyHighlight(element, 0);
       result.lowConfidence++;
-      if (!isFileInput && !isCheckboxInput) editableFields.push({ element, state: 'lowConfidence' });
-      if (!isFileInput && !isCheckboxInput && !match.ruleBlocked) {
-        aiTextCandidates.push({
-          type: 'text',
-          element,
-          signals,
-          originalState: 'lowConfidence',
-        });
-      }
+      if (textual) editableFields.push({ element, state: 'lowConfidence' });
+      if (textual && !match.ruleBlocked) addTextCandidate('lowConfidence');
     } else {
       record.rule.outcome = 'missing_data';
       record.outcome = 'missing_data';
@@ -891,7 +878,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       // Mark the missing value with a neutral tint, using the same opacity as other statuses.
       applyMissingDataHighlight(element);
       result.noData++;
-      if (!isFileInput && !isCheckboxInput) {
+      if (textual) {
         editableFields.push({ element, state: 'noData' });
         // Track in the noData registry so silent re-fill on tab refocus can
         // re-resolve this field's profile path once the user updates it.
@@ -900,12 +887,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // lowConfidence path above), but check explicitly for type safety.
         if (match.fieldPath) {
           noDataFields.push({ element, fieldPath: match.fieldPath, confidence: match.confidence, identity: aiQuestionIdentity(element) });
-          aiTextCandidates.push({
-            type: 'text',
-            element,
-            signals,
-            originalState: 'noData',
-          });
+          addTextCandidate('noData');
         }
       }
     }
