@@ -1,3 +1,4 @@
+import type { ProfileStoragePath } from '../profile/fieldCatalog';
 import { profileTextLimit, URL_MAX_LENGTH } from '../profile/fieldPolicies';
 import { profileData } from './profileData';
 import type { Profile } from '../types/profile';
@@ -71,6 +72,35 @@ function validateDocumentEntry(
   return entry;
 }
 
+/** Copies a text field that must stay within its policy length, or reports the limit. */
+function copyText(
+  source: Record<string, unknown>,
+  target: Record<string, unknown>,
+  path: ProfileStoragePath,
+  err: ErrFn,
+): void {
+  const key = path.slice(path.lastIndexOf('.') + 1);
+  const value = source[key];
+  if (value === undefined) return;
+  const max = profileTextLimit(path);
+  if (typeof value === 'string' && value.length <= max) target[key] = value;
+  else err(path, `expected string, max ${max} chars`);
+}
+
+/** Copies a link that is empty or a valid URL, or reports it. */
+function copyUrl(
+  source: Record<string, unknown>,
+  target: Record<string, unknown>,
+  path: ProfileStoragePath,
+  err: ErrFn,
+): void {
+  const key = path.slice(path.lastIndexOf('.') + 1);
+  const value = source[key];
+  if (value === undefined) return;
+  if (typeof value === 'string' && (!value.trim() || isValidProfileUrl(value))) target[key] = value;
+  else err(path, 'expected a valid URL');
+}
+
 function validatePersonal(
   data: Record<string, unknown>,
   err: ErrFn,
@@ -80,42 +110,9 @@ function validatePersonal(
   const p = data.personal as Record<string, unknown>;
   const sp: Record<string, unknown> = {};
 
-  if (p.firstName !== undefined) {
-    if (
-      typeof p.firstName === 'string' &&
-      p.firstName.length <= profileTextLimit('personal.firstName')
-    )
-      sp.firstName = p.firstName;
-    else
-      err(
-        'personal.firstName',
-        `expected string, max ${profileTextLimit('personal.firstName')} chars`,
-      );
-  }
-  if (p.lastName !== undefined) {
-    if (
-      typeof p.lastName === 'string' &&
-      p.lastName.length <= profileTextLimit('personal.lastName')
-    )
-      sp.lastName = p.lastName;
-    else
-      err(
-        'personal.lastName',
-        `expected string, max ${profileTextLimit('personal.lastName')} chars`,
-      );
-  }
-  if (p.nickname !== undefined) {
-    if (
-      typeof p.nickname === 'string' &&
-      p.nickname.length <= profileTextLimit('personal.nickname')
-    )
-      sp.nickname = p.nickname;
-    else
-      err(
-        'personal.nickname',
-        `expected string, max ${profileTextLimit('personal.nickname')} chars`,
-      );
-  }
+  copyText(p, sp, 'personal.firstName', err);
+  copyText(p, sp, 'personal.lastName', err);
+  copyText(p, sp, 'personal.nickname', err);
   if (p.email !== undefined) {
     if (typeof p.email === 'string' && (!p.email || isValidProfileEmail(p.email)))
       sp.email = p.email;
@@ -178,39 +175,11 @@ function validateAddress(
   const a = data.address as Record<string, unknown>;
   const sa: Record<string, unknown> = {};
 
-  if (a.city !== undefined) {
-    if (typeof a.city === 'string' && a.city.length <= profileTextLimit('address.city'))
-      sa.city = a.city;
-    else err('address.city', `expected string, max ${profileTextLimit('address.city')} chars`);
-  }
-  if (a.country !== undefined) {
-    if (typeof a.country === 'string' && a.country.length <= profileTextLimit('address.country'))
-      sa.country = a.country;
-    else
-      err('address.country', `expected string, max ${profileTextLimit('address.country')} chars`);
-  }
-  if (a.street !== undefined) {
-    if (typeof a.street === 'string' && a.street.length <= profileTextLimit('address.street'))
-      sa.street = a.street;
-    else err('address.street', `expected string, max ${profileTextLimit('address.street')} chars`);
-  }
-  if (a.state !== undefined) {
-    if (typeof a.state === 'string' && a.state.length <= profileTextLimit('address.state'))
-      sa.state = a.state;
-    else err('address.state', `expected string, max ${profileTextLimit('address.state')} chars`);
-  }
-  if (a.postalCode !== undefined) {
-    if (
-      typeof a.postalCode === 'string' &&
-      a.postalCode.length <= profileTextLimit('address.postalCode')
-    )
-      sa.postalCode = a.postalCode;
-    else
-      err(
-        'address.postalCode',
-        `expected string, max ${profileTextLimit('address.postalCode')} chars`,
-      );
-  }
+  copyText(a, sa, 'address.city', err);
+  copyText(a, sa, 'address.country', err);
+  copyText(a, sa, 'address.street', err);
+  copyText(a, sa, 'address.state', err);
+  copyText(a, sa, 'address.postalCode', err);
 
   return Object.keys(sa).length > 0 ? (sa as Profile['address']) : undefined;
 }
@@ -564,37 +533,11 @@ function validateLinks(
       err('links.linkedin', 'expected string');
     }
   }
-  if (lnk.portfolio !== undefined) {
-    if (
-      typeof lnk.portfolio === 'string' &&
-      (!lnk.portfolio.trim() || isValidProfileUrl(lnk.portfolio))
-    )
-      sl.portfolio = lnk.portfolio;
-    else err('links.portfolio', 'expected a valid URL');
-  }
-  if (lnk.github !== undefined) {
-    if (typeof lnk.github === 'string' && (!lnk.github.trim() || isValidProfileUrl(lnk.github)))
-      sl.github = lnk.github;
-    else err('links.github', 'expected a valid URL');
-  }
-  if (lnk.twitter !== undefined) {
-    if (typeof lnk.twitter === 'string' && (!lnk.twitter.trim() || isValidProfileUrl(lnk.twitter)))
-      sl.twitter = lnk.twitter;
-    else err('links.twitter', 'expected a valid URL');
-  }
-  if (lnk.dribbble !== undefined) {
-    if (
-      typeof lnk.dribbble === 'string' &&
-      (!lnk.dribbble.trim() || isValidProfileUrl(lnk.dribbble))
-    )
-      sl.dribbble = lnk.dribbble;
-    else err('links.dribbble', 'expected a valid URL');
-  }
-  if (lnk.behance !== undefined) {
-    if (typeof lnk.behance === 'string' && (!lnk.behance.trim() || isValidProfileUrl(lnk.behance)))
-      sl.behance = lnk.behance;
-    else err('links.behance', 'expected a valid URL');
-  }
+  copyUrl(lnk, sl, 'links.portfolio', err);
+  copyUrl(lnk, sl, 'links.github', err);
+  copyUrl(lnk, sl, 'links.twitter', err);
+  copyUrl(lnk, sl, 'links.dribbble', err);
+  copyUrl(lnk, sl, 'links.behance', err);
   if (Array.isArray(lnk.custom)) {
     const validCustom: NonNullable<Profile['links']['custom']> = [];
     (lnk.custom as unknown[]).forEach((entry, i) => {
