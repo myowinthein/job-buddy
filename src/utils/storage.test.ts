@@ -8,8 +8,9 @@ vi.stubGlobal('chrome', {
   storage: {
     session: { set: (_items: Record<string, unknown>, callback: () => void) => callback() },
     local: {
-      get(key: string | null, callback: (result: Record<string, unknown>) => void) {
-        callback(key === null ? { ...store } : { [key]: store[key] });
+      get(key: string | string[] | null, callback: (result: Record<string, unknown>) => void) {
+        const keys = key === null ? null : Array.isArray(key) ? key : [key];
+        callback(keys === null ? { ...store } : Object.fromEntries(keys.map((k) => [k, store[k]])));
       },
       set(items: Record<string, unknown>, callback: () => void) {
         Object.assign(store, items);
@@ -27,13 +28,14 @@ vi.stubGlobal('chrome', {
 // Import after the global is stubbed
 import {
   getProfile, saveProfile,
-  getLearnedMappings, saveLearnedMapping, mergeLearnedMappings,
-  getGeminiApiKey, saveGeminiApiKey, clearGeminiSettings,
-  getGeminiModel, saveGeminiModel, getGeminiSettings, saveGeminiSettings,
+  getLearnedMappings, saveLearnedObservationLocally, getLearningContext, mergeLearnedMappings,
+  getGeminiApiKey, clearGeminiSettings,
+  getGeminiModel, getGeminiSettings, saveGeminiSettings,
   getThemePreference, saveThemePreference,
   getDriveToken, saveDriveToken, clearDriveToken,
   clearAllStorage,
 } from './storage';
+import { DEFAULT_GEMINI_MODEL } from '../resume-ai/types';
 import type { Profile } from '../types/profile';
 import type { LearnedMappings } from '../types/storage';
 
@@ -128,78 +130,13 @@ describe('profile storage', () => {
   });
 });
 
+function seedGeminiKey(key: string) {
+  Object.assign(store, { geminiApiKey: key, geminiModel: DEFAULT_GEMINI_MODEL, geminiDevDisabled: true });
+}
+
 describe('learned mappings', () => {
   it('returns empty object when no mappings are stored', async () => {
     expect(await getLearnedMappings()).toEqual({});
-  });
-
-  it('stores the first confirmation as count:1 (not yet trusted)', async () => {
-    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
-    const mappings = await getLearnedMappings();
-    expect(mappings['example.com']?.['firstname']).toEqual({ path: 'personal.firstName', count: 1 });
-  });
-
-  it('increments count on repeated same-path confirmation', async () => {
-    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
-    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
-    const entry = (await getLearnedMappings())['example.com']?.['firstname'];
-    expect(entry).toEqual({ path: 'personal.firstName', count: 2 });
-  });
-
-  it('resets to count:1 when a conflicting path is confirmed (new entry)', async () => {
-    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
-    await saveLearnedMapping('example.com', 'firstname', 'personal.lastName');
-    const entry = (await getLearnedMappings())['example.com']?.['firstname'];
-    expect(entry).toEqual({ path: 'personal.lastName', count: 1 });
-  });
-
-  it('accumulates distinct signals across multiple saves', async () => {
-    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
-    await saveLearnedMapping('example.com', 'email', 'personal.email');
-    const mappings = await getLearnedMappings();
-    expect(Object.keys(mappings['example.com'] ?? {})).toHaveLength(2);
-  });
-
-  it('leaves a legacy string entry untouched when same path is confirmed again', async () => {
-    // Simulate old-format data already in storage (plain string, already trusted)
-    store['learnedMappings'] = { 'example.com': { 'firstname': 'personal.firstName' } };
-    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
-    const entry = (await getLearnedMappings())['example.com']?.['firstname'];
-    expect(entry).toBe('personal.firstName'); // stays as legacy string
-  });
-
-  it('resets a legacy string entry to count:1 when a conflicting path is confirmed', async () => {
-    store['learnedMappings'] = { 'example.com': { 'firstname': 'personal.firstName' } };
-    await saveLearnedMapping('example.com', 'firstname', 'personal.lastName');
-    const entry = (await getLearnedMappings())['example.com']?.['firstname'];
-    expect(entry).toEqual({ path: 'personal.lastName', count: 1 });
-  });
-
-  it('stores the given label alongside the first confirmation', async () => {
-    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName', 'First Name');
-    const entry = (await getLearnedMappings())['example.com']?.['firstname'];
-    expect(entry).toEqual({ path: 'personal.firstName', count: 1, label: 'First Name' });
-  });
-
-  it('refreshes the label on a repeated same-path confirmation', async () => {
-    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName', 'First Name');
-    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName', 'Legal First Name');
-    const entry = (await getLearnedMappings())['example.com']?.['firstname'];
-    expect(entry).toEqual({ path: 'personal.firstName', count: 2, label: 'Legal First Name' });
-  });
-
-  it('keeps the existing label when a later confirmation omits one', async () => {
-    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName', 'First Name');
-    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
-    const entry = (await getLearnedMappings())['example.com']?.['firstname'];
-    expect(entry).toEqual({ path: 'personal.firstName', count: 2, label: 'First Name' });
-  });
-
-  it('upgrades a legacy string entry to the counted format when a label is provided for the same path', async () => {
-    store['learnedMappings'] = { 'example.com': { 'firstname': 'personal.firstName' } };
-    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName', 'First Name');
-    const entry = (await getLearnedMappings())['example.com']?.['firstname'];
-    expect(entry).toEqual({ path: 'personal.firstName', count: 2, label: 'First Name' });
   });
 });
 
@@ -260,13 +197,8 @@ describe('Gemini settings', () => {
     expect(await getGeminiApiKey()).toBeNull();
   });
 
-  it('saves and retrieves a Gemini API key', async () => {
-    await saveGeminiApiKey('my-key-123');
-    expect(await getGeminiApiKey()).toBe('my-key-123');
-  });
-
   it('clears the Gemini API key and model', async () => {
-    await saveGeminiApiKey('my-key-123');
+    seedGeminiKey('my-key-123');
     await clearGeminiSettings();
     expect(await getGeminiApiKey()).toBeNull();
   });
@@ -300,7 +232,7 @@ describe('Gemini settings', () => {
   });
 
   it('saves and retrieves a Gemini model, taking priority over the dev default', async () => {
-    await saveGeminiModel('gemini-3.8-flash');
+    store['geminiModel'] = 'gemini-3.8-flash';
     expect(await getGeminiModel()).toBe('gemini-3.8-flash');
   });
 });
@@ -338,8 +270,10 @@ describe('Drive token', () => {
   });
 });
 
-describe('saveLearnedMapping failure propagation', () => {
+describe('learned observation failure propagation', () => {
   it('rejects when chrome.storage.local.set fails', async () => {
+    await saveProfile(MINIMAL_PROFILE);
+    const context = (await getLearningContext(await getProfile()))!;
     const setSpy = vi
       .spyOn(chrome.storage.local, 'set')
       .mockImplementation((_items: Record<string, unknown>, cb: () => void) => {
@@ -350,7 +284,11 @@ describe('saveLearnedMapping failure propagation', () => {
       });
 
     await expect(
-      saveLearnedMapping('example.com', 'firstname', 'personal.firstName'),
+      saveLearnedObservationLocally('example.com', {
+        signals: ['firstname'],
+        path: 'personal.firstName',
+        context,
+      }),
     ).rejects.toThrow('QUOTA_BYTES exceeded');
 
     setSpy.mockRestore();
@@ -408,7 +346,7 @@ describe('clearAllStorage', () => {
   it('removes saved data and unknown retired keys while preserving development suppression', async () => {
     // Reset must also remove data left by older versions.
     await saveProfile(MINIMAL_PROFILE);
-    await saveLearnedMapping('example.com', 'firstname', 'personal.firstName');
+    store['learnedMappings'] = { 'example.com': { firstname: { path: 'personal.firstName', count: 1 } } };
     Object.assign(store, { retiredFeatureData: ['obsolete'], geminiDevDisabled: true });
 
     const removeSpy = vi.spyOn(chrome.storage.local, 'remove');
@@ -437,7 +375,7 @@ afterEach(() => {
 
 describe('Gemini reset and concurrent updates', () => {
   it('rejects removal failures rather than reporting a successful reset', async () => {
-    await saveGeminiApiKey('synthetic-key');
+    seedGeminiKey('synthetic-key');
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(chrome.storage.local, 'remove').mockImplementation((_keys, callback) => {
       Object.assign(chrome.runtime, { lastError: { message: 'Removal failed' } });
@@ -508,7 +446,7 @@ describe('Gemini reset and concurrent updates', () => {
 });
 
 it('restores the prior credential if a save is cancelled during the Chrome write', async () => {
-  await saveGeminiApiKey('previous-key');
+  seedGeminiKey('previous-key');
   const original = await getGeminiSettings();
   let completeWrite!: () => void;
   const originalSet = chrome.storage.local.set;

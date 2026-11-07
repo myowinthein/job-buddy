@@ -8,7 +8,13 @@ import { resolveProfileValue } from './resolver';
 import { resolveRuleValue, ruleValuePath } from './ruleValue';
 import { adjustWorkHistoryMatches } from './workHistoryResolution';
 import { saveElementMappings } from './mappings';
-import { getLearnedMappings, saveLearnedMapping, saveLearnedMappings } from '../utils/storage';
+import {
+  getLearnedMappings,
+  getLearningContext,
+  getProfile,
+  saveLearnedMappings,
+  saveLearnedObservation,
+} from '../utils/storage';
 import { normalize } from './normalizer';
 import { scanAutofill, executeAutofill, undoAutofill, getFillLog } from './index';
 import { resolveFieldsWithAI } from '../resume-ai/gemini';
@@ -39,6 +45,10 @@ afterEach(async () => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
+async function learn(domain: string, signal: string, path: string) {
+  const context = (await getLearningContext(await getProfile()))!;
+  await saveLearnedObservation(domain, { signals: [signal], path, context });
+}
 function field(html: string) {
   document.body.innerHTML = html;
   return document.querySelector<HTMLElement>('input,select,[contenteditable]')!;
@@ -194,12 +204,12 @@ it('counts a normalized signal only once per real edit', async () => {
 });
 it('preserves concurrent learning and does not restore stale metadata', async () => {
   await Promise.all([
-    saveLearnedMapping('example.test', 'one', 'personal.firstName'),
-    saveLearnedMapping('example.test', 'two', 'personal.lastName'),
+    learn('example.test', 'one', 'personal.firstName'),
+    learn('example.test', 'two', 'personal.lastName'),
   ]);
   const before = await getLearnedMappings();
   expect(Object.keys(before['example.test'])).toEqual(['one', 'two']);
-  await saveLearnedMapping('example.test', 'three', 'personal.email');
+  await learn('example.test', 'three', 'personal.email');
   await saveLearnedMappings(
     { 'example.test': { one: { path: 'personal.firstName', count: 1, label: 'First name' } } },
     { labelsOnly: true },
@@ -211,9 +221,9 @@ it('preserves concurrent learning and does not restore stale metadata', async ()
   ]);
 });
 it('does not lose a concurrent signal during a UI edit from an older snapshot', async () => {
-  await saveLearnedMapping('example.test', 'one', 'personal.firstName');
+  await learn('example.test', 'one', 'personal.firstName');
   const base = await getLearnedMappings();
-  await saveLearnedMapping('example.test', 'two', 'personal.lastName');
+  await learn('example.test', 'two', 'personal.lastName');
   await saveLearnedMappings(
     { 'example.test': { one: { path: 'personal.email', count: 2 } } },
     { base },
@@ -345,16 +355,3 @@ it('keeps companion fields aligned in composed scan order across shadow roots', 
   expect(document.querySelector<HTMLInputElement>('#level1')!.value).toBe('Fluent');
 });
 
-it('merges an import against fresh mappings without resurrecting a deleted local signal', async () => {
-  await saveLearnedMapping('example.test', 'deleted', 'personal.firstName');
-  await saveLearnedMappings({});
-  await saveLearnedMapping('example.test', 'concurrent', 'personal.lastName');
-  await saveLearnedMappings(
-    { 'example.test': { incoming: { path: 'personal.email', count: 2 } } },
-    { merge: true },
-  );
-  expect((await getLearnedMappings())['example.test']).toEqual({
-    concurrent: { path: 'personal.lastName', count: 1, label: undefined },
-    incoming: { path: 'personal.email', count: 2 },
-  });
-});

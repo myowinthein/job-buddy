@@ -3,7 +3,6 @@ import { devLockName } from '@/src/devtools/context';
 import type { Profile } from '../types/profile';
 import type {
   LearnedMappings,
-  LearnedMappingValue,
   LearnedObservation,
   LearningContext,
   DriveBackupState,
@@ -28,7 +27,6 @@ import {
   readableMappings,
   safeMappingKey,
   validMapping,
-  isLearnedPath,
 } from './learnedMappingData';
 
 // Rejects on a set() failure (e.g. quota exceeded) so callers can surface an
@@ -286,7 +284,7 @@ function contentStorageClient(): boolean {
 }
 export async function saveLearnedMappings(
   mappings: LearnedMappings,
-  options: { labelsOnly?: boolean; base?: LearnedMappings; merge?: boolean; context?: LearningContext; strictBase?: boolean } = {},
+  options: { labelsOnly?: boolean; base?: LearnedMappings; context?: LearningContext; strictBase?: boolean } = {},
 ): Promise<void> {
   if (options.labelsOnly && contentStorageClient()) {
     const response = await chrome.runtime.sendMessage({ action: 'SAVE_LEARNED_LABELS', mappings });
@@ -298,10 +296,6 @@ export async function saveLearnedMappings(
     const current = await getLearnedMappings();
     mappings = readableMappings(mappings, !!options.base);
     const initial = structuredClone(current);
-    if (options.merge) {
-      await storageSet({ learnedMappings: mergeLearnedMappings(current, mappings) });
-      return;
-    }
     if (options.base) {
       for (const domain of new Set([...Object.keys(options.base), ...Object.keys(mappings)])) {
         if (!(domain in mappings)) {
@@ -469,23 +463,6 @@ export async function saveGeminiSettings(
   });
 }
 
-// Compatibility helpers for callers that explicitly seed local settings.
-// The UI uses saveGeminiSettings so the key/model are committed together.
-export async function saveGeminiApiKey(key: string): Promise<void> {
-  await withGeminiLock(async () => {
-    const current = await readGeminiSettings();
-    await storageSet({ geminiApiKey: key, geminiModel: current.model ?? DEFAULT_GEMINI_MODEL,
-      geminiSettingsMeta: { revision: crypto.randomUUID(), preference: current.preference },
-      geminiDevDisabled: true });
-  });
-}
-export async function saveGeminiModel(model: string): Promise<void> {
-  await withGeminiLock(async () => {
-    await storageSet({ geminiModel: toGeminiModel(model), geminiSettingsMeta: {
-      revision: crypto.randomUUID(), preference: toGeminiModel(model),
-    } });
-  });
-}
 export async function clearGeminiSettings(): Promise<void> {
   await withGeminiLock(async () => {
     // Advance the revision before removal, invalidating even pending checks in
@@ -493,72 +470,6 @@ export async function clearGeminiSettings(): Promise<void> {
     await storageSet({ geminiDevDisabled: true,
       geminiSettingsMeta: { revision: crypto.randomUUID(), preference: 'auto' } });
     await local.remove(['geminiApiKey', 'geminiModel'], { rejectOnError: true });
-  });
-}
-
-export async function saveLearnedMapping(
-  domain: string,
-  normalizedSignal: string,
-  fieldPath: string,
-  label?: string,
-): Promise<void> {
-  if (contentStorageClient()) {
-    const profile = await getProfile();
-    const context = profile ? await getLearningContext(profile) : null;
-    if (context)
-      await saveLearnedObservation(domain, {
-        signals: [normalizedSignal],
-        path: fieldPath,
-        ...(label ? { label, question: label } : {}),
-        context,
-      });
-    return;
-  }
-  return saveLearnedMappingLocally(domain, normalizedSignal, fieldPath, label);
-}
-
-/** Background handler and extension pages share the same lock and fresh read. */
-export async function saveLearnedMappingLocally(
-  domain: string,
-  normalizedSignal: string,
-  fieldPath: string,
-  label?: string,
-): Promise<void> {
-  if (!safeMappingKey(domain) || !safeMappingKey(normalizedSignal) || !isLearnedPath(fieldPath))
-    throw new Error('Invalid learned mapping');
-  await withLearnedMappingsLock(async () => {
-    const mappings = await getLearnedMappings();
-    if (!mappings[domain]) mappings[domain] = {};
-    const existing: LearnedMappingValue | undefined = mappings[domain][normalizedSignal];
-
-    if (existing === undefined) {
-      // First confirmation — store with count 1, not yet trusted for Layer 0.
-      mappings[domain][normalizedSignal] = { path: fieldPath, count: 1, label };
-    } else if (typeof existing === 'string') {
-      // Legacy format: already trusted. Leave the path untouched for the same path
-      // (but still attach a label if one wasn't recorded before), reset on conflict.
-      if (existing !== fieldPath) {
-        mappings[domain][normalizedSignal] = { path: fieldPath, count: 1, label };
-      } else if (label) {
-        mappings[domain][normalizedSignal] = { path: existing, count: 2, label };
-      }
-    } else {
-      // New counted format: increment on same path, reset on conflict. Always
-      // refresh the label — it's a display aid, not part of the trust logic.
-      if (existing.path === fieldPath && !existing.inactive) {
-        mappings[domain][normalizedSignal] = {
-          path: fieldPath,
-          count: Math.min(Number.MAX_SAFE_INTEGER, existing.count + 1),
-          ...(existing.question ? { question: existing.question } : {}),
-          ...(existing.scope ? { scope: existing.scope } : {}),
-          label: label ?? existing.label,
-        };
-      } else {
-        mappings[domain][normalizedSignal] = { path: fieldPath, count: 1, label };
-      }
-    }
-
-    await storageSet({ learnedMappings: mappings });
   });
 }
 

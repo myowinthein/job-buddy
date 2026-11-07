@@ -5,7 +5,8 @@ import { vi, beforeEach, describe, it, expect } from 'vitest';
 vi.mock('../utils/storage', () => ({
   getGeminiApiKey:  vi.fn(),
   getGeminiModel:   vi.fn(),
-  saveLearnedMapping: vi.fn(),
+  saveLearnedObservation: vi.fn(),
+  saveLearnedMappings: vi.fn(),
 }));
 vi.mock('./filler', async (importOriginal) => {
   // Real findBestMatch (used by ai.ts's findBestOption) — these tests verify
@@ -30,7 +31,12 @@ vi.mock('./scanner', async (original) => ({
 
 import { extractSelectOptions, runAIAutofill } from './ai';
 import type { AITextCandidate } from './ai';
-import { getGeminiApiKey, getGeminiModel, saveLearnedMapping } from '../utils/storage';
+import {
+  getGeminiApiKey,
+  getGeminiModel,
+  saveLearnedMappings,
+  saveLearnedObservation,
+} from '../utils/storage';
 import { resolveFieldsWithAI } from '../resume-ai/gemini';
 import { scanRadioGroups, scanCheckboxGroups } from './scanner';
 import { fillField, fillRadioInput, fillCheckboxInput } from './filler';
@@ -285,7 +291,8 @@ describe('runAIAutofill — high-confidence text fills', () => {
     // AI's own self-reported confidence must never be enough to permanently
     // teach a learned mapping — only a human confirming a value (the
     // rule-pipeline's edit-watcher path) is trusted for that.
-    expect(saveLearnedMapping).not.toHaveBeenCalled();
+    expect(saveLearnedObservation).not.toHaveBeenCalled();
+    expect(saveLearnedMappings).not.toHaveBeenCalled();
     expect(onTextFilled).toHaveBeenCalledWith(cand.element, 'green');
   });
 

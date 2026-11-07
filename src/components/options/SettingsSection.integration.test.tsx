@@ -15,9 +15,7 @@ vi.mock('@/src/utils/storage', () => ({
   getGeminiSettings: vi.fn().mockResolvedValue({ apiKey: null, model: null, preference: 'auto', revision: null, verifiedAt: null }),
   saveGeminiSettings: vi.fn(async (apiKey, model, preference) => ({ apiKey, model, preference, revision: 'saved-revision', verifiedAt: 1 })),
   getGeminiApiKey: vi.fn().mockResolvedValue(null),
-  saveGeminiApiKey: vi.fn().mockResolvedValue(undefined),
   getGeminiModel: vi.fn().mockResolvedValue(null),
-  saveGeminiModel: vi.fn().mockResolvedValue(undefined),
   clearGeminiSettings: vi.fn().mockResolvedValue(undefined),
   saveThemePreference: vi.fn().mockResolvedValue(undefined),
 }));

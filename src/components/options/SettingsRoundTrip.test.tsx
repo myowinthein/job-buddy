@@ -4,13 +4,14 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import App from '@/entrypoints/options/App';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import { createPreviewChrome } from '@/src/preview/chrome';
+import { DEFAULT_GEMINI_MODEL } from '@/src/resume-ai/types';
 import { calculateDerivedFields } from '@/src/utils/derivedFields';
 import {
   getProfile,
   getLearnedMappings,
   saveProfile,
   saveLearnedMappings,
-  saveGeminiApiKey,
+  saveGeminiSettings,
   getGeminiApiKey,
 } from '@/src/utils/storage';
 import { settingsReviewProfile, SETTINGS_REVIEW_MAPPINGS } from './settingsReviewFixture';
@@ -59,7 +60,7 @@ it('exports every saved field, resets immediately, and restores the downloaded J
   profile.derived = calculateDerivedFields(profile);
   await saveProfile(profile);
   await saveLearnedMappings(SETTINGS_REVIEW_MAPPINGS);
-  await saveGeminiApiKey('synthetic-key-not-exported');
+  await saveGeminiSettings('synthetic-key-not-exported', DEFAULT_GEMINI_MODEL, 'auto', null);
   const createUrl = vi.fn((_blob: Blob) => 'blob:settings-review');
   vi.stubGlobal(
     'URL',
