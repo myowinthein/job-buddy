@@ -75,9 +75,8 @@
     <div class="site-layout">
       <aside class="chapter-nav" aria-label="On this page">
         <p>Build and contribute</p>
-        <a href="#requirements">Requirements</a><a href="#build">Set up the project</a><a href="#configuration">Environment files</a
+        <a href="#tech-stack">Tech stack</a><a href="#requirements">Requirements</a><a href="#build">Set up the project</a><a href="#configuration">Environment files</a
         ><a href="#dev-bar">Use the dev bar</a
-        ><a href="#tech-stack">Tech stack</a
         ><a href="#commands">Commands</a
         ><a href="#release">Release setup</a>
       </aside>
@@ -85,13 +84,75 @@
         <details class="mobile-contents">
           <summary>On this page</summary>
           <nav aria-label="Page sections">
-            <a href="#requirements">Requirements</a><a href="#build">Set up the project</a><a href="#configuration">Environment files</a
+            <a href="#tech-stack">Tech stack</a><a href="#requirements">Requirements</a><a href="#build">Set up the project</a><a href="#configuration">Environment files</a
             ><a href="#dev-bar">Use the dev bar</a
-            ><a href="#tech-stack">Tech stack</a
             ><a href="#commands">Commands</a
             ><a href="#release">Release setup</a>
           </nav>
         </details>
+        <section class="chapter" id="tech-stack" aria-labelledby="tech-stack-title">
+          <div class="chapter-heading">
+            <h2 id="tech-stack-title">Tech stack</h2>
+          </div>
+          <p class="prose">
+            Job Buddy targets Chrome Manifest V3. Its website uses plain HTML, CSS and JavaScript.
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Technology</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <a href="https://wxt.dev/" target="_blank" rel="noopener noreferrer" aria-describedby="new-tab-hint">
+                      WXT&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg>
+                    </a>
+                  </td>
+                  <td>Builds the extension and runs its development server through Vite.</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a href="https://react.dev/" target="_blank" rel="noopener noreferrer" aria-describedby="new-tab-hint">
+                      React&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg>
+                    </a>
+                  </td>
+                  <td>Renders the popup and options page interfaces.</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a href="https://www.typescriptlang.org/" target="_blank" rel="noopener noreferrer" aria-describedby="new-tab-hint">
+                      TypeScript&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg>
+                    </a>
+                  </td>
+                  <td>Checks types across profile data, autofill logic and extension messages.</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a href="https://tailwindcss.com/" target="_blank" rel="noopener noreferrer" aria-describedby="new-tab-hint">
+                      Tailwind CSS&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg>
+                    </a>
+                  </td>
+                  <td>Styles extension interfaces, including themes and responsive layouts.</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a href="https://vitest.dev/" target="_blank" rel="noopener noreferrer" aria-describedby="new-tab-hint">
+                      Vitest&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg>
+                    </a>
+                  </td>
+                  <td>Runs unit and component tests.</td>
+                </tr>
+                <tr>
+                  <td>
+                    <a href="https://playwright.dev/" target="_blank" rel="noopener noreferrer" aria-describedby="new-tab-hint">
+                      Playwright&nbsp;<svg class="new-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg>
+                    </a>
+                  </td>
+                  <td>Automates browser interaction tests and website captures.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
         <div class="chapter" id="requirements" role="region" aria-labelledby="requirements-title">
           <div class="chapter-heading">
             <h2 id="requirements-title">Requirements</h2>
@@ -459,27 +520,6 @@ pnpm dev</code></pre>
                 refresh. The base preview remembers appearance, while dev-bar simulations reset it.
               </p>
             </details>
-          </div>
-        </section>
-        <section class="chapter" id="tech-stack" aria-labelledby="tech-stack-title">
-          <div class="chapter-heading">
-            <h2 id="tech-stack-title">Tech stack</h2>
-          </div>
-          <p class="prose">
-            Job Buddy targets Chrome Manifest V3. Its website uses plain HTML, CSS and JavaScript.
-          </p>
-          <div class="table-scroll">
-            <table>
-              <thead><tr><th>Technology</th><th>Purpose</th></tr></thead>
-              <tbody>
-                <tr><td>WXT</td><td>Builds the extension and runs its development server through Vite.</td></tr>
-                <tr><td>React</td><td>Renders the popup and options page interfaces.</td></tr>
-                <tr><td>TypeScript</td><td>Checks types across profile data, autofill logic and extension messages.</td></tr>
-                <tr><td>Tailwind CSS</td><td>Styles extension interfaces, including themes and responsive layouts.</td></tr>
-                <tr><td>Vitest</td><td>Runs unit and component tests.</td></tr>
-                <tr><td>Playwright</td><td>Automates browser interaction tests and website captures.</td></tr>
-              </tbody>
-            </table>
           </div>
         </section>
         <section class="chapter" id="commands" aria-labelledby="commands-title">

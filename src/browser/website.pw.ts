@@ -359,11 +359,17 @@ test('task links open new tabs with a visual hint and accessible description', a
     'aistudio.google.com',
     'console.cloud.google.com',
   ]);
-  const installationPages = new Set([
+  const toolPages = new Set([
     'https://nodejs.org/en/download',
     'https://pnpm.io/installation#installing-a-specific-version',
     'https://git-scm.com/install/',
     'https://www.google.com/chrome/',
+    'https://wxt.dev/',
+    'https://react.dev/',
+    'https://www.typescriptlang.org/',
+    'https://tailwindcss.com/',
+    'https://vitest.dev/',
+    'https://playwright.dev/',
   ]);
   for (const path of ['', 'developers/', 'demo/']) {
     await page.goto(origin + prefix + path);
@@ -372,7 +378,7 @@ test('task links open new tabs with a visual hint and accessible description', a
       const url = new URL(href!, page.url());
       const newTab =
         taskHosts.has(url.hostname) ||
-        installationPages.has(url.href) ||
+        toolPages.has(url.href) ||
         (!href!.startsWith('#') && url.pathname === prefix + 'demo/');
       if (newTab) {
         const panelId = await link.evaluate((el) => el.closest('[role="tabpanel"]')?.id);
@@ -663,7 +669,7 @@ for (const theme of ['light', 'dark'] as const) {
         if (width > 800 && (path === '' || path === 'developers/'))
           await expect(page.locator('.chapter-nav [aria-current="location"]')).toHaveAttribute(
             'href',
-            path === 'developers/' ? '#requirements' : '#start',
+            path === 'developers/' ? '#tech-stack' : '#start',
           );
         await expect
           .poll(() =>

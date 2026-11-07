@@ -786,8 +786,13 @@ pre code {
 .developer-guide .chapter {
   margin-top: 0;
 }
-.developer-guide #requirements {
+.developer-guide #tech-stack {
   border-top: 0;
+}
+#tech-stack td:first-child > a {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
 }
 .developer-guide tbody tr:last-child > td {
   border-bottom: 0;
