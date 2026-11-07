@@ -5,7 +5,7 @@ live in the [developer guide](https://myowinthein.github.io/job-buddy/developers
 
 - [Run locally](https://myowinthein.github.io/job-buddy/developers/#build)
 - [Configure Gemini and Drive](https://myowinthein.github.io/job-buddy/developers/#configuration)
-- [Commands and checks](https://myowinthein.github.io/job-buddy/developers/#commands)
+- [Commands](https://myowinthein.github.io/job-buddy/developers/#commands)
 - [Screenshots and videos](https://myowinthein.github.io/job-buddy/developers/#commands)
 - [Release setup](https://myowinthein.github.io/job-buddy/developers/#release)
 
