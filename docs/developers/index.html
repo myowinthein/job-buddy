@@ -283,18 +283,24 @@ pnpm dev</code></pre>
               </tbody>
             </table>
           </div>
-          <ul>
-            <li><code>.env</code> loads in every mode.</li>
-            <li><code>.env.development</code> loads for <code>pnpm dev</code>.</li>
-            <li><code>.env.production</code> loads for <code>pnpm build</code> and <code>pnpm zip</code>.</li>
-            <li>Local files, such as <code>.env.development.local</code>, override the matching file’s values.</li>
-            <li>Browser files, such as <code>.env.chrome</code>, load only for that browser.</li>
-          </ul>
           <p class="prose">
-            Restart <code>pnpm dev</code> after changing an env file. Keep real values out of Git.
-            See <a href="https://wxt.dev/guide/essentials/config/environment-variables.html">WXT’s supported env files</a> for all variants.
+            Restart <code>pnpm dev</code> after editing an env file to load the updated values.
           </p>
           <div class="detail-list">
+            <details>
+              <summary>Which env files does WXT support?</summary>
+              <ul>
+                <li><code>.env</code> loads in every mode.</li>
+                <li><code>.env.development</code> loads for <code>pnpm dev</code>.</li>
+                <li><code>.env.production</code> loads for <code>pnpm build</code> and <code>pnpm zip</code>.</li>
+                <li>Local files, such as <code>.env.development.local</code>, override the matching file’s values.</li>
+                <li>Browser files, such as <code>.env.chrome</code>, load only for that browser.</li>
+              </ul>
+              <p>
+                Keep real values out of Git. See
+                <a href="https://wxt.dev/guide/essentials/config/environment-variables.html">WXT’s supported env files</a> for all variants.
+              </p>
+            </details>
             <details id="drive-oauth">
               <summary>How do I configure Google Drive OAuth?</summary>
               <ol>
