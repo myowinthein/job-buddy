@@ -678,8 +678,46 @@
         ],
         "invariant": "FillLogField mutations inside recordDebug stay; MatchLayer is imported by fillLog.ts and mapper.ts and must be relocated, not deleted."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "afc10d3b9ad58eea694fb264adddcbe5bb3d7979",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "Removed the GET_DEBUG_SESSION handler, getDebugSession, the debug scanner, mapping and AI arrays, and src/autofill/debug.ts; MatchLayer moved to fillLog.ts and recordDebug became recordAIOutcome with its report-record updates unchanged.",
+          "A repo-wide search after the change finds no remaining reference to the removed API."
+        ],
+        "checks": [
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm exec eslint <changed files>",
+            "scope": "9 changed source and test files",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm exec vitest run src/autofill src/content.test.ts src/popup src/background.test.ts",
+            "scope": "affected autofill, content, popup and background suites",
+            "outcome": "34 files, 962 tests passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite",
+            "outcome": "140 files, 2562 tests passed in 5 runs. 2 runs also reported one unhandled EnvironmentTeardownError originating in src/devtools/bootstrap.test.ts, a file and import chain this change does not touch; 3 runs were clean."
+          },
+          {
+            "command": "pnpm test:browser",
+            "scope": "built production extension, 23 Playwright specs",
+            "outcome": "136 passed, 8 skipped, 3 failed in src/browser/quick-fill.pw.ts. The failures expect the old merge default for Quick Fill while commit 229dda7 changed the default to overwrite and did not update that spec; they are unrelated to this change (established from the source and the failure output, not from a baseline run)."
+          }
+        ]
+      }
     },
     {
       "id": "r-a77ebc70-b176-4275-b97e-2548a081b6bc",
