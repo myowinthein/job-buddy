@@ -75,7 +75,7 @@
     <div class="site-layout">
       <aside class="chapter-nav" aria-label="On this page">
         <p>Build and contribute</p>
-        <a href="#requirements">Requirements</a><a href="#build">Run locally</a><a href="#configuration">Configure integrations</a
+        <a href="#requirements">Requirements</a><a href="#build">Set up the project</a><a href="#configuration">Configure integrations</a
         ><a href="#dev-bar">Use the dev bar</a><a href="#architecture">Follow the code</a
         ><a href="#commands">Commands and checks</a><a href="#demo">Demo and captures</a
         ><a href="#release">Release setup</a>
@@ -84,7 +84,7 @@
         <details class="mobile-contents">
           <summary>On this page</summary>
           <nav aria-label="Page sections">
-            <a href="#requirements">Requirements</a><a href="#build">Run locally</a><a href="#configuration">Configure integrations</a
+            <a href="#requirements">Requirements</a><a href="#build">Set up the project</a><a href="#configuration">Configure integrations</a
             ><a href="#dev-bar">Use the dev bar</a><a href="#architecture">Follow the code</a
             ><a href="#commands">Commands and checks</a><a href="#demo">Demo and captures</a
             ><a href="#release">Release setup</a>
@@ -129,56 +129,46 @@
             </table>
           </div>
         </div>
-        <div class="intro" id="build">
-          <p class="intro-note">For developers</p>
-          <h1>Run locally</h1>
-          <p class="lede">
-            Start the extension with WXT, try changes with sample data, then test them on a job
-            form. There is no backend to set up.
-          </p>
-          <div class="intro-actions">
-            <a class="button" href="https://github.com/myowinthein/job-buddy">Open the repository</a>
+        <div class="chapter" id="build" role="region" aria-labelledby="build-title">
+          <div class="chapter-heading">
+            <h2 id="build-title">Set up the project</h2>
           </div>
-        </div>
-        <p class="prose">
-          Use Node.js 22 from <code>.nvmrc</code> and pnpm 11.7.0 from <code>package.json</code>.
-        </p>
-        <div class="code-block">
-          <button class="copy-code" type="button" aria-label="Copy setup commands">Copy</button>
-          <pre><code>git clone https://github.com/myowinthein/job-buddy.git
+          <p class="prose">Clone the repository, install its dependencies and start the development build.</p>
+          <div class="code-block">
+            <button class="copy-code" type="button" aria-label="Copy setup commands">Copy</button>
+            <pre><code>git clone https://github.com/myowinthein/job-buddy.git
 cd job-buddy
-nvm use
-corepack enable
 pnpm install
 pnpm dev</code></pre>
-        </div>
-        <p class="prose">
-          Installation generates WXT’s extension types. The dev server runs at
-          <code>http://127.0.0.1:3000</code> by default and opens a browser with the extension loaded.
-          Development builds use an amber logo. Production uses blue.
-        </p>
-        <div class="detail-list">
-          <details>
-            <summary>Can I use my regular Chrome profile?</summary>
-            <p>
-              Yes. This is useful for testing real Google sign-in, which may be restricted in the
-              browser opened by WXT.
-            </p>
-            <ol>
-              <li>Keep <code>pnpm dev</code> running.</li>
-              <li>Open <code>chrome://extensions/</code> and turn on Developer mode.</li>
-              <li>Click <strong>Load unpacked</strong> and choose <code>.output/chrome-mv3-dev/</code>.</li>
-              <li>Open the amber extension’s Settings to add your key or connect Drive.</li>
-            </ol>
-          </details>
-          <details>
-            <summary>When should I reload the extension or refresh a form?</summary>
-            <p>
-              WXT updates most edits while it runs. After changing content scripts, reload the
-              extension and refresh any form that was already open. Restart WXT after adding an
-              HTML entrypoint so it generates the new page.
-            </p>
-          </details>
+          </div>
+          <p class="prose">
+            <code>pnpm dev</code> opens a new Chrome window with the development extension loaded.
+            Look for the amber Job Buddy logo. The localhost address printed in the terminal
+            belongs to WXT’s development server.
+          </p>
+          <div class="detail-list">
+            <details>
+              <summary>Can I use my regular Chrome profile?</summary>
+              <p>
+                Yes. This is useful for testing real Google sign-in, which may be restricted in the
+                browser opened by WXT.
+              </p>
+              <ol>
+                <li>Keep <code>pnpm dev</code> running.</li>
+                <li>Open <code>chrome://extensions/</code> and turn on Developer mode.</li>
+                <li>Click <strong>Load unpacked</strong> and choose <code>.output/chrome-mv3-dev/</code>.</li>
+                <li>Open the amber extension’s Settings to add your key or connect Drive.</li>
+              </ol>
+            </details>
+            <details>
+              <summary>When should I reload the extension or refresh a form?</summary>
+              <p>
+                WXT updates most edits while it runs. After changing content scripts, reload the
+                extension and refresh any form that was already open. Restart WXT after adding an
+                HTML entrypoint so it generates the new page.
+              </p>
+            </details>
+          </div>
         </div>
         <section class="chapter" id="configuration" aria-labelledby="configuration-title">
           <div class="chapter-heading">
