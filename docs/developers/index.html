@@ -661,20 +661,19 @@ pnpm lint:fix</code></pre>
             </div>
             <div id="build-panel" role="tabpanel" aria-labelledby="build-tab" tabindex="0">
               <h3 class="command-purpose">Build</h3>
+              <div id="package-commands">
+                <p>Build production Chrome files in <code>.output/chrome-mv3/</code> to load unpacked or use in captures.</p>
+                <div class="code-block">
+                  <button class="copy-code" type="button" aria-label="Copy Chrome build command">Copy</button>
+                  <pre><code>pnpm build</code></pre>
+                </div>
+                <p>Build a Chrome Web Store ZIP in <code>.output/</code> for upload.</p>
+                <div class="code-block">
+                  <button class="copy-code" type="button" aria-label="Copy Chrome ZIP command">Copy</button>
+                  <pre><code>pnpm zip</code></pre>
+                </div>
+              </div>
               <div class="detail-list command-accordions">
-                <details id="package-commands" open>
-                  <summary>Build or package for Chrome</summary>
-                  <p>Build production Chrome files in <code>.output/chrome-mv3/</code> to load unpacked or use in captures.</p>
-                  <div class="code-block">
-                    <button class="copy-code" type="button" aria-label="Copy Chrome build command">Copy</button>
-                    <pre><code>pnpm build</code></pre>
-                  </div>
-                  <p>Build a Chrome Web Store ZIP in <code>.output/</code> for upload.</p>
-                  <div class="code-block">
-                    <button class="copy-code" type="button" aria-label="Copy Chrome ZIP command">Copy</button>
-                    <pre><code>pnpm zip</code></pre>
-                  </div>
-                </details>
                 <details id="firefox-packaging">
                   <summary>Build or package for Firefox</summary>
                   <p>Build production Firefox files in <code>.output/</code>.</p>
