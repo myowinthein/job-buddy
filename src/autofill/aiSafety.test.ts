@@ -147,7 +147,7 @@ it.each([true, false])(
       ]),
     );
     const counts = result();
-    await runAIAutofill([candidate()], profile, counts, [], undefined, { mode: 'overwrite' });
+    await runAIAutofill([candidate()], profile, counts, [], { mode: 'overwrite' });
     expect(sentFields()[0].multiple).toBe(true);
     expect(
       [...document.querySelector('select')!.selectedOptions].map((option) => option.value),
@@ -169,7 +169,7 @@ describe('AI choices and stale requests', () => {
       fetchMock.mockResolvedValue(
         response([{ fieldId: 'field_001', selectedOptions, confidence: 'high' }]),
       );
-      await runAIAutofill([], profile, result(), [], undefined, {
+      await runAIAutofill([], profile, result(), [], {
         mode: 'overwrite',
         checkboxGroups: groups.checkboxGroups,
         radioGroups: [],
@@ -187,7 +187,7 @@ describe('AI choices and stale requests', () => {
         { fieldId: 'field_001', selectedOptions: ['English', 'Invented'], confidence: 'high' },
       ]),
     );
-    await runAIAutofill([], profile, result(), [], undefined, {
+    await runAIAutofill([], profile, result(), [], {
       mode: 'overwrite',
       checkboxGroups: groups.checkboxGroups,
       radioGroups: [],
@@ -206,7 +206,7 @@ describe('AI choices and stale requests', () => {
         }),
     );
     const groups = scanForm();
-    const pending = runAIAutofill([], profile, result(), [], undefined, {
+    const pending = runAIAutofill([], profile, result(), [], {
       mode: 'overwrite',
       radioGroups: groups.radioGroups,
       checkboxGroups: [],

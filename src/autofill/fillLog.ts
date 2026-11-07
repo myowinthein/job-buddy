@@ -1,4 +1,12 @@
-import type { MatchLayer } from './debug';
+export type MatchLayer =
+  | 'learned'
+  | 'autocomplete'
+  | 'dictionary_exact'
+  | 'fuzzy'
+  | 'custom_link'
+  | 'checkbox_status'
+  | 'context'
+  | 'none';
 
 export type FillOutcome =
   | 'high_confidence'

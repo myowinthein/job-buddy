@@ -3,7 +3,6 @@ import {
   executeAutofill,
   undoAutofill,
   getLastResult,
-  getDebugSession,
   getFillLog,
   cancelAutofillRun,
 } from '@/src/autofill/index';
@@ -138,11 +137,6 @@ export default defineContentScript({
 
       if (message.action === 'GET_STATUS') {
         sendResponse(getLastResult());
-        return true;
-      }
-
-      if (message.action === 'GET_DEBUG_SESSION') {
-        sendResponse(getDebugSession());
         return true;
       }
 

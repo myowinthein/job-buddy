@@ -37,13 +37,6 @@ import { confirmFieldFeedback } from './fieldFeedback';
 import { watchLearning } from './learning';
 import { runAIAutofill } from './ai';
 import type { AITextCandidate, AIAutofillStatus } from './ai';
-import type {
-  DebugSession,
-  DebugScanField,
-  DebugMappingField,
-  DebugAIField,
-  FieldFinalState,
-} from './debug';
 import { summarizeFillFields, safeFormUrl } from './fillLog';
 import { requiredField, reportTitle } from '@/src/fill-log/fieldMetadata';
 import type { FillLogField, FrameFillLog, LearnedCheck } from './fillLog';
@@ -156,13 +149,6 @@ function syncFillLogResult(result: AutofillResult | null = lastResult): void {
     kept: counts.kept, excluded: counts.excluded, failed: counts.failed, manual: counts.manual,
     runId: fillLog.runId, startedAt: fillLog.startedAt,
   });
-  if (debugSession)
-    debugSession.summary   = {
-      green:  result.noReview,
-      yellow: result.needReview,
-      red:    result.lowConfidence,
-      gray:   result.noData,
-    };
 }
 
 function refreshTrackedField(element: HTMLElement): void {
@@ -318,22 +304,12 @@ export function getLastResult(): AutofillResult | null {
   return lastResult;
 }
 
-// In-memory debug session from the most recent scan/fill cycle. Cleared on
-// each scanAutofill() call. Lost on tab close or page reload — not persisted.
-let debugSession: DebugSession | null = null;
-
-export function getDebugSession(): DebugSession | null {
-  getFillLog();
-  return debugSession;
-}
-
 // Scan results held between AUTOFILL_SCAN and AUTOFILL_FILL messages.
 interface PendingMatch {
   element:          HTMLElement;
   signals:          FieldSignals;
   match:            FieldMatch;
   hasExistingValue: boolean;
-  debugFieldId:     string;
 }
 let pendingMatches: PendingMatch[] = [];
 
@@ -519,7 +495,6 @@ export async function scanAutofill(
   pendingMatches = [];
   sessionElements = [];
   lastResult      = null;
-  debugSession    = null;
 
   const profile = await getProfile();
   if (generation !== sessionGeneration) return { preFilledCount: 0, totalMatched: 0 };
@@ -556,7 +531,6 @@ export async function scanAutofill(
 
   let preFilledCount = 0;
   let totalMatched   = 0;
-  const debugScanner: DebugScanField[] = [];
   const scanned = fields.map((element, i) => {
     const signals = snapshot.signals(element);
     const learned: LearnedCheck = { status: 'not_checked' };
@@ -566,7 +540,7 @@ export async function scanAutofill(
       signals,
       match: { ...match, element },
       learned,
-      debugFieldId: `field_${String(i + 1).padStart(3, '0')}`,
+      recordId: `field_${String(i + 1).padStart(3, '0')}`,
     };
   });
 
@@ -601,9 +575,9 @@ export async function scanAutofill(
   const checkboxGroups = snapshot.checkboxGroups;
   pendingRadioGroups = snapshot.radioGroups;
   pendingCheckboxGroups = checkboxGroups;
-  for (const { element, signals, match, learned, debugFieldId } of scanned) {
+  for (const { element, signals, match, learned, recordId } of scanned) {
     const record: FillLogField = {
-      id: debugFieldId,
+      id: recordId,
       label: reportTitle(bestLabel(signals), 'text', fillLog!.fields.length + 1),
       required: requiredField([element], bestLabel(signals)),
       kind:
@@ -677,7 +651,7 @@ export async function scanAutofill(
       value:      'Yes',
       matchLayer: 'checkbox_status' as const,
     },
-    debugFieldId: `field_${String(fields.length + i + 1).padStart(3, '0')}`,
+    recordId: `field_${String(fields.length + i + 1).padStart(3, '0')}`,
   }));
   scanned.push(...checkboxScanned);
 
@@ -685,7 +659,7 @@ export async function scanAutofill(
   for (const group of [...pendingRadioGroups, ...checkboxGroups]) {
     if (!group.isConsent && !isConsentGroup(group)) for (const option of group.options) if (isChoiceChecked(option.element)) prefilledRecords.add(fieldRecords.get(option.element)!);
   }
-  scanned.forEach(({ element, signals, match, debugFieldId }) => {
+  scanned.forEach(({ element, signals, match }) => {
     Object.assign(fieldRecords.get(element)!.rule, {
       ran: match.matchLayer !== 'learned' && !('ruleBlocked' in match && match.ruleBlocked),
       layer: match.matchLayer,
@@ -700,26 +674,8 @@ export async function scanAutofill(
       totalMatched++;
     }
 
-    debugScanner.push({
-      fieldId: debugFieldId,
-      label:   bestLabel(signals),
-      type:    signals.type,
-      name:    signals.name,
-      id:      signals.id,
-    });
-
-    pendingMatches.push({ element, signals, match, hasExistingValue, debugFieldId });
+    pendingMatches.push({ element, signals, match, hasExistingValue });
   });
-
-  // Seed an initial debug session — mapping/ai/summary are populated by executeAutofill.
-  debugSession = {
-    timestamp: Date.now(),
-    scanner:   debugScanner,
-    mapping:   [],
-    ai:        [],
-    summary:   { green: 0, yellow: 0, red: 0, gray: 0 },
-    aiSkipped: false,
-  };
 
   preFilledCount = prefilledRecords.size;
   pendingReady = true;
@@ -796,7 +752,6 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   };
   const editableFields: EditableField[] = [];
   const aiTextCandidates: AITextCandidate[] = [];
-  const debugMapping: DebugMappingField[] = [];
   if (fillLog) fillLog.mode = mode;
   if (mode === 'merge') for (const [record, elements] of recordElements) {
     if (record.outcome !== 'excluded' && (recordValues.get(record) || recordValue(record))) {
@@ -813,7 +768,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   clearMissingDataHighlights();
   noDataFields = [];
 
-  for (const { element, signals, match, hasExistingValue, debugFieldId } of matchesToFill) {
+  for (const { element, signals, match, hasExistingValue } of matchesToFill) {
     if (!isActive()) return interrupted();
     const record = fieldRecords.get(element)!;
     const choiceGroup = isChoice(element)
@@ -842,18 +797,11 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       record.outcome = 'kept';
       record.rule.outcome = 'kept';
       record.reason = 'existing_value';
-      // For debug: pre-filled merge skip is reported as the would-have-been state.
-      debugMapping.push({
-        fieldId: debugFieldId, matchLayer: match.matchLayer, confidence: match.confidence,
-        profilePath: match.fieldPath,
-        finalState: match.confidence < CONF_FILL ? 'red' : !match.value ? 'gray' : match.confidence >= CONF_GREEN ? 'green' : 'yellow',
-      });
       continue;
     }
 
     const isFileInput = element instanceof HTMLInputElement && element.type === 'file';
     const isCheckboxInput = isChoice(element);
-    let finalState: FieldFinalState;
 
     if (match.confidence >= CONF_FILL && match.value) {
       // Confident match with profile data → fill and highlight.
@@ -883,10 +831,6 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // Reconstruction failed (corrupt base64, etc.). Log already emitted by
         // fillFileField; silently skip this element so the rest of the run
         // continues uninterrupted.
-        debugMapping.push({
-          fieldId: debugFieldId, matchLayer: match.matchLayer, confidence: match.confidence,
-          profilePath: match.fieldPath, finalState: 'gray',
-        });
         if (!isFileInput && !isCheckboxInput && !match.ruleBlocked) {
           applyHighlight(element, 0);
           editableFields.push({ element, state: 'lowConfidence' });
@@ -895,7 +839,6 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
             element,
             signals,
             originalState: 'lowConfidence',
-            debugFieldId,
           });
         }
         continue;
@@ -910,7 +853,6 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
 
       if (writtenConfidence >= CONF_GREEN) {
         result.noReview++;
-        finalState = 'green';
       } else {
         result.needReview++;
         // File/checkbox inputs are excluded from edit-watching — file
@@ -923,10 +865,8 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
             element,
             signals,
             originalState: 'needReview',
-            debugFieldId,
           });
         }
-        finalState = 'yellow';
       }
     } else if (match.confidence < CONF_FILL) {
       record.rule.outcome = 'not_matched';
@@ -941,10 +881,8 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
           element,
           signals,
           originalState: 'lowConfidence',
-          debugFieldId,
         });
       }
-      finalState = 'red';
     } else {
       record.rule.outcome = 'missing_data';
       record.outcome = 'missing_data';
@@ -966,17 +904,10 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
             element,
             signals,
             originalState: 'noData',
-            debugFieldId,
           });
         }
       }
-      finalState = 'gray';
     }
-
-    debugMapping.push({
-      fieldId: debugFieldId, matchLayer: match.matchLayer, confidence: match.confidence,
-      profilePath: match.fieldPath, finalState,
-    });
   }
 
   pendingMatches = [];
@@ -986,10 +917,9 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   // all entries are resolved.
   if (noDataFields.length > 0) ensureVisibilityListener();
 
-  const debugAI: DebugAIField[] = [];
   const aiStates = new Map<HTMLElement, 'green' | 'yellow'>();
   let aiStatus: AIAutofillStatus | undefined;
-  const aiRan = await runAIAutofill(aiTextCandidates, profile, result, ownedElements, debugAI, {
+  const aiRan = await runAIAutofill(aiTextCandidates, profile, result, ownedElements, {
     mode,
     isActive,
     signal: abortSignal,
@@ -1041,20 +971,6 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     );
     editableFields.length = 0;
     editableFields.push(...filteredEditableFields);
-  }
-
-  // Finalise debug session — scanner was seeded in scanAutofill; fill in the rest.
-  if (debugSession) {
-    debugSession.mapping   = debugMapping;
-    debugSession.ai        = debugAI;
-    debugSession.aiSkipped = !aiRan;
-    debugSession.aiStatus = result.aiStatus;
-    debugSession.summary   = {
-      green:  result.noReview,
-      yellow: result.needReview,
-      red:    result.lowConfidence,
-      gray:   result.noData,
-    };
   }
 
   // Store before attaching edit watchers — the result object is mutated in

@@ -10,7 +10,6 @@ vi.mock('@/src/autofill/index', () => ({
   executeAutofill: vi.fn(),
   undoAutofill: vi.fn(),
   getLastResult: vi.fn(),
-  getDebugSession: vi.fn(),
   getFillLog: vi.fn(),
   cancelAutofillRun: vi.fn(),
 }));
@@ -29,7 +28,7 @@ const { onMessageAddListener } = vi.hoisted(() => {
 
 import contentScript from '@/entrypoints/content';
 import {
-  scanAutofill, executeAutofill, undoAutofill, getLastResult, getDebugSession, getFillLog, cancelAutofillRun,
+  scanAutofill, executeAutofill, undoAutofill, getLastResult, getFillLog, cancelAutofillRun,
 } from '@/src/autofill/index';
 
 import { getGeminiSettings } from '@/src/utils/storage';
@@ -202,14 +201,6 @@ describe('content script — message dispatcher', () => {
     getListener()({ action: 'GET_STATUS' }, {}, sendResponse);
 
     expect(sendResponse).toHaveBeenCalledWith({ noReview: 3, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 3 });
-  });
-
-  it('routes GET_DEBUG_SESSION to getDebugSession synchronously', () => {
-    vi.mocked(getDebugSession).mockReturnValue(null);
-    const sendResponse = vi.fn();
-    getListener()({ action: 'GET_DEBUG_SESSION' }, {}, sendResponse);
-
-    expect(sendResponse).toHaveBeenCalledWith(null);
   });
 
   it('does not respond to an unrecognized action', () => {

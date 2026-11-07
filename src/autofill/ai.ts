@@ -18,7 +18,6 @@ import { applyHighlight, applyMissingDataHighlight } from './highlighter';
 import { CONF_CONFIRMED, CONF_AI_YELLOW, CONF_GREEN, CONF_NO_MATCH } from './constants';
 import { getGeminiApiKey, getGeminiModel } from '../utils/storage';
 import { isSkippableOption } from './normalizer';
-import type { DebugAIField } from './debug';
 import type { AutofillResult } from './index';
 import type { AIOutcome, FillLogField } from './fillLog';
 
@@ -30,8 +29,6 @@ export interface AITextCandidate {
   element:          HTMLElement;
   signals:          FieldSignals;
   originalState:    'needReview' | 'lowConfidence' | 'noData';
-  /** Debug-only: ID assigned during scanAutofill so the debug panel can join scanner → mapping → AI. */
-  debugFieldId?:    string;
 }
 
 // Extracts real (non-placeholder, non-disabled) options from a select element.
@@ -71,7 +68,6 @@ export async function runAIAutofill(
   profile: Profile,
   result: MutableResult,
   sessionElements: HTMLElement[],
-  debug?: DebugAIField[],
   options: AIAutofillOptions = {},
 ): Promise<boolean> {
   let apiKey: string | null, storedModel: string | null;
@@ -217,44 +213,27 @@ export async function runAIAutofill(
     return true;
   }
 
-  // Debug-only helper: append a debug record for an AI response.
-  const recordDebug = (
+  // Records the AI outcome on the field's report record.
+  const recordAIOutcome = (
     candidate: Candidate,
     fieldId: string,
-    aiResult: string | null,
     aiConfidence: 'high' | 'low' | null,
     finalState: 'green' | 'yellow' | 'unchanged',
     aiOutcome?: AIOutcome,
   ) => {
     const record = candidateRecords.get(fieldId);
-    if (record) {
-      record.ai.confidence = aiConfidence;
-      if (finalState === 'unchanged') {
-        record.ai.outcome = aiOutcome ?? 'not_matched';
-        if (aiOutcome === 'missing_data' && record.rule.outcome !== 'filled') record.outcome = 'missing_data';
-        if (aiOutcome === 'fill_failed' && record.rule.outcome !== 'filled') { record.outcome = 'failed'; record.reason = 'fill_failed'; }
-      } else {
-        record.ai.outcome = record.rule.outcome === 'filled' ? 'refined' : 'filled';
-        record.ai.optionReview = candidate.type === 'text' && getWriteConfidence(candidate.element) < CONF_GREEN;
-        record.outcome = finalState === 'green' ? 'high_confidence' : 'review';
-        record.source = 'ai';
-      }
+    if (!record) return;
+    record.ai.confidence = aiConfidence;
+    if (finalState === 'unchanged') {
+      record.ai.outcome = aiOutcome ?? 'not_matched';
+      if (aiOutcome === 'missing_data' && record.rule.outcome !== 'filled') record.outcome = 'missing_data';
+      if (aiOutcome === 'fill_failed' && record.rule.outcome !== 'filled') { record.outcome = 'failed'; record.reason = 'fill_failed'; }
+    } else {
+      record.ai.outcome = record.rule.outcome === 'filled' ? 'refined' : 'filled';
+      record.ai.optionReview = candidate.type === 'text' && getWriteConfidence(candidate.element) < CONF_GREEN;
+      record.outcome = finalState === 'green' ? 'high_confidence' : 'review';
+      record.source = 'ai';
     }
-    if (!debug) return;
-    const label =
-      candidate.type === 'text' ? bestLabel(candidate.signals) : candidate.group.groupLabel;
-    const debugId =
-      candidate.type === 'text'
-        ? (candidate.debugFieldId ?? fieldId)
-        : `ai_${candidate.type}_${fieldId}`;
-    debug.push({
-      fieldId: debugId,
-      label,
-      type: candidate.type,
-      aiResult,
-      aiConfidence,
-      finalState,
-    });
   };
 
   const handled = new Set<string>();
@@ -286,7 +265,7 @@ export async function runAIAutofill(
         (candidate.type !== 'text' && resp.profilePath != null) ||
         (candidate.type === 'radio' && resp.selectedOptions != null) ||
         (candidate.type === 'checkbox' && resp.selectedOption != null)) {
-      recordDebug(candidate, resp.fieldId, null, resp.confidence, 'unchanged');
+      recordAIOutcome(candidate, resp.fieldId, resp.confidence, 'unchanged');
       continue;
     }
     if (tracked && resp.profilePath) tracked.ai.profilePath = resp.profilePath;
@@ -304,7 +283,7 @@ export async function runAIAutofill(
     const fieldId = resp.fieldId;
 
     if (resp.confidence === null) {
-      recordDebug(candidate, fieldId, null, null, 'unchanged');
+      recordAIOutcome(candidate, fieldId, null, 'unchanged');
       continue;
     }
 
@@ -317,7 +296,7 @@ export async function runAIAutofill(
       // instead of or in addition to profilePath. Prefer selectedOption for selects.
       const hasActionable = resp.profilePath || (isSelect && (resp.selectedOption || resp.selectedOptions));
       if (!hasActionable) {
-        recordDebug(candidate, fieldId, null, resp.confidence, 'unchanged');
+        recordAIOutcome(candidate, fieldId, resp.confidence, 'unchanged');
         continue;
       }
 
@@ -326,14 +305,14 @@ export async function runAIAutofill(
       if (candidate.element instanceof HTMLSelectElement && candidate.element.multiple && resp.selectedOptions) {
         const selected = resp.selectedOptions.map(answer => exactAIOption(field.options ?? [], answer));
         if (selected.some(option => !option) || selected.some(option => field.options!.filter(item => item.value === option!.value).length !== 1)) {
-          recordDebug(candidate, fieldId, null, resp.confidence, 'unchanged'); continue;
+          recordAIOutcome(candidate, fieldId, resp.confidence, 'unchanged'); continue;
         }
         value = [...new Set(selected.map(option => option!.value))];
       } else if (isSelect && resp.selectedOption) {
         const selected = exactAIOption(field.options ?? [], resp.selectedOption);
         // Duplicate native values cannot identify a particular option reliably.
         if (!selected || field.options!.filter(option => option.value === selected.value).length !== 1) {
-          recordDebug(candidate, fieldId, null, resp.confidence, 'unchanged'); continue;
+          recordAIOutcome(candidate, fieldId, resp.confidence, 'unchanged'); continue;
         }
         value = [selected.value];
       } else if (resp.profilePath) {
@@ -347,9 +326,6 @@ export async function runAIAutofill(
         }
       }
 
-      const aiResult =
-        isSelect && resp.selectedOption ? resp.selectedOption : (resp.profilePath ?? null);
-
       const liveValue = readFieldValue(candidate.element);
       if (liveValue !== valuesAtRequest.get(candidate.element)) {
         if (tracked) { tracked.ai.outcome = 'skipped'; tracked.ai.skipReason = 'answer_changed'; tracked.outcome = liveValue.trim() ? 'manual' : 'not_matched'; tracked.source = 'manual'; tracked.reason = 'value_changed'; }
@@ -360,7 +336,7 @@ export async function runAIAutofill(
           if (optionUnavailable) applyHighlight(candidate.element, CONF_NO_MATCH);
           else applyMissingDataHighlight(candidate.element);
         }
-        recordDebug(candidate, fieldId, aiResult, resp.confidence, 'unchanged', optionUnavailable ? 'fill_failed' : 'missing_data');
+        recordAIOutcome(candidate, fieldId, resp.confidence, 'unchanged', optionUnavailable ? 'fill_failed' : 'missing_data');
         if (optionUnavailable && tracked && tracked.rule.outcome !== 'filled') tracked.reason = 'option_unavailable';
         continue;
       }
@@ -377,7 +353,7 @@ export async function runAIAutofill(
       if (!isActive()) break;
       if (filled === false) {
         if (!alreadyOwned) sessionElements.splice(sessionElements.indexOf(candidate.element), 1);
-        recordDebug(candidate, fieldId, aiResult, resp.confidence, 'unchanged', 'fill_failed');
+        recordAIOutcome(candidate, fieldId, resp.confidence, 'unchanged', 'fill_failed');
         continue;
       }
       if (getWriteConfidence(candidate.element) < CONF_GREEN) { isHigh = false; confScore = CONF_AI_YELLOW; }
@@ -402,39 +378,33 @@ export async function runAIAutofill(
         result.needReview++;
       }
       options.onTextFilled?.(candidate.element, isHigh ? 'green' : 'yellow');
-      recordDebug(candidate, fieldId, aiResult, resp.confidence, isHigh ? 'green' : 'yellow');
+      recordAIOutcome(candidate, fieldId, resp.confidence, isHigh ? 'green' : 'yellow');
     } else if (candidate.type === 'radio' && resp.selectedOption) {
       const group = candidate.group as RadioGroup;
       const selected = exactAIOption(field.options ?? [], resp.selectedOption);
       const option = selected ? group.options[(field.options ?? []).indexOf(selected)] : null;
       if (!option) {
-        recordDebug(candidate, fieldId, resp.selectedOption, resp.confidence, 'unchanged');
+        recordAIOutcome(candidate, fieldId, resp.confidence, 'unchanged');
         continue;
       }
 
       if (await fillRadioInput(option.element) === false) {
-        recordDebug(candidate, fieldId, resp.selectedOption, resp.confidence, 'unchanged', 'fill_failed');
+        recordAIOutcome(candidate, fieldId, resp.confidence, 'unchanged', 'fill_failed');
         continue;
       }
       applyHighlight(option.element, confScore);
       sessionElements.push(option.element);
       if (isHigh) result.noReview++;
       else result.needReview++;
-      recordDebug(
-        candidate,
-        fieldId,
-        resp.selectedOption,
-        resp.confidence,
-        isHigh ? 'green' : 'yellow',
-      );
+      recordAIOutcome(candidate, fieldId, resp.confidence, isHigh ? 'green' : 'yellow');
     } else if (candidate.type === 'checkbox' && Array.isArray(resp.selectedOptions)) {
       const group = candidate.group as CheckboxGroup;
       const selected = resp.selectedOptions.map(answer => exactAIOption(field.options ?? [], answer));
       if (selected.some(option => !option)) {
-        recordDebug(candidate, fieldId, null, resp.confidence, 'unchanged'); continue;
+        recordAIOutcome(candidate, fieldId, resp.confidence, 'unchanged'); continue;
       }
       if (!selected.length && group.options.some(option => (option.element instanceof HTMLInputElement && option.element.required) || option.element.getAttribute('aria-required') === 'true')) {
-        recordDebug(candidate, fieldId, null, resp.confidence, 'unchanged'); continue;
+        recordAIOutcome(candidate, fieldId, resp.confidence, 'unchanged'); continue;
       }
       const selectedIndices = new Set(selected.map(option => field.options!.indexOf(option!)));
       let allFilled = true;
@@ -455,11 +425,10 @@ export async function runAIAutofill(
         if (isHigh) result.noReview++;
         else result.needReview++;
       }
-      recordDebug(candidate, fieldId, resp.selectedOptions.join(', '), resp.confidence,
-        allFilled ? (isHigh ? 'green' : 'yellow') : 'unchanged', allFilled ? undefined : 'fill_failed');
+      recordAIOutcome(candidate, fieldId, resp.confidence, allFilled ? (isHigh ? 'green' : 'yellow') : 'unchanged', allFilled ? undefined : 'fill_failed');
     } else {
       // No actionable response shape (e.g. text without profilePath)
-      recordDebug(candidate, fieldId, null, resp.confidence, 'unchanged');
+      recordAIOutcome(candidate, fieldId, resp.confidence, 'unchanged');
     }
   }
 

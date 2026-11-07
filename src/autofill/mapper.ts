@@ -5,7 +5,7 @@ import { normalize, similarity } from './normalizer';
 import { ruleQuestionBlocked } from './ruleContext';
 import { FIELD_DICTIONARY } from './dictionary';
 import { resolveProfileValue } from './resolver';
-import type { MatchLayer } from './debug';
+import type { MatchLayer } from './fillLog';
 import type { LearnedCheck } from './fillLog';
 import { validMapping } from '../utils/learnedMappingData';
 import { sectionFamily } from './ruleContext';
