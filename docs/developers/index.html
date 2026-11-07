@@ -638,14 +638,14 @@ pnpm build</code></pre>
                   </div>
                 </details>
                 <details id="cleanup-commands">
-                  <summary>Format code or fix lint issues</summary>
-                  <p>Pass the paths you edited to limit formatting and automatic lint fixes to those files.</p>
+                  <summary>Format and lint</summary>
+                  <p>Format a file and apply automatic lint fixes, replacing <code>path/to/file</code> with its path.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy scoped cleanup commands">Copy</button>
                     <pre><code>pnpm prettier -w path/to/file
 pnpm eslint path/to/file --fix</code></pre>
                   </div>
-                  <p>For cleanup across the whole repository, use these shortcuts.</p>
+                  <p>Format files and apply automatic lint fixes across the repository.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy repository cleanup commands">Copy</button>
                     <pre><code>pnpm format
