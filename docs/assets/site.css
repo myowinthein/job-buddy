@@ -338,68 +338,12 @@ main :where(p, ul, ol, dd, figcaption) {
 .prose > p:last-child {
   margin-bottom: 0;
 }
-.split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 34px;
-  align-items: start;
-  margin-top: 28px;
-}
-.split > :first-child,
-.split > :last-child {
-  min-width: 0;
-}
-.split h3 {
-  margin-top: 0;
-}
 ul,
 ol {
   padding-left: 22px;
 }
 li {
   margin: 7px 0;
-}
-.steps {
-  counter-reset: steps;
-  list-style: none;
-  padding: 0;
-  margin: 28px 0;
-  max-width: var(--reading-width);
-}
-.steps li {
-  display: grid;
-  grid-template-columns: 26px minmax(0, 1fr);
-  gap: 16px;
-  margin: 19px 0;
-}
-.steps li::before {
-  counter-increment: steps;
-  content: counter(steps);
-  font-size: 13px;
-  padding-top: 3px;
-  color: var(--link);
-}
-.steps strong {
-  display: block;
-}
-.facts {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 32px;
-  margin: 27px 0 0;
-}
-.facts > div {
-  padding: 14px 0;
-  border-bottom: 1px solid var(--line);
-}
-.facts dt {
-  font-weight: 600;
-  font-size: 14px;
-}
-.facts dd {
-  margin: 5px 0 0;
-  color: var(--muted);
-  font-size: 14px;
 }
 .note {
   border-left: 2px solid var(--brand);
@@ -408,16 +352,6 @@ li {
   color: var(--muted);
   font-size: 14px;
   max-width: var(--reading-width);
-}
-.category-list {
-  columns: 2;
-  padding-left: 20px;
-  font-size: 14px;
-  color: var(--muted);
-}
-.category-list li {
-  break-inside: avoid;
-  margin-top: 0;
 }
 .color-key {
   margin: 12px 0 24px;
@@ -516,11 +450,6 @@ pre code {
   border-radius: 5px;
   font-size: 12px;
   padding: 4px 8px;
-}
-.sources {
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: 17px;
 }
 .site-footer {
   border-top: 1px solid var(--line);
@@ -679,17 +608,6 @@ pre code {
   }
   .lede {
     font-size: 18px;
-  }
-  .split,
-  .facts {
-    grid-template-columns: 1fr;
-    gap: 19px;
-  }
-  .facts {
-    gap: 0;
-  }
-  .category-list {
-    columns: 1;
   }
   .intro-actions .button {
     width: 100%;
@@ -989,9 +907,6 @@ pre code {
   margin: 16px 0 0;
   color: var(--muted);
   font-size: 14px;
-}
-.essential {
-  margin-top: 24px;
 }
 @media (max-width: 800px) {
   :is(.walkthrough, .developer-guide) {
