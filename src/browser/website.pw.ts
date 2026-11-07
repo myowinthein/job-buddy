@@ -215,6 +215,7 @@ test('command instructions remain available without JavaScript', async ({ browse
     await page.goto(origin + prefix + 'developers/#commands');
     await expect(page.getByRole('tablist', { name: 'Command purpose' })).toBeHidden();
     await expect(page.getByRole('tabpanel')).toHaveCount(4);
+    await page.locator('#demo > summary').click();
     await expect(page.locator('#video-capture pre')).toContainText('node scripts/capture-demo-motion.mjs');
   } finally {
     await context.close();
