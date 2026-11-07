@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "assessed_commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
-  "full_scan_commit": "b6b8cbdaf54705837402d9d6abefbdab2f92416a",
+  "assessed_commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+  "full_scan_commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
   "findings": [
     {
       "id": "r-5bd45a4c-b50a-4438-85c3-28d2faa8d1a3",
@@ -584,6 +584,1298 @@
           }
         ]
       }
+    },
+    {
+      "id": "r-0573cd88-3c62-42fe-a0c1-2b1b9e24f068",
+      "category": "Consistency",
+      "summary": "Autofill setup and failure codes are bare strings spread over the coordinator, content script, popup and Quick Fill",
+      "paths": [
+        "src/autofill/runCoordinator.ts",
+        "entrypoints/content.ts",
+        "entrypoints/popup/App.tsx",
+        "src/quick-fill/background.ts",
+        "src/quick-fill/widget.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "Renaming or adding a code means finding about 25 literals, and a typo silently misroutes UI state.",
+        "evidence": [
+          "content.ts emits ai_settings_unavailable, ai_setup_required and autofill_failed at lines 21-114; runCoordinator.ts uses the same codes at 122-291; popup App.tsx compares them at 188-193.",
+          "quick-fill/background.ts:7-10, 82-90 and 103-111 and widget.ts:273-274 each regroup the four setup codes by hand; AutofillRun.error is typed string."
+        ],
+        "invariant": "Wire and persisted strings stay identical; the profile group still focuses field-firstName, the AI group gemini-api-key, other errors stay Try Again."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-22c67511-1b09-40c2-b7bf-b99fca385581",
+      "category": "Consistency",
+      "summary": "The autofill result contract is described three times: popup type and merge, Quick Fill status casts and the persisted key list",
+      "paths": [
+        "entrypoints/popup/App.tsx",
+        "src/autofill/index.ts",
+        "src/quick-fill/status.ts",
+        "src/autofill/runCoordinator.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "A new count field needs edits in three places and the compiler cannot catch a miss.",
+        "evidence": [
+          "popup App.tsx:18-90 declares its own AutofillResult (omits manual, widens aiStatus) and a private mergeAutofillResults; index.ts:57-71 exports the real one.",
+          "quick-fill/status.ts re-sums results through Record casts without run-ID filtering; runCoordinator.ts:240-256 lists persisted keys by hand and omits manual."
+        ],
+        "invariant": "Popup and Quick Fill totals and Quick Fill's deliberately different attention semantics stay unchanged; the persisted key set stays as is until a separate decision."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-b00a7ff3-651c-4092-8334-e544f54efa5e",
+      "category": "Code Quality",
+      "summary": "The autofill debug-session pipeline has no consumer",
+      "paths": [
+        "src/autofill/debug.ts",
+        "src/autofill/index.ts",
+        "entrypoints/content.ts",
+        "src/autofill/ai.ts",
+        "src/content.test.ts",
+        "src/autofill/ai.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "Maintainers keep debug arrays, a debug parameter, debugFieldId and aiSkipped consistent although nothing reads them.",
+        "evidence": [
+          "Repo-wide search of src, entrypoints and docs finds GET_DEBUG_SESSION only at the content.ts:144 handler and in tests; popup App.test.tsx:355 asserts the popup never sends it.",
+          "debugSession.aiSkipped is written at index.ts:721 and 1050 and never read; ai.ts:33 still mentions a debug panel that no longer exists."
+        ],
+        "invariant": "FillLogField mutations inside recordDebug stay; MatchLayer is imported by fillLog.ts and mapper.ts and must be relocated, not deleted."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-a77ebc70-b176-4275-b97e-2548a081b6bc",
+      "category": "Code Quality",
+      "summary": "The Web Lock with in-memory queue fallback is hand-copied in at least six modules",
+      "paths": [
+        "src/utils/profileWriteLock.ts",
+        "src/utils/learnedMappingsLock.ts",
+        "src/utils/storage.ts",
+        "src/fill-log/retention.ts",
+        "src/fill-log/navigation.ts",
+        "src/utils/driveSync.ts",
+        "src/quick-fill/preferences.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "Changing lock semantics or dev namespacing means editing and re-verifying every copy, and the copies already differ.",
+        "evidence": [
+          "profileWriteLock.ts and learnedMappingsLock.ts are near-identical; retention.ts:18-27 and navigation.ts:11-22 repeat the same shape; storage.ts:404 has no fallback and quick-fill/preferences.ts:54 skips devLockName.",
+          "writeLocks.test.ts covers only the first two; the Gemini, navigation and retention fallbacks are untested."
+        ],
+        "invariant": "Lock names stay identical, devLockName applies under import.meta.env.DEV, each lock keeps its own queue, and a failed action still lets the next run; driveSync's queue-plus-lock variant stays unless confirmed."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-9af63bd9-2c13-4611-ae37-3a97d4dd11f3",
+      "category": "Code Quality",
+      "summary": "The Fill Details help popover is a near-copy of the Learned Mappings help popover",
+      "paths": [
+        "src/components/fill-log/FillDetailsHelp.tsx",
+        "src/components/options/LearnedMappingsHelp.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "Focus, timer and outside-click fixes must be made twice, and the copies have already diverged.",
+        "evidence": [
+          "Both implement the same hover, focus and pin behaviour with a 150 ms close timer and useAnchoredPanel(open, root, 384, 360, true).",
+          "FillDetailsHelp.tsx keeps pinned in a ref while LearnedMappingsHelp.tsx keeps it in state."
+        ],
+        "invariant": "Open, pin, Escape and blur semantics asserted in FillLogPage.test.tsx and LearnedMappingsSection.test.tsx stay intact."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-73b0d6d0-64f4-4801-9161-0bc4d31ef2f0",
+      "category": "Code Quality",
+      "summary": "SettingsSection repeats the lock, reload, assert-current and save import sequence three times",
+      "paths": [
+        "src/components/options/SettingsSection.tsx",
+        "src/components/options/ResumeImportSection.tsx",
+        "src/components/options/SettingsSection.test.tsx",
+        "src/components/options/SettingsSection.integration.test.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "An import rule change must be made in three places inside a 1,300-line component, and the mappings-argument ternaries already differ.",
+        "evidence": [
+          "JSON first import (about L406-413), JSON update (L450-459) and Drive restore (L736-747) each run withProfileWriteLock, getProfile, assertImportCurrent, pick and saveImportedData.",
+          "The refresh after ImportProfileChangedError exists twice (L468-479 and refreshDriveImport L680-692)."
+        ],
+        "invariant": "The lock wraps the reload and the write, the empty-case shortcut stays Drive-only, and each flow keeps its own toasts."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-6b90baf7-b719-4d89-bfd8-53ff7aa36af3",
+      "category": "Consistency",
+      "summary": "The string-or-counted mapping path rule is copied by hand in eight or more files and its helper and type live in a UI view module",
+      "paths": [
+        "src/components/options/learnedMappingsView.ts",
+        "src/utils/storage.ts",
+        "src/utils/learnedMappingData.ts",
+        "src/utils/learnedMappingProfile.ts",
+        "src/utils/learnedMappingRepair.ts",
+        "src/utils/backupImport.ts",
+        "src/learned-mappings/review.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "A change to the stored mapping shape must find every copy, and domain code depends upward on a component file.",
+        "evidence": [
+          "learnedMappingsView.ts:18 exports mappingPath used once; typeof v === 'string' ? v : v.path is repeated at storage.ts:224 and 594, learnedMappingData.ts:42 and 72, learnedMappingProfile.ts:18 and 43, learnedMappingRepair.ts:76 and 134, backupImport.ts:66.",
+          "learned-mappings/review.ts:3 imports MappingGroup from the options component folder."
+        ],
+        "invariant": "Strings stay accepted as legacy mappings and path values are unchanged."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-9b1d2016-4ceb-4e4e-8869-b7f7d7d20609",
+      "category": "Consistency",
+      "summary": "The fill-log retention validator hand-lists enum values that already exist as types",
+      "paths": [
+        "src/fill-log/retention.ts",
+        "src/autofill/fillLog.ts",
+        "src/autofill/debug.ts",
+        "src/fill-log/presentation.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "A new reason or layer value compiles but makes reportMetadata return null and drops the whole frame report from Fill Details.",
+        "evidence": [
+          "retention.ts:56-112 re-spells kind, reason, rule.layer, ai.skipReason, mode and aiStatus; fillLog.ts:47-92 and debug.ts:6-14 declare the same unions.",
+          "presentation.ts:10 types ruleMethods as Record<string,string>, so a missing layer label is not a compile error."
+        ],
+        "invariant": "The retained report keeps rejecting unknown values and projects only allowlisted metadata."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-3f419f95-88fe-46b6-abf9-888b07c9994a",
+      "category": "Code Quality",
+      "summary": "Production-dead legacy storage entry points duplicate live ones with divergent rules",
+      "paths": [
+        "src/utils/storage.ts",
+        "src/utils/storage.test.ts",
+        "src/autofill/ruleMatching.test.ts",
+        "src/components/options/SettingsRoundTrip.test.tsx",
+        "src/utils/importPolicy.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "Readers must work out which learning implementation is authoritative, and the tests pin rules the live path does not use.",
+        "evidence": [
+          "Repo-wide search finds no non-test caller of saveLearnedMapping, saveLearnedMappingLocally or the merge: true option (storage.ts:499-563); the live path is saveLearnedObservation[Locally].",
+          "saveGeminiApiKey and saveGeminiModel (storage.ts:474-488) are used only by tests; saveGeminiSettings is the live writer."
+        ],
+        "invariant": "saveLearnedObservation[Locally], saveLearnedMappings and saveGeminiSettings semantics stay unchanged; test seeds are rewritten through live paths."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-eda250fc-e702-40b3-9690-04cea88110ef",
+      "category": "Tests",
+      "summary": "The Gemini response envelope and prompt parsing are hand-built in about 30 Playwright route stubs",
+      "paths": [
+        "src/browser/fixtures.ts",
+        "src/browser/ai-matching.pw.ts",
+        "src/browser/autofill.pw.ts",
+        "src/browser/demoSupport.ts",
+        "src/browser/mapping-review.pw.ts",
+        "src/browser/fill-log.pw.ts",
+        "src/browser/quick-fill.pw.ts",
+        "src/browser/review-fixes.pw.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "safe",
+        "reason": "A change to the response shape or prompt layout needs about 30 edits, and two different prompt-slicing conventions are undocumented.",
+        "evidence": [
+          "grep finds 30 candidates literals across src/browser; ai-matching.pw.ts:29-273 alone has six.",
+          "prompt.slice(prompt.lastIndexOf('\\n') + 1) appears at mapping-review.pw.ts:58, 217, 385 and 455 while fill-log.pw.ts:702 and ai-matching.pw.ts:64-67 use lastIndexOf('\\n\\n{')."
+        ],
+        "invariant": "The same JSON bodies and route glob, the x-goog-api-key assertion and hold/release semantics in popup-lifetime, quick-fill and mapping-review tests stay unchanged."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-8e8523c0-9bb7-4bea-865b-020bfefd8094",
+      "category": "Tests",
+      "summary": "The jsdom layout-shim block is copy-pasted across seven test files and scrollIntoView is mocked separately in about fourteen",
+      "paths": [
+        "src/components/options/ProfileApp.test.tsx",
+        "src/components/options/ProfileImportFlow.test.tsx",
+        "src/components/options/ImportModes.integration.test.tsx",
+        "src/components/options/SettingsRoundTrip.test.tsx",
+        "src/options/fillDetails.integration.test.tsx",
+        "src/utils/driveSync.integration.test.tsx",
+        "src/components/options/LearnedMappingsSection.test.tsx",
+        "vitest.config.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "safe",
+        "reason": "Adding a layout-dependent jsdom API needs seven edits and the copies already differ (setTimeout form, defineProperty versus assignment).",
+        "evidence": [
+          "Each file stubs requestAnimationFrame as a timeout and defines scrollTo and scrollIntoView as vi.fn() (for example ProfileApp.test.tsx:24-32).",
+          "vitest.config.ts has no setupFiles; PersonalSection, SalarySection and ProfileProposals tests assign Element.prototype.scrollIntoView with no restore."
+        ],
+        "invariant": "Every file gets the same stubs before render and vi.unstubAllGlobals still restores stubbed globals."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-2fcab07e-f33c-4f63-b714-8219a3d3c51c",
+      "category": "Tests",
+      "summary": "SettingsSection unit and integration tests duplicate a 45-line vi.mock set and setup, and the options App tests repeat a similar preamble",
+      "paths": [
+        "src/components/options/SettingsSection.test.tsx",
+        "src/components/options/SettingsSection.integration.test.tsx",
+        "src/options/App.test.tsx",
+        "src/options/App.integration.test.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "A new storage or driveSync export used by SettingsSection must be mocked in several files, and unused stand-ins hide which mocks matter.",
+        "evidence": [
+          "The mock blocks for QuickFillSettings, quick-fill/preferences, storage, theme, resume-ai/gemini and driveSync, plus renderSection and makeProfile, are identical in the two SettingsSection files (about L5-100).",
+          "App.integration.test.tsx keeps a comment about stubs-only orchestration yet exercises the real DocumentsSection."
+        ],
+        "invariant": "Each file keeps hoisted vi.mock calls and every scenario's assertions."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-723cbd68-a1a9-4742-9968-d88547e697c3",
+      "category": "Tests",
+      "summary": "Negative assertions in autofill index tests rely on hand-counted microtask drains",
+      "paths": [
+        "src/autofill/index.test.ts",
+        "src/autofill/learning.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "safe",
+        "reason": "A new await in production code can make a 'not called' assertion pass without checking anything.",
+        "evidence": [
+          "index.test.ts uses chains of await Promise.resolve() at 538-539, 554-555, 570-571, 654-655, 755-756, 777-779, 805-807, 1024 and 1095.",
+          "learning.test.ts:26-28 already has a flush helper that drains 40 ticks."
+        ],
+        "invariant": "Every negative assertion keeps its meaning; the shared flush must outlast the production await depth."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-a23d50af-df3a-42f4-8d32-86f9b8663abb",
+      "category": "Architecture",
+      "summary": "autofill/index.ts mixes report-record bookkeeping, silent refill, watchers, scan and execute through shared module state",
+      "paths": [
+        "src/autofill/index.ts",
+        "src/autofill/ai.ts",
+        "src/autofill/index.test.ts",
+        "src/autofill/fillLog.integration.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "A maintainer must hold six mutable module variables and four jobs in mind, and the reset sequences already drift.",
+        "evidence": [
+          "Report-record bookkeeping spans lines 136-207, silent refill 209-428, scan 489-727 and executePendingAutofill about 330 lines (757-1086).",
+          "undoAutofill (430-474), scanAutofill (489-522) and cancelAutofillRun (477-485) each reset overlapping subsets by hand; ai.ts:22 imports AutofillResult back from index."
+        ],
+        "invariant": "invalidateSession generation and abort ordering and idempotent teardown stay exact."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-54991070-2439-4b51-91a1-4fd646e4333a",
+      "category": "Code Quality",
+      "summary": "executePendingAutofill repeats the eligibility test and text-candidate registration in four branches",
+      "paths": [
+        "src/autofill/index.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "safe",
+        "reason": "A new tier or candidate field has to be edited in four places and a missed copy changes behaviour silently.",
+        "evidence": [
+          "!isFileInput && !isCheckboxInput appears six times (890, 919, 920, 937, 938, 955).",
+          "Four near-identical aiTextCandidates.push blocks at 893-899, 921-927, 939-945 and 964-970."
+        ],
+        "invariant": "The ruleBlocked exclusion still applies only to the failed-fill and lowConfidence branches and the noData branch still requires match.fieldPath."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-8b61bbd9-1f64-4c12-9619-db8f4d85428e",
+      "category": "Code Quality",
+      "summary": "The Layer 0 learned-mapping block in mapField is a 75-line ladder that re-discriminates string versus object forms",
+      "paths": [
+        "src/autofill/mapper.ts",
+        "src/autofill/mapper.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "This highest-trust path is hard to review inside mapField, which also holds layers 1 to 4, and two compatibility rejections overlap.",
+        "evidence": [
+          "mapper.ts:198-272 tests typeof learned !== 'string' at least eight times; the rejections at 221-224 and 237-240 overlap.",
+          "mapper.test.ts:650-698 already pins every LearnedCheck status."
+        ],
+        "invariant": "Rejection reasons, LearnedCheck status order, the single onLearnedCheck call and metadata shapes stay identical."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-e27b4161-a82e-44a6-b939-5c7d3897e44f",
+      "category": "Consistency",
+      "summary": "Three Gemini model-fallback loops use different retry rules and different error signalling",
+      "paths": [
+        "src/resume-ai/gemini.ts",
+        "src/learned-mappings/review.ts",
+        "src/resume-ai/gemini.test.ts",
+        "src/learned-mappings/review.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "A change to fallback policy needs three coordinated edits and message-string matching breaks silently.",
+        "evidence": [
+          "The fallback list is built at gemini.ts:121, 218 and 288; mapping review retries any service_error (line 144), extraction only 429, 5xx and no_model, autofill 404, 408, 429 and 5xx.",
+          "Errors are an Error compared by message (142-163), plain ImportError objects, and a regex on the message (364)."
+        ],
+        "invariant": "Model order, timeouts and the exact error shapes and messages each caller sees stay unchanged; the retryable sets may differ on purpose."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-bd3917ea-92d0-4cc4-b59d-3e9f166f8922",
+      "category": "Code Quality",
+      "summary": "profileValidator repeats the same text and URL field block about fourteen times",
+      "paths": [
+        "src/utils/profileValidator.ts",
+        "src/utils/profileValidator.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "safe",
+        "reason": "About 120 lines differ only by key and path, and adding a field means copying a block with the same message format.",
+        "evidence": [
+          "validatePersonal (83-118), validateAddress (181-213) and validateLinks (567-596) repeat typeof and max-length checks with identical message text."
+        ],
+        "invariant": "Error paths and messages, omission of unset keys from sanitized, and the explicit linkedin and phone special cases stay unchanged."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-092b5af7-a9af-42a7-96db-efd17ddaa220",
+      "category": "Tests",
+      "summary": "The driveSync unit test helper re-implements the production fingerprint and changes behaviour by store state",
+      "paths": [
+        "src/utils/driveSync.test.ts",
+        "src/utils/driveSync.ts",
+        "src/utils/driveSync.integration.test.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "Any change to the fingerprint needs a matching edit in the mock and test authors get surprising behaviour from it.",
+        "evidence": [
+          "driveSync.test.ts:70-91 copies the production stable-sort and SHA-256 logic; the helper answers GETs from a hidden remote when store.driveBackupState has a fileId.",
+          "A separate fake Drive server in driveSync.integration.test.tsx:44-162 carries nine mutable flags."
+        ],
+        "invariant": "The mocked remote hash must still match production so the unchanged-remote path stays exercised."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-772c9d2c-d76b-468f-b154-1c46f2f1a0d0",
+      "category": "Architecture",
+      "summary": "ResumeImportSection mixes the import workflow with three inline modal bodies",
+      "paths": [
+        "src/components/options/ResumeImportSection.tsx",
+        "src/components/options/ResumeDocumentNotice.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "Modal markup has to be edited inside a 658-line orchestration component, and the button class strings are inlined seven times.",
+        "evidence": [
+          "Upload, progress and done overlays are about 300 lines of JSX (343-480, 485-586, 633-655) next to abort and timer logic.",
+          "The uncertain-document overlay was already extracted to ResumeDocumentNotice."
+        ],
+        "invariant": "Every screen's visible behaviour, classes and handlers stay the same."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-c0822aab-f0b2-4616-8375-3488a2ec26bc",
+      "category": "Code Quality",
+      "summary": "Proven-unused exports and helpers remain in production modules",
+      "paths": [
+        "src/data/currencies.ts",
+        "src/data/currencies.test.ts",
+        "src/utils/driveSync.ts",
+        "src/preview/driveSync.ts",
+        "src/components/options/shared/dateOfBirthMath.ts",
+        "src/autofill/filler.ts",
+        "src/autofill/index.ts",
+        "src/components/options/shared/ExpandableCard.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "Readers keep a country-to-currency table, an OAuth launcher and a clear helper in sync for nothing, and tests give false assurance.",
+        "evidence": [
+          "No non-test reference exists for getCurrencyLabel, COUNTRY_TO_CURRENCY, currencyForCountry, primaryCountryForCurrency, launchDriveOAuth (only its preview mirror), computePartial or clearFieldValue (verified by repo-wide search).",
+          "Reported unused: filler.ts re-exports of writeSession symbols and index.ts re-export of clearHighlights, and ExpandableCard's contentClassName prop."
+        ],
+        "invariant": "CURRENCIES and findCurrency stay; tests that exercise clearFieldValue are retargeted, not deleted, to keep their guarantees."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-3b3a0286-66ee-404f-b791-9dd6ec9ac625",
+      "category": "Code Quality",
+      "summary": "Identical primary and secondary button class strings are copied across options and import dialogs",
+      "paths": [
+        "src/components/options/GeminiSettings.tsx",
+        "src/components/options/SettingsSection.tsx",
+        "src/components/options/ResumeImportSection.tsx",
+        "src/components/shared/ImportReviewScreen.tsx",
+        "src/components/shared/ImportSummaryDialog.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "safe",
+        "reason": "A styling change needs edits in five files and the two same-named class pairs can drift.",
+        "evidence": [
+          "GeminiSettings.tsx:16-19 and SettingsSection.tsx:97-100 are byte-identical; ImportReviewScreen.tsx:95-96 and ImportSummaryDialog.tsx:66-67 repeat the secondary string."
+        ],
+        "invariant": "Rendered class strings stay identical; the smaller Learned Mappings pair is left alone."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-f2f5a5ab-e3fc-4f67-b37f-544564468835",
+      "category": "Consistency",
+      "summary": "The modal shell is implemented three times and the Reset dialog is hand-rolled beside SettingsDialog",
+      "paths": [
+        "src/components/shared/ImportReviewScreen.tsx",
+        "src/components/shared/ImportSummaryDialog.tsx",
+        "src/components/options/shared/SettingsDialog.tsx",
+        "src/components/options/SettingsSection.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "Focus and dismissal fixes must be made in several places and the Reset dialog lacks useDialogFocus behaviour.",
+        "evidence": [
+          "ImportReviewScreen.tsx:92-110, ImportSummaryDialog.tsx:63-82 and SettingsDialog.tsx:14-30 repeat backdrop, useDialogFocus, useEscapeToClose and busy gating.",
+          "SettingsSection.tsx:1132-1216 builds its own shell with a separate useEscapeToClose at L814."
+        ],
+        "invariant": "Escape and backdrop do nothing while busy, focus returns to the opener, and the reset-data-title accessible name stays."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-04bf2ddd-c877-417d-b079-9c677fe98231",
+      "category": "Consistency",
+      "summary": "Year and date validation rules are implemented in the pickers, the shared hook and the profile validators",
+      "paths": [
+        "src/components/options/EducationSection.tsx",
+        "src/components/options/shared/useDateRangeValidation.ts",
+        "src/utils/profileInputValidation.ts",
+        "src/components/options/shared/MonthYearPicker.tsx",
+        "src/components/options/PersonalSection.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "A change to the year-range rule needs three edits with bounds from three sources, and the module-load constants go stale across a year boundary.",
+        "evidence": [
+          "EducationSection.tsx:100-122, useDateRangeValidation.ts and profileInputValidation.ts:97-122 each encode the range check and its message.",
+          "MonthYearPicker.tsx repeats its partial-date expression at 57, 81 and 89; profileInputValidation.ts:82-94 birthDateError repeats isValidCalendarDate."
+        ],
+        "invariant": "All error strings and the points at which they fire (keystroke, change, blur, save) stay unchanged."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-a1c89c74-aa60-48a9-ac9e-91d0dc1c9235",
+      "category": "Code Quality",
+      "summary": "The country-name-or-code lookup is inlined five times",
+      "paths": [
+        "src/autofill/resolver.ts",
+        "src/autofill/ruleValue.ts",
+        "src/autofill/profileFieldTree.ts",
+        "src/data/countries.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "safe",
+        "reason": "A fallback change must find every copy.",
+        "evidence": [
+          "COUNTRIES.find(c => c.code === x)?.name ?? x appears at resolver.ts:54, 154 and 163, ruleValue.ts:33 and profileFieldTree.ts:52."
+        ],
+        "invariant": "Unknown codes return the code unchanged and an empty code returns an empty string."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-37a28914-8600-4b2a-bdae-46dab9b929c9",
+      "category": "Code Quality",
+      "summary": "Dotted profile-path readers are re-implemented beside readProfilePath",
+      "paths": [
+        "src/autofill/profileFieldTree.ts",
+        "src/autofill/resolver.ts",
+        "src/profile/fieldMetadata.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "Three readers of one contract can drift; only readProfilePath has the hasOwn guard.",
+        "evidence": [
+          "profileFieldTree.ts:42-50 readPath and the reduce at resolver.ts:14 duplicate fieldMetadata.ts:12 readProfilePath."
+        ],
+        "invariant": "derived.* and entry-path lookups return the same values."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-18d7849f-a3c8-4aa0-b4c9-c2f16450f83f",
+      "category": "Consistency",
+      "summary": "Formatted salary has two implementations with different rounding",
+      "paths": [
+        "src/autofill/resolver.ts",
+        "src/autofill/ruleValue.ts",
+        "src/utils/dateFormat.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "The same profile salary can render differently through the resolver and the rule path, and the thousands regex is copied.",
+        "evidence": [
+          "resolver.ts:57-61 and 132-137 use fmtAmount (integer rounding); ruleValue.ts:116-122 rounds to two decimals and re-implements the grouping."
+        ],
+        "invariant": "Visible values for each path do not change unless a maintainer decides to unify them."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-438a2f2d-b553-42a6-8e14-43aac48483e4",
+      "category": "Architecture",
+      "summary": "Domain helpers and fixtures live in feature or UI modules",
+      "paths": [
+        "src/autofill/ruleContext.ts",
+        "src/autofill/signals.ts",
+        "src/fill-log/presentation.ts",
+        "src/components/options/settingsReviewFixture.ts",
+        "src/learned-mappings/review.ts",
+        "src/resume-ai/gemini.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "Unrelated modules import them across layers: fieldDomain from ruleContext, controlForm from signals, profileFieldName from fill-log presentation, a ten-file test fixture from components, and the Gemini request body from learned-mappings.",
+        "evidence": [
+          "fieldDomain (ruleContext.ts:83-90) is used only by index.ts; controlForm (signals.ts:110-121) is imported by four modules for composed-DOM logic.",
+          "settingsReviewFixture.ts has no production importer; review.ts:180-192 builds provider generationConfig that gemini.ts otherwise owns."
+        ],
+        "invariant": "Pure moves with no signature or output changes."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-4ec3728c-c811-448b-b85d-a9f33e9b5698",
+      "category": "Performance",
+      "summary": "mentionedCountries rebuilds a regular expression for every country on each call",
+      "paths": [
+        "src/autofill/ruleValue.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "Each work-authorization resolution compiles about 200 patterns from a frozen list; the total cost is small.",
+        "evidence": [
+          "ruleValue.ts:210-224 calls new RegExp for each COUNTRIES entry per call; index.ts calls resolveRuleValue per matched field per fill and refill."
+        ],
+        "invariant": "The same set of mentioned countries and the same alias checks."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-296e5046-9a6a-4764-ad05-0b32158a8530",
+      "category": "Performance",
+      "summary": "Learned Mappings list derivations are recomputed on every render",
+      "paths": [
+        "src/components/options/LearnedMappingsSection.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "Every keystroke and storage refresh reruns matching, destination lookup and a quadratic site filter.",
+        "evidence": [
+          "LearnedMappingsSection.tsx:562-571 computes allGroups, searched, counts, shown and shownSites unmemoized; shownSites uses sites.filter with shown.some."
+        ],
+        "invariant": "Counts, order and paging stay identical."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-247d21a5-8859-42a3-a972-7d7b4e048100",
+      "category": "Performance",
+      "summary": "readGeminiSettings reads three storage keys with three separate calls",
+      "paths": [
+        "src/utils/storage.ts",
+        "src/utils/storage.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "Every getGeminiSettings call inside the lock does three reads and can observe an inconsistent snapshot.",
+        "evidence": [
+          "storage.ts:410-415 joins three local.get calls with Promise.all; the storage.test.ts fake supports only single-key gets."
+        ],
+        "invariant": "Returned settings, tombstone and preference handling stay unchanged."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-9850e295-5c27-4b21-ada1-f04de28283f9",
+      "category": "Performance",
+      "summary": "resolveFieldsWithAI rebuilds the full request body per field while batching",
+      "paths": [
+        "src/resume-ai/gemini.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "Up to 200 fields each rebuild the prompt and JSON body and re-encode it up to twice.",
+        "evidence": [
+          "gemini.ts:291-316 calls bodyFor([...batch, field]) and bodyFor([field]) per field, then bodyFor(items) again for the last batch."
+        ],
+        "invariant": "Batch boundaries (at most 20 fields and 96,000 bytes, oversized single fields dropped) stay unchanged."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-63032779-8f42-49cf-b4bf-a93978d0e509",
+      "category": "Code Quality",
+      "summary": "The popup derives setup stages in four parallel ladders and loads the key in two places",
+      "paths": [
+        "entrypoints/popup/App.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "Adding or reordering a state means editing message, label, action and AI flags separately.",
+        "evidence": [
+          "App.tsx:367-451 encodes profileLoadFailed, profileSetup, key-read failure and AI setup in the message, primaryLabel, primaryAction and primaryIsAI ladders.",
+          "checkApiKey (134-147) and the mount effect (270-285) repeat the same key loading; filled and unfilled are computed twice (364-365 and 625-626)."
+        ],
+        "invariant": "Label, action, message and tone for each state stay identical."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-401994f8-37a6-4812-8142-64d3813f4512",
+      "category": "Architecture",
+      "summary": "Background message handling and sender validation live inline in the entrypoint closure",
+      "paths": [
+        "entrypoints/background.ts",
+        "src/background.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "Sender checks, domain derivation and payload validation can be tested only by mocking six modules.",
+        "evidence": [
+          "background.ts:29-110 holds the sender.id guard repeated across three listeners and the domain and label-patch validators at 63-93."
+        ],
+        "invariant": "Exact sender-validation behaviour stays unchanged."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-7b670d46-7f57-445c-bbab-2bc74021956c",
+      "category": "Consistency",
+      "summary": "Drive save toasts in the options page are inline strings outside the shared feedback copy",
+      "paths": [
+        "entrypoints/options/App.tsx",
+        "src/ui/feedback.ts",
+        "src/options/App.test.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "The project keeps shared copy in feedback.ts, and the nested ternary duplicates a clause that feedback.driveReconnectRequired already holds.",
+        "evidence": [
+          "options App.tsx:445 builds three Drive toasts inline; feedback.ts:86 has the reconnect clause."
+        ],
+        "invariant": "The wording shown for each Drive state stays identical."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-c7c173ec-4b4c-41da-8d54-c986702d70b7",
+      "category": "Code Quality",
+      "summary": "docs/assets/site.css contains unreferenced and overridden rules",
+      "paths": [
+        "docs/assets/site.css"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "safe",
+        "reason": "Readers maintain dead selectors and shadowed .chapter rules.",
+        "evidence": [
+          "No reference in docs HTML, docs JS, src or entrypoints for .essential (993), .category-list (412-421), .facts, .steps, .split and .sources; --visual-width is never set.",
+          "The .chapter padding rules at 296-302, 651 and 735-738 are overridden by later :is(...) .chapter rules."
+        ],
+        "invariant": "Rendered pages stay identical; .chapter keeps its border-top and break-inside."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-e4768d8a-f7da-482a-8a52-7b305e693adf",
+      "category": "Code Quality",
+      "summary": "Small duplicated predicates in the rule post-passes and write session",
+      "paths": [
+        "src/autofill/repeatingEntryResolution.ts",
+        "src/autofill/phoneResolution.ts",
+        "src/autofill/writeSession.ts",
+        "src/autofill/runCoordinator.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "Each rule must be changed in more than one place.",
+        "evidence": [
+          "ADJUSTABLE_LAYERS is defined in repeatingEntryResolution.ts:21 and phoneResolution.ts:17; phoneResolution.ts:34-47 repeats a filter and recomputes scopeRoot.",
+          "writeSession.ts:87-93 and 130-137 restate the same-control test; runCoordinator.ts re-derives the top-frame documentId four times (78, 81, 121, 142) and the expiry fallback twice."
+        ],
+        "invariant": "The layers a post-pass may rewrite, the break and hasCode semantics, and the persisted-run fallbacks stay unchanged."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-8c444248-6ac7-4f50-8190-f6ab280d5aac",
+      "category": "Tests",
+      "summary": "Chrome, storage and fixture setup helpers are repeated across autofill, fill-log and utils tests",
+      "paths": [
+        "src/autofill/reviewRegression.test.ts",
+        "src/autofill/ruleMatching.test.ts",
+        "src/autofill/aiSafety.test.ts",
+        "src/utils/learnedMappingProfile.test.ts",
+        "src/utils/learnedMappings.test.ts",
+        "src/utils/learnedMappingRepair.test.ts",
+        "src/popup/App.test.tsx",
+        "src/fill-log/client.test.ts",
+        "src/autofill/salaryResolution.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "safe",
+        "reason": "Changing a seed model name or storage wrapper needs several edits.",
+        "evidence": [
+          "reviewRegression.test.ts:69-265, ruleMatching.test.ts:20-35 and aiSafety.test.ts:41-52 repeat the Gemini-seeded createPreviewChrome block.",
+          "popup App.test.tsx repeats the CLEAR/status responder 11 times; fill-log client.test.ts wraps storage.session.set by hand five times although sessionSet exists; marker() is identical in four resolution specs."
+        ],
+        "invariant": "Each file keeps its seeded storage and scenarios."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-829ac24f-4428-4fb2-bb85-0a6b9053bda6",
+      "category": "Tests",
+      "summary": "Stale test titles, mocks, comments and unrestored globals mislead readers",
+      "paths": [
+        "src/autofill/ai.test.ts",
+        "src/autofill/filler.test.ts",
+        "src/autofill/mapper.test.ts",
+        "src/autofill/signals.test.ts",
+        "src/autofill/scanner.test.ts",
+        "src/components/options/EducationSection.test.tsx",
+        "src/components/options/SettingsSection.test.tsx",
+        "src/components/options/SalarySection.test.tsx",
+        "src/resume-ai/parser.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "safe",
+        "reason": "Readers look for behaviour that no longer exists and global mutations depend on per-file isolation.",
+        "evidence": [
+          "signals.test.ts still stubs CSS.escape that no source uses; ai.test.ts mocks findBestMatch for a function that does not exist; filler.test.ts titles 'focuses the element' assert blur.",
+          "SettingsSection.test.tsx assigns URL.createObjectURL and prototypes without restore; parser.test.ts workAuthorization cases use statuses outside WorkAuthorizationStatus."
+        ],
+        "invariant": "Test intent and assertions stay unchanged; only names, comments and cleanup change."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-398d1524-91ef-4cd9-83b6-a85e86b59462",
+      "category": "Tests",
+      "summary": "Some tests are vacuous, tautological or hide nondeterminism",
+      "paths": [
+        "src/components/shared/ImportReviewScreen.test.tsx",
+        "src/data/workAuthorization.test.ts",
+        "src/components/options/shared/SearchableProfileFieldSelect.test.tsx",
+        "src/components/options/ResumeImportSection.test.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "They cannot fail on the regression they name or absorb a real ordering bug with retries.",
+        "evidence": [
+          "ImportReviewScreen.test.tsx:148-155 clicks a disabled button, so the body-click propagation is never exercised.",
+          "workAuthorization.test.ts:23-35 assert values derived from the same map; ResumeImportSection.test.tsx:218-246 uses retry: 2 with a comment blaming queue ordering."
+        ],
+        "invariant": "Each test's intended guarantee is kept and made able to fail."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-aad5983d-0f65-4fff-b911-aaf0fc3895b2",
+      "category": "Tests",
+      "summary": "Playwright specs repeat popup and options opening, layout probes and theme toggling",
+      "paths": [
+        "src/browser/fixtures.ts",
+        "src/browser/fill-log.pw.ts",
+        "src/browser/popup-lifetime.pw.ts",
+        "src/browser/review-fixes.pw.ts",
+        "src/browser/responsive.pw.ts",
+        "src/browser/learned-mappings.pw.ts",
+        "src/browser/website.pw.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "safe",
+        "reason": "A change to how the popup is pinned to the source tab or to layout bounds needs about 40 edits.",
+        "evidence": [
+          "The popup init-script plus goto is written seven times in fill-log.pw.ts and responsive.pw.ts and as two diverging popupFor helpers; options.html URL building appears about 33 times.",
+          "The no-horizontal-scroll check appears about nine times and the 64 px sidebar check four times; learned-mappings.pw.ts settle() is a fixed 200 ms sleep before positive assertions."
+        ],
+        "invariant": "Popups stay pinned to the source tab at 380x600 where bounds are asserted and the same tolerances apply."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-b76ebd36-5405-46db-9aee-ad5725f08586",
+      "category": "Dependencies",
+      "summary": "pdf.js worker setup is duplicated and extractLinks never destroys its document",
+      "paths": [
+        "src/resume-ai/extractLinks.ts",
+        "src/resume-ai/validateResumeFile.ts",
+        "src/resume-ai/extractLinks.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+        "date": "2026-11-08",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "There are two ways to load pdf.js with two copies of the worker URL, and only one path cleans up.",
+        "evidence": [
+          "extractLinks.ts:1-8 configures GlobalWorkerOptions at module load; validateResumeFile.ts:105-130 repeats it after a dynamic import and destroys its loading task."
+        ],
+        "invariant": "Bundling behaviour and the pdfjs-dist mock order in extractLinks.test.ts stay valid."
+      },
+      "state": "open",
+      "depends_on": []
     }
   ]
 }
