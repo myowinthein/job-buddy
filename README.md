@@ -28,7 +28,7 @@ own job search and made it free and open source for others to use.
 After installing Job Buddy, you need a
 [Gemini API key](https://aistudio.google.com/api-keys). Gemini offers a free tier, with
 [usage limits](https://ai.google.dev/gemini-api/docs/rate-limits) that vary by model.
-A resume in PDF or DOCX format is optional: you can import your details from it or
+A resume in PDF or DOCX format is optional. You can import your details from it or
 enter them manually.
 
 1. Open **Settings → AI Features**, enter your key, and select **Save Key**.
