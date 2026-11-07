@@ -655,37 +655,94 @@ node scripts/capture-demo-motion.mjs</code></pre>
             <h2 id="release-title">Release setup</h2>
           </div>
           <p class="prose">
-            Pushing a <code>v*.*.*</code> tag runs the release workflow: checks, a production archive,
-            Chrome Web Store upload and a GitHub release. Only do this when you intend to publish.
-            Uploading does not complete store review or Chrome’s rollout.
+            Pushing a version tag such as <code>v1.14.4</code> starts GitHub Actions. It checks the
+            code, builds the extension, uploads a Chrome Web Store draft and creates a GitHub release.
+          </p>
+          <p class="prose">
+            Add these secrets to the repository’s <code>production</code> environment.
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Secret</th><th>Purpose</th><th>Where to get it</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><code>CHROME_EXTENSION_ID</code></td>
+                  <td>Identifies the store listing to update</td>
+                  <td>The item ID in Chrome Web Store Developer Dashboard</td>
+                </tr>
+                <tr>
+                  <td><code>CHROME_CLIENT_ID</code></td>
+                  <td>Identifies the OAuth client used for uploads</td>
+                  <td>Create a <strong>Desktop app</strong> client under Google Auth Platform’s <strong>Clients</strong></td>
+                </tr>
+                <tr>
+                  <td><code>CHROME_CLIENT_SECRET</code></td>
+                  <td>Authenticates that publishing client</td>
+                  <td>Save the secret generated with the same OAuth client</td>
+                </tr>
+                <tr>
+                  <td><code>CHROME_REFRESH_TOKEN</code></td>
+                  <td>Authorizes uploads using the listing owner’s account</td>
+                  <td>Generate it with <code>chrome-webstore-upload-keys</code></td>
+                </tr>
+                <tr>
+                  <td><code>ENV_PRODUCTION</code></td>
+                  <td>Supplies production build settings</td>
+                  <td>The contents of <code>.env.production</code>, including the production Drive client ID</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="prose">
+            Review the draft in Chrome Web Store Developer Dashboard and click
+            <strong>Submit for Review</strong>. Submission is intentionally manual, though the
+            upload tool can automate it.
           </p>
           <div class="detail-list">
             <details>
-              <summary>Which publishing credentials does CI need?</summary>
+              <summary>How do I configure the publishing credentials?</summary>
               <ol>
-                <li>Enable the Chrome Web Store API in the Google Cloud project used for publishing.</li>
-                <li>Follow the <a href="https://github.com/fregante/chrome-webstore-upload-keys">upload-keys setup guide</a> to create a Desktop app OAuth client and generate credentials with the listing owner’s account. This client is separate from Drive’s Web application clients.</li>
-                <li>Create a GitHub environment named <code>production</code> and add the secrets below.</li>
+                <li>
+                  Enable <strong>Chrome Web Store API</strong> in Google Cloud and create the
+                  publishing <strong>Desktop app</strong> OAuth client.
+                </li>
+                <li>
+                  Run the helper below. Enter that client’s ID and secret, then authorize it with
+                  the Google account that owns the listing.
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy publishing credential command">Copy</button>
+                    <pre><code>npx chrome-webstore-upload-keys</code></pre>
+                  </div>
+                </li>
+                <li>
+                  In GitHub, open <strong>Settings</strong>, then <strong>Environments</strong>,
+                  create <code>production</code> and add the five values under <strong>Environment secrets</strong>.
+                </li>
               </ol>
-              <div class="table-scroll">
-                <table>
-                  <thead><tr><th>Secret</th><th>Value</th></tr></thead>
-                  <tbody>
-                    <tr><td><code>CHROME_EXTENSION_ID</code></td><td>The published extension’s ID.</td></tr>
-                    <tr><td><code>CHROME_CLIENT_ID</code></td><td>The publishing Desktop app client ID.</td></tr>
-                    <tr><td><code>CHROME_CLIENT_SECRET</code></td><td>That publishing client’s secret.</td></tr>
-                    <tr><td><code>CHROME_REFRESH_TOKEN</code></td><td>A refresh token authorized by the listing owner. Replace it if revoked or expired.</td></tr>
-                    <tr><td><code>ENV_PRODUCTION</code></td><td>Production env-file text containing <code>VITE_GOOGLE_DRIVE_CLIENT_ID=&lt;PRODUCTION_DRIVE_CLIENT_ID&gt;</code>. Use the Drive client ID, never its secret.</td></tr>
-                  </tbody>
-                </table>
-              </div>
+              <p>
+                See the <a href="https://github.com/fregante/chrome-webstore-upload-keys">credential helper guide</a>
+                and <a href="https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments#creating-an-environment">GitHub environment setup</a> for more detail.
+              </p>
+            </details>
+            <details>
+              <summary>What happens when I push a release tag?</summary>
+              <ol>
+                <li>Runs TypeScript, lint and unit tests.</li>
+                <li>Loads the production settings and builds the extension ZIP.</li>
+                <li>Uploads the ZIP as the store listing’s draft.</li>
+                <li>Creates a GitHub release with generated release notes and the ZIP attached.</li>
+              </ol>
+              <p>
+                Increase the version in <code>package.json</code> before releasing. Chrome requires
+                each uploaded update to have a higher version.
+              </p>
+              <p>
+                See <a href="https://github.com/myowinthein/job-buddy/blob/main/.github/workflows/release.yml">release.yml</a>
+                for the exact commands and the <a href="https://developer.chrome.com/docs/webstore/update">Chrome Web Store update guide</a>
+                for the review and publishing steps.
+              </p>
             </details>
           </div>
-          <p class="prose">
-            Check <a href="https://github.com/myowinthein/job-buddy/blob/main/.github/workflows/release.yml">release.yml</a>
-            for the exact steps and the <a href="https://developer.chrome.com/docs/webstore/using-api">Chrome Web Store API guide</a>
-            for Google’s publishing requirements. Production distribution targets Chrome, even though Firefox build scripts are available.
-          </p>
         </section>
       </main>
     </div>
