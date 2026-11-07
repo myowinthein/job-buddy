@@ -289,15 +289,25 @@ pnpm dev</code></pre>
           <div class="detail-list">
             <details>
               <summary>Which env files does WXT support?</summary>
-              <ul>
-                <li><code>.env</code> loads in every mode.</li>
-                <li><code>.env.development</code> loads for <code>pnpm dev</code>.</li>
-                <li><code>.env.production</code> loads for <code>pnpm build</code> and <code>pnpm zip</code>.</li>
-                <li>Local files, such as <code>.env.development.local</code>, override the matching file’s values.</li>
-                <li>Browser files, such as <code>.env.chrome</code>, load only for that browser.</li>
-              </ul>
+              <p>Keep real values out of Git.</p>
+              <div class="table-scroll">
+                <table>
+                  <thead><tr><th>Env file</th><th>Used for</th></tr></thead>
+                  <tbody>
+                    <tr><td><code>.env</code></td><td>All modes and browsers</td></tr>
+                    <tr><td><code>.env.development</code></td><td><code>pnpm dev</code></td></tr>
+                    <tr><td><code>.env.production</code></td><td><code>pnpm build</code> and <code>pnpm zip</code></td></tr>
+                    <tr><td><code>.env.development.local</code></td><td>Local development overrides</td></tr>
+                    <tr><td><code>.env.chrome</code></td><td>Chrome builds only</td></tr>
+                  </tbody>
+                </table>
+              </div>
               <p>
-                Keep real values out of Git. See
+                When files define the same variable, their loading order decides which value is used.
+                For example, <code>.env.development.local</code> overrides <code>.env.development</code>.
+              </p>
+              <p>
+                See
                 <a href="https://wxt.dev/guide/essentials/config/environment-variables.html">WXT’s supported env files</a> for all variants.
               </p>
             </details>
