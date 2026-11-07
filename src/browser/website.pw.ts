@@ -294,6 +294,12 @@ test('task links open new tabs with a visual hint and accessible description', a
     'aistudio.google.com',
     'console.cloud.google.com',
   ]);
+  const installationPages = new Set([
+    'https://nodejs.org/en/download',
+    'https://pnpm.io/installation#installing-a-specific-version',
+    'https://git-scm.com/install/',
+    'https://www.google.com/chrome/',
+  ]);
   for (const path of ['', 'developers/', 'demo/']) {
     await page.goto(origin + prefix + path);
     for (const link of await page.locator('a[href]').all()) {
@@ -301,6 +307,7 @@ test('task links open new tabs with a visual hint and accessible description', a
       const url = new URL(href!, page.url());
       const newTab =
         taskHosts.has(url.hostname) ||
+        installationPages.has(url.href) ||
         (!href!.startsWith('#') && url.pathname === prefix + 'demo/');
       if (newTab) {
         await expect(link).toHaveAttribute('target', '_blank');
