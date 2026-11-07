@@ -326,8 +326,10 @@ pnpm dev</code></pre>
                   <ul>
                     <li>
                       Open <strong>APIs &amp; Services</strong>, then <strong>OAuth consent screen</strong>
-                      to reach <strong>Google Auth Platform</strong>. If prompted, click
-                      <strong>Get Started</strong>, enter the app name, support email and contact
+                      to reach <strong>Google Auth Platform</strong>.
+                    </li>
+                    <li>
+                      If prompted, click <strong>Get Started</strong>, enter the app name, support email and contact
                       email, and choose <strong>External</strong> for personal Google accounts.
                     </li>
                     <li>
@@ -380,7 +382,10 @@ pnpm dev</code></pre>
                   <ul>
                     <li>
                       Create a separate <strong>Web application</strong> client with the published
-                      extension’s redirect URI. Copy <code>.env.example</code> to <code>.env.production</code>
+                      extension’s redirect URI.
+                    </li>
+                    <li>
+                      Copy <code>.env.example</code> to <code>.env.production</code>
                       and set <code>VITE_GOOGLE_DRIVE_CLIENT_ID</code> to this client’s ID.
                     </li>
                     <li>
