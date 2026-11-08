@@ -1,5 +1,6 @@
 import { feedback } from '@/src/ui/feedback';
 import type { AutofillRun } from '@/src/autofill/runCoordinator';
+import type { PersistedResultKey } from '@/src/autofill/fillResult';
 
 export function quickFillSummary(run: AutofillRun): {
   text: string;
@@ -14,7 +15,7 @@ export function quickFillSummary(run: AutofillRun): {
     aiUnavailable = false;
   for (const result of run.results ?? []) {
     const r = result as Record<string, number | string>;
-    const count = (key: string) => (typeof r[key] === 'number' ? (r[key] as number) : 0);
+    const count = (key: PersistedResultKey) => (typeof r[key] === 'number' ? (r[key] as number) : 0);
     filled += count('noReview') + count('needReview');
     attention += count('needReview') + count('lowConfidence') + count('noData') + count('failed');
     scanned += count('totalScanned');

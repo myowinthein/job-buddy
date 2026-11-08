@@ -2,6 +2,7 @@ import { wrapStorageArea } from '@/src/utils/storageArea';
 import { getGeminiSettings, getProfile } from '@/src/utils/storage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import { AUTOFILL_ERROR } from './errorCodes';
+import { PERSISTED_RESULT_KEYS } from './fillResult';
 
 export const RUN_PREFIX = 'jb:autofill-run:';
 export const RUN_ALARM_PREFIX = 'jb:autofill-recover:';
@@ -239,19 +240,7 @@ export class AutofillCoordinator {
           .map((reply) => {
             const source = reply as Record<string, unknown>;
             return Object.fromEntries(
-              [
-                'noReview',
-                'needReview',
-                'lowConfidence',
-                'noData',
-                'totalScanned',
-                'kept',
-                'excluded',
-                'failed',
-                'aiStatus',
-                'runId',
-                'startedAt',
-              ]
+              [...PERSISTED_RESULT_KEYS]
                 .filter((key) => typeof source[key] === 'number' || typeof source[key] === 'string')
                 .map((key) => [key, source[key]]),
             );
