@@ -682,8 +682,35 @@
         ],
         "invariant": "Popup and Quick Fill totals and Quick Fill's deliberately different attention semantics stay unchanged; the persisted key set stays as is until a separate decision."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "80a9f782786292b9e571ba74fa327e52d5af82de",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "The merged result type, persisted key list and merge now live in src/autofill/fillResult.ts and are shared by the popup, Quick Fill and the coordinator; popup and Quick Fill totals are unchanged."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/autofill src/popup src/quick-fill",
+            "scope": "result contract consumers",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-b00a7ff3-651c-4092-8334-e544f54efa5e",
@@ -787,8 +814,35 @@
         ],
         "invariant": "Lock names stay identical, devLockName applies under import.meta.env.DEV, each lock keeps its own queue, and a failed action still lets the next run; driveSync's queue-plus-lock variant stays unless confirmed."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "e8f213447467705738e4ec8e5c50b965d42512bb",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "createNamedLock in src/utils/namedLock.ts is the single Web Lock with in-memory fallback; the profile, mapping, Gemini, fill-log retention and navigation locks use it."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/utils src/fill-log",
+            "scope": "lock users and namedLock.test.ts",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-9af63bd9-2c13-4611-ae37-3a97d4dd11f3",
@@ -816,8 +870,35 @@
         ],
         "invariant": "Open, pin, Escape and blur semantics asserted in FillLogPage.test.tsx and LearnedMappingsSection.test.tsx stay intact."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "b6fcd02351f000c94baebf8399d6b3e281fbf493",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "FillDetailsHelp and LearnedMappingsHelp are thin wrappers over the shared HelpPopover, which has its own test."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/components",
+            "scope": "help popover and wrappers",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-73b0d6d0-64f4-4801-9161-0bc4d31ef2f0",
@@ -847,8 +928,35 @@
         ],
         "invariant": "The lock wraps the reload and the write, the empty-case shortcut stays Drive-only, and each flow keeps its own toasts."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "767fe6210e10cc83819b4aeed60f2bf4ec5045a4",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "SettingsSection's JSON first import, JSON update and Drive restore share saveImportUnderLock; existing import tests pass unchanged."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/components/options",
+            "scope": "SettingsSection and import flows",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-6b90baf7-b719-4d89-bfd8-53ff7aa36af3",
@@ -881,8 +989,35 @@
         ],
         "invariant": "Strings stay accepted as legacy mappings and path values are unchanged."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "2d9dfacf4b2d9c0263cdb5e7d1aac6176e346f29",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "mappingPath is exported from learnedMappingData.ts and the grouping types and helpers moved to src/learned-mappings/groups.ts; importers use them."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/learned-mappings src/components/options src/utils",
+            "scope": "mapping path consumers",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-9b1d2016-4ceb-4e4e-8869-b7f7d7d20609",
@@ -912,8 +1047,35 @@
         ],
         "invariant": "The retained report keeps rejecting unknown values and projects only allowlisted metadata."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "764871817d49b03673a469217dfe59fc7cb67807",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "fillLog.ts exports const arrays with derived types and retention.ts validates with them, so enum membership has one source."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/fill-log src/autofill",
+            "scope": "retention validator and presentation",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-3f419f95-88fe-46b6-abf9-888b07c9994a",
@@ -1465,8 +1627,35 @@
         ],
         "invariant": "Every screen's visible behaviour, classes and handlers stay the same."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "9d5d39e84be25b94337d630e39ed045e71be42e7",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "The upload, progress and done modal bodies moved to ResumeImportDialogs.tsx; ResumeImportSection keeps only the workflow."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/components/options",
+            "scope": "ResumeImportSection tests",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-c0822aab-f0b2-4616-8375-3488a2ec26bc",
@@ -1594,8 +1783,35 @@
         ],
         "invariant": "Escape and backdrop do nothing while busy, focus returns to the opener, and the reset-data-title accessible name stays."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "9586e27328e97dfb8cdb389002542e18adfe7d67",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "ModalShell owns the backdrop, Escape handling and dialog frame for SettingsDialog, ImportReviewScreen, ImportSummaryDialog and the Reset dialog, with its own test."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/components",
+            "scope": "modal users and ModalShell.test.tsx",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-04bf2ddd-c877-417d-b079-9c677fe98231",
@@ -1626,8 +1842,35 @@
         ],
         "invariant": "All error strings and the points at which they fire (keystroke, change, blur, save) stay unchanged."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "a45a59b0fc7e1ae5f53dd16dc789cecd19a1cee7",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "yearRangeError and FUTURE_END_YEARS in profileInputValidation.ts are used by the date-range hook and EducationSection."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/components/options src/utils",
+            "scope": "year validation consumers",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-a1c89c74-aa60-48a9-ac9e-91d0dc1c9235",
@@ -1722,8 +1965,35 @@
         ],
         "invariant": "derived.* and entry-path lookups return the same values."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "069cd51ad37707b3b69498c1d121cf4d7db41a4f",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "resolver.ts and profileFieldTree.ts read dotted paths through readProfilePath."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/autofill",
+            "scope": "resolver and profile field tree",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-18d7849f-a3c8-4aa0-b4c9-c2f16450f83f",
@@ -1751,8 +2021,35 @@
         ],
         "invariant": "Visible values for each path do not change unless a maintainer decides to unify them."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "620401b9e438453ed630e5556d23c7262b2e4d0d",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "Formatted salary shares groupThousands and withCurrency in dateFormat.ts instead of two rounding implementations."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/autofill src/utils",
+            "scope": "salary formatting",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-438a2f2d-b553-42a6-8e14-43aac48483e4",
@@ -1811,8 +2108,35 @@
         ],
         "invariant": "The same set of mentioned countries and the same alias checks."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "46558188badf0ff224a16a54e5ed53b74257bd59",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "Country-name patterns are precompiled once in ruleValue.ts instead of rebuilding a RegExp per country per call."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/autofill",
+            "scope": "ruleValue country matching",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-296e5046-9a6a-4764-ad05-0b32158a8530",
@@ -1838,8 +2162,35 @@
         ],
         "invariant": "Counts, order and paging stay identical."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "8992f65e80a8a0e5da4edf539f41b00a70cba7b6",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "The Learned Mappings filtered lists are memoized so they are not recomputed on every render."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/components/options",
+            "scope": "LearnedMappingsSection",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-247d21a5-8859-42a3-a972-7d7b4e048100",
@@ -1866,8 +2217,35 @@
         ],
         "invariant": "Returned settings, tombstone and preference handling stay unchanged."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "7794d2e9913e4bd102df1841586ccf492599108c",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "readGeminiSettings reads its three keys with one storage call; the storage test fake supports array keys."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/utils/storage.test.ts",
+            "scope": "Gemini settings reads",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-9850e295-5c27-4b21-ada1-f04de28283f9",
@@ -1893,8 +2271,18 @@
         ],
         "invariant": "Batch boundaries (at most 20 fields and 96,000 bytes, oversized single fields dropped) stay unchanged."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "obsolete",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "no-longer-applicable",
+        "commit": "9bc2c5ffeffec28f25f150ec1905858d4687857e",
+        "date": "2026-11-08",
+        "method": "static",
+        "evidence": [
+          "Each trial body depends on the whole batch, because autofillProfilePayload(profile, batch) discloses only the profile fields the batch needs, so the exact request size cannot be computed incrementally. The rebuild is bounded by MAX_AI_FIELDS_PER_REQUEST per request and by MAX_AI_FIELDS_PER_RUN, so there is no meaningful duplicate work to remove."
+        ]
+      }
     },
     {
       "id": "r-63032779-8f42-49cf-b4bf-a93978d0e509",
@@ -1921,8 +2309,35 @@
         ],
         "invariant": "Label, action, message and tone for each state stay identical."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "37f059c50d07d2b02a32efa6ff00c34146023229",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "The popup derives its primary label, action and AI flag from one primaryKind lookup, shares one key read between mount and retry, and shares the filled/unfilled counts; 63 popup tests pass and two deliberate mutants were caught."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/popup",
+            "scope": "popup message and action states",
+            "outcome": "63 tests passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-401994f8-37a6-4812-8142-64d3813f4512",
@@ -1949,8 +2364,35 @@
         ],
         "invariant": "Exact sender-validation behaviour stays unchanged."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "9cc8c9e68a2676e131b682a1702cbe2bc8d67086",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "Sender domain derivation and label-patch validation moved to src/utils/senderValidation.ts with tests; the background handlers keep their exact guards."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/background.test.ts src/utils/senderValidation.test.ts",
+            "scope": "background handlers and validators",
+            "outcome": "26 tests passed; four mutants caught"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-7b670d46-7f57-445c-bbab-2bc74021956c",
@@ -1978,8 +2420,35 @@
         ],
         "invariant": "The wording shown for each Drive state stays identical."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "2fdc4fff35168beb053a75000a3f29bc8c4099d9",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "The Drive save toasts use profileSavedDriveReview, profileSavedDriveReconnect and profileSavedDrivePending from src/ui/feedback.ts."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/options src/ui",
+            "scope": "options App toasts",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-c7c173ec-4b4c-41da-8d54-c986702d70b7",
@@ -2006,8 +2475,30 @@
         ],
         "invariant": "Rendered pages stay identical; .chapter keeps its border-top and break-inside."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "bdf010ba8e3bb5ba8e11c796799ef8b66f5ccd33",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "Unreferenced rule groups were removed earlier (--visual-width is kept because docs/index.html sets it) and the shadowed .chapter padding and margin rules are now removed; computed chapter spacing was identical on both pages at 1280, 900, 700 and 400 px for screen and print."
+        ],
+        "checks": [
+          {
+            "command": "headless Chromium probe of .chapter computed padding, margin, border and break-inside",
+            "scope": "docs/index.html and docs/developers/index.html, four widths, screen and print",
+            "outcome": "identical before and after"
+          },
+          {
+            "command": "pnpm exec playwright test website",
+            "scope": "public website specs",
+            "outcome": "passed"
+          }
+        ]
+      }
     },
     {
       "id": "r-e4768d8a-f7da-482a-8a52-7b305e693adf",
@@ -2037,8 +2528,35 @@
         ],
         "invariant": "The layers a post-pass may rewrite, the break and hasCode semantics, and the persisted-run fallbacks stay unchanged."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "7e31b6d6c38418e1b581d4f52a91ac636820d2e5",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "ADJUSTABLE_LAYERS is exported from ruleContext.ts and the write session shares sameControl, replacing the duplicated predicates."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/autofill",
+            "scope": "post-pass and write-session predicates",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-8c444248-6ac7-4f50-8190-f6ab280d5aac",
@@ -2073,8 +2591,35 @@
         ],
         "invariant": "Each file keeps its seeded storage and scenarios."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "3b53f1ef1dd286b076ac8bea76b5395a673514b2",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "marker and the Gemini-seeded preview chrome moved to src/testing, the fill-log client test uses sessionSet and the popup test uses respondToStatus; mutants of the helpers fail the dependent tests."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/autofill src/popup src/fill-log",
+            "scope": "tests using the shared helpers",
+            "outcome": "1014 tests passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-829ac24f-4428-4fb2-bb85-0a6b9053bda6",
@@ -2109,8 +2654,35 @@
         ],
         "invariant": "Test intent and assertions stay unchanged; only names, comments and cleanup change."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "68bee01d90b844badc50f3f1fa6eca8460303b79",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "The unused CSS.escape stub and findBestMatch passthrough were removed, the two filler tests that assert a blur were retitled, URL.createObjectURL is restored after the SettingsSection tests and the parser tests use real statuses."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/autofill src/components/options src/resume-ai",
+            "scope": "edited test files",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-398d1524-91ef-4cd9-83b6-a85e86b59462",
@@ -2140,8 +2712,35 @@
         ],
         "invariant": "Each test's intended guarantee is kept and made able to fail."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "04cec082bd259172ea559b9115c478d7cfa1e911",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "The backdrop test now clicks the dialog panel so removing stopPropagation fails it, the work authorization tests assert literal labels, and the resume retry test passed seven loaded runs without retry: 2."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/components src/data",
+            "scope": "edited test files",
+            "outcome": "passed; backdrop mutant caught"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-aad5983d-0f65-4fff-b911-aaf0fc3895b2",
@@ -2203,8 +2802,40 @@
         ],
         "invariant": "Bundling behaviour and the pdfjs-dist mock order in extractLinks.test.ts stay valid."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "4697bcf45f6305dd56caa2577376b307cd98c9d6",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "loadPdfjs.ts is the single pdf.js loader and worker URL for extractLinks and validateResumeFile, and extractLinks now destroys its loading task; the production build still emits the bundled worker asset."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/resume-ai",
+            "scope": "extractLinks, validateResumeFile and loadPdfjs tests",
+            "outcome": "273 tests passed; two mutants caught"
+          },
+          {
+            "command": "pnpm build",
+            "scope": "production extension",
+            "outcome": "succeeded with assets/pdf.worker.min emitted"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "149 files and 2630 tests passed both times"
+          }
+        ]
+      }
     }
   ]
 }
