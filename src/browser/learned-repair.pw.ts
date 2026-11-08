@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, stubEmptyGemini } from './fixtures';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
 import type { LearnedMappings } from '../types/storage';
 
@@ -23,12 +23,7 @@ test('repairs historical aliases during scan, fills once, and skips repeat repai
     },
     { profile: RULE_PROFILE, mappings },
   );
-  await context.route('https://generativelanguage.googleapis.com/**', (route) =>
-    route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({ candidates: [{ content: { parts: [{ text: '[]' }] } }] }),
-    }),
-  );
+  await stubEmptyGemini(context);
   await page.evaluate(() => {
     document.body.innerHTML = `
       <header><button role="combobox" aria-label="Select language">English</button></header>

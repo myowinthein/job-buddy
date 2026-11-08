@@ -1,5 +1,5 @@
 import type { Locator, Page, TestInfo } from '@playwright/test';
-import { test, expect } from './fixtures';
+import { test, expect, geminiResponse } from './fixtures';
 import { serveDemo, ready, sample, publicURL } from './demoSupport';
 import type { Profile } from '../types/profile';
 import { readFile } from 'node:fs/promises';
@@ -370,7 +370,7 @@ for (const theme of ['light', 'dark'] as const) {
             : 'Review the saved question in context.',
       }));
       return route.fulfill({
-        json: { candidates: [{ content: { parts: [{ text: JSON.stringify(results) }] } }] },
+        json: geminiResponse(JSON.stringify(results)),
       });
     });
     await options.getByRole('button', { name: 'Review Mappings', exact: true }).click();

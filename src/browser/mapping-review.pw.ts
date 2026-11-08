@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, geminiResponse } from './fixtures';
 import type { Page } from '@playwright/test';
 import type { LearnedMappings } from '../types/storage';
 
@@ -238,7 +238,7 @@ test('preselects fresh and cached suggestions while preserving explicit choices'
           : 'Review this question against the saved field.',
     }));
     await route.fulfill({
-      json: { candidates: [{ content: { parts: [{ text: JSON.stringify(results) }] } }] },
+      json: geminiResponse(JSON.stringify(results)),
     });
   });
   const options = await context.newPage();
@@ -392,7 +392,7 @@ test('retains completed batches when stopped and starts a fresh review on every 
     }));
     await route
       .fulfill({
-        json: { candidates: [{ content: { parts: [{ text: JSON.stringify(answers) }] } }] },
+        json: geminiResponse(JSON.stringify(answers)),
       })
       .catch(() => {});
   });
@@ -465,7 +465,7 @@ test('paginates one ordered findings list and saves selected changes across site
       reason: 'Review the saved field.',
     }));
     await route.fulfill({
-      json: { candidates: [{ content: { parts: [{ text: JSON.stringify(answers) }] } }] },
+      json: geminiResponse(JSON.stringify(answers)),
     });
   });
   const options = await context.newPage();

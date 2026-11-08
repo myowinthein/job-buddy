@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, stubEmptyGemini } from './fixtures';
 const hostSelector = '[data-job-buddy-ui]';
 
 test('one click preserves existing answers across frames and keeps details and Undo accessible', async ({
@@ -69,12 +69,7 @@ test('saved overwrite mode fills empty and existing fields, preserves unmatched 
     label.append(input);
     document.querySelector('form')!.append(label);
   });
-  await context.route('https://generativelanguage.googleapis.com/**', (route) =>
-    route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({ candidates: [{ content: { parts: [{ text: '[]' }] } }] }),
-    }),
-  );
+  await stubEmptyGemini(context);
   const host = page.locator(hostSelector);
   const fill = host.getByRole('button', { name: 'Fill Form', exact: true });
   await expect(fill).toHaveAttribute(
@@ -385,12 +380,7 @@ test('completed feedback keeps filled counts neutral, accents attention, and exp
     document.body.innerHTML =
       '<form aria-label="Job application"><label>First name<input name="firstName" autocomplete="given-name"></label><label>Email<input name="email" type="email" autocomplete="email"></label><label>Zqx identifier<input name="unknown"></label></form>';
   });
-  await context.route('https://generativelanguage.googleapis.com/**', (route) =>
-    route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({ candidates: [{ content: { parts: [{ text: '[]' }] } }] }),
-    }),
-  );
+  await stubEmptyGemini(context);
   const host = page.locator(hostSelector);
   await expect(host).toHaveCount(1);
   await host.getByRole('button', { name: 'Fill Form', exact: true }).click();

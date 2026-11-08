@@ -1,17 +1,12 @@
 // Regression coverage for background learned mappings on throwaway forms.
-import { test, expect } from './fixtures';
+import { test, expect, stubEmptyGemini } from './fixtures';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
 import type { LearnedMappings } from '../types/storage';
 test.beforeEach(async ({ page, context, extension }) => {
   await extension.worker.evaluate(async (profile) => {
     await chrome.storage.local.set({ profile, learnedMappings: {} });
   }, RULE_PROFILE);
-  await context.route('https://generativelanguage.googleapis.com/**', (route) =>
-    route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({ candidates: [{ content: { parts: [{ text: '[]' }] } }] }),
-    }),
-  );
+  await stubEmptyGemini(context);
   await page.evaluate(() => {
     document.body.innerHTML =
       '<form><h1>Job application</h1></form><button type="button" id="outside">Continue</button>';

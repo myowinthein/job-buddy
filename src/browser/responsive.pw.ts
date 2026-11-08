@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, stubEmptyGemini } from './fixtures';
 import { DEV_PROFILE } from '../utils/devProfile';
 import type { Locator, Page } from '@playwright/test';
 
@@ -241,9 +241,7 @@ test('keeps populated Fill Details, its help, and Quick Fill within the viewport
   context,
   extension,
 }, info) => {
-  await context.route('https://generativelanguage.googleapis.com/**', (route) =>
-    route.fulfill({ json: { candidates: [{ content: { parts: [{ text: '[]' }] } }] } }),
-  );
+  await stubEmptyGemini(context);
   await extension.send('AUTOFILL_FILL', 'merge');
   const options = await context.newPage();
   await sectionNavigation(options);

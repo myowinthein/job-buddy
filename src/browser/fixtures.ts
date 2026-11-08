@@ -1,4 +1,4 @@
-import { test as base, expect, chromium, type Worker } from '@playwright/test';
+import { test as base, expect, chromium, type BrowserContext, type Worker } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -101,3 +101,14 @@ export const test = base.extend<{
   },
 });
 export { expect };
+
+/** The Gemini response envelope around a text answer. */
+export const geminiResponse = (text: string) => ({
+  candidates: [{ content: { parts: [{ text }] } }],
+});
+
+/** Answers every Gemini request with no field answers. */
+export const stubEmptyGemini = (context: BrowserContext) =>
+  context.route('https://generativelanguage.googleapis.com/**', (route) =>
+    route.fulfill({ json: geminiResponse('[]') }),
+  );

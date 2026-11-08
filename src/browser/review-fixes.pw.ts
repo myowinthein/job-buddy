@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, stubEmptyGemini } from './fixtures';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
 import type { BrowserContext } from '@playwright/test';
 
@@ -7,9 +7,7 @@ test.beforeEach(async ({ context, extension }) => {
   await extension.worker.evaluate(async (profile) => {
     await chrome.storage.local.set({ profile, learnedMappings: {} });
   }, RULE_PROFILE);
-  await context.route('https://generativelanguage.googleapis.com/**', (route) =>
-    route.fulfill({ contentType: 'application/json', body: JSON.stringify(emptyAI) }),
-  );
+  await stubEmptyGemini(context);
 });
 async function popupFor(context: BrowserContext, url: string, tabId: number) {
   const popup = await context.newPage();
