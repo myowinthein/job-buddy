@@ -9,6 +9,7 @@ import {
 import { learnedRepairField } from '../utils/learnedMappingRepair';
 import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED, CONF_DICT_EXACT } from './constants';
 import { scanForm, isChoiceGroupAvailable } from './scanner';
+import { NoDataRegistry } from './noDataRegistry';
 import { ReportRecords } from './reportRecords';
 import { fieldDomain, isChoice, isChoiceChecked, isControlAvailable } from './dom';
 import { extractSignals, bestLabel } from './signals';
@@ -176,39 +177,11 @@ export function getFillLog(): FrameFillLog | null {
   return fillLog;
 }
 
-// Tracks the noData fields from the most recent executeAutofill run.
-// Used by the visibilitychange listener to silently re-fill fields whose
-// profile value became available (e.g. user added the missing data in the
-// Options page) while the form tab was hidden. Cleared on undo and on each
-// new scan/fill cycle. Stores enough state to re-resolve the path without
-// re-running scanner / signals / mapper / confidence scoring.
-interface NoDataEntry {
-  element:   HTMLElement;
-  fieldPath: string;
-  confidence: number;
-  identity: string;
-}
-let noDataFields: NoDataEntry[] = [];
-
-// Single document-level visibilitychange listener. Registered once when the
-// first executeAutofill run produces tracked noData fields; torn down on undo.
-// Reuse of the same handler reference keeps add/remove idempotent.
-let visibilityHandler: (() => void) | null = null;
-
-function ensureVisibilityListener(): void {
-  if (visibilityHandler) return;
-  visibilityHandler = () => {
-    if (document.visibilityState !== 'visible') return;
-    void runSilentRefill();
-  };
-  document.addEventListener('visibilitychange', visibilityHandler);
-}
-
-function teardownVisibilityListener(): void {
-  if (!visibilityHandler) return;
-  document.removeEventListener('visibilitychange', visibilityHandler);
-  visibilityHandler = null;
-}
+// Tracks the noData fields from the most recent executeAutofill run for the
+// silent refill. Cleared on undo and on each new scan/fill cycle.
+const noData = new NoDataRegistry(() => {
+  void runSilentRefill();
+});
 
 type EditableFieldState = 'lowConfidence' | 'needReview' | 'noData';
 
@@ -262,8 +235,8 @@ function attachEditWatchers(fields: EditableField[], result: AutofillResult): vo
         result.noData = Math.max(0, result.noData - 1);
         // Manually-resolved noData fields should also leave the silent-refill
         // registry so a later profile update doesn't overwrite the user's typing.
-        noDataFields = noDataFields.filter((e) => e.element !== element);
-        if (noDataFields.length === 0) teardownVisibilityListener();
+        noData.keepWhere((e) => e.element !== element);
+        noData.settle();
       }
 
       // Field is resolved — tear down the edit watcher so it doesn't fire again.
@@ -309,8 +282,8 @@ function runSilentRefill(): Promise<void> {
   if (refillInFlight) return refillInFlight;
   const result = lastResult;
   const generation = sessionGeneration;
-  if (!result || noDataFields.length === 0) return Promise.resolve();
-  const entries = [...noDataFields];
+  if (!result || noData.entries.length === 0) return Promise.resolve();
+  const entries = [...noData.entries];
   const isActive = () => generation === sessionGeneration && result === lastResult;
   const task = (async () => {
     watchRunProfile();
@@ -319,21 +292,20 @@ function runSilentRefill(): Promise<void> {
       const profile = await getProfile();
       if (!profile || !isActive()) return;
       if (profile.id !== completedProfileId) {
-        noDataFields = [];
-        teardownVisibilityListener();
+        noData.clear();
         return;
       }
       for (const entry of entries) {
         if (!isActive()) return;
-        if (!noDataFields.includes(entry)) continue;
+        if (!noData.entries.includes(entry)) continue;
         const { element, fieldPath } = entry;
         if (entry.identity !== aiQuestionIdentity(element)) {
-          noDataFields = noDataFields.filter(item => item !== entry);
+          noData.keepWhere(item => item !== entry);
           clearElementHighlight(element);
           continue;
         }
         if (!element.isConnected || getFieldValue(element).trim()) {
-          noDataFields = noDataFields.filter((item) => item !== entry);
+          noData.keepWhere((item) => item !== entry);
           continue;
         }
         const value = resolveRuleValue(profile, fieldPath, extractSignals(element));
@@ -344,7 +316,7 @@ function runSilentRefill(): Promise<void> {
         try { filled = await fillField(element, value, isActive); }
         finally { writingElements.delete(element); }
         if (!isActive()) return;
-        if (!noDataFields.includes(entry)) continue; // a manual blur resolved it while awaiting
+        if (!noData.entries.includes(entry)) continue; // a manual blur resolved it while awaiting
         if (filled === false) {
           const index = sessionElements.indexOf(element);
           if (index >= 0) sessionElements.splice(index, 1);
@@ -365,14 +337,14 @@ function runSilentRefill(): Promise<void> {
         result.noData = Math.max(0, result.noData - 1);
         if (green) result.noReview++;
         else result.needReview++;
-        noDataFields = noDataFields.filter((item) => item !== entry);
+        noData.keepWhere((item) => item !== entry);
         const watcher = editWatchers.get(element);
         if (watcher) {
           element.removeEventListener('blur', watcher);
           editWatchers.delete(element);
         }
       }
-      if (noDataFields.length === 0) teardownVisibilityListener();
+      noData.settle();
       syncFillLogResult(result);
       if (fillLog) fillLog.modifiedAt = Date.now();
       await publishFillLog(fillLog, completedProfileId);
@@ -399,8 +371,7 @@ export async function undoAutofill(): Promise<boolean> {
   refillInFlight = null;
   pendingReady = false;
   pendingMatches = [];
-  noDataFields = [];
-  teardownVisibilityListener();
+  noData.clear();
   for (const element of new Set([...sessionElements, ...records.byElement.keys()])) {
     const watcher = editWatchers.get(element);
     if (watcher) element.removeEventListener('blur', watcher);
@@ -440,8 +411,7 @@ export function cancelAutofillRun(): void {
   invalidateSession();
   pendingReady = false;
   pendingMatches = [];
-  noDataFields = [];
-  teardownVisibilityListener();
+  noData.clear();
 }
 
 // Phase 1: scan and map all fields; detect which matched fields already have values.
@@ -472,8 +442,7 @@ export async function scanAutofill(
   const generation = sessionGeneration;
   refillInFlight = null;
   pendingReady = false;
-  noDataFields = [];
-  teardownVisibilityListener();
+  noData.clear();
   pendingMatches = [];
   sessionElements = [];
   lastResult      = null;
@@ -748,7 +717,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   // Reset the noData registry — silent re-fill will only consider noData
   // fields from this fresh run, not stale ones from a previous session.
   clearMissingDataHighlights();
-  noDataFields = [];
+  noData.reset();
 
   for (const { element, signals, match, hasExistingValue } of matchesToFill) {
     if (!isActive()) return interrupted();
@@ -867,7 +836,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
         // "no signal matched" branch leaves it null, and that takes the
         // lowConfidence path above), but check explicitly for type safety.
         if (match.fieldPath) {
-          noDataFields.push({ element, fieldPath: match.fieldPath, confidence: match.confidence, identity: aiQuestionIdentity(element) });
+          noData.add({ element, fieldPath: match.fieldPath, confidence: match.confidence, identity: aiQuestionIdentity(element) });
           addTextCandidate('noData');
         }
       }
@@ -879,7 +848,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   // Register the visibilitychange listener only when we actually have noData
   // fields to watch. Listener is idempotent and is torn down on undo or when
   // all entries are resolved.
-  if (noDataFields.length > 0) ensureVisibilityListener();
+  if (noData.entries.length > 0) noData.listen();
 
   const aiStates = new Map<HTMLElement, 'green' | 'yellow'>();
   let aiStatus: AIAutofillStatus | undefined;
@@ -914,8 +883,8 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   for (const field of editableFields) {
     if (aiStates.get(field.element) === 'yellow') field.state = 'needReview';
   }
-  noDataFields = noDataFields.filter((entry) => !aiStates.has(entry.element));
-  if (noDataFields.length === 0) teardownVisibilityListener();
+  noData.keepWhere((entry) => !aiStates.has(entry.element));
+  noData.settle();
   result.aiStatus = aiStatus ?? (aiRan ? 'not_needed' : 'unavailable');
   if (fillLog) {
     fillLog.aiStatus = result.aiStatus;
@@ -956,8 +925,8 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       domain,
       learningContext,
       (element) => {
-        noDataFields = noDataFields.filter((entry) => entry.element !== element);
-        if (!noDataFields.length) teardownVisibilityListener();
+        noData.keepWhere((entry) => entry.element !== element);
+        noData.settle();
       },
     );
 
