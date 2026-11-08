@@ -7,6 +7,8 @@ import {
   isValidAmount,
   noticeDurationError,
   profileDateRangeErrors,
+  yearRangeError,
+  FUTURE_END_YEARS,
   isValidPersonalOption,
   isValidProfileOption,
   isValidProfileCurrency,
@@ -131,4 +133,21 @@ it('shares exact currency codes and month/year formats across consumers', () => 
     expect(isValidProfileYearMonth(value)).toBe(false);
     expect(isValidProfileYearMonth(value, true)).toBe(false);
   }
+});
+
+describe('yearRangeError', () => {
+  it.each([1990, 2000, 2020])('accepts %i between 1990 and 2020', (year) => {
+    expect(yearRangeError(year, 1990, 2020)).toBe('');
+  });
+
+  it.each([1989, 2021])(
+    'rejects %i outside 1990 to 2020 with the bounds in the message',
+    (year) => {
+      expect(yearRangeError(year, 1990, 2020)).toBe('Year must be between 1990 and 2020');
+    },
+  );
+
+  it('lets a current role end ten years ahead', () => {
+    expect(FUTURE_END_YEARS).toBe(10);
+  });
 });

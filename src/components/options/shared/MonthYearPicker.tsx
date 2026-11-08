@@ -54,7 +54,9 @@ export function MonthYearPicker({
   const [month, setMonth] = useState(parsed.month);
   // yearStr tracks what the user has typed (may be partial, e.g. "199")
   const [yearStr, setYearStr] = useState(parsed.year);
-  useDraftFlag(!disabled && !!(month || yearStr) && (!isValidYear(yearStr) || (!monthOptional && !month)));
+  // A started date is partial until its year is valid and, when required, its month is set.
+  const isPartial = (m: string, y: string) => !!(m || y) && (!isValidYear(y) || (!monthOptional && !m));
+  useDraftFlag(!disabled && isPartial(month, yearStr));
 
   // Without this, deleting a non-last Work History/Education entry shifts
   // every later row's index — since these pickers are keyed by index, React
@@ -78,7 +80,7 @@ export function MonthYearPicker({
 
   const handleMonth = (m: string) => {
     setMonth(m);
-    onPartialChange?.(!!(m || yearStr) && (!isValidYear(yearStr) || (!monthOptional && !m)));
+    onPartialChange?.(isPartial(m, yearStr));
     emit(m, isValidYear(yearStr) ? yearStr : '');
   };
 
@@ -86,7 +88,7 @@ export function MonthYearPicker({
     // Strip non-digits, cap at 4 chars
     const cleaned = raw.replace(/\D/g, '').slice(0, 4);
     setYearStr(cleaned);
-    onPartialChange?.(!!(month || cleaned) && (!isValidYear(cleaned) || (!monthOptional && !month)));
+    onPartialChange?.(isPartial(month, cleaned));
     emit(month, isValidYear(cleaned) ? cleaned : '');
     onYearChange?.(cleaned);
   };

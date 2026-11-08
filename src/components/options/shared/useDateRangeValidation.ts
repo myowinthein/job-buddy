@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
+import { FUTURE_END_YEARS, yearRangeError } from '@/src/utils/profileInputValidation';
 
 interface UseDateRangeValidationOptions {
   minYear: number;
@@ -21,11 +22,17 @@ export function useDateRangeValidation<T extends { startDate: string; isCurrent?
   setErrors: Dispatch<SetStateAction<Record<string, string>>>,
   { minYear, maxYear, allowYearOnlyEnd = false, allowFutureEnd = false }: UseDateRangeValidationOptions,
 ) {
+  // A current role or course may end a few years in the future.
+  const endLimit = (idx: number, key: 'startDate' | 'endDate') =>
+    allowFutureEnd && key === 'endDate' && entries[idx].isCurrent
+      ? maxYear + FUTURE_END_YEARS
+      : maxYear;
+
   // Year-only validation for MonthYearPicker's onYearChange: validates the
   // year range even before a month is selected (fires on every keystroke).
   const handleYearChange = (idx: number, key: 'startDate' | 'endDate', year: string) => {
     const ek = `${idx}.${key}`;
-    const limit = allowFutureEnd && key === 'endDate' && entries[idx].isCurrent ? maxYear + 10 : maxYear;
+    const limit = endLimit(idx, key);
     if (year.length < 4) {
       setErrors((e) => {
         const cur = e[ek] ?? '';
@@ -35,17 +42,14 @@ export function useDateRangeValidation<T extends { startDate: string; isCurrent?
     }
     const y = parseInt(year, 10);
     if (isNaN(y)) return;
-    const err = y > limit || y < minYear
-      ? `Year must be between ${minYear} and ${limit}`
-      : '';
-    setErrors((e) => ({ ...e, [ek]: err }));
+    setErrors((e) => ({ ...e, [ek]: yearRangeError(y, minYear, limit) }));
   };
 
   // Blur handler for the full month+year group (fires when focus leaves the picker).
   // Validation order: required (both empty) → year range (year present).
   const handleDateBlur = (idx: number, key: 'startDate' | 'endDate', month: string, year: string) => {
     const ek = `${idx}.${key}`;
-    const limit = allowFutureEnd && key === 'endDate' && entries[idx].isCurrent ? maxYear + 10 : maxYear;
+    const limit = endLimit(idx, key);
     const isRequired = key === 'startDate' || !entries[idx].isCurrent;
 
     if (!month && !year.trim()) {
@@ -61,8 +65,9 @@ export function useDateRangeValidation<T extends { startDate: string; isCurrent?
 
     if (year.length === 4) {
       const y = parseInt(year, 10);
-      if (!isNaN(y) && (y > limit || y < minYear)) {
-        setErrors((e) => ({ ...e, [ek]: `Year must be between ${minYear} and ${limit}` }));
+      const rangeError = isNaN(y) ? '' : yearRangeError(y, minYear, limit);
+      if (rangeError) {
+        setErrors((e) => ({ ...e, [ek]: rangeError }));
         return;
       }
       // End date before start date.

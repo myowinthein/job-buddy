@@ -1,7 +1,11 @@
 import { profileTextLimit } from '@/src/profile/fieldPolicies';
 import { ProfileFields } from './shared/ProfileFields';
 import { SectionHeader } from './shared/SectionHeader';
-import { profileDateRangeErrors } from '@/src/utils/profileInputValidation';
+import {
+  FUTURE_END_YEARS,
+  profileDateRangeErrors,
+  yearRangeError,
+} from '@/src/utils/profileInputValidation';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef } from 'react';
@@ -107,14 +111,12 @@ export function EducationSection({ profile, onSave }: Props) {
       if (!String(value).trim()) err = 'Start date is required';
       else {
         const y = parseInt((value as string).split('-')[0] ?? '', 10);
-        if (!isNaN(y) && (y > EDU_MAX_YEAR || y < EDU_MIN_YEAR))
-          err = `Year must be between ${EDU_MIN_YEAR} and ${EDU_MAX_YEAR}`;
+        if (!isNaN(y)) err = yearRangeError(y, EDU_MIN_YEAR, EDU_MAX_YEAR);
       }
     } else if (key === 'endDate' && typeof value === 'string' && value) {
       const y = parseInt(value.split('-')[0] ?? '', 10);
-      const maxEnd = entries[idx].isCurrent ? EDU_MAX_YEAR + 10 : EDU_MAX_YEAR;
-      if (!isNaN(y) && (y > maxEnd || y < EDU_MIN_YEAR))
-        err = `Year must be between ${EDU_MIN_YEAR} and ${maxEnd}`;
+      const maxEnd = entries[idx].isCurrent ? EDU_MAX_YEAR + FUTURE_END_YEARS : EDU_MAX_YEAR;
+      if (!isNaN(y)) err = yearRangeError(y, EDU_MIN_YEAR, maxEnd);
     } else if (key === 'isCurrent' && value === true) {
       setErrors((e) => ({ ...e, [`${idx}.endDate`]: '' }));
     }

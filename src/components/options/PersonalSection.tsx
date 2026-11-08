@@ -24,6 +24,8 @@ import {
   isValidPersonalOption,
 } from '@/src/utils/profileInputValidation';
 
+const DOB_PARTIAL_ERROR = 'Complete day, month, and year, or leave blank';
+
 interface Props {
   profile: Partial<Profile>;
   onSave: (updates: Partial<Profile>) => Promise<void>;
@@ -158,7 +160,7 @@ export function PersonalSection({ profile, onSave }: Props) {
     }
     if (dobIsPartial) {
       // The picker also reports fully typed but invalid components as incomplete.
-      e.dateOfBirth = 'Complete day, month, and year, or leave blank';
+      e.dateOfBirth = DOB_PARTIAL_ERROR;
     }
 
     if (
@@ -311,11 +313,11 @@ export function PersonalSection({ profile, onSave }: Props) {
                       if (!existing)
                         return {
                           ...e,
-                          dateOfBirth: 'Complete day, month, and year, or leave blank',
+                          dateOfBirth: DOB_PARTIAL_ERROR,
                         };
                       return e;
                     }
-                    if (existing === 'Complete day, month, and year, or leave blank') {
+                    if (existing === DOB_PARTIAL_ERROR) {
                       return { ...e, dateOfBirth: '' };
                     }
                     return e;

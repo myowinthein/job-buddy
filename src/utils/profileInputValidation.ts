@@ -93,6 +93,14 @@ export function birthDateError(value: string, today = new Date()): string {
   return '';
 }
 
+/** How many years past the current one a current role or course may end. */
+export const FUTURE_END_YEARS = 10;
+
+/** The error for a year outside min..max, or an empty string when it is in range. */
+export function yearRangeError(year: number, min: number, max: number): string {
+  return year > max || year < min ? `Year must be between ${min} and ${max}` : '';
+}
+
 /** Required date rules shared by the editor and saved-profile progress. */
 export function profileDateRangeErrors(
   row: { startDate?: string; endDate?: string; isCurrent?: boolean },
@@ -108,9 +116,10 @@ export function profileDateRangeErrors(
     else if (!isValidProfileYearMonth(value, yearOnly))
       errors[key] = `Enter ${yearOnly ? 'a year or month and year' : 'a month and year'}`;
     else {
-      const maxYear = key === 'endDate' && yearOnly && row.isCurrent ? year + 10 : year;
-      if (Number(value.slice(0, 4)) < year - 100 || Number(value.slice(0, 4)) > maxYear)
-        errors[key] = `Year must be between ${year - 100} and ${maxYear}`;
+      const maxYear =
+        key === 'endDate' && yearOnly && row.isCurrent ? year + FUTURE_END_YEARS : year;
+      const rangeError = yearRangeError(Number(value.slice(0, 4)), year - 100, maxYear);
+      if (rangeError) errors[key] = rangeError;
     }
   }
   if (row.endDate && !errors.startDate && !errors.endDate && (!row.isCurrent || yearOnly)) {
