@@ -4,10 +4,7 @@ import { render, screen, fireEvent, cleanup, within } from '@testing-library/rea
 import { SearchableProfileFieldSelect } from './SearchableProfileFieldSelect';
 import type { Profile } from '@/src/types/profile';
 import { settingsReviewProfile } from '@/src/testing/settingsReviewFixture';
-
-// jsdom doesn't implement Element.scrollIntoView; the keyboard-highlight
-// effect calls it whenever the highlighted row changes.
-Element.prototype.scrollIntoView = vi.fn();
+import '@/src/testing/scrollIntoViewStub';
 
 afterEach(cleanup);
 

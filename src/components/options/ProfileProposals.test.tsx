@@ -12,10 +12,10 @@ import { EducationSection } from './EducationSection';
 import { DocumentsSection } from './DocumentsSection';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
 import type { ReactNode } from 'react';
+import '@/src/testing/scrollIntoViewStub';
 afterEach(cleanup);
 const save = () => vi.fn().mockResolvedValue(undefined);
 const show = (node: ReactNode) => render(<ToastProvider>{node}</ToastProvider>);
-Element.prototype.scrollIntoView = vi.fn();
 
 it('saves a mononymous contact and starts optional personal details collapsed', () => {
   const onSave = save();

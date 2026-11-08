@@ -2,10 +2,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { SearchableCountryDropdown } from './SearchableCountryDropdown';
-
-// jsdom doesn't implement Element.scrollIntoView; the dropdown's
-// keyboard-highlight effect calls it whenever the panel opens.
-Element.prototype.scrollIntoView = vi.fn();
+import '@/src/testing/scrollIntoViewStub';
 
 afterEach(cleanup);
 

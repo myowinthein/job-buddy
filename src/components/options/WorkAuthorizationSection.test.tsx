@@ -4,10 +4,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { WorkAuthorizationSection } from './WorkAuthorizationSection';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import type { Profile } from '@/src/types/profile';
-
-// jsdom doesn't implement Element.scrollIntoView; SearchableCountryDropdown's
-// keyboard-highlight effect calls it whenever the panel opens.
-Element.prototype.scrollIntoView = vi.fn();
+import '@/src/testing/scrollIntoViewStub';
 
 afterEach(cleanup);
 

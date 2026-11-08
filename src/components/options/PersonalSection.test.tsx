@@ -5,10 +5,7 @@ import { afterEach } from 'vitest';
 import { PersonalSection } from './PersonalSection';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import type { Profile } from '@/src/types/profile';
-
-// jsdom doesn't implement Element.scrollIntoView; SearchableCallingCodeSelect's
-// keyboard-highlight effect calls it whenever the panel opens.
-Element.prototype.scrollIntoView = vi.fn();
+import '@/src/testing/scrollIntoViewStub';
 
 afterEach(cleanup);
 

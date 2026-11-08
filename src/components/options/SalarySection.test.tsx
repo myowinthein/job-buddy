@@ -4,10 +4,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { SalarySection } from './SalarySection';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import type { Profile } from '@/src/types/profile';
-
-// jsdom doesn't implement Element.scrollIntoView; searchable dropdowns call it
-// when their highlighted option changes.
-Element.prototype.scrollIntoView = vi.fn();
+import '@/src/testing/scrollIntoViewStub';
 
 afterEach(cleanup);
 
