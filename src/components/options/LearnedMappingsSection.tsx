@@ -553,16 +553,18 @@ export function LearnedMappingsSection({
       ),
     [groupsBySite],
   );
-  const allGroups = sites.flatMap((domain) =>
-    groupsBySite.get(domain)!.map((group) => ({ domain, group })),
-  );
-  const searched = allGroups.filter(({ domain, group }) =>
-    matchesMapping(group, domain, search, mappingDestination(group.path, labels)),
-  );
-  const counts = { All: searched.length, Trusted: 0, Learning: 0, Inactive: 0 };
-  for (const { group } of searched) counts[group.status]++;
-  const shown = searched.filter(({ group }) => filter === 'All' || group.status === filter);
-  const shownSites = sites.filter((domain) => shown.some((entry) => entry.domain === domain));
+  const { counts, shown, shownSites } = useMemo(() => {
+    const searched = sites
+      .flatMap((domain) => groupsBySite.get(domain)!.map((group) => ({ domain, group })))
+      .filter(({ domain, group }) =>
+        matchesMapping(group, domain, search, mappingDestination(group.path, labels)),
+      );
+    const counts = { All: searched.length, Trusted: 0, Learning: 0, Inactive: 0 };
+    for (const { group } of searched) counts[group.status]++;
+    const shown = searched.filter(({ group }) => filter === 'All' || group.status === filter);
+    const shownDomains = new Set(shown.map((entry) => entry.domain));
+    return { counts, shown, shownSites: sites.filter((domain) => shownDomains.has(domain)) };
+  }, [sites, groupsBySite, labels, search, filter]);
   const lastPage = Math.max(0, Math.ceil(shownSites.length / SITES_PER_PAGE) - 1);
   const currentPage = Math.min(sitePage, lastPage);
   // Deleting the last site on a page must not leave an empty or stale page selected.
