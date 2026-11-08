@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPreviewChrome } from '../preview/chrome';
+import { geminiSeededChrome } from '@/src/testing/geminiChrome';
 import { RULE_PROFILE } from './ruleMatching.fixture';
 import { runAIAutofill } from './ai';
 import { extractSignals } from './signals';
@@ -44,14 +44,7 @@ beforeEach(() => {
   } as DOMRect);
   vi.stubGlobal(
     'chrome',
-    createPreviewChrome(profile, undefined, {
-      initialData: {
-        profile,
-        geminiApiKey: 'synthetic-key',
-        geminiModel: 'gemini-3.8-flash',
-        geminiDevDisabled: true,
-      },
-    }),
+    geminiSeededChrome(profile),
   );
   fetchMock.mockReset();
   vi.stubGlobal('fetch', fetchMock);

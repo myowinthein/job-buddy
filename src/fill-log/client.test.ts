@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadFillLog, openFillLog, returnToForm } from './client';
 import { createPreviewChrome } from '@/src/preview/chrome';
+import { sessionSet } from '@/src/utils/sessionStorage';
 import { RETAINED_FILL_DETAILS, clearRetainedFillLog } from './retention';
 import {
   FILL_DETAILS_REQUEST,
@@ -82,9 +83,7 @@ describe('reading a source form log', () => {
         },
       ],
     };
-    await new Promise<void>((resolve) =>
-      chrome.storage.session.set({ [RETAINED_FILL_DETAILS]: retained }, resolve),
-    );
+    await sessionSet({ [RETAINED_FILL_DETAILS]: retained });
     tabs.get.mockRejectedValue(new Error('Closed tab'));
     expect(await loadFillLog(10)).toMatchObject({
       tabId: 10,
@@ -106,9 +105,7 @@ describe('reading a source form log', () => {
       pageUrl: 'https://form.test/application',
       frames: [{ frameId: 0, log: { ...log('retained', 5), status: 'completed' } }],
     };
-    await new Promise<void>((resolve) =>
-      chrome.storage.session.set({ [RETAINED_FILL_DETAILS]: retained }, resolve),
-    );
+    await sessionSet({ [RETAINED_FILL_DETAILS]: retained });
     tabs.get.mockResolvedValue({ id: 10 });
     getFrame.mockResolvedValue({ url: 'https://form.test/another-job' });
     expect(await loadFillLog(10)).toMatchObject({
@@ -125,9 +122,7 @@ describe('reading a source form log', () => {
       pageUrl: 'https://form.test/application',
       frames: [{ frameId: 0, log: { ...log('retained', 5), status: 'completed' } }],
     };
-    await new Promise<void>((resolve) =>
-      chrome.storage.session.set({ [RETAINED_FILL_DETAILS]: retained }, resolve),
-    );
+    await sessionSet({ [RETAINED_FILL_DETAILS]: retained });
     tabs.get.mockResolvedValue({ id: 10, url: retained.pageUrl + '#education' });
     tabs.sendMessage.mockResolvedValue(null);
     expect((await loadFillLog(10)).sourceNavigated).toBeUndefined();
@@ -138,9 +133,7 @@ describe('reading a source form log', () => {
       tabId: 20,
       frames: [{ frameId: 0, log: { ...log('new', 5), status: 'completed' } }],
     };
-    await new Promise<void>((resolve) =>
-      chrome.storage.session.set({ [RETAINED_FILL_DETAILS]: retained }, resolve),
-    );
+    await sessionSet({ [RETAINED_FILL_DETAILS]: retained });
     tabs.sendMessage.mockImplementation((id) =>
       Promise.resolve(log(id === 20 ? 'new' : 'old', id === 20 ? 5 : 1)),
     );
@@ -232,27 +225,22 @@ describe('reading a source form log', () => {
     await expect(returnToForm(10, 'https://form.test/application')).rejects.toThrow('blocked');
   });
   it('uses existing completed run metadata when details have not been requested before', async () => {
-    await new Promise<void>((resolve) =>
-      chrome.storage.session.set(
-        {
-          'jb:autofill-run:10': {
-            tabId: 10,
-            startedAt: 1,
-            stage: 'completed',
-            results: [{ totalScanned: 4 }],
-          },
-          'jb:autofill-run:20': {
-            tabId: 20,
-            startedAt: 2,
-            stage: 'completed',
-            results: [{ totalScanned: 0 }],
-          },
-          'jb:autofill-run:30': { tabId: 30, startedAt: 3, stage: 'filling' },
-          'jb:autofill-run:40': { tabId: 40, startedAt: 4, stage: 'completed', results: {} },
-        },
-        resolve,
-      ),
-    );
+    await sessionSet({
+      'jb:autofill-run:10': {
+        tabId: 10,
+        startedAt: 1,
+        stage: 'completed',
+        results: [{ totalScanned: 4 }],
+      },
+      'jb:autofill-run:20': {
+        tabId: 20,
+        startedAt: 2,
+        stage: 'completed',
+        results: [{ totalScanned: 0 }],
+      },
+      'jb:autofill-run:30': { tabId: 30, startedAt: 3, stage: 'filling' },
+      'jb:autofill-run:40': { tabId: 40, startedAt: 4, stage: 'completed', results: {} },
+    });
     expect(await lastFillDetailsSource()).toBe(10);
     expect(tabs.sendMessage).not.toHaveBeenCalled();
   });

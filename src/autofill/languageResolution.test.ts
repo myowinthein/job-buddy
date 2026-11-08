@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { adjustLanguageMatches } from './languageResolution';
 import type { FieldMatch } from './mapper';
+import { marker } from '@/src/testing/fieldMatch';
 import type { Profile } from '../types/profile';
 
 const PROFILE: Profile = {
@@ -24,10 +25,6 @@ const PROFILE: Profile = {
   links: { linkedin: 'https://linkedin.com/in/jane' },
   documents: { cv: {} },
 };
-
-function marker(fieldPath: string, matchLayer: FieldMatch['matchLayer']): FieldMatch {
-  return { fieldPath, confidence: 0.85, value: null, matchLayer };
-}
 
 describe('adjustLanguageMatches — single field', () => {
   it('assigns the first language marker to languages.0.language', () => {

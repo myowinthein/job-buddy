@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
 import { createPreviewChrome } from '@/src/preview/chrome';
+import { geminiSeededChrome } from '@/src/testing/geminiChrome';
 import { RULE_PROFILE } from '@/src/autofill/ruleMatching.fixture';
 import { resolveProfileValue } from '@/src/autofill/resolver';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
@@ -74,14 +75,7 @@ it('retains partial counts, a completed ledger and Undo after a profile change c
   } as DOMRect);
   vi.stubGlobal(
     'chrome',
-    createPreviewChrome(RULE_PROFILE, undefined, {
-      initialData: {
-        profile: RULE_PROFILE,
-        geminiApiKey: 'synthetic-key',
-        geminiModel: 'gemini-3.8-flash',
-        geminiDevDisabled: true,
-      },
-    }),
+    geminiSeededChrome(RULE_PROFILE),
   );
   const fetchMock = vi.fn(() => new Promise(() => {}));
   vi.stubGlobal('fetch', fetchMock);
@@ -125,14 +119,7 @@ it.each(
   } as DOMRect);
   vi.stubGlobal(
     'chrome',
-    createPreviewChrome(RULE_PROFILE, undefined, {
-      initialData: {
-        profile: RULE_PROFILE,
-        geminiApiKey: 'synthetic-key',
-        geminiModel: 'gemini-3.8-flash',
-        geminiDevDisabled: true,
-      },
-    }),
+    geminiSeededChrome(RULE_PROFILE),
   );
   const fetchMock = vi.fn().mockResolvedValue({
     ok: true,
@@ -175,14 +162,7 @@ it.each(['person-replaced', 'yellow-match'] as const)('silent refill %s', async 
   const initial = { ...RULE_PROFILE, personal: { ...RULE_PROFILE.personal, nickname: '' } };
   vi.stubGlobal(
     'chrome',
-    createPreviewChrome(initial, undefined, {
-      initialData: {
-        profile: initial,
-        geminiApiKey: 'synthetic-key',
-        geminiModel: 'gemini-3.8-flash',
-        geminiDevDisabled: true,
-      },
-    }),
+    geminiSeededChrome(initial),
   );
   vi.stubGlobal(
     'fetch',
@@ -254,14 +234,7 @@ it.each([
   };
   vi.stubGlobal(
     'chrome',
-    createPreviewChrome(profile, undefined, {
-      initialData: {
-        profile,
-        geminiApiKey: 'synthetic-key',
-        geminiModel: 'gemini-3.8-flash',
-        geminiDevDisabled: true,
-      },
-    }),
+    geminiSeededChrome(profile),
   );
   const replies =
     scenario === 'consent-question'

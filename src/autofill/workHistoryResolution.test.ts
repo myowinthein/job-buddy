@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { adjustWorkHistoryMatches, matchCurrentWorkHistoryCheckboxes } from './workHistoryResolution';
-import type { FieldMatch } from './mapper';
+import { marker } from '@/src/testing/fieldMatch';
 import type { CheckboxOption } from './scanner';
 import type { Profile } from '../types/profile';
 
@@ -27,10 +27,6 @@ const PROFILE: Profile = {
   links: { linkedin: 'https://linkedin.com/in/jane' },
   documents: { cv: {} },
 };
-
-function marker(fieldPath: string, matchLayer: FieldMatch['matchLayer']): FieldMatch {
-  return { fieldPath, confidence: 0.85, value: null, matchLayer };
-}
 
 describe('adjustWorkHistoryMatches — single occurrence uses the most recent entry', () => {
   it('assigns a single company marker to the applicant\'s current role', () => {

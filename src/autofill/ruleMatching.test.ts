@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { createPreviewChrome } from '../preview/chrome';
+import { geminiSeededChrome } from '@/src/testing/geminiChrome';
 import { RULE_PROFILE } from './ruleMatching.fixture';
 import { mapField } from './mapper';
 import { extractSignals } from './signals';
@@ -25,15 +25,7 @@ beforeEach(() => {
   document.body.innerHTML = '';
   Object.defineProperty(globalThis, 'chrome', {
     configurable: true,
-    value: createPreviewChrome(RULE_PROFILE, undefined, {
-      initialData: {
-        profile: RULE_PROFILE,
-        geminiApiKey: 'synthetic-key',
-        geminiModel: 'gemini-3.8-flash',
-        geminiDevDisabled: true,
-        devProfileDisabled: true,
-      },
-    }),
+    value: geminiSeededChrome(RULE_PROFILE, { devProfileDisabled: true }),
   });
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
     width: 100,

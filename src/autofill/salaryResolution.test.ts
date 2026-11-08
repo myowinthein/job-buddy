@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { adjustSalaryMatches } from './salaryResolution';
 import type { FieldMatch } from './mapper';
+import { marker } from '@/src/testing/fieldMatch';
 import type { Profile } from '../types/profile';
 
 const PROFILE: Profile = {
@@ -25,10 +26,6 @@ const PROFILE: Profile = {
   links: { linkedin: 'https://linkedin.com/in/jane' },
   documents: { cv: {} },
 };
-
-function marker(fieldPath: string, matchLayer: FieldMatch['matchLayer']): FieldMatch {
-  return { fieldPath, confidence: 0.85, value: null, matchLayer };
-}
 
 describe('adjustSalaryMatches — single occurrence', () => {
   it('assigns a single marker to the first expected-salary entry (no isCurrent/startDate to prefer)', () => {
