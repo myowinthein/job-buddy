@@ -348,9 +348,10 @@ function timestamp(backup: DriveBackupFile): string | null {
 function contents(backup: Pick<DriveBackupFile, 'profile' | 'learnedMappings'>) {
   return { profile: backup.profile, learnedMappings: backup.learnedMappings ?? {} };
 }
-async function fingerprint(
+/** Key-sorted JSON of the synced contents; exported so tests hash the same input. */
+export function fingerprintInput(
   backup: Pick<DriveBackupFile, 'profile' | 'learnedMappings'>,
-): Promise<string> {
+): string {
   const stable = (value: unknown): unknown =>
     Array.isArray(value)
       ? value.map(stable)
@@ -361,7 +362,12 @@ async function fingerprint(
               .map(([key, entry]) => [key, stable(entry)]),
           )
         : value;
-  const bytes = new TextEncoder().encode(JSON.stringify(stable(contents(backup))));
+  return JSON.stringify(stable(contents(backup)));
+}
+async function fingerprint(
+  backup: Pick<DriveBackupFile, 'profile' | 'learnedMappings'>,
+): Promise<string> {
+  const bytes = new TextEncoder().encode(fingerprintInput(backup));
   const hash = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }

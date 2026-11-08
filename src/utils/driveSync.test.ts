@@ -33,6 +33,7 @@ import {
   dispatchDriveStateChanged,
   retryPendingDriveSync,
   syncIfConnected,
+  fingerprintInput,
 } from './driveSync';
 import type { Profile } from '../types/profile';
 
@@ -69,9 +70,8 @@ function makeProfile(): Profile {
 
 function mockFetchSequence(responses: Array<{ ok: boolean; status?: number; body?: unknown }>) {
   const state = store.driveBackupState as { fileId?: string; remoteHash?: string } | undefined;
-  const remote = { profile: { personal: { firstName: 'Previous' } }, learnedMappings: {}, lastModified: '2026-01-01T00:00:00Z' };
-  const stable = (v: unknown): unknown => Array.isArray(v) ? v.map(stable) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b)).map(([k,x])=>[k,stable(x)])) : v;
-  if (state?.fileId) state.remoteHash = createHash('sha256').update(JSON.stringify(stable({profile:remote.profile,learnedMappings:{}}))).digest('hex');
+  const remote = { profile: { personal: { firstName: 'Previous' } } as unknown as Profile, learnedMappings: {}, lastModified: '2026-01-01T00:00:00Z' };
+  if (state?.fileId) state.remoteHash = createHash('sha256').update(fingerprintInput({ profile: remote.profile as unknown as Profile, learnedMappings: {} })).digest('hex');
   let i = 0;
   fetchMock.mockImplementation((url: string, options?: RequestInit) => {
     if (state?.fileId && !options?.method) {
