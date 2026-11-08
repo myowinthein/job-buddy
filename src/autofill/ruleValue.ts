@@ -207,10 +207,17 @@ function salaryConstraints(text: string) {
   };
 }
 
+// Compiled once: the country list is frozen and these patterns have no state.
+const COUNTRY_NAME_PATTERNS = COUNTRIES.map((country) => {
+  const escaped = country.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return {
+    country,
+    name: new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'iu'),
+  };
+});
+
 function mentionedCountries(text: string) {
-  const named = COUNTRIES.filter((country) => {
-    const escaped = country.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const name = new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'iu');
+  const named = COUNTRY_NAME_PATTERNS.filter(({ country, name }) => {
     const code =
       text.includes(country.code) &&
       new RegExp(`\\b(?:in|for|within)\\s+${country.code}\\b`, 'i').test(text);
@@ -221,7 +228,7 @@ function mentionedCountries(text: string) {
           ? /\bUK\b|\bU\.K\./i.test(text)
           : false;
     return name.test(text) || code || alias;
-  });
+  }).map(({ country }) => country);
   return named.filter(
     (country) =>
       !named.some(
