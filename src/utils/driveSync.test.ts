@@ -68,6 +68,12 @@ function makeProfile(): Profile {
   return { personal: { firstName: 'Test' } } as unknown as Profile;
 }
 
+/**
+ * Queues one response per non-GET request. When a Drive file ID is already
+ * stored, GET requests are answered separately by a fixed remote backup whose
+ * fingerprint is written into the stored state, so the unchanged-remote path
+ * runs; those GETs do not consume the queue.
+ */
 function mockFetchSequence(responses: Array<{ ok: boolean; status?: number; body?: unknown }>) {
   const state = store.driveBackupState as { fileId?: string; remoteHash?: string } | undefined;
   const remote = { profile: { personal: { firstName: 'Previous' } } as unknown as Profile, learnedMappings: {}, lastModified: '2026-01-01T00:00:00Z' };
