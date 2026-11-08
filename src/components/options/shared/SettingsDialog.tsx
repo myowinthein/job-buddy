@@ -1,6 +1,5 @@
 import { useId, type ReactNode } from 'react';
-import { useDialogFocus } from '@/src/components/ui/useDialogFocus';
-import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
+import { ModalShell } from '@/src/components/ui/ModalShell';
 
 export function SettingsDialog({
   title,
@@ -14,28 +13,17 @@ export function SettingsDialog({
   children: ReactNode;
 }) {
   const titleId = useId();
-  const dialogRef = useDialogFocus();
-  const dismiss = busy ? undefined : onDismiss;
-  useEscapeToClose(dismiss);
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={dismiss}
+    <ModalShell
+      titleId={titleId}
+      busy={busy}
+      onDismiss={onDismiss}
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90dvh] overflow-y-auto outline-none"
     >
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90dvh] overflow-y-auto outline-none"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <h3 id={titleId} className="text-base font-semibold text-gray-900 dark:text-gray-100">
-          {title}
-        </h3>
-        {children}
-      </div>
-    </div>
+      <h3 id={titleId} className="text-base font-semibold text-gray-900 dark:text-gray-100">
+        {title}
+      </h3>
+      {children}
+    </ModalShell>
   );
 }

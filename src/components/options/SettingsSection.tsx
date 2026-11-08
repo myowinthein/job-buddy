@@ -29,7 +29,7 @@ import type { ThemePreference } from '@/src/utils/theme';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
 import type { InvalidField, EntryIndexMap } from '@/src/utils/profileValidator';
 import { useToast } from '@/src/components/ui/useToast';
-import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
+import { ModalShell } from '@/src/components/ui/ModalShell';
 import {
   getFullDriveState,
   connectDrive,
@@ -838,7 +838,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   // Each reuses the exact same handler its dialog's backdrop click already
   // uses, guards included. Shared summary/review dialogs manage their own
   // dismissal separately from data actions.
-  useEscapeToClose(showResetDialog ? handleResetDialogClose : undefined);
 
   return (
     <div>
@@ -1157,89 +1156,83 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
       {/* ── Reset confirmation dialog ─────────────────────────────────────────── */}
       {showResetDialog && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={handleResetDialogClose}
+        <ModalShell
+          titleId="reset-data-title"
+          descriptionId="reset-data-description"
+          busy={resetting}
+          onDismiss={handleResetDialogClose}
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-sm p-6 mx-4 max-h-[90dvh] overflow-y-auto outline-none"
         >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="reset-data-title"
-            aria-describedby="reset-data-description"
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-sm p-6 mx-4 max-h-[90dvh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+          <h3
+            id="reset-data-title"
+            className="text-base font-semibold text-gray-900 dark:text-gray-100"
           >
-            <h3
-              id="reset-data-title"
-              className="text-base font-semibold text-gray-900 dark:text-gray-100"
-            >
-              Reset All Data
-            </h3>
-            <p
-              id="reset-data-description"
-              className="mt-2 text-pretty text-sm text-gray-500 dark:text-gray-400"
-            >
-              Permanently delete this browser’s profile, mappings, and settings.
-              {driveState.connected && ' Drive will disconnect.'}
-            </p>
+            Reset All Data
+          </h3>
+          <p
+            id="reset-data-description"
+            className="mt-2 text-pretty text-sm text-gray-500 dark:text-gray-400"
+          >
+            Permanently delete this browser’s profile, mappings, and settings.
+            {driveState.connected && ' Drive will disconnect.'}
+          </p>
 
-            {driveState.connected && (
-              <label className="mt-4 flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={resetScope === 'everywhere'}
-                  disabled={resetting}
-                  aria-describedby={resetScope === 'everywhere' ? 'reset-drive-warning' : undefined}
-                  onChange={(e) => setResetScope(e.target.checked ? 'everywhere' : 'device')}
-                  className="mt-0.5 accent-red-600"
-                />
-                Also delete the Drive backup
-              </label>
-            )}
-            {driveState.connected && resetScope === 'everywhere' && (
-              <p id="reset-drive-warning" className="mt-2 text-xs text-red-600 dark:text-red-400">
-                Your Drive backup will also be permanently deleted.
-              </p>
-            )}
-
-            <div className="mt-5">
-              <label
-                htmlFor="reset-confirmation"
-                className="block text-sm text-gray-700 dark:text-gray-300 mb-2"
-              >
-                Type{' '}
-                <code className="font-mono font-semibold text-red-600 dark:text-red-400">
-                  DELETE
-                </code>{' '}
-                to confirm
-              </label>
+          {driveState.connected && (
+            <label className="mt-4 flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
               <input
-                type="text"
-                id="reset-confirmation"
-                value={resetConfirmText}
+                type="checkbox"
+                checked={resetScope === 'everywhere'}
                 disabled={resetting}
-                onChange={(e) => setResetConfirmText(e.target.value)}
-                placeholder="DELETE"
-                autoComplete="off"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                aria-describedby={resetScope === 'everywhere' ? 'reset-drive-warning' : undefined}
+                onChange={(e) => setResetScope(e.target.checked ? 'everywhere' : 'device')}
+                className="mt-0.5 accent-red-600"
               />
-            </div>
+              Also delete the Drive backup
+            </label>
+          )}
+          {driveState.connected && resetScope === 'everywhere' && (
+            <p id="reset-drive-warning" className="mt-2 text-xs text-red-600 dark:text-red-400">
+              Your Drive backup will also be permanently deleted.
+            </p>
+          )}
 
-            <div className="mt-6 flex flex-wrap justify-end gap-3">
-              <button type="button" onClick={handleResetDialogClose} className={btnSecondaryCls}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleReset}
-                disabled={resetConfirmText !== 'DELETE' || resetting}
-                className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 active:scale-95 transition-colors"
-              >
-                {resetting ? 'Resetting…' : 'Reset All Data'}
-              </button>
-            </div>
+          <div className="mt-5">
+            <label
+              htmlFor="reset-confirmation"
+              className="block text-sm text-gray-700 dark:text-gray-300 mb-2"
+            >
+              Type{' '}
+              <code className="font-mono font-semibold text-red-600 dark:text-red-400">
+                DELETE
+              </code>{' '}
+              to confirm
+            </label>
+            <input
+              type="text"
+              id="reset-confirmation"
+              value={resetConfirmText}
+              disabled={resetting}
+              onChange={(e) => setResetConfirmText(e.target.value)}
+              placeholder="DELETE"
+              autoComplete="off"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
           </div>
-        </div>
+
+          <div className="mt-6 flex flex-wrap justify-end gap-3">
+            <button type="button" onClick={handleResetDialogClose} className={btnSecondaryCls}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={resetConfirmText !== 'DELETE' || resetting}
+              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 active:scale-95 transition-colors"
+            >
+              {resetting ? 'Resetting…' : 'Reset All Data'}
+            </button>
+          </div>
+        </ModalShell>
       )}
 
       {driveDisconnectDialog && (
