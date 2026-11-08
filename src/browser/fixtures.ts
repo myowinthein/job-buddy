@@ -1,4 +1,4 @@
-import { test as base, expect, chromium, type BrowserContext, type Route, type Worker } from '@playwright/test';
+import { test as base, expect, chromium, type BrowserContext, type Page, type Route, type Worker } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { AIFieldPayload } from '../resume-ai/types';
@@ -129,3 +129,27 @@ export const mappingReviewRequest = (route: Route) => {
   const prompt = geminiPrompt(route);
   return JSON.parse(prompt.slice(prompt.lastIndexOf('\n') + 1));
 };
+
+/** The URL of one of the extension's pages, such as `popup.html` or `options.html?section=x`. */
+export const extensionUrl = (extension: { worker: Worker }, page: string) =>
+  new URL(page, extension.worker.url()).href;
+
+/**
+ * Opens popup.html as a full page whose active-tab query is pinned to the
+ * source form, as Chrome does for the toolbar popup. Pass `null` to keep the
+ * default viewport instead of the popup's 380x600.
+ */
+export async function openPinnedPopup(
+  context: BrowserContext,
+  workerUrl: string,
+  tabId: number,
+  size: { width: number; height: number } | null = { width: 380, height: 600 },
+): Promise<Page> {
+  const popup = await context.newPage();
+  await popup.addInitScript((id) => {
+    chrome.tabs.query = async () => [{ id } as chrome.tabs.Tab];
+  }, tabId);
+  if (size) await popup.setViewportSize(size);
+  await popup.goto(new URL('popup.html', workerUrl).href);
+  return popup;
+}

@@ -1,8 +1,8 @@
-import { test, expect, geminiResponse, autofillRequest } from './fixtures';
+import { test, expect, geminiResponse, autofillRequest, openPinnedPopup, extensionUrl } from './fixtures';
 import { summarizeFillFields } from '../autofill/fillLog';
 import type { FrameFillLog } from '../autofill/fillLog';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
-import { fitsViewportWidth } from './layout';
+import { expectCollapsedSidebar, fitsViewportWidth } from './layout';
 
 test('source navigation returns to an open form and reopens a fresh form after navigation or closure', async ({
   page,
@@ -13,7 +13,7 @@ test('source navigation returns to an open form and reopens a fresh form after n
   await page.locator('[name="lastName"]').fill('Edited answer');
   const url = page.url();
   const options = await context.newPage();
-  await options.goto(new URL('options.html?section=fillDetails', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html?section=fillDetails'));
   const back = options.getByRole('button', { name: 'Return to Form', exact: true });
   await expect(back).toBeVisible();
   await expect(options.getByText(/^Modified/)).toHaveCount(0);
@@ -111,7 +111,7 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
 
   const sourceId = extension.sourceTabId;
   const logPage = await context.newPage();
-  await logPage.goto(`${new URL('fill-log.html', extension.worker.url()).href}?tabId=${sourceId}`);
+  await logPage.goto(`${extensionUrl(extension, 'fill-log.html')}?tabId=${sourceId}`);
   await expect(logPage.getByRole('heading', { name: 'Fill Details', exact: true })).toBeVisible();
   const sourceButton = logPage.getByRole('button', { name: 'Return to Form', exact: true });
   await sourceButton.hover();
@@ -248,9 +248,7 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   const narrowMethod = await methodRow.boundingBox();
   const narrowScore = await scoreRow.boundingBox();
   expect(narrowScore!.y).toBeGreaterThan(narrowMethod!.y);
-  await expect
-    .poll(() => logPage.locator('aside').evaluate((el) => el.getBoundingClientRect().width))
-    .toBe(64);
+  await expectCollapsedSidebar(logPage);
   expect(await fitsViewportWidth(logPage)).toBe(
     true,
   );
@@ -280,14 +278,7 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
       animations: 'disabled',
     });
 
-  const popup = await context.newPage();
-  // A full-page popup test has its own active tab. Pin its query to the source
-  // form, as Chrome does when the toolbar popup is opened over that form.
-  await popup.addInitScript((id) => {
-    chrome.tabs.query = async () => [{ id } as chrome.tabs.Tab];
-  }, sourceId);
-  await popup.setViewportSize({ width: 380, height: 600 });
-  await popup.goto(new URL('popup.html', extension.worker.url()).href);
+  const popup = await openPinnedPopup(context, extension.worker.url(), sourceId);
   await expect(popup.getByText(`${counts.filled} fields filled`, { exact: true })).toBeVisible();
   await expect(popup.getByRole('button', { name: 'Fill Form', exact: true })).toBeVisible();
   await expect(popup.getByRole('button', { name: 'Undo', exact: true })).toBeVisible();
@@ -316,14 +307,14 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
     'aria-current',
     'page',
   );
-  await expect(logPage).toHaveURL(new URL('options.html', extension.worker.url()).href);
+  await expect(logPage).toHaveURL(extensionUrl(extension, 'options.html'));
   await expect
     .poll(() =>
       extension.worker.evaluate(
         async () => (await chrome.tabs.query({ active: true, currentWindow: true }))[0]?.url,
       ),
     )
-    .toBe(new URL('options.html', extension.worker.url()).href);
+    .toBe(extensionUrl(extension, 'options.html'));
   expect(context.pages()).toHaveLength(pageCount);
   await expect(logPage.getByRole('heading', { name: 'Required details complete' })).toHaveCount(0);
   await popup.close();
@@ -420,12 +411,7 @@ test('an independently scanned empty iframe does not hide form fills, and a fres
     )
     .toBe('Completed');
 
-  const popup = await context.newPage();
-  await popup.addInitScript((id) => {
-    chrome.tabs.query = async () => [{ id } as chrome.tabs.Tab];
-  }, extension.sourceTabId);
-  await popup.setViewportSize({ width: 380, height: 600 });
-  await popup.goto(new URL('popup.html', extension.worker.url()).href);
+  const popup = await openPinnedPopup(context, extension.worker.url(), extension.sourceTabId);
   await expect(popup.getByText(`${count} fields filled`, { exact: true })).toBeVisible();
   await expect(page.locator('[name="firstName"]')).toHaveValue('Jane');
   const opened = context.waitForEvent('page');
@@ -459,14 +445,10 @@ test('View details reuses options without discarding an unsaved profile until th
 }) => {
   await extension.send('AUTOFILL_FILL', 'merge');
   const options = await context.newPage();
-  const optionsUrl = new URL('options.html', extension.worker.url()).href;
+  const optionsUrl = extensionUrl(extension, 'options.html');
   await options.goto(optionsUrl);
   await options.getByLabel('First Name*', { exact: true }).fill('Unsaved draft');
-  const popup = await context.newPage();
-  await popup.addInitScript((id) => {
-    chrome.tabs.query = async () => [{ id } as chrome.tabs.Tab];
-  }, extension.sourceTabId);
-  await popup.goto(new URL('popup.html', extension.worker.url()).href);
+  const popup = await openPinnedPopup(context, extension.worker.url(), extension.sourceTabId, null);
   const count = context.pages().length;
   const dismissed = new Promise<void>((resolve) =>
     options.once('dialog', async (dialog) => {
@@ -518,7 +500,7 @@ test('keeps one session report after the form closes and replaces it on a new fi
     .toBe(true);
   await page.close();
   const options = await context.newPage();
-  const optionsUrl = new URL('options.html', extension.worker.url()).href;
+  const optionsUrl = extensionUrl(extension, 'options.html');
   await options.goto(optionsUrl);
   await options.getByRole('button', { name: 'Fill Details', exact: true }).click();
   await expect(
@@ -577,7 +559,7 @@ test('an open empty report populates automatically and explicit actions select t
   extension,
 }, testInfo) => {
   const options = await context.newPage();
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   await options.getByRole('button', { name: 'Fill Details', exact: true }).click();
   await expect(options.getByText('No fill details yet')).toBeVisible();
   await page.bringToFront();
@@ -635,11 +617,7 @@ test('an open empty report populates automatically and explicit actions select t
   ).toHaveAttribute('aria-description', 'http://127.0.0.1/application-b');
 
   // View details is an explicit selection of A, with no rescan or fill.
-  const popup = await context.newPage();
-  await popup.addInitScript((id) => {
-    chrome.tabs.query = async () => [{ id } as chrome.tabs.Tab];
-  }, extension.sourceTabId);
-  await popup.goto(new URL('popup.html', extension.worker.url()).href);
+  const popup = await openPinnedPopup(context, extension.worker.url(), extension.sourceTabId, null);
   await popup.getByRole('button', { name: 'View details', exact: true }).click();
   await expect(
     options.getByRole('button', { name: 'Return to Form', exact: true }),
@@ -746,7 +724,7 @@ test('records real LM, rule and AI decisions and browses them without another fi
   });
 
   const details = await context.newPage();
-  await details.goto(new URL('options.html', extension.worker.url()).href);
+  await details.goto(extensionUrl(extension, 'options.html'));
   await details.getByRole('button', { name: 'Fill Details', exact: true }).click();
   const row = details
     .locator('details')
@@ -770,11 +748,7 @@ test('records real LM, rule and AI decisions and browses them without another fi
     animations: 'disabled',
   });
   await details.setViewportSize({ width: 375, height: 812 });
-  await expect
-    .poll(() =>
-      details.locator('aside').evaluate((element) => element.getBoundingClientRect().width),
-    )
-    .toBe(64);
+  await expectCollapsedSidebar(details);
   expect(
     await details.locator('main').evaluate((element) => element.scrollWidth <= element.clientWidth),
   ).toBe(true);

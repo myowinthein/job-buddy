@@ -1,10 +1,10 @@
-import { test, expect } from './fixtures';
+import { test, expect, extensionUrl } from './fixtures';
 import type { Page } from '@playwright/test';
 import type { LearnedMappings } from '../types/storage';
 import type { Profile } from '../types/profile';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
 import { settingsReviewProfile } from '@/src/testing/settingsReviewFixture';
-import { fitsViewportWidth } from './layout';
+import { expectCollapsedSidebar, fitsViewportWidth } from './layout';
 
 const domain = '127.0.0.1';
 const first = {
@@ -70,7 +70,7 @@ test('shows readable chooser previews and a persistent selected category across 
   }, settingsReviewProfile());
   const options = await context.newPage();
   await options.setViewportSize({ width: 1280, height: 1000 });
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   await show(options);
   await row(options, 'Gender')
     .getByRole('button', { name: /^Edit / })
@@ -133,11 +133,7 @@ test('shows readable chooser previews and a persistent selected category across 
   await expect(list.getByRole('button', { name: /^Current Salary/ })).toHaveCount(0);
   await expect(list.getByRole('button', { name: /^Expected Salary/ })).toHaveCount(2);
   await options.setViewportSize({ width: 375, height: 1000 });
-  await expect
-    .poll(() =>
-      options.locator('aside').evaluate((element) => element.getBoundingClientRect().width),
-    )
-    .toBe(64);
+  await expectCollapsedSidebar(options);
   await expect(selected).toBeVisible();
   await selected.scrollIntoViewIfNeeded();
   const box = await list.boundingBox();
@@ -191,7 +187,7 @@ test('renders catalog-backed salary periods and opens missing city and education
     { profile, destinations },
   );
   const options = await context.newPage();
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   await options.getByRole('button', { name: 'Salary', exact: true }).click();
   await expect(options.locator('#field-currentPeriod')).toHaveValue('annual');
   await expect(options.locator('#field-expected-1-period')).toHaveValue('monthly');
@@ -236,7 +232,7 @@ test('groups aliases, keeps the editor visible, preserves metadata, and uses the
 }, info) => {
   const options = await context.newPage();
   await options.setViewportSize({ width: 1280, height: 1000 });
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   await show(options);
   await expect(options.getByText('6 mappings across 2 sites')).toBeVisible();
   await expect(row(options, 'Applicant response')).toHaveCount(1);
@@ -320,9 +316,7 @@ test('groups aliases, keeps the editor visible, preserves metadata, and uses the
   await options.reload();
   await options.getByRole('button', { name: /^127\.0\.0\.1/ }).click();
   await options.setViewportSize({ width: 375, height: 1100 });
-  await expect
-    .poll(() => options.locator('aside').evaluate((el) => el.getBoundingClientRect().width))
-    .toBe(64);
+  await expectCollapsedSidebar(options);
   await row(options, 'Applicant response')
     .getByRole('button', { name: /^Edit / })
     .click();
@@ -346,7 +340,7 @@ test('follows profile changes, preserves failed drafts and supports scoped keybo
   extension,
 }) => {
   const options = await context.newPage();
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   await show(options);
   const linkedin = row(options, 'LinkedIn URL');
   await expect(linkedin.getByText('No saved profile data.')).toBeVisible();
@@ -424,7 +418,7 @@ test('distinguishes read failure from empty data and deep-links to the missing p
       return (original as (keys: unknown, ...args: unknown[]) => unknown)(keys, ...args);
     }) as typeof chrome.storage.local.get;
   });
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   await options.getByRole('button', { name: 'Learned Mappings', exact: true }).click();
   await expect(options.getByRole('alert')).toContainText(
     'Could not load learned mappings. Try again.',
@@ -467,7 +461,7 @@ test('paginates sites and reveals large mapping lists without hiding search resu
   });
   const options = await context.newPage();
   await options.setViewportSize({ width: 1280, height: 1000 });
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   await options.getByRole('button', { name: 'Learned Mappings', exact: true }).click();
   const nav = options.getByRole('navigation', { name: 'Learned mapping sites' });
   await expect(nav).toContainText('Sites 1–5 of 7');
@@ -517,7 +511,7 @@ test('refreshes the chooser from saved Profile edits and fills an individually s
   extension,
 }) => {
   const options = await context.newPage();
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   await show(options);
   const applicant = row(options, 'Applicant response');
   await applicant.getByRole('button', { name: /^Edit / }).click();

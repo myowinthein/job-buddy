@@ -1,4 +1,4 @@
-import { test, expect, stubEmptyGemini } from './fixtures';
+import { test, expect, stubEmptyGemini, openPinnedPopup, extensionUrl } from './fixtures';
 import { DEV_PROFILE } from '../utils/devProfile';
 import type { Locator, Page } from '@playwright/test';
 
@@ -152,7 +152,7 @@ test('audits dropdowns and short dialogs', async ({ context, extension }, info) 
     }
   }
   await page.setViewportSize({ width: 640, height: 300 });
-  await page.goto(new URL('options.html?section=resume', extension.worker.url()).href);
+  await page.goto(extensionUrl(extension, 'options.html?section=resume'));
   await expect(page.getByRole('heading', { name: 'Import Resume' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Import Resume' })).toBeInViewport({ ratio: 1 });
   await page.getByRole('button', { name: 'Analyze Resume', exact: true }).scrollIntoViewIfNeeded();
@@ -203,7 +203,7 @@ test('keeps reset, shared import review, and mapping review usable in short wind
   const page = await context.newPage();
   await sectionNavigation(page);
   await page.setViewportSize({ width: 320, height: 300 });
-  await page.goto(new URL('options.html?section=settings', extension.worker.url()).href);
+  await page.goto(extensionUrl(extension, 'options.html?section=settings'));
   await page.getByRole('button', { name: 'Reset Now', exact: true }).click();
   await reachable(page.getByRole('dialog'));
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -247,7 +247,7 @@ test('keeps populated Fill Details, its help, and Quick Fill within the viewport
   await sectionNavigation(options);
   for (const width of [320, 640, 768, 1440]) {
     await options.setViewportSize({ width, height: width === 320 ? 300 : 600 });
-    await options.goto(new URL('options.html?section=fillDetails', extension.worker.url()).href);
+    await options.goto(extensionUrl(extension, 'options.html?section=fillDetails'));
     await expect(options.locator('summary').first()).toBeVisible();
     await options.locator('summary').first().click();
     expect(await overflow(options)).toEqual([]);
@@ -289,12 +289,7 @@ test('keeps the toolbar popup within its Chrome surface for setup and choices', 
   context,
   extension,
 }) => {
-  const popup = await context.newPage();
-  await popup.setViewportSize({ width: 380, height: 600 });
-  await popup.addInitScript((id) => {
-    chrome.tabs.query = async () => [{ id } as chrome.tabs.Tab];
-  }, extension.sourceTabId);
-  await popup.goto(new URL('popup.html', extension.worker.url()).href);
+  const popup = await openPinnedPopup(context, extension.worker.url(), extension.sourceTabId);
   await popup.getByRole('button', { name: 'Fill Form', exact: true }).click();
   await expect(popup.getByRole('radio', { name: /^Fill empty fields/ })).toBeVisible();
   expect(

@@ -1,4 +1,4 @@
-import { test, expect, geminiResponse, mappingReviewRequest, geminiPrompt } from './fixtures';
+import { test, expect, geminiResponse, mappingReviewRequest, geminiPrompt, extensionUrl } from './fixtures';
 import type { Page } from '@playwright/test';
 import type { LearnedMappings } from '../types/storage';
 
@@ -71,7 +71,7 @@ test('selects all sites by default and supports searchable multi-selection', asy
   });
   const options = await context.newPage();
   await options.setViewportSize({ width: 1200, height: 1000 });
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   const dialog = await open(options);
   const selector = dialog.getByLabel('Sites to review');
   const review = dialog.getByRole('button', { name: 'Review Mappings', exact: true });
@@ -177,7 +177,7 @@ test('requires Gemini setup and takes the user to the focused API key input', as
     await chrome.storage.local.remove(['geminiApiKey', 'geminiModel']);
   }, mappings);
   const options = await context.newPage();
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   const dialog = await open(options);
   await expect(dialog).toContainText('Add a Gemini API key to review learned mappings.');
   await expect(dialog.getByRole('button')).toHaveCount(3);
@@ -232,7 +232,7 @@ test('preselects fresh and cached suggestions while preserving explicit choices'
   });
   const options = await context.newPage();
   await options.setViewportSize({ width: 1200, height: 1000 });
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   let dialog = await open(options);
   await dialog.getByLabel('Sites to review').click();
   await dialog.getByRole('checkbox', { name: 'All sites (2)' }).uncheck();
@@ -385,7 +385,7 @@ test('retains completed batches when stopped and starts a fresh review on every 
       .catch(() => {});
   });
   const options = await context.newPage();
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   const dialog = await open(options);
   await dialog.getByRole('button', { name: 'Review Mappings', exact: true }).click();
   await expect.poll(() => calls).toBe(2);
@@ -456,7 +456,7 @@ test('paginates one ordered findings list and saves selected changes across site
     });
   });
   const options = await context.newPage();
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   const dialog = await open(options);
   await dialog.getByRole('button', { name: 'Review Mappings', exact: true }).click();
   await expect(dialog).toContainText('Reviewed 24 of 24 mappings.');
@@ -516,7 +516,7 @@ test('blocks stale review decisions after profile or mapping edits', async ({
     mappings,
   );
   const options = await context.newPage();
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   const dialog = await open(options);
   await expect(dialog.getByLabel('Sites to review')).toBeEnabled();
   await extension.worker.evaluate(async () => chrome.storage.local.set({ learnedMappings: {} }));

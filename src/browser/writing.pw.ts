@@ -1,4 +1,4 @@
-import { test, expect, stubEmptyGemini } from './fixtures';
+import { test, expect, stubEmptyGemini, extensionUrl } from './fixtures';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
 import type { FrameFillLog } from '../autofill/fillLog';
 import { build } from 'vite';
@@ -349,7 +349,7 @@ test('reports retained values as rule fills when controlled inputs regenerate th
   await expect(page.locator('[name="desiredPay"]')).toHaveValue('');
   expect(results.reduce((count, result) => count + Number(result.noReview), 0)).toBe(5);
   const details = await context.newPage();
-  await details.goto(new URL('options.html', extension.worker.url()).href);
+  await details.goto(extensionUrl(extension, 'options.html'));
   await details.getByRole('button', { name: 'Fill Details', exact: true }).click();
   await expect(details.getByRole('button', { name: 'Filled (5)', exact: true })).toBeVisible();
   await expect(details.getByRole('button', { name: 'Not filled (1)', exact: true })).toBeVisible();

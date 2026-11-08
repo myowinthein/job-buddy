@@ -1,5 +1,5 @@
 import type { Locator, Page, TestInfo } from '@playwright/test';
-import { test, expect, geminiResponse } from './fixtures';
+import { test, expect, geminiResponse, extensionUrl } from './fixtures';
 import { serveDemo, ready, sample, publicURL } from './demoSupport';
 import type { Profile } from '../types/profile';
 import { readFile } from 'node:fs/promises';
@@ -168,7 +168,7 @@ for (const theme of ['light', 'dark'] as const) {
     }, theme);
     const options = await context.newPage();
     await options.setViewportSize({ width: 800, height: 900 });
-    await options.goto(new URL('options.html', extension.worker.url()).href);
+    await options.goto(extensionUrl(extension, 'options.html'));
     await options.getByRole('button', { name: 'Settings', exact: true }).click();
     const section = options
       .getByRole('heading', { name: 'AI Features', exact: true })
@@ -259,7 +259,7 @@ for (const theme of ['light', 'dark'] as const) {
     await readyPopup.addInitScript((tab) => {
       Object.defineProperty(chrome.tabs, 'query', { value: () => Promise.resolve([tab]) });
     }, capturedSource);
-    await readyPopup.goto(new URL('popup.html', extension.worker.url()).href);
+    await readyPopup.goto(extensionUrl(extension, 'popup.html'));
     await expect(readyPopup.getByRole('button', { name: 'Fill Form', exact: true })).toBeEnabled();
     await capture(readyPopup, info, `popup-ready-${theme}`, readyPopup.locator('#root'));
     await page.locator('#first-name').fill('Alex');
@@ -476,7 +476,7 @@ for (const theme of ['light', 'dark'] as const) {
     await popup.addInitScript((tab) => {
       Object.defineProperty(chrome.tabs, 'query', { value: () => Promise.resolve([tab]) });
     }, sourceTab);
-    await popup.goto(new URL('popup.html', extension.worker.url()).href);
+    await popup.goto(extensionUrl(extension, 'popup.html'));
     await expect(popup.getByRole('button', { name: 'View details', exact: true })).toBeVisible();
     await capture(popup, info, `popup-${theme}`, popup.locator('#root'));
 

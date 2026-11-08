@@ -1,15 +1,4 @@
-import { test, expect, geminiResponse } from './fixtures';
-import type { BrowserContext, Page } from '@playwright/test';
-
-async function popupFor(context: BrowserContext, workerUrl: string, tabId: number): Promise<Page> {
-  const popup = await context.newPage();
-  await popup.addInitScript((id) => {
-    chrome.tabs.query = async () => [{ id } as chrome.tabs.Tab];
-  }, tabId);
-  await popup.setViewportSize({ width: 380, height: 600 });
-  await popup.goto(new URL('popup.html', workerUrl).href);
-  return popup;
-}
+import { test, expect, geminiResponse, openPinnedPopup } from './fixtures';
 
 test('closing during startup and AI preserves the run across popup and worker destruction', async ({
   page,
@@ -53,7 +42,7 @@ test('closing during startup and AI preserves the run across popup and worker de
       return response;
     }) as typeof chrome.tabs.sendMessage;
   });
-  let popup = await popupFor(context, workerUrl, extension.sourceTabId);
+  let popup = await openPinnedPopup(context, workerUrl, extension.sourceTabId);
   await popup.getByRole('button', { name: 'Fill Form', exact: true }).click();
   await expect
     .poll(() => extension.worker.evaluate(() => (globalThis as { scanHeld?: boolean }).scanHeld))
@@ -65,7 +54,7 @@ test('closing during startup and AI preserves the run across popup and worker de
   await aiStarted;
   await expect(page.locator('#first')).toHaveValue('Jane');
   await expect(page.locator('#ai')).toHaveValue('');
-  popup = await popupFor(context, workerUrl, extension.sourceTabId);
+  popup = await openPinnedPopup(context, workerUrl, extension.sourceTabId);
   await expect(popup.getByText('Filling…', { exact: true })).toBeVisible();
   await expect(popup.getByRole('button', { name: 'Fill Form', exact: true })).toBeDisabled();
   await popup.close();
@@ -79,7 +68,7 @@ test('closing during startup and AI preserves the run across popup and worker de
   await cdp.send('Target.closeTarget', { targetId: target!.targetId });
   releaseAI();
   await expect(page.locator('#ai')).toHaveValue('Doe');
-  popup = await popupFor(context, workerUrl, extension.sourceTabId);
+  popup = await openPinnedPopup(context, workerUrl, extension.sourceTabId);
   await expect(popup.getByText('3 fields filled', { exact: true })).toBeVisible();
   await expect(popup.getByRole('button', { name: 'Undo', exact: true })).toBeVisible();
   await expect(popup.getByRole('button', { name: 'View details', exact: true })).toBeVisible();
@@ -116,13 +105,13 @@ test('existing-answer choices survive closing, and a confirmed fill continues wi
       return send(...args);
     }) as typeof chrome.tabs.sendMessage;
   });
-  let popup = await popupFor(context, extension.worker.url(), extension.sourceTabId);
+  let popup = await openPinnedPopup(context, extension.worker.url(), extension.sourceTabId);
   await popup.getByRole('button', { name: 'Fill Form', exact: true }).click();
   await expect(popup.getByRole('radio', { name: /^Fill empty fields/ })).toBeChecked();
   await popup.close();
   await expect(page.locator('#first')).toHaveValue('');
   await expect(page.locator('#email')).toHaveValue('existing@example.test');
-  popup = await popupFor(context, extension.worker.url(), extension.sourceTabId);
+  popup = await openPinnedPopup(context, extension.worker.url(), extension.sourceTabId);
   await expect(popup.getByRole('radio', { name: /^Fill empty fields/ })).toBeChecked();
   await popup.getByRole('button', { name: 'Fill Form', exact: true }).click();
   await expect
@@ -135,7 +124,7 @@ test('existing-answer choices survive closing, and a confirmed fill continues wi
   await expect(page.locator('#first')).toHaveValue('Jane');
   await expect(page.locator('#email')).toHaveValue('existing@example.test');
   expect(await extension.worker.evaluate(() => (globalThis as { scans?: number }).scans)).toBe(1);
-  popup = await popupFor(context, extension.worker.url(), extension.sourceTabId);
+  popup = await openPinnedPopup(context, extension.worker.url(), extension.sourceTabId);
   await popup.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect(page.locator('#first')).toHaveValue('');
   await expect(page.locator('#email')).toHaveValue('existing@example.test');
@@ -163,7 +152,7 @@ test('navigation stops a pending fill and cannot fill the replacement document',
       return send(...args);
     }) as typeof chrome.tabs.sendMessage;
   });
-  const popup = await popupFor(context, extension.worker.url(), extension.sourceTabId);
+  const popup = await openPinnedPopup(context, extension.worker.url(), extension.sourceTabId);
   await popup.getByRole('button', { name: 'Fill Form', exact: true }).click();
   await expect
     .poll(() => extension.worker.evaluate(() => (globalThis as { fillHeld?: boolean }).fillHeld))
@@ -185,7 +174,7 @@ test('navigation stops a pending fill and cannot fill the replacement document',
     (globalThis as { releaseFill?: () => void }).releaseFill?.(),
   );
   await expect(page.locator('[name="firstName"]')).toHaveValue('');
-  const reopened = await popupFor(context, extension.worker.url(), extension.sourceTabId);
+  const reopened = await openPinnedPopup(context, extension.worker.url(), extension.sourceTabId);
   await expect(reopened.getByRole('button', { name: 'Fill Form', exact: true })).toBeEnabled();
   await expect(reopened.getByRole('button', { name: 'Undo', exact: true })).toHaveCount(0);
 });

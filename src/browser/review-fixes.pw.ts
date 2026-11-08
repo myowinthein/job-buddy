@@ -1,6 +1,5 @@
-import { test, expect, stubEmptyGemini, geminiResponse } from './fixtures';
+import { test, expect, stubEmptyGemini, geminiResponse, openPinnedPopup } from './fixtures';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
-import type { BrowserContext } from '@playwright/test';
 
 const emptyAI = geminiResponse('[]');
 test.beforeEach(async ({ context, extension }) => {
@@ -9,15 +8,6 @@ test.beforeEach(async ({ context, extension }) => {
   }, RULE_PROFILE);
   await stubEmptyGemini(context);
 });
-async function popupFor(context: BrowserContext, url: string, tabId: number) {
-  const popup = await context.newPage();
-  await popup.addInitScript((id) => {
-    chrome.tabs.query = async () => [{ id } as chrome.tabs.Tab];
-  }, tabId);
-  await popup.goto(new URL('popup.html', url).href);
-  return popup;
-}
-
 test('writes correct sponsorship, phone and graduation values while leaving hourly salary manual', async ({
   page,
   extension,
@@ -118,7 +108,7 @@ test('reopened popup retains the partial result and Undo after a profile edit ab
       results.some((result) => result.noReview === 1 && result.aiStatus === 'unavailable'),
     ).toBe(true);
     release();
-    const popup = await popupFor(context, extension.worker.url(), extension.sourceTabId);
+    const popup = await openPinnedPopup(context, extension.worker.url(), extension.sourceTabId, null);
     await expect(popup.getByRole('button', { name: 'Undo', exact: true })).toBeVisible();
     await popup.getByRole('button', { name: 'Undo', exact: true }).click();
     await expect(page.locator('#first')).toHaveValue('');

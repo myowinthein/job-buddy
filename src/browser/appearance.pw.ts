@@ -1,10 +1,10 @@
-import { test, expect } from './fixtures';
+import { test, expect, extensionUrl } from './fixtures';
 
 test('appearance follows the saved choice across open pages, native controls and reset', async ({
   context,
   extension,
 }) => {
-  const optionsUrl = new URL('options.html', extension.worker.url()).href;
+  const optionsUrl = extensionUrl(extension, 'options.html');
   const first = await context.newPage();
   const second = await context.newPage();
   for (const page of [first, second]) {
@@ -27,7 +27,7 @@ test('appearance follows the saved choice across open pages, native controls and
 
   const popup = await context.newPage();
   await popup.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' });
-  await popup.goto(new URL('popup.html', extension.worker.url()).href);
+  await popup.goto(extensionUrl(extension, 'popup.html'));
   await expect(popup.getByRole('button', { name: 'Fill Form', exact: true })).toBeVisible();
   expect(await popup.locator('html').evaluate((e) => getComputedStyle(e).colorScheme)).toBe(
     'light',

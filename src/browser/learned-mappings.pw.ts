@@ -1,5 +1,5 @@
 // Regression coverage for background learned mappings on throwaway forms.
-import { test, expect, stubEmptyGemini, geminiResponse } from './fixtures';
+import { test, expect, stubEmptyGemini, geminiResponse, extensionUrl } from './fixtures';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
 import type { LearnedMappings } from '../types/storage';
 test.beforeEach(async ({ page, context, extension }) => {
@@ -12,6 +12,8 @@ test.beforeEach(async ({ page, context, extension }) => {
       '<form><h1>Job application</h1></form><button type="button" id="outside">Continue</button>';
   });
 });
+// Only for asserting that nothing is learned: a positive result is awaited
+// with expect.poll, but an absence needs a fixed wait.
 async function settle(page: import('@playwright/test').Page) {
   await page.waitForTimeout(200);
 }
@@ -73,7 +75,7 @@ test('JSON import keeps a trusted school mapping attached after reordering, then
     } } });
   });
   const options = await context.newPage();
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   await options.getByRole('button', { name: 'Settings', exact: true }).click();
   await options.locator('input[type="file"][accept=".json"]').setInputFiles({
     name: 'reordered.json', mimeType: 'application/json',
@@ -124,12 +126,13 @@ test('learns a real user correction to a green field', async ({ page, extension 
   await expect(page.locator('#q')).toHaveValue('Alex');
   await page.locator('#q').fill('Sample');
   await page.locator('#outside').focus();
-  await settle(page);
-  expect(
-    await extension.worker.evaluate(
-      async () => (await chrome.storage.local.get('learnedMappings')).learnedMappings,
-    ),
-  ).toMatchObject({ '127.0.0.1': { q: { path: 'personal.lastName', count: 1 } } });
+  await expect
+    .poll(() =>
+      extension.worker.evaluate(
+        async () => (await chrome.storage.local.get('learnedMappings')).learnedMappings,
+      ),
+    )
+    .toMatchObject({ '127.0.0.1': { q: { path: 'personal.lastName', count: 1 } } });
 });
 test('does not learn programmatic changes even across repeated runs', async ({
   page,
@@ -173,12 +176,13 @@ test('learns later corrections after an unrelated first edit', async ({ page, ex
   await page.locator('#outside').focus();
   await page.locator('#q7').fill('alex@example.test');
   await page.locator('#outside').focus();
-  await settle(page);
-  expect(
-    await extension.worker.evaluate(
-      async () => (await chrome.storage.local.get('learnedMappings')).learnedMappings,
-    ),
-  ).toMatchObject({ '127.0.0.1': { q7: { path: 'personal.email', count: 1 } } });
+  await expect
+    .poll(() =>
+      extension.worker.evaluate(
+        async () => (await chrome.storage.local.get('learnedMappings')).learnedMappings,
+      ),
+    )
+    .toMatchObject({ '127.0.0.1': { q7: { path: 'personal.email', count: 1 } } });
 });
 test('never trusts a shared placeholder for an unrelated question', async ({ page, extension }) => {
   await extension.worker.evaluate(async () => {

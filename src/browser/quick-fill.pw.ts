@@ -1,4 +1,4 @@
-import { test, expect, stubEmptyGemini, geminiResponse } from './fixtures';
+import { test, expect, stubEmptyGemini, geminiResponse, extensionUrl } from './fixtures';
 import { fitsViewportWidth } from './layout';
 const hostSelector = '[data-job-buddy-ui]';
 
@@ -50,7 +50,7 @@ test('saved overwrite mode fills empty and existing fields, preserves unmatched 
 }, info) => {
   const settings = await context.newPage();
   await settings.addInitScript(() => sessionStorage.setItem('jb:ui:section', 'settings'));
-  await settings.goto(new URL('options.html', extension.worker.url()).href);
+  await settings.goto(extensionUrl(extension, 'options.html'));
   const mode = settings.getByRole('combobox', { name: 'Fields to fill' });
   await expect(mode).toHaveValue('merge');
   await mode.selectOption('overwrite');
@@ -108,7 +108,7 @@ test('saved overwrite mode fills empty and existing fields, preserves unmatched 
   // The popup still asks how to handle existing answers, independently of Quick Fill.
   await page.locator('[name="lastName"]').fill('Existing answer');
   const popup = await context.newPage();
-  await popup.goto(new URL('popup.html', extension.worker.url()).href);
+  await popup.goto(extensionUrl(extension, 'popup.html'));
   await popup.evaluate(async (tabId) => {
     const run = await chrome.runtime.sendMessage({ action: 'AUTOFILL_RUN_START', tabId });
     if (run?.stage !== 'confirming') throw new Error('Popup should still ask how to fill');
@@ -327,7 +327,7 @@ test('hidden-site management stays compact with many sites and actions remain be
   );
   const settings = await context.newPage();
   await settings.addInitScript(() => sessionStorage.setItem('jb:ui:section', 'settings'));
-  await settings.goto(new URL('options.html', extension.worker.url()).href);
+  await settings.goto(extensionUrl(extension, 'options.html'));
   const section = settings
     .locator('section')
     .filter({ has: settings.getByRole('heading', { name: 'Quick Fill', exact: true }) });

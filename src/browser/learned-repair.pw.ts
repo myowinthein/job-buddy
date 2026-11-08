@@ -1,4 +1,4 @@
-import { test, expect, stubEmptyGemini } from './fixtures';
+import { test, expect, stubEmptyGemini, extensionUrl } from './fixtures';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
 import type { LearnedMappings } from '../types/storage';
 
@@ -57,7 +57,7 @@ test('repairs historical aliases during scan, fills once, and skips repeat repai
     true,
   );
   const options = await context.newPage();
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   await options.getByRole('button', { name: 'Learned Mappings', exact: true }).click();
   await options.getByRole('button', { name: /^127\.0\.0\.1/ }).click();
   const row = options.getByRole('group', { name: 'Current Employer', exact: true });

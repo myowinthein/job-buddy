@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, extensionUrl } from './fixtures';
 
 test('experience validation is visible, and an empty profile cannot download an empty backup', async ({
   context,
@@ -12,7 +12,7 @@ test('experience validation is visible, and an empty profile cannot download an 
     });
   });
   const options = await context.newPage();
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   await expect(options.getByText('DEV', { exact: true })).toHaveCount(0);
   await options.getByRole('button', { name: 'Work History', exact: true }).click();
   await expect(options.getByText('No experience added', { exact: true })).toBeVisible();
@@ -81,7 +81,7 @@ test('missing details communicate overflow and reveal every section on desktop a
   });
   const options = await context.newPage();
   await options.setViewportSize({ width: 1100, height: 760 });
-  await options.goto(new URL('options.html', extension.worker.url()).href);
+  await options.goto(extensionUrl(extension, 'options.html'));
   for (const [name, width] of [
     ['desktop', 1100],
     ['narrow', 390],
