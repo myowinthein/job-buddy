@@ -1178,8 +1178,35 @@
         ],
         "invariant": "The same JSON bodies and route glob, the x-goog-api-key assertion and hold/release semantics in popup-lifetime, quick-fill and mapping-review tests stay unchanged."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "5f5f4f89920a5e29f5ccb31508f1ec786c84b8c9",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "geminiResponse, stubEmptyGemini, geminiPrompt, autofillRequest and mappingReviewRequest in src/browser/fixtures.ts replace the hand-built envelopes and the two documented prompt-slicing conventions; no candidates literal remains outside the helper and demoSupport.ts."
+        ],
+        "checks": [
+          {
+            "command": "pnpm test:browser",
+            "scope": "production extension, all Playwright specs",
+            "outcome": "136 passed; the 3 failures are the quick-fill specs that predate this work (default changed to overwrite in 229dda7)"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "150 files and 2642 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-8e8523c0-9bb7-4bea-865b-020bfefd8094",
@@ -1213,8 +1240,35 @@
         ],
         "invariant": "Every file gets the same stubs before render and vi.unstubAllGlobals still restores stubbed globals."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "4e830828c4b20d69cacddbc6d6ddf68df1369560",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "stubJsdomLayout, stubScrolling and the scrollIntoViewStub side-effect import in src/testing replace the layout shim blocks and the one-line scrollIntoView mocks in 18 test files; removing the stubs fails the dependent tests."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/components src/options src/utils",
+            "scope": "files using the shared stubs",
+            "outcome": "passed; stub mutants caught"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "150 files and 2642 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-2fcab07e-f33c-4f63-b714-8219a3d3c51c",
@@ -1244,8 +1298,35 @@
         ],
         "invariant": "Each file keeps hoisted vi.mock calls and every scenario's assertions."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "225b6354250ec1d10c9bfbb8786a3695ec6fb05f",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "settingsSectionMocks and optionsAppMocks in src/testing hold the module mock factories shared by the SettingsSection and options App unit and integration tests."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/components/options/SettingsSection src/options",
+            "scope": "SettingsSection and options App tests",
+            "outcome": "79 tests passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "150 files and 2642 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-723cbd68-a1a9-4742-9968-d88547e697c3",
@@ -1503,8 +1584,35 @@
         ],
         "invariant": "Model order, timeouts and the exact error shapes and messages each caller sees stay unchanged; the retryable sets may differ on purpose."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "f460e67e7541cb958f94b1e9f50f509b2268672b",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "Fallback order is built once in fallbackModels; the autofill and mapping review fallback sets are named and documented as intentionally different, and new tests pin the mapping review fallback on service errors and its stop on an invalid key. Retry sets and error shapes are unchanged by design."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/resume-ai src/learned-mappings",
+            "scope": "Gemini fallback behaviour",
+            "outcome": "passed; fallback-set mutants caught"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "150 files and 2642 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-bd3917ea-92d0-4cc4-b59d-3e9f166f8922",
@@ -1598,8 +1706,35 @@
         ],
         "invariant": "The mocked remote hash must still match production so the unchanged-remote path stays exercised."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "780427d8ddd56c41bce9d96334b7fd61adc2dbf1",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "The test helper hashes fingerprintInput exported from driveSync.ts instead of copying the logic, createFakeDrive groups the integration server's eleven variables with one reset, and the unit helper's hidden remote is documented; the unchanged-remote path is still exercised."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/utils/driveSync",
+            "scope": "Drive unit and integration tests",
+            "outcome": "73 and 35 tests passed; fingerprint and server mutants caught"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "150 files and 2642 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-772c9d2c-d76b-468f-b154-1c46f2f1a0d0",
@@ -1689,8 +1824,35 @@
         ],
         "invariant": "CURRENCIES and findCurrency stay; tests that exercise clearFieldValue are retargeted, not deleted, to keep their guarantees."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "8139783bcaf409a72ff03025f41e758b0f5d748d",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "The dead helpers were removed earlier and clearFieldValue now lives in src/testing/clearField.ts over the exported real restore, so the filler tests keep their behaviour; the three vacuous not-called assertions in the index tests now check events and values."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/autofill",
+            "scope": "filler, scanner regression and index tests",
+            "outcome": "888 tests passed"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "150 files and 2642 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-3b3a0286-66ee-404f-b791-9dd6ec9ac625",
@@ -2081,8 +2243,35 @@
         ],
         "invariant": "Pure moves with no signature or output changes."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "30b449060677b45acde6428a2b3ee403207658c1",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "controlForm, fieldDomain, profileFieldName and settingsReviewFixture moved to their owning modules and the review generationConfig now lives in resume-ai/types.ts. mappingReviewBody stays beside its batching on purpose: moving it into gemini.ts would break the preview alias src/preview/gemini.ts."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/learned-mappings src/resume-ai src/autofill src/profile",
+            "scope": "moved helpers and review request",
+            "outcome": "passed; generationConfig mutant caught"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "150 files and 2642 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-4ec3728c-c811-448b-b85d-a9f33e9b5698",
@@ -2773,8 +2962,35 @@
         ],
         "invariant": "Popups stay pinned to the source tab at 380x600 where bounds are asserted and the same tolerances apply."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "8f42ed429a509af495ff19ae3a6075cfd271f490",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "fitsViewportWidth, expectCollapsedSidebar, openPinnedPopup and extensionUrl replace the repeated checks, popup pinning and URL building; learned-mappings.pw.ts waits with expect.poll for expected mappings and keeps the fixed wait only for asserting that nothing is saved."
+        ],
+        "checks": [
+          {
+            "command": "pnpm test:browser",
+            "scope": "production extension, all Playwright specs",
+            "outcome": "136 passed; the 3 failures are the quick-fill specs that predate this work (default changed to overwrite in 229dda7)"
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite, run twice on the final tree",
+            "outcome": "150 files and 2642 tests passed both times"
+          }
+        ]
+      }
     },
     {
       "id": "r-b76ebd36-5405-46db-9aee-ad5725f08586",
