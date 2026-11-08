@@ -23,6 +23,7 @@ import { KEY_ERROR_MESSAGES } from '../resume-ai/keyErrors';
 import {
   hasReviewQuestion,
   mappingReviewBatches,
+  mappingReviewBody,
   mappingReviewCatalog,
   mappingReviewItems,
   mappingReviewPrompt,
@@ -155,6 +156,14 @@ it('enforces complete, unique results and exact allowed paths', () => {
       feedback.mappingReviewInvalid,
     );
   }
+});
+
+it('asks Gemini for deterministic JSON with the larger output budget', () => {
+  expect(JSON.parse(mappingReviewBody([salary], catalog)).generationConfig).toEqual({
+    temperature: 0,
+    maxOutputTokens: 8192,
+    responseMimeType: 'application/json',
+  });
 });
 
 it('bounds requests without silently dropping mappings', () => {

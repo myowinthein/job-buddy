@@ -17,6 +17,13 @@ export function fallbackModels(model: GeminiModel): GeminiModel[] {
   return [model, ...GEMINI_MODEL_PRIORITY.filter((candidate) => candidate !== model)];
 }
 
+/** Mapping review answers with JSON and may be long, so it gets a larger output budget. */
+export const MAPPING_REVIEW_GENERATION_CONFIG = {
+  temperature: 0,
+  maxOutputTokens: 8192,
+  responseMimeType: 'application/json',
+};
+
 export const MODEL_DISPLAY_NAMES: Record<GeminiModel, string> = {
   'gemini-3.5-flash-lite': 'Gemini 3.5 Flash-Lite',
   'gemini-3.8-flash': 'Gemini 3.8 Flash',

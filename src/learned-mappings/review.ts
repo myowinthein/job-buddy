@@ -6,6 +6,7 @@ import { genericLearnedSignal } from '../autofill/learnedContext';
 import { normalize } from '../autofill/normalizer';
 import { profileFieldName } from '../profile/fieldMetadata';
 import { equalJsonValues } from '../utils/equalJsonValues';
+import { MAPPING_REVIEW_GENERATION_CONFIG } from '../resume-ai/types';
 import { feedback } from '../ui/feedback';
 import { isLearnedPath } from '../utils/learnedMappingData';
 import { LEARNED_MAPPING_THRESHOLD } from '../autofill/constants';
@@ -183,11 +184,7 @@ export function mappingReviewBody(
 ): string {
   return JSON.stringify({
     contents: [{ parts: [{ text: mappingReviewPrompt(items, catalog) }] }],
-    generationConfig: {
-      temperature: 0,
-      maxOutputTokens: 8192,
-      responseMimeType: 'application/json',
-    },
+    generationConfig: MAPPING_REVIEW_GENERATION_CONFIG,
   });
 }
 
