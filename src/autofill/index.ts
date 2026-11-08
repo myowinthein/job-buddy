@@ -9,6 +9,7 @@ import {
 import { learnedRepairField } from '../utils/learnedMappingRepair';
 import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED, CONF_DICT_EXACT } from './constants';
 import { scanForm, isChoiceGroupAvailable } from './scanner';
+import { ReportRecords } from './reportRecords';
 import { fieldDomain, isChoice, isChoiceChecked, isControlAvailable } from './dom';
 import { extractSignals, bestLabel } from './signals';
 import type { FieldSignals } from './signals';
@@ -117,27 +118,11 @@ function watchRunProfile(): void {
 let refillInFlight: Promise<void> | null = null;
 let pendingReady = false;
 let fillLog: FrameFillLog | null = null;
-let fieldRecords = new Map<HTMLElement, FillLogField>();
-let recordElements = new Map<FillLogField, HTMLElement[]>();
-let recordValues = new Map<FillLogField, string>();
+const records = new ReportRecords();
 const writingElements = new Set<HTMLElement>();
 let removeReportWatchers = () => {};
 let pendingRadioGroups: RadioGroup[] = [];
 let pendingCheckboxGroups: CheckboxGroup[] = [];
-
-function bindRecord(record: FillLogField, elements: HTMLElement[]): void {
-  recordElements.set(record, elements);
-  for (const element of elements) fieldRecords.set(element, record);
-  recordValues.set(record, recordValue(record));
-}
-
-function recordValue(record: FillLogField): string {
-  const elements = recordElements.get(record) ?? [];
-  if (record.kind === 'radio' || record.kind === 'checkbox') {
-    return elements.flatMap((e, index) => (isChoiceChecked(e) ? [String(index)] : [])).join(',');
-  }
-  return elements[0] ? getFieldValue(elements[0]).trim() : '';
-}
 
 function syncFillLogResult(result: AutofillResult | null = lastResult): void {
   if (!result || !fillLog) return;
@@ -151,13 +136,13 @@ function syncFillLogResult(result: AutofillResult | null = lastResult): void {
 }
 
 function refreshTrackedField(element: HTMLElement): void {
-  const record = fieldRecords.get(element);
+  const record = records.byElement.get(element);
   if (!record || record.outcome === 'excluded' || fillLog?.status !== 'completed') return;
-  const elements = recordElements.get(record) ?? [];
+  const elements = records.elements.get(record) ?? [];
   if (elements.some((e) => writingElements.has(e))) return;
-  const value = recordValue(record);
-  if (recordValues.get(record) === value) return;
-  recordValues.set(record, value);
+  const value = records.read(record);
+  if (records.values.get(record) === value) return;
+  records.values.set(record, value);
   record.outcome = value ? 'manual' : 'not_matched';
   record.source = 'manual';
   record.reason = value ? 'manual_edit' : 'manual_clear';
@@ -171,8 +156,8 @@ function refreshTrackedField(element: HTMLElement): void {
 function attachReportWatchers(): void {
   removeReportWatchers();
   const removals: (() => void)[] = [];
-  for (const [record, elements] of recordElements) {
-    recordValues.set(record, recordValue(record));
+  for (const [record, elements] of records.elements) {
+    records.values.set(record, records.read(record));
     if (record.outcome === 'excluded') continue;
     for (const element of elements) {
       const handler = () => refreshTrackedField(element);
@@ -186,7 +171,7 @@ function attachReportWatchers(): void {
 }
 
 export function getFillLog(): FrameFillLog | null {
-  if (fillLog?.status === 'completed') for (const element of fieldRecords.keys()) refreshTrackedField(element);
+  if (fillLog?.status === 'completed') for (const element of records.byElement.keys()) refreshTrackedField(element);
   syncFillLogResult();
   return fillLog;
 }
@@ -368,14 +353,14 @@ function runSilentRefill(): Promise<void> {
         const confidence = Math.min(entry.confidence, getWriteConfidence(element));
         const green = confidence >= CONF_GREEN;
         applyHighlight(element, confidence);
-        const record = fieldRecords.get(element);
+        const record = records.byElement.get(element);
         if (record) {
           record.rule.outcome = 'filled';
           record.rule.confidence = confidence;
           record.outcome = green ? 'high_confidence' : 'review';
           record.source = 'rules';
           record.reason = 'profile_updated';
-          recordValues.set(record, recordValue(record));
+          records.values.set(record, records.read(record));
         }
         result.noData = Math.max(0, result.noData - 1);
         if (green) result.noReview++;
@@ -416,7 +401,7 @@ export async function undoAutofill(): Promise<boolean> {
   pendingMatches = [];
   noDataFields = [];
   teardownVisibilityListener();
-  for (const element of new Set([...sessionElements, ...fieldRecords.keys()])) {
+  for (const element of new Set([...sessionElements, ...records.byElement.keys()])) {
     const watcher = editWatchers.get(element);
     if (watcher) element.removeEventListener('blur', watcher);
     editWatchers.delete(element);
@@ -430,15 +415,15 @@ export async function undoAutofill(): Promise<boolean> {
     lastResult = null;
   } else {
     completedProfileId = reportProfileId;
-    for (const [record, elements] of recordElements) {
+    for (const [record, elements] of records.elements) {
       if (elements.some((element) => outcome.remaining.has(element))) {
         record.outcome = 'review';
         for (const element of elements) applyHighlight(element, CONF_FILL);
       } else if (elements.some((element) => outcome.restored.has(element))) {
-        record.outcome = recordValue(record) ? 'kept' : 'not_matched';
+        record.outcome = records.read(record) ? 'kept' : 'not_matched';
         record.source = null;
       }
-      recordValues.set(record, recordValue(record));
+      records.values.set(record, records.read(record));
     }
     syncFillLogResult();
     attachReportWatchers();
@@ -470,9 +455,7 @@ export async function scanAutofill(
   removeReportWatchers();
   resetWriteSession();
   resetDropdownBudget();
-  fieldRecords = new Map();
-  recordElements = new Map();
-  recordValues = new Map();
+  records.reset();
   pendingRadioGroups = [];
   pendingCheckboxGroups = [];
   fillLog = {
@@ -604,7 +587,7 @@ export async function scanAutofill(
       source: null,
     };
     fillLog!.fields.push(record);
-    bindRecord(record, [element]);
+    records.bind(record, [element]);
   }
   for (const [kind, groups] of [
     ['radio', pendingRadioGroups],
@@ -627,7 +610,7 @@ export async function scanAutofill(
         ...(excluded ? { reason: 'consent' as const } : {}),
       };
       fillLog!.fields.push(record);
-      bindRecord(
+      records.bind(
         record,
         group.options.map((option) => option.element),
       );
@@ -656,10 +639,10 @@ export async function scanAutofill(
 
   const prefilledRecords = new Set<FillLogField>();
   for (const group of [...pendingRadioGroups, ...checkboxGroups]) {
-    if (!group.isConsent && !isConsentGroup(group)) for (const option of group.options) if (isChoiceChecked(option.element)) prefilledRecords.add(fieldRecords.get(option.element)!);
+    if (!group.isConsent && !isConsentGroup(group)) for (const option of group.options) if (isChoiceChecked(option.element)) prefilledRecords.add(records.byElement.get(option.element)!);
   }
   scanned.forEach(({ element, signals, match }) => {
-    Object.assign(fieldRecords.get(element)!.rule, {
+    Object.assign(records.byElement.get(element)!.rule, {
       ran: match.matchLayer !== 'learned' && !('ruleBlocked' in match && match.ruleBlocked),
       layer: match.matchLayer,
       confidence: match.confidence,
@@ -667,7 +650,7 @@ export async function scanAutofill(
       ...(match.fieldPath ? { profilePath: match.fieldPath } : {}),
     });
     const hasExistingValue = getFieldValue(element).trim() !== '';
-    if (hasExistingValue) prefilledRecords.add(fieldRecords.get(element)!);
+    if (hasExistingValue) prefilledRecords.add(records.byElement.get(element)!);
 
     if (match.confidence >= CONF_FILL && match.value) {
       totalMatched++;
@@ -752,13 +735,13 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   const editableFields: EditableField[] = [];
   const aiTextCandidates: AITextCandidate[] = [];
   if (fillLog) fillLog.mode = mode;
-  if (mode === 'merge') for (const [record, elements] of recordElements) {
-    if (record.outcome !== 'excluded' && (recordValues.get(record) || recordValue(record))) {
+  if (mode === 'merge') for (const [record, elements] of records.elements) {
+    if (record.outcome !== 'excluded' && (records.values.get(record) || records.read(record))) {
       record.outcome = 'kept';
       record.rule.outcome = 'kept';
       record.reason = 'existing_value';
       // Includes an already-selected option elsewhere in the same group.
-      for (const element of elements) fieldRecords.set(element, record);
+      for (const element of elements) records.byElement.set(element, record);
     }
   }
 
@@ -769,7 +752,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
 
   for (const { element, signals, match, hasExistingValue } of matchesToFill) {
     if (!isActive()) return interrupted();
-    const record = fieldRecords.get(element)!;
+    const record = records.byElement.get(element)!;
     const choiceGroup = isChoice(element)
       ? pendingCheckboxGroups.find((group) =>
           group.options.some((option) => option.element === element),
@@ -905,7 +888,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     isActive,
     signal: abortSignal,
     formFields: matchesToFill.map((match) => match.signals),
-    fieldRecords,
+    fieldRecords: records.byElement,
     radioGroups: pendingRadioGroups,
     checkboxGroups: pendingCheckboxGroups,
     isProfileCurrent: async () => {
@@ -916,7 +899,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     },
     onTextFilled: (element, state) => {
       aiStates.set(element, state);
-      const record = fieldRecords.get(element);
+      const record = records.byElement.get(element);
       if (record) {
         record.ai.outcome = record.rule.outcome === 'filled' ? 'refined' : 'filled';
         record.outcome = state === 'green' ? 'high_confidence' : 'review';
