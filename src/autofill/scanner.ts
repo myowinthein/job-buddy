@@ -2,6 +2,7 @@ import { isConsentGroup } from './consent';
 import {
   composedAncestors,
   composedParent,
+  controlForm,
   hasVisibleSurface,
   isChoiceAvailable,
   isControlAvailable,
@@ -9,7 +10,7 @@ import {
 } from './dom';
 import { controlName, createLabelContext, ownText } from './labels';
 import type { LabelContext } from './labels';
-import { controlForm, createSignalReader, bestLabel } from './signals';
+import { createSignalReader, bestLabel } from './signals';
 import type { FieldSignals } from './signals';
 
 export type ChoiceElement = HTMLElement & { checked?: boolean; value?: string };

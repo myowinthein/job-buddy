@@ -12,7 +12,7 @@ import {
   getLearnedMappings,
   saveProfile,
 } from '@/src/utils/storage';
-import { settingsReviewProfile } from './settingsReviewFixture';
+import { settingsReviewProfile } from '@/src/testing/settingsReviewFixture';
 
 vi.mock('@/src/utils/driveSync', () => import('@/src/preview/driveSync'));
 vi.mock('@/src/resume-ai/gemini', () => import('@/src/preview/gemini'));

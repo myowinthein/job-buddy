@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { profileData, hasCredentialSettings } from './profileData';
 import { validateImportedProfile } from './profileValidator';
 import { generateDiff, applyChanges } from '../resume-ai/parser';
-import { settingsReviewProfile } from '../components/options/settingsReviewFixture';
+import { settingsReviewProfile } from '@/src/testing/settingsReviewFixture';
 
 describe('Profile backup privacy boundary', () => {
   it('preserves every canonical profile field, document file and derived value', () => {

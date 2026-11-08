@@ -15,7 +15,7 @@ import { createPreviewChrome } from '@/src/preview/chrome';
 import {
   settingsReviewProfile,
   SETTINGS_REVIEW_MAPPINGS,
-} from '@/src/components/options/settingsReviewFixture';
+} from '@/src/testing/settingsReviewFixture';
 import type { DriveBackupFile } from '@/src/types/storage';
 import {
   getProfile,

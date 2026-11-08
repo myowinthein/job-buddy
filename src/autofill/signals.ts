@@ -1,4 +1,4 @@
-import { composedParent, isTextEditor } from './dom';
+import { isTextEditor } from './dom';
 import { ariaName, ariaReference, createLabelContext, labelText, ownText } from './labels';
 import type { LabelContext } from './labels';
 
@@ -105,17 +105,4 @@ export function createSignalReader(
     if (!signals) cache.set(element, (signals = extractSignals(element, context)));
     return signals;
   };
-}
-
-/** Find the nearest composed form, including a native control's form owner. */
-export function controlForm(element: HTMLElement): Element | null {
-  if (
-    element instanceof HTMLInputElement ||
-    element instanceof HTMLSelectElement ||
-    element instanceof HTMLTextAreaElement
-  )
-    if (element.form) return element.form;
-  for (let current: Element | null = element; current; current = composedParent(current))
-    if (current.matches('form,[role="form"]')) return current;
-  return null;
 }

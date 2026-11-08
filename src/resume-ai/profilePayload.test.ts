@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { autofillProfilePayload } from './profilePayload';
 import { extractFromResume } from './gemini';
-import { settingsReviewProfile } from '../components/options/settingsReviewFixture';
+import { settingsReviewProfile } from '@/src/testing/settingsReviewFixture';
 
 const profile = settingsReviewProfile();
 describe('Minimal Gemini profile payloads', () => {

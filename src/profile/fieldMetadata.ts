@@ -216,3 +216,47 @@ export function catalogFieldIdByLabel(section: string, label: string): string | 
       sectionFor(item.field.paths[0]) === section,
   )?.field.paths[0];
 }
+
+const names: Record<string, string> = {
+  personal: 'Personal',
+  address: 'Address',
+  links: 'Links',
+  documents: 'Documents',
+  professional: 'Work History',
+  workHistory: 'Work History',
+  education: 'Education',
+  languages: 'Languages',
+  salary: 'Salary',
+  workAuthorization: 'Work Authorization',
+  derived: 'Personal',
+  linkedin: 'LinkedIn',
+  github: 'GitHub',
+  cv: 'CV',
+  url: 'URL',
+  full: 'Full number',
+  callingCode: 'Calling code',
+  countryCode: 'Country',
+  countryName: 'Country',
+  availableDate: 'Available date',
+  formatted: 'Formatted value',
+};
+function words(value: string): string {
+  return (
+    names[value] ??
+    value
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/_/g, ' ')
+      .replace(/^./, (c) => c.toUpperCase())
+  );
+}
+export function profileFieldName(path?: string): string | null {
+  if (!path) return null;
+  const catalogName = catalogProfileFieldName(path);
+  if (catalogName) return catalogName;
+  const parts = path.split('.');
+  if (parts[0] === 'derived' && /currentCompany|currentTitle|totalExperience/.test(parts[1] ?? ''))
+    parts[0] = 'workHistory';
+  return parts
+    .map((part) => (/^\d+$/.test(part) ? 'Entry ' + (Number(part) + 1) : words(part)))
+    .join(' → ');
+}

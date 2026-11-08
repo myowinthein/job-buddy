@@ -1,9 +1,9 @@
 import type { Profile } from '../types/profile';
 import type { LearningContext } from '../types/storage';
-import { isControlAvailable } from './dom';
+import { controlForm, isControlAvailable } from './dom';
 import { fieldIdentity } from './fieldState';
 import { readFieldValue } from './fieldValue';
-import { extractSignals, controlForm } from './signals';
+import { extractSignals } from './signals';
 import { ruleQuestionBlocked } from './ruleContext';
 import { isOwnWriteEvent } from './writeSession';
 import { saveElementMappings } from './mappings';

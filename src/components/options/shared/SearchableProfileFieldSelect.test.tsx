@@ -3,7 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
 import { SearchableProfileFieldSelect } from './SearchableProfileFieldSelect';
 import type { Profile } from '@/src/types/profile';
-import { settingsReviewProfile } from '../settingsReviewFixture';
+import { settingsReviewProfile } from '@/src/testing/settingsReviewFixture';
 
 // jsdom doesn't implement Element.scrollIntoView; the keyboard-highlight
 // effect calls it whenever the highlighted row changes.

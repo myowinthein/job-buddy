@@ -96,3 +96,26 @@ export function isChoiceAvailable(element: HTMLElement): boolean {
     (label) => isControlAvailable(label) && hasVisibleSurface(label),
   );
 }
+
+/** Find the nearest composed form, including a native control's form owner. */
+export function controlForm(element: HTMLElement): Element | null {
+  if (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLSelectElement ||
+    element instanceof HTMLTextAreaElement
+  )
+    if (element.form) return element.form;
+  for (let current: Element | null = element; current; current = composedParent(current))
+    if (current.matches('form,[role="form"]')) return current;
+  return null;
+}
+
+/** about:blank/srcdoc controls inherit their embedding origin. */
+export function fieldDomain(): string {
+  if (location.hostname) return location.hostname;
+  try {
+    return new URL(location.ancestorOrigins?.[0] || document.referrer).hostname;
+  } catch {
+    return '';
+  }
+}

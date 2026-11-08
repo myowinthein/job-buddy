@@ -1,5 +1,5 @@
 import { captureField, fieldIdentity, sameFieldState } from './fieldState';
-import { controlForm } from './signals';
+import { controlForm } from './dom';
 import type { FieldState } from './fieldState';
 
 interface WriteEntry {

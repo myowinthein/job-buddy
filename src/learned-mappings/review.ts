@@ -4,7 +4,7 @@ import type { MappingGroup } from './groups';
 import { buildPickerTree } from '../autofill/profileFieldTree';
 import { genericLearnedSignal } from '../autofill/learnedContext';
 import { normalize } from '../autofill/normalizer';
-import { profileFieldName } from '../fill-log/presentation';
+import { profileFieldName } from '../profile/fieldMetadata';
 import { equalJsonValues } from '../utils/equalJsonValues';
 import { feedback } from '../ui/feedback';
 import { isLearnedPath } from '../utils/learnedMappingData';

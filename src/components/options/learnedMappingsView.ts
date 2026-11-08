@@ -2,7 +2,7 @@ import { catalogProfileTarget, catalogSectionStartTarget } from '@/src/profile/f
 import type { Profile } from '@/src/types/profile';
 import type { MappingGroup } from '@/src/learned-mappings/groups';
 import { buildPickerTree } from '@/src/autofill/profileFieldTree';
-import { profileFieldName } from '@/src/fill-log/presentation';
+import { profileFieldName } from '@/src/profile/fieldMetadata';
 import type { CompletionTarget } from '@/src/utils/profileCompletion';
 import type { ProfileSectionId } from './shared/profileSections';
 

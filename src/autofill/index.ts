@@ -1,4 +1,3 @@
-import { fieldDomain } from './ruleContext';
 import { resolveRuleValue, ruleValuePath } from './ruleValue';
 import { readFieldValue as getFieldValue } from './fieldValue';
 import {
@@ -10,7 +9,7 @@ import {
 import { learnedRepairField } from '../utils/learnedMappingRepair';
 import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED, CONF_DICT_EXACT } from './constants';
 import { scanForm, isChoiceGroupAvailable } from './scanner';
-import { isChoice, isChoiceChecked, isControlAvailable } from './dom';
+import { fieldDomain, isChoice, isChoiceChecked, isControlAvailable } from './dom';
 import { extractSignals, bestLabel } from './signals';
 import type { FieldSignals } from './signals';
 import { mapField } from './mapper';

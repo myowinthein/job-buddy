@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { settingsReviewProfile } from '../components/options/settingsReviewFixture';
+import { settingsReviewProfile } from '@/src/testing/settingsReviewFixture';
 import { FIELD_DICTIONARY } from '../autofill/dictionary';
 import { repeatingEntryMarkers } from '../autofill/repeatingEntryResolution';
 import { isLearnedPath } from '../utils/learnedMappingData';

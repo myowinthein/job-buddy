@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import ts from 'typescript';
-import { settingsReviewProfile } from '../components/options/settingsReviewFixture';
+import { settingsReviewProfile } from '@/src/testing/settingsReviewFixture';
 import { calculateDerivedFields } from '../utils/derivedFields';
 import { profileData, backupProfileData } from '../utils/profileData';
 import { validateImportedProfile } from '../utils/profileValidator';

@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 import type { LearnedMappings } from '../types/storage';
 import type { Profile } from '../types/profile';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
-import { settingsReviewProfile } from '../components/options/settingsReviewFixture';
+import { settingsReviewProfile } from '@/src/testing/settingsReviewFixture';
 
 const domain = '127.0.0.1';
 const first = {

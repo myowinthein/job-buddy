@@ -1,8 +1,9 @@
 import { expect, it } from 'vitest';
-import { settingsReviewProfile } from '../components/options/settingsReviewFixture';
+import { settingsReviewProfile } from '@/src/testing/settingsReviewFixture';
 import { compareEntries } from '../resume-ai/entryComparison';
 import {
   catalogProfileFieldName,
+  profileFieldName,
   catalogProfileTarget,
   catalogSectionStartTarget,
   profileEntryFields,
@@ -53,4 +54,8 @@ it('keeps legacy string locations visible beside new structured locations in sha
     current: 'Not provided',
     suggested: 'United States',
   });
+});
+
+it('names unlisted profile paths readably, with one-based entry numbers', () => {
+  expect(profileFieldName('education.1.fieldOfStudy')).toBe('Education → Entry 2 → Field of Study');
 });

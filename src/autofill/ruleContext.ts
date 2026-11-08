@@ -1,6 +1,6 @@
-import { composedParent } from './dom';
+import { composedParent, controlForm } from './dom';
 import { ariaName, ownText } from './labels';
-import { controlForm, bestLabel } from './signals';
+import { bestLabel } from './signals';
 import type { FieldSignals } from './signals';
 
 /** Match layers a post-pass may rewrite: label-derived ones, never learned or autocomplete. */
@@ -80,14 +80,4 @@ export function sectionFamily(element: HTMLElement): 'education' | 'workHistory'
 
 export function questionText(signals: FieldSignals): string {
   return `${bestLabel(signals)} ${signals.nearbyText ?? ''}`;
-}
-
-/** about:blank/srcdoc controls inherit their embedding origin. */
-export function fieldDomain(): string {
-  if (location.hostname) return location.hostname;
-  try {
-    return new URL(location.ancestorOrigins?.[0] || document.referrer).hostname;
-  } catch {
-    return '';
-  }
 }

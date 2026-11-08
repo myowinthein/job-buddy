@@ -14,7 +14,7 @@ import {
   saveGeminiSettings,
   getGeminiApiKey,
 } from '@/src/utils/storage';
-import { settingsReviewProfile, SETTINGS_REVIEW_MAPPINGS } from './settingsReviewFixture';
+import { settingsReviewProfile, SETTINGS_REVIEW_MAPPINGS } from '@/src/testing/settingsReviewFixture';
 
 vi.mock('@/src/utils/driveSync', () => import('@/src/preview/driveSync'));
 vi.mock('@/src/resume-ai/gemini', () => import('@/src/preview/gemini'));
