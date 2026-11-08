@@ -40,6 +40,7 @@ import {
   completeDriveRestore,
   markDriveBackupPending,
 } from './driveSync';
+import { stubJsdomLayout } from '@/src/testing/jsdomLayout';
 
 let remote: DriveBackupFile | null;
 let remoteVersion = 1;
@@ -150,15 +151,7 @@ beforeEach(() => {
       });
     }),
   );
-  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) =>
-    window.setTimeout(() => callback(0), 0),
-  );
-  vi.stubGlobal('cancelAnimationFrame', (id: number) => window.clearTimeout(id));
-  Object.defineProperty(HTMLElement.prototype, 'scrollTo', { configurable: true, value: vi.fn() });
-  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
-    configurable: true,
-    value: vi.fn(),
-  });
+  stubJsdomLayout();
 });
 afterEach(async () => {
   cleanup();

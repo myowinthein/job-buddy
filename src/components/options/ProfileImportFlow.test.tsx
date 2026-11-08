@@ -13,6 +13,7 @@ import {
   saveProfile,
 } from '@/src/utils/storage';
 import { settingsReviewProfile } from '@/src/testing/settingsReviewFixture';
+import { stubJsdomLayout } from '@/src/testing/jsdomLayout';
 
 vi.mock('@/src/utils/driveSync', () => import('@/src/preview/driveSync'));
 vi.mock('@/src/resume-ai/gemini', () => import('@/src/preview/gemini'));
@@ -23,15 +24,7 @@ beforeEach(() => {
   sessionStorage.setItem('jb:ui:section', 'settings');
   vi.stubGlobal('chrome', createPreviewChrome(settingsReviewProfile()));
   vi.stubEnv('VITE_GEMINI_API_KEY', undefined);
-  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) =>
-    window.setTimeout(() => callback(0), 0),
-  );
-  vi.stubGlobal('cancelAnimationFrame', (id: number) => window.clearTimeout(id));
-  Object.defineProperty(HTMLElement.prototype, 'scrollTo', { configurable: true, value: vi.fn() });
-  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
-    configurable: true,
-    value: vi.fn(),
-  });
+  stubJsdomLayout();
 });
 afterEach(async () => {
   cleanup();

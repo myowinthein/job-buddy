@@ -14,6 +14,7 @@ import {
 import { IntegrationSimulation as DevSimulation } from '@/src/testing/integrationSimulation';
 import { DEFAULT_GEMINI_MODEL } from '@/src/resume-ai/types';
 import { extractFromResume } from '@/src/resume-ai/gemini';
+import { stubJsdomLayout } from '@/src/testing/jsdomLayout';
 
 vi.mock('@/src/resume-ai/gemini', () => ({ extractFromResume: vi.fn(), validateApiKey: vi.fn() }));
 vi.mock('@/src/resume-ai/validateResumeFile', async (importOriginal) => ({
@@ -24,15 +25,7 @@ vi.mock('@/src/resume-ai/extractLinks', () => ({ extractLinks: vi.fn().mockResol
 let simulation: DevSimulation | undefined;
 beforeEach(() => {
   sessionStorage.clear();
-  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) =>
-    setTimeout(() => callback(0), 0),
-  );
-  vi.stubGlobal('cancelAnimationFrame', (id: number) => clearTimeout(id));
-  Object.defineProperty(HTMLElement.prototype, 'scrollTo', { configurable: true, value: vi.fn() });
-  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
-    configurable: true,
-    value: vi.fn(),
-  });
+  stubJsdomLayout();
 });
 afterEach(async () => {
   cleanup();

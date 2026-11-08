@@ -6,6 +6,7 @@ import App from '@/entrypoints/options/App';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import { createPreviewChrome } from '@/src/preview/chrome';
 import { getProfile, saveProfile } from '@/src/utils/storage';
+import { stubJsdomLayout } from '@/src/testing/jsdomLayout';
 
 vi.mock('@/src/components/options/SettingsSection', () => ({ SettingsSection: () => null }));
 vi.mock('@/src/components/options/ResumeImportSection', () => ({
@@ -21,15 +22,7 @@ vi.mock('@/src/utils/driveSync', () => ({
 beforeEach(() => {
   sessionStorage.clear();
   vi.stubGlobal('chrome', createPreviewChrome());
-  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) =>
-    window.setTimeout(() => callback(0), 0),
-  );
-  vi.stubGlobal('cancelAnimationFrame', (id: number) => window.clearTimeout(id));
-  Object.defineProperty(HTMLElement.prototype, 'scrollTo', { configurable: true, value: vi.fn() });
-  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
-    configurable: true,
-    value: vi.fn(),
-  });
+  stubJsdomLayout();
 });
 
 afterEach(async () => {

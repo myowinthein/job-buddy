@@ -9,6 +9,7 @@ import { DEV_PROFILE } from '@/src/utils/devProfile';
 import { openFillLog } from '@/src/fill-log/client';
 import { requestFillDetails } from '@/src/fill-log/navigation';
 import { retainFrameFillLog } from '@/src/fill-log/retention';
+import { stubJsdomLayout } from '@/src/testing/jsdomLayout';
 
 vi.mock('@/src/resume-ai/extractLinks', () => ({ extractLinks: vi.fn().mockResolvedValue([]) }));
 vi.mock('@/src/resume-ai/gemini', () => ({
@@ -38,13 +39,7 @@ beforeEach(() => {
   document.title = 'Job Buddy: Profile';
   vi.stubEnv('DEV', false);
   Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
-  vi.stubGlobal('requestAnimationFrame', (fn: FrameRequestCallback) => setTimeout(() => fn(0), 0));
-  vi.stubGlobal('cancelAnimationFrame', (id: number) => clearTimeout(id));
-  Object.defineProperty(HTMLElement.prototype, 'scrollTo', { configurable: true, value: vi.fn() });
-  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
-    configurable: true,
-    value: vi.fn(),
-  });
+  stubJsdomLayout();
   tabs.get.mockResolvedValue({});
   tabs.sendMessage.mockImplementation(async (tabId: number) => ({
     version: 1,
