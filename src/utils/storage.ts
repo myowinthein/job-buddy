@@ -396,15 +396,14 @@ interface GeminiSettingsMeta {
 }
 const withGeminiLock = createNamedLock('job-buddy-gemini-settings');
 async function readGeminiSettings(): Promise<GeminiSettings> {
-  const [key, model, metadata] = await Promise.all([
-    local.get('geminiApiKey', { rejectOnError: true }),
-    local.get('geminiModel', { rejectOnError: true }),
-    local.get('geminiSettingsMeta', { rejectOnError: true }),
-  ]);
-  const meta = metadata.geminiSettingsMeta as GeminiSettingsMeta | undefined;
+  // One read, so the key, model and metadata come from the same snapshot.
+  const stored = await local.get(['geminiApiKey', 'geminiModel', 'geminiSettingsMeta'], {
+    rejectOnError: true,
+  });
+  const meta = stored.geminiSettingsMeta as GeminiSettingsMeta | undefined;
   return {
-    apiKey: typeof key.geminiApiKey === 'string' && key.geminiApiKey ? key.geminiApiKey : null,
-    model: typeof model.geminiModel === 'string' && model.geminiModel ? toGeminiModel(model.geminiModel) : null,
+    apiKey: typeof stored.geminiApiKey === 'string' && stored.geminiApiKey ? stored.geminiApiKey : null,
+    model: typeof stored.geminiModel === 'string' && stored.geminiModel ? toGeminiModel(stored.geminiModel) : null,
     preference: meta?.preference && meta.preference !== 'auto' ? toGeminiModel(meta.preference) : 'auto',
     revision: meta?.revision ?? null,
     verifiedAt: meta?.verifiedAt ?? null,
