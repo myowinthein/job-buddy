@@ -294,11 +294,7 @@ figcaption {
 }
 
 .chapter {
-  padding: 67px 0;
   border-top: 1px solid var(--line);
-}
-.chapter:first-of-type {
-  margin-top: 52px;
 }
 .chapter-heading {
   display: flex;
@@ -577,9 +573,6 @@ pre code {
     display: block;
     padding: 28px 24px;
   }
-  .chapter {
-    padding-block: 45px;
-  }
 }
 @media (max-width: 560px) {
   body {
@@ -652,7 +645,6 @@ pre code {
   }
   .chapter {
     break-inside: avoid;
-    padding-block: 24px;
   }
 }
 .component-figure {
