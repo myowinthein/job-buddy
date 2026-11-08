@@ -147,10 +147,10 @@ describe('ImportReviewScreen — section grouping and empty state', () => {
 describe('ImportReviewScreen — backdrop and saving state', () => {
   it('calls onBack when the backdrop is clicked, but not when the dialog body is clicked', () => {
     const { onBack } = renderScreen([newField('a', 'A')]);
-    fireEvent.click(screen.getByRole('button', {name:/^Import Selected/}));
+    fireEvent.click(screen.getByRole('dialog'));
     expect(onBack).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', {name:/^Import Selected/}).closest('.fixed')!);
+    fireEvent.click(screen.getByRole('dialog').parentElement!);
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 

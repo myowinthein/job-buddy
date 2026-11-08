@@ -216,14 +216,7 @@ describe('ResumeImportSection — rate_limit error branch', () => {
 });
 
 describe('ResumeImportSection — retry after failure does not re-extract links', () => {
-  // This test is 100% stable in isolation and under `vitest --no-file-parallelism`
-  // (verified over 10+ repeated runs each way); it only flakes intermittently
-  // (~1 in 4) under the default full-suite parallel worker pool, where the
-  // queued extractFromResume implementation is occasionally not consumed in
-  // the expected order. That's a Vitest thread-pool isolation quirk, not a
-  // bug in ResumeImportSection or this test's assertions — `retry` absorbs it
-  // without masking a real regression (a genuine break fails all 3 attempts).
-  it('reuses the already-read file and extracted links on retry rather than redoing them', { timeout: 20000, retry: 2 }, async () => {
+  it('reuses the already-read file and extracted links on retry rather than redoing them', { timeout: 20000 }, async () => {
     vi.mocked(extractFromResume)
       .mockReset()
       .mockImplementationOnce(() => Promise.reject(Object.assign(new Error('Network error'), { code: undefined })))

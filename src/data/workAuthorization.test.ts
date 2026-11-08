@@ -21,15 +21,19 @@ describe('WORK_AUTH_STATUS_OPTIONS', () => {
 });
 
 describe('WORK_AUTH_STATUS_LABELS', () => {
-  it('is derived consistently from WORK_AUTH_STATUS_OPTIONS', () => {
-    WORK_AUTH_STATUS_OPTIONS.forEach(o => {
-      expect(WORK_AUTH_STATUS_LABELS[o.value]).toBe(o.label);
+  it('names each status as shown to the user', () => {
+    expect(WORK_AUTH_STATUS_LABELS).toEqual({
+      citizen_or_pr: 'Citizen / Permanent Resident',
+      work_visa: 'Authorized to work without sponsorship',
+      requires_sponsorship: 'Requires Sponsorship',
     });
   });
 
-  it('contains exactly the keys present in OPTIONS', () => {
-    const optionValues = WORK_AUTH_STATUS_OPTIONS.map(o => o.value).sort();
-    const labelKeys    = Object.keys(WORK_AUTH_STATUS_LABELS).sort();
-    expect(labelKeys).toEqual(optionValues);
+  it('labels each option with its status label, in the same order', () => {
+    expect(WORK_AUTH_STATUS_OPTIONS).toEqual([
+      { value: 'citizen_or_pr', label: 'Citizen / Permanent Resident' },
+      { value: 'work_visa', label: 'Authorized to work without sponsorship' },
+      { value: 'requires_sponsorship', label: 'Requires Sponsorship' },
+    ]);
   });
 });
