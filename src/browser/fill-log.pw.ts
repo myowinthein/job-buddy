@@ -3,6 +3,7 @@ import { summarizeFillFields } from '../autofill/fillLog';
 import type { FrameFillLog } from '../autofill/fillLog';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
 import type { AIFieldPayload } from '../resume-ai/types';
+import { fitsViewportWidth } from './layout';
 
 test('source navigation returns to an open form and reopens a fresh form after navigation or closure', async ({
   page,
@@ -251,7 +252,7 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   await expect
     .poll(() => logPage.locator('aside').evaluate((el) => el.getBoundingClientRect().width))
     .toBe(64);
-  expect(await logPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+  expect(await fitsViewportWidth(logPage)).toBe(
     true,
   );
   expect(await logPage.locator('main').evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(

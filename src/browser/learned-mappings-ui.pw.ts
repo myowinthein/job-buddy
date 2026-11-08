@@ -4,6 +4,7 @@ import type { LearnedMappings } from '../types/storage';
 import type { Profile } from '../types/profile';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
 import { settingsReviewProfile } from '@/src/testing/settingsReviewFixture';
+import { fitsViewportWidth } from './layout';
 
 const domain = '127.0.0.1';
 const first = {
@@ -334,7 +335,7 @@ test('groups aliases, keeps the editor visible, preserves metadata, and uses the
   await expect(
     row(options, 'Applicant response').getByText('Current value:', { exact: false }),
   ).toBeVisible();
-  expect(await options.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+  expect(await fitsViewportWidth(options)).toBe(
     true,
   );
   await options.screenshot({ path: info.outputPath('learned-mappings-narrow-dark.png') });
@@ -505,7 +506,7 @@ test('paginates sites and reveals large mapping lists without hiding search resu
     path: info.outputPath('learned-mappings-pagination-narrow.png'),
     animations: 'disabled',
   });
-  expect(await options.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+  expect(await fitsViewportWidth(options)).toBe(
     true,
   );
 });

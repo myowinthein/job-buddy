@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { fitsViewportWidth } from './layout';
 
 test('production extension fills real values, dispatches validation events, preserves merge answers and undoes', async ({
   page,
@@ -303,7 +304,7 @@ test('form feedback stays quiet while keeping tints, accessible descriptions, ta
   await page.locator('#missing').hover();
   await page.evaluate(() => window.scrollBy(0, 100));
   await expect(overlay).toHaveCount(0);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect(await fitsViewportWidth(page)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('form-tints-narrow.png'), fullPage: true });
   await extension.send('CLEAR');
   await expect(overlay).toHaveCount(0);

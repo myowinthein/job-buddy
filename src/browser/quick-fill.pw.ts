@@ -1,4 +1,5 @@
 import { test, expect, stubEmptyGemini } from './fixtures';
+import { fitsViewportWidth } from './layout';
 const hostSelector = '[data-job-buddy-ui]';
 
 test('one click preserves existing answers across frames and keeps details and Undo accessible', async ({
@@ -366,7 +367,7 @@ test('hidden-site management stays compact with many sites and actions remain be
   await settings.setViewportSize({ width: 390, height: 844 });
   await expect(section.getByRole('listitem')).toHaveCount(5);
   await section.screenshot({ path: info.outputPath('quick-fill-settings-narrow.png') });
-  expect(await settings.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+  expect(await fitsViewportWidth(settings)).toBe(
     true,
   );
 });

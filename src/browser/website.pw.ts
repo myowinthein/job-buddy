@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
+import { fitsViewportWidth } from './layout';
 
 const origin = 'http://127.0.0.1';
 const prefix = '/job-buddy/';
@@ -562,7 +563,7 @@ test('screenshot selectors work with mouse, keyboard, themes, and narrow layouts
             await expect(panel.locator('.rule-trace')).toContainText('95%');
           }
           expect(
-            await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+            await fitsViewportWidth(page),
           ).toBe(true);
         }
       }
@@ -624,7 +625,7 @@ test('reading text uses the same responsive width across the documentation site'
           .map((item) => `${item.tagName}.${item.className}: ${item.getBoundingClientRect().width}`),
         readingWidth);
       expect(oversized, `${path} at ${width}px`).toEqual([]);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      expect(await fitsViewportWidth(page)).toBe(true);
       if (width === 1440 && path === '')
         expect(await page.locator('.hero-figure').evaluate((el) => el.getBoundingClientRect().width))
           .toBeGreaterThan(readingWidth);
@@ -658,14 +659,14 @@ for (const theme of ['light', 'dark'] as const) {
         if (path === 'demo/') await expect(page.locator('#job-buddy-setup')).toBeVisible();
         await expect(page.locator('html')).toHaveClass(theme === 'dark' ? 'dark' : '');
         expect(
-          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+          await fitsViewportWidth(page),
           `${path} at ${width}px`,
         ).toBe(true);
         // Visit each section so lazy screenshots load and long content gets checked.
         for (const section of await page.locator('main > section[id]').all()) {
           await section.scrollIntoViewIfNeeded();
           expect(
-            await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+            await fitsViewportWidth(page),
           ).toBe(true);
         }
         if (path === 'developers/') {

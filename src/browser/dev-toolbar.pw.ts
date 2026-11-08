@@ -3,6 +3,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { resolve } from 'node:path';
 import { DEV_PROFILE } from '../utils/devProfile';
 import { DEFAULT_GEMINI_MODEL } from '../resume-ai/types';
+import { fitsViewportWidth } from './layout';
 
 const buildRoot = resolve('.output/dev-toolbar-test');
 let server: ChildProcess;
@@ -106,7 +107,7 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     await expect(bar).toBeVisible();
     for (const width of [320, 390, 640, 1280]) {
       await page.setViewportSize({ width, height: 600 });
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      expect(await fitsViewportWidth(page)).toBe(
         true,
       );
       for (const button of await bar.getByRole('button').all()) {

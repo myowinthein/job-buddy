@@ -1,6 +1,7 @@
 import type { FrameFillLog } from '../autofill/fillLog';
 import { test, expect } from './fixtures';
 import { serveDemo, ready, sample, publicURL } from './demoSupport';
+import { fitsViewportWidth } from './layout';
 
 test.use({ deviceScaleFactor: 3 });
 
@@ -108,7 +109,7 @@ test('demo submission stays on the page, validates required answers, and resets 
   await expect(page.locator('#completion')).toBeHidden();
   for (const width of [320, 390, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 800 });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+    expect(await fitsViewportWidth(page)).toBe(
       true,
     );
     if (width === 390)
