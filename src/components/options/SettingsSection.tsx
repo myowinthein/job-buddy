@@ -8,7 +8,8 @@ import { backupProfileData, hasCredentialSettings } from '@/src/utils/profileDat
 import { SettingsDialog } from './shared/SettingsDialog';
 import { ImportWarnings } from '@/src/components/shared/ImportWarnings';
 import { SectionHeader } from './shared/SectionHeader';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useId } from 'react';
+import { ExternalLink } from 'lucide-react';
 import type { Profile } from '@/src/types/profile';
 import type {
   LearnedMappings,
@@ -98,7 +99,7 @@ function backupImportChanges(
 const btnPrimaryCls = primaryButtonCls;
 const btnSecondaryCls = secondaryButtonCls;
 const footerLinkCls =
-  'rounded-sm hover:text-blue-600 dark:hover:text-blue-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500 transition-colors';
+  'inline-flex items-center gap-1 rounded-sm hover:text-blue-600 dark:hover:text-blue-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500 transition-colors';
 
 function issueReportUrl(): string {
   const url = new URL('https://github.com/myowinthein/job-buddy/issues/new');
@@ -182,6 +183,7 @@ async function saveImportUnderLock(
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
+  const newTabHintId = useId();
   const { showToast } = useToast();
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -1053,6 +1055,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       </section>
 
       <footer className="mt-10 pt-5 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+        <span id={newTabHintId} className="sr-only">Opens in a new tab</span>
         <nav
           aria-label="Settings links"
           className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium"
@@ -1061,54 +1064,66 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             href={issueReportUrl()}
             target="_blank"
             rel="noopener noreferrer"
+            aria-describedby={newTabHintId}
             className={footerLinkCls}
           >
             Report an issue
+            <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
           </a>
           <span aria-hidden="true">·</span>
           <a
             href="https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk"
             target="_blank"
             rel="noopener noreferrer"
+            aria-describedby={newTabHintId}
             className={footerLinkCls}
           >
             Chrome Web Store
+            <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
           </a>
           <span aria-hidden="true">·</span>
           <a
             href="https://github.com/myowinthein/job-buddy"
             target="_blank"
             rel="noopener noreferrer"
+            aria-describedby={newTabHintId}
             className={footerLinkCls}
           >
             GitHub
+            <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
           </a>
           <span aria-hidden="true">·</span>
           <a
             href="https://ko-fi.com/myowinthein"
             target="_blank"
             rel="noopener noreferrer"
-            className={`${footerLinkCls} inline-flex items-center gap-1 font-normal`}
+            aria-describedby={newTabHintId}
+            className={`${footerLinkCls} font-normal`}
           >
             Support on Ko-fi
+            <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
           </a>
           <span aria-hidden="true">·</span>
           <a
             href="https://myowinthein.github.io/job-buddy/legal/privacy/"
             target="_blank"
             rel="noopener noreferrer"
+            aria-describedby={newTabHintId}
             className={footerLinkCls}
           >
             Privacy Policy
+            <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
           </a>
           <span aria-hidden="true">·</span>
           <a
             href="https://myowinthein.github.io/job-buddy/legal/disclaimer/"
             target="_blank"
             rel="noopener noreferrer"
+            aria-describedby={newTabHintId}
             className={footerLinkCls}
           >
             Disclaimer
+            <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
           </a>
         </nav>
       </footer>
