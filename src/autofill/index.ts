@@ -10,6 +10,7 @@ import { learnedRepairField } from '../utils/learnedMappingRepair';
 import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED, CONF_DICT_EXACT } from './constants';
 import { scanForm, isChoiceGroupAvailable } from './scanner';
 import { EMPTY_AUTOFILL_RESULT, type AutofillResult } from './fillResult';
+import type { Profile } from '../types/profile';
 import { NoDataRegistry } from './noDataRegistry';
 import { ReportRecords } from './reportRecords';
 import { fieldDomain, isChoice, isChoiceChecked, isControlAvailable } from './dom';
@@ -638,6 +639,200 @@ export async function executeAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   }
 }
 
+// Everything one fill pass shares between its steps.
+interface FillRun {
+  mode: 'merge' | 'overwrite';
+  profile: Profile;
+  result: AutofillResult;
+  ownedElements: HTMLElement[];
+  isActive: () => boolean;
+  signal: AbortSignal;
+  matches: PendingMatch[];
+  editableFields: EditableField[];
+  aiTextCandidates: AITextCandidate[];
+}
+
+// Merge mode keeps answers the form already had, including an option already
+// selected elsewhere in the same group.
+function markExistingAnswersKept(): void {
+  for (const [record, elements] of records.elements) {
+    if (record.outcome !== 'excluded' && (records.values.get(record) || records.read(record))) {
+      record.outcome = 'kept';
+      record.rule.outcome = 'kept';
+      record.reason = 'existing_value';
+      // Includes an already-selected option elsewhere in the same group.
+      for (const element of elements) records.byElement.set(element, record);
+    }
+  }
+}
+
+// Applies the rules result for one scanned control: writes a confident match
+// and records every outcome. Resolves false when the run was cancelled while
+// the write was pending, so the caller can stop.
+async function fillMatch(
+  run: FillRun,
+  { element, signals, match, hasExistingValue }: PendingMatch,
+): Promise<boolean> {
+  const { mode, profile, result, ownedElements, isActive, editableFields, aiTextCandidates } = run;
+  const record = records.byElement.get(element)!;
+  const choiceGroup = isChoice(element)
+    ? pendingCheckboxGroups.find((group) =>
+        group.options.some((option) => option.element === element),
+      )
+    : undefined;
+  if (!isControlAvailable(element) || (choiceGroup && !isChoiceGroupAvailable(choiceGroup))) {
+    record.rule.outcome = 'failed';
+    record.outcome = 'failed';
+    record.reason = 'fill_failed';
+    return true;
+  }
+  if (match.fieldPath) {
+    match.fieldPath = ruleValuePath(profile,match.fieldPath,signals);
+    match.value = resolveRuleValue(profile, match.fieldPath, signals, match.value) || null;
+  }
+  Object.assign(record.rule, {
+    layer: match.matchLayer,
+    confidence: match.confidence,
+    matchConfidence: match.confidence,
+    ...(match.fieldPath ? { profilePath: match.fieldPath } : {}),
+  });
+  // Merge mode: skip pre-filled fields that would otherwise be overwritten.
+  if (mode === 'merge' && (record.outcome === 'kept' || hasExistingValue || getFieldValue(element).trim() !== '')) {
+    record.outcome = 'kept';
+    record.rule.outcome = 'kept';
+    record.reason = 'existing_value';
+    return true;
+  }
+
+  const isFileInput = element instanceof HTMLInputElement && element.type === 'file';
+  const isCheckboxInput = isChoice(element);
+  // File and checkbox inputs are never edit-watched or sent to the text AI pass.
+  const textual = !isFileInput && !isCheckboxInput;
+  const addTextCandidate = (originalState: AITextCandidate['originalState']) =>
+    aiTextCandidates.push({ type: 'text', element, signals, originalState });
+
+  if (match.confidence >= CONF_FILL && match.value) {
+    // Confident match with profile data → fill and highlight.
+    let filled = true;
+    if (!ownedElements.includes(element)) ownedElements.push(element);
+    if (isFileInput) {
+      const fileData = profile.documents?.cv?.file;
+      // Scanner gating means fileData should always be present here, but
+      // guard defensively — if reconstruction fails, skip without counting.
+      filled = fileData && match.fieldPath === 'documents.cv.file' ? await fillFileField(element as HTMLInputElement, fileData) : false;
+    } else if (isCheckboxInput) {
+      // matchCurrentEducationCheckboxes only ever produces a checkbox match
+      // when the underlying entry is current — .value on a checkbox never
+      // affects its checked state, so this needs its own dispatch.
+      filled = (await fillCheckboxInput(element)) !== false;
+    } else {
+      const value = element instanceof HTMLSelectElement && element.multiple ? multiSelectValues(profile, match.fieldPath, element) : match.value;
+      filled = value !== null && (await fillField(element, value, isActive)) !== false;
+    }
+
+    if (!isActive()) return false;
+    if (!filled) {
+      record.rule.outcome = 'failed';
+      record.outcome = 'failed';
+      record.reason = 'fill_failed';
+      ownedElements.splice(ownedElements.indexOf(element), 1);
+      // Reconstruction failed (corrupt base64, etc.). Log already emitted by
+      // fillFileField; silently skip this element so the rest of the run
+      // continues uninterrupted.
+      if (textual && !match.ruleBlocked) {
+        applyHighlight(element, 0);
+        editableFields.push({ element, state: 'lowConfidence' });
+        addTextCandidate('lowConfidence');
+      }
+      return true;
+    }
+
+    const writtenConfidence = Math.min(match.confidence, getWriteConfidence(element));
+    applyHighlight(element, writtenConfidence); // green >=CONF_GREEN, yellow CONF_FILL–0.84
+    record.rule.outcome = 'filled';
+    record.rule.confidence = writtenConfidence;
+    record.outcome = writtenConfidence >= CONF_GREEN ? 'high_confidence' : 'review';
+    record.source = 'rules';
+
+    if (writtenConfidence >= CONF_GREEN) {
+      result.noReview++;
+    } else {
+      result.needReview++;
+      // File/checkbox inputs are excluded from edit-watching — file
+      // selection and checkbox state are handled silently by Auto Fill,
+      // not manual typing.
+      if (textual) {
+        editableFields.push({ element, state: 'needReview' });
+        addTextCandidate('needReview');
+      }
+    }
+  } else if (match.confidence < CONF_FILL) {
+    record.rule.outcome = 'not_matched';
+    record.outcome = 'not_matched';
+    // Low or no confidence — red highlight; left for manual resolution.
+    applyHighlight(element, 0);
+    result.lowConfidence++;
+    if (textual) editableFields.push({ element, state: 'lowConfidence' });
+    if (textual && !match.ruleBlocked) addTextCandidate('lowConfidence');
+  } else {
+    record.rule.outcome = 'missing_data';
+    record.outcome = 'missing_data';
+    // confidence >= 0.60 but profile value is empty — nothing to write.
+    // Mark the missing value with a neutral tint, using the same opacity as other statuses.
+    applyMissingDataHighlight(element);
+    result.noData++;
+    if (textual) {
+      editableFields.push({ element, state: 'noData' });
+      // Track in the noData registry so silent re-fill on tab refocus can
+      // re-resolve this field's profile path once the user updates it.
+      // match.fieldPath is non-null when confidence >= 0.60 (only the
+      // "no signal matched" branch leaves it null, and that takes the
+      // lowConfidence path above), but check explicitly for type safety.
+      if (match.fieldPath) {
+        noData.add({ element, fieldPath: match.fieldPath, confidence: match.confidence, identity: aiQuestionIdentity(element) });
+        addTextCandidate('noData');
+      }
+    }
+  }
+  return true;
+}
+
+// Sends the still-unresolved text fields to AI and reports which fields it
+// filled, and with what confidence.
+async function runAIPass(run: FillRun) {
+  const { mode, profile, result, ownedElements, isActive, aiTextCandidates } = run;
+  const aiStates = new Map<HTMLElement, 'green' | 'yellow'>();
+  let aiStatus: AIAutofillStatus | undefined;
+  const aiRan = await runAIAutofill(aiTextCandidates, profile, result, ownedElements, {
+    mode,
+    isActive,
+    signal: run.signal,
+    formFields: run.matches.map((match) => match.signals),
+    fieldRecords: records.byElement,
+    radioGroups: pendingRadioGroups,
+    checkboxGroups: pendingCheckboxGroups,
+    isProfileCurrent: async () => {
+      const current = await getProfile();
+      if (JSON.stringify(current) === JSON.stringify(profile)) return true;
+      cancelAutofillRun();
+      return false;
+    },
+    onTextFilled: (element, state) => {
+      aiStates.set(element, state);
+      const record = records.byElement.get(element);
+      if (record) {
+        record.ai.outcome = record.rule.outcome === 'filled' ? 'refined' : 'filled';
+        record.outcome = state === 'green' ? 'high_confidence' : 'review';
+        record.source = 'ai';
+      }
+    },
+    onStatus: (status) => {
+      aiStatus = status;
+    },
+  });
+  return { aiRan, aiStates, aiStatus };
+}
+
 async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<AutofillResult> {
   if (!pendingReady) return { ...EMPTY_AUTOFILL_RESULT };
   pendingReady = false;
@@ -678,146 +873,29 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     }
     throw new Error(AUTOFILL_ERROR.failed);
   };
-  const editableFields: EditableField[] = [];
-  const aiTextCandidates: AITextCandidate[] = [];
+  const run: FillRun = {
+    mode,
+    profile,
+    result,
+    ownedElements,
+    isActive,
+    signal: abortSignal,
+    matches: matchesToFill,
+    editableFields: [],
+    aiTextCandidates: [],
+  };
+  const { editableFields } = run;
   if (fillLog) fillLog.mode = mode;
-  if (mode === 'merge') for (const [record, elements] of records.elements) {
-    if (record.outcome !== 'excluded' && (records.values.get(record) || records.read(record))) {
-      record.outcome = 'kept';
-      record.rule.outcome = 'kept';
-      record.reason = 'existing_value';
-      // Includes an already-selected option elsewhere in the same group.
-      for (const element of elements) records.byElement.set(element, record);
-    }
-  }
+  if (mode === 'merge') markExistingAnswersKept();
 
   // Reset the noData registry — silent re-fill will only consider noData
   // fields from this fresh run, not stale ones from a previous session.
   clearMissingDataHighlights();
   noData.reset();
 
-  for (const { element, signals, match, hasExistingValue } of matchesToFill) {
+  for (const pending of matchesToFill) {
     if (!isActive()) return interrupted();
-    const record = records.byElement.get(element)!;
-    const choiceGroup = isChoice(element)
-      ? pendingCheckboxGroups.find((group) =>
-          group.options.some((option) => option.element === element),
-        )
-      : undefined;
-    if (!isControlAvailable(element) || (choiceGroup && !isChoiceGroupAvailable(choiceGroup))) {
-      record.rule.outcome = 'failed';
-      record.outcome = 'failed';
-      record.reason = 'fill_failed';
-      continue;
-    }
-    if (match.fieldPath) {
-      match.fieldPath = ruleValuePath(profile,match.fieldPath,signals);
-      match.value = resolveRuleValue(profile, match.fieldPath, signals, match.value) || null;
-    }
-    Object.assign(record.rule, {
-      layer: match.matchLayer,
-      confidence: match.confidence,
-      matchConfidence: match.confidence,
-      ...(match.fieldPath ? { profilePath: match.fieldPath } : {}),
-    });
-    // Merge mode: skip pre-filled fields that would otherwise be overwritten.
-    if (mode === 'merge' && (record.outcome === 'kept' || hasExistingValue || getFieldValue(element).trim() !== '')) {
-      record.outcome = 'kept';
-      record.rule.outcome = 'kept';
-      record.reason = 'existing_value';
-      continue;
-    }
-
-    const isFileInput = element instanceof HTMLInputElement && element.type === 'file';
-    const isCheckboxInput = isChoice(element);
-    // File and checkbox inputs are never edit-watched or sent to the text AI pass.
-    const textual = !isFileInput && !isCheckboxInput;
-    const addTextCandidate = (originalState: AITextCandidate['originalState']) =>
-      aiTextCandidates.push({ type: 'text', element, signals, originalState });
-
-    if (match.confidence >= CONF_FILL && match.value) {
-      // Confident match with profile data → fill and highlight.
-      let filled = true;
-      if (!ownedElements.includes(element)) ownedElements.push(element);
-      if (isFileInput) {
-        const fileData = profile.documents?.cv?.file;
-        // Scanner gating means fileData should always be present here, but
-        // guard defensively — if reconstruction fails, skip without counting.
-        filled = fileData && match.fieldPath === 'documents.cv.file' ? await fillFileField(element as HTMLInputElement, fileData) : false;
-      } else if (isCheckboxInput) {
-        // matchCurrentEducationCheckboxes only ever produces a checkbox match
-        // when the underlying entry is current — .value on a checkbox never
-        // affects its checked state, so this needs its own dispatch.
-        filled = (await fillCheckboxInput(element)) !== false;
-      } else {
-        const value = element instanceof HTMLSelectElement && element.multiple ? multiSelectValues(profile, match.fieldPath, element) : match.value;
-        filled = value !== null && (await fillField(element, value, isActive)) !== false;
-      }
-
-      if (!isActive()) return interrupted();
-      if (!filled) {
-        record.rule.outcome = 'failed';
-        record.outcome = 'failed';
-        record.reason = 'fill_failed';
-        ownedElements.splice(ownedElements.indexOf(element), 1);
-        // Reconstruction failed (corrupt base64, etc.). Log already emitted by
-        // fillFileField; silently skip this element so the rest of the run
-        // continues uninterrupted.
-        if (textual && !match.ruleBlocked) {
-          applyHighlight(element, 0);
-          editableFields.push({ element, state: 'lowConfidence' });
-          addTextCandidate('lowConfidence');
-        }
-        continue;
-      }
-
-      const writtenConfidence = Math.min(match.confidence, getWriteConfidence(element));
-      applyHighlight(element, writtenConfidence); // green >=CONF_GREEN, yellow CONF_FILL–0.84
-      record.rule.outcome = 'filled';
-      record.rule.confidence = writtenConfidence;
-      record.outcome = writtenConfidence >= CONF_GREEN ? 'high_confidence' : 'review';
-      record.source = 'rules';
-
-      if (writtenConfidence >= CONF_GREEN) {
-        result.noReview++;
-      } else {
-        result.needReview++;
-        // File/checkbox inputs are excluded from edit-watching — file
-        // selection and checkbox state are handled silently by Auto Fill,
-        // not manual typing.
-        if (textual) {
-          editableFields.push({ element, state: 'needReview' });
-          addTextCandidate('needReview');
-        }
-      }
-    } else if (match.confidence < CONF_FILL) {
-      record.rule.outcome = 'not_matched';
-      record.outcome = 'not_matched';
-      // Low or no confidence — red highlight; left for manual resolution.
-      applyHighlight(element, 0);
-      result.lowConfidence++;
-      if (textual) editableFields.push({ element, state: 'lowConfidence' });
-      if (textual && !match.ruleBlocked) addTextCandidate('lowConfidence');
-    } else {
-      record.rule.outcome = 'missing_data';
-      record.outcome = 'missing_data';
-      // confidence >= 0.60 but profile value is empty — nothing to write.
-      // Mark the missing value with a neutral tint, using the same opacity as other statuses.
-      applyMissingDataHighlight(element);
-      result.noData++;
-      if (textual) {
-        editableFields.push({ element, state: 'noData' });
-        // Track in the noData registry so silent re-fill on tab refocus can
-        // re-resolve this field's profile path once the user updates it.
-        // match.fieldPath is non-null when confidence >= 0.60 (only the
-        // "no signal matched" branch leaves it null, and that takes the
-        // lowConfidence path above), but check explicitly for type safety.
-        if (match.fieldPath) {
-          noData.add({ element, fieldPath: match.fieldPath, confidence: match.confidence, identity: aiQuestionIdentity(element) });
-          addTextCandidate('noData');
-        }
-      }
-    }
+    if (!(await fillMatch(run, pending))) return interrupted();
   }
 
   pendingMatches = [];
@@ -827,35 +905,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   // all entries are resolved.
   if (noData.entries.length > 0) noData.listen();
 
-  const aiStates = new Map<HTMLElement, 'green' | 'yellow'>();
-  let aiStatus: AIAutofillStatus | undefined;
-  const aiRan = await runAIAutofill(aiTextCandidates, profile, result, ownedElements, {
-    mode,
-    isActive,
-    signal: abortSignal,
-    formFields: matchesToFill.map((match) => match.signals),
-    fieldRecords: records.byElement,
-    radioGroups: pendingRadioGroups,
-    checkboxGroups: pendingCheckboxGroups,
-    isProfileCurrent: async () => {
-      const current = await getProfile();
-      if (JSON.stringify(current) === JSON.stringify(profile)) return true;
-      cancelAutofillRun();
-      return false;
-    },
-    onTextFilled: (element, state) => {
-      aiStates.set(element, state);
-      const record = records.byElement.get(element);
-      if (record) {
-        record.ai.outcome = record.rule.outcome === 'filled' ? 'refined' : 'filled';
-        record.outcome = state === 'green' ? 'high_confidence' : 'review';
-        record.source = 'ai';
-      }
-    },
-    onStatus: (status) => {
-      aiStatus = status;
-    },
-  });
+  const { aiRan, aiStates, aiStatus } = await runAIPass(run);
   if (!isActive()) return interrupted();
   for (const field of editableFields) {
     if (aiStates.get(field.element) === 'yellow') field.state = 'needReview';

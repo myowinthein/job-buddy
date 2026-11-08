@@ -61,7 +61,14 @@ vi.mock('./mappings', () => ({
 }));
 vi.mock('./ai', () => ({ runAIAutofill: vi.fn().mockResolvedValue(false) }));
 
-import { scanAutofill, executeAutofill, undoAutofill, getLastResult } from './index';
+import {
+  scanAutofill,
+  executeAutofill,
+  undoAutofill,
+  cancelAutofillRun,
+  getFillLog,
+  getLastResult,
+} from './index';
 import { EMPTY_AUTOFILL_RESULT } from './fillResult';
 import { getProfile, getLearnedMappings, repairLearnedMappings } from '../utils/storage';
 import { scanFields, scanAriaFields, scanCheckboxGroups, scanRadioGroups } from './scanner';
@@ -1102,4 +1109,63 @@ it('retains the AI failure status in the result restored by the popup', async ()
   expect(result.aiStatus).toBe('unavailable');
   expect(getLastResult()?.aiStatus).toBe('unavailable');
   expect(result.noReview).toBe(1);
+});
+
+describe('executeAutofill rule fill phase', () => {
+  const pendingFill = () => {
+    const gate: { release: (filled: boolean) => void } = { release: () => {} };
+    vi.mocked(fillField).mockImplementationOnce(
+      () => new Promise<boolean>((resolve) => (gate.release = resolve)),
+    );
+    return gate;
+  };
+
+  it('keeps earlier accepted writes when a cancel lands during a later fill', async () => {
+    vi.mocked(scanFields).mockReturnValue([makeInput(), makeInput()]);
+    vi.mocked(fillField).mockResolvedValueOnce(true);
+    const gate = pendingFill();
+    await scanAutofill();
+    const pending = executeAutofill('overwrite');
+    await vi.waitFor(() => expect(fillField).toHaveBeenCalledTimes(2));
+    cancelAutofillRun();
+    gate.release(true);
+    expect(await pending).toMatchObject({ noReview: 1, aiStatus: 'unavailable' });
+    expect(runAIAutofill).not.toHaveBeenCalled();
+  });
+
+  it('fails when a cancel lands during the only fill', async () => {
+    vi.mocked(scanFields).mockReturnValue([makeInput()]);
+    const gate = pendingFill();
+    await scanAutofill();
+    const pending = executeAutofill('overwrite');
+    await vi.waitFor(() => expect(fillField).toHaveBeenCalledTimes(1));
+    cancelAutofillRun();
+    gate.release(true);
+    await expect(pending).rejects.toThrow('autofill_failed');
+    expect(runAIAutofill).not.toHaveBeenCalled();
+  });
+
+  it('reports a control that left the page after the scan as failed', async () => {
+    const gone = makeInput();
+    vi.mocked(scanFields).mockReturnValue([gone, makeInput()]);
+    await scanAutofill();
+    gone.remove();
+    await executeAutofill('overwrite');
+    expect(getFillLog()?.fields.map((field) => [field.outcome, field.reason])).toEqual([
+      ['failed', 'fill_failed'],
+      ['high_confidence', undefined],
+    ]);
+  });
+
+  it('hands the AI pass every scanned field, the run mode and a live abort signal', async () => {
+    vi.mocked(scanFields).mockReturnValue([makeInput(), makeInput()]);
+    await scanAutofill();
+    await executeAutofill('merge');
+    const options = vi.mocked(runAIAutofill).mock.calls[0][4];
+    expect([options?.formFields?.length, options?.mode, options?.signal?.aborted]).toEqual([
+      2,
+      'merge',
+      false,
+    ]);
+  });
 });
