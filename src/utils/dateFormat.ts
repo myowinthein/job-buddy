@@ -6,8 +6,18 @@ export function formatISODate(d: Date): string {
   return `${y}-${m}-${dy}`;
 }
 
+/** Groups the digits of a number string in thousands with commas. */
+export function groupThousands(text: string): string {
+  return text.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 export function fmtAmount(n: number): string {
-  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return groupThousands(Math.round(n).toString());
+}
+
+/** Appends the currency code to a formatted amount when one is known. */
+export function withCurrency(formatted: string, currency?: string): string {
+  return currency ? `${formatted} ${currency}` : formatted;
 }
 
 const MONTHS = [

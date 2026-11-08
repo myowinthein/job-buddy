@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fmtYearMonth, fmtAmount, formatISODate } from './dateFormat';
+import { fmtYearMonth, fmtAmount, formatISODate, groupThousands, withCurrency } from './dateFormat';
 
 describe('formatISODate', () => {
   it('formats a plain local date as YYYY-MM-DD', () => {
@@ -86,5 +86,25 @@ describe('fmtAmount', () => {
 
   it('returns small numbers without separator', () => {
     expect(fmtAmount(999)).toBe('999');
+  });
+});
+
+describe('groupThousands', () => {
+  it('groups integer digits in thousands', () => {
+    expect(groupThousands('1234567')).toBe('1,234,567');
+  });
+
+  it('leaves short numbers and decimals after the point alone', () => {
+    expect(groupThousands('999.75')).toBe('999.75');
+  });
+});
+
+describe('withCurrency', () => {
+  it('appends a known currency code', () => {
+    expect(withCurrency('80,000', 'THB')).toBe('80,000 THB');
+  });
+
+  it('returns the amount alone when the currency is missing or empty', () => {
+    expect([withCurrency('80,000'), withCurrency('80,000', '')]).toEqual(['80,000', '80,000']);
   });
 });

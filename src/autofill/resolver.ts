@@ -4,7 +4,7 @@ import { countryName } from '../data/countries';
 import { readProfilePath } from '../profile/fieldMetadata';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
 import { languageName, LANGUAGE_PROFICIENCY_LABELS } from '../data/languages';
-import { fmtYearMonth, fmtAmount, formatISODate } from '../utils/dateFormat';
+import { fmtYearMonth, fmtAmount, formatISODate, withCurrency } from '../utils/dateFormat';
 
 export function resolveProfileValue(profile: Profile, fieldPath: string): string {
   if (!fieldPath) return '';
@@ -58,7 +58,7 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
     case 'salary.current.formatted': {
       const cur = profile.salary?.current;
       if (!cur?.amount) return '';
-      return cur.currency ? `${fmtAmount(cur.amount)} ${cur.currency}` : fmtAmount(cur.amount);
+      return withCurrency(fmtAmount(cur.amount), cur.currency);
     }
 
     case 'languages.formatted': {
@@ -134,7 +134,7 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
   if (expMatch) {
     const entry = profile.salary?.expected?.[parseInt(expMatch[1], 10)];
     if (!entry?.amount) return '';
-    return entry.currency ? `${fmtAmount(entry.amount)} ${entry.currency}` : fmtAmount(entry.amount);
+    return withCurrency(fmtAmount(entry.amount), entry.currency);
   }
 
   // Handle workHistory.N.* — virtual / computed sub-fields.

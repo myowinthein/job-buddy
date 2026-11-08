@@ -6,6 +6,7 @@ import { questionText, visibleQuestion } from './ruleContext';
 import { resolveProfileValue } from './resolver';
 import { CURRENCIES } from '../data/currencies';
 import { COUNTRIES, countryName } from '../data/countries';
+import { groupThousands, withCurrency } from '../utils/dateFormat';
 
 /** Format an identified profile value for this question, without inventing missing data. */
 export function resolveRuleValue(
@@ -118,8 +119,7 @@ export function resolveRuleValue(
     if (monthly && entry.period === 'annual') amount /= 12;
     amount = Math.round(amount * 100) / 100;
     if (signals.type === 'number' || path.endsWith('.amount')) return String(amount);
-    const formatted = String(amount).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return entry.currency ? `${formatted} ${entry.currency}` : formatted;
+    return withCurrency(groupThousands(String(amount)), entry.currency);
   }
   const date = path.match(/^(workHistory|education)\.(\d+)\.(startDate|endDate)\.formatted$/);
   if (date) {
