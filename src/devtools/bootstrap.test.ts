@@ -2,6 +2,19 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createPreviewChrome } from '@/src/preview/chrome';
 
+// The preview marks Drive backups pending through a lazy import. Without this
+// mock the real import chain can still be loading when the test ends, which
+// vitest reports as an environment teardown error.
+vi.mock('@/src/utils/driveSync', () => ({
+  DRIVE_RETRY_ALARM: 'retry',
+  DRIVE_AUTH_ALARM: 'auth',
+  retryPendingDriveSync: vi.fn(),
+  refreshDriveConnection: vi.fn(),
+  markDriveBackupPending: vi.fn().mockResolvedValue(undefined),
+  syncIfConnected: vi.fn(),
+}));
+import { markDriveBackupPending } from '@/src/utils/driveSync';
+
 let dispose: (() => void) | undefined;
 beforeEach(() => {
   vi.resetModules();
@@ -36,6 +49,7 @@ it('replaces APIs before use and leaves the original storage and network untouch
   await new Promise<void>((resolve) =>
     chrome.storage.local.set({ profile: { id: 'temporary-edit' } }, resolve),
   );
+  await vi.waitFor(() => expect(markDriveBackupPending).toHaveBeenCalledTimes(1));
   const result = await new Promise((resolve) => original.storage.local.get('profile', resolve));
   expect(result).toEqual({ profile: { id: 'real-profile' } });
   await expect(fetch('https://unexpected.example/data')).rejects.toThrow('disabled');
