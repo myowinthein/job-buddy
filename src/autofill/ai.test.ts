@@ -8,18 +8,12 @@ vi.mock('../utils/storage', () => ({
   saveLearnedObservation: vi.fn(),
   saveLearnedMappings: vi.fn(),
 }));
-vi.mock('./filler', async (importOriginal) => {
-  // Real findBestMatch (used by ai.ts's findBestOption) — these tests verify
-  // its actual matching behavior, not a stub. Only the DOM-touching fill
-  // functions are mocked.
-  const actual = await importOriginal<typeof import('./filler')>();
-  return {
-    findBestMatch:     actual.findBestMatch,
-    fillField:         vi.fn().mockResolvedValue(true),
-    fillRadioInput:    vi.fn(),
-    fillCheckboxInput: vi.fn(),
-  };
-});
+// Only the DOM-touching fill functions are mocked.
+vi.mock('./filler', () => ({
+  fillField:         vi.fn().mockResolvedValue(true),
+  fillRadioInput:    vi.fn(),
+  fillCheckboxInput: vi.fn(),
+}));
 vi.mock('./highlighter', () => ({ applyHighlight: vi.fn(), applyMissingDataHighlight: vi.fn() }));
 vi.mock('../resume-ai/gemini', () => ({ resolveFieldsWithAI: vi.fn() }));
 // Control the radio/checkbox candidate lists independently of the DOM.

@@ -392,7 +392,7 @@ describe('fillField — text input (regression)', () => {
   // happens, not merely on value change. Without this, a field can look
   // filled on screen while the form's own validation state still marks it
   // missing at submit time.
-  it('focuses the element before filling, like a real click would', async () => {
+  it('leaves the element blurred after the fill, so form libraries mark it touched', async () => {
     const el = document.createElement('input');
     el.type = 'text';
     document.body.appendChild(el);
@@ -662,7 +662,7 @@ describe('fillField — role="textbox"', () => {
     expect(captured).toBeInstanceOf(FocusEvent);
   });
 
-  it('focuses the element before filling, like a real click would', async () => {
+  it('leaves the element blurred after the fill, so form libraries mark it touched', async () => {
     const el = document.createElement('div');
     el.setAttribute('role', 'textbox');
     el.tabIndex = 0;

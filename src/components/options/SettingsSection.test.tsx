@@ -63,9 +63,12 @@ beforeEach(() => {
   vi.mocked(getLearnedMappings).mockResolvedValue({});
 });
 
+const { createObjectURL, revokeObjectURL } = URL;
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  URL.createObjectURL = createObjectURL;
+  URL.revokeObjectURL = revokeObjectURL;
 });
 
 describe('SettingsSection — explicit Gemini saves', () => {

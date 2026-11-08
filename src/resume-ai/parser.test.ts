@@ -377,20 +377,20 @@ describe('FIELD_DEFS display functions', () => {
   });
 
   describe('workAuthorization', () => {
-    it('renders each entry as "country — status" with underscores replaced', () => {
+    it('renders each entry as "country: status label"', () => {
       expect(
         display('workAuthorization', [
-          { country: 'US', status: 'authorized_no_sponsorship' },
+          { country: 'US', status: 'work_visa' },
         ]),
-      ).toBe('United States: Authorized no sponsorship');
+      ).toBe('United States: Authorized to work without sponsorship');
     });
     it('joins multiple entries on separate lines', () => {
       expect(
         display('workAuthorization', [
-          { country: 'US', status: 'citizen' },
+          { country: 'US', status: 'citizen_or_pr' },
           { country: 'TH', status: 'requires_sponsorship' },
         ]),
-      ).toBe('United States: Citizen\n\nThailand: Requires Sponsorship');
+      ).toBe('United States: Citizen / Permanent Resident\n\nThailand: Requires Sponsorship');
     });
     it('returns "" for an empty array', () => {
       expect(display('workAuthorization', [])).toBe('');
