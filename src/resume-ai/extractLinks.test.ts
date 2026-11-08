@@ -1,7 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Must mock pdfjs before the module under test is imported, as it runs
-// GlobalWorkerOptions assignment at module load time.
 vi.mock('pdfjs-dist', () => ({
   GlobalWorkerOptions: { workerSrc: '' },
   getDocument: vi.fn(),
@@ -16,8 +14,11 @@ function makeFile(name: string, type: string): File {
   return new File(['%PDF-1.4'], name, { type });
 }
 
+const destroy = vi.fn().mockResolvedValue(undefined);
+
 function mockPdf(annotationsByPage: Array<Array<{ subtype: string; url?: unknown }>>) {
   getDocumentMock.mockReturnValue({
+    destroy,
     promise: Promise.resolve({
       numPages: annotationsByPage.length,
       getPage: vi.fn().mockImplementation((n: number) =>
@@ -29,7 +30,10 @@ function mockPdf(annotationsByPage: Array<Array<{ subtype: string; url?: unknown
   } as unknown as ReturnType<typeof pdfjs.getDocument>);
 }
 
-beforeEach(() => getDocumentMock.mockReset());
+beforeEach(() => {
+  getDocumentMock.mockReset();
+  destroy.mockClear();
+});
 
 describe('extractLinks', () => {
   it('returns [] for non-PDF files by MIME type', async () => {
@@ -87,10 +91,26 @@ describe('extractLinks', () => {
 
   it('returns [] and never throws when pdfjs rejects', async () => {
     getDocumentMock.mockReturnValue({
+      destroy,
       promise: Promise.reject(new Error('corrupt PDF')),
     } as unknown as ReturnType<typeof pdfjs.getDocument>);
     const file = makeFile('bad.pdf', 'application/pdf');
     await expect(extractLinks(file)).resolves.toEqual([]);
+  });
+
+  it('destroys the loading task after extracting links', async () => {
+    mockPdf([[{ subtype: 'Link', url: 'https://example.test' }]]);
+    await extractLinks(makeFile('cv.pdf', 'application/pdf'));
+    expect(destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it('destroys the loading task when pdf.js rejects', async () => {
+    getDocumentMock.mockReturnValue({
+      destroy,
+      promise: Promise.reject(new Error('corrupt PDF')),
+    } as unknown as ReturnType<typeof pdfjs.getDocument>);
+    await extractLinks(makeFile('bad.pdf', 'application/pdf'));
+    expect(destroy).toHaveBeenCalledTimes(1);
   });
 
   it('returns [] for a PDF with no annotations', async () => {

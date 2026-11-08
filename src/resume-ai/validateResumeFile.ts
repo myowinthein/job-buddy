@@ -1,5 +1,6 @@
 import { feedback } from '@/src/ui/feedback';
 import { documentFileSizeError } from '@/src/utils/documentLimits';
+import { loadPdfjs } from './loadPdfjs';
 
 const PDF = 'application/pdf';
 const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -102,12 +103,8 @@ export async function validateResumeFile(
     return;
   }
   if (!new TextDecoder().decode(bytes.subarray(0, 1024)).includes('%PDF-')) throw invalid();
-  const pdfjs = await import('pdfjs-dist');
+  const pdfjs = await loadPdfjs();
   signal?.throwIfAborted();
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url,
-  ).href;
   const task = pdfjs.getDocument({ data: bytes.slice() });
   const abort = () => {
     void task.destroy().catch(() => {});

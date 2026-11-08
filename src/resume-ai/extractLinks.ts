@@ -1,11 +1,5 @@
-import * as pdfjs from 'pdfjs-dist';
-
-// Vite resolves this to the worker file URL at build time so it is bundled
-// alongside the extension and works without external network access.
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).href;
+import type { PDFDocumentLoadingTask } from 'pdfjs-dist';
+import { loadPdfjs } from './loadPdfjs';
 
 // Extracts hyperlink URLs from the annotation layer of a PDF file.
 // Returns [] for non-PDF files and on any error — never throws.
@@ -16,9 +10,12 @@ export async function extractLinks(file: File): Promise<string[]> {
 
   if (!isPdf) return [];
 
+  let task: PDFDocumentLoadingTask | undefined;
   try {
     const buffer = await file.arrayBuffer();
-    const pdfDoc = await pdfjs.getDocument({ data: new Uint8Array(buffer) }).promise;
+    const pdfjs = await loadPdfjs();
+    task = pdfjs.getDocument({ data: new Uint8Array(buffer) });
+    const pdfDoc = await task.promise;
     const seen   = new Set<string>();
 
     interface PdfAnnotation { subtype?: unknown; url?: unknown }
@@ -42,5 +39,7 @@ export async function extractLinks(file: File): Promise<string[]> {
     return Array.from(seen);
   } catch {
     return [];
+  } finally {
+    await task?.destroy().catch(() => {});
   }
 }
