@@ -24,6 +24,7 @@ import {
   type LearnedRepairState,
 } from './learnedMappingRepair';
 import {
+  mappingPath,
   readableMappings,
   safeMappingKey,
   validMapping,
@@ -219,8 +220,8 @@ export function mergeLearnedMappings(
               r = b[key];
             if (!l) return [key, r];
             if (!r) return [key, l];
-            const lp = typeof l === 'string' ? l : l.path,
-              rp = typeof r === 'string' ? r : r.path;
+            const lp = mappingPath(l),
+              rp = mappingPath(r);
             if (lp !== rp) return [key, l];
             // An inactive snapshot cannot promote, disable, or reactivate a local choice.
             if ((typeof l !== 'string' && l.inactive) || (typeof r !== 'string' && r.inactive))
@@ -495,7 +496,7 @@ export async function saveLearnedObservationLocally(
       const previous = mappings[domain][key];
       const samePath =
         previous && (typeof previous === 'string' || !previous.inactive) &&
-        (typeof previous === 'string' ? previous : previous.path) === observation.path;
+        mappingPath(previous) === observation.path;
       const sameQuestion =
         typeof previous !== 'object' ||
         !previous.question ||

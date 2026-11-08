@@ -3,7 +3,7 @@ import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings, LearnedMappingValue } from '@/src/types/storage';
 import { matchedEntryIndex } from '@/src/resume-ai/entryComparison';
 import { equalJsonValues } from './equalJsonValues';
-import { readableMappings } from './learnedMappingData';
+import { mappingPath, readableMappings } from './learnedMappingData';
 import type { EntryIndexMap } from './profileValidator';
 
 /** Backup paths use raw indices; validation may have discarded or deduplicated rows. */
@@ -15,7 +15,7 @@ export function validatedMappingIndices(
   for (const group of Object.values(result))
     for (const [signal, mapping] of Object.entries(group)) {
       if (typeof mapping !== 'string' && mapping.inactive) continue;
-      const path = typeof mapping === 'string' ? mapping : mapping.path;
+      const path = mappingPath(mapping);
       const match = indexedProfilePath(path);
       if (!match || !Object.hasOwn(indices, match.family)) continue;
       const index =
@@ -40,7 +40,7 @@ export function rebaseLearnedMappings(
   for (const group of Object.values(result))
     for (const [signal, mapping] of Object.entries(group)) {
       if (typeof mapping !== 'string' && (mapping.inactive || mapping.scope === 'field')) continue;
-      const path = typeof mapping === 'string' ? mapping : mapping.path;
+      const path = mappingPath(mapping);
       const match = indexedProfilePath(path);
       if (!match) continue;
       const { family, index: originalIndex, suffix } = match;

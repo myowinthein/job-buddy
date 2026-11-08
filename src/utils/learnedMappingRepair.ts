@@ -2,7 +2,7 @@ import type { LearnedMappings, LearnedMappingValue } from '../types/storage';
 import type { FieldSignals } from '../autofill/signals';
 import { normalize } from '../autofill/normalizer';
 import { genericLearnedSignal, learningQuestion } from '../autofill/learnedContext';
-import { isLearnedPath, safeMappingKey } from './learnedMappingData';
+import { isLearnedPath, mappingPath, safeMappingKey } from './learnedMappingData';
 
 export const LEARNED_REPAIR_VERSION = 1;
 
@@ -73,7 +73,7 @@ function recoverQuestion(
   const question = fields[0].question.trim();
   const normalized = normalize(question);
   if (!normalized || genericLearnedSignal(normalized)) return value;
-  const path = typeof value === 'string' ? value : value.path;
+  const path = mappingPath(value);
   const metadata = typeof value === 'string' ? undefined : value;
   const compatible = (text: string) =>
     normalize(text) === normalized || normalize(text) === normalize(question.slice(0, 120));
@@ -131,7 +131,7 @@ export async function repairMappingDomain(
         state[key] = checkpoint;
         return;
       }
-      const path = typeof value === 'string' ? value : value.path;
+      const path = mappingPath(value);
       const label = typeof value === 'string' ? '' : value.question || value.label || '';
       if (
         !isLearnedPath(path) ||

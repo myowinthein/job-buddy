@@ -1,6 +1,10 @@
 import { PROFILE_MAPPING_PATH_TEMPLATES } from '../profile/fieldCatalog';
 import type { LearnedMappingValue, LearnedMappings } from '../types/storage';
 
+/** The profile path of a legacy string mapping or a counted entry. */
+export const mappingPath = (value: LearnedMappingValue): string =>
+  typeof value === 'string' ? value : value.path;
+
 export const safeMappingKey = (key: string): boolean =>
   !!key.trim() && !['__proto__', 'constructor', 'prototype'].includes(key);
 
@@ -39,7 +43,7 @@ function mappingShape(value: unknown): value is LearnedMappingValue {
 }
 
 export function validMapping(value: unknown): value is LearnedMappingValue {
-  return mappingShape(value) && isLearnedPath(typeof value === 'string' ? value : value.path);
+  return mappingShape(value) && isLearnedPath(mappingPath(value));
 }
 
 /** Unknown historical paths may travel as inert metadata, never executable mappings. */
@@ -69,7 +73,7 @@ export function readableMappings(raw: unknown, retainStalePaths = false): Learne
         )
         .map(([key, value]): [string, LearnedMappingValue] => [
           key,
-          !isLearnedPath(typeof value === 'string' ? value : value.path)
+          !isLearnedPath(mappingPath(value))
             ? typeof value === 'string'
               ? { path: value, count: 2, inactive: true }
               : { ...value, inactive: true }

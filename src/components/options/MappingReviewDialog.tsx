@@ -19,7 +19,8 @@ import {
   type MappingAssessment,
   type MappingReviewDecision,
 } from '@/src/learned-mappings/review';
-import { groupMappings, mappingDestination, profileFieldLabels } from './learnedMappingsView';
+import { groupMappings } from '@/src/learned-mappings/groups';
+import { mappingDestination, profileFieldLabels } from './learnedMappingsView';
 import { SearchableProfileFieldSelect } from './shared/SearchableProfileFieldSelect';
 import { fieldCls } from './shared/fieldCls';
 import { MappingReviewSites } from './MappingReviewSites';

@@ -1,6 +1,6 @@
 import type { Profile } from '../types/profile';
 import type { LearnedMappings, LearnedMappingValue } from '../types/storage';
-import type { MappingGroup } from '../components/options/learnedMappingsView';
+import type { MappingGroup } from './groups';
 import { buildPickerTree } from '../autofill/profileFieldTree';
 import { genericLearnedSignal } from '../autofill/learnedContext';
 import { normalize } from '../autofill/normalizer';

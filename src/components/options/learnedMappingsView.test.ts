@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
+import { groupMappings } from '../../learned-mappings/groups';
 import {
-  groupMappings,
   mappingDestination,
   mappingProfileTarget,
   matchesMapping,

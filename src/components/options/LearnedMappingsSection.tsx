@@ -20,14 +20,8 @@ import { SearchableProfileFieldSelect } from './shared/SearchableProfileFieldSel
 import { fieldCls } from './shared/fieldCls';
 import { LearnedMappingsHelp } from './LearnedMappingsHelp';
 import { MappingReviewDialog } from './MappingReviewDialog';
-import {
-  groupMappings,
-  mappingDestination,
-  matchesMapping,
-  profileFieldLabels,
-  type MappingGroup,
-  type MappingStatus,
-} from './learnedMappingsView';
+import { groupMappings, type MappingGroup, type MappingStatus } from '@/src/learned-mappings/groups';
+import { mappingDestination, matchesMapping, profileFieldLabels } from './learnedMappingsView';
 
 const secondary =
   'rounded-md border border-gray-300 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800';

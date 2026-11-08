@@ -14,7 +14,7 @@ import {
   saveLearnedMappings,
   replaceProfileData,
 } from './storage';
-import { groupMappings } from '../components/options/learnedMappingsView';
+import { groupMappings } from '../learned-mappings/groups';
 
 const domain = 'example.test';
 const old = { path: 'workHistory.0.company', count: 1, label: 'Current Employer* (required)' };

@@ -2,7 +2,7 @@
 import { webcrypto } from 'node:crypto';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
-import { groupMappings } from '../components/options/learnedMappingsView';
+import { groupMappings } from './groups';
 import { createPreviewChrome } from '../preview/chrome';
 import {
   getProfile,
