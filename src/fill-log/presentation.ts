@@ -1,5 +1,5 @@
 import { catalogProfileFieldName } from '@/src/profile/fieldMetadata';
-import { finalFillSource, type FillLogField } from '@/src/autofill/fillLog';
+import { finalFillSource, type FillLogField, type MatchLayer } from '@/src/autofill/fillLog';
 
 export const sourceNames = {
   learned: 'Learned mappings',
@@ -7,7 +7,7 @@ export const sourceNames = {
   ai: 'AI',
   manual: 'Manual',
 };
-export const ruleMethods: Record<string, string> = {
+export const ruleMethods: Record<MatchLayer, string> = {
   learned: 'Learned mapping',
   autocomplete: 'Autocomplete attribute',
   dictionary_exact: 'Exact dictionary match',

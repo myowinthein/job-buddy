@@ -1,12 +1,27 @@
-export type MatchLayer =
-  | 'learned'
-  | 'autocomplete'
-  | 'dictionary_exact'
-  | 'fuzzy'
-  | 'custom_link'
-  | 'checkbox_status'
-  | 'context'
-  | 'none';
+export const MATCH_LAYERS = [
+  'learned',
+  'autocomplete',
+  'dictionary_exact',
+  'fuzzy',
+  'custom_link',
+  'checkbox_status',
+  'context',
+  'none',
+] as const;
+export type MatchLayer = (typeof MATCH_LAYERS)[number];
+export const FIELD_KINDS = ['text', 'select', 'file', 'radio', 'checkbox'] as const;
+export const FILL_SOURCES = ['rules', 'ai', 'manual'] as const;
+export const FILL_REASONS = [
+  'consent',
+  'existing_value',
+  'fill_failed',
+  'manual_clear',
+  'manual_edit',
+  'profile_updated',
+  'option_unavailable',
+  'value_changed',
+] as const;
+export const AI_SKIP_REASONS = ['answer_changed', 'profile_changed', 'cancelled'] as const;
 
 export type FillOutcome =
   | 'high_confidence'
@@ -55,7 +70,7 @@ export interface LearnedCheck {
 export interface FillLogField {
   id: string;
   label: string;
-  kind: 'text' | 'select' | 'file' | 'radio' | 'checkbox';
+  kind: (typeof FIELD_KINDS)[number];
   required?: boolean;
   learned?: LearnedCheck;
   rule: {
@@ -71,19 +86,11 @@ export interface FillLogField {
     confidence?: 'high' | 'low' | null;
     profilePath?: string;
     optionReview?: boolean;
-    skipReason?: 'answer_changed' | 'profile_changed' | 'cancelled';
+    skipReason?: (typeof AI_SKIP_REASONS)[number];
   };
   outcome: FillOutcome;
-  source: 'rules' | 'ai' | 'manual' | null;
-  reason?:
-    | 'consent'
-    | 'existing_value'
-    | 'fill_failed'
-    | 'manual_clear'
-    | 'manual_edit'
-    | 'profile_updated'
-    | 'option_unavailable'
-    | 'value_changed';
+  source: (typeof FILL_SOURCES)[number] | null;
+  reason?: (typeof FILL_REASONS)[number];
 }
 
 export interface FrameFillLog {

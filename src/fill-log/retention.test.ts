@@ -1,7 +1,14 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createPreviewChrome } from '@/src/preview/chrome';
 import { clearAllStorage, getProfile, replaceProfileData, saveProfile } from '@/src/utils/storage';
-import type { FrameFillLog } from '@/src/autofill/fillLog';
+import {
+  AI_SKIP_REASONS,
+  FIELD_KINDS,
+  FILL_REASONS,
+  FILL_SOURCES,
+  MATCH_LAYERS,
+  type FrameFillLog,
+} from '@/src/autofill/fillLog';
 import {
   clearRetainedFillLog,
   readRetainedFillLog,
@@ -227,6 +234,36 @@ it.each([
 ])('rejects malformed stage metadata %s', async (learned) => {
   const report = log();
   Object.assign(report.fields[0], { learned });
+  await retainFrameFillLog(sender(), report, 'profile');
+  expect(await readRetainedFillLog()).toBeNull();
+});
+
+const enumFields: [string, readonly string[], (report: FrameFillLog, value: string) => void][] = [
+  ['kind', FIELD_KINDS, (report, value) => Object.assign(report.fields[0], { kind: value })],
+  ['source', FILL_SOURCES, (report, value) => Object.assign(report.fields[0], { source: value })],
+  ['reason', FILL_REASONS, (report, value) => Object.assign(report.fields[0], { reason: value })],
+  [
+    'rule layer',
+    MATCH_LAYERS,
+    (report, value) => Object.assign(report.fields[0].rule, { layer: value }),
+  ],
+  [
+    'AI skip reason',
+    AI_SKIP_REASONS,
+    (report, value) => Object.assign(report.fields[0].ai, { skipReason: value }),
+  ],
+];
+it.each(enumFields)('retains every listed %s value', async (_name, values, set) => {
+  for (const [index, value] of values.entries()) {
+    const report = log(`run-${index}`, index + 1);
+    set(report, value);
+    await retainFrameFillLog(sender(), report, 'profile');
+    expect((await readRetainedFillLog())?.frames[0].log.runId, value).toBe(`run-${index}`);
+  }
+});
+it.each(enumFields)('rejects an unlisted %s value', async (_name, _values, set) => {
+  const report = log();
+  set(report, 'invented');
   await retainFrameFillLog(sender(), report, 'profile');
   expect(await readRetainedFillLog()).toBeNull();
 });

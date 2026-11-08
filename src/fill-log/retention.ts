@@ -1,7 +1,12 @@
 import type { FillLogField, FillLogSnapshot, FrameFillLog } from '@/src/autofill/fillLog';
 import {
   AI_OUTCOME_LABELS,
+  AI_SKIP_REASONS,
+  FIELD_KINDS,
   FILL_OUTCOME_LABELS,
+  FILL_REASONS,
+  FILL_SOURCES,
+  MATCH_LAYERS,
   RULE_OUTCOME_LABELS,
   LEARNED_CHECK_LABELS,
   safeFormUrl,
@@ -11,6 +16,7 @@ import { createNamedLock } from '@/src/utils/namedLock';
 import { DEV_PROFILE } from '@/src/utils/devProfile';
 
 export const RETAINED_FILL_DETAILS = 'jb:last-fill-details';
+const oneOf = (allowed: readonly unknown[], value: unknown) => allowed.includes(value);
 const session = wrapStorageArea(() => chrome.storage.session, 'last fill details', {
   rejectOnSetError: true,
 });
@@ -48,35 +54,15 @@ function reportMetadata(value: unknown): FrameFillLog | null {
       typeof field.id !== 'string' ||
       typeof field.label !== 'string' ||
       (field.required !== undefined && typeof field.required !== 'boolean') ||
-      !['text', 'select', 'file', 'radio', 'checkbox'].includes(field.kind) ||
+      !oneOf(FIELD_KINDS, field.kind) ||
       !Object.hasOwn(FILL_OUTCOME_LABELS, field.outcome) ||
       !field.rule ||
       !field.ai ||
       !Object.hasOwn(RULE_OUTCOME_LABELS, field.rule.outcome) ||
       !Object.hasOwn(AI_OUTCOME_LABELS, field.ai.outcome) ||
-      ![null, 'rules', 'ai', 'manual'].includes(field.source) ||
-      (field.reason !== undefined &&
-        ![
-          'consent',
-          'existing_value',
-          'fill_failed',
-          'manual_clear',
-          'manual_edit',
-          'profile_updated',
-          'option_unavailable',
-          'value_changed',
-        ].includes(field.reason)) ||
-      (field.rule.layer !== undefined &&
-        ![
-          'learned',
-          'autocomplete',
-          'dictionary_exact',
-          'fuzzy',
-          'custom_link',
-          'checkbox_status',
-          'context',
-          'none',
-        ].includes(field.rule.layer)) ||
+      (field.source !== null && !oneOf(FILL_SOURCES, field.source)) ||
+      (field.reason !== undefined && !oneOf(FILL_REASONS, field.reason)) ||
+      (field.rule.layer !== undefined && !oneOf(MATCH_LAYERS, field.rule.layer)) ||
       (field.rule.confidence !== undefined && !Number.isFinite(field.rule.confidence)) ||
       (field.rule.matchConfidence !== undefined &&
         (!Number.isFinite(field.rule.matchConfidence) ||
@@ -96,8 +82,7 @@ function reportMetadata(value: unknown): FrameFillLog | null {
       (field.ai.profilePath !== undefined && typeof field.ai.profilePath !== 'string') ||
       (field.ai.confidence !== undefined && ![null, 'high', 'low'].includes(field.ai.confidence)) ||
       (field.ai.optionReview !== undefined && typeof field.ai.optionReview !== 'boolean') ||
-      (field.ai.skipReason !== undefined &&
-        !['answer_changed', 'profile_changed', 'cancelled'].includes(field.ai.skipReason))
+      (field.ai.skipReason !== undefined && !oneOf(AI_SKIP_REASONS, field.ai.skipReason))
     )
       return null;
     fields.push({
