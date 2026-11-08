@@ -1,6 +1,7 @@
 import { calculateDerivedFields } from '../utils/derivedFields';
 import type { Profile } from '../types/profile';
 import { countryName } from '../data/countries';
+import { readProfilePath } from '../profile/fieldMetadata';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
 import { languageName, LANGUAGE_PROFICIENCY_LABELS } from '../data/languages';
 import { fmtYearMonth, fmtAmount, formatISODate } from '../utils/dateFormat';
@@ -11,7 +12,7 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
   if (fieldPath === 'derived.age' || fieldPath.startsWith('derived.totalExperience.')) {
     try {
       const derived = calculateDerivedFields(profile);
-      const value = fieldPath.slice(8).split('.').reduce<unknown>((node,key) => node && typeof node === 'object' ? (node as Record<string,unknown>)[key] : undefined,derived);
+      const value = readProfilePath(derived, fieldPath.slice(8));
       return typeof value === 'string' || typeof value === 'number' ? String(value) : '';
     } catch { return ''; }
   }

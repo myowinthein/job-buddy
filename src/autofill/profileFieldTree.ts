@@ -1,5 +1,6 @@
 import type { Profile } from '../types/profile';
 import { countryName } from '../data/countries';
+import { readProfilePath } from '../profile/fieldMetadata';
 import { languageName } from '../data/languages';
 import { resolveProfileValue } from './resolver';
 import { mostRecentIdx } from './entryRecency';
@@ -39,15 +40,6 @@ export interface Section {
   items: SectionItem[];
 }
 
-function readPath(value: unknown, path: string): unknown {
-  return path
-    .split('.')
-    .reduce<unknown>(
-      (node, key) =>
-        node && typeof node === 'object' ? (node as Record<string, unknown>)[key] : undefined,
-      value,
-    );
-}
 function entryHeading(
   entry: Record<string, unknown>,
   primary: string,
@@ -67,7 +59,7 @@ export function buildPickerTree(profile: Profile, includeEmpty = false): Section
     definition: NonNullable<CatalogField['entries']>,
     label: string,
   ): SectionItem[] {
-    const source = readPath(profile, definition.path);
+    const source = readProfilePath(profile, definition.path);
     const saved = Array.isArray(source) ? source : source ? [source] : [];
     const entries = includeEmpty && !saved.length ? [{}] : saved;
     const recent = mostRecentIdx(entries);
