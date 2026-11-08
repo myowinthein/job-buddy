@@ -1,5 +1,5 @@
 import { withLearnedMappingsLock } from './learnedMappingsLock';
-import { devLockName } from '@/src/devtools/context';
+import { createNamedLock } from './namedLock';
 import type { Profile } from '../types/profile';
 import type {
   LearnedMappings,
@@ -393,14 +393,7 @@ interface GeminiSettingsMeta {
   preference?: GeminiModelPreference;
   verifiedAt?: number;
 }
-let geminiQueue: Promise<unknown> = Promise.resolve();
-async function withGeminiLock<T>(action: () => Promise<T>): Promise<T> {
-  if (typeof navigator !== 'undefined' && navigator.locks?.request)
-    return await navigator.locks.request(import.meta.env.DEV ? devLockName('job-buddy-gemini-settings') : 'job-buddy-gemini-settings', action);
-  const result = geminiQueue.then(action, action);
-  geminiQueue = result.catch(() => {});
-  return result;
-}
+const withGeminiLock = createNamedLock('job-buddy-gemini-settings');
 async function readGeminiSettings(): Promise<GeminiSettings> {
   const [key, model, metadata] = await Promise.all([
     local.get('geminiApiKey', { rejectOnError: true }),

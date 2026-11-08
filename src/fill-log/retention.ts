@@ -7,7 +7,7 @@ import {
   safeFormUrl,
 } from '@/src/autofill/fillLog';
 import { wrapStorageArea } from '@/src/utils/storageArea';
-import { devLockName } from '@/src/devtools/context';
+import { createNamedLock } from '@/src/utils/namedLock';
 import { DEV_PROFILE } from '@/src/utils/devProfile';
 
 export const RETAINED_FILL_DETAILS = 'jb:last-fill-details';
@@ -15,17 +15,7 @@ const session = wrapStorageArea(() => chrome.storage.session, 'last fill details
   rejectOnSetError: true,
 });
 const local = wrapStorageArea(() => chrome.storage.local, 'last fill profile');
-let queue: Promise<unknown> = Promise.resolve();
-async function locked<T>(action: () => Promise<T>): Promise<T> {
-  if (typeof navigator !== 'undefined' && navigator.locks?.request)
-    return navigator.locks.request(
-      import.meta.env.DEV ? devLockName(RETAINED_FILL_DETAILS) : RETAINED_FILL_DETAILS,
-      action,
-    );
-  const result = queue.then(action, action);
-  queue = result.catch(() => {});
-  return result;
-}
+const locked = createNamedLock(RETAINED_FILL_DETAILS);
 
 /** Project only the report metadata. Never retain values or arbitrary message properties. */
 function reportMetadata(value: unknown): FrameFillLog | null {

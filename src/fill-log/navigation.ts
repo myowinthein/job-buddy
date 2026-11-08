@@ -1,5 +1,5 @@
 import { wrapStorageArea } from '@/src/utils/storageArea';
-import { devLockName } from '@/src/devtools/context';
+import { createNamedLock } from '@/src/utils/namedLock';
 import { RUN_PREFIX, type AutofillRun } from '@/src/autofill/runCoordinator';
 import { readRetainedFillLog } from './retention';
 
@@ -8,19 +8,7 @@ const SOURCE = 'jb:fillDetailsSource';
 const session = wrapStorageArea(() => chrome.storage.session, 'fill details navigation', {
   rejectOnSetError: true,
 });
-let queue: Promise<unknown> = Promise.resolve();
-async function locked<T>(action: () => Promise<T>): Promise<T> {
-  if (typeof navigator !== 'undefined' && navigator.locks?.request)
-    return navigator.locks.request(
-      import.meta.env.DEV
-        ? devLockName('jb-fill-details-navigation')
-        : 'jb-fill-details-navigation',
-      action,
-    );
-  const next = queue.then(action, action);
-  queue = next.catch(() => {});
-  return next;
-}
+const locked = createNamedLock('jb-fill-details-navigation');
 
 export function sourceTabId(value: unknown): number | null {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
