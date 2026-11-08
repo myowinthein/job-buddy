@@ -3,7 +3,7 @@ import { KEY_ERROR_MESSAGES } from './keyErrors';
 export { KEY_ERROR_MESSAGES } from './keyErrors';
 import type { Profile } from '@/src/types/profile';
 import type { GeminiModel, KeyValidationResult, ImportError, AIFieldPayload, AIFieldResponse, KeyCheckStatus, ResumeModelAttempt } from './types';
-import { GEMINI_MODEL_PRIORITY } from './types';
+import { GEMINI_MODEL_PRIORITY, fallbackModels } from './types';
 import { buildPrompt } from './prompt';
 import { stripMarkdown } from './normalize';
 import { validateResumeProfile } from './validateResume';
@@ -118,7 +118,7 @@ export async function reviewMappingsWithAI(
   signal: AbortSignal,
   onAttempt?: (model: GeminiModel) => void,
 ) {
-  const models = [model, ...GEMINI_MODEL_PRIORITY.filter((candidate) => candidate !== model)];
+  const models = fallbackModels(model);
   let lastError = feedback.resumeServiceUnavailable as string;
   for (const candidate of models) {
     signal.throwIfAborted();
@@ -215,7 +215,7 @@ export async function extractFromResume(
     generationConfig: { temperature: 0 },
   });
 
-  const modelsToTry = [model, ...GEMINI_MODEL_PRIORITY.filter(m => m !== model)];
+  const modelsToTry = fallbackModels(model);
   let reason: ResumeModelAttempt['reason'];
   let lastError: ImportError = importError('rate_limit', feedback.resumeUsageLimit);
   for (const tryModel of modelsToTry) {
@@ -285,7 +285,7 @@ export async function resolveFieldsWithAI(
   profile: object,
   options: { signal?: AbortSignal; isActive?: () => boolean; onUnavailable?: () => void } = {},
 ): Promise<AIFieldResponse[]> {
-  const models = [model, ...GEMINI_MODEL_PRIORITY.filter((m) => m !== model)];
+  const models = fallbackModels(model);
   const responses: AIFieldResponse[] = [];
   const encoder = new TextEncoder();
   const bodyFor = (batch: AIFieldPayload[]) =>

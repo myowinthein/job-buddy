@@ -1,5 +1,25 @@
 import { describe, it, expect } from 'vitest';
-import { toGeminiModel, DEFAULT_GEMINI_MODEL } from './types';
+import { toGeminiModel, fallbackModels, DEFAULT_GEMINI_MODEL } from './types';
+
+describe('fallbackModels', () => {
+  it('tries the chosen model first', () => {
+    expect(fallbackModels('gemini-3.8-flash')[0]).toBe('gemini-3.8-flash');
+  });
+
+  it('follows with every other model once, in priority order', () => {
+    expect(fallbackModels('gemini-3.8-flash')).toEqual([
+      'gemini-3.8-flash',
+      'gemini-3.5-flash-lite',
+    ]);
+  });
+
+  it('keeps the priority order when the first model is chosen', () => {
+    expect(fallbackModels('gemini-3.5-flash-lite')).toEqual([
+      'gemini-3.5-flash-lite',
+      'gemini-3.8-flash',
+    ]);
+  });
+});
 
 describe('toGeminiModel', () => {
   it('returns the stored value when it is a valid GeminiModel', () => {

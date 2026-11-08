@@ -12,6 +12,11 @@ export const GEMINI_MODEL_PRIORITY: GeminiModel[] = [
 // First candidate for automatic model selection.
 export const DEFAULT_GEMINI_MODEL: GeminiModel = GEMINI_MODEL_PRIORITY[0];
 
+/** The chosen model first, then the others in priority order, for fallback requests. */
+export function fallbackModels(model: GeminiModel): GeminiModel[] {
+  return [model, ...GEMINI_MODEL_PRIORITY.filter((candidate) => candidate !== model)];
+}
+
 export const MODEL_DISPLAY_NAMES: Record<GeminiModel, string> = {
   'gemini-3.5-flash-lite': 'Gemini 3.5 Flash-Lite',
   'gemini-3.8-flash': 'Gemini 3.8 Flash',
