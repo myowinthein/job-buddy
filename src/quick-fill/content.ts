@@ -1,6 +1,6 @@
 import { feedback } from '@/src/ui/feedback';
 import type { AutofillRun } from '@/src/autofill/runCoordinator';
-import { likelyApplicationForm, QUICK_FILL_HOST } from './detect';
+import { likelyApplicationForm } from './detect';
 import {
   getQuickFillPreferences,
   normalizePreferences,
@@ -8,6 +8,7 @@ import {
   type QuickFillPreferences,
 } from './preferences';
 import { QuickFillWidget } from './widget';
+import { affectsApplicationDetection, DETECTION_ATTRIBUTES } from './detectionChanges';
 
 export function installQuickFill(): void {
   const main = window === window.top;
@@ -69,28 +70,20 @@ export function installQuickFill(): void {
               run = null;
               paint();
             })
-            .catch(() =>
-              widget?.error(feedback.quickFillUndoFailed),
-            );
+            .catch(() => widget?.error(feedback.quickFillUndoFailed));
         },
         details: () => {
-          void request('DETAILS').catch(() =>
-            widget?.error(feedback.fillDetailsOpenFailed),
-          );
+          void request('DETAILS').catch(() => widget?.error(feedback.fillDetailsOpenFailed));
         },
         hide: () => {
           hidden = true;
           paint();
         },
         disableSite: () => {
-          void request('DISABLE_SITE').catch(() =>
-            widget?.error(feedback.quickFillSiteSaveFailed),
-          );
+          void request('DISABLE_SITE').catch(() => widget?.error(feedback.quickFillSiteSaveFailed));
         },
         settings: () => {
-          void request('SETTINGS').catch(() =>
-            widget?.error(feedback.quickFillSettingsOpenFailed),
-          );
+          void request('SETTINGS').catch(() => widget?.error(feedback.quickFillSettingsOpenFailed));
         },
         position: (position) => {
           prefs = { ...prefs, position };
@@ -161,29 +154,31 @@ export function installQuickFill(): void {
     }, 500);
   };
   const observer = new MutationObserver((records) => {
-    if (
-      records.some(
-        (record) =>
-          !(record.target instanceof Element && record.target.closest(`[${QUICK_FILL_HOST}]`)),
-      )
-    )
-      schedule();
+    for (const root of shadowRoots) if (!root.host.isConnected) shadowRoots.delete(root);
+    if (affectsApplicationDetection(records, shadowRoots)) schedule();
   });
   observer.observe(document.documentElement, {
     childList: true,
+    characterData: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ['hidden', 'aria-hidden', 'class'],
+    attributeOldValue: true,
+    attributeFilter: DETECTION_ATTRIBUTES,
   });
   const observed = new WeakSet<Node>([document.documentElement]);
+  const shadowRoots = new Set<ShadowRoot>();
   const observeRoot = (root: ParentNode) => {
-    if (root instanceof ShadowRoot && !observed.has(root)) {
+    if (!(root instanceof ShadowRoot)) return;
+    shadowRoots.add(root);
+    if (!observed.has(root)) {
       observed.add(root);
       observer.observe(root, {
         childList: true,
+        characterData: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ['hidden', 'aria-hidden', 'class'],
+        attributeOldValue: true,
+        attributeFilter: DETECTION_ATTRIBUTES,
       });
     }
   };

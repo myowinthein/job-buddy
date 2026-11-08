@@ -4,7 +4,7 @@ const CAREER =
   /\b(resum[eé]|cv|curriculum vitae|cover letter|work authori[sz]ation|employment|job application|apply for|candidate|linkedin|salary|portfolio)\b/i;
 const IDENTITY = /first.?name|full.?name|given.?name|your name|\bname\b/i;
 const EMAIL = /email|e-mail/i;
-const CONTROL =
+export const QUICK_FILL_CONTROL =
   'input:not([type="hidden"]):not([type="submit"]):not([type="button"]),textarea,select,[role="textbox"],[role="combobox"]';
 
 export function likelyApplicationForm(
@@ -15,7 +15,7 @@ export function likelyApplicationForm(
   const collect = (scope: ParentNode, depth: number) => {
     if (depth > 8 || controls.length >= 500) return;
     onRoot?.(scope);
-    for (const el of scope.querySelectorAll<HTMLElement>(CONTROL)) {
+    for (const el of scope.querySelectorAll<HTMLElement>(QUICK_FILL_CONTROL)) {
       if (controls.length >= 500) break;
       if (el.closest(`[${QUICK_FILL_HOST}]`) || el.hasAttribute('disabled')) continue;
       // Hidden upload controls often have the strongest resume signal.

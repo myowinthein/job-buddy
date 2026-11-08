@@ -6,6 +6,7 @@ import { loadFillLog, returnToForm } from '@/src/fill-log/client';
 import type { FillLogField, FillLogSnapshot } from '@/src/autofill/fillLog';
 import { createPreviewChrome } from '@/src/preview/chrome';
 import { RETAINED_FILL_DETAILS } from '@/src/fill-log/retention';
+import * as matchingStages from '@/src/fill-log/stages';
 
 vi.mock('@/src/fill-log/client', () => ({ loadFillLog: vi.fn(), returnToForm: vi.fn() }));
 
@@ -101,12 +102,17 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 async function showFields() {
   render(<FillLogPage tabId={10} />);
   await screen.findByRole('button', { name: 'Detected (7)' });
+}
+async function openDetails(row: HTMLDetailsElement) {
+  fireEvent.click(row.querySelector('summary')!);
+  await waitFor(() => expect(row.querySelector('ol')).not.toBeNull());
 }
 async function notify() {
   await act(
@@ -118,6 +124,77 @@ async function notify() {
 }
 
 describe('Fill Details page', () => {
+  it('mounts stage details only while expanded and remembers the selected stage', async () => {
+    await showFields();
+    expect(screen.queryByLabelText('Matching stages')).toBeNull();
+    const row = screen.getByText('Summary').closest('details')!;
+    await openDetails(row);
+    fireEvent.click(within(row).getByRole('button', { name: 'Rules: Matched and filled' }));
+    fireEvent.click(row.querySelector('summary')!);
+    await waitFor(() => expect(row.querySelector('ol')).toBeNull());
+    await openDetails(row);
+    expect(within(row).getByRole('region', { name: 'Rules stage details' })).toBeTruthy();
+  });
+
+  it('coalesces concurrent refresh notifications and reads the latest report afterwards', async () => {
+    vi.useFakeTimers();
+    let resolve!: (data: FillLogSnapshot) => void;
+    vi.mocked(loadFillLog).mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
+    render(<FillLogPage tabId={10} />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await notify();
+    await notify();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    expect(loadFillLog).toHaveBeenCalledTimes(1);
+    const changed = snapshot();
+    changed.frames[0].log.fields[0].label = 'Updated name';
+    vi.mocked(loadFillLog).mockResolvedValue(changed);
+    await act(async () => {
+      resolve(snapshot());
+    });
+    expect(loadFillLog).toHaveBeenCalledTimes(2);
+    expect(screen.getByText('Updated name')).toBeTruthy();
+  });
+
+  it('does not rebuild expanded stages for unchanged polling snapshots', async () => {
+    const stages = vi.spyOn(matchingStages, 'fillStages');
+    await showFields();
+    const row = screen.getByText('Summary').closest('details')!;
+    await openDetails(row);
+    stages.mockClear();
+    vi.mocked(loadFillLog).mockResolvedValue(structuredClone(snapshot()));
+    await notify();
+    expect(stages).not.toHaveBeenCalled();
+  });
+
+  it('stops polling a closed source but still receives a newly selected report', async () => {
+    vi.useFakeTimers();
+    vi.mocked(loadFillLog).mockResolvedValue({ ...snapshot(), sourceClosed: true });
+    render(<FillLogPage tabId={10} />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000);
+    });
+    expect(loadFillLog).toHaveBeenCalledTimes(1);
+    vi.mocked(loadFillLog).mockResolvedValue({ ...snapshot(), tabId: 20 });
+    await notify();
+    expect(screen.getByRole('button', { name: 'Return to Form' })).toBeTruthy();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+    expect(loadFillLog).toHaveBeenCalledTimes(3);
+  });
+
   it('keeps the source URL on the return button and shows only the filled timestamp', async () => {
     const data = snapshot();
     data.pageUrl = 'https://example.test/careers/101?source=LinkedIn';
@@ -404,7 +481,7 @@ describe('Fill Details page', () => {
   it('keeps core results collapsed and hides internal control identifiers', async () => {
     await showFields();
     const row = screen.getByText('Full name').closest('details')!;
-    fireEvent.click(row.querySelector('summary')!);
+    await openDetails(row);
     expect(row.open).toBe(true);
     expect(screen.queryByText('Control')).toBeNull();
     expect(screen.queryByText('Main page: text_1')).toBeNull();
@@ -421,7 +498,7 @@ describe('Fill Details page', () => {
     vi.mocked(loadFillLog).mockResolvedValue(data);
     await showFields();
     const row = screen.getByText('Summary').closest('details')!;
-    fireEvent.click(row.querySelector('summary')!);
+    await openDetails(row);
     const panel = () => within(row).getByRole('region');
     expect(panel().getAttribute('aria-label')).toBe('AI stage details');
     expect(within(panel()).getByText('Low')).toBeTruthy();
@@ -451,7 +528,7 @@ describe('Fill Details page', () => {
     vi.mocked(loadFillLog).mockResolvedValue(data);
     await showFields();
     const row = screen.getByText('Full name').closest('details')!;
-    fireEvent.click(row.querySelector('summary')!);
+    await openDetails(row);
     const panel = within(row).getByRole('region', { name: 'Learned mappings stage details' });
     expect(within(panel).getByText('Trusted mapping')).toBeTruthy();
     expect(within(panel).getByText('2')).toBeTruthy();
@@ -472,7 +549,7 @@ describe('Fill Details page', () => {
     vi.mocked(loadFillLog).mockResolvedValue(data);
     await showFields();
     const row = screen.getByText('Full name').closest('details')!;
-    fireEvent.click(row.querySelector('summary')!);
+    await openDetails(row);
     expect(
       within(row).getByRole('button', { name: 'Learned mappings: Not recorded' }),
     ).toHaveProperty('disabled', true);
@@ -485,7 +562,7 @@ describe('Fill Details page', () => {
     vi.mocked(loadFillLog).mockResolvedValue(data);
     await showFields();
     const row = screen.getByText('Summary').closest('details')!;
-    fireEvent.click(row.querySelector('summary')!);
+    await openDetails(row);
     expect(within(row).getByRole('region', { name: 'Rules stage details' })).toBeTruthy();
     fireEvent.click(within(row).getByRole('button', { name: 'AI: AI assistance unavailable' }));
     expect(within(row).getByRole('region', { name: 'AI stage details' })).toBeTruthy();
@@ -508,14 +585,14 @@ describe('Fill Details page', () => {
     expect(screen.getByText('Privacy consent')).toBeTruthy();
     const consent = screen.getByText('Privacy consent').closest('details')!;
     expect(consent.querySelector('summary')!.textContent).not.toContain('Consent is left');
-    fireEvent.click(consent.querySelector('summary')!);
+    await openDetails(consent);
     expect(within(consent).getByText('Consent is left for you to decide.')).toBeTruthy();
     expect(screen.queryByText('Location')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Kept current (1)' }));
     expect(screen.getByText('Email')).toBeTruthy();
     const kept = screen.getByText('Email').closest('details')!;
     expect(kept.querySelector('summary')!.textContent).not.toContain('Kept your existing answer.');
-    fireEvent.click(kept.querySelector('summary')!);
+    await openDetails(kept);
     expect(within(kept).getByText('Kept your existing answer.')).toBeTruthy();
   });
 
@@ -542,7 +619,7 @@ describe('Fill Details page', () => {
     const summary = row.querySelector('summary')!;
     expect(summary.textContent).not.toContain('Profile field:');
     expect(summary.textContent).not.toContain('No usable saved data');
-    fireEvent.click(summary);
+    await openDetails(row);
     expect(within(row).getByText('No usable saved data for this profile field.')).toBeTruthy();
     expect(within(row).getByText('links.linkedin')).toBeTruthy();
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'links linkedin' } });
@@ -562,7 +639,7 @@ describe('Fill Details page', () => {
     const summary = row.querySelector('summary')!;
     expect(summary.textContent).not.toContain('Match found, but');
     expect(summary.textContent).not.toContain('Possible profile field:');
-    fireEvent.click(summary);
+    await openDetails(row);
     expect(
       within(row).getByText('Match found, but the form did not accept the value.'),
     ).toBeTruthy();

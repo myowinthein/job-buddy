@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { memo, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -86,12 +86,21 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
   useEscapeToClose(sourceTooltipOpen ? () => setSourceTooltipOpen(false) : undefined);
   useEffect(() => {
     let active = true;
-    let sequence = 0;
+    let reading = false;
+    let queued = false;
+    let pollSource = true;
+    let previousSnapshot: string | undefined;
     const reload = async () => {
-      const request = ++sequence;
+      if (!active) return;
+      if (reading) {
+        queued = true;
+        return;
+      }
+      reading = true;
       try {
         const next = await loadFillLog(tabId);
-        if (!active || request !== sequence) return;
+        if (!active) return;
+        pollSource = !next.sourceClosed;
         const key = reportIdentity(next);
         if (currentReport.current !== key) {
           currentReport.current = key;
@@ -104,16 +113,30 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
           setReturnError(false);
           setSourceTooltipOpen(false);
         }
-        setSnapshot(next);
+        // Storage/messages return fresh objects even when the report is unchanged.
+        // Compare once here instead of rebuilding every row on each polling tick.
+        const serialized = JSON.stringify(next);
+        if (serialized !== previousSnapshot) {
+          previousSnapshot = serialized;
+          setSnapshot(next);
+        }
         setUnavailable(false);
       } catch {
-        if (active && request === sequence) {
+        if (active) {
           currentReport.current = null;
+          previousSnapshot = undefined;
           setSnapshot(null);
           setUnavailable(true);
         }
       } finally {
-        if (active && request === sequence) setLoading(false);
+        reading = false;
+        if (active) {
+          setLoading(false);
+          if (queued) {
+            queued = false;
+            void reload();
+          }
+        }
       }
     };
     const initial = setTimeout(() => void reload(), 0);
@@ -126,22 +149,30 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
     const storageChanges = typeof chrome !== 'undefined' ? chrome.storage?.onChanged : undefined;
     storageChanges?.addListener(changed);
     document.addEventListener('visibilitychange', visible);
-    const timer = setInterval(visible, 1500);
+    const timer = setInterval(() => {
+      if (pollSource) visible();
+    }, 1500);
     return () => {
       active = false;
-      sequence++;
       clearTimeout(initial);
       clearInterval(timer);
       storageChanges?.removeListener(changed);
       document.removeEventListener('visibilitychange', visible);
     };
   }, [tabId]);
-  const frames = snapshot?.frames.filter((frame) => frame.log.status !== 'scanning') ?? [];
-  const reportKey = reportIdentity(snapshot);
-  const fields = frames.flatMap((frame) =>
-    frame.log.fields.map((field) => ({ field, frameId: frame.frameId })),
+  const frames = useMemo(
+    () => snapshot?.frames.filter((frame) => frame.log.status !== 'scanning') ?? [],
+    [snapshot],
   );
-  const counts = summarizeFillFields(fields.map((row) => row.field));
+  const reportKey = reportIdentity(snapshot);
+  const fields = useMemo(
+    () =>
+      frames.flatMap((frame) =>
+        frame.log.fields.map((field) => ({ field, frameId: frame.frameId })),
+      ),
+    [frames],
+  );
+  const counts = useMemo(() => summarizeFillFields(fields.map((row) => row.field)), [fields]);
   const groupFields = fields.filter(
     (row) => filterMatches[outcome](row.field) && matchesSearch(row.field, search),
   );
@@ -523,7 +554,9 @@ function ReportTime({ timestamp }: { timestamp: number }) {
   );
 }
 
-function FieldRow({ field }: { field: FillLogField }) {
+const FieldRow = memo(function FieldRow({ field }: { field: FillLogField }) {
+  const [expanded, setExpanded] = useState(false);
+  const [selected, setSelected] = useState<StageId | null>(null);
   const source = finalFillSource(field);
   const confidence = confidenceText(field);
   const filled = source !== null;
@@ -538,7 +571,7 @@ function FieldRow({ field }: { field: FillLogField }) {
             ? 'green'
             : 'gray';
   return (
-    <details className="group py-4">
+    <details className="group py-4" onToggle={(event) => setExpanded(event.currentTarget.open)}>
       <summary className="grid cursor-pointer grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-x-3 gap-y-2 rounded-sm">
         <span className="col-span-2 row-start-1 min-w-0 sm:col-span-1">
           <span className="block break-words text-sm font-medium">
@@ -574,13 +607,20 @@ function FieldRow({ field }: { field: FillLogField }) {
           className="col-start-3 row-start-1 mt-1 h-3.5 w-3.5 text-gray-400 transition-transform group-open:rotate-180"
         />
       </summary>
-      <StageDetails field={field} />
+      {expanded && <StageDetails field={field} selected={selected} onSelect={setSelected} />}
     </details>
   );
-}
+});
 
-function StageDetails({ field }: { field: FillLogField }) {
-  const [selected, setSelected] = useState<StageId | null>(null);
+function StageDetails({
+  field,
+  selected,
+  onSelect,
+}: {
+  field: FillLogField;
+  selected: StageId | null;
+  onSelect: (stage: StageId) => void;
+}) {
   const panelId = useId();
   const explanation = fieldExplanation(field);
   const stages = fillStages(field);
@@ -610,7 +650,7 @@ function StageDetails({ field }: { field: FillLogField }) {
               aria-pressed={stage.id === activeId}
               aria-controls={active ? panelId : undefined}
               disabled={!stage.enabled}
-              onClick={() => setSelected(stage.id)}
+              onClick={() => onSelect(stage.id)}
               className={[
                 'relative flex w-full flex-col items-center gap-1.5 rounded-sm px-1 text-center focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500 disabled:cursor-default disabled:text-gray-400 dark:disabled:text-gray-500',
                 stage.id === activeId

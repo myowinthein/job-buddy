@@ -1,5 +1,51 @@
 const root = document.documentElement;
 const themeButton = document.querySelector('.theme-toggle');
+const screenshots = [...document.querySelectorAll('img[data-light][data-dark]')];
+const nearbyImages = new Set();
+const preparedImages = new Map();
+const screenshotSource = (img) => root.classList.contains('dark') ? img.dataset.dark : img.dataset.light;
+function prepareImage(source) {
+  if (!preparedImages.has(source)) {
+    const image = new Image();
+    image.decoding = 'async';
+    image.src = source;
+    preparedImages.set(source, image.decode().catch(() => {}));
+    // Keep prefetching bounded as the reader moves through the walkthrough.
+    if (preparedImages.size > 16) preparedImages.delete(preparedImages.keys().next().value);
+  }
+  return preparedImages.get(source);
+}
+function showScreenshot(img) {
+  const source = screenshotSource(img);
+  if (img.getAttribute('src') === source) return;
+  if (nearbyImages.has(img)) {
+    void prepareImage(source).then(() => {
+      // A rapid theme change must not restore an older screenshot.
+      if (screenshotSource(img) === source) img.src = source;
+    });
+  } else img.src = source;
+}
+screenshots.forEach((img) => { img.decoding = 'async'; });
+const screenshotObserver = new IntersectionObserver((entries) => {
+  entries.forEach(({ target, isIntersecting }) => {
+    if (!isIntersecting) {
+      nearbyImages.delete(target);
+      return;
+    }
+    nearbyImages.add(target);
+    // Prepare this section's other screenshots before its tabs are selected.
+    const tour = target.closest('[data-visual-tour]');
+    (tour ? tour.querySelectorAll('img[data-light][data-dark]') : [target]).forEach((img) => {
+      void prepareImage(screenshotSource(img));
+    });
+  });
+}, { rootMargin: '160px' });
+screenshots.forEach((img) => screenshotObserver.observe(img));
+const prepareTheme = () => nearbyImages.forEach((img) => {
+  void prepareImage(root.classList.contains('dark') ? img.dataset.light : img.dataset.dark);
+});
+themeButton?.addEventListener('pointerenter', prepareTheme);
+themeButton?.addEventListener('focus', prepareTheme);
 let userTheme = false;
 try {
   userTheme = ['light', 'dark'].includes(localStorage.getItem('theme'));
@@ -11,9 +57,7 @@ function updateTheme() {
   themeButton?.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
   themeButton?.setAttribute('title', dark ? 'Switch to light mode' : 'Switch to dark mode');
   themeButton?.setAttribute('aria-pressed', String(dark));
-  document.querySelectorAll('img[data-light][data-dark]').forEach((img) => {
-    img.src = dark ? img.dataset.dark : img.dataset.light;
-  });
+  screenshots.forEach(showScreenshot);
   document.dispatchEvent(new Event('jb-theme-change'));
 }
 themeButton?.addEventListener('click', () => {
@@ -69,7 +113,10 @@ document.querySelectorAll('[data-visual-tour]').forEach((tour) => {
   const status = tour.querySelector('.visual-status');
   function select(button, announce = true) {
     controls.forEach((item) => item.setAttribute('aria-pressed', String(item === button)));
-    panels.forEach((panel) => { panel.hidden = panel.id !== button.dataset.showVisual; });
+    panels.forEach((panel) => {
+      panel.hidden = panel.id !== button.dataset.showVisual;
+      if (!panel.hidden) panel.querySelectorAll('img[data-light][data-dark]').forEach(showScreenshot);
+    });
     if (announce) {
       status.textContent = `${controls.indexOf(button) + 1} of ${controls.length}: ${button.textContent.trim()}`;
       scheduleChapter();
@@ -77,6 +124,14 @@ document.querySelectorAll('[data-visual-tour]').forEach((tour) => {
   }
   controls.forEach((button, index) => {
     button.addEventListener('click', () => select(button));
+    const preparePanel = () => {
+      panels.find((panel) => panel.id === button.dataset.showVisual)
+        ?.querySelectorAll('img[data-light][data-dark]').forEach((img) => {
+          void prepareImage(screenshotSource(img));
+        });
+    };
+    button.addEventListener('pointerenter', preparePanel);
+    button.addEventListener('focus', preparePanel);
     button.addEventListener('keydown', (event) => {
       let next;
       if (event.key === 'ArrowRight') next = (index + 1) % controls.length;

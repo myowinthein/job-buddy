@@ -51,7 +51,6 @@
   }).observe(figure);
   document.addEventListener('visibilitychange', () => void syncPlayback());
   document.addEventListener('jb-theme-change', () => {
-    if (video.hasAttribute('src') && !motion.matches && !failed) setSource();
     void syncPlayback();
   });
   motion.addEventListener('change', () => void syncPlayback());
