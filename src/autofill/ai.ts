@@ -18,7 +18,7 @@ import { applyHighlight, applyMissingDataHighlight } from './highlighter';
 import { CONF_CONFIRMED, CONF_AI_YELLOW, CONF_GREEN, CONF_NO_MATCH } from './constants';
 import { getGeminiApiKey, getGeminiModel } from '../utils/storage';
 import { isSkippableOption } from './normalizer';
-import type { AutofillResult } from './index';
+import type { AutofillResult } from './fillResult';
 import type { AIOutcome, FillLogField } from './fillLog';
 
 // Mutable result shape — the subset of AutofillResult's fields that AI updates

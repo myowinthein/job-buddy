@@ -61,7 +61,8 @@ vi.mock('./mappings', () => ({
 }));
 vi.mock('./ai', () => ({ runAIAutofill: vi.fn().mockResolvedValue(false) }));
 
-import { scanAutofill, executeAutofill, undoAutofill, getLastResult, EMPTY_AUTOFILL_RESULT } from './index';
+import { scanAutofill, executeAutofill, undoAutofill, getLastResult } from './index';
+import { EMPTY_AUTOFILL_RESULT } from './fillResult';
 import { getProfile, getLearnedMappings, repairLearnedMappings } from '../utils/storage';
 import { scanFields, scanAriaFields, scanCheckboxGroups, scanRadioGroups } from './scanner';
 import { extractSignals } from './signals';

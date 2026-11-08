@@ -9,6 +9,7 @@ import {
 import { learnedRepairField } from '../utils/learnedMappingRepair';
 import { CONF_FILL, CONF_GREEN, CONF_CONFIRMED, CONF_DICT_EXACT } from './constants';
 import { scanForm, isChoiceGroupAvailable } from './scanner';
+import { EMPTY_AUTOFILL_RESULT, type AutofillResult } from './fillResult';
 import { NoDataRegistry } from './noDataRegistry';
 import { ReportRecords } from './reportRecords';
 import { fieldDomain, isChoice, isChoiceChecked, isControlAvailable } from './dom';
@@ -47,32 +48,6 @@ import { isConsentGroup } from './consent';
 import { aiQuestionIdentity } from './aiSafety';
 import { publishFillLog } from '@/src/fill-log/retention';
 
-
-export interface AutofillResult {
-  noReview:      number;  // filled, confidence >= 0.85 (green)
-  needReview:    number;  // filled, 0.60 <= confidence < 0.85 (yellow)
-  lowConfidence: number;  // not filled, confidence < 0.60 — red highlight
-  noData:        number;  // not filled, confidence >= 0.60 but profile value is empty
-  totalScanned:  number;  // every field found by the scanner, regardless of outcome
-  aiStatus?: AIAutofillStatus;
-  kept?: number;
-  excluded?: number;
-  failed?: number;
-  manual?: number;
-  runId?: string;
-  startedAt?: number;
-}
-
-// Zero-valued result used as a safe fallback when a fill cycle throws before
-// producing a real count. Kept here beside AutofillResult so new fields on the
-// interface stay reflected in the fallback shape.
-export const EMPTY_AUTOFILL_RESULT: AutofillResult = {
-  noReview:      0,
-  needReview:    0,
-  lowConfidence: 0,
-  noData:        0,
-  totalScanned:  0,
-};
 
 export interface AutofillScanResult {
   preFilledCount: number;
@@ -359,6 +334,14 @@ function runSilentRefill(): Promise<void> {
   return task;
 }
 
+// Cancel, Undo and a new scan all discard the scan results awaiting a fill and
+// the fields tracked for silent refill.
+function dropPendingWork(): void {
+  pendingReady = false;
+  pendingMatches = [];
+  noData.clear();
+}
+
 export async function undoAutofill(): Promise<boolean> {
   const reportProfileId = completedProfileId;
   getFillLog();
@@ -369,9 +352,7 @@ export async function undoAutofill(): Promise<boolean> {
   completedProfileId = null;
   const generation = sessionGeneration;
   refillInFlight = null;
-  pendingReady = false;
-  pendingMatches = [];
-  noData.clear();
+  dropPendingWork();
   for (const element of new Set([...sessionElements, ...records.byElement.keys()])) {
     const watcher = editWatchers.get(element);
     if (watcher) element.removeEventListener('blur', watcher);
@@ -409,9 +390,7 @@ export function cancelAutofillRun(): void {
   pendingCancelled = true;
   cancelledRunLog = fillLog;
   invalidateSession();
-  pendingReady = false;
-  pendingMatches = [];
-  noData.clear();
+  dropPendingWork();
 }
 
 // Phase 1: scan and map all fields; detect which matched fields already have values.
@@ -441,9 +420,7 @@ export async function scanAutofill(
   sessionAbort = new AbortController();
   const generation = sessionGeneration;
   refillInFlight = null;
-  pendingReady = false;
-  noData.clear();
-  pendingMatches = [];
+  dropPendingWork();
   sessionElements = [];
   lastResult      = null;
 
