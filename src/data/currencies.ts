@@ -1,5 +1,3 @@
-import { getFlag } from './countries';
-
 export interface Currency {
   code: string;        // ISO 4217, e.g. "USD"
   name: string;        // e.g. "US Dollar"
@@ -117,69 +115,6 @@ export const CURRENCIES: Currency[] = [
   { code: 'ZMW', name: 'Zambian Kwacha',               countryCode: 'ZM' },
 ];
 
-export function getCurrencyLabel(c: Currency): string {
-  return `${getFlag(c.countryCode)} ${c.code}: ${c.name}`;
-}
-
 export function findCurrency(code: string): Currency | undefined {
   return CURRENCIES.find((c) => c.code === code.toUpperCase());
-}
-
-// Maps ISO 3166-1 alpha-2 country codes to their primary ISO 4217 currency.
-// Falls back to 'USD' for countries with no clear single-currency mapping.
-export const COUNTRY_TO_CURRENCY: Record<string, string> = {
-  // Pinned popular
-  US: 'USD', GB: 'GBP', AU: 'AUD', CA: 'CAD', IN: 'INR',
-  SG: 'SGD', MY: 'MYR', TH: 'THB', PH: 'PHP', JP: 'JPY',
-  KR: 'KRW', CN: 'CNY', HK: 'HKD', TW: 'TWD', ID: 'IDR',
-  VN: 'VND', DE: 'EUR', FR: 'EUR', NL: 'EUR', AE: 'AED',
-  // Alphabetical rest
-  AF: 'AFN', AL: 'ALL', DZ: 'DZD', AD: 'EUR', AO: 'USD',
-  AR: 'ARS', AM: 'AMD', AT: 'EUR', AZ: 'AZN', BS: 'USD',
-  BH: 'BHD', BD: 'BDT', BY: 'BYN', BE: 'EUR', BZ: 'USD',
-  BJ: 'XOF', BT: 'INR', BO: 'BOB', BA: 'BAM', BW: 'BWP',
-  BR: 'BRL', BN: 'BND', BG: 'BGN', BF: 'XOF', BI: 'USD',
-  KH: 'KHR', CM: 'XAF', CV: 'USD', CF: 'XAF', TD: 'XAF',
-  CL: 'CLP', CO: 'COP', KM: 'XOF', CG: 'XAF', CD: 'USD',
-  CR: 'CRC', HR: 'EUR', CU: 'USD', CY: 'EUR', CZ: 'CZK',
-  DK: 'DKK', DJ: 'USD', DO: 'DOP', EC: 'USD', EG: 'EGP',
-  SV: 'USD', GQ: 'XAF', ER: 'USD', EE: 'EUR', SZ: 'ZAR',
-  ET: 'ETB', FJ: 'FJD', FI: 'EUR', GA: 'XAF', GM: 'GMD',
-  GE: 'GEL', GH: 'GHS', GR: 'EUR', GT: 'GTQ', GN: 'USD',
-  GW: 'XOF', GY: 'USD', HT: 'USD', HN: 'HNL', HU: 'HUF',
-  IS: 'ISK', IR: 'IRR', IQ: 'IQD', IE: 'EUR', IL: 'ILS',
-  IT: 'EUR', JM: 'JMD', JO: 'JOD', KZ: 'KZT', KE: 'KES',
-  KI: 'AUD', KW: 'KWD', KG: 'KGS', LA: 'LAK', LV: 'EUR',
-  LB: 'LBP', LS: 'ZAR', LR: 'USD', LY: 'LYD', LI: 'CHF',
-  LT: 'EUR', LU: 'EUR', MG: 'USD', MW: 'USD', MV: 'MVR',
-  ML: 'XOF', MT: 'EUR', MH: 'USD', MR: 'USD', MU: 'MUR',
-  MX: 'MXN', FM: 'USD', MD: 'MDL', MC: 'EUR', MN: 'MNT',
-  ME: 'EUR', MA: 'MAD', MZ: 'USD', MM: 'MMK', NA: 'ZAR',
-  NR: 'AUD', NP: 'NPR', NZ: 'NZD', NI: 'NIO', NE: 'XOF',
-  NG: 'NGN', MK: 'MKD', NO: 'NOK', OM: 'OMR', PK: 'PKR',
-  PW: 'USD', PA: 'USD', PG: 'USD', PY: 'PYG', PE: 'PEN',
-  PL: 'PLN', PT: 'EUR', QA: 'QAR', RO: 'RON', RU: 'RUB',
-  RW: 'RWF', SA: 'SAR', SN: 'XOF', RS: 'RSD', SC: 'SCR',
-  SL: 'USD', SK: 'EUR', SI: 'EUR', SB: 'USD', SO: 'USD',
-  ZA: 'ZAR', SS: 'USD', ES: 'EUR', LK: 'LKR', SD: 'USD',
-  SR: 'SRD', SE: 'SEK', CH: 'CHF', SY: 'SYP', TJ: 'TJS',
-  TZ: 'TZS', TL: 'USD', TG: 'XOF', TO: 'USD', TT: 'TTD',
-  TN: 'TND', TR: 'TRY', TM: 'TMT', TV: 'AUD', UG: 'UGX',
-  UA: 'UAH', UY: 'UYU', UZ: 'UZS', VU: 'USD', VE: 'USD',
-  YE: 'YER', ZM: 'ZMW', ZW: 'USD',
-};
-
-export function currencyForCountry(countryCode: string): Currency {
-  const code = COUNTRY_TO_CURRENCY[countryCode.toUpperCase()] ?? 'USD';
-  return findCurrency(code) ?? CURRENCIES[0];
-}
-
-// Returns the single country code that maps to the given currency, or undefined
-// when multiple countries share it (EUR, USD, XOF…). Used for migration only.
-export function primaryCountryForCurrency(currencyCode: string): string | undefined {
-  const upper = currencyCode.toUpperCase();
-  const matches = Object.entries(COUNTRY_TO_CURRENCY)
-    .filter(([, v]) => v === upper)
-    .map(([k]) => k);
-  return matches.length === 1 ? matches[0] : undefined;
 }

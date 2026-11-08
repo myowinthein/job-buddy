@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { daysInMonth, computePartial, buildDOB, parseDOB } from './dateOfBirthMath';
+import { daysInMonth, buildDOB, parseDOB } from './dateOfBirthMath';
 
 describe('daysInMonth', () => {
   it('returns 31 when month is not yet set', () => {
@@ -33,26 +33,6 @@ describe('daysInMonth', () => {
   it('returns the correct day count once both month and year are known', () => {
     expect(daysInMonth(4, 2024)).toBe(30);
     expect(daysInMonth(1, 2024)).toBe(31);
-  });
-});
-
-describe('computePartial', () => {
-  it('returns false when nothing is filled', () => {
-    expect(computePartial('', 0, '')).toBe(false);
-  });
-
-  it('returns true when only one of day/month/year is filled', () => {
-    expect(computePartial('15', 0, '')).toBe(true);
-    expect(computePartial('', 6, '')).toBe(true);
-    expect(computePartial('', 0, '1990')).toBe(true);
-  });
-
-  it('returns true when exactly two of day/month/year are filled', () => {
-    expect(computePartial('15', 6, '')).toBe(true);
-  });
-
-  it('returns false when all three are filled', () => {
-    expect(computePartial('15', 6, '1990')).toBe(false);
   });
 });
 

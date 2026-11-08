@@ -36,8 +36,6 @@ export const completeDriveRestore: typeof Drive.completeDriveRestore = async (id
   await save();
 };
 export const DRIVE_RETRY_ALARM = 'jb:drive-backup-retry';
-export const launchDriveOAuth: typeof Drive.launchDriveOAuth = async (...args) =>
-  devContext() ? (await import('../utils/driveSync')).launchDriveOAuth(...args) : disabled();
 export const revokeDriveToken: typeof Drive.revokeDriveToken = async (...args) =>
   devContext() ? (await import('../utils/driveSync')).revokeDriveToken(...args) : disabled();
 export const syncProfileToDrive: typeof Drive.syncProfileToDrive = async (...args) =>

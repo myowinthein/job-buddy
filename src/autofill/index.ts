@@ -46,7 +46,6 @@ import { isConsentGroup } from './consent';
 import { aiQuestionIdentity } from './aiSafety';
 import { publishFillLog } from '@/src/fill-log/retention';
 
-export { clearHighlights } from './highlighter';
 
 export interface AutofillResult {
   noReview:      number;  // filled, confidence >= 0.85 (green)

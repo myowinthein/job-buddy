@@ -5,12 +5,10 @@ import {
   fillCheckboxInput,
   fillRadioInput,
   fillFileField,
-  getWriteConfidence,
-  resetWriteSession,
   resetDropdownBudget,
-  undoWrites,
   findBestMatch,
 } from './filler';
+import { getWriteConfidence, resetWriteSession, undoWrites } from './writeSession';
 import { clearHighlights, applyHighlight } from './highlighter';
 
 beforeEach(() => {

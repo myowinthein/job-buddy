@@ -114,7 +114,7 @@ export interface FillLogSnapshot {
   sourceNavigated?: boolean;
 }
 
-export const isFilled = (field: FillLogField) =>
+const isFilled = (field: FillLogField) =>
   ['high_confidence', 'review', 'manual'].includes(field.outcome);
 export function finalFillSource(field: FillLogField): 'learned' | 'rules' | 'ai' | 'manual' | null {
   if (!isFilled(field)) return null;

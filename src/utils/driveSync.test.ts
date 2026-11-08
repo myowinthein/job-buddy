@@ -38,7 +38,7 @@ import type { Profile } from '../types/profile';
 
 // Loads a fresh copy of the driveSync module with VITE_GOOGLE_DRIVE_CLIENT_ID
 // stubbed so isDriveConfigured() returns true — needed to exercise connectDrive,
-// whose launchDriveOAuth() short-circuits with 'not_configured' otherwise.
+// whose authorization short-circuits with 'not_configured' otherwise.
 async function importConfiguredDriveSync() {
   vi.stubEnv('VITE_GOOGLE_DRIVE_CLIENT_ID', 'test-client-id');
   vi.resetModules();

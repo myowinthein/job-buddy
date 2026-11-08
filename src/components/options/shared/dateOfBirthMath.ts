@@ -18,11 +18,3 @@ export function buildDOB(month: number, day: number, year: number): string {
   if (!month || !day || !year) return '';
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
-
-export function computePartial(dayStr: string, month: number, yearStr: string): boolean {
-  const dayFilled   = dayStr.length > 0;
-  const monthFilled = month > 0;
-  const yearFilled  = yearStr.length > 0;
-  const filledCount = (dayFilled ? 1 : 0) + (monthFilled ? 1 : 0) + (yearFilled ? 1 : 0);
-  return filledCount > 0 && filledCount < 3;
-}

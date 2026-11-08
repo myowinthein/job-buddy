@@ -8,7 +8,6 @@ import type { DocumentFile } from '../types/profile';
 import { normalize, similarity, isSkippableOption, PLACEHOLDER_OPTION_NORMS } from './normalizer';
 import { CONF_FUZZY_THRESHOLD, CONF_AI_YELLOW } from './constants';
 
-export { getWriteConfidence, resetWriteSession, undoWrites } from './writeSession';
 const nativeInputSetter = Object.getOwnPropertyDescriptor(
   window.HTMLInputElement.prototype,
   'value',
@@ -21,9 +20,9 @@ const nativeCheckedSetter = Object.getOwnPropertyDescriptor(
   window.HTMLInputElement.prototype,
   'checked',
 )?.set;
-export const DROPDOWN_WAIT_MS = 1_500;
-export const UNBOUND_DROPDOWN_WAIT_MS = 300;
-export const DROPDOWN_RUN_BUDGET_MS = 3_000;
+const DROPDOWN_WAIT_MS = 1_500;
+const UNBOUND_DROPDOWN_WAIT_MS = 300;
+const DROPDOWN_RUN_BUDGET_MS = 3_000;
 let dropdownBudget = DROPDOWN_RUN_BUDGET_MS;
 export function resetDropdownBudget(): void {
   dropdownBudget = DROPDOWN_RUN_BUDGET_MS;

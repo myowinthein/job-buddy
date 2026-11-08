@@ -31,16 +31,9 @@ describe('ExpandableCard — expand/collapse', () => {
     expect(screen.queryByText('3 entries')).toBeNull();
   });
 
-  it('defaults the content wrapper to p-4 when contentClassName is not given', () => {
+  it('pads the content wrapper with p-4', () => {
     render(<ExpandableCard summary="Acme Inc" onDelete={vi.fn()} defaultExpanded><p>x</p></ExpandableCard>);
     expect(screen.getByText('x').parentElement?.className).toContain('p-4');
-  });
-
-  it('uses contentClassName to override the content wrapper padding when given', () => {
-    render(<ExpandableCard summary="Acme Inc" onDelete={vi.fn()} defaultExpanded contentClassName="p-2"><p>x</p></ExpandableCard>);
-    const wrapper = screen.getByText('x').parentElement;
-    expect(wrapper?.className).toContain('p-2');
-    expect(wrapper?.className).not.toContain('p-4');
   });
 });
 

@@ -96,10 +96,6 @@ async function authorizeDrive(
   });
 }
 
-export async function launchDriveOAuth(): Promise<string> {
-  return (await authorizeDrive()).token;
-}
-
 export async function revokeDriveToken(token: string): Promise<void> {
   try {
     await fetch(`${REVOKE_URL}?token=${encodeURIComponent(token)}`, {

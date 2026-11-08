@@ -11,11 +11,6 @@ interface ExpandableCardProps {
   children: React.ReactNode;
   defaultExpanded?: boolean;
   invalid?: boolean;
-  // Overrides the default p-4 content padding — for denser content (e.g. the
-  // debug panel's field lists) where the default spacing compounds awkwardly
-  // with padding the content itself already carries. Learned Mappings (the
-  // original/default use case) is unaffected unless it opts in.
-  contentClassName?: string;
 }
 
 export function ExpandableCard({
@@ -27,7 +22,6 @@ export function ExpandableCard({
   children,
   defaultExpanded = false,
   invalid = false,
-  contentClassName = 'p-4',
 }: ExpandableCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded || invalid);
   const [previousInvalid, setPreviousInvalid] = useState(invalid);
@@ -122,7 +116,7 @@ export function ExpandableCard({
         </div>
       </div>
       {isExpanded && (
-        <div className={`${contentClassName} border-t border-gray-200 dark:border-gray-700`}>
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
           {children}
         </div>
       )}
