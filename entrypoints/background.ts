@@ -17,6 +17,7 @@ import { registerQuickFill } from '@/src/quick-fill/background';
 import { createAutofillCoordinator, RUN_ALARM_PREFIX } from '@/src/autofill/runCoordinator';
 import { registerDevelopmentContentScript } from '@/src/devtools/registerContentScript';
 import { retainFrameFillLog } from '@/src/fill-log/retention';
+import { senderDomain, validLabelSignals } from '@/src/utils/senderValidation';
 
 export default defineBackground(() => {
   // WXT's dev manifest has no static content script. Register it even if the
@@ -60,14 +61,8 @@ export default defineBackground(() => {
     if (!['SAVE_LEARNED_OBSERVATION', 'SAVE_LEARNED_LABELS', 'REPAIR_LEARNED_MAPPINGS']
       .includes(message?.action)) return;
     if (sender.id !== chrome.runtime.id || !sender.tab || !sender.url) return;
-    let domain: string;
-    try {
-      const url = new URL(/^https?:/.test(sender.url) ? sender.url : (sender.origin ?? ''));
-      if (!['http:', 'https:'].includes(url.protocol)) return;
-      domain = url.hostname;
-    } catch {
-      return;
-    }
+    const domain = senderDomain(sender);
+    if (!domain) return;
     if (message.action === 'REPAIR_LEARNED_MAPPINGS') {
       repairLearnedMappings(domain, message.fields, message.context)
         .then((mappings) => respond({ ok: true, mappings }))
@@ -79,16 +74,8 @@ export default defineBackground(() => {
       if (!validObservation(message.observation)) return;
       task = saveLearnedObservationLocally(domain, message.observation);
     } else {
-      const signals = message.mappings?.[domain];
-      if (!signals || typeof signals !== 'object' || Array.isArray(signals)) return;
-      const valid = Object.values(signals).every(
-        (value) =>
-          typeof value === 'string' ||
-          (value &&
-            typeof value === 'object' &&
-            typeof (value as { path?: unknown }).path === 'string'),
-      );
-      if (!valid) return;
+      const signals = validLabelSignals(message.mappings, domain);
+      if (!signals) return;
       task = saveLearnedMappings({ [domain]: signals } as LearnedMappings, { labelsOnly: true });
     }
     task.then(() => respond({ ok: true })).catch(() => respond({ ok: false }));
