@@ -1058,7 +1058,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         <span id={newTabHintId} className="sr-only">Opens in a new tab</span>
         <nav
           aria-label="Settings links"
-          className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium"
+          className="flex flex-wrap items-center gap-x-3 gap-y-2 font-medium"
         >
           <a
             href={issueReportUrl()}
@@ -1070,7 +1070,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             Report an issue
             <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
           </a>
-          <span aria-hidden="true">·</span>
           <a
             href="https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk"
             target="_blank"
@@ -1081,7 +1080,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             Chrome Web Store
             <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
           </a>
-          <span aria-hidden="true">·</span>
           <a
             href="https://github.com/myowinthein/job-buddy"
             target="_blank"
@@ -1092,7 +1090,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             GitHub
             <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
           </a>
-          <span aria-hidden="true">·</span>
           <a
             href="https://ko-fi.com/myowinthein"
             target="_blank"
@@ -1103,7 +1100,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             Support on Ko-fi
             <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
           </a>
-          <span aria-hidden="true">·</span>
           <a
             href="https://myowinthein.github.io/job-buddy/legal/privacy/"
             target="_blank"
@@ -1114,7 +1110,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             Privacy Policy
             <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
           </a>
-          <span aria-hidden="true">·</span>
           <a
             href="https://myowinthein.github.io/job-buddy/legal/disclaimer/"
             target="_blank"
