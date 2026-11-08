@@ -23,6 +23,10 @@ export interface AutofillRun {
   error?: string;
   results?: unknown[];
 }
+const topDocumentId = (frames: RunFrame[]) =>
+  frames.find((frame) => frame.frameId === 0)?.documentId;
+// Runs saved before expiresAt existed fall back to the start time plus the limit.
+const runDeadline = (run: AutofillRun) => run.expiresAt ?? run.startedAt + RUN_LIMIT_MS;
 interface RunDependencies {
   read: (tabId: number) => Promise<AutofillRun | null>;
   write: (tabId: number, run: AutofillRun | null) => Promise<void>;
@@ -77,10 +81,10 @@ export class AutofillCoordinator {
       if (existing && (pending(existing) || existing.stage === 'confirming')) return existing;
       let error = await this.deps.setup?.();
       const frames = error ? [] : await this.deps.frames(tabId);
-      if (!error && sourceDocumentId && frames.find((frame) => frame.frameId === 0)?.documentId !== sourceDocumentId)
+      if (!error && sourceDocumentId && topDocumentId(frames) !== sourceDocumentId)
         error = AUTOFILL_ERROR.pageChanged;
       const run: AutofillRun = {
-        sourceDocumentId: frames.find((frame) => frame.frameId === 0)?.documentId,
+        sourceDocumentId: topDocumentId(frames),
         tabId,
         runId: crypto.randomUUID(),
         startedAt: Date.now(),
@@ -120,7 +124,7 @@ export class AutofillCoordinator {
   async status(tabId: number): Promise<AutofillRun | null> {
     const run = await this.deps.read(tabId);
     if (!run) return null;
-    if (pending(run) && Date.now() > (run.expiresAt ?? run.startedAt + RUN_LIMIT_MS)) {
+    if (pending(run) && Date.now() > runDeadline(run)) {
       const expired: AutofillRun = { ...run, stage: 'error', error: AUTOFILL_ERROR.failed };
       if (!(await this.update(expired))) return this.deps.read(tabId);
       void Promise.all(
@@ -141,7 +145,7 @@ export class AutofillCoordinator {
     if (
       run &&
       (!documentId ||
-        (run.sourceDocumentId ?? run.frames.find((frame) => frame.frameId === 0)?.documentId) !==
+        (run.sourceDocumentId ?? topDocumentId(run.frames)) !==
           documentId)
     )
       await this.cancel(tabId, run.runId);
@@ -189,10 +193,10 @@ export class AutofillCoordinator {
     try {
       const frames = await this.deps.frames(run.tabId);
       const original =
-        run.sourceDocumentId ?? run.frames.find((frame) => frame.frameId === 0)?.documentId;
-      if (original && frames.find((frame) => frame.frameId === 0)?.documentId !== original)
+        run.sourceDocumentId ?? topDocumentId(run.frames);
+      if (original && topDocumentId(frames) !== original)
         throw new Error(AUTOFILL_ERROR.pageChanged);
-      if (Date.now() > (run.expiresAt ?? run.startedAt + RUN_LIMIT_MS))
+      if (Date.now() > runDeadline(run))
         throw new Error(AUTOFILL_ERROR.failed);
       if (run.stage === 'scanning') {
         const replies = await Promise.all(

@@ -3,6 +3,9 @@ import { ariaName, ownText } from './labels';
 import { controlForm, bestLabel } from './signals';
 import type { FieldSignals } from './signals';
 
+/** Match layers a post-pass may rewrite: label-derived ones, never learned or autocomplete. */
+export const ADJUSTABLE_LAYERS: ReadonlySet<string> = new Set(['dictionary_exact', 'fuzzy', 'context']);
+
 export function visibleQuestion(signals: FieldSignals): string {
   return [signals.label, signals.ariaLabel, signals.placeholder].filter(Boolean).join(' ');
 }

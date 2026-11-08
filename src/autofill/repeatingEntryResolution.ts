@@ -10,7 +10,13 @@ import type { CheckboxOption } from './scanner';
 import { resolveProfileValue } from './resolver';
 import { normalize } from './normalizer';
 import { composedParent } from './dom';
-import { scopeRoot, entryIndex, containsControl, sectionFamily } from './ruleContext';
+import {
+  ADJUSTABLE_LAYERS,
+  scopeRoot,
+  entryIndex,
+  containsControl,
+  sectionFamily,
+} from './ruleContext';
 import { mostRecentIdx } from './entryRecency';
 import { CONF_FILL } from './constants';
 
@@ -18,8 +24,6 @@ import { CONF_FILL } from './constants';
 // educationResolution.ts / workHistoryResolution.ts) — same reasoning as
 // phoneResolution.ts / languageResolution.ts for why this can't live inside
 // mapper.ts: it needs every field's match already computed.
-const ADJUSTABLE_LAYERS = new Set(['dictionary_exact', 'fuzzy', 'context']);
-
 type EntryWithRecency = { startDate?: string; isCurrent?: boolean };
 
 const mappingTemplates = new Set(PROFILE_MAPPING_PATH_TEMPLATES);

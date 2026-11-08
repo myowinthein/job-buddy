@@ -12,6 +12,17 @@ interface WriteEntry {
   restore: (state: FieldState, active: () => boolean) => Promise<boolean>;
   remove: () => void;
 }
+/** The control still sits in the tree, form and identity it was written in. */
+const sameControl = (
+  element: HTMLElement,
+  root: Node,
+  form: Element | null,
+  identity: string,
+): boolean =>
+  element.isConnected &&
+  element.getRootNode() === root &&
+  controlForm(element) === form &&
+  fieldIdentity(element) === identity;
 let entries = new Map<HTMLElement, WriteEntry>();
 let ownEventDepth = 0;
 const pendingWrites = new Set<Promise<boolean>>();
@@ -85,12 +96,7 @@ async function performTrackedWrite(
     };
   }
   const current = () =>
-    active() &&
-    !entry.manual &&
-    element.isConnected &&
-    element.getRootNode() === root &&
-    controlForm(element) === form &&
-    fieldIdentity(element) === identity;
+    active() && !entry.manual && sameControl(element, root, form, identity);
   let accepted = false;
   try {
     accepted = await write(before, current);
@@ -131,10 +137,7 @@ export async function undoWrites(
       active() &&
       !entry.manual &&
       session === entries &&
-      element.isConnected &&
-      element.getRootNode() === entry.root &&
-      controlForm(element) === entry.form &&
-      fieldIdentity(element) === entry.identity;
+      sameControl(element, entry.root, entry.form, entry.identity);
     if (!current() || entry.manual || !sameFieldState(captureField(element), entry.after)) {
       entry.remove();
       session.delete(element);
