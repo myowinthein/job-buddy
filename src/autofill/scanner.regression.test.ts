@@ -2,7 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { isChoiceGroupAvailable, scanForm } from './scanner';
 import { extractSignals } from './signals';
-import { fillCheckboxInput, fillField, fillRadioInput, clearFieldValue } from './filler';
+import { fillCheckboxInput, fillField, fillRadioInput } from './filler';
+import { clearFieldValue } from '@/src/testing/clearField';
 import { isConsentGroup } from './consent';
 
 beforeEach(() => {

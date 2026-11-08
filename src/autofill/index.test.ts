@@ -40,7 +40,6 @@ vi.mock('./filler', () => ({
   fillField: vi.fn().mockResolvedValue(true),
   fillFileField: vi.fn().mockResolvedValue(true),
   fillCheckboxInput: vi.fn(),
-  clearFieldValue: vi.fn(),
   resetDropdownBudget: vi.fn(),
 }));
 vi.mock('./highlighter', () => ({
@@ -67,7 +66,7 @@ import { getProfile, getLearnedMappings, repairLearnedMappings } from '../utils/
 import { scanFields, scanAriaFields, scanCheckboxGroups, scanRadioGroups } from './scanner';
 import { extractSignals } from './signals';
 import { mapField } from './mapper';
-import { clearFieldValue, fillField, fillCheckboxInput, fillFileField } from './filler';
+import { fillField, fillCheckboxInput, fillFileField } from './filler';
 import { clearHighlights, applyHighlight, applyMissingDataHighlight } from './highlighter';
 import { resolveProfileValue } from './resolver';
 import { saveElementMappings } from './mappings';
@@ -343,8 +342,9 @@ describe('undoAutofill', () => {
     // Green field gets pushed to sessionElements during executeAutofill
     await scanAutofill();
     await executeAutofill('overwrite');
+    const dispatch = vi.spyOn(el, 'dispatchEvent');
     await undoAutofill();
-    expect(clearFieldValue).not.toHaveBeenCalled(); // Only the real writer's journal grants Undo ownership.
+    expect(dispatch).not.toHaveBeenCalled(); // Only the real writer's journal grants Undo ownership.
     expect(clearHighlights).toHaveBeenCalled();
   });
 });
@@ -965,7 +965,6 @@ describe('session ownership and asynchronous lifecycle', () => {
     await executeAutofill('merge');
     expect(fillField).not.toHaveBeenCalled();
     await undoAutofill();
-    expect(clearFieldValue).not.toHaveBeenCalled();
     expect([red.value, gray.value, aria.textContent]).toEqual(['Existing red', 'Existing gray', 'Existing custom']);
   });
 
@@ -974,7 +973,6 @@ describe('session ownership and asynchronous lifecycle', () => {
     vi.mocked(scanFields).mockReturnValue([input]);
     vi.mocked(mapField).mockReturnValueOnce({ confidence: 0.2, value: null, fieldPath: null, matchLayer: 'none' });
     await scanAutofill(); await executeAutofill('overwrite'); await undoAutofill();
-    expect(clearFieldValue).not.toHaveBeenCalledWith(input);
     expect(input.value).toBe('Keep me');
   });
 

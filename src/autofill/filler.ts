@@ -475,7 +475,8 @@ function clearControl(element: HTMLElement): HTMLElement | null {
   }
   return null;
 }
-async function restore(
+/** Puts a control back to a captured state; Undo and rollback both go through it. */
+export async function restore(
   element: HTMLElement,
   state: FieldState,
   active: () => boolean,
@@ -708,21 +709,3 @@ export async function fillCheckboxInput(element: HTMLElement, checked = true): P
 }
 export const fillRadioInput = (element: HTMLElement): Promise<boolean> =>
   fillCheckboxInput(element);
-export async function clearFieldValue(element: HTMLElement): Promise<boolean> {
-  try {
-    const state = captureField(element);
-    if (state.choices)
-      state.choices = state.choices.map((item) => ({
-        ...item,
-        checked: false,
-        indeterminate: false,
-      }));
-    if (state.options) state.options = state.options.map((item) => ({ ...item, selected: false }));
-    if (state.files) state.files = [];
-    state.value = '';
-    if (state.content) state.content = [];
-    return await restore(element, state, () => true);
-  } catch {
-    return false;
-  }
-}

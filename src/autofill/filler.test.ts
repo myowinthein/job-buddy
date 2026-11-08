@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
-import { fillField, clearFieldValue, fillFileField, fillCheckboxInput } from './filler';
+import { fillField, fillFileField, fillCheckboxInput } from './filler';
+import { clearFieldValue } from '@/src/testing/clearField';
 
 beforeEach(() => {
   document.body.innerHTML = '';
