@@ -2,25 +2,11 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 
-vi.mock('@/src/utils/storage', () => ({
-  getProfile: vi.fn(),
-  saveProfile: vi.fn().mockResolvedValue(undefined),
-}));
-vi.mock('@/src/fill-log/navigation', async (importOriginal) => ({
-  ...await importOriginal<typeof import('@/src/fill-log/navigation')>(),
-  lastFillDetailsSource: vi.fn().mockResolvedValue(null),
-  takeFillDetailsRequest: vi.fn().mockResolvedValue(null),
-}));
-vi.mock('@/src/utils/sessionStorage', () => ({
-  sessionGet: vi.fn().mockResolvedValue({}),
-  sessionRemove: vi.fn().mockResolvedValue(undefined),
-}));
-vi.mock('@/src/utils/derivedFields', () => ({
-  calculateDerivedFields: vi.fn(() => ({ fullName: 'Jane Doe' })),
-}));
-vi.mock('@/src/utils/driveSync', () => ({
-  syncProfileToDrive: vi.fn().mockResolvedValue({ success: true, errorCode: null }),
-}));
+vi.mock('@/src/utils/storage', async () => (await import('@/src/testing/optionsAppMocks')).storageMock());
+vi.mock('@/src/fill-log/navigation', async () => (await import('@/src/testing/optionsAppMocks')).fillNavigationMock());
+vi.mock('@/src/utils/sessionStorage', async () => (await import('@/src/testing/optionsAppMocks')).sessionStorageMock());
+vi.mock('@/src/utils/derivedFields', async () => (await import('@/src/testing/optionsAppMocks')).derivedFieldsMock());
+vi.mock('@/src/utils/driveSync', async () => (await import('@/src/testing/optionsAppMocks')).driveSyncMock());
 
 // Sidebar/CompletionBanner and every section component are replaced with
 // minimal stand-ins — their own internals are covered by their dedicated
@@ -30,13 +16,7 @@ vi.mock('@/src/utils/driveSync', () => ({
 vi.mock('@/src/components/options/Sidebar', () => ({
   Sidebar: () => <div data-testid="sidebar" />,
 }));
-vi.mock('@/src/components/options/CompletionBanner', () => ({
-  CompletionBanner: (props: { onNavigate: (id: string) => void; onFocusField: (id: string, field: string) => void }) => (
-    <div>
-      <button onClick={() => props.onFocusField('address', 'City')}>focus-city</button>
-    </div>
-  ),
-}));
+vi.mock('@/src/components/options/CompletionBanner', async () => (await import('@/src/testing/optionsAppMocks')).completionBannerMock());
 const { saveOutcome } = vi.hoisted(() => ({ saveOutcome: vi.fn() }));
 vi.mock('@/src/components/options/PersonalSection', () => ({
   PersonalSection: (props: { profile: { personal?: { firstName?: string } }; onSave: (u: object) => Promise<void> }) => (
@@ -46,14 +26,7 @@ vi.mock('@/src/components/options/PersonalSection', () => ({
     </div>
   ),
 }));
-vi.mock('@/src/components/options/AddressSection', () => ({
-  AddressSection: () => (
-    <div>
-      <span>address-section</span>
-      <input id="field-city" aria-label="City" />
-    </div>
-  ),
-}));
+vi.mock('@/src/components/options/AddressSection', async () => (await import('@/src/testing/optionsAppMocks')).addressSectionMock());
 vi.mock('@/src/components/options/SalarySection', () => ({ SalarySection: () => <div>salary-section</div> }));
 vi.mock('@/src/components/options/WorkAuthorizationSection', () => ({ WorkAuthorizationSection: () => <div>workAuth-section</div> }));
 vi.mock('@/src/components/options/WorkHistorySection', () => ({ WorkHistorySection: () => <div>workHistory-section</div> }));
