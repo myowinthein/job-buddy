@@ -24,6 +24,16 @@ export default [
     },
   },
 
+  // The capture scripts are Node ES modules run by hand with pnpm.
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: { ...globals.node },
+    },
+  },
+
   {
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
