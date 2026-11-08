@@ -31,6 +31,13 @@ interface CompletionState {
 // the user to choose merge vs overwrite before proceeding.
 type AutofillState = 'idle' | 'loading' | 'confirming' | 'success' | 'error';
 
+/** True or false when the saved key is readable, null when storage fails. */
+const readKeyState = () =>
+  getGeminiApiKey().then(
+    (key) => !!key,
+    () => null,
+  );
+
 function App() {
   const [completion, setCompletion] = useState<CompletionState>({
     percentage: 0,
@@ -60,24 +67,15 @@ function App() {
   const [undoFailed, setUndoFailed] = useState(false);
   const fillButtonRef = useRef<HTMLButtonElement>(null);
 
-  const checkApiKey = async () => {
-    try {
-      const key = await getGeminiApiKey();
-      setHasGeminiKey(!!key);
-      setKeyReadFailed(false);
-      return !!key;
-    } catch {
-      setHasGeminiKey(null);
-      setKeyReadFailed(true);
-      return false;
-    } finally {
-      setKeyLoading(false);
-    }
-  };
+  const applyKeyState = useCallback((state: boolean | null) => {
+    setHasGeminiKey(state);
+    setKeyReadFailed(state === null);
+    setKeyLoading(false);
+  }, []);
 
   const retryAISettings = async () => {
     setKeyLoading(true);
-    await checkApiKey();
+    applyKeyState(await readKeyState());
   };
 
   useEffect(() => {
@@ -196,26 +194,13 @@ function App() {
         // Content script not loaded on this page — stay in idle state.
       }
     })();
-    getGeminiApiKey()
-      .then((key) => {
-        if (!cancelled) {
-          setHasGeminiKey(!!key);
-          setKeyReadFailed(false);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setHasGeminiKey(null);
-          setKeyReadFailed(true);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setKeyLoading(false);
-      });
+    void readKeyState().then((state) => {
+      if (!cancelled) applyKeyState(state);
+    });
     return () => {
       cancelled = true;
     };
-  }, [sendToActiveTab, applyRun, setResult]);
+  }, [sendToActiveTab, applyRun, setResult, applyKeyState]);
 
   const openOptions = () => chrome.runtime.openOptionsPage();
 
@@ -290,8 +275,7 @@ function App() {
   const { percentage, isCoreComplete } = completion;
   const busy = autofillState === 'loading' || undoing;
   const result = autofillState === 'success' ? autofillResult : null;
-  const filled = result ? result.noReview + result.needReview : 0;
-  const unfilled = result ? result.lowConfidence + result.noData + (result.failed ?? 0) : 0;
+  const { filled, unfilled } = result ? resultCounts(result) : { filled: 0, unfilled: 0 };
   const aiUnavailable = !!result && result.totalScanned > 0 && result.aiStatus === 'unavailable';
   const profileSetup = !loading && !profileLoadFailed && missingAutofillFields.length > 0;
   const aiSetup = !loading && !profileLoadFailed && !profileSetup && !keyLoading && !hasGeminiKey;
@@ -355,26 +339,24 @@ function App() {
           ? 'success'
           : 'neutral';
 
-  const primaryLabel = profileLoadFailed
-    ? 'Open Profile'
+  const primaryKind = profileLoadFailed
+    ? 'profileFailed'
     : profileSetup
-      ? 'Set Up Profile'
+      ? 'profileSetup'
       : keyReadFailed
-        ? 'Retry AI Settings'
+        ? 'retryAI'
         : aiSetup
-          ? 'Set Up AI Autofill'
-          : 'Fill Form';
-  const primaryAction =
-    profileLoadFailed || profileSetup
-      ? openOptions
-      : keyReadFailed
-        ? retryAISettings
-        : aiSetup
-          ? goToSettingsKey
-          : confirming
-            ? handleConfirmFill
-            : handleAutofill;
-  const primaryIsAI = !profileLoadFailed && !profileSetup;
+          ? 'setupAI'
+          : 'fill';
+  const primaryLabel = PRIMARY_LABELS[primaryKind];
+  const primaryAction = {
+    profileFailed: openOptions,
+    profileSetup: openOptions,
+    retryAI: retryAISettings,
+    setupAI: goToSettingsKey,
+    fill: confirming ? handleConfirmFill : handleAutofill,
+  }[primaryKind];
+  const primaryIsAI = primaryKind !== 'profileFailed' && primaryKind !== 'profileSetup';
   const showFeedback = !confirming && (!!message || !!result);
   const aiWarning = aiUnavailable ? 'AI was unavailable, but basic autofill still ran.' : null;
   const noticeMessage = message ?? aiWarning;
@@ -544,6 +526,21 @@ function App() {
   );
 }
 
+const PRIMARY_LABELS = {
+  profileFailed: 'Open Profile',
+  profileSetup: 'Set Up Profile',
+  retryAI: 'Retry AI Settings',
+  setupAI: 'Set Up AI Autofill',
+  fill: 'Fill Form',
+} as const;
+
+function resultCounts(result: AutofillResult) {
+  return {
+    filled: result.noReview + result.needReview,
+    unfilled: result.lowConfidence + result.noData + (result.failed ?? 0),
+  };
+}
+
 function ResultSummary({
   result,
   onOpenDetails,
@@ -551,8 +548,7 @@ function ResultSummary({
   result: AutofillResult;
   onOpenDetails: () => void;
 }) {
-  const filled = result.noReview + result.needReview;
-  const unfilled = result.lowConfidence + result.noData + (result.failed ?? 0);
+  const { filled, unfilled } = resultCounts(result);
   const onlyKept = filled === 0 && unfilled === 0 && !!result.kept;
   return (
     <section aria-label="Fill results">
