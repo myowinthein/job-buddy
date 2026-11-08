@@ -5,42 +5,10 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/re
 vi.mock('@/src/components/options/QuickFillSettings', () => ({ QuickFillSettings: () => null }));
 vi.mock('@/src/quick-fill/preferences', () => ({ updateQuickFillPreferences: vi.fn().mockResolvedValue(undefined) }));
 
-vi.mock('@/src/utils/storage', () => ({
-  getProfile: vi.fn().mockResolvedValue(null),
-  saveProfile: vi.fn().mockResolvedValue(undefined),
-  getLearnedMappings: vi.fn().mockResolvedValue({}),
-  saveLearnedMappings: vi.fn().mockResolvedValue(undefined),
-  mergeLearnedMappings: vi.fn((local: object, remote: object) => ({ ...local, ...remote })),
-  clearAllStorage: vi.fn().mockResolvedValue(undefined),
-  getGeminiSettings: vi.fn().mockResolvedValue({ apiKey: null, model: null, preference: 'auto', revision: null, verifiedAt: null }),
-  saveGeminiSettings: vi.fn(async (apiKey, model, preference) => ({ apiKey, model, preference, revision: 'saved-revision', verifiedAt: 1 })),
-  getGeminiApiKey: vi.fn().mockResolvedValue(null),
-  getGeminiModel: vi.fn().mockResolvedValue(null),
-  clearGeminiSettings: vi.fn().mockResolvedValue(undefined),
-  saveThemePreference: vi.fn().mockResolvedValue(undefined),
-}));
-vi.mock('@/src/utils/theme', () => ({
-  applyTheme: vi.fn(),
-  getCurrentTheme: vi.fn(() => 'system'),
-  subscribeTheme: vi.fn(() => () => {}),
-}));
-vi.mock('@/src/resume-ai/gemini', () => ({
-  validateApiKey: vi.fn(),
-  checkApiKey: vi.fn(),
-}));
-vi.mock('@/src/utils/driveSync', () => ({
-  getFullDriveState: vi
-    .fn()
-    .mockResolvedValue({ connected: false, lastSynced: null, pendingSync: false, error: null }),
-  connectDrive: vi.fn(),
-  inspectDriveBackup: vi.fn(),
-  finishDriveReview: vi.fn().mockResolvedValue(undefined),
-  completeDriveRestore: vi.fn(async (_id: string | undefined, save: () => Promise<void>) => { await save(); }),
-  disconnectDrive: vi.fn().mockResolvedValue(undefined),
-  syncProfileToDrive: vi.fn().mockResolvedValue({ success: true, errorCode: null }),
-  overwriteDriveWithLocal: vi.fn().mockResolvedValue({ success: true, errorCode: null }),
-  isDriveConfigured: vi.fn(() => true),
-}));
+vi.mock('@/src/utils/storage', async () => (await import('@/src/testing/settingsSectionMocks')).storageMock());
+vi.mock('@/src/utils/theme', async () => (await import('@/src/testing/settingsSectionMocks')).themeMock());
+vi.mock('@/src/resume-ai/gemini', async () => (await import('@/src/testing/settingsSectionMocks')).geminiMock());
+vi.mock('@/src/utils/driveSync', async () => (await import('@/src/testing/settingsSectionMocks')).driveSyncMock());
 
 import { SettingsSection } from './SettingsSection';
 import { ToastProvider } from '@/src/components/ui/Toast';
