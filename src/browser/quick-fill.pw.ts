@@ -1,4 +1,4 @@
-import { test, expect, stubEmptyGemini } from './fixtures';
+import { test, expect, stubEmptyGemini, geminiResponse } from './fixtures';
 import { fitsViewportWidth } from './layout';
 const hostSelector = '[data-job-buddy-ui]';
 
@@ -279,8 +279,7 @@ test('hiding the button during AI leaves the background fill running', async ({
       release = resolve;
     });
     await route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({ candidates: [{ content: { parts: [{ text: '[]' }] } }] }),
+      json: geminiResponse('[]'),
     });
   });
   const host = page.locator(hostSelector);

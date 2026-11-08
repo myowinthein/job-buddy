@@ -1,4 +1,4 @@
-import { test, expect, geminiResponse } from './fixtures';
+import { test, expect, geminiResponse, mappingReviewRequest, geminiPrompt } from './fixtures';
 import type { Page } from '@playwright/test';
 import type { LearnedMappings } from '../types/storage';
 
@@ -54,30 +54,19 @@ test('selects all sites by default and supports searchable multi-selection', asy
   }, mappings);
   const questions: string[][] = [];
   await context.route('https://generativelanguage.googleapis.com/**', async (route) => {
-    const prompt = route.request().postDataJSON().contents[0].parts[0].text as string;
-    const payload = JSON.parse(prompt.slice(prompt.lastIndexOf('\n') + 1));
+    const payload = mappingReviewRequest(route);
     questions.push(payload.mappings.map((item: { question: string }) => item.question));
     await route.fulfill({
-      json: {
-        candidates: [
-          {
-            content: {
-              parts: [
-                {
-                  text: JSON.stringify(
-                    payload.mappings.map((item: { id: string }) => ({
-                      id: item.id,
-                      verdict: 'uncertain',
-                      path: null,
-                      reason: 'Review the saved field.',
-                    })),
-                  ),
-                },
-              ],
-            },
-          },
-        ],
-      },
+      json: geminiResponse(
+        JSON.stringify(
+          payload.mappings.map((item: { id: string }) => ({
+            id: item.id,
+            verdict: 'uncertain',
+            path: null,
+            reason: 'Review the saved field.',
+          })),
+        ),
+      ),
     });
   });
   const options = await context.newPage();
@@ -213,7 +202,7 @@ test('preselects fresh and cached suggestions while preserving explicit choices'
   let requests = 0;
   await context.route('https://generativelanguage.googleapis.com/**', async (route) => {
     requests++;
-    const prompt = route.request().postDataJSON().contents[0].parts[0].text as string;
+    const prompt = geminiPrompt(route);
     const payload = JSON.parse(prompt.slice(prompt.lastIndexOf('\n') + 1));
     expect(prompt).not.toContain('jane@example.test');
     expect(prompt).not.toContain('synthetic-browser-profile');
@@ -381,8 +370,7 @@ test('retains completed batches when stopped and starts a fresh review on every 
   });
   await context.route('https://generativelanguage.googleapis.com/**', async (route) => {
     calls++;
-    const prompt = route.request().postDataJSON().contents[0].parts[0].text as string;
-    const payload = JSON.parse(prompt.slice(prompt.lastIndexOf('\n') + 1));
+    const payload = mappingReviewRequest(route);
     if (calls === 2) await held;
     const answers = payload.mappings.map((item: { id: string }) => ({
       id: item.id,
@@ -451,8 +439,7 @@ test('paginates one ordered findings list and saves selected changes across site
     });
   }, many);
   await context.route('https://generativelanguage.googleapis.com/**', async (route) => {
-    const prompt = route.request().postDataJSON().contents[0].parts[0].text as string;
-    const payload = JSON.parse(prompt.slice(prompt.lastIndexOf('\n') + 1));
+    const payload = mappingReviewRequest(route);
     const answers = payload.mappings.map((item: { id: string; question: string }) => ({
       id: item.id,
       verdict:

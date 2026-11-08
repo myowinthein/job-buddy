@@ -447,15 +447,7 @@ for (const theme of ['light', 'dark'] as const) {
     incoming.address.city = 'Portland';
     await context.route('https://generativelanguage.googleapis.com/**', (route) =>
       route.fulfill({
-        json: {
-          candidates: [
-            {
-              content: {
-                parts: [{ text: JSON.stringify({ ...incoming, documentType: 'resume' }) }],
-              },
-            },
-          ],
-        },
+        json: geminiResponse(JSON.stringify({ ...incoming, documentType: 'resume' })),
       }),
     );
     await options.locator('input[type="file"]').setInputFiles({

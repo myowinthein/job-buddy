@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, geminiResponse } from './fixtures';
 import type { Profile } from '../types/profile';
 
 test('scopes applications, includes fixed controls, and excludes unavailable or unsafe inputs', async ({
@@ -98,23 +98,10 @@ test('AI handles native and ARIA choices separately while leaving consent untouc
   await context.route('https://generativelanguage.googleapis.com/**', async (route) => {
     payloads.push(route.request().postData() ?? '');
     await route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({
-        candidates: [
-          {
-            content: {
-              parts: [
-                {
-                  text: JSON.stringify([
-                    { fieldId: 'field_001', confidence: 'high', selectedOption: 'Yes' },
-                    { fieldId: 'field_002', confidence: 'high', selectedOptions: ['Marketing'] },
-                  ]),
-                },
-              ],
-            },
-          },
-        ],
-      }),
+      json: geminiResponse(JSON.stringify([
+        { fieldId: 'field_001', confidence: 'high', selectedOption: 'Yes' },
+        { fieldId: 'field_002', confidence: 'high', selectedOptions: ['Marketing'] },
+      ])),
     });
   });
   await page.evaluate(() => {
@@ -159,23 +146,10 @@ test('AI discards responses for detached fields and newly changed consent questi
     requestStarted();
     await response;
     await route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({
-        candidates: [
-          {
-            content: {
-              parts: [
-                {
-                  text: JSON.stringify([
-                    { fieldId: 'field_001', confidence: 'high', profilePath: 'personal.firstName' },
-                    { fieldId: 'field_002', confidence: 'high', selectedOption: 'Yes' },
-                  ]),
-                },
-              ],
-            },
-          },
-        ],
-      }),
+      json: geminiResponse(JSON.stringify([
+        { fieldId: 'field_001', confidence: 'high', profilePath: 'personal.firstName' },
+        { fieldId: 'field_002', confidence: 'high', selectedOption: 'Yes' },
+      ])),
     });
   });
   await page.evaluate(() => {

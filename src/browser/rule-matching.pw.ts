@@ -1,4 +1,4 @@
-import { test, expect, stubEmptyGemini } from './fixtures';
+import { test, expect, stubEmptyGemini, geminiResponse } from './fixtures';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
 
 test.beforeEach(async ({ page, context, extension }) => {
@@ -144,22 +144,9 @@ test('hands a failed rule selection to AI instead of silently dropping recovery'
   await context.route('https://generativelanguage.googleapis.com/**', (route) => {
     requests++;
     return route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({
-        candidates: [
-          {
-            content: {
-              parts: [
-                {
-                  text: JSON.stringify([
-                    { fieldId: 'field_001', selectedOption: 'Thailand region', confidence: 'high' },
-                  ]),
-                },
-              ],
-            },
-          },
-        ],
-      }),
+      json: geminiResponse(JSON.stringify([
+        { fieldId: 'field_001', selectedOption: 'Thailand region', confidence: 'high' },
+      ])),
     });
   });
   await page.locator('form').evaluate((form) => {

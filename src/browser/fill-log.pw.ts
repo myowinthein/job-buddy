@@ -1,8 +1,7 @@
-import { test, expect } from './fixtures';
+import { test, expect, geminiResponse, autofillRequest } from './fixtures';
 import { summarizeFillFields } from '../autofill/fillLog';
 import type { FrameFillLog } from '../autofill/fillLog';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
-import type { AIFieldPayload } from '../resume-ai/types';
 import { fitsViewportWidth } from './layout';
 
 test('source navigation returns to an open form and reopens a fresh form after navigation or closure', async ({
@@ -699,32 +698,16 @@ test('records real LM, rule and AI decisions and browses them without another fi
   let aiRequests = 0;
   await context.route('https://generativelanguage.googleapis.com/**', (route) => {
     aiRequests++;
-    const prompt = route.request().postDataJSON().contents[0].parts[0].text as string;
-    const { fields } = JSON.parse(prompt.slice(prompt.lastIndexOf('\n\n{') + 2)) as {
-      fields: AIFieldPayload[];
-    };
+    const { fields } = autofillRequest(route);
     return route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({
-        candidates: [
-          {
-            content: {
-              parts: [
-                {
-                  text: JSON.stringify(
-                    fields.map((field) => ({
-                      fieldId: field.fieldId,
-                      profilePath:
-                        field.label === 'Screen name' ? 'personal.nickname' : 'personal.firstName',
-                      confidence: 'high',
-                    })),
-                  ),
-                },
-              ],
-            },
-          },
-        ],
-      }),
+      json: geminiResponse(JSON.stringify(
+        fields.map((field) => ({
+          fieldId: field.fieldId,
+          profilePath:
+            field.label === 'Screen name' ? 'personal.nickname' : 'personal.firstName',
+          confidence: 'high',
+        })),
+      )),
     });
   });
   await extension.send('AUTOFILL_SCAN');

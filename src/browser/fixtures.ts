@@ -1,6 +1,7 @@
-import { test as base, expect, chromium, type BrowserContext, type Worker } from '@playwright/test';
+import { test as base, expect, chromium, type BrowserContext, type Route, type Worker } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import type { AIFieldPayload } from '../resume-ai/types';
 
 export const test = base.extend<{
   extension: {
@@ -112,3 +113,19 @@ export const stubEmptyGemini = (context: BrowserContext) =>
   context.route('https://generativelanguage.googleapis.com/**', (route) =>
     route.fulfill({ json: geminiResponse('[]') }),
   );
+
+/** The prompt text of a Gemini generateContent request. */
+export const geminiPrompt = (route: Route) =>
+  route.request().postDataJSON().contents[0].parts[0].text as string;
+
+/** Autofill prompts end with one JSON object, after a blank line. */
+export const autofillRequest = (route: Route) => {
+  const prompt = geminiPrompt(route);
+  return JSON.parse(prompt.slice(prompt.lastIndexOf('\n\n{') + 2)) as { fields: AIFieldPayload[] };
+};
+
+/** Mapping review prompts end with one JSON line. */
+export const mappingReviewRequest = (route: Route) => {
+  const prompt = geminiPrompt(route);
+  return JSON.parse(prompt.slice(prompt.lastIndexOf('\n') + 1));
+};

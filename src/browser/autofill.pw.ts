@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, geminiResponse } from './fixtures';
 import { fitsViewportWidth } from './layout';
 
 test('production extension fills real values, dispatches validation events, preserves merge answers and undoes', async ({
@@ -82,22 +82,9 @@ test('AI fills authorization radios, excludes consent radios, and Undo preserves
     expect(route.request().headers()['x-goog-api-key']).toBe('synthetic-key');
     payloads.push(route.request().postData() ?? '');
     await route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({
-        candidates: [
-          {
-            content: {
-              parts: [
-                {
-                  text: JSON.stringify([
-                    { fieldId: 'field_001', confidence: 'high', selectedOption: 'Yes' },
-                  ]),
-                },
-              ],
-            },
-          },
-        ],
-      }),
+      json: geminiResponse(JSON.stringify([
+        { fieldId: 'field_001', confidence: 'high', selectedOption: 'Yes' },
+      ])),
     });
   });
   await extension.worker.evaluate(async () => {

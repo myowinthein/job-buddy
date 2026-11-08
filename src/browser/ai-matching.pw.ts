@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, geminiResponse, autofillRequest } from './fixtures';
 import type { AIFieldPayload, AIFieldResponse } from '../resume-ai/types';
 import type { FrameFillLog } from '../autofill/fillLog';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
@@ -25,22 +25,9 @@ for (const path of ['id', 'documents.cv.file.base64', 'personal.gender']) {
     });
     await context.route('https://generativelanguage.googleapis.com/**', (route) =>
       route.fulfill({
-        contentType: 'application/json',
-        body: JSON.stringify({
-          candidates: [
-            {
-              content: {
-                parts: [
-                  {
-                    text: JSON.stringify([
-                      { fieldId: 'field_001', profilePath: path, confidence: 'high' },
-                    ]),
-                  },
-                ],
-              },
-            },
-          ],
-        }),
+        json: geminiResponse(JSON.stringify([
+          { fieldId: 'field_001', profilePath: path, confidence: 'high' },
+        ])),
       }),
     );
     await extension.send('AUTOFILL_SCAN');
@@ -61,10 +48,7 @@ test('uses field-aware salary/date values and real browser events for AI answers
   });
   const sent: AIFieldPayload[] = [];
   await context.route('https://generativelanguage.googleapis.com/**', (route) => {
-    const prompt = route.request().postDataJSON().contents[0].parts[0].text as string;
-    const { fields } = JSON.parse(prompt.slice(prompt.lastIndexOf('\n\n{') + 2)) as {
-      fields: AIFieldPayload[];
-    };
+    const { fields } = autofillRequest(route);
     sent.push(...fields);
     const answers = fields.map((field) => ({
       fieldId: field.fieldId,
@@ -74,10 +58,7 @@ test('uses field-aware salary/date values and real browser events for AI answers
       confidence: 'high',
     }));
     return route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({
-        candidates: [{ content: { parts: [{ text: JSON.stringify(answers) }] } }],
-      }),
+      json: geminiResponse(JSON.stringify(answers)),
     });
   });
   await extension.send('AUTOFILL_SCAN');
@@ -108,27 +89,14 @@ test('rejects fuzzy opposites and ambiguous option strings while accepting optio
   let useId = false;
   await context.route('https://generativelanguage.googleapis.com/**', (route) =>
     route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({
-        candidates: [
-          {
-            content: {
-              parts: [
-                {
-                  text: JSON.stringify([
-                    { fieldId: 'field_001', selectedOption: 'Not authorized', confidence: 'high' },
-                    {
-                      fieldId: 'field_002',
-                      selectedOption: useId ? 'option_001' : '1',
-                      confidence: 'high',
-                    },
-                  ]),
-                },
-              ],
-            },
-          },
-        ],
-      }),
+      json: geminiResponse(JSON.stringify([
+        { fieldId: 'field_001', selectedOption: 'Not authorized', confidence: 'high' },
+        {
+          fieldId: 'field_002',
+          selectedOption: useId ? 'option_001' : '1',
+          confidence: 'high',
+        },
+      ])),
     }),
   );
   await extension.send('AUTOFILL_SCAN');
@@ -154,22 +122,9 @@ test('replaces checkbox selections and supports an explicit empty selection', as
   let selectedOptions = ['option_002'];
   await context.route('https://generativelanguage.googleapis.com/**', (route) =>
     route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({
-        candidates: [
-          {
-            content: {
-              parts: [
-                {
-                  text: JSON.stringify([
-                    { fieldId: 'field_001', selectedOptions, confidence: 'high' },
-                  ]),
-                },
-              ],
-            },
-          },
-        ],
-      }),
+      json: geminiResponse(JSON.stringify([
+        { fieldId: 'field_001', selectedOptions, confidence: 'high' },
+      ])),
     }),
   );
   await extension.send('AUTOFILL_SCAN');
@@ -206,10 +161,7 @@ for (const action of ['manual-choice', 'changed-question', 'profile-replacement'
           : { fieldId: 'field_001', profilePath: 'personal.firstName', confidence: 'high' };
       await route
         .fulfill({
-          contentType: 'application/json',
-          body: JSON.stringify({
-            candidates: [{ content: { parts: [{ text: JSON.stringify([answer]) }] } }],
-          }),
+          json: geminiResponse(JSON.stringify([answer])),
         })
         .catch(() => {}); // Replacement intentionally aborts this request.
     });
@@ -254,22 +206,9 @@ test('a saved value absent from dropdown options is red rather than missing prof
   });
   await context.route('https://generativelanguage.googleapis.com/**', (route) =>
     route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({
-        candidates: [
-          {
-            content: {
-              parts: [
-                {
-                  text: JSON.stringify([
-                    { fieldId: 'field_001', profilePath: 'address.country', confidence: 'high' },
-                  ]),
-                },
-              ],
-            },
-          },
-        ],
-      }),
+      json: geminiResponse(JSON.stringify([
+        { fieldId: 'field_001', profilePath: 'address.country', confidence: 'high' },
+      ])),
     }),
   );
   await extension.send('AUTOFILL_SCAN');

@@ -1,5 +1,5 @@
 // Regression coverage for background learned mappings on throwaway forms.
-import { test, expect, stubEmptyGemini } from './fixtures';
+import { test, expect, stubEmptyGemini, geminiResponse } from './fixtures';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
 import type { LearnedMappings } from '../types/storage';
 test.beforeEach(async ({ page, context, extension }) => {
@@ -368,22 +368,9 @@ test('learns a user correction after an AI-green result, without learning the AI
 }) => {
   await context.route('https://generativelanguage.googleapis.com/**', (route) =>
     route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({
-        candidates: [
-          {
-            content: {
-              parts: [
-                {
-                  text: JSON.stringify([
-                    { fieldId: 'field_001', profilePath: 'personal.firstName', confidence: 'high' },
-                  ]),
-                },
-              ],
-            },
-          },
-        ],
-      }),
+      json: geminiResponse(JSON.stringify([
+        { fieldId: 'field_001', profilePath: 'personal.firstName', confidence: 'high' },
+      ])),
     }),
   );
   await page.locator('form').evaluate((form) => {

@@ -1,8 +1,8 @@
-import { test, expect, stubEmptyGemini } from './fixtures';
+import { test, expect, stubEmptyGemini, geminiResponse } from './fixtures';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
 import type { BrowserContext } from '@playwright/test';
 
-const emptyAI = { candidates: [{ content: { parts: [{ text: '[]' }] } }] };
+const emptyAI = geminiResponse('[]');
 test.beforeEach(async ({ context, extension }) => {
   await extension.worker.evaluate(async (profile) => {
     await chrome.storage.local.set({ profile, learnedMappings: {} });
@@ -65,22 +65,9 @@ test('does not ask AI to answer unsupported groups or unstructured consent', asy
   await context.route('https://generativelanguage.googleapis.com/**', (route) => {
     requests++;
     return route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({
-        candidates: [
-          {
-            content: {
-              parts: [
-                {
-                  text: JSON.stringify([
-                    { fieldId: 'field_001', selectedOption: 'option_001', confidence: 'high' },
-                  ]),
-                },
-              ],
-            },
-          },
-        ],
-      }),
+      json: geminiResponse(JSON.stringify([
+        { fieldId: 'field_001', selectedOption: 'option_001', confidence: 'high' },
+      ])),
     });
   });
   await page.evaluate(() => {

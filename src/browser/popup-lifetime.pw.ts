@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect, geminiResponse } from './fixtures';
 import type { BrowserContext, Page } from '@playwright/test';
 
 async function popupFor(context: BrowserContext, workerUrl: string, tabId: number): Promise<Page> {
@@ -34,22 +34,9 @@ test('closing during startup and AI preserves the run across popup and worker de
       releaseAI = resolve;
     });
     await route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({
-        candidates: [
-          {
-            content: {
-              parts: [
-                {
-                  text: JSON.stringify([
-                    { fieldId: 'field_001', profilePath: 'personal.lastName', confidence: 'high' },
-                  ]),
-                },
-              ],
-            },
-          },
-        ],
-      }),
+      json: geminiResponse(JSON.stringify([
+        { fieldId: 'field_001', profilePath: 'personal.lastName', confidence: 'high' },
+      ])),
     });
   });
   await extension.worker.evaluate(() => {
