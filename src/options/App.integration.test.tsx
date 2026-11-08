@@ -83,6 +83,7 @@ import { sessionGet } from '@/src/utils/sessionStorage';
 import { calculateDerivedFields } from '@/src/utils/derivedFields';
 import { syncProfileToDrive } from '@/src/utils/driveSync';
 import type { Profile } from '@/src/types/profile';
+import { stubScrolling } from '@/src/testing/jsdomLayout';
 
 function renderApp() {
   render(
@@ -95,10 +96,7 @@ function renderApp() {
 beforeEach(() => {
   vi.clearAllMocks();
   sessionStorage.clear();
-  // jsdom doesn't implement Element.scrollTo/scrollIntoView; App.tsx calls
-  // both (section-nav reset, and focus-target scrolling).
-  Element.prototype.scrollTo = vi.fn();
-  Element.prototype.scrollIntoView = vi.fn();
+  stubScrolling(); // App.tsx scrolls on section-nav reset and focus-target changes.
   // mockReset (not just clearAllMocks, which never touches queued
   // once-implementations) guarantees no leftover mockImplementationOnce from
   // a test that failed before consuming its queue can bleed into the next.
