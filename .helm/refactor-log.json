@@ -1422,8 +1422,40 @@
         ],
         "invariant": "invalidateSession generation and abort ordering and idempotent teardown stay exact."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "a8782945db03aea45413934fc2d38008be4a6e59",
+        "date": "2026-11-08",
+        "method": "runtime",
+        "evidence": [
+          "Report-record maps (ReportRecords), the silent-refill registry (NoDataRegistry), the shared pending-work reset and the AutofillResult type are extracted from autofill/index.ts, and executePendingAutofill is split into markExistingAnswersKept, fillMatch and runAIPass sharing one FillRun. invalidateSession generation and abort ordering and the idempotent teardown are unchanged. New tests for cancel during a fill, an unavailable control and the AI hand-off pass on both the pre-split and split code, and mutants of the new seams are caught."
+        ],
+        "checks": [
+          {
+            "command": "pnpm compile",
+            "scope": "project TypeScript",
+            "outcome": "passed"
+          },
+          {
+            "command": "pnpm exec vitest run src/autofill",
+            "scope": "autofill engine, AI safety and report tests",
+            "outcome": "901 tests passed"
+          },
+          {
+            "command": "pnpm test:run",
+            "scope": "full Vitest suite",
+            "outcome": "150 files and 2646 tests passed on two clean runs; one intermediate run hit the existing Drive timing flake in ImportModes.integration.test.tsx"
+          },
+          {
+            "command": "pnpm test:browser",
+            "scope": "production extension, all Playwright specs",
+            "outcome": "136 passed; the 3 failures are the quick-fill specs that predate this work (default changed to overwrite in 229dda7)"
+          }
+        ]
+      }
     },
     {
       "id": "r-54991070-2439-4b51-91a1-4fd646e4333a",
