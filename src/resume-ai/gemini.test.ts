@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 const fetchMock = vi.fn();
 vi.stubGlobal('fetch', fetchMock);
 
-import { checkApiKey, validateApiKey, resolveFieldsWithAI, extractFromResume, KEY_ERROR_MESSAGES, GEMINI_REQUEST_TIMEOUT_MS, RESUME_REQUEST_TIMEOUT_MS } from './gemini';
+import { checkApiKey, validateApiKey, resolveFieldsWithAI, reviewMappingsWithAI, extractFromResume, KEY_ERROR_MESSAGES, GEMINI_REQUEST_TIMEOUT_MS, RESUME_REQUEST_TIMEOUT_MS } from './gemini';
 import type { AIFieldPayload, GeminiModel } from './types';
 import type { Profile } from '@/src/types/profile';
 
@@ -146,6 +146,23 @@ describe('parseAutofillResponse (via resolveFieldsWithAI)', () => {
       resolveFieldsWithAI('key', 'gemini-3.8-flash', FIELDS, {}),
     ).rejects.toThrow('AI autofill request failed: all models rate limited');
     expect(fetchMock).toHaveBeenCalledTimes(2); // GEMINI_MODEL_PRIORITY length
+  });
+});
+
+describe('reviewMappingsWithAI model fallback', () => {
+  const review = () =>
+    reviewMappingsWithAI('key', 'gemini-3.8-flash', [], [], new AbortController().signal);
+
+  it('tries every model when each returns a service error', async () => {
+    fetchMock.mockResolvedValue(httpResponse(500));
+    await expect(review()).rejects.toThrow(KEY_ERROR_MESSAGES.service_error);
+    expect(fetchMock).toHaveBeenCalledTimes(2); // GEMINI_MODEL_PRIORITY length
+  });
+
+  it('stops at the first model when the key is invalid', async () => {
+    fetchMock.mockResolvedValue(httpResponse(401));
+    await expect(review()).rejects.toThrow(KEY_ERROR_MESSAGES.invalid);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 

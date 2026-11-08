@@ -109,6 +109,11 @@ function importError(code: ImportError['code'], message: string): ImportError {
   return { code, message };
 }
 
+// Each caller moves to the next model on a different set of failures, on
+// purpose: resume extraction falls back on 429, 5xx and a missing model.
+const MAPPING_REVIEW_FALLBACK_ERRORS = ['rate_limit', 'no_model', 'service_error'];
+const AUTOFILL_FALLBACK_STATUSES = [404, 408, 429, 500, 502, 503, 504];
+
 /** Semantic mapping review shares Gemini's authenticated, abortable transport. */
 export async function reviewMappingsWithAI(
   apiKey: string,
@@ -141,7 +146,7 @@ export async function reviewMappingsWithAI(
       signal.throwIfAborted();
       if (result.error) {
         lastError = KEY_ERROR_MESSAGES[result.error];
-        if (['rate_limit', 'no_model', 'service_error'].includes(result.error)) continue;
+        if (MAPPING_REVIEW_FALLBACK_ERRORS.includes(result.error)) continue;
         throw new Error(lastError);
       }
       return {
@@ -345,7 +350,7 @@ export async function resolveFieldsWithAI(
               ? 'AI autofill request failed: all models rate limited'
               : `AI autofill request failed: ${result.status}`,
           );
-          if ([404, 408, 429, 500, 502, 503, 504].includes(result.status)) continue;
+          if (AUTOFILL_FALLBACK_STATUSES.includes(result.status)) continue;
           throw lastError;
         }
         responses.push(...parseAutofillResponse(extractGeminiText(result.data) ?? ''));
