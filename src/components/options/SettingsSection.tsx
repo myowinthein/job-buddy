@@ -160,6 +160,25 @@ async function saveImportedData(
   else await saveProfile(updated);
 }
 
+/**
+ * Reloads the profile under the write lock, rejects a review made against an
+ * older one, then saves what `build` derives from the latest profile.
+ */
+async function saveImportUnderLock(
+  base: Partial<Profile>,
+  changes: FieldChange[],
+  build: (latest: Partial<Profile>) => Partial<Profile>,
+  mappings?: ImportedMappings,
+  beforeSave?: (latest: Partial<Profile>) => void,
+): Promise<void> {
+  await withProfileWriteLock(async () => {
+    const latest = (await getProfile({ rejectOnError: true })) ?? {};
+    assertImportCurrent(base, latest, changes);
+    beforeSave?.(latest);
+    await saveImportedData(build(latest) as Profile, mappings);
+  });
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
@@ -402,14 +421,17 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         !invalidFields.length && hasIncomingData
       ) {
         try {
-          await withProfileWriteLock(async () => {
-            const latest = (await getProfile({ rejectOnError: true })) ?? {};
-            assertImportCurrent(currentProfile ?? {}, latest, []);
-            if (!isProfileEmpty(latest)) throw new ImportProfileChangedError(latest);
-            await saveImportedData(validation.sanitized as Profile, backup.learnedMappings ? {
-              incoming: backup.learnedMappings, base: localMappings, source: validation.sanitized,
-            } : undefined);
-          });
+          await saveImportUnderLock(
+            currentProfile ?? {},
+            [],
+            () => validation.sanitized,
+            backup.learnedMappings
+              ? { incoming: backup.learnedMappings, base: localMappings, source: validation.sanitized }
+              : undefined,
+            (latest) => {
+              if (!isProfileEmpty(latest)) throw new ImportProfileChangedError(latest);
+            },
+          );
           showToast('success', feedback.profileImportSucceeded);
           onImportComplete();
           return;
@@ -446,16 +468,18 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       if (!finalChanges.some((change) => change.status !== 'unchanged' && change.accepted)) return;
       if (importMode === 'replace') await replaceImportedProfile(importBaseProfile, finalChanges, false, parsedImport.incoming);
       else {
-        await withProfileWriteLock(async () => {
-          const latestProfile = (await getProfile({ rejectOnError: true })) ?? {};
-          assertImportCurrent(importBaseProfile, latestProfile, finalChanges);
-          const applied = applyChanges(latestProfile, finalChanges);
-          const backup = selectedBackupData(finalChanges);
-          await saveImportedData(applied as Profile, backup.learnedMappings ? {
-            incoming: parsedImport.backup.learnedMappings ?? {},
-            base: parsedImport.localMappings, source: parsedImport.incoming,
-          } : undefined);
-        });
+        await saveImportUnderLock(
+          importBaseProfile,
+          finalChanges,
+          (latest) => applyChanges(latest, finalChanges),
+          selectedBackupData(finalChanges).learnedMappings
+            ? {
+                incoming: parsedImport.backup.learnedMappings ?? {},
+                base: parsedImport.localMappings,
+                source: parsedImport.incoming,
+              }
+            : undefined,
+        );
       }
       showToast('success', feedback.profileImportSucceeded);
       setImportScreen('idle');
@@ -732,18 +756,22 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         if (driveImportMode === 'replace') {
           await replaceImportedProfile(driveLocalProfile ?? {}, finalChanges, true, driveRestoreData.profile);
         } else {
-          await withProfileWriteLock(async () => {
-            const latestProfile = (await getProfile({ rejectOnError: true })) ?? {};
-            assertImportCurrent(driveLocalProfile ?? {}, latestProfile, finalChanges);
-            const applied = driveRestoreCase === 'empty' && isProfileEmpty(latestProfile)
-              ? driveRestoreData.profile : applyChanges(latestProfile, finalChanges);
-            const mappings = driveRestoreCase === 'empty'
-              ? driveRestoreData.learnedMappings : selectedBackupData(finalChanges).learnedMappings;
-            await saveImportedData(applied as Profile, mappings ? {
-              incoming: driveRestoreData.learnedMappings ?? {}, base: driveLocalMappings,
-              source: driveRestoreData.profile,
-            } : undefined);
-          });
+          const mappings = driveRestoreCase === 'empty'
+            ? driveRestoreData.learnedMappings : selectedBackupData(finalChanges).learnedMappings;
+          await saveImportUnderLock(
+            driveLocalProfile ?? {},
+            finalChanges,
+            (latest) =>
+              driveRestoreCase === 'empty' && isProfileEmpty(latest)
+                ? driveRestoreData.profile : applyChanges(latest, finalChanges),
+            mappings
+              ? {
+                  incoming: driveRestoreData.learnedMappings ?? {},
+                  base: driveLocalMappings,
+                  source: driveRestoreData.profile,
+                }
+              : undefined,
+          );
         }
       });
       showToast('success', feedback.driveRestoreSucceeded);
