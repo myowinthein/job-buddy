@@ -33,6 +33,7 @@ import { useToast } from '@/src/components/ui/useToast';
 import { ModalShell } from '@/src/components/ui/ModalShell';
 import {
   getFullDriveState,
+  claimDriveWarning,
   connectDrive,
   inspectDriveBackup,
   completeDriveRestore,
@@ -523,6 +524,17 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
   // ── Cloud Backup — handlers ──────────────────────────────────────────────────
 
+  const showDriveFeedback = (
+    type: Parameters<typeof showToast>[0],
+    message: string,
+    error?: DriveError,
+  ) => {
+    showToast(type, message);
+    // Explicit Drive actions always report their result. Record the issue so
+    // a later profile save does not repeat the same secondary warning.
+    void claimDriveWarning(error);
+  };
+
   const driveFailureText = (error: DriveError) =>
     error === 'token_expired'
       ? feedback.driveReconnectRequired
@@ -538,7 +550,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
 
   const handleDriveBackupResult = async (result: ConnectResult) => {
     if (result.errorCode) {
-      showToast('warning', driveFailureText(result.errorCode));
+      showDriveFeedback('warning', driveFailureText(result.errorCode), result.errorCode);
       return;
     }
     const { backup } = result;
@@ -584,8 +596,8 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           // A no-op local merge can still hide newer/conflicting local mappings.
           // Reconcile the complete payload under Drive's remote-change guard.
           const synced = await overwriteDriveWithLocal((localProfile ?? {}) as Profile, result.reviewId);
-          showToast(synced.success ? 'success' : 'warning',
-            synced.success ? feedback.driveBackupCurrent : driveFailureText(synced.errorCode));
+          showDriveFeedback(synced.success ? 'success' : 'warning',
+            synced.success ? feedback.driveBackupCurrent : driveFailureText(synced.errorCode), synced.errorCode);
           return;
         }
         setDriveConflictChanges(diff);
@@ -595,9 +607,10 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       }
     } else if (localProfile) {
       const synced = await syncProfileToDrive(localProfile);
-      showToast(
+      showDriveFeedback(
         synced.success ? 'success' : 'warning',
         synced.success ? feedback.driveBackupSucceeded : driveFailureText(synced.errorCode),
+        synced.errorCode,
       );
     }
   };
@@ -607,7 +620,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     try {
       await handleDriveBackupResult(await connectDrive());
     } catch {
-      showToast('error', feedback.driveConnectFailed);
+      showDriveFeedback('error', feedback.driveConnectFailed);
     } finally {
       setDriveConnecting(false);
     }
@@ -618,7 +631,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     try {
       await handleDriveBackupResult(await inspectDriveBackup());
     } catch {
-      showToast('error', feedback.driveCheckFailed);
+      showDriveFeedback('error', feedback.driveCheckFailed);
     } finally {
       setDriveConnecting(false);
     }
@@ -638,9 +651,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       }
       const result = await syncProfileToDrive(profile);
       if (result.success) showToast('success', feedback.driveBackupSucceeded);
-      else if (result.errorCode) showToast('warning', driveFailureText(result.errorCode));
+      else if (result.errorCode) showDriveFeedback('warning', driveFailureText(result.errorCode), result.errorCode);
     } catch {
-      showToast('error', feedback.driveBackupFailedLocalSafe);
+      showDriveFeedback('error', feedback.driveBackupFailedLocalSafe);
     } finally {
       setDriveSyncing(false);
     }
@@ -658,7 +671,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           : feedback.driveDisconnectedKept,
       );
     } catch {
-      showToast(
+      showDriveFeedback(
         'error',
         deleteFile
           ? feedback.driveDisconnectDeleteFailed
@@ -732,7 +745,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       if (res.success) {
         showToast('success', feedback.driveBackupSucceeded);
       } else if (res.errorCode) {
-        showToast('warning', driveFailureText(res.errorCode));
+        showDriveFeedback('warning', driveFailureText(res.errorCode), res.errorCode);
         return;
       }
       closeRestoreDialog();
@@ -740,7 +753,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       if (error instanceof ImportProfileChangedError) {
         await refreshDriveImport(error.current);
         showToast('warning', error.message);
-      } else showToast('error', feedback.driveBackupFailed);
+      } else showDriveFeedback('error', feedback.driveBackupFailed);
     } finally {
       setDriveRestoreBusy(false);
     }
@@ -783,7 +796,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       if (error instanceof ImportProfileChangedError) {
         await refreshDriveImport(error.current);
         showToast('warning', error.message);
-      } else showToast('error', feedback.driveRestoreFailed);
+      } else showDriveFeedback('error', feedback.driveRestoreFailed);
     } finally {
       setDriveRestoreBusy(false);
     }

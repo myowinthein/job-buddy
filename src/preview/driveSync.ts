@@ -45,6 +45,8 @@ export const syncProfileToDrive: typeof Drive.syncProfileToDrive = async (...arg
         success: false,
         errorCode: null,
       };
+export const claimDriveWarning: typeof Drive.claimDriveWarning = async (...args) =>
+  devContext() ? (await import('../utils/driveSync')).claimDriveWarning(...args) : false;
 export const overwriteDriveWithLocal: typeof Drive.overwriteDriveWithLocal = async (...args) =>
   devContext() ? (await import('../utils/driveSync')).overwriteDriveWithLocal(...args) : disabled();
 export const disconnectDrive: typeof Drive.disconnectDrive = async (...args) => {

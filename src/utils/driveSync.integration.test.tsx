@@ -28,6 +28,7 @@ import {
 } from './storage';
 import {
   syncProfileToDrive,
+  claimDriveWarning,
   disconnectDrive,
   syncIfConnected,
   getFullDriveState,
@@ -120,6 +121,65 @@ const writes = () =>
     ({ method, url }) =>
       url.includes('/upload/drive/') && (method === 'PATCH' || method === 'POST'),
   );
+
+it('limits secondary Drive warnings until a backup succeeds, including silent retries', async () => {
+  await connected();
+  const profile = (await getProfile())!;
+  drive.lookupFailures = 1;
+  expect((await syncProfileToDrive()).errorCode).toBe('sync_error');
+  expect(await claimDriveWarning('sync_error', profile.id)).toBe(true);
+  expect(await claimDriveWarning('sync_error', profile.id)).toBe(false);
+  await retryPendingDriveSync();
+  expect((await getDriveBackupState()).error).toBeNull();
+  drive.lookupFailures = 1;
+  await syncProfileToDrive();
+  expect(await claimDriveWarning('sync_error', profile.id)).toBe(true);
+});
+
+it('rejects delayed warnings after disconnect, profile replacement, or a different Drive error', async () => {
+  await connected();
+  const profile = (await getProfile())!;
+  const state = await getDriveBackupState();
+  await saveDriveBackupState({ ...state, error: 'storage_full' });
+  expect(await claimDriveWarning('sync_error', profile.id)).toBe(false);
+  expect(await claimDriveWarning('storage_full', 'old-profile')).toBe(false);
+  expect(await claimDriveWarning('storage_full', profile.id)).toBe(true);
+  await disconnectDrive(false);
+  expect(await claimDriveWarning('storage_full', profile.id)).toBe(false);
+});
+
+it('reports each direct backup failure and prevents a later secondary repeat', async () => {
+  await connected();
+  drive.lookupFailures = 2;
+  mount();
+  fireEvent.click(await screen.findByRole('button', { name: 'Back Up Now' }));
+  const warning = 'Your profile is saved. The backup will retry automatically.';
+  await waitFor(() => expect(screen.getAllByText(warning).some(element => element.closest('[role="alert"]'))).toBe(true));
+  fireEvent.click(await screen.findByRole('button', { name: 'Retry Backup' }));
+  await waitFor(() => expect(screen.getAllByText(warning).filter(element => element.closest('[role="alert"]'))).toHaveLength(2));
+  expect(await claimDriveWarning('sync_error', (await getProfile())!.id)).toBe(false);
+});
+
+it('keeps reporting profile save success while limiting Drive warnings across page remounts', async () => {
+  await connected();
+  sessionStorage.setItem('jb:ui:section', 'personal');
+  drive.lookupFailures = 3;
+  mount(true);
+  const warning = 'Profile saved. Drive backup is pending.';
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    fireEvent.click(await screen.findByRole('button', { name: 'Save Personal' }));
+    await waitFor(() => expect(screen.getAllByText('Personal information saved')).toHaveLength(attempt));
+    await waitFor(() => expect(screen.getAllByText(warning)).toHaveLength(1));
+    // Wait for the actual failed backup and warning claim before remounting.
+    await waitFor(() => expect(drive.lookupFailures).toBe(3 - attempt));
+  }
+  cleanup();
+  mount(true);
+  fireEvent.click(await screen.findByRole('button', { name: 'Save Personal' }));
+  await screen.findByText('Personal information saved');
+  await waitFor(() => expect(drive.lookupFailures).toBe(0));
+  expect(screen.queryByText(warning)).toBeNull();
+});
 
 it('uploads the full profile and mappings, with document bytes and no device preferences', async () => {
   drive.remote = null;

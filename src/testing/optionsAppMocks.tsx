@@ -28,6 +28,7 @@ export const derivedFieldsMock = () => ({
 });
 
 export const driveSyncMock = () => ({
+  claimDriveWarning: vi.fn().mockResolvedValue(true),
   syncProfileToDrive: vi.fn().mockResolvedValue({ success: true, errorCode: null }),
 });
 

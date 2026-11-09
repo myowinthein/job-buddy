@@ -19,6 +19,8 @@ export function QuickFillSettings() {
   const { showToast } = useToast();
   const [prefs, setPrefs] = useState<QuickFillPreferences | null>(null);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
   useEffect(() => {
@@ -28,18 +30,20 @@ export function QuickFillSettings() {
         if (active) setPrefs(value);
       })
       .catch(() => {
-        if (active) showToast('error', feedback.quickFillLoadFailed);
+        if (active) setLoadError(true);
       });
     const listener = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
-      if (area === 'local' && QUICK_FILL_KEY in changes)
+      if (active && area === 'local' && QUICK_FILL_KEY in changes) {
         setPrefs(normalizePreferences(changes[QUICK_FILL_KEY].newValue));
+        setLoadError(false);
+      }
     };
     chrome.storage.onChanged.addListener(listener);
     return () => {
       active = false;
       chrome.storage.onChanged.removeListener(listener);
     };
-  }, [showToast]);
+  }, [loadAttempt]);
   const save = async (change: Parameters<typeof updateQuickFillPreferences>[0]) => {
     const previous = prefs;
     setPrefs((current) =>
@@ -71,6 +75,21 @@ export function QuickFillSettings() {
       <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
         Fill fields using a floating button on job application forms.
       </p>
+      {loadError && (
+        <div role="alert" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-red-600 dark:text-red-400">
+          <p>{feedback.quickFillLoadFailed}</p>
+          <button
+            type="button"
+            className="rounded-sm underline hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500"
+            onClick={() => {
+              setLoadError(false);
+              setLoadAttempt((attempt) => attempt + 1);
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
       <div
         id="quick-fill-enabled"
         role="group"

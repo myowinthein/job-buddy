@@ -31,6 +31,31 @@ beforeEach(() => {
   });
 });
 afterEach(cleanup);
+it('keeps load failures inside Quick Fill and lets the user retry', async () => {
+  vi.mocked(getQuickFillPreferences).mockRejectedValueOnce(new Error('read failed'));
+  render(<QuickFillSettings />);
+  expect(await screen.findByRole('alert')).toHaveProperty(
+    'textContent', 'Could not load quick fill settings.Retry',
+  );
+  expect(toast).not.toHaveBeenCalled();
+  expect((screen.getByRole('button', { name: 'On' }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  await waitFor(() => expect((screen.getByRole('button', { name: 'On' }) as HTMLButtonElement).disabled).toBe(false));
+});
+
+it('reports each failed explicit change even when its message repeats', async () => {
+  vi.mocked(updateQuickFillPreferences).mockRejectedValue(new Error('write failed'));
+  render(<QuickFillSettings />);
+  const off = await screen.findByRole('button', { name: 'Off' });
+  await waitFor(() => expect((off as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(off);
+  await waitFor(() => expect(toast).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect((off as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(off);
+  await waitFor(() => expect(toast).toHaveBeenCalledTimes(2));
+});
+
 it('saves On/Off immediately and restores the saved state after a failed write', async () => {
   render(<QuickFillSettings />);
   const on = await screen.findByRole('button', { name: 'On' });

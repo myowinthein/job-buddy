@@ -41,6 +41,7 @@ export const themeMock = () => ({
 export const geminiMock = () => ({ validateApiKey: vi.fn(), checkApiKey: vi.fn() });
 
 export const driveSyncMock = () => ({
+  claimDriveWarning: vi.fn().mockResolvedValue(true),
   getFullDriveState: vi
     .fn()
     .mockResolvedValue({ connected: false, lastSynced: null, pendingSync: false, error: null }),

@@ -131,7 +131,7 @@ it.each(['conflict', 'newer-count', 'local-only'] as const)(
     fireEvent.click(await screen.findByText('Connect Google Drive'));
     await waitFor(() => expect(remote.backup!.learnedMappings).toEqual(local));
     expect(await getLearnedMappings()).toEqual(local);
-    expect((await getDriveBackupState()).reviewRequired).toBe(false);
+    await waitFor(async () => expect((await getDriveBackupState()).reviewRequired).toBe(false));
   },
 );
 

@@ -22,7 +22,7 @@ import { DocumentsSection } from '@/src/components/options/DocumentsSection';
 import { SettingsSection } from '@/src/components/options/SettingsSection';
 import { ResumeImportSection } from '@/src/components/options/ResumeImportSection';
 import { LearnedMappingsSection } from '@/src/components/options/LearnedMappingsSection';
-import { syncProfileToDrive } from '@/src/utils/driveSync';
+import { claimDriveWarning, syncProfileToDrive } from '@/src/utils/driveSync';
 import { ReportedSaveError } from '@/src/components/options/shared/saveSection';
 import { useToast } from '@/src/components/ui/useToast';
 import type { CompletionTarget } from '@/src/utils/profileCompletion';
@@ -440,8 +440,8 @@ function App() {
     setProfile(synced);
     setSavedFeedbackAt(Date.now());
     // Fire-and-forget Drive sync. Never blocks the local save flow.
-    void syncProfileToDrive(synced).then((res) => {
-      if (!res.success && res.errorCode) {
+    void syncProfileToDrive(synced).then(async (res) => {
+      if (!res.success && res.errorCode && await claimDriveWarning(res.errorCode, synced.id)) {
         showToast(
           'warning',
           res.errorCode === 'review_required'

@@ -12,6 +12,7 @@ import { DEV_PROFILE } from './devProfile';
 import { DEFAULT_GEMINI_MODEL, toGeminiModel } from '../resume-ai/types';
 import type { GeminiModel } from '../resume-ai/types';
 import { wrapStorageArea } from './storageArea';
+import { resetSecondaryFeedback } from './secondaryFeedback';
 import { equalJsonValues } from './equalJsonValues';
 import { profileData } from './profileData';
 import { rebaseLearnedMappings, reviewedIncomingMappings } from './learnedMappingProfile';
@@ -375,6 +376,7 @@ export async function clearAllStorage(): Promise<void> {
       );
       if (keys.length) await local.remove(keys, { rejectOnError: true });
       await clearRetainedFillLog();
+      await resetSecondaryFeedback('drive');
     }),
   );
 }

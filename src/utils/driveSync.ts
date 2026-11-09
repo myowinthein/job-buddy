@@ -13,6 +13,7 @@ import {
   getLearnedMappings,
 } from './storage';
 import { equalJsonValues } from './equalJsonValues';
+import { resetSecondaryFeedback, takeSecondaryFeedback } from './secondaryFeedback';
 
 // ── OAuth ────────────────────────────────────────────────────────────────────
 
@@ -509,6 +510,7 @@ export async function connectDrive(): Promise<ConnectResult> {
   const authorization = await authorizeDrive();
   return withDriveLock(async () => {
     await saveDriveToken(authorization.token);
+    await resetSecondaryFeedback('drive');
     return inspectUnlocked(authorization.token, {
       fileId: null,
       lastSynced: null,
@@ -566,6 +568,29 @@ export async function completeDriveRestore(
 export interface SyncResult {
   success: boolean;
   errorCode: DriveError;
+}
+
+/** Direct Drive actions record their warning too, without suppressing their own feedback. */
+export async function claimDriveWarning(error?: DriveError, profileId?: string): Promise<boolean> {
+  if (error === null) return false;
+  try {
+    return await withDriveLock(async () => {
+      const [token, state, profile] = await Promise.all([
+        getDriveToken({ rejectOnError: true }),
+        getDriveBackupState({ rejectOnError: true }),
+        getProfile({ rejectOnError: true }),
+      ]);
+      // A delayed result must not warn about a disconnected or replaced profile,
+      // a recovered backup, or an issue that has since changed.
+      const issue = error ?? state.error;
+      if (!token || !profile || !issue || (profileId !== undefined && profile.id !== profileId) || state.error !== issue)
+        return false;
+      const scope = JSON.stringify([profile.id, state.accountEmail ?? '']);
+      return takeSecondaryFeedback('drive', scope, issue);
+    });
+  } catch {
+    return false;
+  }
 }
 
 async function uploadUnlocked(
@@ -629,6 +654,7 @@ async function uploadUnlocked(
           retryAt: undefined,
           retryCount: 0,
         });
+        await resetSecondaryFeedback('drive');
         return { success: true, errorCode: null };
       }
       if (state.remoteHash !== hash) {
@@ -659,6 +685,7 @@ async function uploadUnlocked(
       retryAt: undefined,
       retryCount: 0,
     });
+    await resetSecondaryFeedback('drive');
     return { success: true, errorCode: null };
   } catch (error) {
     return recordFailure(state, error);
@@ -752,6 +779,7 @@ export async function disconnectDrive(deleteFile: boolean): Promise<void> {
     // Clearing the token first also stops jobs queued after this operation.
     await clearDriveToken();
     await clearDriveBackupState();
+    await resetSecondaryFeedback('drive');
     if (chrome.alarms) {
       await chrome.alarms.clear(DRIVE_RETRY_ALARM);
       await chrome.alarms.clear(DRIVE_AUTH_ALARM);
