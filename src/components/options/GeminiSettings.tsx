@@ -1,3 +1,4 @@
+import { ExternalLink } from 'lucide-react';
 import { feedback } from '@/src/ui/feedback';
 import { useEffect, useRef, useState } from 'react';
 import { checkApiKey, validateApiKey, KEY_ERROR_MESSAGES } from '@/src/resume-ai/gemini';
@@ -385,8 +386,8 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
                 rel="noopener noreferrer"
                 className="text-blue-600 dark:text-blue-400 underline"
               >
-                Google AI Studio
-              </a>
+                Google AI Studio <ExternalLink aria-hidden="true" className="inline h-3 w-3" /> <span className="text-xs">(opens in new tab)</span>
+                </a>
               . No credit card required.
             </p>
           </>
@@ -517,8 +518,8 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
               rel="noopener noreferrer"
               className="text-blue-600 dark:text-blue-400 hover:underline rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
             >
-              View usage and limits <span aria-hidden="true">↗</span>
-            </a>
+              View usage and limits <ExternalLink aria-hidden="true" className="inline h-3 w-3" /> <span className="text-xs">(opens in new tab)</span>
+                </a>
           </div>
           <div id="gemini-model-options" hidden={!modelOptionsOpen} className="mt-3">
             <label

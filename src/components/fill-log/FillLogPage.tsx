@@ -284,7 +284,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
                   disabled={openingSource}
                   onClick={() => void openSource()}
                   onFocus={() => setSourceTooltipOpen(true)}
-                  aria-description={sourceUrl}
+                  aria-description={`${sourceUrl}. Uses the form tab when available; otherwise opens in new tab`}
                   aria-describedby={sourceUrl && sourceTooltipOpen ? sourceTooltipId : undefined}
                 >
                   {canReturn ? (
@@ -294,6 +294,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
                   )}
                   {openingSource ? 'Opening…' : canReturn ? 'Return to Form' : 'Open Form'}
                 </button>
+                <p className="mt-1 text-xs text-gray-500">Uses the form tab when available; otherwise opens in new tab.</p>
                 {sourceUrl && sourceTooltipOpen && (
                   <div className="absolute left-0 top-full z-30 w-full pt-2 sm:left-auto sm:right-0 sm:w-max sm:max-w-md">
                     <div

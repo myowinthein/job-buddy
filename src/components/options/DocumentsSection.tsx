@@ -14,7 +14,7 @@ import { useSectionDraft } from './shared/useSectionDraft';
 import { isValidProfileUrl } from '@/src/utils/profileInputValidation';
 import { withScheme } from '@/src/utils/url';
 import { downloadDocumentFile, viewDocumentPdf } from '@/src/utils/documentFiles';
-import { Download, ExternalLink } from 'lucide-react';
+import { Download, Eye } from 'lucide-react';
 
 interface Props {
   profile: Partial<Profile>;
@@ -178,8 +178,8 @@ function DocUploader({
                   onClick={() => handleFileAction('view')}
                   title="View PDF in a new tab"
                 >
-                  <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
-                  View PDF
+                  <Eye aria-hidden="true" className="h-3.5 w-3.5" />
+                  View PDF <span className="text-xs">(opens in new tab)</span>
                 </button>
               )}
               <button

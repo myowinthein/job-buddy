@@ -175,8 +175,8 @@ describe('Gemini explicit key setup', () => {
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toBe(KEY_ERROR_MESSAGES.no_model);
     expect(within(alert).queryByRole('link')).toBeNull();
-    expect(screen.getAllByRole('link', { name: 'Google AI Studio' })).toHaveLength(1);
-    const link = screen.getByRole('link', { name: 'Google AI Studio' });
+    expect(screen.getAllByRole('link', { name: 'Google AI Studio (opens in new tab)' })).toHaveLength(1);
+    const link = screen.getByRole('link', { name: 'Google AI Studio (opens in new tab)' });
     expect(link.getAttribute('href')).toBe('https://aistudio.google.com/api-keys');
     expect(link.getAttribute('rel')).toBe('noopener noreferrer');
     expect(saveGeminiSettings).not.toHaveBeenCalled();

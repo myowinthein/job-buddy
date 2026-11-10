@@ -49,11 +49,30 @@ The list is illustrative and maintained, not exhaustive. Check for the same habi
 
 ## Links and navigation
 
-- Use real links with working destinations for navigation, and buttons for actions. Link to the relevant page or section; section links must target existing IDs. Do not present invented URLs or placeholder destinations as working links. Keep each link's purpose clear from its label or associated context.
-- Open links in the current tab by default, including links to external websites. Preserve native browser choices such as modified clicks and opening a link in a new tab from its context menu.
-- Open a new tab only for a clear user-task reason or an explicit project requirement. Warn users before activation with a visible indication and equivalent accessible wording. An external destination alone does not justify a forced new tab; new-tab warnings are Helm's usability default, not a blanket WCAG AA requirement.
-- Follow the project's established external-link indicator convention. If indicators are used, apply their meaning consistently to external text links and distinguish leaving the site from opening a new tab. An arrow out of a square is optional; use the existing icon set and do not rely on the symbol alone to explain behavior.
-- Make links distinguishable from surrounding text, normally by underlining body-text links, and provide visible keyboard focus. Keep an accompanying icon inside the same link; hide it from assistive technology when redundant, and supply equivalent text when it adds information.
+For prose references, opening behavior and indicators are decisions within the same reference pass. When Writing is loaded, use its self-contained [Reference links](writing.md#reference-links) sequence; these interface requirements apply within it, without a second selection or review pass. Design remains usable on its own.
+
+Use real links with working destinations for navigation and resource downloads, and buttons for in-page actions. Link directly to the relevant page or existing section ID. Do not present invented URLs or placeholder destinations as working links. Keep each link's purpose clear from its label or associated context.
+
+Open navigation links in the current tab by default. Apply the following behavior unless an explicit project requirement specifies otherwise; do not infer a requirement merely from an existing `target="_blank"`.
+
+| Destination or task | Opening behavior | Indication |
+|---|---|---|
+| Internal navigation, including same-page anchors, menus, breadcrumbs and pagination | Current tab | No external-link icon. |
+| External articles, references, repositories, social profiles and other websites | Current tab | External-link icon on text links. |
+| Help/reference material needed alongside an unfinished form, editor or active task | New tab only when replacing the page would lose state or disrupt required work alongside it | New-tab warning; external-link icon only if external. |
+| An explicit user-selected action such as "Open preview in new tab" | New tab | The action label states the behavior. |
+| Viewable documents, including PDFs | Current tab/browser document handling; file type alone does not justify a new tab | File format; external-link icon if external. |
+| Actual downloads | Native download handling; do not force an extra tab | "Download", file format and known size. Use download treatment rather than an external-navigation arrow. |
+| Email, telephone and application links | Native protocol handling; do not force a new browser tab | Clear action/destination wording rather than an external-web arrow. |
+
+- Define internal destinations from the configured site/service boundary, including explicit canonical/deployment aliases and any relevant path boundary. An absolute URL can be internal; sharing an organization or parent domain does not make another site/service internal. Parse URLs against that boundary rather than matching a hostname substring. An external destination, long reference, login requirement or desire to retain visitors alone never justifies a new tab.
+- Preserve native browser choices: modified clicks, middle-click and context-menu opening. Do not intercept ordinary links to defeat those choices. A requested new browsing context may appear as a tab or window according to browser/user settings; do not promise a particular presentation that the application cannot control.
+- For every application-requested new tab/window, warn before activation with visible "opens in new tab" wording (or "opens in new window" for a deliberate window) and equivalent accessible wording. An explicit action label can supply both. A clearly bounded group may share a visible notice if every link retains an accessible warning. Do not rely on a hover tooltip or unexplained icon. User-chosen browser opening needs no added warning. This is Helm's usability policy, not a blanket WCAG AA requirement.
+- Use one default external-link symbol: a northeast arrow leaving an open square, rendered through the existing icon set or a matching SVG. Its meaning is "outside this site/service", independent of tab behavior. Apply it consistently to external HTTP(S) text navigation links in body content, lists, tables, navigation and footers. Do not vary the arrow by tab behavior or add it to internal new-tab links. Preserve an explicit established design-system convention instead of silently replacing it; apply that convention consistently without conflating destination and opening behavior.
+- Keep the icon inside the same clickable link, after its text. Describe external destinations through meaningful labels/context; the arrow alone does not explain the destination or new-tab behavior. Hide redundant icons from assistive technology and supply equivalent text for information not otherwise conveyed. Logo-only and icon-only links need meaningful accessible names rather than another appended external icon.
+- Make links distinguishable from surrounding text, normally by underlining body-text links, and provide visible keyboard focus. Identify known login requirements and application launches in wording. File labels describe the actual format/outcome; do not invent sizes or promise a download when the destination may instead open a viewer. Do not add an interrupting confirmation solely because a link is external.
+- For ordinary HTML new-tab links, use `target="_blank"` with `rel="noopener"`. Treat `noreferrer` as a separate project privacy/referrer-policy choice: it also suppresses referrer information. Preserve separately specified authentication/window protocols rather than applying a blanket link rewrite to them.
+- Apply tab/icon implementation only where the output medium supports it. Plain Markdown, email and chat renderers may control opening behavior and available markup. Use clear wording without injecting unsupported HTML or promising renderer behavior; this rule requires no renderer customization.
 
 ## Review and verification
 

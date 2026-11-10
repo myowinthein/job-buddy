@@ -54,6 +54,8 @@ CI runs compile, lint, tests, and build on branch pushes/PRs. Release tags run a
 
 ## Domain Rules
 
+- Follow Writing’s Reference links workflow for docs and UI. The docs site is bounded by `/job-buddy/`; sibling Pages sites and GitHub are external. Extension options/resume-review help stays alongside the active task in a new tab with a visible warning. On the website, only setup consoles needed alongside instructions and the demo form’s installation link use that exception. External arrows describe the destination, not tab behavior.
+
 - Confidence thresholds live in `src/autofill/constants.ts`: fill at ≥0.60, green at ≥0.85. Yellow fills need review; red stays unfilled; a matched empty profile value is gray/noData with a 12% gray background tint, matching the opacity of other statuses. Focus styling stays untouched; the tint changes on fill and clears on Undo. Use named constants.
 - Preserve two phases: scan stores `pendingMatches`; merge/overwrite consumes them without rescanning. Merge skips existing values; overwrite replaces them.
 - Mapper signal order is label, ariaLabel, placeholder, name, id. Layers are learned → autocomplete → exact dictionary → fuzzy → custom-link labels → nearby context. `autocomplete="url"` deliberately has no fixed profile path.

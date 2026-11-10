@@ -1,3 +1,4 @@
+import { ExternalLink } from 'lucide-react';
 import type { RefObject } from 'react';
 import { MODEL_DISPLAY_NAMES } from '@/src/resume-ai/types';
 import type {
@@ -288,18 +289,22 @@ export function ResumeProgressDialog({
         {errorMsg && (
           <div className="mt-6">
             {errorCode === 'rate_limit' ? (
-              <p className="text-sm text-red-700 dark:text-red-400 mb-4">
-                {resumeUsageLimitNotice.before}
-                <a
-                  href={resumeUsageLimitNotice.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-red-700 dark:hover:text-red-300"
-                >
-                  {resumeUsageLimitNotice.linkLabel}
-                </a>
-                {resumeUsageLimitNotice.after}
-              </p>
+              <div className="mb-4">
+                <p className="text-sm text-red-700 dark:text-red-400">
+                  {resumeUsageLimitNotice.before}
+                  <a
+                    href={resumeUsageLimitNotice.href}
+                    aria-describedby="resume-limit-new-tab"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-red-700 dark:hover:text-red-300"
+                  >
+                    {resumeUsageLimitNotice.linkLabel}<ExternalLink aria-hidden="true" className="ml-1 inline h-3 w-3" />
+                  </a>
+                  {resumeUsageLimitNotice.after}
+                </p>
+                <p id="resume-limit-new-tab" className="text-xs">Check limits opens in new tab.</p>
+              </div>
             ) : (
               <p className="text-sm text-red-700 dark:text-red-400 mb-4">{errorMsg}</p>
             )}

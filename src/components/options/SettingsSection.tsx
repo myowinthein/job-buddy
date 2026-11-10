@@ -1041,7 +1041,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                     rel="noopener noreferrer"
                     className="text-sm text-blue-600 dark:text-blue-400 underline"
                   >
-                    Manage Storage
+                    Manage Storage <ExternalLink aria-hidden="true" className="inline h-3 w-3" /> <span className="text-xs">(opens in new tab)</span>
                   </a>
                 )}
               </div>
@@ -1068,7 +1068,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       </section>
 
       <footer className="mt-10 pt-5 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-        <span id={newTabHintId} className="sr-only">Opens in a new tab</span>
+        <span id={newTabHintId} className="block mb-2">Settings links open in new tabs.</span>
         <nav
           aria-label="Settings links"
           className="flex flex-wrap items-center gap-x-3 gap-y-2 font-medium"
