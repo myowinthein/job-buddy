@@ -37,12 +37,14 @@ Job Buddy, add your profile and start autofill.
 Your profile stays in your browser. Resume import and autofill send relevant data
 to Gemini.
 
-## Help me improve it
+<a name="help-me-improve-it"></a>
 
-[Report an issue](https://github.com/myowinthein/job-buddy/issues/new?template=report-a-problem.yml)
-if something doesn't work, or [share an idea](https://github.com/myowinthein/job-buddy/issues)
-on GitHub.
+## Contributing
 
-[MIT](LICENSE) © 2026 Myo Win Thein (Martin).
+If Job Buddy doesn't work as expected, [report a problem](https://github.com/myowinthein/job-buddy/issues/new?template=report-a-problem.yml). For improvements, [share an idea](https://github.com/myowinthein/job-buddy/issues). Tell me what you tried, what you expected and what happened.
+
+## License
+
+Job Buddy is licensed under the [MIT License](LICENSE). © 2026 Myo Win Thein (Martin).
 
 <!-- last-reviewed: 8cde4d4301f40fba8337ffe54f86aad8de0c09ef -->
