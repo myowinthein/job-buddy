@@ -41,7 +41,7 @@ to Gemini.
 
 ## Contributing
 
-If Job Buddy doesn't work as expected, [report a problem](https://github.com/myowinthein/job-buddy/issues/new?template=report-a-problem.yml). For improvements, [share an idea](https://github.com/myowinthein/job-buddy/issues). Tell me what you tried, what you expected and what happened.
+If you find a bug or have an idea for Job Buddy, [report a problem](https://github.com/myowinthein/job-buddy/issues/new?template=report-a-problem.yml) or [share an idea](https://github.com/myowinthein/job-buddy/issues). Tell me which version and browser you used, what you tried, what you expected and what happened.
 
 ## License
 
