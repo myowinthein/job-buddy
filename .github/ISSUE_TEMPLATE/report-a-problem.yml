@@ -1,60 +1,59 @@
 name: Report a problem
-description: Tell us about something that isn't working in Job Buddy.
+description: Report a problem with a Job Buddy feature, setup or guide.
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Reports are public. Remove API keys, resumes, profile exports and personal details from text, links and attachments.
   - type: textarea
     id: what-happened
     attributes:
       label: What happened?
-      description: Tell us what went wrong and what you expected. Include any error message you saw.
-      placeholder: I expected my phone number to be filled, but the field stayed empty.
-    validations:
-      required: true
-  - type: textarea
-    id: steps
-    attributes:
-      label: Steps to reproduce
-      description: List the steps that led to the problem.
+      description: Describe what you expected and what happened instead. Include any error message.
       placeholder: |
-        1. Open a job application.
-        2. Open Job Buddy and click Fill Form.
-        3. The phone number stays empty.
+        Expected: Fill Form would fill my saved phone number.
+        Actual: the phone field stayed empty.
     validations:
       required: true
   - type: input
     id: page-link
     attributes:
-      label: Page link
-      description: For problems on a website, paste its public page link. Leave out private or account-specific links.
-      placeholder: https://example.com/careers/job
+      label: Where did it happen?
+      description: Name the Job Buddy feature or share the affected site's public page link. Leave out private or account-specific links.
+      placeholder: Fill Form on https://example.com/careers/job
     validations:
       required: false
   - type: textarea
-    id: extra-details
+    id: steps
     attributes:
-      label: Screenshots or extra details
-      description: Add anything that helps explain the problem. For autofill issues, a screenshot of Fill Details can help.
+      label: Steps to reproduce
+      description: Share the steps or a small example we can follow. If it happens intermittently, describe what led up to it and how often it occurs.
+      placeholder: |
+        1. Open a job application.
+        2. Open Job Buddy and click Fill Form.
+        3. The phone number stays empty.
     validations:
       required: false
   - type: input
     id: version
     attributes:
       label: Job Buddy version
-      description: Copy the version shown in the top-right corner of the Job Buddy popup.
-      placeholder: e.g. 1.14.3
+      description: Filled in when you open this form from Job Buddy. Otherwise, copy the version from the top-right corner of its popup, if known.
+      placeholder: <version>
     validations:
-      required: true
+      required: false
   - type: input
     id: browser-device
     attributes:
       label: Browser and device
-      description: Include version numbers if you know them.
+      description: Include your browser and operating system, with version numbers if known.
       placeholder: Chrome on Windows, or Chrome on macOS
     validations:
       required: false
-  - type: markdown
+  - type: textarea
+    id: extra-details
     attributes:
-      value: |
-        **Before submitting**
-
-        - **Reports are public.** Don't include API keys, resumes, profile exports, or personal details.
-        - Remove private information from links, screenshots, and files before sharing them.
+      label: Screenshots or extra details
+      description: Share a relevant error message or screenshot. For autofill problems, a screenshot of Fill Details can help.
+    validations:
+      required: false
