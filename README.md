@@ -41,10 +41,10 @@ to Gemini.
 
 ## Contributing
 
-If you find a bug or have an idea for Job Buddy, [open an issue](https://github.com/myowinthein/job-buddy/issues/new/choose).
+If a feature behaves unexpectedly, a guide is unclear or you have an idea for Job Buddy, [open an issue](https://github.com/myowinthein/job-buddy/issues/new/choose).
 
 ## License
 
-[MIT](LICENSE) © 2026 Myo Win Thein (Martin).
+Job Buddy is licensed under the [MIT License](LICENSE). © 2026 Myo Win Thein.
 
 <!-- last-reviewed: 8cde4d4301f40fba8337ffe54f86aad8de0c09ef -->
