@@ -1,0 +1,23 @@
+name: Share feedback
+description: Suggest an improvement or clearer guidance for Job Buddy.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Reports are public. Remove API keys, resumes, profile exports and personal details from text, links and attachments.
+  - type: textarea
+    id: feedback
+    attributes:
+      label: What could be better?
+      description: Describe the improvement or unclear passage and why it matters. Include the feature or guide link when relevant.
+      placeholder: I'd like a clearer explanation of when to use learned mappings instead of editing my profile.
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested change
+      description: Share a possible solution or clearer wording, if you have one.
+      placeholder: Add an example to the learned mappings walkthrough.
+    validations:
+      required: false
