@@ -1,3 +1,6 @@
+import { composedAncestors, controlForm } from '@/src/autofill/dom';
+import { extractSignals } from '@/src/autofill/signals';
+
 // Local discovery only. Never scans with Gemini or sends page text to the worker.
 export const QUICK_FILL_HOST = 'data-job-buddy-ui';
 const CAREER =
@@ -30,33 +33,33 @@ export function likelyApplicationForm(
   // Keep unrelated contact, search and sign-in forms out of the page UI.
   const groups = new Map<ParentNode, HTMLElement[]>();
   for (const el of controls) {
-    const group = el.closest('form,[role="form"]') ?? (el.getRootNode() as ParentNode);
+    // Field components can each own a shadow root without owning a form. Share
+    // their enclosing form/main, while keeping independent forms and standalone
+    // shadow widgets separate. Never combine evidence from different frames.
+    const group =
+      controlForm(el) ??
+      [...composedAncestors(el)].find((ancestor) => ancestor.matches('main,[role="main"]')) ??
+      (el.getRootNode() as ParentNode);
     groups.set(group, [...(groups.get(group) ?? []), el]);
   }
   for (const [group, fields] of groups) {
     if (fields.length < 3) continue;
-    const signals = fields.map((el) =>
-      [
-        el.getAttribute('name'),
-        el.id,
-        el.getAttribute('autocomplete'),
-        el.getAttribute('aria-label'),
-        el.getAttribute('placeholder'),
-        ...Array.from((el as HTMLInputElement).labels ?? []).map((label) =>
-          label.textContent?.slice(0, 200),
-        ),
-      ]
-        .filter(Boolean)
-        .join(' '),
+    const metadata = fields.map((el) => extractSignals(el));
+    const signals = metadata.map(({ name, id, autocomplete, ariaLabel, placeholder, label }) =>
+      [name, id, autocomplete, ariaLabel, placeholder, label].filter(Boolean).join(' '),
     );
     const heading =
       group instanceof Element
         ? `${group.getAttribute('aria-label') ?? ''} ${group.querySelector('h1,h2,h3,legend')?.textContent?.slice(0, 300) ?? ''}`
         : document.title;
+    const mainTitle =
+      group instanceof Element && group.matches('main,[role="main"]') ? document.title : '';
     if (
       signals.some((s) => IDENTITY.test(s)) &&
       signals.some((s) => EMAIL.test(s)) &&
-      CAREER.test(`${heading} ${signals.join(' ')}`)
+      CAREER.test(
+        `${heading} ${mainTitle} ${signals.join(' ')} ${metadata.map((field) => field.nearbyText).join(' ')}`,
+      )
     )
       return true;
   }

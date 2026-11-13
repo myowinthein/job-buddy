@@ -12,6 +12,8 @@ export const DETECTION_ATTRIBUTES = [
   'id',
   'autocomplete',
   'aria-label',
+  'aria-labelledby',
+  'label',
   'placeholder',
   'for',
 ];
