@@ -19,7 +19,7 @@ import { extractSignals, bestLabel } from './signals';
 import type { FieldSignals } from './signals';
 import { mapField } from './mapper';
 import type { FieldMatch } from './mapper';
-import { adjustPhoneMatches } from './phoneResolution';
+import { adjustPhoneMatches, callingCodeSibling } from './phoneResolution';
 import { adjustLanguageMatches } from './languageResolution';
 import { adjustEducationMatches, matchCurrentEducationCheckboxes } from './educationResolution';
 import {
@@ -63,6 +63,13 @@ function fillMappedField(
   profile: Profile,
   path: string | null,
 ): Promise<boolean> {
+  if (
+    path === 'personal.phone.callingCode' &&
+    (element.getAttribute('role') === 'combobox' || element.getAttribute('aria-haspopup') === 'listbox')
+  )
+    return fillField(element, value, active, {
+      callingCodeCountry: profile.personal?.phone?.countryCode,
+    });
   return path === 'address.city'
     ? fillField(element, value, active, { cityCountry: countryName(profile.address?.country ?? '') })
     : fillField(element, value, active);
@@ -740,7 +747,28 @@ async function fillMatch(
       filled = (await fillCheckboxInput(element)) !== false;
     } else {
       const value = element instanceof HTMLSelectElement && element.multiple ? multiSelectValues(profile, match.fieldPath, element) : match.value;
+      const beforeValue = getFieldValue(element);
       filled = value !== null && (await fillMappedField(element, value, isActive, profile, match.fieldPath)) !== false;
+      // Keep autocomplete priority. A rejected generic tel write may retry the
+      // local number only when this contact has its own explicit dial-code field.
+      if (
+        !filled && isActive() && element instanceof HTMLInputElement && element.type === 'tel' &&
+        match.matchLayer === 'autocomplete' && match.fieldPath === 'personal.phone.full' &&
+        signals.autocomplete.toLowerCase().trim().split(/\s+/).at(-1) === 'tel' &&
+        !/\b(?:with|including|include)\b.*\b(?:country|calling|dial)\b/i.test(bestLabel(signals)) &&
+        getFieldValue(element) === beforeValue
+      ) {
+        const code = callingCodeSibling(match, run.matches.map((item) => item.match));
+        const local = profile.personal?.phone?.number;
+        if (code?.element && code.confidence >= CONF_FILL && isControlAvailable(code.element) && local) {
+          filled = await fillMappedField(element, local, isActive, profile, 'personal.phone.number');
+          if (filled) {
+            match.fieldPath = 'personal.phone.number';
+            match.value = local;
+            record.rule.profilePath = match.fieldPath;
+          }
+        }
+      }
     }
 
     if (!isActive()) return false;

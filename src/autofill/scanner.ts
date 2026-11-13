@@ -3,12 +3,13 @@ import {
   composedAncestors,
   composedParent,
   controlForm,
+  fileInputProxy,
   hasVisibleSurface,
   isChoiceAvailable,
   isControlAvailable,
   isTextEditor,
 } from './dom';
-import { controlName, createLabelContext, ownText } from './labels';
+import { controlName, createLabelContext, ownText, precedingChoicePrompt } from './labels';
 import type { LabelContext } from './labels';
 import { createSignalReader, bestLabel } from './signals';
 import type { FieldSignals } from './signals';
@@ -58,7 +59,7 @@ const INPUT_TYPES = new Set([
   'week',
 ]);
 const CAREER =
-  /\b(resum[eé]|cv|curriculum vitae|cover letter|work authori[sz]ation|employment|job application|apply for|candidate|linkedin|salary|portfolio|education|work history)\b/i;
+  /\b(resum[eé]|cv|curriculum vitae|cover letter|work authori[sz]ation|authori[sz]ed to work|eligible to work|right to work|employment|job application|apply for|candidate|linkedin|salary|portfolio|education|work history)\b/i;
 const AUXILIARY =
   /\b(newsletter|subscrib(?:e|ing)|sign[ -]?in|log[ -]?in|search|contact us|feedback)\b/i;
 
@@ -121,7 +122,8 @@ export function getAriaElementType(element: HTMLElement): 'text' | 'select' | nu
 
 function textControl(element: HTMLElement, options: ScanOptions): boolean {
   if (element instanceof HTMLInputElement) {
-    if (element.type === 'file') return !!options.allowFileInputs && element.tabIndex !== -1;
+    if (element.type === 'file')
+      return !!options.allowFileInputs && (element.tabIndex !== -1 || !!fileInputProxy(element));
     if (INPUT_TYPES.has(element.type)) return true;
     return ['button', 'search'].includes(element.type) && getAriaElementType(element) === 'select';
   }
@@ -148,7 +150,7 @@ function questionContainer(element: HTMLElement): Element | undefined {
 export function questionLabel(element: HTMLElement, context?: LabelContext): string {
   const question = questionContainer(element);
   if (!question) {
-    if (!choiceKind(element)) return '';
+    if (!choiceKind(element)) return precedingChoicePrompt(element, context);
     // Many builders use a paragraph followed by option labels, without a fieldset.
     // Read the closest preceding prompt, never another control's label or a form title.
     let branch: Element = element;

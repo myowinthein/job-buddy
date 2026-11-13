@@ -10,6 +10,29 @@ import { resolveProfileValue } from './resolver';
 // the page, since it only ever sees one field's signals at a time.
 const AMBIGUOUS_PHONE_PATHS = new Set(['personal.phone.number', 'personal.phone.full']);
 
+export function callingCodeSibling(match: FieldMatch, matches: FieldMatch[]): FieldMatch | null {
+  if (!match.element)
+    return matches.find((item) => item.fieldPath === 'personal.phone.callingCode') ?? null;
+  const root = scopeRoot(match.element);
+  for (
+    let container = composedParent(match.element);
+    container;
+    container = composedParent(container)
+  ) {
+    const inGroup = matches.filter(
+      (item) =>
+        item.element &&
+        scopeRoot(item.element) === root &&
+        containsControl(container, item.element),
+    );
+    const phones = inGroup.filter((item) => AMBIGUOUS_PHONE_PATHS.has(item.fieldPath ?? ''));
+    const codes = inGroup.filter((item) => item.fieldPath === 'personal.phone.callingCode');
+    if (phones.length > 1) break;
+    if (codes.length === 1) return codes[0];
+  }
+  return null;
+}
+
 // Layer 0 (learned) and Layer 1 (autocomplete) are already explicit and
 // unambiguous — autocomplete="tel-national" means the site itself asked for
 // the local number specifically, and a learned mapping is a confirmed user
@@ -22,30 +45,7 @@ export function adjustPhoneMatches(matches: FieldMatch[], profile: Profile): voi
     if (!match.fieldPath) continue;
     if (!AMBIGUOUS_PHONE_PATHS.has(match.fieldPath)) continue;
     if (!ADJUSTABLE_LAYERS.has(match.matchLayer)) continue;
-    let hasCode = matches.some((item) => item.fieldPath === 'personal.phone.callingCode');
-    if (match.element) {
-      hasCode = false;
-      const root = scopeRoot(match.element);
-      for (
-        let container = composedParent(match.element);
-        container;
-        container = composedParent(container)
-      ) {
-        const inGroup = matches.filter(
-          (item) =>
-            item.element &&
-            scopeRoot(item.element) === root &&
-            containsControl(container, item.element),
-        );
-        const phones = inGroup.filter((item) => AMBIGUOUS_PHONE_PATHS.has(item.fieldPath ?? ''));
-        const codes = inGroup.filter((item) => item.fieldPath === 'personal.phone.callingCode');
-        if (phones.length > 1) break;
-        if (codes.length === 1) {
-          hasCode = true;
-          break;
-        }
-      }
-    }
+    const hasCode = !!callingCodeSibling(match, matches);
     const question = match.element ? visibleQuestion(extractSignals(match.element)) : '';
     const local =
       /\b(local|national)\b|(?:without|excluding|omit).*\b(?:country|calling|dial)\b/i.test(

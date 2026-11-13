@@ -12,6 +12,7 @@ import { captureField, sameFieldState } from './fieldState';
 import type { FieldState } from './fieldState';
 import { ownWriteEvents, performWrite, setWriteConfidence } from './writeSession';
 import type { DocumentFile } from '../types/profile';
+import { countryName } from '../data/countries';
 import { normalize, similarity, isSkippableOption, PLACEHOLDER_OPTION_NORMS } from './normalizer';
 import { CONF_FUZZY_THRESHOLD, CONF_AI_YELLOW } from './constants';
 
@@ -33,6 +34,7 @@ const DROPDOWN_RUN_BUDGET_MS = 8_000;
 export interface FillFieldContext {
   /** Only supplied for a mapped address.city; never infer locations from arbitrary labels. */
   cityCountry?: string;
+  callingCodeCountry?: string;
 }
 let dropdownBudget = DROPDOWN_RUN_BUDGET_MS;
 export function resetDropdownBudget(): void {
@@ -268,9 +270,7 @@ function scopedOptions(trigger: HTMLElement, before: Set<HTMLElement>): HTMLElem
       !before.has(box) ||
       (!!trigger.id && box.getAttribute('aria-labelledby')?.split(/\s+/).includes(trigger.id)),
   );
-  return candidates.length === 1
-    ? queryOpenElements(candidates[0], '[role="option"]')
-    : [];
+  return candidates.length === 1 ? queryOpenElements(candidates[0], '[role="option"]') : [];
 }
 function ariaOption(
   options: HTMLElement[],
@@ -287,15 +287,30 @@ function ariaOption(
         )),
   );
   const country = context.cityCountry;
+  if (context.callingCodeCountry && /^\+\d+$/.test(value)) {
+    const names = [context.callingCodeCountry, countryName(context.callingCodeCountry)];
+    const qualified = eligible.filter((option) => {
+      const label = normalize(option.getAttribute('aria-label') || composedText(option));
+      return names.some(
+        (name) =>
+          label === normalize(`${name} ${value}`) || label === normalize(`${value} ${name}`),
+      );
+    });
+    if (qualified.length) return qualified.length === 1 ? qualified[0] : null;
+    // Bare codes remain supported, but never choose another country sharing a code.
+    const bare = eligible.filter(
+      (option) =>
+        normalize(option.getAttribute('aria-label') || composedText(option)) === normalize(value),
+    );
+    return bare.length === 1 ? bare[0] : null;
+  }
   if (country) {
     const cities = eligible.filter((option) => {
       const parts = (option.getAttribute('aria-label') || composedText(option))
         .split(',')
         .map(normalize);
       return (
-        parts.length > 1 &&
-        parts[0] === normalize(value) &&
-        parts.at(-1) === normalize(country)
+        parts.length > 1 && parts[0] === normalize(value) && parts.at(-1) === normalize(country)
       );
     });
     if (cities.length) return cities.length === 1 ? cities[0] : null;

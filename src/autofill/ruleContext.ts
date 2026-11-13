@@ -1,10 +1,15 @@
 import { composedParent, controlForm } from './dom';
 import { ariaName, ownText } from './labels';
 import { bestLabel } from './signals';
+import { isConsentGroup } from './consent';
 import type { FieldSignals } from './signals';
 
 /** Match layers a post-pass may rewrite: label-derived ones, never learned or autocomplete. */
-export const ADJUSTABLE_LAYERS: ReadonlySet<string> = new Set(['dictionary_exact', 'fuzzy', 'context']);
+export const ADJUSTABLE_LAYERS: ReadonlySet<string> = new Set([
+  'dictionary_exact',
+  'fuzzy',
+  'context',
+]);
 
 export function visibleQuestion(signals: FieldSignals): string {
   return [signals.label, signals.ariaLabel, signals.placeholder].filter(Boolean).join(' ');
@@ -13,13 +18,19 @@ export function visibleQuestion(signals: FieldSignals): string {
 /** Questions about someone else or data the profile cannot represent stay manual. */
 export function ruleQuestionBlocked(signals: FieldSignals): boolean {
   const text = visibleQuestion(signals);
+  const selection =
+    (typeof HTMLSelectElement !== 'undefined' && signals.element instanceof HTMLSelectElement) ||
+    signals.element?.getAttribute('role') === 'combobox' ||
+    signals.element?.getAttribute('aria-haspopup') === 'listbox';
   return (
+    (selection &&
+      isConsentGroup({ groupLabel: `${text} ${signals.nearbyText ?? ''}`, options: [] })) ||
     /\b(emergency\s+contact|referee|referrer|spouse|next\s+of\s+kin|reference(?:'s)?\s+(?:name|email|phone)|manager(?:'s)?\s+(?:name|email|phone))\b/i.test(
       text,
     ) ||
     /\b(nationality|country\s+of\s+(?:origin|birth)|citizenship|employment\s+type)\b/i.test(text) ||
     (signals.type === 'file' &&
-      /\b(work\s+permit|passport|identity|identification|certificate|transcript|cover\s+letter|license|licence)\b/i.test(
+      /\b(work\s+permit|passport|identity|identification|certificates?|transcripts?|cover\s+letter|licenses?|licences?)\b/i.test(
         text,
       ))
   );

@@ -1,5 +1,12 @@
 import { composedAncestors, composedText, isTextEditor, queryOpenElements } from './dom';
-import { ariaName, ariaReference, createLabelContext, labelText, ownText } from './labels';
+import {
+  ariaName,
+  ariaReference,
+  createLabelContext,
+  labelText,
+  ownText,
+  precedingChoicePrompt,
+} from './labels';
 import type { LabelContext } from './labels';
 
 export interface FieldSignals {
@@ -44,6 +51,8 @@ function getLabelText(element: HTMLElement, context?: LabelContext): string {
 
 function getNearbyText(element: HTMLElement, context?: LabelContext): string {
   const description = ariaReference(element, 'aria-describedby');
+  const prompt = precedingChoicePrompt(element, context);
+  if (prompt) return [description, prompt].filter(Boolean).join(' ');
   // Drop zones often label only their file chooser, with the document question
   // in a heading outside the shadow host. Keep this as context, never a learned key.
   if (element instanceof HTMLInputElement && element.type === 'file') {

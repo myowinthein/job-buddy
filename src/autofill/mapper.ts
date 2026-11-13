@@ -1,10 +1,11 @@
 import type { Profile } from '../types/profile';
 import type { LearnedMappings, LearnedMappingValue } from '../types/storage';
 import type { FieldSignals } from './signals';
-import { normalize, similarity } from './normalizer';
+import { normalize, similarity, PLACEHOLDER_OPTION_NORMS } from './normalizer';
 import { ruleQuestionBlocked } from './ruleContext';
 import { FIELD_DICTIONARY } from './dictionary';
 import { resolveProfileValue } from './resolver';
+import { precedingChoicePrompt } from './labels';
 import type { MatchLayer } from './fillLog';
 import type { LearnedCheck } from './fillLog';
 import { validMapping } from '../utils/learnedMappingData';
@@ -276,7 +277,9 @@ export function mapField(
     signals.name,
     signals.id,
   ].filter(Boolean);
-  const normed = signalValues.map(normalize).filter(Boolean);
+  const normed = signalValues.map(normalize)
+    .filter((value) => value && !PLACEHOLDER_OPTION_NORMS.has(value));
+  const prompt = precedingChoicePrompt(signals.element);
   const domainMappings = learnedMappings[domain] ?? {};
   const learnedResult = matchLearned(signals, profile, normed, domainMappings);
   onLearnedCheck?.(learnedResult.check);
@@ -307,7 +310,11 @@ export function mapField(
 
   // ── Layer 2: Dictionary exact match ───────────────────────────────────────
   for (const n of normed) {
-    const hit = dictionaryExact(n);
+    const resumeQuestion = signals.type === 'file' &&
+      [signals.label, signals.ariaLabel].some((text) => normalize(text) === n &&
+        /(?:^|[^\p{L}\p{N}])(?:r[eé]sum[eé]|cv|curriculum\s+vitae)(?:$|[^\p{L}\p{N}])/iu.test(text) &&
+        !/\b(no|not|except|excluding|without)\b/i.test(text));
+    const hit = dictionaryExact(n) ?? (resumeQuestion ? 'documents.cv.file' : null);
     if (hit) {
       const resolved = resolveDictionaryHit(profile, hit, signals);
       const human = signals.label || signals.ariaLabel;
@@ -334,8 +341,15 @@ export function mapField(
   }
 
   // ── Layer 3: Fuzzy matching on primary signals ────────────────────────────
+  // An adjacent question is stronger evidence than a coincidental fuzzy match
+  // against a generic choice label or its opaque internal identifier.
+  const fuzzySignals = prompt
+    ? [signals.label, signals.ariaLabel, signals.placeholder]
+      .map(normalize)
+      .filter((value) => value && !PLACEHOLDER_OPTION_NORMS.has(value))
+    : normed;
   let bestFuzzy: { fieldPath: string; score: number } | null = null;
-  for (const n of normed) {
+  for (const n of fuzzySignals) {
     const result = dictionaryFuzzy(n);
     if (result && (!bestFuzzy || result.score > bestFuzzy.score)) bestFuzzy = result;
   }
@@ -409,6 +423,19 @@ export function mapField(
   }
 
   // ── Layer 4: Context signals (nearbyText only) ────────────────────────────
+  const question = [signals.label, signals.ariaLabel, prompt]
+    .filter(Boolean)
+    .join(' ')
+    .split(/(?<=[?!.])\s+/)[0];
+  if (/\b(?:are|do|will|would|can)\s+you\b/i.test(question) &&
+      /\b(?:authori[sz]ed|eligible)\s+to\s+work\b|\bright\s+to\s+work\b/i.test(question)) {
+    return {
+      fieldPath: 'workAuthorization',
+      confidence: CONF_CONTEXT,
+      value: resolve(profile, 'workAuthorization'),
+      matchLayer: 'context',
+    };
+  }
   const nearbyNorm = normalize(signals.nearbyText);
   if (nearbyNorm) {
     const exactHit = dictionaryExact(nearbyNorm);

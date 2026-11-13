@@ -79,3 +79,39 @@ export function controlName(element: HTMLElement, context?: LabelContext): strin
     ariaName(element) || labelText(element, context) || element.getAttribute('label')?.trim() || ''
   );
 }
+
+/** A generic choice label can have its real prompt immediately above its wrapper. */
+export function precedingChoicePrompt(element: HTMLElement, context?: LabelContext): string {
+  if (!element || typeof element.getAttribute !== 'function') return '';
+  if (
+    !(typeof HTMLSelectElement !== 'undefined' && element instanceof HTMLSelectElement) &&
+    element.getAttribute('role') !== 'combobox' &&
+    element.getAttribute('aria-haspopup') !== 'listbox'
+  )
+    return '';
+  const generic = (text: string) =>
+    /^(?:please\s+select|select(?:\s+one)?|choose(?:\s+one)?)[\s:*]*$/i.test(text);
+  const name = controlName(element, context);
+  if (name && !generic(name)) return '';
+  const root = element.getRootNode();
+  const controls = 'input,select,textarea,[role="combobox"],[role="textbox"],[contenteditable]';
+  for (
+    let branch: Element = element, parent = branch.parentElement;
+    parent;
+    branch = parent, parent = parent.parentElement
+  ) {
+    if (parent.getRootNode() !== root || parent.matches('body,form,[role="form"]')) break;
+    if (parent.querySelectorAll(controls).length !== 1) break;
+    for (
+      let sibling = branch.previousElementSibling;
+      sibling;
+      sibling = sibling.previousElementSibling
+    ) {
+      if (sibling.matches(controls) || sibling.querySelector(controls)) return '';
+      if (!sibling.matches('p,label,legend,span,div,h1,h2,h3,h4,h5,h6')) continue;
+      const text = ownText(sibling, context);
+      if (text && !generic(text)) return text;
+    }
+  }
+  return '';
+}

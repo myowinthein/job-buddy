@@ -48,11 +48,34 @@ export function isChoice(element: HTMLElement): boolean {
   );
 }
 
+/** Hidden file inputs are usable only through a specific, visible upload surface. */
+export function fileInputProxy(element: HTMLInputElement): HTMLElement | undefined {
+  if (element.type !== 'file') return undefined;
+  const button = element.closest<HTMLElement>('button,[role="button"]');
+  const proxies = [...associatedLabels(element), ...(button ? [button] : [])];
+  return proxies.find((proxy) => {
+    if (!isControlAvailable(proxy) || !hasVisibleSurface(proxy)) return false;
+    const controls = queryOpenElements(
+      proxy,
+      'input,select,textarea,[role="combobox"],[role="textbox"],[contenteditable]',
+    );
+    return (
+      controls.every((control) => control === element) &&
+      (controls.includes(element) ||
+        (proxy instanceof HTMLLabelElement && proxy.control === element))
+    );
+  });
+}
+
 // No geometry requirement here: transparent native choices can have a visible
 // label, and detached nodes must also be rejected after an asynchronous wait.
 export function isControlAvailable(element: HTMLElement): boolean {
   if (!element.isConnected || element.matches(':disabled')) return false;
   if ('readOnly' in element && element.readOnly) return false;
+  const fileProxy =
+    element instanceof HTMLInputElement && element.type === 'file'
+      ? fileInputProxy(element)
+      : undefined;
   for (const ancestor of composedAncestors(element)) {
     if (
       ancestor.hasAttribute('data-job-buddy-ui') ||
@@ -65,7 +88,7 @@ export function isControlAvailable(element: HTMLElement): boolean {
       return false;
     const style = getComputedStyle(ancestor);
     if (
-      style.display === 'none' ||
+      (style.display === 'none' && !(ancestor === element && fileProxy)) ||
       style.visibility === 'hidden' ||
       style.visibility === 'collapse' ||
       (parseFloat(style.opacity) === 0 &&
@@ -82,6 +105,10 @@ export function hasVisibleSurface(
   element: HTMLElement,
   cache = new WeakMap<Element, boolean>(),
 ): boolean {
+  if (element instanceof HTMLInputElement && element.type === 'file') {
+    const proxy = fileInputProxy(element);
+    if (proxy) return hasVisibleSurface(proxy, cache);
+  }
   for (const ancestor of composedAncestors(element)) {
     let visible = cache.get(ancestor);
     if (visible === undefined) {
@@ -91,9 +118,7 @@ export function hasVisibleSurface(
         style.visibility !== 'hidden' &&
         style.visibility !== 'collapse' &&
         (parseFloat(style.opacity) !== 0 ||
-          (ancestor === element &&
-            element instanceof HTMLInputElement &&
-            element.type === 'file'));
+          (ancestor === element && element instanceof HTMLInputElement && element.type === 'file'));
       cache.set(ancestor, visible);
     }
     if (!visible) return false;
