@@ -276,7 +276,7 @@ test('fills and restores native multi-selects and clears shadow feedback', async
       .locator('#languages')
       .evaluate((select) => [...(select as HTMLSelectElement).selectedOptions].map((o) => o.value)),
   ).toEqual(['en', 'my']);
-  await expect(page.locator('#unmatched')).toHaveCSS('background-color', 'rgba(239, 68, 68, 0.12)');
+  await expect(page.locator('#unmatched')).toHaveCSS('background-color', 'rgb(253, 233, 233)');
   await extension.send('CLEAR');
   expect(
     await page

@@ -61,3 +61,25 @@ it('still rejects a control replaced during framework reconciliation', async () 
   expect(await fillField(input, 'Replacement')).toBe(false);
   expect(input.isConnected).toBe(false);
 });
+
+it('does not send Escape to an enclosing dialog after an option has already closed its menu', async () => {
+  document.body.innerHTML =
+    '<section role="dialog"><button type="button" role="combobox" aria-label="Country" aria-expanded="false" aria-controls="options"></button><div id="options" role="listbox" hidden><div role="option">Thailand</div></div></section>';
+  const panel = document.querySelector('section')!;
+  const trigger = document.querySelector('button')!;
+  const list = document.getElementById('options')!;
+  panel.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') panel.remove();
+  });
+  trigger.addEventListener('click', () => {
+    trigger.setAttribute('aria-expanded', 'true');
+    list.hidden = false;
+  });
+  list.firstElementChild!.addEventListener('click', () => {
+    trigger.dataset.value = 'Thailand';
+    trigger.setAttribute('aria-expanded', 'false');
+    list.hidden = true;
+  });
+  expect(await fillField(trigger, 'Thailand')).toBe(true);
+  expect(panel.isConnected).toBe(true);
+});

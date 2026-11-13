@@ -195,7 +195,7 @@ test('missing profile data gets a neutral tint that preserves focus and clears o
   const shadowMissing = page.locator('#missing-shadow-link');
   await expect(missing).toHaveValue('');
   await expect(missing).toHaveAttribute('data-jb-missing-data', '1');
-  await expect(missing).toHaveCSS('background-color', 'rgba(107, 114, 128, 0.12)');
+  await expect(missing).toHaveCSS('background-color', 'rgb(28, 35, 50)');
   await expect(missing).toHaveCSS('outline-style', 'none');
   await expect(shadowMissing).toHaveAttribute('data-jb-missing-data', '1');
   await page.locator('#feedback-scroll').evaluate((el) => {
@@ -209,12 +209,12 @@ test('missing profile data gets a neutral tint that preserves focus and clears o
   await expect(missing).toHaveCSS('outline-color', 'rgb(59, 130, 246)');
   await page.locator('[name="firstName"]').focus();
   await expect(missing).toHaveCSS('outline-style', 'none');
-  await expect(missing).toHaveCSS('background-color', 'rgba(107, 114, 128, 0.12)');
+  await expect(missing).toHaveCSS('background-color', 'rgb(28, 35, 50)');
   await page.locator('form').screenshot({ path: testInfo.outputPath('missing-data-tint.png') });
   await missing.fill('https://www.linkedin.com/in/synthetic-person');
   await page.locator('[name="firstName"]').focus();
   await expect(missing).not.toHaveAttribute('data-jb-missing-data');
-  await expect(missing).toHaveCSS('background-color', 'rgba(34, 197, 94, 0.12)');
+  await expect(missing).toHaveCSS('background-color', 'rgb(19, 45, 46)');
   expect(
     await page.locator('form').evaluate((form) => (form as HTMLFormElement).checkValidity()),
   ).toBe(true);
@@ -256,10 +256,10 @@ test('form feedback stays quiet while keeping tints, accessible descriptions, ta
   await extension.send('AUTOFILL_FILL', 'merge');
   const overlay = page.locator('[data-jb-feedback-root], [data-jb-field-status], [role="tooltip"]');
   await expect(overlay).toHaveCount(0);
-  await expect(page.locator('#confident')).toHaveCSS('background-color', 'rgba(34, 197, 94, 0.12)');
-  await expect(page.locator('#review')).toHaveCSS('background-color', 'rgba(234, 179, 8, 0.12)');
-  await expect(page.locator('#unmatched')).toHaveCSS('background-color', 'rgba(239, 68, 68, 0.12)');
-  await expect(page.locator('#missing')).toHaveCSS('background-color', 'rgba(107, 114, 128, 0.12)');
+  await expect(page.locator('#confident')).toHaveCSS('background-color', 'rgb(31, 60, 60)');
+  await expect(page.locator('#review')).toHaveCSS('background-color', 'rgb(55, 58, 49)');
+  await expect(page.locator('#unmatched')).toHaveCSS('background-color', 'rgb(56, 44, 57)');
+  await expect(page.locator('#missing')).toHaveCSS('background-color', 'rgb(40, 50, 64)');
   await expect(page.locator('#confident')).toHaveValue('Jane');
   await expect(page.locator('#review')).toHaveValue('Jane');
   await expect(page.locator('#unmatched')).toHaveValue('');
@@ -280,7 +280,7 @@ test('form feedback stays quiet while keeping tints, accessible descriptions, ta
   expect(await page.locator('#review').boundingBox()).toEqual(originalPosition);
   await page.locator('#manual').fill('Reference confirmed by the applicant');
   await page.locator('#confident').focus();
-  await expect(page.locator('#manual')).toHaveCSS('background-color', 'rgba(34, 197, 94, 0.12)');
+  await expect(page.locator('#manual')).toHaveCSS('background-color', 'rgb(31, 60, 60)');
   await expect(page.locator('#manual')).toHaveAccessibleDescription('Job Buddy: Confirmed by you.');
   expect(
     await page.locator('form').evaluate((form) => (form as HTMLFormElement).checkValidity()),

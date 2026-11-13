@@ -1,6 +1,7 @@
 import { CONF_FILL, CONF_GREEN } from './constants';
 import { setFieldFeedback, clearFieldFeedback, clearAllFieldFeedback } from './fieldFeedback';
 import { isChoice, queryOpenElements } from './dom';
+import { backgroundTint, type FieldTint } from './backgroundTint';
 
 // Confidence-based and missing-data background tints on form elements.
 // Original background-color and transition are saved in data attributes
@@ -48,7 +49,7 @@ function highlightSurface(element: HTMLElement): HTMLElement {
   return element;
 }
 
-function paint(element: HTMLElement, color: string): void {
+function paint(element: HTMLElement, tint: FieldTint): void {
   const surface = highlightSurface(element);
   const previousOwner = surfaceOwners.get(surface);
   if (previousOwner && previousOwner !== element) clearElementHighlight(previousOwner);
@@ -59,7 +60,10 @@ function paint(element: HTMLElement, color: string): void {
   element.dataset.jbHighlighted = '1';
   // Keep the wrapper's focus/border transitions intact.
   if (surface === element) surface.style.transition = 'background-color 0.2s ease';
-  surface.style.backgroundColor = color;
+  surface.style.backgroundColor = backgroundTint(
+    surface.dataset.jbOrigComputedBackground ?? '',
+    tint,
+  );
 }
 
 function rememberStyles(element: HTMLElement): void {
@@ -67,6 +71,7 @@ function rememberStyles(element: HTMLElement): void {
 
   if (!('jbOrigBackground' in element.dataset)) {
     element.dataset.jbOrigBackground = element.style.backgroundColor;
+    element.dataset.jbOrigComputedBackground = getComputedStyle(element).backgroundColor;
     element.dataset.jbOrigTransition = element.style.transition;
     element.dataset.jbOrigBackgroundPriority =
       element.style.getPropertyPriority('background-color');
@@ -77,14 +82,7 @@ function rememberStyles(element: HTMLElement): void {
 export function applyHighlight(element: HTMLElement, confidence: number, confirmed = false): void {
   missingDataElements.delete(element);
   delete element.dataset.jbMissingData;
-  paint(
-    element,
-    confidence >= CONF_GREEN
-      ? 'rgba(34, 197, 94, 0.12)'
-      : confidence >= CONF_FILL
-        ? 'rgba(234, 179, 8, 0.12)'
-        : 'rgba(239, 68, 68, 0.12)',
-  );
+  paint(element, confidence >= CONF_GREEN ? 'green' : confidence >= CONF_FILL ? 'yellow' : 'red');
   setFieldFeedback(
     element,
     confirmed
@@ -100,7 +98,7 @@ export function applyHighlight(element: HTMLElement, confidence: number, confirm
 export function applyMissingDataHighlight(element: HTMLElement): void {
   missingDataElements.add(element);
   element.dataset.jbMissingData = '1';
-  paint(element, 'rgba(107, 114, 128, 0.12)');
+  paint(element, 'gray');
   setFieldFeedback(element, 'gray');
 }
 
@@ -127,6 +125,7 @@ export function clearElementHighlight(element: HTMLElement): void {
 function forgetStyles(element: HTMLElement): void {
   delete element.dataset.jbHighlighted;
   delete element.dataset.jbOrigBackground;
+  delete element.dataset.jbOrigComputedBackground;
   delete element.dataset.jbOrigTransition;
   delete element.dataset.jbOrigBackgroundPriority;
   delete element.dataset.jbOrigTransitionPriority;

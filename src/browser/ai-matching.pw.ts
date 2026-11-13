@@ -219,7 +219,7 @@ test('a saved value absent from dropdown options is red rather than missing prof
       .locator('#country')
       .evaluate((element) => (element as HTMLSelectElement).checkValidity()),
   ).toBe(false);
-  await expect(page.locator('#country')).toHaveCSS('background-color', 'rgba(239, 68, 68, 0.12)');
+  await expect(page.locator('#country')).toHaveCSS('background-color', 'rgb(253, 233, 233)');
   const logs = (await extension.send('GET_FILL_LOG')) as unknown as FrameFillLog[];
   expect(
     logs.flatMap((log) => log.fields).find((field) => field.label === 'Country of residence'),

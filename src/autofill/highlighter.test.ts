@@ -155,7 +155,7 @@ describe('missing-data tints', () => {
     el.style.outline = '2px dotted blue';
     el.style.outlineOffset = '3px';
     applyMissingDataHighlight(el);
-    expect(el.style.backgroundColor).toBe('rgba(107, 114, 128, 0.12)');
+    expect(el.style.backgroundColor).toBe('rgb(30, 40, 51)');
     expect(el.style.outline).toBe('2px dotted blue');
     expect(el.disabled).toBe(false);
     expect(el.style.color).toBe('');
@@ -164,7 +164,7 @@ describe('missing-data tints', () => {
     expect(el.style.outlineOffset).toBe('3px');
     expect(el.dataset.jbMissingData).toBe('1');
     el.blur();
-    expect(el.style.backgroundColor).toBe('rgba(107, 114, 128, 0.12)');
+    expect(el.style.backgroundColor).toBe('rgb(30, 40, 51)');
     clearElementHighlight(el);
     expect(el.style.outline).toBe('2px dotted blue');
     expect(el.style.outlineOffset).toBe('3px');
@@ -210,7 +210,7 @@ describe('missing-data tints', () => {
     applyHighlight(el, CONF_GREEN);
     applyMissingDataHighlight(el);
     applyMissingDataHighlight(el);
-    expect(el.style.backgroundColor).toBe('rgba(107, 114, 128, 0.12)');
+    expect(el.style.backgroundColor).toBe('rgb(237, 238, 240)');
     clearElementHighlight(el);
     clearElementHighlight(el);
     expect(el.style.backgroundColor).toBe('white');
@@ -253,11 +253,11 @@ describe('bordered widget surfaces', () => {
     expect(input.style.outline).toBe('2px solid blue');
     expect(input.hasAttribute('aria-describedby')).toBe(true);
     expect(surface.hasAttribute('aria-describedby')).toBe(false);
-    expect(surface.style.backgroundColor).toBe('rgba(34, 197, 94, 0.12)');
+    expect(surface.style.backgroundColor).toBe('rgb(228, 248, 236)');
     expect(surface.style.borderRadius).toBe('12px');
     expect(surface.style.transition).toBe('box-shadow .1s');
     applyMissingDataHighlight(input);
-    expect(surface.style.backgroundColor).toBe('rgba(107, 114, 128, 0.12)');
+    expect(surface.style.backgroundColor).toBe('rgb(237, 238, 240)');
     clearElementHighlight(input);
     expect(surface.style.backgroundColor).toBe('white');
     expect(surface.style.transition).toBe('box-shadow .1s');
@@ -277,7 +277,7 @@ describe('bordered widget surfaces', () => {
     input.replaceWith(replacement);
     applyHighlight(replacement, CONF_GREEN);
     clearElementHighlight(input);
-    expect(surface.style.backgroundColor).toBe('rgba(34, 197, 94, 0.12)');
+    expect(surface.style.backgroundColor).toBe('rgb(228, 248, 236)');
     clearHighlights();
     expect(surface.style.backgroundColor).toBe('white');
   });

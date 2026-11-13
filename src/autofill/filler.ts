@@ -388,6 +388,9 @@ async function closeDropdown(
   element: HTMLElement,
   active: () => boolean = () => true,
 ): Promise<void> {
+  // A completed selection may already have closed its menu. Escape at that
+  // point can dismiss the enclosing application dialog instead.
+  if (element.getAttribute('aria-expanded') === 'false') return;
   ownWriteEvents(() => {
     element.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true }),
