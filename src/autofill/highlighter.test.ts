@@ -236,3 +236,71 @@ describe('missing-data tints', () => {
     expect(detached.value).toBe('Manually entered');
   });
 });
+
+describe('bordered widget surfaces', () => {
+  function widget(extra = '') {
+    document.body.innerHTML = `<div id="surface" style="border:1px solid gray;border-radius:12px;transition:box-shadow .1s;background-color:white"><input style="border:0;background:transparent">${extra}</div>`;
+    return {
+      input: document.querySelector('input')!,
+      surface: document.querySelector<HTMLElement>('#surface')!,
+    };
+  }
+  it('tints the nearest single-control border without changing input or focus styles', () => {
+    const { input, surface } = widget('<button type="button">Open</button>');
+    input.style.outline = '2px solid blue';
+    applyHighlight(input, CONF_GREEN);
+    expect(input.style.backgroundColor).toBe('transparent');
+    expect(input.style.outline).toBe('2px solid blue');
+    expect(input.hasAttribute('aria-describedby')).toBe(true);
+    expect(surface.hasAttribute('aria-describedby')).toBe(false);
+    expect(surface.style.backgroundColor).toBe('rgba(34, 197, 94, 0.12)');
+    expect(surface.style.borderRadius).toBe('12px');
+    expect(surface.style.transition).toBe('box-shadow .1s');
+    applyMissingDataHighlight(input);
+    expect(surface.style.backgroundColor).toBe('rgba(107, 114, 128, 0.12)');
+    clearElementHighlight(input);
+    expect(surface.style.backgroundColor).toBe('white');
+    expect(surface.style.transition).toBe('box-shadow .1s');
+    expect(surface.dataset.jbHighlighted).toBeUndefined();
+  });
+  it('never tints a wrapper shared by two answer controls', () => {
+    const { input, surface } = widget('<input type="tel">');
+    applyHighlight(input, CONF_GREEN);
+    expect(surface.style.backgroundColor).toBe('white');
+    expect(input.style.backgroundColor).toBe('rgba(34, 197, 94, 0.12)');
+  });
+  it('does not let cleanup of a replaced input erase its replacement highlight', () => {
+    const { input, surface } = widget();
+    applyMissingDataHighlight(input);
+    const replacement = document.createElement('input');
+    replacement.style.border = '0';
+    input.replaceWith(replacement);
+    applyHighlight(replacement, CONF_GREEN);
+    clearElementHighlight(input);
+    expect(surface.style.backgroundColor).toBe('rgba(34, 197, 94, 0.12)');
+    clearHighlights();
+    expect(surface.style.backgroundColor).toBe('white');
+  });
+  it('keeps a native bordered input as its own surface', () => {
+    const { input, surface } = widget();
+    input.style.border = '1px solid black';
+    applyHighlight(input, CONF_GREEN);
+    expect(surface.style.backgroundColor).toBe('white');
+    expect(input.style.backgroundColor).toBe('rgba(34, 197, 94, 0.12)');
+  });
+  it('restores detached shadow widget surfaces and important styles on clear', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = host.attachShadow({ mode: 'open' });
+    root.innerHTML =
+      '<div style="border:1px solid gray;background-color:white!important"><input style="border:0"></div>';
+    const input = root.querySelector('input')!;
+    const surface = root.querySelector('div')!;
+    applyMissingDataHighlight(input);
+    host.remove();
+    clearHighlights();
+    expect(surface.style.backgroundColor).toBe('white');
+    expect(surface.style.getPropertyPriority('background-color')).toBe('important');
+    expect(input.dataset.jbHighlighted).toBeUndefined();
+  });
+});

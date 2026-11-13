@@ -1,5 +1,6 @@
 import { CONF_FILL, CONF_GREEN } from './constants';
 import { setFieldFeedback, clearFieldFeedback, clearAllFieldFeedback } from './fieldFeedback';
+import { isChoice, queryOpenElements } from './dom';
 
 // Confidence-based and missing-data background tints on form elements.
 // Original background-color and transition are saved in data attributes
@@ -7,9 +8,61 @@ import { setFieldFeedback, clearFieldFeedback, clearAllFieldFeedback } from './f
 
 const highlightedElements = new Set<HTMLElement>();
 const missingDataElements = new Set<HTMLElement>();
+const surfaces = new Map<HTMLElement, HTMLElement>();
+const surfaceOwners = new WeakMap<HTMLElement, HTMLElement>();
+
+/** Some input libraries draw the field on a wrapper around a borderless input. */
+function highlightSurface(element: HTMLElement): HTMLElement {
+  const previous = surfaces.get(element);
+  if (previous) return previous;
+  if (
+    !element.matches('input,textarea') ||
+    isChoice(element) ||
+    element.matches('input[type="file"],input[type="hidden"]')
+  )
+    return element;
+  const own = getComputedStyle(element);
+  const bordered = (style: CSSStyleDeclaration) =>
+    ['Top', 'Right', 'Bottom', 'Left'].some(
+      (side) =>
+        parseFloat(style.getPropertyValue(`border-${side.toLowerCase()}-width`)) > 0 &&
+        !['none', 'hidden'].includes(style.getPropertyValue(`border-${side.toLowerCase()}-style`)),
+    );
+  // An opaque inner background would cover a wrapper tint.
+  if (bordered(own) || !['', 'transparent', 'rgba(0, 0, 0, 0)'].includes(own.backgroundColor))
+    return element;
+  // Stay inside the input's tree and never tint a shared contact row or form.
+  for (
+    let parent = element.parentElement, depth = 0;
+    parent && depth < 3;
+    parent = parent.parentElement, depth++
+  ) {
+    if (parent.matches('form,fieldset,body,[role="group"],[role="form"]')) break;
+    const controls = queryOpenElements(
+      parent,
+      'input,select,textarea,[role="combobox"],[role="textbox"],[contenteditable]',
+    );
+    if (controls.some((control) => control !== element)) break;
+    if (bordered(getComputedStyle(parent))) return parent;
+  }
+  return element;
+}
+
+function paint(element: HTMLElement, color: string): void {
+  const surface = highlightSurface(element);
+  const previousOwner = surfaceOwners.get(surface);
+  if (previousOwner && previousOwner !== element) clearElementHighlight(previousOwner);
+  surfaces.set(element, surface);
+  surfaceOwners.set(surface, element);
+  rememberStyles(surface);
+  highlightedElements.add(element);
+  element.dataset.jbHighlighted = '1';
+  // Keep the wrapper's focus/border transitions intact.
+  if (surface === element) surface.style.transition = 'background-color 0.2s ease';
+  surface.style.backgroundColor = color;
+}
 
 function rememberStyles(element: HTMLElement): void {
-  highlightedElements.add(element);
   element.dataset.jbHighlighted = '1';
 
   if (!('jbOrigBackground' in element.dataset)) {
@@ -24,15 +77,14 @@ function rememberStyles(element: HTMLElement): void {
 export function applyHighlight(element: HTMLElement, confidence: number, confirmed = false): void {
   missingDataElements.delete(element);
   delete element.dataset.jbMissingData;
-  rememberStyles(element);
-
-  element.style.transition = 'background-color 0.2s ease';
-  element.style.backgroundColor =
+  paint(
+    element,
     confidence >= CONF_GREEN
       ? 'rgba(34, 197, 94, 0.12)'
       : confidence >= CONF_FILL
         ? 'rgba(234, 179, 8, 0.12)'
-        : 'rgba(239, 68, 68, 0.12)';
+        : 'rgba(239, 68, 68, 0.12)',
+  );
   setFieldFeedback(
     element,
     confirmed
@@ -46,11 +98,9 @@ export function applyHighlight(element: HTMLElement, confidence: number, confirm
 }
 
 export function applyMissingDataHighlight(element: HTMLElement): void {
-  rememberStyles(element);
   missingDataElements.add(element);
   element.dataset.jbMissingData = '1';
-  element.style.transition = 'background-color 0.2s ease';
-  element.style.backgroundColor = 'rgba(107, 114, 128, 0.12)';
+  paint(element, 'rgba(107, 114, 128, 0.12)');
   setFieldFeedback(element, 'gray');
 }
 
@@ -60,12 +110,21 @@ export function clearMissingDataHighlights(): void {
 }
 
 export function clearElementHighlight(element: HTMLElement): void {
+  const savedSurface = surfaces.get(element);
+  const surface = savedSurface ?? element;
+  surfaces.delete(element);
+  if (surfaceOwners.get(surface) === element) surfaceOwners.delete(surface);
   highlightedElements.delete(element);
   clearFieldFeedback(element);
-  if (!element.dataset.jbHighlighted) return;
+  if (!savedSurface && !element.dataset.jbHighlighted) return;
   missingDataElements.delete(element);
   delete element.dataset.jbMissingData;
-  restoreBackground(element);
+  restoreBackground(surface);
+  if (surface !== element) forgetStyles(surface);
+  forgetStyles(element);
+}
+
+function forgetStyles(element: HTMLElement): void {
   delete element.dataset.jbHighlighted;
   delete element.dataset.jbOrigBackground;
   delete element.dataset.jbOrigTransition;

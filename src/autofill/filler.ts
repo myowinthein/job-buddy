@@ -45,6 +45,13 @@ const settle = async () => {
   await Promise.resolve();
   await Promise.resolve();
 };
+async function settleFramework(): Promise<void> {
+  await settle();
+  // Controlled widgets can reconcile in a scheduled effect after microtasks.
+  // Verify the committed value before snapshotting it or toggling a closing menu.
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  await settle();
+}
 function focus(element: HTMLElement): void {
   try {
     ownWriteEvents(() => element.focus({ preventScroll: true }));
@@ -389,9 +396,9 @@ async function closeDropdown(
       new KeyboardEvent('keyup', { key: 'Escape', bubbles: true, composed: true }),
     );
   });
-  await settle();
+  await settleFramework();
   if (active() && element.getAttribute('aria-expanded') === 'true') safeClick(element, true);
-  await settle();
+  await settleFramework();
 }
 async function rawDropdown(
   element: HTMLElement,
@@ -426,7 +433,7 @@ async function rawDropdown(
       element.dataset.value,
     ];
     safeClick(option, true);
-    await settle();
+    await settleFramework();
     const retained = readFieldValue(element);
     const selected = option.isConnected && option.getAttribute('aria-selected') === 'true';
     const knownValue =
@@ -592,7 +599,7 @@ export async function restore(
     }
   }
   blur(element);
-  await settle();
+  await settleFramework();
   if (state.selection && !state.value && !sameFieldState(state, captureField(element))) {
     const clear = clearControl(element);
     if (clear && active() && isControlAvailable(clear)) {
@@ -683,7 +690,7 @@ export async function fillField(
       const target = element instanceof HTMLInputElement ? dateValue(value, element) : value;
       setText(element, target);
       blur(element);
-      await settle();
+      await settleFramework();
       return valid(element) && equivalent(element, target);
     },
     (state, current) => restore(element, state, current),
