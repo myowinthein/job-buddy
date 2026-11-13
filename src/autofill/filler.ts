@@ -1,4 +1,11 @@
-import { isControlAvailable, isChoice, isChoiceChecked, isTextEditor } from './dom';
+import {
+  composedText,
+  isControlAvailable,
+  isChoice,
+  isChoiceChecked,
+  isTextEditor,
+  queryOpenElements,
+} from './dom';
 import { extractSignals } from './signals';
 import { readFieldValue } from './fieldValue';
 import { captureField, sameFieldState } from './fieldState';
@@ -20,9 +27,13 @@ const nativeCheckedSetter = Object.getOwnPropertyDescriptor(
   window.HTMLInputElement.prototype,
   'checked',
 )?.set;
-const DROPDOWN_WAIT_MS = 1_500;
+const DROPDOWN_WAIT_MS = 4_000;
 const UNBOUND_DROPDOWN_WAIT_MS = 300;
-const DROPDOWN_RUN_BUDGET_MS = 3_000;
+const DROPDOWN_RUN_BUDGET_MS = 8_000;
+export interface FillFieldContext {
+  /** Only supplied for a mapped address.city; never infer locations from arbitrary labels. */
+  cityCountry?: string;
+}
 let dropdownBudget = DROPDOWN_RUN_BUDGET_MS;
 export function resetDropdownBudget(): void {
   dropdownBudget = DROPDOWN_RUN_BUDGET_MS;
@@ -221,7 +232,7 @@ function valid(element: HTMLElement): boolean {
 }
 
 function boxes(root: Document | ShadowRoot): HTMLElement[] {
-  return [...root.querySelectorAll<HTMLElement>('[role="listbox"]')].filter(isControlAvailable);
+  return queryOpenElements(root, '[role="listbox"]').filter(isControlAvailable);
 }
 function scopedOptions(trigger: HTMLElement, before: Set<HTMLElement>): HTMLElement[] {
   const root = trigger.getRootNode() as Document | ShadowRoot;
@@ -230,10 +241,16 @@ function scopedOptions(trigger: HTMLElement, before: Set<HTMLElement>): HTMLElem
       .trim()
       .split(/\s+/)
       .filter(Boolean);
-  if (ids.length)
-    return ids.flatMap((id) => [
-      ...(root.getElementById(id)?.querySelectorAll<HTMLElement>('[role="option"]') ?? []),
-    ]);
+  if (ids.length) {
+    // A native trigger can live inside an input component while its explicitly
+    // linked menu belongs to an enclosing component's shadow root.
+    for (let scope: Document | ShadowRoot = root; ; ) {
+      const menus = ids.map((id) => scope.getElementById(id)).filter((menu) => !!menu);
+      if (menus.length) return menus.flatMap((menu) => queryOpenElements(menu, '[role="option"]'));
+      if (!(scope instanceof ShadowRoot)) return [];
+      scope = scope.host.getRootNode() as Document | ShadowRoot;
+    }
+  }
   const parent =
     trigger.getAttribute('role') === 'combobox' && trigger.querySelector('[role="listbox"]')
       ? trigger
@@ -244,7 +261,7 @@ function scopedOptions(trigger: HTMLElement, before: Set<HTMLElement>): HTMLElem
     parent.querySelectorAll('[role="combobox"],[aria-haspopup="listbox"]').length <= 1
   ) {
     const local = parent.querySelectorAll<HTMLElement>('[role="listbox"]');
-    if (local.length === 1) return [...local[0].querySelectorAll<HTMLElement>('[role="option"]')];
+    if (local.length === 1) return queryOpenElements(local[0], '[role="option"]');
   }
   const candidates = [...new Set([...boxes(root), ...boxes(document)])].filter(
     (box) =>
@@ -252,26 +269,48 @@ function scopedOptions(trigger: HTMLElement, before: Set<HTMLElement>): HTMLElem
       (!!trigger.id && box.getAttribute('aria-labelledby')?.split(/\s+/).includes(trigger.id)),
   );
   return candidates.length === 1
-    ? [...candidates[0].querySelectorAll<HTMLElement>('[role="option"]')]
+    ? queryOpenElements(candidates[0], '[role="option"]')
     : [];
 }
 function ariaOption(
   options: HTMLElement[],
   value: string,
   placeholder = false,
+  context: FillFieldContext = {},
 ): HTMLElement | null {
   const eligible = options.filter(
     (option) =>
       isControlAvailable(option) &&
       (placeholder ||
         !PLACEHOLDER_OPTION_NORMS.has(
-          normalize(option.getAttribute('aria-label') || option.textContent || ''),
+          normalize(option.getAttribute('aria-label') || composedText(option)),
         )),
   );
+  const country = context.cityCountry;
+  if (country) {
+    const cities = eligible.filter((option) => {
+      const parts = (option.getAttribute('aria-label') || composedText(option))
+        .split(',')
+        .map(normalize);
+      return (
+        parts.length > 1 &&
+        parts[0] === normalize(value) &&
+        parts.at(-1) === normalize(country)
+      );
+    });
+    if (cities.length) return cities.length === 1 ? cities[0] : null;
+    // A qualified city from a different country must never win a fuzzy match.
+    return findBestMatch(
+      eligible.filter((option) => !composedText(option).includes(',')),
+      value,
+      composedText,
+      (option) => option.getAttribute('aria-label')?.trim() ?? '',
+    );
+  }
   return findBestMatch(
     eligible,
     value,
-    (option) => option.textContent?.trim() ?? '',
+    composedText,
     (option) => option.getAttribute('aria-label')?.trim() ?? '',
   );
 }
@@ -281,6 +320,7 @@ async function waitOption(
   value: string,
   active: () => boolean,
   placeholder: boolean,
+  context: FillFieldContext,
 ): Promise<HTMLElement | null> {
   const linked =
     trigger.hasAttribute('aria-controls') ||
@@ -305,7 +345,7 @@ async function waitOption(
       clearTimeout(timer);
       if (!active() || !isControlAvailable(trigger)) return finish(null);
       const options = scopedOptions(trigger, before);
-      const option = ariaOption(options, value, placeholder);
+      const option = ariaOption(options, value, placeholder, context);
       if (option) return finish(option);
       if (
         Date.now() - start >= limit ||
@@ -343,6 +383,7 @@ async function rawDropdown(
   value: string,
   active: () => boolean,
   placeholder = false,
+  context: FillFieldContext = {},
 ): Promise<boolean> {
   const root = element.getRootNode() as Document | ShadowRoot;
   const before = new Set([...boxes(root), ...boxes(document)]);
@@ -359,9 +400,10 @@ async function rawDropdown(
     )
       setText(element, value);
     await settle();
-    const option = await waitOption(element, before, value, active, placeholder);
+    const option = await waitOption(element, before, value, active, placeholder, context);
     if (!option || !active() || !isControlAvailable(option)) return false;
-    const label = option.getAttribute('aria-label') || option.textContent?.trim() || '';
+    const text = composedText(option);
+    const label = option.getAttribute('aria-label') || text;
     const priorValue = readFieldValue(element);
     const priorExplicit = [
       element.getAttribute('aria-valuetext'),
@@ -391,7 +433,7 @@ async function rawDropdown(
           !(element instanceof HTMLInputElement) ||
           !option.isConnected));
     if (accepted) {
-      optionConfidence(element, value, label, option.textContent ?? '');
+      optionConfidence(element, value, label, text);
       if (!selected && !knownValue) setWriteConfidence(element, CONF_AI_YELLOW);
     }
     return accepted && isControlAvailable(element);
@@ -550,6 +592,7 @@ export async function fillField(
   element: HTMLElement,
   value: string | string[],
   active: () => boolean = () => true,
+  context: FillFieldContext = {},
 ): Promise<boolean> {
   if (
     (!value.length && !(element instanceof HTMLSelectElement && element.multiple)) ||
@@ -606,7 +649,7 @@ export async function fillField(
         element.getAttribute('role') === 'combobox' ||
         element.getAttribute('aria-haspopup') === 'listbox'
       )
-        return rawDropdown(element, value, current);
+        return rawDropdown(element, value, current, false, context);
       if (
         !(
           element instanceof HTMLInputElement ||

@@ -11,6 +11,25 @@ export function* composedAncestors(element: Element): Generator<Element> {
     yield current;
 }
 
+/** Query a bounded widget subtree, including its open shadow roots. */
+export function queryOpenElements(root: ParentNode, selector: string): HTMLElement[] {
+  const matches = [...root.querySelectorAll<HTMLElement>(selector)];
+  for (const element of root.querySelectorAll('*'))
+    if (element.shadowRoot) matches.push(...queryOpenElements(element.shadowRoot, selector));
+  return matches;
+}
+
+/** Read rendered slot content rather than the empty light DOM of an inner option. */
+export function composedText(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? '';
+  if (node instanceof Element && node.matches('script,style,[aria-hidden="true"]')) return '';
+  const children =
+    node instanceof HTMLSlotElement
+      ? node.assignedNodes({ flatten: true })
+      : [...(node instanceof Element && node.shadowRoot ? node.shadowRoot : node).childNodes];
+  return children.map(composedText).join(' ').replace(/\s+/g, ' ').trim();
+}
+
 export function isTextEditor(element: HTMLElement): boolean {
   if (element.getAttribute('role') === 'textbox') return true;
   const editable = element.getAttribute('contenteditable');
@@ -50,7 +69,9 @@ export function isControlAvailable(element: HTMLElement): boolean {
       style.visibility === 'hidden' ||
       style.visibility === 'collapse' ||
       (parseFloat(style.opacity) === 0 &&
-        (ancestor !== element || !(element instanceof HTMLInputElement) || !isChoice(element)))
+        (ancestor !== element ||
+          !(element instanceof HTMLInputElement) ||
+          (!isChoice(element) && element.type !== 'file')))
     )
       return false;
   }
@@ -69,7 +90,10 @@ export function hasVisibleSurface(
         style.display !== 'none' &&
         style.visibility !== 'hidden' &&
         style.visibility !== 'collapse' &&
-        parseFloat(style.opacity) !== 0;
+        (parseFloat(style.opacity) !== 0 ||
+          (ancestor === element &&
+            element instanceof HTMLInputElement &&
+            element.type === 'file'));
       cache.set(ancestor, visible);
     }
     if (!visible) return false;

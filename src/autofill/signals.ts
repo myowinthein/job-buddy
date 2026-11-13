@@ -1,4 +1,4 @@
-import { isTextEditor } from './dom';
+import { composedAncestors, composedText, isTextEditor, queryOpenElements } from './dom';
 import { ariaName, ariaReference, createLabelContext, labelText, ownText } from './labels';
 import type { LabelContext } from './labels';
 
@@ -44,6 +44,17 @@ function getLabelText(element: HTMLElement, context?: LabelContext): string {
 
 function getNearbyText(element: HTMLElement, context?: LabelContext): string {
   const description = ariaReference(element, 'aria-describedby');
+  // Drop zones often label only their file chooser, with the document question
+  // in a heading outside the shadow host. Keep this as context, never a learned key.
+  if (element instanceof HTMLInputElement && element.type === 'file') {
+    for (const ancestor of composedAncestors(element)) {
+      if (ancestor.matches('body,form,[role="form"]')) break;
+      const controls = queryOpenElements(ancestor, CONTROL_SELECTOR);
+      if (controls.some((control) => control !== element)) break;
+      const headings = queryOpenElements(ancestor, 'h1,h2,h3,h4,h5,h6,[role="heading"]');
+      if (headings.length === 1) return composedText(headings[0]) || description;
+    }
+  }
   const wrapper = element.closest(WRAPPER_SELECTORS);
   if (!wrapper) return description;
   // Shared wrappers are not evidence that another control's label belongs here.

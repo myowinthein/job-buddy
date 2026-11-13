@@ -1,4 +1,5 @@
 import { resolveRuleValue, ruleValuePath } from './ruleValue';
+import { countryName } from '../data/countries';
 import { readFieldValue as getFieldValue } from './fieldValue';
 import {
   getProfile,
@@ -53,6 +54,18 @@ import { publishFillLog } from '@/src/fill-log/retention';
 export interface AutofillScanResult {
   preFilledCount: number;
   totalMatched:   number;
+}
+
+function fillMappedField(
+  element: HTMLElement,
+  value: string | string[],
+  active: () => boolean,
+  profile: Profile,
+  path: string | null,
+): Promise<boolean> {
+  return path === 'address.city'
+    ? fillField(element, value, active, { cityCountry: countryName(profile.address?.country ?? '') })
+    : fillField(element, value, active);
 }
 
 // Controls used by this fill and its edit watchers. writeSession owns the
@@ -289,7 +302,7 @@ function runSilentRefill(): Promise<void> {
         if (!sessionElements.includes(element)) sessionElements.push(element);
         writingElements.add(element);
         let filled: boolean | void;
-        try { filled = await fillField(element, value, isActive); }
+        try { filled = await fillMappedField(element, value, isActive, profile, fieldPath); }
         finally { writingElements.delete(element); }
         if (!isActive()) return;
         if (!noData.entries.includes(entry)) continue; // a manual blur resolved it while awaiting
@@ -727,7 +740,7 @@ async function fillMatch(
       filled = (await fillCheckboxInput(element)) !== false;
     } else {
       const value = element instanceof HTMLSelectElement && element.multiple ? multiSelectValues(profile, match.fieldPath, element) : match.value;
-      filled = value !== null && (await fillField(element, value, isActive)) !== false;
+      filled = value !== null && (await fillMappedField(element, value, isActive, profile, match.fieldPath)) !== false;
     }
 
     if (!isActive()) return false;
