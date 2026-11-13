@@ -48,6 +48,15 @@ export function likelyApplicationForm(
     const signals = metadata.map(({ name, id, autocomplete, ariaLabel, placeholder, label }) =>
       [name, id, autocomplete, ariaLabel, placeholder, label].filter(Boolean).join(' '),
     );
+    // Technical identifiers often hide the only career hint behind a generic
+    // "Import your documents" label (upload_cv, uploadResume, attachment[cv]).
+    // Split identifier words without turning substrings such as cvv into CV.
+    const identifiers = metadata.map(({ name, id }) =>
+      `${name} ${id}`
+        .replace(/([A-Z])([A-Z][a-z])/g, '$1 $2')
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .replace(/[_\-.:[\]]+/g, ' '),
+    );
     const heading =
       group instanceof Element
         ? `${group.getAttribute('aria-label') ?? ''} ${group.querySelector('h1,h2,h3,legend')?.textContent?.slice(0, 300) ?? ''}`
@@ -58,7 +67,7 @@ export function likelyApplicationForm(
       signals.some((s) => IDENTITY.test(s)) &&
       signals.some((s) => EMAIL.test(s)) &&
       CAREER.test(
-        `${heading} ${mainTitle} ${signals.join(' ')} ${metadata.map((field) => field.nearbyText).join(' ')}`,
+        `${heading} ${mainTitle} ${signals.join(' ')} ${identifiers.join(' ')} ${metadata.map((field) => field.nearbyText).join(' ')}`,
       )
     )
       return true;
