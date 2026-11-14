@@ -1,4 +1,5 @@
 import { languageChoiceAliases } from './languageChoices';
+import { calendarInput, calendarValue, closeCalendar } from './calendarInput';
 import { waitNativeSelectCommit } from './nativeSelectCommit';
 import { sameTelephone } from './phoneWidget';
 import { dropzoneSurface, dropzonePreviews, waitDropzoneFile } from './dropzone';
@@ -797,14 +798,21 @@ export async function fillField(
       )
         return false;
       focus(element);
+      if (calendarInput(element)) await settleFramework();
       if (
         !current() ||
         !isControlAvailable(element) ||
         !sameFieldState(before, captureField(element))
       )
         return false;
-      const target = element instanceof HTMLInputElement ? dateValue(value, element) : value;
+      const target = element instanceof HTMLInputElement
+        ? dateValue(calendarInput(element) ? calendarValue(element, value) : value, element)
+        : value;
       setText(element, target);
+      if (calendarInput(element)) {
+        await settleFramework();
+        await closeCalendar(element, current);
+      }
       blur(element);
       await settleFramework();
       return valid(element) && equivalent(element, target);

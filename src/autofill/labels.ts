@@ -26,7 +26,7 @@ export function ownText(element: Element, context?: LabelContext): string {
   const clone = element.cloneNode(true) as Element;
   clone
     .querySelectorAll(
-      'input,select,textarea,button,[role="button"],[role="combobox"],[role="textbox"],[role="radio"],[role="checkbox"],[role="dialog"],[role="grid"],[role="listbox"],[role="menu"],[aria-hidden="true"],[hidden],[contenteditable],[data-jb-field-description],script,style,svg',
+      'input,select,textarea,button,[role="button"],[role="combobox"],[role="textbox"],[role="radio"],[role="checkbox"],[role="dialog"],[role="grid"],[role="listbox"],[role="menu"],[aria-hidden="true"],[hidden],[contenteditable],[data-jb-field-description],.react-datepicker__aria-live,.react-datepicker-popper,script,style,svg',
     )
     .forEach((node) => node.remove());
   const text = (clone.textContent ?? '').replace(/\s+/g, ' ').trim();
@@ -40,7 +40,8 @@ export function ariaReference(element: Element, attribute: string): string {
     .split(/\s+/)
     .map((id) => {
       const reference = root.getElementById?.(id);
-      return reference?.hasAttribute('data-jb-field-description')
+      return reference?.hasAttribute('data-jb-field-description') ||
+        (attribute === 'aria-labelledby' && reference?.matches('.react-datepicker__aria-live,[role="status"],[role="log"]'))
         ? ''
         : reference
           ? attribute === 'aria-labelledby'

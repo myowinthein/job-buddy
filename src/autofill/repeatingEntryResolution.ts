@@ -20,6 +20,7 @@ import {
 } from './ruleContext';
 import { mostRecentIdx, recentEntryIndices } from './entryRecency';
 import { CONF_FILL, CONF_CONTEXT } from './constants';
+import { calendarInput } from './calendarInput';
 
 // Shared by education/work-history sibling-detection (see
 // educationResolution.ts / workHistoryResolution.ts) — same reasoning as
@@ -66,9 +67,9 @@ export function adjustRepeatingEntryMatches(
         bestLabel(extractSignals(match.element)).replace(/\(optional\)|\(required\)/gi, ''),
       );
       const suffix =
-        label === 'startdate'
+        label === 'startdate' || (calendarInput(match.element) && label === 'from')
           ? 'startDate.formatted'
-          : label === 'enddate'
+          : label === 'enddate' || (calendarInput(match.element) && ['to', 'toactualorexpected'].includes(label))
             ? 'endDate.formatted'
             : family === 'workHistory' && label === 'title'
               ? 'title'

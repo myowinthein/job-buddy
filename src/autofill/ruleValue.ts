@@ -1,4 +1,5 @@
 import { mostRecentIdx } from './entryRecency';
+import { calendarInput } from './calendarInput';
 import type { Profile, CurrentSalary, ExpectedSalaryEntry } from '../types/profile';
 import type { FieldSignals } from './signals';
 import { languageName } from '../data/languages';
@@ -174,11 +175,12 @@ export function resolveRuleValue(
       );
     const monthHint = /^(?:mm([/.-])yyyy|yyyy([/.-])mm)$/i.exec(hint.trim());
     const numericDate =
-      ['month', 'date', 'number'].includes(signals.type) || yearOnly || !!monthHint;
+      ['month', 'date', 'number'].includes(signals.type) || yearOnly || !!monthHint || !!(element && calendarInput(element));
     if (!numericDate)
       return fallback !== undefined ? (fallback ?? '') : resolveProfileValue(profile, path);
     if (!entry || (date[3] === 'endDate' && entry.isCurrent)) return '';
     const raw = date[3] === 'startDate' ? entry.startDate : (entry.endDate ?? '');
+    if (element && calendarInput(element)) return /^\d{4}(?:-\d{2})?$/.test(raw) ? raw : '';
     if (signals.type === 'number' || yearOnly)
       return /^\d{4}(?:-\d{2})?$/.test(raw) ? raw.slice(0, 4) : '';
     if (signals.type === 'month') return /^\d{4}-\d{2}$/.test(raw) ? raw : '';
