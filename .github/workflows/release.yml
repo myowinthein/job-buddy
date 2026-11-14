@@ -40,6 +40,13 @@ jobs:
       - name: Test
         run: pnpm test:run
 
+      # Runs before the production env file exists, so the test build never sees release secrets.
+      - name: Install browser for extension tests
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Browser tests
+        run: pnpm test:browser
+
       - name: Write production env file
         run: printf '%s' "${{ secrets.ENV_PRODUCTION }}" > .env.production
 
