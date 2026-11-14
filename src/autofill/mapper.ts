@@ -3,6 +3,7 @@ import type { LearnedMappings, LearnedMappingValue } from '../types/storage';
 import type { FieldSignals } from './signals';
 import { normalize, similarity, PLACEHOLDER_OPTION_NORMS } from './normalizer';
 import { ruleQuestionBlocked } from './ruleContext';
+import { countrySelectSupportsIdentifier } from './countrySelect';
 import { compatibleLinkPath, linkPlatform, requestedLinkPlatform } from './linkPlatforms';
 import { FIELD_DICTIONARY } from './dictionary';
 import { resolveProfileValue } from './resolver';
@@ -333,7 +334,8 @@ export function mapField(
       const related =
         (!asksProse || /\.(description|summary)$/.test(hit)) &&
         (FIELD_DICTIONARY[hit] ?? []).some((alias) => humanNorm.includes(alias));
-      const confidence = human && !primary && !related ? CONF_UNVERIFIED_SIGNAL : CONF_DICT_EXACT;
+      const countryIdentifier = hit === 'address.country' && countrySelectSupportsIdentifier(signals);
+      const confidence = human && !primary && !related && !countryIdentifier ? CONF_UNVERIFIED_SIGNAL : CONF_DICT_EXACT;
       return {
         fieldPath: resolved.fieldPath,
         confidence,

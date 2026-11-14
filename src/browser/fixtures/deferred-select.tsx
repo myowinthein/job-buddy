@@ -13,7 +13,7 @@ export function Application() {
       <output id="error">{error}</output>
       <form hidden={stage !== 'personal'}>
         <label>
-          Country
+          Location
           <select
             id="country"
             required
@@ -27,6 +27,7 @@ export function Application() {
             <option value="">Please Select</option>
             <option value="CAN">Canada</option>
             <option value="THA">Thailand</option>
+            <option value="DEU">Germany</option>
           </select>
         </label>
         <label>
