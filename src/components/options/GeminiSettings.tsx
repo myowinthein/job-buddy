@@ -379,7 +379,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
               className={fieldCls(keyInvalid ? error : undefined, busy || !saved)}
             />
             <p id="gemini-key-help" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Sign in to{' '}
+              Create a key in{' '}
               <a
                 href="https://aistudio.google.com/api-keys"
                 target="_blank"
@@ -388,7 +388,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
               >
                 Google AI Studio <ExternalLink aria-hidden="true" className="inline h-3 w-3" /> <span className="text-xs">(opens in new tab)</span>
                 </a>
-              {' '}to create a key. No credit card required.
+              . No credit card required.
             </p>
           </>
         )}
