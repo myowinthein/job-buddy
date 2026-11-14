@@ -143,6 +143,8 @@ test('development sessions share autofill and learning without changing saved da
     await expect(popup.getByText('Temporary profile', { exact: true })).toHaveCount(0);
     await popup.getByRole('button', { name: 'Fill Form', exact: true }).click();
     await expect(form.locator('[name=firstName]')).toHaveValue('Temporary Applicant');
+    // Manual learning starts watching only after the run completes.
+    await expect(popup.getByRole('region', { name: 'Fill results' })).toBeVisible();
     await form.locator('#novel-answer').fill('jane.doe@example.com');
     await form.locator('#outside').focus();
     await expect
