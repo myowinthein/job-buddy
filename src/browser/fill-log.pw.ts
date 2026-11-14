@@ -287,11 +287,17 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
     exact: true,
   });
   await expect(details).toBeVisible();
+  // The action sits beside the result heading: "Last fill" when shown, otherwise the count.
+  const headingBox = await popup
+    .getByRole('region', { name: 'Fill results' })
+    .locator('p')
+    .first()
+    .boundingBox();
   const summaryBox = await popup
     .getByText(`${counts.filled} fields filled`, { exact: true })
     .boundingBox();
   const detailsBox = await details.boundingBox();
-  expect(Math.abs(summaryBox!.y - detailsBox!.y)).toBeLessThanOrEqual(4);
+  expect(Math.abs(headingBox!.y - detailsBox!.y)).toBeLessThanOrEqual(4);
   expect(summaryBox!.x + summaryBox!.width).toBeLessThan(detailsBox!.x);
   await expect(logPage).toHaveTitle('Job Buddy: Fill Details');
   expect(

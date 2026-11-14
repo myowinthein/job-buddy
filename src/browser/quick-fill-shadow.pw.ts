@@ -11,6 +11,8 @@ test('Quick Fill detects component fields, follows host labels, and keeps unrela
   );
   const widget = page.locator('[data-job-buddy-ui]');
   await expect(widget).toBeVisible();
+  // A confirmed application route keeps its widget for later steps, so check the contact page on its own route.
+  await page.goto('http://127.0.0.1/contact');
   await page.evaluate(() => {
     document.title = 'Contact';
     document.body.innerHTML = '<main><h1>Contact</h1></main>';

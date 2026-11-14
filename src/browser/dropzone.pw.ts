@@ -42,9 +42,12 @@ for (const label of ['Upload application files', 'Upload Bewerbungsdateien']) {
         .locator('input[type=file]')
         .evaluate((input) => (input as HTMLInputElement).files?.[0].name),
     ).toBe('synthetic.pdf');
-    expect(
-      await page.locator('form').evaluate((form) => (form as HTMLFormElement).checkValidity()),
-    ).toBe(true);
+    // Answers are written after the importer settles, so wait for the form to become valid.
+    await expect
+      .poll(() =>
+        page.locator('form').evaluate((form) => (form as HTMLFormElement).checkValidity()),
+      )
+      .toBe(true);
     await extension.send('CLEAR');
     await expect(page.locator('.dz-preview')).toHaveCount(0);
     expect(

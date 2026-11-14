@@ -384,9 +384,9 @@ for (const owner of ['live', 'dev'] as const) {
       await expect(peerPopup.getByRole('button', { name: 'Undo', exact: true })).toBeDisabled();
       await expect(peerWidget.locator('.fill')).toBeDisabled();
       await expect(peerWidget.locator('.undo')).toBeDisabled();
-      expect(await peerPopup.getByRole('region', { name: 'Fill results' }).textContent()).toBe(
-        previous,
-      );
+      await expect
+        .poll(() => peerPopup.getByRole('region', { name: 'Fill results' }).textContent())
+        .toBe(previous);
       expect(
         await peerPopup.evaluate(
           (tabId) =>

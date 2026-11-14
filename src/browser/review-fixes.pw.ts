@@ -170,8 +170,14 @@ test('a fuzzy option written during refill remains yellow and satisfies native v
     document.dispatchEvent(new Event('visibilitychange'));
   });
   await expect(page.locator('#country')).toHaveValue('uk-option');
-  const results = await extension.send('GET_STATUS');
-  expect(results.some((result) => result.needReview === 1 && result.noReview === 0)).toBe(true);
+  // The value is written before the refill finishes updating the result counts.
+  await expect
+    .poll(async () =>
+      (await extension.send('GET_STATUS')).some(
+        (result) => result.needReview === 1 && result.noReview === 0,
+      ),
+    )
+    .toBe(true);
   expect(
     await page
       .locator('#country')

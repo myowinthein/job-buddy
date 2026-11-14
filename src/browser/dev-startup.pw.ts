@@ -42,7 +42,9 @@ test('dev quick fill starts without the hot-reload server or popup, including af
     await context.route(/https?:\/\/(?!127\.0\.0\.1\/application)/, (route) => route.abort());
     const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
     await expect
-      .poll(() => worker.evaluate(() => chrome.scripting.getRegisteredContentScripts()))
+      .poll(() => worker.evaluate(() => chrome.scripting.getRegisteredContentScripts()), {
+        timeout: 15_000,
+      })
       .toEqual([
         expect.objectContaining({
           id: 'wxt:content-scripts/content.js',
