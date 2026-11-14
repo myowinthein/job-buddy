@@ -9,11 +9,15 @@ export async function waitNativeSelectCommit(
 ): Promise<boolean> {
   const started = Date.now();
   let consecutive = 0;
-  while (active() && Date.now() - started < COMMIT_TIMEOUT_MS) {
+  while (active()) {
     await new Promise<void>((resolve) => setTimeout(resolve, COMMIT_SAMPLE_MS));
     if (!active()) return false;
     consecutive = retained() ? consecutive + 1 : 0;
     if (consecutive >= 2) return true;
+    // Background tabs can run a 16 ms timer after the entire recovery budget.
+    // A retained value still needs its second observation before we accept or
+    // reject it. A missing/reverted value gets no extra recovery time.
+    if (Date.now() - started >= COMMIT_TIMEOUT_MS && consecutive === 0) return false;
   }
   return false;
 }
