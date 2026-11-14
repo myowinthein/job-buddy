@@ -53,6 +53,32 @@ export function fileInputProxy(element: HTMLInputElement): HTMLElement | undefin
   if (element.type !== 'file') return undefined;
   const button = element.closest<HTMLElement>('button,[role="button"]');
   const proxies = [...associatedLabels(element), ...(button ? [button] : [])];
+  // Overlay inputs can have no id/label association and tabIndex=-1. Accept
+  // only a local, single-file widget with one explicit file-picker button.
+  for (
+    let parent = element.parentElement, depth = 0;
+    parent && depth < 3;
+    parent = parent.parentElement, depth++
+  ) {
+    if (parent.matches('form,body')) break;
+    const controls = queryOpenElements(
+      parent,
+      'input,select,textarea,[role="combobox"],[role="textbox"],[contenteditable]',
+    );
+    if (controls.some((control) => control !== element)) break;
+    const buttons = queryOpenElements(parent, 'button,[role="button"]');
+    if (
+      buttons.length === 1 &&
+      isControlAvailable(buttons[0]) &&
+      hasVisibleSurface(buttons[0]) &&
+      /^(?:add|choose|select|browse|upload|attach)(?:\s+(?:a|your))?\s+file\s*\*?$/i.test(
+        (buttons[0].getAttribute('aria-label') || composedText(buttons[0])).trim(),
+      )
+    ) {
+      proxies.push(parent);
+      break;
+    }
+  }
   return proxies.find((proxy) => {
     if (!isControlAvailable(proxy) || !hasVisibleSurface(proxy)) return false;
     const controls = queryOpenElements(
