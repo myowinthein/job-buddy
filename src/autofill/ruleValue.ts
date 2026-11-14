@@ -17,6 +17,19 @@ export function resolveRuleValue(
 ): string {
   const element = signals.element;
   const text = questionText(signals);
+  // Availability is relative to the day of the write, even if a pending scan
+  // was held open across midnight.
+  if (isAvailabilityPath(path)) {
+    const target = availabilityPath(path, signals);
+    if (target.endsWith('.availableDate') || !isAvailabilityText(signals))
+      return resolveProfileValue(profile, target);
+    const notice = profile.professional?.noticePeriod;
+    if (!notice) return '';
+    if (notice.immediate) return 'Available immediately.';
+    if (!notice.value || notice.value < 0 || !['day', 'week', 'month'].includes(notice.unit ?? ''))
+      return '';
+    return `Available after ${notice.value} ${notice.unit}${notice.value === 1 ? "'s" : "s'"} notice.`;
+  }
   const isSelect =
     element instanceof HTMLSelectElement ||
     element?.getAttribute('role') === 'combobox' ||
@@ -154,8 +167,9 @@ export function resolveRuleValue(
   return fallback !== undefined ? (fallback ?? '') : resolveProfileValue(profile, path);
 }
 
-/** Keep the ledger's source entry aligned when a question names its currency. */
+/** Keep the source path aligned with the question's representation and currency. */
 export function ruleValuePath(profile: Profile, path: string, signals: FieldSignals): string {
+  if (isAvailabilityPath(path)) return availabilityPath(path, signals);
   const expected = path.match(/^salary\.expected\.(\d+)\.(formatted|amount)$/);
   if (!expected) return path;
   const currencies = salaryConstraints(questionText(signals)).currencies;
@@ -164,6 +178,37 @@ export function ruleValuePath(profile: Profile, path: string, signals: FieldSign
   const index =
     profile.salary?.expected?.findIndex((entry) => entry.currency === currencies[0]) ?? -1;
   return index >= 0 ? `salary.expected.${index}.${expected[2]}` : path;
+}
+
+const AVAILABLE_DATE = 'professional.noticePeriod.availableDate';
+const NOTICE_DURATION = 'professional.noticePeriod.formatted';
+function isAvailabilityPath(path: string): boolean {
+  return path === AVAILABLE_DATE || path === NOTICE_DURATION;
+}
+function availabilityPath(path: string, signals: FieldSignals): string {
+  const element = signals.element;
+  const hint = signals.placeholder ?? '';
+  const dateMask = /d{1,2}/i.test(hint) && /m{1,2}/i.test(hint) && /y{2,4}/i.test(hint);
+  const calendar =
+    element &&
+    (element.hasAttribute('data-datepicker') ||
+      element.hasAttribute('data-flatpickr') ||
+      /datepicker|date-picker|flatpickr/i.test(element.getAttribute('data-controller') ?? ''));
+  if (signals.type === 'date' || /\bdate\b/i.test(visibleQuestion(signals)) || dateMask || calendar)
+    return AVAILABLE_DATE;
+  return isAvailabilityText(signals) ? NOTICE_DURATION : path;
+}
+function isAvailabilityText(signals: FieldSignals): boolean {
+  const element = signals.element;
+  return (
+    (element instanceof HTMLTextAreaElement ||
+      (element instanceof HTMLInputElement && ['text', 'search'].includes(element.type))) &&
+    element.getAttribute('role') !== 'combobox' &&
+    element.getAttribute('aria-haspopup') !== 'listbox' &&
+    !/\b(?:notice\s+period|period\s+of\s+notice|notice\s+required|notice\s+time)\b/i.test(
+      visibleQuestion(signals),
+    )
+  );
 }
 
 function salaryConstraints(text: string) {
