@@ -1,4 +1,5 @@
 import { languageChoiceAliases } from './languageChoices';
+import { educationChoiceAliases } from './educationChoices';
 import { calendarInput, calendarValue, closeCalendar } from './calendarInput';
 import { waitNativeSelectCommit } from './nativeSelectCommit';
 import { sameTelephone } from './phoneWidget';
@@ -424,6 +425,14 @@ async function waitOption(
     function check() {
       clearTimeout(timer);
       if (!active() || !isControlAvailable(trigger)) return finish(null);
+      // An exact declared alias may already be visible. Filtering by the
+      // longer profile value first can hide it and burn the whole wait budget.
+      if (context.optionAliases?.length) {
+        const visible = ariaOption(scopedOptions(trigger, before), value, placeholder, context);
+        const exact = new Set([value, ...context.optionAliases].map(normalize));
+        if (visible && [composedText(visible), visible.getAttribute('aria-label') ?? ''].some((label) => exact.has(normalize(label))))
+          return finish(visible);
+      }
       const options = scopedOptions(trigger, before);
       const option = ariaOption(options, value, placeholder, context);
       if (option) return finish(option);
@@ -494,7 +503,8 @@ async function rawDropdown(
   placeholder = false,
   context: FillFieldContext = {},
 ): Promise<boolean> {
-  context = { ...context, optionAliases: languageChoiceAliases(extractSignals(element), value) };
+  const signals = extractSignals(element);
+  context = { ...context, optionAliases: [...(context.optionAliases ?? []), ...languageChoiceAliases(signals, value), ...educationChoiceAliases(signals, value)] };
   const root = element.getRootNode() as Document | ShadowRoot;
   const before = new Set([...boxes(root), ...boxes(document)]);
   const wasOpen = element.getAttribute('aria-expanded') === 'true';
@@ -755,7 +765,7 @@ export async function fillField(
                 value,
                 (option) => option.value,
                 (option) => option.text.trim(),
-                languageChoiceAliases(extractSignals(element), value),
+                [...languageChoiceAliases(extractSignals(element), value), ...educationChoiceAliases(extractSignals(element), value)],
               ),
             ];
         if (targets.some((option) => !option) || (!element.multiple && targets.length !== 1))

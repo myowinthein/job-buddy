@@ -1,4 +1,6 @@
 import { feedback } from '@/src/ui/feedback';
+import { runAutofillBatches } from './autofillBatches';
+import { autofillThinkingConfig } from './autofillConfig';
 import { KEY_ERROR_MESSAGES } from './keyErrors';
 export { KEY_ERROR_MESSAGES } from './keyErrors';
 import type { Profile } from '@/src/types/profile';
@@ -288,17 +290,16 @@ export async function resolveFieldsWithAI(
   model: GeminiModel,
   fields: AIFieldPayload[],
   profile: object,
-  options: { signal?: AbortSignal; isActive?: () => boolean; onUnavailable?: () => void } = {},
+  options: { signal?: AbortSignal; isActive?: () => boolean; onUnavailable?: () => void; onBatch?: (responses: AIFieldResponse[]) => Promise<void> } = {},
 ): Promise<AIFieldResponse[]> {
   const models = fallbackModels(model);
-  const responses: AIFieldResponse[] = [];
   const encoder = new TextEncoder();
-  const bodyFor = (batch: AIFieldPayload[]) =>
+  const bodyFor = (batch: AIFieldPayload[], candidate: GeminiModel = 'gemini-3.8-flash') =>
     JSON.stringify({
       contents: [
         { parts: [{ text: buildAutofillPrompt(batch, autofillProfilePayload(profile, batch)) }] },
       ],
-      generationConfig: { temperature: 0, maxOutputTokens: AUTOFILL_OUTPUT_TOKENS },
+      generationConfig: { temperature: 0, maxOutputTokens: AUTOFILL_OUTPUT_TOKENS, ...autofillThinkingConfig(candidate) },
     });
   if (fields.length > MAX_AI_FIELDS_PER_RUN) options.onUnavailable?.();
   const batches: AIFieldPayload[][] = [];
@@ -317,8 +318,7 @@ export async function resolveFieldsWithAI(
     else options.onUnavailable?.();
   }
   if (batch.length || !fields.length) batches.push(batch);
-  for (const items of batches) {
-    const body = bodyFor(items);
+  return runAutofillBatches(batches, async (items) => {
     let lastError: unknown = new Error('AI autofill request failed: all models rate limited');
     for (let i = 0; i < models.length; i++) {
       options.signal?.throwIfAborted();
@@ -331,7 +331,7 @@ export async function resolveFieldsWithAI(
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body,
+            body: bodyFor(items, models[i]),
             signal: options.signal,
           },
           async (response) => {
@@ -353,34 +353,23 @@ export async function resolveFieldsWithAI(
           if (AUTOFILL_FALLBACK_STATUSES.includes(result.status)) continue;
           throw lastError;
         }
-        responses.push(...parseAutofillResponse(extractGeminiText(result.data) ?? ''));
-        lastError = undefined;
-        break;
+        return parseAutofillResponse(extractGeminiText(result.data) ?? '');
       } catch (error) {
         options.signal?.throwIfAborted();
         if ((error as { name?: string })?.name === 'TimeoutError') {
           lastError = error;
           continue;
         }
-        if (responses.length) {
-          options.onUnavailable?.();
-          return responses;
-        }
         throw error instanceof Error && /^(Invalid AI|AI autofill)/.test(error.message)
           ? error
           : new Error('Network error during AI autofill');
       }
     }
-    // Retain answers from earlier batches if a later batch cannot be processed.
-    if (lastError) {
-      if (responses.length) {
-        options.onUnavailable?.();
-        return responses;
-      }
-      throw lastError;
-    }
-  }
-  return responses;
+    throw lastError;
+  }, {
+    ...options,
+    isActive: () => !options.signal?.aborted && (options.isActive?.() ?? true),
+  });
 }
 
 function parseAutofillResponse(text: string): AIFieldResponse[] {
