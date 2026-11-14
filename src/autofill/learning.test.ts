@@ -234,7 +234,7 @@ describe('learned reuse safety', () => {
       element,
     }));
     adjustEducationMatches(matches, RULE_PROFILE);
-    expect(matches.map((match) => match.value)).toEqual(['Old University', 'New University']);
+    expect(matches.map((match) => match.value)).toEqual(['New University', 'Old University']);
   });
   it('preserves explicit entry choices and empty stale paths', () => {
     document.body.innerHTML = '<label>Institution<input></label>';

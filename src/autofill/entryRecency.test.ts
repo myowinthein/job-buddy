@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mostRecentIdx } from './entryRecency';
+import { mostRecentIdx, recentEntryIndices } from './entryRecency';
 
 describe('mostRecentIdx', () => {
   it.each<{ name: string; entries: Parameters<typeof mostRecentIdx>[0]; expected: number }>([
@@ -48,4 +48,19 @@ describe('mostRecentIdx', () => {
     expect(mostRecentIdx(entries)).toBe(expected);
     expect(entries).toEqual(original);
   });
+});
+
+it('orders original indices by current status and start date, with stable undated ties', () => {
+  const entries = [
+    { startDate: '2025-01' },
+    {},
+    { startDate: '2020-01', isCurrent: true },
+    { startDate: '2023' },
+    {},
+    { startDate: '2021-01', isCurrent: true },
+  ];
+  const before = structuredClone(entries);
+  expect(recentEntryIndices(entries)).toEqual([5, 2, 0, 3, 1, 4]);
+  expect(entries).toEqual(before);
+  expect(recentEntryIndices([])).toEqual([]);
 });

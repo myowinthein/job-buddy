@@ -8,6 +8,7 @@ import { scanForm } from './scanner';
 import { cancelAutofillRun, executeAutofill, scanAutofill, undoAutofill } from './index';
 import { allowedAIPath, exactAIOption } from './aiSafety';
 import type { AIFieldResponse, AIFieldPayload } from '../resume-ai/types';
+import type { FillLogField } from './fillLog';
 
 const profile = structuredClone(RULE_PROFILE);
 profile.id = 'synthetic-private-id';
@@ -42,10 +43,7 @@ beforeEach(() => {
     width: 100,
     height: 30,
   } as DOMRect);
-  vi.stubGlobal(
-    'chrome',
-    geminiSeededChrome(profile),
-  );
+  vi.stubGlobal('chrome', geminiSeededChrome(profile));
   fetchMock.mockReset();
   vi.stubGlobal('fetch', fetchMock);
 });
@@ -56,6 +54,88 @@ afterEach(async () => {
 });
 
 describe('AI response boundaries', () => {
+  it('does not borrow the entry of an adjacent current-status choice without a row assignment', async () => {
+    document.body.innerHTML =
+      '<fieldset><legend>Work History</legend><fieldset><legend>Currently working here</legend><label><input id="current" type="checkbox" checked>Yes</label></fieldset><fieldset><legend>Currently working here</legend><label><input id="past" type="checkbox">Yes</label></fieldset></fieldset>';
+    const element = document.querySelector<HTMLInputElement>('#current')!;
+    const record: FillLogField = {
+      id: 'current',
+      label: 'Currently working here',
+      kind: 'checkbox',
+      rule: { outcome: 'filled', profilePath: 'workHistory.1.isCurrent' },
+      ai: { outcome: 'not_sent' },
+      outcome: 'high_confidence',
+      source: 'rules',
+    };
+    fetchMock.mockResolvedValue(
+      response([{ fieldId: 'field_001', selectedOptions: ['option_001'], confidence: 'high' }]),
+    );
+    await runAIAutofill([], profile, result(), [], { fieldRecords: new Map([[element, record]]) });
+    expect(sentFields()[0]).toMatchObject({ section: 'workHistory', profileEntryIndex: null });
+    expect(document.querySelector<HTMLInputElement>('#past')!.checked).toBe(false);
+  });
+  it('keeps a resolved history row bound even when the portal has no section heading', async () => {
+    document.body.innerHTML = '<form><label>Job detail<textarea></textarea></label></form>';
+    const element = document.querySelector('textarea')!;
+    const record: FillLogField = {
+      id: 'detail',
+      label: 'Job detail',
+      kind: 'text',
+      rule: { outcome: 'missing_data', profilePath: 'workHistory.1.description' },
+      ai: { outcome: 'not_sent' },
+      outcome: 'missing_data',
+      source: null,
+    };
+    fetchMock.mockResolvedValue(response(reply('workHistory.0.title')));
+    await runAIAutofill(
+      [{ type: 'text', element, signals: extractSignals(element), originalState: 'noData' }],
+      profile,
+      result(),
+      [],
+      { fieldRecords: new Map([[element, record]]) },
+    );
+    expect(sentFields()[0]).toMatchObject({ section: 'workHistory', profileEntryIndex: 1 });
+    expect(element.value).toBe('');
+  });
+  it('keeps partial repeated rows bound to their selected profile entry and leaves surplus rows empty', async () => {
+    document.body.innerHTML =
+      '<form><fieldset><legend>Work History</legend><div><input id="company0"><label>Achievements<textarea id="detail0"></textarea></label></div><div><input id="company1"><label>Achievements<textarea id="detail1"></textarea></label></div><div><input id="company2"><label>Job category<select id="detail2"><option value="">Choose</option><option value="yes">Engineering</option></select></label></div></fieldset></form>';
+    const source = structuredClone(profile);
+    source.workHistory[0].description = 'Old role detail';
+    const records = new Map<HTMLElement, FillLogField>();
+    for (const [row, index] of [1, 0, 2].entries())
+      records.set(document.getElementById(`company${row}`)!, {
+        id: `company${row}`,
+        label: 'Company',
+        kind: 'text',
+        rule: { outcome: 'filled', profilePath: `workHistory.${index}.company` },
+        ai: { outcome: 'not_sent' },
+        outcome: 'high_confidence',
+        source: 'rules',
+      });
+    const candidates = [...document.querySelectorAll<HTMLElement>('textarea,select')].map(
+      (element) => ({
+        type: 'text' as const,
+        element,
+        signals: extractSignals(element),
+        originalState: 'noData' as const,
+      }),
+    );
+    fetchMock.mockResolvedValue(
+      response([
+        { fieldId: 'field_001', profilePath: 'workHistory.0.description', confidence: 'high' },
+        { fieldId: 'field_002', profilePath: 'workHistory.0.description', confidence: 'high' },
+        { fieldId: 'field_003', selectedOption: 'option_001', confidence: 'high' },
+      ]),
+    );
+    await runAIAutofill(candidates, source, result(), [], { fieldRecords: records });
+    expect(sentFields().map((field) => field.profileEntryIndex)).toEqual([1, 0, null]);
+    expect((document.querySelector('#detail0') as HTMLTextAreaElement).value).toBe('');
+    expect((document.querySelector('#detail1') as HTMLTextAreaElement).value).toBe(
+      'Old role detail',
+    );
+    expect((document.querySelector('#detail2') as HTMLSelectElement).value).toBe('');
+  });
   it.each([
     'id',
     'documents.cv.file.base64',
@@ -251,20 +331,30 @@ describe('AI choices and stale requests', () => {
   it('rejects a stale mode confirmation instead of returning a zero-field success', async () => {
     document.body.innerHTML = '<label>First name<input value="Existing"></label>';
     await scanAutofill('stale-confirmation');
-    await new Promise<void>(resolve => chrome.storage.local.set({ profile: { ...profile, id: 'new-person' } }, resolve));
+    await new Promise<void>((resolve) =>
+      chrome.storage.local.set({ profile: { ...profile, id: 'new-person' } }, resolve),
+    );
     await expect(executeAutofill('overwrite')).rejects.toThrow('autofill_failed');
     expect(document.querySelector('input')!.value).toBe('Existing');
   });
   it('does not apply an AI choice after an unstructured prompt changes', async () => {
-    document.body.innerHTML = '<p id="prompt">Preferred work location?</p><label><input type="radio" name="location" value="remote">Remote</label><label><input type="radio" name="location" value="onsite">Onsite</label>';
+    document.body.innerHTML =
+      '<p id="prompt">Preferred work location?</p><label><input type="radio" name="location" value="remote">Remote</label><label><input type="radio" name="location" value="onsite">Onsite</label>';
     let release!: (value: unknown) => void;
-    fetchMock.mockImplementation(() => new Promise(resolve => { release = resolve; }));
+    fetchMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
     const pending = runAIAutofill([], profile, result(), []);
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
     document.querySelector('#prompt')!.textContent = 'Preferred interview location?';
     release(response([{ fieldId: 'field_001', selectedOption: 'option_001', confidence: 'high' }]));
     await pending;
-    expect([...document.querySelectorAll<HTMLInputElement>('input')].some(element => element.checked)).toBe(false);
+    expect(
+      [...document.querySelectorAll<HTMLInputElement>('input')].some((element) => element.checked),
+    ).toBe(false);
   });
   it('sends native types, section context, repeated indices and constraints', async () => {
     document.body.innerHTML =

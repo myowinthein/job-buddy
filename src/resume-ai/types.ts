@@ -99,6 +99,8 @@ export interface AIFieldPayload {
   multiple?: boolean;
   section?: string;
   entryIndex?: number;
+  /** Original profile index selected for this history row; null means no available entry. */
+  profileEntryIndex?: number | null;
   autocomplete?: string;
   constraints?: { min?: string; max?: string; step?: string; pattern?: string; maxLength?: number };
 }

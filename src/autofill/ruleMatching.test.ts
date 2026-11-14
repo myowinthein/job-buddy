@@ -130,9 +130,9 @@ it('keeps partial repeated work entries associated with their row', async () => 
   await fill(
     '<fieldset><label>Company<input id="a"></label><label>Job title<input id="title"></label></fieldset><fieldset><label>Company<input id="b"></label></fieldset>',
   );
-  expect(document.querySelector<HTMLInputElement>('#a')!.value).toBe('Old Company');
-  expect(document.querySelector<HTMLInputElement>('#title')!.value).toBe('Junior');
-  expect(document.querySelector<HTMLInputElement>('#b')!.value).toBe('New Company');
+  expect(document.querySelector<HTMLInputElement>('#a')!.value).toBe('New Company');
+  expect(document.querySelector<HTMLInputElement>('#title')!.value).toBe('Senior');
+  expect(document.querySelector<HTMLInputElement>('#b')!.value).toBe('Old Company');
 });
 it('keeps a phone country code local to its contact section', async () => {
   await fill(

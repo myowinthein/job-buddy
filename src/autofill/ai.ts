@@ -8,6 +8,8 @@ import { bestLabel, extractSignals } from './signals';
 import { resolveRuleValue, ruleValuePath } from './ruleValue';
 import { allowedAIPath, exactAIOption, aiQuestionIdentity, aiQuestionAllowed } from './aiSafety';
 import { sectionFamily, scopeRoot, ruleQuestionBlocked } from './ruleContext';
+import { recentEntryIndices } from './entryRecency';
+import { matchedEntryIndex } from './repeatingEntryResolution';
 import { resolveFieldsWithAI } from '../resume-ai/gemini';
 import type { AIFieldPayload, AIFieldResponse, AIOptionPayload } from '../resume-ai/types';
 import { toGeminiModel } from '../resume-ai/types';
@@ -116,6 +118,23 @@ export async function runAIAutofill(
   }
 
   const candidateMap = new Map<string, Candidate>();
+  const resolvedFields = [...(options.fieldRecords ?? [])].map(([element, record]) => ({
+    element,
+    fieldPath: record.rule.profilePath ?? null,
+    kind: record.kind,
+  }));
+  const historyContext = (element: HTMLElement, family: string | undefined, row?: number) => {
+    if (family !== 'education' && family !== 'workHistory') return {};
+    const entries = profile[family] ?? [];
+    const resolved = matchedEntryIndex(element, `${family}.`, resolvedFields.filter(field =>
+      field.element === element || !['checkbox', 'radio'].includes(field.kind)));
+    const index = resolved === undefined
+      ? (row === undefined ? undefined : recentEntryIndices(entries)[row])
+      : resolved;
+    return {
+      profileEntryIndex: index != null && index >= 0 && index < entries.length ? index : null,
+    };
+  };
   const candidateRecords = new Map<string, FillLogField>();
   const identified = (items: AIOptionPayload[]) => items.map((item, i) => ({ ...item, id: `option_${String(i + 1).padStart(3, '0')}` }));
   const payload: AIFieldPayload[] = candidates.map((c, i) => {
@@ -123,6 +142,7 @@ export async function runAIAutofill(
     if (c.type === 'text' && options.formFields) c.signals = extractSignals(c.element);
     candidateMap.set(fieldId, c);
     const record = options.fieldRecords?.get(c.type === 'text' ? c.element : c.group.options[0].element);
+    const matchedFamily = /^(education|workHistory)\.\d+\./.exec(record?.rule.profilePath ?? '')?.[1];
     if (record) {
       record.ai.outcome = 'sent';
       candidateRecords.set(fieldId, record);
@@ -131,7 +151,7 @@ export async function runAIAutofill(
     if (c.type === 'text') {
       const s = c.signals;
       const baseLabel = bestLabel(s);
-      const family = sectionFamily(c.element);
+      const family = sectionFamily(c.element) ?? matchedFamily;
       const repeats = (options.formFields ?? textCandidates.map(candidate => candidate.signals)).filter(other =>
         bestLabel(other) === baseLabel && sectionFamily(other.element) === family && scopeRoot(other.element) === scopeRoot(c.element));
       const native = c.element instanceof HTMLInputElement ? c.element : undefined;
@@ -141,6 +161,11 @@ export async function runAIAutofill(
         inputType: s.type,
         ...(family && { section: family }),
         ...(repeats.length > 1 && { entryIndex: repeats.findIndex(other => other.element === c.element) }),
+        ...historyContext(
+          c.element,
+          family,
+          Math.max(0, repeats.findIndex(other => other.element === c.element)),
+        ),
         ...(s.autocomplete && { autocomplete: s.autocomplete }),
         ...(native && { constraints: { min: native.min || undefined, max: native.max || undefined, step: native.step || undefined, pattern: native.pattern || undefined, maxLength: native.maxLength >= 0 ? native.maxLength : undefined } }),
         label: baseLabel,
@@ -168,7 +193,8 @@ export async function runAIAutofill(
       label: questionLabel(c.group.options[0].element) || c.group.groupLabel,
       visibleLabel: questionLabel(c.group.options[0].element),
       options: identified(c.group.options.map((o) => ({ label: o.label, value: o.value }))),
-      section: sectionFamily(c.group.options[0].element),
+      section: sectionFamily(c.group.options[0].element) ?? matchedFamily,
+      ...historyContext(c.group.options[0].element, sectionFamily(c.group.options[0].element) ?? matchedFamily),
     };
   });
 
@@ -257,6 +283,11 @@ export async function runAIAutofill(
         tracked.ai.outcome = 'skipped'; tracked.ai.skipReason = 'answer_changed'; tracked.outcome = hasValue ? 'manual' : 'not_matched';
         tracked.source = hasValue ? 'manual' : null; tracked.reason = 'value_changed';
       }
+      continue;
+    }
+    if (field.profileEntryIndex === null) {
+      recordAIOutcome(candidate, resp.fieldId, resp.confidence, 'unchanged',
+        tracked?.rule.outcome === 'missing_data' ? 'missing_data' : undefined);
       continue;
     }
     // Ignore malformed/unsafe answer shapes before touching the DOM.

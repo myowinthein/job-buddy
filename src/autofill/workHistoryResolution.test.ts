@@ -63,17 +63,17 @@ describe('adjustWorkHistoryMatches — single occurrence uses the most recent en
   });
 });
 
-describe('adjustWorkHistoryMatches — repeated occurrences use sequential indices', () => {
-  it('assigns sequential indices to repeated company markers, in scan order', () => {
+describe('adjustWorkHistoryMatches — repeated occurrences use recency order', () => {
+  it('assigns recency order to repeated company markers, in scan order', () => {
     const matches = [
       marker('workHistory.company', 'dictionary_exact'),
       marker('workHistory.company', 'dictionary_exact'),
     ];
     adjustWorkHistoryMatches(matches, PROFILE);
-    expect(matches[0].fieldPath).toBe('workHistory.0.company');
-    expect(matches[0].value).toBe('Beta Corp');
-    expect(matches[1].fieldPath).toBe('workHistory.1.company');
-    expect(matches[1].value).toBe('Acme');
+    expect(matches[0].fieldPath).toBe('workHistory.1.company');
+    expect(matches[0].value).toBe('Acme');
+    expect(matches[1].fieldPath).toBe('workHistory.0.company');
+    expect(matches[1].value).toBe('Beta Corp');
   });
 
   it('pairs company and title independently, by marker type', () => {
@@ -85,10 +85,10 @@ describe('adjustWorkHistoryMatches — repeated occurrences use sequential indic
     ];
     adjustWorkHistoryMatches(matches, PROFILE);
     expect(matches.map((m) => [m.fieldPath, m.value])).toEqual([
-      ['workHistory.0.company', 'Beta Corp'],
-      ['workHistory.0.title', 'Junior Dev'],
       ['workHistory.1.company', 'Acme'],
       ['workHistory.1.title', 'Senior Engineer'],
+      ['workHistory.0.company', 'Beta Corp'],
+      ['workHistory.0.title', 'Junior Dev'],
     ]);
   });
 });

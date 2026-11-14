@@ -64,17 +64,17 @@ describe('adjustEducationMatches — single occurrence uses the most recent entr
   });
 });
 
-describe('adjustEducationMatches — repeated occurrences use sequential indices', () => {
-  it('assigns sequential indices to repeated institution markers, in scan order', () => {
+describe('adjustEducationMatches — repeated occurrences use recency order', () => {
+  it('assigns recency order to repeated institution markers, in scan order', () => {
     const matches = [
       marker('education.institution', 'dictionary_exact'),
       marker('education.institution', 'dictionary_exact'),
     ];
     adjustEducationMatches(matches, PROFILE);
-    expect(matches[0].fieldPath).toBe('education.0.institution');
-    expect(matches[0].value).toBe('State U');
-    expect(matches[1].fieldPath).toBe('education.1.institution');
-    expect(matches[1].value).toBe('MIT');
+    expect(matches[0].fieldPath).toBe('education.1.institution');
+    expect(matches[0].value).toBe('MIT');
+    expect(matches[1].fieldPath).toBe('education.0.institution');
+    expect(matches[1].value).toBe('State U');
   });
 
   it('pairs fieldOfStudy and degree independently, by marker type', () => {
@@ -86,10 +86,10 @@ describe('adjustEducationMatches — repeated occurrences use sequential indices
     ];
     adjustEducationMatches(matches, PROFILE);
     expect(matches.map((m) => [m.fieldPath, m.value])).toEqual([
-      ['education.0.degree', 'BSc'],
-      ['education.0.fieldOfStudy', 'Physics'],
       ['education.1.degree', 'MSc'],
       ['education.1.fieldOfStudy', 'CS'],
+      ['education.0.degree', 'BSc'],
+      ['education.0.fieldOfStudy', 'Physics'],
     ]);
   });
 });

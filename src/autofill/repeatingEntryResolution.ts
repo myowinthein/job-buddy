@@ -18,7 +18,7 @@ import {
   containsControl,
   sectionFamily,
 } from './ruleContext';
-import { mostRecentIdx } from './entryRecency';
+import { mostRecentIdx, recentEntryIndices } from './entryRecency';
 import { CONF_FILL, CONF_CONTEXT } from './constants';
 
 // Shared by education/work-history sibling-detection (see
@@ -43,8 +43,8 @@ export function repeatingEntryMarkers(family: ProfileCollectionPath): readonly s
   return repeatingMarkers.get(family) ?? [];
 }
 
-// Resolve a single entry to the most relevant profile entry. Repeated rows
-// share an anchor field so missing fields cannot mix two profile entries.
+// History rows use current/latest first; other collections retain saved order.
+// Rows share an anchor field so missing fields cannot mix two profile entries.
 // Every form is independent; shadow field components share their composed form. Explicit learned paths stay unchanged.
 export function adjustRepeatingEntryMatches(
   matches: FieldMatch[],
@@ -97,6 +97,8 @@ export function adjustRepeatingEntryMatches(
     scopes.set(scope, group);
   }
   for (const group of scopes.values()) {
+    const chronological = family === 'education' || family === 'workHistory';
+    const ordered = chronological ? recentEntryIndices(entries) : [];
     // Weak guesses remain available for review, but cannot establish a row.
     // An essay mentioning a role must not shift real employment entries.
     const byMarker = markers.map((marker) =>
@@ -107,7 +109,7 @@ export function adjustRepeatingEntryMatches(
       let idx = mostRecentIdx(entries);
       if (anchors.length > 1) {
         const own = byMarker.find((items) => items.includes(match));
-        idx =
+        const row =
           match.element && anchors.every((anchor) => anchor.element)
             ? entryIndex(
                 match.element,
@@ -115,11 +117,41 @@ export function adjustRepeatingEntryMatches(
                 group.map((field) => field.element!),
               )
             : (own?.indexOf(match) ?? idx);
+        idx = chronological ? (ordered[row] ?? entries.length) : row;
       }
       const fieldPath = `${prefix}${idx}.${match.fieldPath!.slice(prefix.length)}`;
       match.fieldPath = fieldPath;
       match.value = resolveProfileValue(profile, fieldPath) || null;
     }
+  }
+}
+
+/** A structural row's resolved source entry, shared by checkboxes and AI.
+ * null means the container spans different entries; never borrow a sibling row. */
+export function matchedEntryIndex(
+  element: HTMLElement,
+  prefix: string,
+  fields: ReadonlyArray<{ element?: HTMLElement; fieldPath: string | null }>,
+): number | null | undefined {
+  if (typeof element?.getRootNode !== 'function') return;
+  const scope = scopeRoot(element);
+  const relevant = fields.filter(
+    (field) =>
+      field.element &&
+      typeof field.element.getRootNode === 'function' &&
+      scopeRoot(field.element) === scope &&
+      field.fieldPath?.startsWith(prefix),
+  );
+  for (let container: Element | null = element; container; container = composedParent(container)) {
+    const indices = new Set(
+      relevant
+        .filter((field) => containsControl(container, field.element!))
+        .map((field) => Number(field.fieldPath!.slice(prefix.length).split('.')[0]))
+        .filter(Number.isInteger),
+    );
+    if (indices.size === 1) return [...indices][0];
+    if (indices.size > 1) return null;
+    if (container.matches('form')) break;
   }
 }
 
@@ -145,26 +177,14 @@ export function matchCurrentEntryCheckboxes(
   if (matched.length === 0) return [];
 
   const result: { element: HTMLElement; fieldPath: string }[] = [];
-  matched.forEach((c, i) => {
-    let idx = matched.length === 1 ? mostRecentIdx(entries) : i;
-    const fields = matches.filter((match) => match.element && match.fieldPath?.startsWith(prefix));
-    for (
-      let container =
-        typeof c.element?.getRootNode === 'function' ? composedParent(c.element) : null;
-      container;
-      container = composedParent(container)
-    ) {
-      const indices = new Set(
-        fields
-          .filter((match) => containsControl(container, match.element!))
-          .map((match) => Number(match.fieldPath!.split('.')[1])),
-      );
-      if (indices.size === 1) {
-        idx = [...indices][0];
-        break;
-      }
-      if (indices.size > 1) break;
-    }
+  const ordered = recentEntryIndices(entries);
+  matched.forEach((c) => {
+    const scope = (element: HTMLElement) =>
+      typeof element?.getRootNode === 'function' ? scopeRoot(element) : undefined;
+    const siblings = matched.filter((other) => scope(other.element) === scope(c.element));
+    const resolved = matchedEntryIndex(c.element, prefix, matches);
+    if (resolved === null) return;
+    const idx = resolved ?? ordered[siblings.indexOf(c)] ?? entries.length;
     if (entries[idx]?.isCurrent) {
       result.push({ element: c.element, fieldPath: `${prefix}${idx}.isCurrent` });
     }

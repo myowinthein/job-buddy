@@ -11,6 +11,15 @@ import { compatibleLinkPath } from './linkPlatforms';
 
 /** A response can only name data exposed for this particular question. */
 export function allowedAIPath(profile: Profile, field: AIFieldPayload, path: string): boolean {
+  if (field.section === 'education' || field.section === 'workHistory') {
+    const history = /^(education|workHistory)\.(\d+)\./.exec(path);
+    if (field.profileEntryIndex === null) return false;
+    if (
+      field.profileEntryIndex !== undefined &&
+      (!history || history[1] !== field.section || Number(history[2]) !== field.profileEntryIndex)
+    )
+      return false;
+  }
   const languagePath = /^languages\.(\d+)\.proficiency$/.exec(path);
   if (languagePath) {
     const codes = questionLanguageCodes(
