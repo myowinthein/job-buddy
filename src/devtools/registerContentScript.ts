@@ -2,8 +2,8 @@
 // a second script. Production uses the generated static manifest entry.
 export const DEV_CONTENT_SCRIPT_ID = 'wxt:content-scripts/content.js';
 
-export async function registerDevelopmentContentScript(): Promise<void> {
-  const script: chrome.scripting.RegisteredContentScript = {
+export async function registerDevelopmentContentScript(
+  script: chrome.scripting.RegisteredContentScript = {
     id: DEV_CONTENT_SCRIPT_ID,
     matches: ['*://*/*'],
     js: ['content-scripts/content.js'],
@@ -11,7 +11,8 @@ export async function registerDevelopmentContentScript(): Promise<void> {
     matchOriginAsFallback: true,
     runAt: 'document_idle',
     persistAcrossSessions: true,
-  };
+  },
+): Promise<void> {
   const registered = await chrome.scripting.getRegisteredContentScripts({ ids: [script.id] });
   if (registered.length) {
     await chrome.scripting.updateContentScripts([script]);

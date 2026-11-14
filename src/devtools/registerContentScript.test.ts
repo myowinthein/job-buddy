@@ -46,3 +46,19 @@ it('surfaces a real registration failure rather than treating it as a duplicate'
   await expect(registerDevelopmentContentScript()).rejects.toThrow('Permission denied');
   expect(scripting.updateContentScripts).not.toHaveBeenCalled();
 });
+
+it('preserves WXT hot-reload script options when reconciling a startup race', async () => {
+  const script = {
+    id: DEV_CONTENT_SCRIPT_ID,
+    js: ['content-scripts/content.js'],
+    css: ['content-scripts/content.css'],
+    matches: ['*://*/*'],
+    allFrames: true,
+  };
+  scripting.registerContentScripts.mockRejectedValue(new Error('Duplicate script ID'));
+  scripting.getRegisteredContentScripts
+    .mockResolvedValueOnce([])
+    .mockResolvedValueOnce([{ id: script.id }]);
+  await registerDevelopmentContentScript(script);
+  expect(scripting.updateContentScripts).toHaveBeenCalledWith([script]);
+});

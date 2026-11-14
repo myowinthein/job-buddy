@@ -1,22 +1,23 @@
 import { defineConfig } from 'wxt';
+import { transformWxtBackground } from './src/devtools/wxtBackgroundTransform';
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   // Use one loopback address for Chrome and the dev server. Resolving localhost
   // to IPv6 alone can leave Chrome's IPv4 connection refused.
-  dev: { reloadCommand: false, server: { host: '127.0.0.1', origin: 'http://127.0.0.1' } },
+  dev: {
+    reloadCommand: false,
+    server: { host: '127.0.0.1', origin: 'http://127.0.0.1', port: 3000, strictPort: true },
+  },
   vite: () => ({
-    plugins: [{
-      name: 'job-buddy-disabled-dev-command',
-      enforce: 'pre',
-      transform(code, id) {
-        // WXT 0.20.26 attaches this listener even with reloadCommand disabled.
-        // Chrome omits the commands API when no commands are declared.
-        if (!id.startsWith('\0virtual:wxt-background-entrypoint?')) return;
-        return code.replace(/browser\.commands\.onCommand\.addListener\(\(command\) => \{[\s\S]*?\n\s*\}\);/, '');
+    plugins: [
+      {
+        name: 'job-buddy-dev-background',
+        enforce: 'pre',
+        transform: transformWxtBackground,
       },
-    }],
+    ],
   }),
   manifest: ({ mode }) => ({
     name: 'Job Buddy: Autofill Job Applications',
@@ -31,14 +32,16 @@ export default defineConfig({
     // toolbar icon are distinguishable from a Chrome Web Store install at a
     // glance — not just the in-app logo. Omitted for production so WXT's
     // normal public/icon/*.png auto-discovery applies unchanged.
-    ...(mode === 'development' ? {
-      icons: {
-        16: 'icon-dev/16.png',
-        32: 'icon-dev/32.png',
-        48: 'icon-dev/48.png',
-        96: 'icon-dev/96.png',
-        128: 'icon-dev/128.png',
-      },
-    } : {}),
+    ...(mode === 'development'
+      ? {
+          icons: {
+            16: 'icon-dev/16.png',
+            32: 'icon-dev/32.png',
+            48: 'icon-dev/48.png',
+            96: 'icon-dev/96.png',
+            128: 'icon-dev/128.png',
+          },
+        }
+      : {}),
   }),
 });
