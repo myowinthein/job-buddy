@@ -1,4 +1,4 @@
-<!-- helm-rule: agent-helm@v3.2.5 -->
+<!-- helm-rule: agent-helm@v3.9.0 -->
 # Git Rules
 
 ---
@@ -18,7 +18,7 @@ Applies without a loaded plugin. Resolve configuration before dependent mutation
 
 ## Host capabilities and operational state
 
-Verify the selected working tree and only the capabilities needed for the planned action; folder access proves neither Git/provider access nor an available test environment. Verify results before claiming a commit, merge, push, promotion or checkpoint succeeded. Follow sibling `safety.md` for approval, user-work preservation, capability failures and its **Operational Helm state** boundary: loading rules or switching agents never grants state access/migration, and missing owning procedures leave records untouched. The copied pair remains sufficient for ordinary work without a package/runtime dependency.
+Verify the selected working tree and only the capabilities needed for the planned action; folder access proves neither Git/provider access nor an available test environment. Verify results before claiming a commit, merge, push, promotion or checkpoint succeeded. Follow sibling `safety.md` for approval, user-work preservation, capability failures and its [**Operational Helm state**](safety.md#operational-helm-state) boundary: loading rules or switching agents never grants state access/migration, and missing owning procedures leave records untouched. The copied pair remains sufficient for ordinary work without a package/runtime dependency.
 
 ### Read-only scope
 
@@ -66,7 +66,7 @@ When active:
 - Read the full changed content and staged diff; filenames/diffstat alone are not content review. Check the exact outgoing subject against resolved project/user policy, using scoped Conventional Commits as Helm's default. After committing, verify the actual subject and paths through Git. A logical unit is one coherent, independently reviewable change, not every small edit.
 - Commit approval or auto-commit never approves publication; apply the Publication contract below.
 
-**Exception:** safety.md's bounded commits, including generated legal documents and their integration commits, always require concrete content/commit approval. Reuse that known approval for the same action; auto-commit alone cannot supply it.
+**Exception:** [safety.md's bounded commits](safety.md#agent-execution-boundaries), including generated legal documents and their integration commits, always require concrete content/commit approval. Reuse that known approval for the same action; auto-commit alone cannot supply it.
 
 ---
 
@@ -84,7 +84,7 @@ These apply independently of ship method.
 
 **Workflow boundaries**
 - Ordinary Helm commands finish locally without asking to publish or integrate. No automatic branch creation, switching or cleanup follows.
-- Ship assesses current/unfinished work, publishes approved source and independent selected targets, then offers a release on ready integrated main/master even when no source push is needed. Existing release candidates continue the same version; first releases and target-only work remain eligible. Normalization publication needs verified private evidence and fixed leases; rewritten IDs alone are not release work, and mapped prior-release boundaries must be proven. Archive discovery is metadata-only until explicit inspection selection; its private payload/receipt publication finishes without ordinary targets or tags. Publication/PR handoff never supplies release approval, and incomplete/unknown selected work blocks dependent actions.
+- Ship assesses current/unfinished work, publishes approved source and independent selected targets, then offers a release on ready integrated main/master even when no source push is needed. Existing release candidates continue the same version; first releases and target-only work remain eligible. Verified normalization publication needs private recovery/map evidence and fixed leases; a loaded ship workflow may instead offer explicitly approved replacement without original proof, retaining a verified current-remote backup, fixed leases and truthful uncertainty; rewritten IDs alone are not release work, and mapped prior-release boundaries must be proven. Archive discovery is metadata-only until explicit inspection selection; its private payload/receipt publication finishes without ordinary targets or tags. Publication/PR handoff never supplies release approval, and incomplete/unknown selected work blocks dependent actions.
 - Archive may create explicitly reviewed local payload commits on its approved source branch. Only ship's archive route may publish the payload, perform separately selected post-backup cleanup and create/publish the completion receipt. Preserve exact payload/receipt ancestry; no ordinary PR/squash may fabricate a seal.
 
 **Commits**
@@ -96,7 +96,7 @@ These apply independently of ship method.
 
 - Pushes, remote-ref deletions and publishing provider merges need concrete authorization under `safety.md`, separate from provider review. Resolve one actual push URL/destination (including fork mappings), exact refspec/source SHA and observed remote ref. Show redacted identity, commits/diff and deployment effects. Resolve ambiguous/multiple URLs; never assume origin/fetch URL. Material changes invalidate approval.
 - Ordinary pushes use explicit bounded refs and `--no-follow-tags`; release tag refs need their own approval. No incidental `--all`, mirror/prune, extra-ref/submodule publication or upstream/config changes. A directly authorized tracking/config task may perform exactly that change without waiving other gates.
-- Confirmed rewrites require fixed `--force-with-lease=refs/heads/{branch}:{expected_remote_sha}` and reviewed old history contained in/accounted for by the plan; a lease alone cannot protect unseen work. No plain `--force`, leading `+` or replacing a rejected expectation. Ship's normalize-publication route requires normalize's verified private recovery/map evidence and its stricter exact-ref procedure.
+- Confirmed rewrites require fixed `--force-with-lease=refs/heads/{branch}:{expected_remote_sha}` and reviewed old history contained in/accounted for by the plan; a lease alone cannot protect unseen work. No plain `--force`, leading `+` or replacing a rejected expectation. Ship's verified-normalize route requires its private recovery/map proof. Its explicit missing-proof alternative requires a reviewed exact replacement, independently verified current-remote backup and fixed leases; no silent downgrade, reconstructed normalize evidence or protection/check bypass.
 - Recheck exact tips, approval, quality/review/CI/signing/protection before publication. Provider-merge approval precedes its API call; never push the published result again. Read back each actual destination/ref after success or uncertainty before claiming results/retrying. If the approved result is already published, do not repeat it. After verified readback, a safe retry with unchanged destination, refspec, source SHA, expected remote state and effects reuses the same concrete authorization; unexpected movement or changed content requires reconciliation and any missing approval, never a replacement lease or blind force. Unavailable/mismatched proof blocks dependent promotion/cleanup; preserve prior successes.
 
 ---
