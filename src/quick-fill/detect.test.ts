@@ -150,3 +150,22 @@ it('keeps a plain contact form excluded and ignores Job Buddy controls', () => {
   document.querySelector('main')!.append(widget);
   expect(likelyApplicationForm()).toBe(false);
 });
+
+it('recognizes the sole application form beside an unowned resume importer in main', () => {
+  document.body.innerHTML = `<main><h1>Senior Software Engineer</h1>
+    <div><input type="file" tabindex="-1" style="display:none"><button type="button">Upload Resume</button></div>
+    <form><label>Given name<input name="firstName"></label><label>Email<input name="email"></label><input name="city"></form></main>`;
+  expect(likelyApplicationForm()).toBe(true);
+  document
+    .querySelector('main')!
+    .insertAdjacentHTML('beforeend', '<form><input name="message"></form>');
+  expect(likelyApplicationForm()).toBe(false);
+});
+
+it('does not borrow an importer from a sidebar or another form', () => {
+  document.body.innerHTML = `<main><form><input name="firstName"><input name="email"><input name="city"></form></main>
+    <aside><div><input type="file" tabindex="-1" style="display:none"><button type="button">Upload Resume</button></div></aside>`;
+  expect(likelyApplicationForm()).toBe(false);
+  document.querySelector('main')!.append(document.querySelector('aside')!);
+  expect(likelyApplicationForm()).toBe(false);
+});

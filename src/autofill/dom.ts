@@ -74,7 +74,7 @@ export function fileInputProxy(element: HTMLInputElement): HTMLElement | undefin
       buttons.length === 1 &&
       isControlAvailable(buttons[0]) &&
       hasVisibleSurface(buttons[0]) &&
-      /^(?:add|choose|select|browse|upload|attach)(?:\s+(?:a|your))?\s+file\s*\*?$/i.test(
+      /^(?:add|choose|select|browse|upload|attach)(?:\s+(?:a|your))?\s+(?:file|r[eé]sum[eé]|cv|cover\s+letter|portfolio)\s*\*?$/i.test(
         (buttons[0].getAttribute('aria-label') || composedText(buttons[0])).trim(),
       )
     ) {

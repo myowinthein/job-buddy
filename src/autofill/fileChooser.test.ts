@@ -31,6 +31,24 @@ it('scans a hidden file input behind its visible Add file control and uses its e
   });
 });
 it.each([
+  ['Upload Resume', 'documents.cv.file'],
+  ['Attach your CV', 'documents.cv.file'],
+  ['Upload Cover Letter', 'documents.coverLetter.file'],
+  ['Upload Portfolio', 'documents.portfolio.file'],
+])('recognizes an unnamed hidden chooser from its %s button', (button, path) => {
+  document.body.innerHTML = `<div><input type="file" tabindex="-1" style="display:none"><button type="button">${button}</button></div>`;
+  const input = document.querySelector<HTMLInputElement>('input')!;
+  expect(scanFields({ allowFileInputs: true })).toEqual([input]);
+  expect(extractSignals(input).label).toBe(button);
+  expect(mapField(extractSignals(input), RULE_PROFILE, {}, 'example.test').fieldPath).toBe(path);
+});
+it('preserves an explicit file question over the button fallback', () => {
+  const input = chooser('Upload Other');
+  document.querySelector('button')!.textContent = 'Upload Resume';
+  expect(extractSignals(input).label).toBe('');
+  expect(extractSignals(input).ariaLabel).toBe('Upload Other');
+});
+it.each([
   'disabled chooser',
   'hidden chooser',
   'another editor',

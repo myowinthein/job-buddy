@@ -1,5 +1,11 @@
 import { dropzoneLabel } from './dropzone';
-import { composedAncestors, composedText, isTextEditor, queryOpenElements } from './dom';
+import {
+  composedAncestors,
+  composedText,
+  fileInputProxy,
+  isTextEditor,
+  queryOpenElements,
+} from './dom';
 import {
   ariaName,
   ariaReference,
@@ -44,11 +50,21 @@ function getLabelText(element: HTMLElement, context?: LabelContext): string {
   return (
     labelText(element, context) ||
     dropzoneLabel(element) ||
+    fileButtonLabel(element) ||
     shadowHosts(element)
       .map((host) => labelText(host, context) || host.getAttribute('label') || ariaName(host))
       .find(Boolean) ||
     ''
   );
+}
+
+/** A single-control file widget may expose its document name only on its button. */
+function fileButtonLabel(element: HTMLElement): string {
+  if (!(element instanceof HTMLInputElement) || element.type !== 'file' || ariaName(element))
+    return '';
+  const proxy = fileInputProxy(element);
+  const buttons = proxy ? queryOpenElements(proxy, 'button,[role="button"]') : [];
+  return buttons.length === 1 ? ariaName(buttons[0]) || composedText(buttons[0]) : '';
 }
 
 function getNearbyText(element: HTMLElement, context?: LabelContext): string {

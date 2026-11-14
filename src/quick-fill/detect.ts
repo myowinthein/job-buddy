@@ -1,4 +1,4 @@
-import { composedAncestors, controlForm } from '@/src/autofill/dom';
+import { composedAncestors, controlForm, fileInputProxy } from '@/src/autofill/dom';
 import { extractSignals } from '@/src/autofill/signals';
 
 // Local discovery only. Never scans with Gemini or sends page text to the worker.
@@ -31,6 +31,29 @@ function primaryHeading(group: ParentNode): string {
   return (
     scope.querySelector('h1,[role="heading"][aria-level="1"]')?.textContent?.slice(0, 300) ?? ''
   );
+}
+
+/** Some portals place their resume importer beside the one form in main. */
+function adjacentResumeUpload(group: ParentNode): boolean {
+  if (!(group instanceof Element) || !group.matches('form,[role="form"]')) return false;
+  const main = [...composedAncestors(group)].find((el) => el.matches('main,[role="main"]'));
+  if (!main) return false;
+  const forms = main.querySelectorAll('form,[role="form"]');
+  if (forms.length !== 1 || forms[0] !== group) return false;
+  return [...main.querySelectorAll<HTMLInputElement>('input[type="file"]')].some((input) => {
+    if (
+      controlForm(input) ||
+      !fileInputProxy(input) ||
+      [...composedAncestors(input)].some((el) =>
+        el.matches('aside,nav,header,footer,[role="complementary"]'),
+      )
+    )
+      return false;
+    const signals = extractSignals(input);
+    return /\b(?:r[eé]sum[eé]|cv|curriculum vitae)\b/i.test(
+      `${signals.label} ${signals.ariaLabel} ${signals.name} ${signals.id}`,
+    );
+  });
 }
 
 /** Carry a confirmed wizard through later steps in the same application route.
@@ -123,6 +146,7 @@ export function likelyApplicationForm(
       signals.some((s) => IDENTITY.test(s)) &&
       signals.some((s) => EMAIL.test(s)) &&
       (wizard ||
+        (!auxiliary && adjacentResumeUpload(group)) ||
         CAREER.test(
           `${heading} ${mainTitle} ${signals.join(' ')} ${identifiers.join(' ')} ${metadata.map((field) => field.nearbyText).join(' ')}`,
         ))
