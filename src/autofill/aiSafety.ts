@@ -5,9 +5,11 @@ import { autofillProfilePayload } from '../resume-ai/profilePayload';
 import { composedParent } from './dom';
 import { extractSignals } from './signals';
 import { sectionFamily, ruleQuestionBlocked } from './ruleContext';
+import { compatibleLinkPath } from './linkPlatforms';
 
 /** A response can only name data exposed for this particular question. */
 export function allowedAIPath(profile: Profile, field: AIFieldPayload, path: string): boolean {
+  if (!compatibleLinkPath(profile, field, path)) return false;
   if (!/^[a-zA-Z]+(?:\.(?:[a-zA-Z]+|\d+))*$/.test(path)) return false;
   const safe = autofillProfilePayload(profile, [field]);
   const has = (key: string): boolean => {

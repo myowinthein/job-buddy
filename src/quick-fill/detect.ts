@@ -45,8 +45,8 @@ export function likelyApplicationForm(
   for (const [group, fields] of groups) {
     if (fields.length < 3) continue;
     const metadata = fields.map((el) => extractSignals(el));
-    const signals = metadata.map(({ name, id, autocomplete, ariaLabel, placeholder, label }) =>
-      [name, id, autocomplete, ariaLabel, placeholder, label].filter(Boolean).join(' '),
+    const signals = metadata.map(({ name, id, autocomplete, ariaLabel, placeholder, label, nearbyText }) =>
+      [name, id, autocomplete, ariaLabel, placeholder, label, nearbyText].filter(Boolean).join(' '),
     );
     // Technical identifiers often hide the only career hint behind a generic
     // "Import your documents" label (upload_cv, uploadResume, attachment[cv]).

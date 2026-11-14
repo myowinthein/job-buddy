@@ -59,9 +59,36 @@ function getNearbyText(element: HTMLElement, context?: LabelContext): string {
     for (const ancestor of composedAncestors(element)) {
       if (ancestor.matches('body,form,[role="form"]')) break;
       const controls = queryOpenElements(ancestor, CONTROL_SELECTOR);
-      if (controls.some((control) => control !== element)) break;
+      if (
+        controls.some(
+          (control) =>
+            control !== element &&
+            !(control instanceof HTMLInputElement && control.type === 'hidden'),
+        )
+      )
+        break;
+      if (ancestor.matches('fieldset,[role="group"]')) {
+        const prompt =
+          ariaName(ancestor) ||
+          (ancestor.querySelector(':scope > legend')
+            ? ownText(ancestor.querySelector(':scope > legend')!, context)
+            : '');
+        if (prompt) return [description, prompt].filter(Boolean).join(' ');
+      }
       const headings = queryOpenElements(ancestor, 'h1,h2,h3,h4,h5,h6,[role="heading"]');
       if (headings.length === 1) return composedText(headings[0]) || description;
+      const prompts = queryOpenElements(ancestor, 'label').filter(
+        (label) =>
+          label instanceof HTMLLabelElement && (!label.control || label.control === element) &&
+          !/^(?:choose|select|browse|upload|attach|add)(?:\s+(?:a|your))?\s+files?(?:\s+or\s+drop\s+it\s+here)?\s*\*?$/i.test(composedText(label).trim()),
+      );
+      if (prompts.length === 1 && composedText(prompts[0])) return composedText(prompts[0]);
+      const titles = [...ancestor.querySelectorAll(':scope > p')].filter((prompt) =>
+        /^(?:r[eé]sum[eé]|cv|resume\s*\/\s*cv|cover\s+letter|portfolio)\s*\*?$/i.test(
+          composedText(prompt),
+        ),
+      );
+      if (titles.length === 1) return composedText(titles[0]);
     }
   }
   const wrapper = element.closest(WRAPPER_SELECTORS);

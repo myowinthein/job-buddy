@@ -3,6 +3,7 @@ import type { LearnedMappings, LearnedMappingValue } from '../types/storage';
 import type { FieldSignals } from './signals';
 import { normalize, similarity, PLACEHOLDER_OPTION_NORMS } from './normalizer';
 import { ruleQuestionBlocked } from './ruleContext';
+import { compatibleLinkPath, linkPlatform, requestedLinkPlatform } from './linkPlatforms';
 import { FIELD_DICTIONARY } from './dictionary';
 import { resolveProfileValue } from './resolver';
 import { precedingChoicePrompt } from './labels';
@@ -182,6 +183,10 @@ function matchLearned(
     // Legacy strings are trusted paths without counts; objects carry counts and metadata.
     const entry = typeof learned === 'string' ? undefined : learned;
     const fieldPath = typeof learned === 'string' ? learned : learned.path;
+    if (!compatibleLinkPath(profile, signals, fieldPath)) {
+      rejected({ status: 'incompatible' });
+      continue;
+    }
     if (!learnedSensitiveQuestion(fieldPath, signals)) {
       rejected({ status: 'incompatible' });
       continue;
@@ -298,7 +303,7 @@ export function mapField(
         ),
     )
     .join(' ');
-  if (ac && AUTOCOMPLETE_MAP[ac]) {
+  if (ac && AUTOCOMPLETE_MAP[ac] && compatibleLinkPath(profile, signals, AUTOCOMPLETE_MAP[ac].path)) {
     const { path, confidence } = AUTOCOMPLETE_MAP[ac];
     return {
       fieldPath: path,
@@ -315,7 +320,7 @@ export function mapField(
         /(?:^|[^\p{L}\p{N}])(?:r[eé]sum[eé]|cv|curriculum\s+vitae)(?:$|[^\p{L}\p{N}])/iu.test(text) &&
         !/\b(no|not|except|excluding|without)\b/i.test(text));
     const hit = dictionaryExact(n) ?? (resumeQuestion ? 'documents.cv.file' : null);
-    if (hit) {
+    if (hit && compatibleLinkPath(profile, signals, hit)) {
       const resolved = resolveDictionaryHit(profile, hit, signals);
       const human = signals.label || signals.ariaLabel;
       const primary = [signals.label, signals.ariaLabel, signals.placeholder]
@@ -351,7 +356,7 @@ export function mapField(
   let bestFuzzy: { fieldPath: string; score: number } | null = null;
   for (const n of fuzzySignals) {
     const result = dictionaryFuzzy(n);
-    if (result && (!bestFuzzy || result.score > bestFuzzy.score)) bestFuzzy = result;
+    if (result && compatibleLinkPath(profile, signals, result.fieldPath) && (!bestFuzzy || result.score > bestFuzzy.score)) bestFuzzy = result;
   }
   if (bestFuzzy) {
     const { fieldPath, score } = bestFuzzy;
@@ -385,10 +390,11 @@ export function mapField(
     let best: { idx: number; score: number } | null = null;
     customLinks.forEach((link, idx) => {
       if (!link.label || !link.url) return;
+      if (!compatibleLinkPath(profile, signals, `links.custom.${idx}.url`)) return;
       const normLabel = normalize(link.label);
       if (!normLabel) return;
       for (const n of normed) {
-        const score = n === normLabel ? 1 : similarity(n, normLabel);
+        const score = n === normLabel || (requestedLinkPlatform(signals) && linkPlatform(link.label) === requestedLinkPlatform(signals)) ? 1 : similarity(n, normLabel);
         if (!best || score > best.score) best = { idx, score };
       }
     });
@@ -439,7 +445,7 @@ export function mapField(
   const nearbyNorm = normalize(signals.nearbyText);
   if (nearbyNorm) {
     const exactHit = dictionaryExact(nearbyNorm);
-    if (exactHit) {
+    if (exactHit && compatibleLinkPath(profile, signals, exactHit)) {
       const resolved = resolveDictionaryHit(profile, exactHit, signals);
       return {
         fieldPath: resolved.fieldPath,
@@ -449,7 +455,7 @@ export function mapField(
       };
     }
     const fuzzyHit = dictionaryFuzzy(nearbyNorm);
-    if (fuzzyHit && fuzzyHit.score >= CONF_FUZZY_THRESHOLD) {
+    if (fuzzyHit && compatibleLinkPath(profile, signals, fuzzyHit.fieldPath) && fuzzyHit.score >= CONF_FUZZY_THRESHOLD) {
       const resolved = resolveDictionaryHit(profile, fuzzyHit.fieldPath, signals);
       return {
         fieldPath: resolved.fieldPath,
