@@ -384,9 +384,10 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
                 href="https://aistudio.google.com/api-keys"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 dark:text-blue-400 underline"
+                className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 underline"
               >
-                Google AI Studio <ExternalLink aria-hidden="true" className="inline h-3 w-3" /> <span className="text-xs">(opens in new tab)</span>
+                Google AI Studio
+                <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" /> <span className="text-xs">(opens in new tab)</span>
                 </a>
               . No credit card required.
             </p>
