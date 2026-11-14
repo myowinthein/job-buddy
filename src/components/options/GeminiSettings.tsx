@@ -508,7 +508,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
               aria-expanded={modelOptionsOpen}
               aria-controls="gemini-model-options"
               onClick={() => setModelOptionsOpen((open) => !open)}
-              className="text-blue-600 dark:text-blue-400 hover:underline rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              className="text-blue-600 dark:text-blue-400 underline-offset-2 hover:underline hover:decoration-2 focus-visible:underline focus-visible:decoration-2 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
             >
               <span aria-hidden="true">{modelOptionsOpen ? '▾' : '▸'} </span>
               Model options
