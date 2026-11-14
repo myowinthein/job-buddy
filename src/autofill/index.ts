@@ -1,4 +1,5 @@
 import { resolveRuleValue, ruleValuePath } from './ruleValue';
+import { observeFileImport } from './fileImportReadiness';
 import { countryName } from '../data/countries';
 import { readFieldValue as getFieldValue } from './fieldValue';
 import {
@@ -934,9 +935,25 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   clearMissingDataHighlights();
   noData.reset();
 
-  for (const pending of matchesToFill) {
+  // Resume importers can asynchronously replace contact values. Upload before
+  // writing the remaining saved answers, regardless of the picker's DOM order.
+  const files = matchesToFill.filter((pending) => pending.signals.type === 'file');
+  const fillOrder = [...files, ...matchesToFill.filter((pending) => !files.includes(pending))];
+  for (const pending of fillOrder) {
     if (!isActive()) return interrupted();
-    if (!(await fillMatch(run, pending))) return interrupted();
+    const importer = pending.signals.type === 'file'
+      ? observeFileImport(pending.element as HTMLInputElement)
+      : null;
+    try {
+      if (!(await fillMatch(run, pending))) return interrupted();
+      const record = records.byElement.get(pending.element);
+      if (importer && record?.rule.outcome === 'filled' && !(await importer.wait(isActive))) {
+        if (isActive()) cancelAutofillRun();
+        return interrupted();
+      }
+    } finally {
+      importer?.dispose();
+    }
   }
 
   pendingMatches = [];
