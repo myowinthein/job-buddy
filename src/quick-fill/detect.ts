@@ -1,5 +1,5 @@
 import { composedAncestors, controlForm, fileInputProxy } from '@/src/autofill/dom';
-import { extractSignals } from '@/src/autofill/signals';
+import { extractSignals, type FieldSignals } from '@/src/autofill/signals';
 
 // Local discovery only. Never scans with Gemini or sends page text to the worker.
 export const QUICK_FILL_HOST = 'data-job-buddy-ui';
@@ -54,6 +54,28 @@ function adjacentResumeUpload(group: ParentNode): boolean {
       `${signals.label} ${signals.ariaLabel} ${signals.name} ${signals.id}`,
     );
   });
+}
+
+/** A fresh questionnaire step can have no identity fields or earlier detection state. */
+function authorizationQuestionnaire(fields: FieldSignals[]): boolean {
+  const questions = fields
+    .filter(
+      ({ element }) =>
+        ![...composedAncestors(element)].some((node) =>
+          node.matches('nav,header,footer,aside,[role="complementary"]'),
+        ),
+    )
+    .map(({ label, ariaLabel, placeholder }) => `${label} ${ariaLabel} ${placeholder}`);
+  return questions.some(
+    (question, index) =>
+      /\b(?:authori[sz]ed|eligible)\s+to\s+work\b|\bright\s+to\s+work\b|\bwork\s+authori[sz]ation\b/i.test(
+        question,
+      ) &&
+      questions.some(
+        (other, otherIndex) =>
+          otherIndex !== index && /\b(?:sponsor(?:ship)?|employment\s+visa)\b/i.test(other),
+      ),
+  );
 }
 
 /** Carry a confirmed wizard through later steps in the same application route.
@@ -119,8 +141,10 @@ export function likelyApplicationForm(
     )
       return true;
     const wizard = !!applicationRoute() && !auxiliary && /\bapplication\b/i.test(primary);
-    if (fields.length < (wizard ? 2 : 3)) continue;
+    if (fields.length < 2) continue;
     const metadata = fields.map((el) => extractSignals(el));
+    if (!!applicationRoute() && !auxiliary && authorizationQuestionnaire(metadata)) return true;
+    if (fields.length < (wizard ? 2 : 3)) continue;
     const signals = metadata.map(
       ({ name, id, autocomplete, ariaLabel, placeholder, label, nearbyText }) =>
         [name, id, autocomplete, ariaLabel, placeholder, label, nearbyText]
