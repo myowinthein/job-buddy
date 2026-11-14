@@ -35,8 +35,9 @@ enter them manually.
 Follow the [walkthrough](https://myowinthein.github.io/job-buddy/#start) to set up
 Job Buddy, add your profile and start autofill.
 
-Your profile stays in your browser. Resume import, autofill and mapping reviews
-send relevant data to Gemini.
+Your profile stays in your browser unless you turn on the optional Google Drive
+backup. Resume import, autofill and mapping reviews send relevant data to
+Gemini. See the [privacy policy](https://myowinthein.github.io/job-buddy/legal/privacy/).
 
 <a name="help-me-improve-it"></a>
 
@@ -48,4 +49,4 @@ If a feature behaves unexpectedly, a guide is unclear or you have an idea for Jo
 
 Job Buddy is licensed under the [MIT License](LICENSE). © 2026 Myo Win Thein.
 
-<!-- last-reviewed: 8cde4d4301f40fba8337ffe54f86aad8de0c09ef -->
+<!-- last-reviewed: e2142627e4efef37f8b30ca2a981bad40a595315 -->
