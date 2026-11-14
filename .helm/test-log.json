@@ -628,6 +628,38 @@
       }
     },
     {
+      "id": "g-be6900d3-3229-4f06-9bdf-ed56c20370f1",
+      "expected": "Unresolved: whether the real-Chromium Playwright specs in src/browser should run automatically before merge or release, or remain a documented manual check for autofill changes",
+      "basis": [
+        ".github/workflows/ci.yml: steps run compile, lint, test:run and build; no test:browser step",
+        ".github/workflows/release.yml: steps run compile, lint, test:run and zip; no test:browser step",
+        "package.json: test:browser is pnpm build then playwright test; playwright.config.ts uses one worker and src/browser/*.pw.ts",
+        "AGENTS.md Dev Commands: CI does not run the Playwright specs",
+        "AGENTS.md Behavior Rules: autofill-matching changes require a build and live verification in Playwright-driven Chromium"
+      ],
+      "paths": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/release.yml",
+        "package.json",
+        "playwright.config.ts",
+        "src/browser"
+      ],
+      "priority": "medium",
+      "reason": "About 55 specs (roughly 13k lines) check real focus, events, shadow DOM, dropdowns and extension coexistence that jsdom tests cannot show, and nothing runs them automatically, so a regression there is recoverable but can reach a release unseen. The 189 Vitest files protect most logic, and no escaped regression is evidenced. Whether manual-only is deliberate is not documented as a decision.",
+      "action": "improve",
+      "layer": "e2e",
+      "state": "open",
+      "assessed_commit": "1a3f5334feef218b2d066e1778946b1d9dfcb51e",
+      "tests": [
+        "src/browser/autofill.pw.ts",
+        "src/browser/rule-matching.pw.ts"
+      ],
+      "blocker": {
+        "kind": "clarification",
+        "note": "Owner intent unknown: manual gate by design or a missing CI step. Any CI or release workflow change needs its own reviewed scope, outside this test workflow."
+      }
+    },
+    {
       "id": "g-c9e10ccf-b0a8-477f-b3d3-d5dd4d6c2ed8",
       "expected": "Production Chromium integration verifies real filled values, events, validation, Merge and Undo",
       "basis": [
