@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { likelyApplicationForm } from './detect';
+import { likelyApplicationForm, createApplicationFormDetector } from './detect';
 
 beforeEach(() => {
+  history.replaceState(null, '', '/');
   document.body.innerHTML = '';
   document.title = 'Test page';
   vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
@@ -10,6 +11,57 @@ beforeEach(() => {
     width: 100,
     height: 30,
   } as DOMRect);
+});
+
+it.each([false, true])(
+  'recognizes an early application step with a form=%s and no resume controls',
+  (form) => {
+    history.replaceState(null, '', '/apply/personal-details');
+    const controls =
+      '<label>First name<input name="firstName"></label><label>Email<input type="email" name="email"></label>';
+    document.body.innerHTML = `<h1>Let’s put a name to your application</h1>${form ? `<form>${controls}</form>` : controls}`;
+    expect(likelyApplicationForm()).toBe(true);
+  },
+);
+
+it('keeps the button on later wizard steps, then forgets the flow outside its route', () => {
+  const detect = createApplicationFormDetector();
+  history.replaceState(null, '', '/jobs/123/apply/personal-details');
+  document.body.innerHTML = '<h1>Your application</h1><input name="firstName"><input name="email">';
+  expect(detect()).toBe(true);
+  document.body.innerHTML = '<h1>Your location</h1><input name="city">';
+  expect(detect()).toBe(true);
+  history.replaceState(null, '', '/jobs/123/apply/skills');
+  document.body.innerHTML = '<h1>Your skills</h1><textarea name="skills"></textarea>';
+  expect(detect()).toBe(true);
+  history.replaceState(null, '', '/jobs/456/apply/skills');
+  expect(detect()).toBe(false);
+  history.replaceState(null, '', '/contact');
+  expect(detect()).toBe(false);
+});
+
+it('does not combine independent forms under an application page heading', () => {
+  history.replaceState(null, '', '/apply/details');
+  document.body.innerHTML =
+    '<h1>Your application</h1><form><input name="name"><input name="email"><textarea name="message"></textarea></form><form><input name="resume"><input name="salary"></form>';
+  expect(likelyApplicationForm()).toBe(false);
+});
+
+it('does not show on sign-in, contact, completed or unrelated forms in a confirmed flow', () => {
+  const detect = createApplicationFormDetector();
+  history.replaceState(null, '', '/apply/details');
+  document.body.innerHTML = '<h1>Your application</h1><input name="firstName"><input name="email">';
+  expect(detect()).toBe(true);
+  document.body.innerHTML = '<h1>Sign in</h1><input type="password">';
+  expect(detect()).toBe(false);
+  document.body.innerHTML =
+    '<h1>Contact us</h1><input name="name"><input name="email"><textarea></textarea>';
+  expect(detect()).toBe(false);
+  document.body.innerHTML = '<h1>Application completed</h1>';
+  expect(detect()).toBe(false);
+  document.body.innerHTML =
+    '<h1>Your application</h1><form aria-label="Contact form"><input name="name"><input name="email"><textarea></textarea></form><form aria-label="Sign in"><input type="password"></form>';
+  expect(detect()).toBe(false);
 });
 afterEach(() => vi.restoreAllMocks());
 

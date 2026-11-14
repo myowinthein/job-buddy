@@ -1,6 +1,6 @@
 import { feedback } from '@/src/ui/feedback';
 import type { AutofillRun } from '@/src/autofill/runCoordinator';
-import { likelyApplicationForm } from './detect';
+import { createApplicationFormDetector } from './detect';
 import {
   getQuickFillPreferences,
   normalizePreferences,
@@ -11,6 +11,7 @@ import { QuickFillWidget } from './widget';
 import { affectsApplicationDetection, DETECTION_ATTRIBUTES } from './detectionChanges';
 
 export function installQuickFill(): void {
+  const likelyApplicationForm = createApplicationFormDetector();
   const main = window === window.top;
   let candidate = false;
   let prefs: QuickFillPreferences = normalizePreferences(undefined);
