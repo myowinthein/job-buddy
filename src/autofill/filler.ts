@@ -1,5 +1,6 @@
 import {
   composedText,
+  composedParent,
   isControlAvailable,
   isChoice,
   isChoiceChecked,
@@ -384,6 +385,12 @@ async function waitOption(
     check();
   });
 }
+function applicationPanel(element: HTMLElement): Element | null {
+  for (let parent = composedParent(element); parent; parent = composedParent(parent)) {
+    if (parent.matches('dialog,[role="dialog"],[aria-modal="true"]')) return parent;
+  }
+  return null;
+}
 async function closeDropdown(
   element: HTMLElement,
   active: () => boolean = () => true,
@@ -391,14 +398,34 @@ async function closeDropdown(
   // A completed selection may already have closed its menu. Escape at that
   // point can dismiss the enclosing application dialog instead.
   if (element.getAttribute('aria-expanded') === 'false') return;
-  ownWriteEvents(() => {
+  // Dialog focus traps can handle Escape in the capture phase, before any
+  // widget handler can stop it. Use the widget toggle and the caller's blur
+  // cleanup instead, so a dropdown cannot dismiss the application itself.
+  if (applicationPanel(element)) {
+    if (
+      !(element instanceof HTMLInputElement) &&
+      !(element instanceof HTMLTextAreaElement) &&
+      !element.isContentEditable &&
+      element.getAttribute('aria-expanded') === 'true'
+    )
+      safeClick(element, true);
+    await settleFramework();
+    return;
+  }
+  ownWriteEvents(() =>
     element.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true }),
-    );
+    ),
+  );
+  await settleFramework();
+  // A widget can close on keydown while its enclosing dialog closes on keyup.
+  // Do not send a second dismissal after the widget has handled the first one.
+  if (!active() || element.getAttribute('aria-expanded') === 'false') return;
+  ownWriteEvents(() =>
     element.dispatchEvent(
       new KeyboardEvent('keyup', { key: 'Escape', bubbles: true, composed: true }),
-    );
-  });
+    ),
+  );
   await settleFramework();
   if (active() && element.getAttribute('aria-expanded') === 'true') safeClick(element, true);
   await settleFramework();
