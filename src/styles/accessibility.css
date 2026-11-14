@@ -7,6 +7,15 @@ html.dark {
   color-scheme: dark;
 }
 
+.text-action {
+  text-underline-offset: 2px;
+}
+
+.text-action:not(:disabled):not([aria-disabled='true']):is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+}
+
 :where(button, a, summary):focus-visible {
   outline: 2px solid var(--color-blue-500);
   outline-offset: 2px;

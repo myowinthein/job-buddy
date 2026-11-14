@@ -121,7 +121,7 @@ function DocUploader({
     }
   };
   const fileActionCls =
-    'inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline';
+    'inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 text-action';
   return (
     <section
       aria-label={label}

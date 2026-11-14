@@ -200,7 +200,7 @@ export function QuickFillSettings() {
                       type="button"
                       disabled={saving}
                       aria-label={`Show button on ${site}`}
-                      className="shrink-0 rounded text-blue-600 hover:underline focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50 dark:text-blue-400"
+                      className="shrink-0 rounded text-blue-600 text-action focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50 dark:text-blue-400"
                       onClick={() =>
                         void save((current) => ({
                           disabledSites: current.disabledSites.filter((value) => value !== site),

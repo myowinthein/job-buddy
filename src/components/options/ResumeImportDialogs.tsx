@@ -86,7 +86,7 @@ export function ResumeUploadDialog({
               <button
                 type="button"
                 onClick={goToSettings}
-                className="text-sm text-blue-600 dark:text-blue-400 hover:underline active:scale-95 font-medium"
+                className="text-sm text-blue-600 dark:text-blue-400 text-action active:scale-95 font-medium"
               >
                 Go to Settings →
               </button>

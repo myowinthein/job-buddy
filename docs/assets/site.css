@@ -54,7 +54,7 @@ a {
   color: var(--link);
   text-underline-offset: 4px;
 }
-a:hover {
+a:is(:hover, :focus-visible) {
   text-decoration-thickness: 2px;
 }
 :focus-visible {
@@ -125,7 +125,7 @@ button:disabled {
   color: var(--muted);
   text-decoration: none;
 }
-.header-nav a:hover,
+.header-nav a:is(:hover, :focus-visible),
 .header-nav [aria-current='page'] {
   color: var(--ink);
 }
@@ -184,7 +184,7 @@ button:disabled {
   line-height: 1.6;
 }
 .chapter-nav a[aria-current='location'],
-.chapter-nav a:hover {
+.chapter-nav a:is(:hover, :focus-visible) {
   color: var(--link);
   border-color: var(--brand);
 }
@@ -245,7 +245,7 @@ h1 {
   background: #2f5ed6;
   border-color: #2f5ed6;
 }
-.button:hover {
+.button:is(:hover, :focus-visible) {
   filter: brightness(0.94);
 }
 .text-link {
@@ -473,11 +473,11 @@ pre code {
 }
 .footer-links a {
   color: var(--muted);
-  text-decoration: none;
+  text-decoration-line: none;
 }
-.footer-links a:hover {
+.footer-links a:is(:hover, :focus-visible) {
   color: var(--link);
-  text-decoration: underline;
+  text-decoration-line: underline;
 }
 .image-dialog {
   width: min(96vw, 1500px, var(--image-width, 1500px));

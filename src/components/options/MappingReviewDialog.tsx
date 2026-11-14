@@ -321,7 +321,7 @@ export function MappingReviewDialog({
                         close();
                         onGoToApiKey();
                       }}
-                      className="text-sm font-medium text-blue-600 hover:underline active:scale-95 dark:text-blue-400"
+                      className="text-sm font-medium text-blue-600 text-action active:scale-95 dark:text-blue-400"
                     >
                       Go to Settings →
                     </button>

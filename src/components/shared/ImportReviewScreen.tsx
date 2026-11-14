@@ -127,7 +127,7 @@ export default function ImportReviewScreen({
             type="button"
             onClick={() => selectAll(true)}
             disabled={isSaving}
-            className="text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
+            className="text-blue-600 dark:text-blue-400 text-action disabled:opacity-50"
           >
             Select All
           </button>
@@ -135,7 +135,7 @@ export default function ImportReviewScreen({
             type="button"
             onClick={() => selectAll(false)}
             disabled={isSaving}
-            className="text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
+            className="text-blue-600 dark:text-blue-400 text-action disabled:opacity-50"
           >
             Clear Selection
           </button>

@@ -114,7 +114,7 @@ export function EntryComparison({
             type="button"
             disabled={safeIndex === 0 || selection?.isSaving}
             onClick={() => setIndex(safeIndex - 1)}
-            className="hover:underline disabled:opacity-40"
+            className="text-action disabled:opacity-40"
           >
             Previous entry
           </button>
@@ -122,7 +122,7 @@ export function EntryComparison({
             type="button"
             disabled={safeIndex === entries.length - 1 || selection?.isSaving}
             onClick={() => setIndex(safeIndex + 1)}
-            className="hover:underline disabled:opacity-40"
+            className="text-action disabled:opacity-40"
           >
             Next entry
           </button>

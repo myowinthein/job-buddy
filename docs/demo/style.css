@@ -47,6 +47,9 @@ textarea {
 button {
   cursor: pointer;
 }
+a:is(:hover, :focus-visible) {
+  text-decoration-thickness: 2px;
+}
 .external-link-icon {
   width: 14px;
   height: 14px;
@@ -172,7 +175,7 @@ button {
   font-weight: 600;
   text-decoration: none;
 }
-.setup-notice a:hover {
+.setup-notice a:is(:hover, :focus-visible) {
   background: #1e4dc0;
 }
 .team {
@@ -394,6 +397,9 @@ fieldset {
   padding-left: 0;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+.actions .reset:is(:hover, :focus-visible) {
+  text-decoration-thickness: 2px;
 }
 button:disabled {
   opacity: 0.5;

@@ -406,7 +406,7 @@ function App() {
               type="button"
               onClick={openOptions}
               disabled={busy}
-              className="min-h-8 shrink-0 rounded px-1 font-medium text-blue-700 hover:underline disabled:opacity-50 dark:text-blue-400"
+              className="min-h-8 shrink-0 rounded px-1 font-medium text-blue-700 text-action disabled:opacity-50 dark:text-blue-400"
             >
               {isCoreComplete ? 'Edit Profile' : 'Complete Profile'}
             </button>

@@ -100,7 +100,7 @@ function backupImportChanges(
 const btnPrimaryCls = primaryButtonCls;
 const btnSecondaryCls = secondaryButtonCls;
 const footerLinkCls =
-  'inline-flex items-center gap-1 rounded-sm hover:text-blue-600 dark:hover:text-blue-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500 transition-colors';
+  'text-action inline-flex items-center gap-1 rounded-sm hover:text-blue-600 focus-visible:text-blue-600 dark:hover:text-blue-400 dark:focus-visible:text-blue-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500 transition-colors';
 
 function issueReportUrl(): string {
   const url = new URL('https://github.com/myowinthein/job-buddy/issues/new');
