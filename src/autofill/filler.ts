@@ -1,4 +1,5 @@
 import { languageChoiceAliases } from './languageChoices';
+import { waitNativeSelectCommit } from './nativeSelectCommit';
 import { sameTelephone } from './phoneWidget';
 import { dropzoneSurface, dropzonePreviews, waitDropzoneFile } from './dropzone';
 import {
@@ -661,6 +662,8 @@ export async function restore(
       for (const item of state.options!) item.option.selected = item.selected;
       notify(element);
     });
+    if (!(await waitNativeSelectCommit(() => sameFieldState(state, captureField(element)), active)))
+      return false;
   } else if (state.files && element instanceof HTMLInputElement) {
     const transfer = new DataTransfer();
     state.files.forEach((file) => transfer.items.add(file));
@@ -702,6 +705,8 @@ export async function restore(
   }
   blur(element);
   await settleFramework();
+  if (state.options && element instanceof HTMLSelectElement)
+    return waitNativeSelectCommit(() => sameFieldState(state, captureField(element)), active);
   if (state.selection && !state.value && !sameFieldState(state, captureField(element))) {
     const clear = clearControl(element);
     if (clear && active() && isControlAvailable(clear)) {
@@ -768,13 +773,14 @@ export async function fillField(
           for (const option of targets) option!.selected = true;
           notify(element);
         });
-        blur(element);
-        await settle();
-        return (
+        const retained = () => (
           valid(element) &&
           [...element.selectedOptions].length === targets.length &&
           targets.every((option) => option!.selected)
         );
+        if (!(await waitNativeSelectCommit(retained, current))) return false;
+        blur(element);
+        return waitNativeSelectCommit(retained, current);
       }
       if (Array.isArray(value)) return false;
       if (
