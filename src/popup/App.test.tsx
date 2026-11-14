@@ -890,7 +890,8 @@ it('announces a pending fill, prevents duplicate actions, and returns focus afte
   expect(filling.querySelector('.animate-spin')).not.toBeNull();
   expect(screen.getByRole('button', { name: 'Complete Profile' })).toHaveProperty('disabled', true);
   expect(screen.getByRole('status').textContent).toBe('Filling…');
-  expect(filling.contains(screen.getByRole('status'))).toBe(true);
+  // A status role inside a button leaves Chrome with no accessible button name.
+  expect(filling.contains(screen.getByRole('status'))).toBe(false);
   expect(screen.queryByRole('region', { name: 'Autofill details' })).toBeNull();
   await waitFor(() => expect(complete).toBeTypeOf('function'));
   complete(statusResult({ noReview: 1, totalScanned: 1 }));
@@ -1040,7 +1041,8 @@ it('announces scanning inside the button before polling transitions to filling',
   fireEvent.click(await readyFill());
   const scanning = await screen.findByRole('button', { name: 'Scanning…' });
   expect(scanning).toHaveProperty('disabled', true);
-  expect(scanning.contains(screen.getByRole('status'))).toBe(true);
+  expect(screen.getByRole('status').textContent).toBe('Scanning…');
+  expect(scanning.contains(screen.getByRole('status'))).toBe(false);
   await waitFor(() => expect(finishScan).toBeTypeOf('function'));
   await act(async () => finishScan({ preFilledCount: 0 }));
   const filling = await screen.findByRole('button', { name: 'Filling…' });
