@@ -43,8 +43,8 @@ button:disabled { cursor:default; opacity:.65; }
 .status[data-tone=review] { color:var(--review); }
 .status[data-tone=error] { color:var(--error); }
 .links { display:flex; gap:10px; color:var(--muted); }
-.links button { font-size:11px; padding:3px 0; text-decoration:none; text-underline-offset:3px; }
-.links button:hover,.links button:focus-visible { color:var(--fg); text-decoration:underline; }
+.links button { font-size:11px; padding:3px 0; text-decoration:underline; text-underline-offset:2px; }
+.links button:not(:disabled):is(:hover,:focus-visible) { color:var(--fg); text-decoration-thickness:2px; }
 .menu { position:absolute; bottom:calc(100% + 8px); width:210px; max-width:calc(100vw - 24px); overflow-y:auto; overscroll-behavior:contain; background:var(--bg); border:1px solid var(--line); border-radius:12px; box-shadow:0 4px 18px #0002; padding:5px; }
 .menu[data-below] { top:calc(100% + 8px); bottom:auto; }
 .menu button { display:block; text-align:left; width:100%; padding:9px 10px; }

@@ -563,7 +563,7 @@ function ResultSummary({
         <button
           type="button"
           onClick={onOpenDetails}
-          className="-my-1 min-h-7 shrink-0 rounded-sm px-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-gray-300 dark:hover:text-white"
+          className="-my-1 min-h-7 shrink-0 rounded-sm px-1 text-xs font-medium text-gray-600 underline text-action hover:text-gray-900 focus-visible:text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-gray-300 dark:hover:text-white dark:focus-visible:text-white"
         >
           View details
         </button>
