@@ -26,7 +26,7 @@ export function ownText(element: Element, context?: LabelContext): string {
   const clone = element.cloneNode(true) as Element;
   clone
     .querySelectorAll(
-      'input,select,textarea,button,[role="combobox"],[role="textbox"],[role="radio"],[role="checkbox"],[contenteditable],[data-jb-field-description],script,style,svg',
+      'input,select,textarea,button,[role="button"],[role="combobox"],[role="textbox"],[role="radio"],[role="checkbox"],[role="dialog"],[role="grid"],[role="listbox"],[role="menu"],[aria-hidden="true"],[hidden],[contenteditable],[data-jb-field-description],script,style,svg',
     )
     .forEach((node) => node.remove());
   const text = (clone.textContent ?? '').replace(/\s+/g, ' ').trim();

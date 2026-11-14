@@ -1,8 +1,10 @@
 import { test, expect, autofillRequest, geminiResponse } from './fixtures';
 import type { Profile } from '../types/profile';
 
-for (const authorized of [false, true]) {
-  test(`fills a short headline, national-format phone, complete address and one row per section; UK authorized=${authorized}`, async ({
+for (const { authorized, via } of [false, true].flatMap((authorized) =>
+  ['floating', 'message'].map((via) => ({ authorized, via })),
+)) {
+  test(`fills structured application fields via ${via}; UK authorized=${authorized}`, async ({
     context,
     page,
     extension,
@@ -127,6 +129,15 @@ for (const authorized of [false, true]) {
             document
               .querySelectorAll<HTMLInputElement>('input[name=start_date],input[name=end_date]')
               .forEach((input) => {
+                input.addEventListener('focus', () => {
+                  const calendar = document.createElement('div');
+                  calendar.setAttribute('role', 'grid');
+                  calendar.textContent = '2026 Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec';
+                  input.parentElement!.append(calendar);
+                });
+                input.addEventListener('blur', () =>
+                  input.parentElement!.querySelector('[role=grid]')?.remove(),
+                );
                 let previous: string | undefined;
                 input.addEventListener('keydown', () => {
                   previous = input.value;
@@ -179,8 +190,15 @@ for (const authorized of [false, true]) {
     if (!authorized) await page.locator('input[name=uk][value=Yes]').check();
     await page.getByRole('button', { name: 'Add Education', exact: true }).click();
     await page.getByRole('button', { name: 'Add Experience', exact: true }).click();
-    await extension.send('AUTOFILL_SCAN');
-    await extension.send('AUTOFILL_FILL', 'overwrite');
+    const widget = page.locator('[data-job-buddy-ui]');
+    if (via === 'floating') {
+      await page.bringToFront();
+      await widget.getByRole('button', { name: 'Fill Form', exact: true }).click();
+      await expect(widget.getByRole('button', { name: 'Undo', exact: true })).toBeVisible();
+    } else {
+      await extension.send('AUTOFILL_SCAN');
+      await extension.send('AUTOFILL_FILL', 'overwrite');
+    }
     await expect(page.locator('#headline')).toHaveValue('Technical Lead');
     await expect(page.locator('#phone')).toHaveValue('81 234 5678');
     await expect(page.locator('#address')).toHaveValue('10 Test Road, Bangkok, 10310, Thailand');
@@ -204,7 +222,8 @@ for (const authorized of [false, true]) {
     await expect(page.locator('#experience li')).toHaveCount(1);
     await expect(page.locator('#row-saves')).toHaveText('0');
     await expect(page.locator('#submissions')).toHaveText('0');
-    await extension.send('CLEAR');
+    if (via === 'floating') await widget.getByRole('button', { name: 'Undo', exact: true }).click();
+    else await extension.send('CLEAR');
     await expect(page.locator('#phone')).toHaveValue('');
     await expect(page.locator('#school')).toHaveValue('');
     await expect(page.locator('#title')).toHaveValue('');
