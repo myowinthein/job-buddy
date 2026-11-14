@@ -430,6 +430,8 @@ function App() {
           ? 'setupAI'
           : 'fill';
   const primaryLabel = PRIMARY_LABELS[primaryKind];
+  const primaryText =
+    autofillState === 'scanning' ? feedback.autofillScanning : filling ? 'Filling…' : primaryLabel;
   const primaryAction = {
     profileFailed: openOptions,
     profileSetup: openOptions,
@@ -570,11 +572,15 @@ function App() {
               className="h-4 w-4 animate-spin motion-reduce:animate-none"
             />
           )}
-          <span role={filling ? 'status' : undefined} aria-atomic="true">
-            {autofillState === 'scanning' ? feedback.autofillScanning : filling ? 'Filling…' : primaryLabel}
-          </span>
+          <span>{primaryText}</span>
           {!filling && primaryIsAI && <Sparkles aria-hidden="true" className="h-4 w-4" />}
         </button>
+        {/* A status role inside a button leaves Chrome without a button name, so announce progress beside it. */}
+        {filling && (
+          <span role="status" aria-atomic="true" className="sr-only">
+            {primaryText}
+          </span>
+        )}
         {confirming ? (
           <button type="button" onClick={handleCancelFill} className={secondaryButton}>
             Cancel
