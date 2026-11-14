@@ -1,3 +1,4 @@
+import { dropzoneSurface } from './dropzone';
 /** DOM helpers shared by discovery and the write-time safety checks. */
 export function composedParent(element: Element): Element | null {
   if (element.assignedSlot) return element.assignedSlot;
@@ -51,6 +52,8 @@ export function isChoice(element: HTMLElement): boolean {
 /** Hidden file inputs are usable only through a specific, visible upload surface. */
 export function fileInputProxy(element: HTMLInputElement): HTMLElement | undefined {
   if (element.type !== 'file') return undefined;
+  const dropzone = dropzoneSurface(element);
+  if (dropzone && isControlAvailable(dropzone) && hasVisibleSurface(dropzone)) return dropzone;
   const button = element.closest<HTMLElement>('button,[role="button"]');
   const proxies = [...associatedLabels(element), ...(button ? [button] : [])];
   // Overlay inputs can have no id/label association and tabIndex=-1. Accept
@@ -115,7 +118,7 @@ export function isControlAvailable(element: HTMLElement): boolean {
     const style = getComputedStyle(ancestor);
     if (
       (style.display === 'none' && !(ancestor === element && fileProxy)) ||
-      style.visibility === 'hidden' ||
+      (style.visibility === 'hidden' && !(ancestor === element && fileProxy)) ||
       style.visibility === 'collapse' ||
       (parseFloat(style.opacity) === 0 &&
         (ancestor !== element ||
@@ -180,6 +183,8 @@ export function controlForm(element: HTMLElement): Element | null {
     element instanceof HTMLTextAreaElement
   )
     if (element.form) return element.form;
+  const uploadForm = dropzoneSurface(element)?.closest('form,[role="form"]');
+  if (uploadForm) return uploadForm;
   for (let current: Element | null = element; current; current = composedParent(current))
     if (current.matches('form,[role="form"]')) return current;
   return null;

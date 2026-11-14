@@ -12,6 +12,10 @@ interface WriteEntry {
   restore: (state: FieldState, active: () => boolean) => Promise<boolean>;
   remove: () => void;
 }
+export interface WriteDependencies {
+  target: EventTarget;
+  matches: (event: Event) => boolean;
+}
 /** The control still sits in the tree, form and identity it was written in. */
 const sameControl = (
   element: HTMLElement,
@@ -60,6 +64,7 @@ async function performTrackedWrite(
   active: () => boolean,
   write: (before: FieldState, unchanged: () => boolean) => Promise<boolean>,
   restore: WriteEntry['restore'],
+  dependencies?: WriteDependencies,
 ): Promise<boolean> {
   if (!active()) return false;
   const session = entries;
@@ -90,13 +95,21 @@ async function performTrackedWrite(
     const controls = before.choices?.map((item) => item.element) ?? [element];
     for (const control of controls)
       for (const type of ['input', 'change']) control.addEventListener(type, mark);
+    const markDependent = (event: Event) => {
+      if (event.isTrusted && !ownEventDepth && dependencies?.matches(event)) entry.manual = true;
+    };
+    if (dependencies)
+      for (const type of ['input', 'change', 'click', 'drop'])
+        dependencies.target.addEventListener(type, markDependent, true);
     entry.remove = () => {
       for (const control of controls)
         for (const type of ['input', 'change']) control.removeEventListener(type, mark);
+      if (dependencies)
+        for (const type of ['input', 'change', 'click', 'drop'])
+          dependencies.target.removeEventListener(type, markDependent, true);
     };
   }
-  const current = () =>
-    active() && !entry.manual && sameControl(element, root, form, identity);
+  const current = () => active() && !entry.manual && sameControl(element, root, form, identity);
   let accepted = false;
   try {
     accepted = await write(before, current);

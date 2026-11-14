@@ -1,3 +1,4 @@
+import { dropzoneSurface, dropzonePreviews, waitDropzoneFile } from './dropzone';
 import {
   composedText,
   composedParent,
@@ -748,6 +749,29 @@ export async function fillFileField(
     )
   )
     return false;
+  const surface = dropzoneSurface(element);
+  const previews = surface ? dropzonePreviews(element) : [];
+  let added: HTMLElement | null = null;
+  const restoreFile = async (state: FieldState, active: () => boolean) => {
+    if (!surface) return restore(element, state, active);
+    if (!active() || !previews.every((preview) => preview.isConnected)) return false;
+    // Remove only the preview created by this write, preserving earlier files.
+    const created =
+      added ?? dropzonePreviews(element).find((preview) => !previews.includes(preview));
+    if (created?.isConnected) {
+      const remove = created.querySelector<HTMLElement>('[data-dz-remove]');
+      if (!remove || !isControlAvailable(remove)) return false;
+      safeClick(remove);
+      await settleFramework();
+      if (created.isConnected) return false;
+    }
+    const transfer = new DataTransfer();
+    state.files?.forEach((file) => transfer.items.add(file));
+    ownWriteEvents(() => {
+      element.files = transfer.files;
+    });
+    return sameFieldState(state, captureField(element));
+  };
   return performWrite(
     element,
     () => true,
@@ -759,6 +783,16 @@ export async function fillFileField(
         !sameFieldState(before, captureField(element))
       )
         return false;
+      if (
+        surface &&
+        previews.some(
+          (preview) => preview.querySelector('[data-dz-name]')?.textContent?.trim() === data.name,
+        )
+      ) {
+        return (
+          before.files?.some((file) => file.name === data.name && file.size === data.size) ?? false
+        );
+      }
       const binary = atob(match[2]);
       const file = new File(
         [Uint8Array.from(binary, (character) => character.charCodeAt(0))],
@@ -769,9 +803,19 @@ export async function fillFileField(
       transfer.items.add(file);
       ownWriteEvents(() => {
         element.files = transfer.files;
-        notify(element);
+        if (surface) {
+          // A normal change makes Dropzone destroy/recreate its native picker.
+          // Use its public drop interaction while retaining this ledger anchor.
+          surface.dispatchEvent(
+            new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }),
+          );
+        } else notify(element);
       });
       blur(element);
+      if (surface) {
+        added = await waitDropzoneFile(element, file, previews, current);
+        if (!added) return false;
+      }
       await settle();
       return (
         valid(element) &&
@@ -780,7 +824,16 @@ export async function fillFileField(
         element.files[0].size === file.size
       );
     },
-    (state, active) => restore(element, state, active),
+    restoreFile,
+    surface
+      ? {
+          target: surface.closest('form,[role="form"]')!,
+          matches: (event) =>
+            event.type === 'drop' ||
+            (event.target instanceof Element &&
+              !!event.target.closest('.dz-preview,.dz-clickable')),
+        }
+      : undefined,
   );
 }
 export async function fillCheckboxInput(element: HTMLElement, checked = true): Promise<boolean> {

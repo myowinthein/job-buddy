@@ -1,3 +1,4 @@
+import { dropzoneLabel } from './dropzone';
 import { composedAncestors, composedText, isTextEditor, queryOpenElements } from './dom';
 import {
   ariaName,
@@ -42,6 +43,7 @@ function withHostFallback(element: HTMLElement, getValue: (el: HTMLElement) => s
 function getLabelText(element: HTMLElement, context?: LabelContext): string {
   return (
     labelText(element, context) ||
+    dropzoneLabel(element) ||
     shadowHosts(element)
       .map((host) => labelText(host, context) || host.getAttribute('label') || ariaName(host))
       .find(Boolean) ||

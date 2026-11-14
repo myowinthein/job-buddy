@@ -53,7 +53,7 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   // Also covers a URL/text field sharing the same label wording — mapper.ts's
   // resolveDictionaryHit() redirects to documents.cv.url for a non-file
   // element, so this entry doesn't need duplicate aliases of its own.
-  'documents.cv.file':             ['resume', 'cv', 'resumefile', 'cvfile', 'curriculumvitae', 'resumeupload', 'uploadresume', 'attachresume', 'uploadcv', 'myresume'],
+  'documents.cv.file':             ['resume', 'cv', 'resumefile', 'cvfile', 'curriculumvitae', 'resumeupload', 'uploadresume', 'attachresume', 'uploadcv', 'myresume', 'uploadapplicationfiles', 'applicationfiles', 'applicationdocuments', 'uploadapplicationdocuments', 'bewerbungsunterlagen', 'bewerbungsdateien', 'uploadbewerbungsdateien', 'bewerbungsdateienhochladen', 'bewerbungsunterlagenhochladen'],
   // Unindexed markers, same pattern as languages.language/proficiency above —
   // adjustEducationMatches() in educationResolution.ts rewrites these to a
   // concrete education.N.* path (single field on the page → the applicant's

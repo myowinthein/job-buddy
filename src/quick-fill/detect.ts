@@ -4,8 +4,8 @@ import { extractSignals } from '@/src/autofill/signals';
 // Local discovery only. Never scans with Gemini or sends page text to the worker.
 export const QUICK_FILL_HOST = 'data-job-buddy-ui';
 const CAREER =
-  /\b(resum[eé]|cv|curriculum vitae|cover letter|work authori[sz]ation|employment|job application|apply for|candidate|linkedin|salary|portfolio)\b/i;
-const IDENTITY = /first.?name|full.?name|given.?name|your name|\bname\b/i;
+  /\b(resum[eé]|cv|curriculum vitae|cover letter|work authori[sz]ation|employment|job application|application (?:files|documents)|bewerbungs(?:unterlagen|dateien)|apply for|candidate|linkedin|salary|portfolio)\b/i;
+const IDENTITY = /first.?name|full.?name|given.?name|your name|\bvorname\b|\bname\b/i;
 const EMAIL = /email|e-mail/i;
 export const QUICK_FILL_CONTROL =
   'input:not([type="hidden"]):not([type="submit"]):not([type="button"]),textarea,select,[role="textbox"],[role="combobox"]';

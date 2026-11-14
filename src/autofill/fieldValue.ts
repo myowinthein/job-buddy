@@ -1,3 +1,4 @@
+import { dropzonePreviews } from './dropzone';
 import { isTextEditor, isChoice, isChoiceChecked } from './dom';
 import { isSkippableOption, normalize, PLACEHOLDER_OPTION_NORMS } from './normalizer';
 
@@ -5,7 +6,8 @@ import { isSkippableOption, normalize, PLACEHOLDER_OPTION_NORMS } from './normal
 export function readFieldValue(element: HTMLElement): string {
   if (isChoice(element)) return isChoiceChecked(element) ? 'checked' : '';
   if (element instanceof HTMLInputElement) {
-    if (element.type === 'file') return element.files?.length ? 'selected file' : '';
+    if (element.type === 'file')
+      return element.files?.length || dropzonePreviews(element).length ? 'selected file' : '';
     if (!(element.type === 'button' && (element.getAttribute('aria-haspopup') === 'listbox' || element.getAttribute('role') === 'combobox')))
       return element.value;
   }
