@@ -158,7 +158,9 @@ export function resolveRuleValue(
     if (signals.type === 'number' || path.endsWith('.amount')) return String(amount);
     return withCurrency(groupThousands(String(amount)), entry.currency);
   }
-  const date = path.match(/^(workHistory|education)\.(\d+)\.(startDate|endDate)\.formatted$/);
+  // AI and explicit mappings may name the raw schema path. The input still
+  // determines its date representation, just as for a rule's virtual path.
+  const date = path.match(/^(workHistory|education)\.(\d+)\.(startDate|endDate)(?:\.formatted)?$/);
   if (date) {
     const entry =
       date[1] === 'education'

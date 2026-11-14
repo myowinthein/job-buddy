@@ -127,3 +127,30 @@ it('leaves a graduation year empty for a current education entry', () => {
     resolveRuleValue(RULE_PROFILE, 'education.1.endDate.formatted', signals('Year graduated')),
   ).toBe('');
 });
+
+it.each(['education', 'workHistory'] as const)(
+  'formats raw %s date paths from AI or learned mappings for the target input',
+  (family) => {
+    const dates = { startDate: '2021-12', endDate: '2025-08', isCurrent: false };
+    const profile = {
+      ...RULE_PROFILE,
+      [family]: [{ ...RULE_PROFILE[family][0], ...dates }],
+    };
+    for (const [part, month, iso] of [
+      ['startDate', '12/2021', '2021-12'],
+      ['endDate', '08/2025', '2025-08'],
+    ]) {
+      const path = `${family}.0.${part}`;
+      expect(resolveRuleValue(profile, path, signals('Date', 'MM/YYYY'))).toBe(month);
+      expect(resolveRuleValue(profile, path, signals('Date', 'YYYY.MM'))).toBe(
+        iso.replace('-', '.'),
+      );
+      expect(resolveRuleValue(profile, path, signals('Date', '', 'month'))).toBe(iso);
+      expect(resolveRuleValue(profile, path, signals('Year', '', 'number'))).toBe(iso.slice(0, 4));
+      expect(resolveRuleValue(profile, path, signals('Date', '', 'date'))).toBe('');
+      expect(resolveRuleValue(profile, path, signals('Date'))).toBe(iso);
+    }
+    profile[family][0].isCurrent = true;
+    expect(resolveRuleValue(profile, `${family}.0.endDate`, signals('Date', 'MM/YYYY'))).toBe('');
+  },
+);

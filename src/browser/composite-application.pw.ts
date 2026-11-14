@@ -7,6 +7,7 @@ for (const authorized of [false, true]) {
     page,
     extension,
   }) => {
+    let dateAnswers = 0;
     await context.route('https://generativelanguage.googleapis.com/**', (route) => {
       const { fields } = autofillRequest(route);
       const answers = fields
@@ -18,7 +19,25 @@ for (const authorized of [false, true]) {
           )?.id,
           confidence: 'high',
         }));
-      return route.fulfill({ json: geminiResponse(JSON.stringify(answers)) });
+      const dates = fields.flatMap((field) => {
+        if (!['education', 'workHistory'].includes(field.section ?? '')) return [];
+        const part = /^start date/i.test(field.label)
+          ? 'startDate'
+          : /^end date/i.test(field.label)
+            ? 'endDate'
+            : null;
+        return part
+          ? [
+              {
+                fieldId: field.fieldId,
+                profilePath: `${field.section}.1.${part}`,
+                confidence: 'high',
+              },
+            ]
+          : [];
+      });
+      dateAnswers += dates.length;
+      return route.fulfill({ json: geminiResponse(JSON.stringify([...answers, ...dates])) });
     });
     await extension.worker.evaluate(async (authorized) => {
       const { profile } = await chrome.storage.local.get<{ profile: Profile }>('profile');
@@ -86,7 +105,7 @@ for (const authorized of [false, true]) {
         <label>Summary (Optional)<textarea id="summary" name="summary"></textarea></label>
         <fieldset><legend>You must have the right to work in the UK for this role. We are unable to offer visa sponsorship now or in the future. Do you have the right to work in the UK and not require visa sponsorship now or at any point in the future?</legend><label><input type="radio" name="uk" value="Yes">YES</label><label><input type="radio" name="uk" value="No">NO</label></fieldset>
         <label id="english-label">What is your level of proficiency in English?</label><input id="english" name="english" readonly role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="english-options" aria-owns="english-options" aria-labelledby="english-label" placeholder="Select an option…"><div role="listbox" id="english-options" hidden>${['None', 'Conversational', 'Professional', 'Native or bilingual'].map((text) => `<div role="option"><span role="presentation"><span class="option-label">${text}</span></span></div>`).join('')}</div>
-        <output id="row-saves">0</output><output id="submissions">0</output><button type="submit">Submit application</button></form>`;
+        <output id="row-saves">0</output><output id="submissions">0</output><output id="invalid-date-writes">0</output><button type="submit">Submit application</button></form>`;
       const phone = document.querySelector<HTMLInputElement>('#phone')!;
       phone.addEventListener('input', () => {
         const digits = phone.value.replace(/\D/g, '');
@@ -114,6 +133,8 @@ for (const authorized of [false, true]) {
                 });
                 input.addEventListener('input', () => {
                   if (previous === undefined) input.value = '';
+                  if (input.value && !/^\d{2}\/\d{4}$/.test(input.value))
+                    document.querySelector('#invalid-date-writes')!.textContent = '1';
                 });
               });
             document
@@ -171,6 +192,8 @@ for (const authorized of [false, true]) {
     await expect(page.locator('#work-summary')).toHaveValue('Owned the backend platform.');
     await expect(page.locator('#work-start')).toHaveValue('12/2021');
     await expect(page.locator('#work-end')).toHaveValue('08/2025');
+    await expect(page.locator('#invalid-date-writes')).toHaveText('0');
+    expect(dateAnswers).toBeGreaterThanOrEqual(4);
     await expect(page.locator('#summary')).toHaveValue('A detailed career summary. '.repeat(20));
     await expect(page.locator('#english')).toHaveValue('Professional');
     await expect(page.locator(`input[name=uk][value=${authorized ? 'Yes' : 'No'}]`)).toBeChecked();
