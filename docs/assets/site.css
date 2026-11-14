@@ -251,6 +251,11 @@ h1 {
 .text-link {
   font-size: 14px;
 }
+.external-link-tail {
+  display: inline-block;
+  white-space: nowrap;
+  text-decoration: inherit;
+}
 .external-link-icon {
   width: 14px;
   height: 14px;

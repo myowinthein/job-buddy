@@ -517,9 +517,10 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
               href="https://aistudio.google.com/rate-limit"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 dark:text-blue-400 hover:underline rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
             >
-              View usage and limits <ExternalLink aria-hidden="true" className="inline h-3 w-3" /> <span className="text-xs">(opens in new tab)</span>
+              View usage and limits
+              <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" /> <span className="text-xs">(opens in new tab)</span>
                 </a>
           </div>
           <div id="gemini-model-options" hidden={!modelOptionsOpen} className="mt-3">

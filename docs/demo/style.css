@@ -150,7 +150,7 @@ button {
   padding: 20px 24px;
   font-size: 14px;
 }
-.setup-notice svg {
+.setup-notice > svg {
   width: 22px;
   height: 22px;
 }
@@ -162,7 +162,9 @@ button {
   margin: 3px 0 0;
 }
 .setup-notice a {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border-radius: 4px;
   padding: 9px 15px;
   background: #255ccd;
@@ -439,7 +441,7 @@ button:disabled {
     gap: 12px;
     padding: 18px;
   }
-  .setup-notice svg {
+  .setup-notice > svg {
     align-self: start;
   }
   .setup-notice a {

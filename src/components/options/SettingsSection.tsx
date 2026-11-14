@@ -1039,9 +1039,10 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                     href="https://one.google.com/storage"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-blue-600 dark:text-blue-400 underline"
+                    className="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 underline"
                   >
-                    Manage Storage <ExternalLink aria-hidden="true" className="inline h-3 w-3" /> <span className="text-xs">(opens in new tab)</span>
+                    Manage Storage
+                    <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" /> <span className="text-xs">(opens in new tab)</span>
                   </a>
                 )}
               </div>
