@@ -15,6 +15,7 @@
     <title>Frontend Engineer · Morrow Studio</title>
     <script src="../assets/theme-init.js"></script>
     <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="../assets/theme-toggle.css" />
     <script src="demo.js" defer></script>
     <script src="presence.js" defer></script>
   </head>
@@ -23,31 +24,34 @@
     <header class="masthead">
       <div class="masthead-inner">
         <span class="wordmark">morrow<span>studio</span></span>
-        <button id="theme" type="button" aria-label="Switch to dark mode">
-          <svg
-            class="theme-moon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.7"
-            aria-hidden="true"
-          >
-            <path d="M20.9 13.2A9 9 0 0 1 10.8 3.1a9 9 0 1 0 10.1 10.1Z" />
-          </svg>
-          <svg
-            class="theme-sun"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.7"
-            aria-hidden="true"
-          >
-            <circle cx="12" cy="12" r="4" />
-            <path
-              d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
-            />
-          </svg>
-        </button>
+        <div class="demo-actions">
+          <a id="return-to-guide" href="../" hidden>← Back to guide</a>
+          <button id="theme" class="theme-toggle" type="button" aria-label="Switch to dark mode">
+            <svg
+              class="theme-moon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              aria-hidden="true"
+            >
+              <path d="M20.9 13.2A9 9 0 0 1 10.8 3.1a9 9 0 1 0 10.1 10.1Z" />
+            </svg>
+            <svg
+              class="theme-sun"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="4" />
+              <path
+                d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
     </header>
     <main class="application-layout">
@@ -70,7 +74,7 @@
           href="https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk"
           target="_blank"
           rel="noopener noreferrer"
-          >Add to Chrome <svg class="external-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg> <small>(opens in new tab)</small></a
+          >Add to Chrome <svg class="external-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg></a
         >
       </aside>
       <aside class="job-description" aria-labelledby="role-title">
@@ -116,12 +120,12 @@
                   name="firstName"
                   autocomplete="given-name"
                   required
-                  maxlength="100"
+                  data-maxlength="100"
                 />
               </div>
               <div>
                 <label for="last-name">Last name</label
-                ><input id="last-name" name="lastName" autocomplete="family-name" maxlength="100" />
+                ><input id="last-name" name="lastName" autocomplete="family-name" data-maxlength="100" />
               </div>
               <div>
                 <label for="email">Email address <span>*</span></label
@@ -131,7 +135,7 @@
                   type="email"
                   autocomplete="email"
                   required
-                  maxlength="254"
+                  data-maxlength="254"
                 />
               </div>
               <div>
@@ -142,12 +146,12 @@
                   type="tel"
                   autocomplete="tel"
                   required
-                  maxlength="40"
+                  data-maxlength="40"
                 />
               </div>
               <div>
                 <label for="city">City</label
-                ><input id="city" name="city" autocomplete="address-level2" maxlength="120" />
+                ><input id="city" name="city" autocomplete="address-level2" data-maxlength="120" />
               </div>
               <div>
                 <label for="country">Country</label
@@ -169,15 +173,15 @@
             <div class="fields">
               <div class="full">
                 <label for="linkedin">LinkedIn profile</label
-                ><input id="linkedin" name="linkedin" type="url" maxlength="2000" />
+                ><input id="linkedin" name="linkedin" type="url" data-maxlength="2000" />
               </div>
               <div>
                 <label for="portfolio">Portfolio or website</label
-                ><input id="portfolio" name="portfolio" type="url" maxlength="2000" />
+                ><input id="portfolio" name="portfolio" type="url" data-maxlength="2000" />
               </div>
               <div>
                 <label for="github">GitHub profile</label
-                ><input id="github" name="github" type="url" maxlength="2000" />
+                ><input id="github" name="github" type="url" data-maxlength="2000" />
               </div>
               <div>
                 <label for="company">Current company</label
@@ -185,7 +189,7 @@
                   id="company"
                   name="currentCompany"
                   autocomplete="organization"
-                  maxlength="200"
+                  data-maxlength="200"
                 />
               </div>
               <div>
@@ -194,7 +198,7 @@
                   id="job-title"
                   name="currentJobTitle"
                   autocomplete="organization-title"
-                  maxlength="200"
+                  data-maxlength="200"
                 />
               </div>
               <div class="full">
@@ -233,7 +237,9 @@
               </div>
               <div class="full">
                 <label for="interest">What interests you about this position?</label
-                ><textarea id="interest" name="motivation" rows="4" maxlength="3000"></textarea>
+                ><textarea id="interest" name="motivation" rows="4" data-maxlength="3000" aria-describedby="interest-limit"></textarea>
+                <p id="interest-limit" class="field-limit">Up to 3000 characters</p>
+                <span id="interest-count-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></span>
               </div>
             </div>
           </section>

@@ -4,6 +4,7 @@ import { ADJUSTABLE_LAYERS, visibleQuestion, containsControl, scopeRoot } from '
 import type { Profile } from '../types/profile';
 import type { FieldMatch } from './mapper';
 import { resolveProfileValue } from './resolver';
+import { ariaName, ownText } from './labels';
 
 // Only these two paths are ambiguous from label text alone — mapField() has
 // no way to know whether a sibling calling-code field exists elsewhere on
@@ -41,6 +42,51 @@ export function callingCodeSibling(match: FieldMatch, matches: FieldMatch[]): Fi
 // Use a calling-code selector only within this contact's structural group.
 // Explicit local/full wording wins; learned/autocomplete paths stay unchanged.
 export function adjustPhoneMatches(matches: FieldMatch[], profile: Profile): void {
+  // Some telephone widgets call their dial-code selector only "Country".
+  // Require an explicitly named phone group and one phone; residence countries
+  // and explicit learned/autocomplete destinations retain their own meaning.
+  for (const match of matches) {
+    const element = match.element;
+    if (
+      !element ||
+      !ADJUSTABLE_LAYERS.has(match.matchLayer) ||
+      match.fieldPath !== 'address.country'
+    )
+      continue;
+    const signals = extractSignals(element);
+    if (!/^country\s*\*?$/i.test((signals.label || signals.ariaLabel).trim())) continue;
+    const group = element.closest('fieldset,[role="group"]');
+    if (!group) continue;
+    const legend = group.querySelector(':scope > legend');
+    if (
+      !/^(?:phone|telephone|mobile)(?: number)?\s*\*?$/i.test(
+        (ariaName(group) || (legend ? ownText(legend) : '')).trim(),
+      )
+    )
+      continue;
+    const siblings = matches.filter(
+      (item) =>
+        item.element &&
+        scopeRoot(item.element) === scopeRoot(element) &&
+        containsControl(group, item.element),
+    );
+    const phones = siblings.filter(
+      (item) =>
+        item.element instanceof HTMLInputElement &&
+        item.element.type === 'tel' &&
+        AMBIGUOUS_PHONE_PATHS.has(item.fieldPath ?? ''),
+    );
+    if (
+      phones.length !== 1 ||
+      siblings.filter(
+        (item) =>
+          item.fieldPath === 'address.country' || item.fieldPath === 'personal.phone.callingCode',
+      ).length !== 1
+    )
+      continue;
+    match.fieldPath = 'personal.phone.callingCode';
+    match.value = resolveProfileValue(profile, match.fieldPath) || null;
+  }
   for (const match of matches) {
     if (!match.fieldPath) continue;
     if (!AMBIGUOUS_PHONE_PATHS.has(match.fieldPath)) continue;

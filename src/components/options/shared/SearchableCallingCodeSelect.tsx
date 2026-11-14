@@ -52,7 +52,7 @@ export function SearchableCallingCodeSelect({ value, onChange }: Props) {
         <button
           type="button"
           onClick={dropdown.toggle}
-          className="h-full rounded-l-lg bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 px-2 py-2 text-sm cursor-pointer flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors whitespace-nowrap"
+          className="h-full rounded-l-lg bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 px-2 py-2 text-sm cursor-pointer flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors whitespace-nowrap focus-visible:-outline-offset-2"
           aria-haspopup="listbox"
           aria-expanded={dropdown.open}
           aria-label="Select country calling code"

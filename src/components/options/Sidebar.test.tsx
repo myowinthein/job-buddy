@@ -72,6 +72,39 @@ describe('Sidebar — section navigation', () => {
 });
 
 describe('Sidebar — collapsed state', () => {
+  it('keeps the same menu control when the sidebar changes state', () => {
+    const props = {
+      activeSection: 'personal',
+      onSelect: vi.fn(),
+      collapsed: false,
+      onToggle: vi.fn(),
+      sectionCompletion: {},
+    };
+    const view = render(<Sidebar {...props} />);
+    const toggle = screen.getByRole('button', { name: 'Collapse sidebar' });
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(toggle.querySelector('svg')).toBeTruthy();
+    toggle.focus();
+
+    view.rerender(<Sidebar {...props} collapsed />);
+    expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBe(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.querySelector('svg')).toBeTruthy();
+    expect(toggle.querySelector('img')).toBeNull();
+    expect(document.activeElement).toBe(toggle);
+    fireEvent.click(toggle);
+    expect(props.onToggle).toHaveBeenCalledOnce();
+  });
+
+  it('keeps completion information in tooltips without visible rail indicators', () => {
+    renderSidebar({ collapsed: true, sectionCompletion: { personal: true } });
+    const personal = screen.getByRole('button', { name: 'Personal' });
+    expect(personal.title).toContain('Required details complete');
+    expect(personal.querySelector('[title="Required details complete"]')).toBeNull();
+    const address = screen.getByRole('button', { name: 'Address' });
+    expect(address.querySelector('[title="Required details remaining"]')).toBeNull();
+  });
+
   it('hides section labels and the brand name when collapsed, using title attributes instead', () => {
     renderSidebar({ collapsed: true });
     expect(screen.queryByText('Job Buddy')).toBeNull();

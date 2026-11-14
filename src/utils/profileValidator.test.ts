@@ -2,6 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { validateImportedProfile } from './profileValidator';
 
 describe('validateImportedProfile', () => {
+  it('converts a legacy portfolio into the same canonical field as a current JSON or Drive import', () => {
+    const file = { name: 'portfolio.pdf', size: 3, base64: 'YWJj' };
+    const legacy = validateImportedProfile({ links: { portfolio: 'https://example.test/work' }, documents: { portfolio: { file } } });
+    const current = validateImportedProfile({ documents: { portfolio: { url: 'https://example.test/work', file } } });
+    expect(legacy.invalidFields).toEqual([]);
+    expect(legacy.sanitized).toEqual(current.sanitized);
+    expect(legacy.sanitized.links ?? {}).not.toHaveProperty('portfolio');
+  });
   it('preserves backup identity and rejects malformed profile IDs', () => {
     expect(validateImportedProfile({ id: 'backup-profile' }).sanitized.id).toBe('backup-profile');
     for (const id of ['', ' ', 123, 'x'.repeat(201)]) {
@@ -328,7 +336,7 @@ describe('validateImportedProfile', () => {
     expect(result.invalidFields.some((f) => f.path === 'documents.cv.file')).toBe(true);
   });
 
-  it.each(['cv', 'coverLetter'])(
+  it.each(['cv', 'coverLetter', 'portfolio'])(
     'rejects oversized %s metadata even with a short payload',
     (field) => {
       const result = validateImportedProfile({
@@ -357,7 +365,7 @@ describe('validateImportedProfile', () => {
     expect(result.valid).toBe(true);
   });
 
-  it.each(['cv', 'coverLetter'] as const)(
+  it.each(['cv', 'coverLetter', 'portfolio'] as const)(
     'rejects oversized %s base64 independently of raw size',
     (field) => {
       // Well past the ~5.6M-char base64 bound for a 4 MB raw file.

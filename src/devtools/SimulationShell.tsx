@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import DevToolbar from './DevToolbar';
 import { createDevSurface, type DevSurface } from './surface';
 import { cleanupPreviewSeeds } from './quickPreview';
+import { developmentSession } from './session';
 
 export default function SimulationShell({ children }: { children: ReactNode }) {
   if (!import.meta.env.DEV) return children;
@@ -126,6 +127,41 @@ function DevelopmentShell({ children }: { children: ReactNode }) {
       };
       container.current!.append(frame);
     });
+  useEffect(() => {
+    const store = developmentSession();
+    if (!store) return;
+    let controlBusy = false;
+    const started = () => {
+      controlBusy = true;
+    };
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const synchronize = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (pendingCleanup.current || controlBusy) return;
+        const shown = currentFrame.current?.contentWindow?.location.href ?? location.href;
+        if (new URL(shown).searchParams.get('devSession') === store.scope()) return;
+        const url = new URL(location.href);
+        url.search = '';
+        if (store.scope()) url.searchParams.set('devSession', store.scope()!);
+        void navigate(url.href).catch(() => {});
+      }, 0);
+    };
+    const finished = () => {
+      controlBusy = false;
+      synchronize();
+    };
+    window.addEventListener('jb:dev:control-start', started);
+    window.addEventListener('jb:dev:control-end', finished);
+    window.addEventListener('jb:dev:session-state', synchronize);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('jb:dev:session-state', synchronize);
+      window.removeEventListener('jb:dev:control-start', started);
+      window.removeEventListener('jb:dev:control-end', finished);
+    };
+    // The mounted shell owns its frame container throughout mode changes.
+  }, []);
   return (
     <div className="flex flex-col h-screen">
       <DevToolbar surface={surface} onNavigate={navigate} />

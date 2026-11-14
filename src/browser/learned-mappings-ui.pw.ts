@@ -155,7 +155,7 @@ test('shows readable chooser previews and a persistent selected category across 
   await options.screenshot({ path: info.outputPath('chooser-selected-light.png') });
 });
 
-test('renders catalog-backed salary periods and opens missing city and education details', async ({
+test('renders catalog-backed salary periods and keeps empty mapped fields editable', async ({
   context,
   extension,
 }) => {
@@ -190,13 +190,18 @@ test('renders catalog-backed salary periods and opens missing city and education
   await options.goto(extensionUrl(extension, 'options.html'));
   await options.getByRole('button', { name: 'Salary', exact: true }).click();
   await expect(options.locator('#field-currentPeriod')).toHaveValue('annual');
+  await options.locator('[data-entry-toggle]').nth(1).click();
   await expect(options.locator('#field-expected-1-period')).toHaveValue('monthly');
-  for (const [label, , id] of destinations) {
+  for (const [label] of destinations) {
     await options.getByRole('button', { name: 'Learned Mappings', exact: true }).click();
     const site = options.getByRole('button', { name: /^127\.0\.0\.1/ });
     if ((await site.getAttribute('aria-expanded')) !== 'true') await site.click();
-    await row(options, label).getByRole('button', { name: 'Open profile', exact: true }).click();
-    await expect(options.locator(`#${id}`)).toBeFocused();
+    const mapping = row(options, label);
+    await expect(mapping.getByText('No saved profile data.')).toHaveCount(0);
+    await mapping.getByRole('button', { name: /^Edit / }).click();
+    await expect(mapping.getByRole('button', { name: 'Choose a profile field', exact: true })).toBeVisible();
+    await expect(mapping.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
+    await mapping.getByRole('button', { name: 'Cancel', exact: true }).click();
   }
 });
 
@@ -343,13 +348,16 @@ test('follows profile changes, preserves failed drafts and supports scoped keybo
   await options.goto(extensionUrl(extension, 'options.html'));
   await show(options);
   const linkedin = row(options, 'LinkedIn URL');
-  await expect(linkedin.getByText('No saved profile data.')).toBeVisible();
+  await expect(linkedin.getByText('No saved profile data.')).toHaveCount(0);
+  await linkedin.getByRole('button', { name: /^Edit / }).click();
+  await expect(linkedin.getByText('Current value:', { exact: false })).toHaveCount(0);
   await extension.worker.evaluate(async () => {
     const { profile } = await chrome.storage.local.get<{ profile: Profile }>('profile');
     profile.links.linkedin = 'https://www.linkedin.com/in/sample/';
     await chrome.storage.local.set({ profile });
   });
-  await expect(linkedin.getByText('No saved profile data.')).toHaveCount(0);
+  await expect(linkedin.getByText('https://www.linkedin.com/in/sample/', { exact: true })).toBeVisible();
+  await linkedin.getByRole('button', { name: 'Cancel', exact: true }).click();
   await row(options, 'Applicant response')
     .getByRole('button', { name: /^Edit / })
     .click();
@@ -368,7 +376,7 @@ test('follows profile changes, preserves failed drafts and supports scoped keybo
   });
   await options.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(
-    options.getByText('Failed to save. Please try again.', { exact: true }),
+    options.getByText('Could not save your changes. Try again.', { exact: true }),
   ).toBeVisible();
   await expect(
     options.getByRole('button', {
@@ -383,7 +391,8 @@ test('follows profile changes, preserves failed drafts and supports scoped keybo
   await expect(options.getByText('Mapping updated.', { exact: true })).toBeVisible();
   const employer = row(options, 'Current employer');
   await employer.getByRole('button', { name: /^Delete mapping / }).click();
-  await expect(employer.getByText(/Delete this mapping/)).toBeVisible();
+  await expect(employer.getByRole('button', { name: 'Delete', exact: true })).toBeVisible();
+  await expect(employer.getByText(/Delete this mapping/)).toHaveCount(0);
   await employer.getByRole('button', { name: 'Cancel', exact: true }).press('Escape');
   await expect(employer.getByRole('button', { name: 'Delete', exact: true })).toHaveCount(0);
   await options
@@ -401,7 +410,7 @@ test('follows profile changes, preserves failed drafts and supports scoped keybo
   ).toEqual(['127.0.0.1']);
 });
 
-test('distinguishes read failure from empty data and deep-links to the missing profile input', async ({
+test('distinguishes read failure from empty data and retries without an empty-value helper', async ({
   context,
   extension,
 }) => {
@@ -421,7 +430,7 @@ test('distinguishes read failure from empty data and deep-links to the missing p
   await options.goto(extensionUrl(extension, 'options.html'));
   await options.getByRole('button', { name: 'Learned Mappings', exact: true }).click();
   await expect(options.getByRole('alert')).toContainText(
-    'Could not load learned mappings. Try again.',
+    'Could not load learned mappings.',
   );
   await expect(options.getByText(/No learned mappings yet/)).toHaveCount(0);
   await options.evaluate(() => {
@@ -429,11 +438,12 @@ test('distinguishes read failure from empty data and deep-links to the missing p
   });
   await options.getByRole('button', { name: 'Retry', exact: true }).click();
   await options.getByRole('button', { name: /^127\.0\.0\.1/ }).click();
-  await row(options, 'LinkedIn URL')
-    .getByRole('button', { name: 'Open profile', exact: true })
-    .click();
-  await expect(options.getByRole('heading', { name: 'Links', exact: true })).toBeVisible();
-  await expect(options.locator('#field-linkedin')).toBeFocused();
+  const linkedin = row(options, 'LinkedIn URL');
+  await expect(linkedin.getByText('No saved profile data.')).toHaveCount(0);
+  await linkedin.getByRole('button', { name: /^Edit / }).click();
+  await expect(linkedin.getByRole('button', { name: 'Choose a profile field', exact: true })).toBeFocused();
+  await expect(linkedin.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
+  await expect(linkedin.getByRole('button', { name: 'Choose a profile field', exact: true })).toBeVisible();
 });
 
 test('paginates sites and reveals large mapping lists without hiding search results', async ({

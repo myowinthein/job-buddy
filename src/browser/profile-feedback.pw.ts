@@ -15,17 +15,17 @@ test('experience validation is visible, and an empty profile cannot download an 
   await options.goto(extensionUrl(extension, 'options.html'));
   await expect(options.getByText('DEV', { exact: true })).toHaveCount(0);
   await options.getByRole('button', { name: 'Work History', exact: true }).click();
-  await expect(options.getByText('No experience added', { exact: true })).toBeVisible();
+  await expect(options.getByLabel('Company*', { exact: true })).toHaveValue('');
   await options.getByLabel('Available Now', { exact: true }).check();
-  await options.getByRole('button', { name: 'Save Work History', exact: true }).click();
-  await expect(options.getByText('Work history saved', { exact: true })).toBeVisible();
-  await options.getByRole('button', { name: '+ Add Entry', exact: true }).click();
-  await options.getByRole('button', { name: 'Save Work History', exact: true }).click();
+  await options.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(options.getByText('Profile saved.', { exact: true })).toBeVisible();
+  await options.getByLabel('Company*', { exact: true }).fill(' ');
+  await options.getByRole('button', { name: 'Save', exact: true }).click();
   for (const message of [
-    'Company name is required',
-    'Job title is required',
-    'Start date is required',
-    'End date is required',
+    'Enter a company name',
+    'Enter a job title',
+    'Enter a start date',
+    'Enter an end date',
   ]) {
     await expect(options.getByText(message, { exact: true })).toBeVisible();
   }
@@ -37,7 +37,7 @@ test('experience validation is visible, and an empty profile cannot download an 
   await options.locator('#field-workHistory-0-startDate').selectOption('01');
   await options.getByLabel('Year', { exact: true }).first().fill('2020');
   await options.getByLabel('I currently work here', { exact: true }).check();
-  await options.getByRole('button', { name: 'Save Work History', exact: true }).click();
+  await options.getByRole('button', { name: 'Save', exact: true }).click();
   await expect
     .poll(() =>
       extension.worker.evaluate(async () => {

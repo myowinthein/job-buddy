@@ -11,7 +11,6 @@ import { feedback } from '../ui/feedback';
 import { isLearnedPath } from '../utils/learnedMappingData';
 import { LEARNED_MAPPING_THRESHOLD } from '../autofill/constants';
 
-export const MAPPING_REVIEW_VERSION = 1;
 export const MAPPING_REVIEW_BATCH_SIZE = 20;
 export const MAPPING_REVIEW_REQUEST_BYTES = 96_000;
 export type MappingVerdict = 'correct' | 'change' | 'uncertain' | 'inactive';
@@ -33,13 +32,6 @@ export type MappingReviewDecision =
   | { action: 'keep' }
   | { action: 'change'; path: string }
   | { action: 'inactive' };
-export interface CachedMappingAssessment {
-  assessment: MappingAssessment;
-  model: string;
-  reviewedAt: number;
-}
-export type MappingReviewCache = Record<string, CachedMappingAssessment>;
-
 export function mappingReviewItems(
   groups: { domain: string; group: MappingGroup }[],
 ): MappingReviewItem[] {
@@ -186,14 +178,6 @@ export function mappingReviewBody(
     contents: [{ parts: [{ text: mappingReviewPrompt(items, catalog) }] }],
     generationConfig: MAPPING_REVIEW_GENERATION_CONFIG,
   });
-}
-
-export async function reviewFingerprint(value: unknown): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(JSON.stringify(value)),
-  );
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 export function reviewedMappingChanges(

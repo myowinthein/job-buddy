@@ -107,10 +107,10 @@
     ],
     "links": {
       "linkedin": "https://www.linkedin.com/in/alex-morgan-demo",
-      "portfolio": "https://alexmorgan.example.com",
       "github": "https://github.com/example"
     },
     "documents": {
+      "portfolio": { "url": "https://alexmorgan.example.com" },
       "cv": {
         "file": {
           "name": "Alex-Morgan-Sample-Resume.pdf",

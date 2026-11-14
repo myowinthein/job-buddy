@@ -96,27 +96,8 @@ export function registerQuickFill(autofill: AutofillCoordinator): void {
           return run;
         }
         case 'JB_QUICK_UNDO': {
-          const run = await autofill.status(tabId);
-          if (!run || run.stage !== 'completed' || run.runId !== message.runId) return false;
-          const cleared = await Promise.all(
-            run.frames.map(async (frame) => {
-              try {
-                const result = await chrome.tabs.sendMessage(
-                  tabId,
-                  { action: 'CLEAR' },
-                  {
-                    frameId: frame.frameId,
-                    ...(frame.documentId ? { documentId: frame.documentId } : {}),
-                  },
-                );
-                return result?.success === true;
-              } catch {
-                return false;
-              }
-            }),
-          );
-          if (cleared.every(Boolean)) { await autofill.cancel(tabId, run.runId); return true; }
-          return false;
+          if (typeof message.runId !== 'string') return false;
+          return autofill.undo(tabId, message.runId);
         }
         case 'JB_QUICK_DETAILS':
           await openFillLog(tabId);

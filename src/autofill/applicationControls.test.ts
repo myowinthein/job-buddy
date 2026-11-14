@@ -89,7 +89,6 @@ it('includes a hidden PDF input only through its unique visible upload surface',
 });
 
 it.each([
-  'Please upload your cover letter',
   'Upload your passport',
   'Other certificates (not your resume)',
 ])('does not substitute a CV for %s', (label) => {
@@ -97,6 +96,19 @@ it.each([
   const input = document.querySelector<HTMLInputElement>('#file')!;
   input.setAttribute('aria-label', label);
   expect(mapField(extractSignals(input), RULE_PROFILE, {}, 'example.test').ruleBlocked).toBe(true);
+});
+
+it.each([
+  ['Please upload your portfolio', 'portfolio'],
+  ['Please upload your cover letter', 'coverLetter'],
+] as const)('uses the matching uploaded document for %s', (label, kind) => {
+  document.body.innerHTML = '<label><input type="file" id="file"></label>';
+  const input = document.querySelector<HTMLInputElement>('#file')!;
+  input.setAttribute('aria-label', label);
+  const profile = structuredClone(RULE_PROFILE);
+  profile.documents[kind] = { file: { name: `${kind}.pdf`, size: 3, base64: 'YWJj' } };
+  const match = mapField(extractSignals(input), profile, {}, 'example.test');
+  expect(match).toMatchObject({ fieldPath: `documents.${kind}.file`, value: `${kind}.pdf` });
 });
 
 it.each(['Please upload your resume', 'Please upload your résumé'])(

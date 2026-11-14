@@ -28,6 +28,7 @@ interface Props {
   placeholder?: string;
   disabled?: boolean;
   includeEmpty?: boolean;
+  autoFocus?: boolean;
 }
 
 const PREVIEW_OPTIONS: Record<string, readonly { value: string; label: string }[]> = {
@@ -87,6 +88,7 @@ export function SearchableProfileFieldSelect({
   placeholder = 'Select a profile field…',
   disabled = false,
   includeEmpty = false,
+  autoFocus = false,
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -277,7 +279,7 @@ export function SearchableProfileFieldSelect({
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => toggleSubGroup(item.id)}
           aria-expanded={!!expanded}
-          className={`w-full min-h-9 flex items-center justify-between gap-2 px-5 py-2 text-xs leading-4 ${isHistoryEntry ? 'font-bold' : 'font-semibold'} hover:bg-gray-100 dark:hover:bg-gray-700 ${item.id === selectedSubGroup ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
+          className={`w-full min-h-9 focus-visible:-outline-offset-2 flex items-center justify-between gap-2 px-5 py-2 text-xs leading-4 ${isHistoryEntry ? 'font-bold' : 'font-semibold'} hover:bg-gray-100 dark:hover:bg-gray-700 ${item.id === selectedSubGroup ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
         >
           <span className="min-w-0 break-words text-left">{item.heading}</span>
           <span className="shrink-0">{expanded ? '▾' : '▸'}</span>
@@ -323,6 +325,7 @@ export function SearchableProfileFieldSelect({
     <div ref={containerRef} className="relative w-full">
       <button
         ref={triggerRef}
+        autoFocus={autoFocus}
         disabled={disabled}
         type="button"
         onClick={toggle}
@@ -405,7 +408,7 @@ export function SearchableProfileFieldSelect({
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => toggleSection(section.id)}
                         aria-expanded={isExpanded}
-                        className={`w-full min-h-9 flex items-center justify-between gap-2 px-3 py-2 text-[13px] leading-5 font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 ${section.id === selectedSectionId ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
+                        className={`w-full min-h-9 focus-visible:-outline-offset-2 flex items-center justify-between gap-2 px-3 py-2 text-[13px] leading-5 font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 ${section.id === selectedSectionId ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400'}`}
                       >
                         <span className="truncate">{section.label}</span>
                         <span className="shrink-0">{isExpanded ? '▾' : '▸'}</span>

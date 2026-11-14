@@ -73,6 +73,7 @@ describe('ImportSummaryDialog — isProcessing state', () => {
     renderDialog([change('new')], { isProcessing: true });
     expect((screen.getByText('Keep Current') as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByText('Saving…') as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText('Saving…').querySelector('.animate-spin')).not.toBeNull();
     expect(screen.queryByText('Import All')).toBeNull();
   });
 });
@@ -128,4 +129,18 @@ it.each(['new', 'conflict'] as const)('shows only nonzero statuses for %s detail
   expect(screen.queryByText(/0 (New|Changed|Unchanged)/)).toBeNull();
   expect(screen.queryByText(status === 'new' ? /Changed/ : /New/)).toBeNull();
   expect(screen.queryByText(/Unchanged/)).toBeNull();
+});
+
+
+it('places a dialog error after the description and before the import details', () => {
+  render(<ImportSummaryDialog
+    changes={[change('new')]}
+    error="The saved profile changed. Review it again."
+    errorTone="review"
+    importControls={<div>Import action</div>}
+    onAcceptAll={vi.fn()} onRejectAll={vi.fn()} onReview={vi.fn()} onDismiss={vi.fn()}
+  />);
+  const alert = screen.getByRole('alert');
+  expect(alert.parentElement?.previousElementSibling?.textContent).toBe('Import all details or review the changes first.');
+  expect(alert.parentElement?.nextElementSibling?.textContent).toBe('1 New');
 });

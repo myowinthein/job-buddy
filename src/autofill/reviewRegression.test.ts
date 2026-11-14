@@ -198,10 +198,10 @@ it.each(['person-replaced', 'yellow-match'] as const)('silent refill %s', async 
       expect(getLastResult()?.noReview).toBe(0);
     } else {
       await vi.waitFor(() =>
-        expect(document.querySelector<HTMLInputElement>('#nickname')!.value).toBe('New nickname'),
+        expect(getLastResult()?.needReview).toBe(1),
       );
+      expect(document.querySelector<HTMLInputElement>('#nickname')!.value).toBe('New nickname');
       expect(getLastResult()?.noReview).toBe(0);
-      expect(getLastResult()?.needReview).toBe(1);
     }
   } finally {
     await undoAutofill();

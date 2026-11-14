@@ -16,6 +16,7 @@ export function LanguageComparison({
   return (
     <div>
       {change.entries!.map((entry, index) => {
+        if (!replacement && entry.status === 'unchanged') return null;
         const field = entry.fields.find((item) => item.id === 'proficiency')!;
         const selectable = entryIsSelectable(entry, replacement);
         const selected = entryIsSelected(change, entry);
@@ -34,9 +35,18 @@ export function LanguageComparison({
                   className="accent-blue-600"
                 />
               )}
-              <span className="flex-1 font-medium">
-                {removed && !replacement ? 'Remove ' : ''}
-                {entry.label}
+              <span className="flex flex-1 flex-wrap items-baseline gap-x-2">
+                <span className="font-medium">
+                  {removed && !replacement ? 'Remove ' : ''}
+                  {entry.label}
+                </span>
+                {(entry.status === 'new' || changed) && (
+                  <span
+                    className={`text-xs ${changed ? 'text-amber-700 dark:text-amber-400' : 'text-green-700 dark:text-green-400'}`}
+                  >
+                    {changed ? 'Changed' : 'New'}
+                  </span>
+                )}
               </span>
               {!changed && (
                 <span className="text-xs text-gray-500 dark:text-gray-400">

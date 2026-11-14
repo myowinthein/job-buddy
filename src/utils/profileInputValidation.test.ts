@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   isLinkedInUrl,
+  isValidProfileUrl,
+  profileUrlLengthError,
   isValidProfileEmail,
   birthDateError,
   isValidProfilePhone,
@@ -18,6 +20,15 @@ import { PROFILE_POLICY_PATHS, profileFieldPolicy } from '../profile/fieldPolici
 import { validateImportedProfile } from './profileValidator';
 
 describe('profile input and import validation agree', () => {
+  it('counts a URL prefix that saving adds before enforcing the existing limit', () => {
+    const prefix = 'https://example.com/';
+    const full = prefix + 'a'.repeat(2048 - prefix.length);
+    const withoutScheme = full.slice('https://'.length);
+    expect(isValidProfileUrl(full)).toBe(true);
+    expect(isValidProfileUrl(withoutScheme)).toBe(true);
+    expect(isValidProfileUrl(withoutScheme + 'a')).toBe(false);
+    expect(profileUrlLengthError(withoutScheme + 'a')).toContain('2048');
+  });
   it.each(["o'brien@example.com", 'jane+jobs@sub.example.co.uk'])(
     'preserves editor-valid email %s in imports',
     (email) => {

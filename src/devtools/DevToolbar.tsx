@@ -6,18 +6,20 @@ const PROFILE_OPTIONS = [{ id: 'original', label: 'Original' }, ...PROFILE_PRESE
 const groupCls =
   'inline-flex shrink-0 overflow-hidden rounded-md border border-amber-400 bg-white/70 divide-x divide-amber-300 dark:border-amber-700 dark:bg-amber-900/50 dark:divide-amber-700';
 const optionCls = (selected: boolean) =>
-  `px-2.5 py-1 transition-colors focus-visible:relative focus-visible:z-10 focus-visible:outline-offset-[-2px] ${selected ? 'bg-amber-200 font-medium dark:bg-amber-700' : 'hover:bg-amber-100 dark:hover:bg-amber-800'}`;
+  `px-2.5 py-1 transition-colors first:rounded-l-sm last:rounded-r-sm focus-visible:relative focus-visible:z-10 focus-visible:-outline-offset-2 dark:aria-pressed:focus-visible:outline-white ${selected ? 'bg-amber-200 font-medium dark:bg-amber-700' : 'hover:bg-amber-100 dark:hover:bg-amber-800'}`;
 
 function IntegrationControl({
   label,
   enabled,
   disabled,
   onChange,
+  title,
 }: {
   label: string;
   enabled: boolean;
   disabled: boolean;
   onChange: (enabled: boolean) => void;
+  title?: string;
 }) {
   return (
     <button
@@ -25,6 +27,7 @@ function IntegrationControl({
       role="switch"
       aria-checked={enabled}
       aria-disabled={disabled}
+      title={title}
       onClick={() => onChange(!enabled)}
       className="inline-flex items-center gap-2 rounded-md py-1"
     >
@@ -80,6 +83,7 @@ export default function DevToolbar({
     pending.current = true;
     setBusy(true);
     setError('');
+    window.dispatchEvent(new Event('jb:dev:control-start'));
     try {
       await action();
     } catch {
@@ -87,6 +91,7 @@ export default function DevToolbar({
     } finally {
       pending.current = false;
       setBusy(false);
+      window.dispatchEvent(new Event('jb:dev:control-end'));
     }
   };
 
@@ -107,7 +112,7 @@ export default function DevToolbar({
 
   const setKey = async (enabled: boolean) => {
     if (!state || pending.current || enabled === !missingKey) return;
-    if (!state.preset) return startPreview('saved', !enabled);
+    if (!state.shared && !state.preset) return startPreview('saved', !enabled);
     await perform(async () => {
       await surface.setKeyEnabled(enabled);
       setState(await surface.state());
@@ -116,7 +121,7 @@ export default function DevToolbar({
 
   const setDrive = async (enabled: boolean) => {
     if (!state || pending.current || enabled === state.driveConnected) return;
-    if (!state.preset) return startPreview('saved', missingKey, enabled);
+    if (!state.shared && !state.preset) return startPreview('saved', missingKey, enabled);
     await perform(async () => {
       await surface.setDriveConnected(enabled);
       setState(await surface.state());
@@ -124,9 +129,11 @@ export default function DevToolbar({
   };
 
   const exit = async () => {
-    if (!context || pending.current) return;
+    if ((!context && !state?.shared) || pending.current) return;
     if (!surface.canLeave()) return;
-    await perform(() => onNavigate(surface.exitUrl()));
+    await perform(async () =>
+      onNavigate(surface.restoreOriginal ? await surface.restoreOriginal() : surface.exitUrl()),
+    );
   };
 
   return (
@@ -139,7 +146,7 @@ export default function DevToolbar({
           <span
             title={
               context
-                ? 'Changes stay in this tab and reset on refresh. Gemini and Drive are simulated.'
+                ? 'Temporary data is shared across the extension and resets when this page refreshes. Drive backups are read-only.'
                 : 'Original uses your saved data. Other modes use temporary data.'
             }
             className="text-amber-800 dark:text-amber-200"
@@ -169,6 +176,7 @@ export default function DevToolbar({
         </div>
         <IntegrationControl
           label="API key"
+          title={state?.sampleAI ? 'Uses sample AI when enabled.' : undefined}
           enabled={!missingKey}
           disabled={busy || !state}
           onChange={(enabled) => void setKey(enabled)}

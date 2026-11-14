@@ -57,7 +57,7 @@ export function isValidAmount(value: string | number): boolean {
 }
 
 export function isValidProfileUrl(value: string): boolean {
-  if (value.length > URL_MAX_LENGTH) return false;
+  if (profileUrlLengthError(value)) return false;
   try {
     const url = new URL(withScheme(value.trim()));
     return (
@@ -69,6 +69,12 @@ export function isValidProfileUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+export function profileUrlLengthError(value: string): string {
+  return value.length > URL_MAX_LENGTH || withScheme(value.trim()).length > URL_MAX_LENGTH
+    ? `Use a URL of ${URL_MAX_LENGTH} characters or fewer, including https://`
+    : '';
 }
 
 export function isValidCalendarDate(value: string): boolean {
@@ -111,8 +117,8 @@ export function profileDateRangeErrors(
   for (const key of ['startDate', 'endDate'] as const) {
     if (key === 'endDate' && row.isCurrent && (!yearOnly || !row.endDate)) continue;
     const value = row[key] ?? '';
-    const label = key === 'startDate' ? 'Start date' : 'End date';
-    if (!value.trim()) errors[key] = `${label} is required`;
+    const label = key === 'startDate' ? 'a start date' : 'an end date';
+    if (!value.trim()) errors[key] = `Enter ${label}`;
     else if (!isValidProfileYearMonth(value, yearOnly))
       errors[key] = `Enter ${yearOnly ? 'a year or month and year' : 'a month and year'}`;
     else {

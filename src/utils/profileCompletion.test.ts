@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { calculateCompletion, getSectionCompletion, getCompletionTarget } from './profileCompletion';
 import type { Profile } from '../types/profile';
 
@@ -22,6 +22,17 @@ const COMPLETE: Profile = {
   links: { linkedin: 'https://linkedin.com/in/jane' },
   documents: { cv: { url: 'https://example.com/cv.pdf' } },
 };
+
+it('reuses the banner completion when calculating section indicators', () => {
+  const personal = vi.fn(() => COMPLETE.personal);
+  const profile = { ...COMPLETE, get personal() { return personal(); } };
+  const completion = calculateCompletion(profile);
+  personal.mockClear();
+  const sections = getSectionCompletion(profile, completion);
+  expect({ sections, reads: personal.mock.calls.length }).toEqual({
+    sections: getSectionCompletion(COMPLETE), reads: 0,
+  });
+});
 
 describe('calculateCompletion', () => {
   it('returns 0% for an empty profile', () => {

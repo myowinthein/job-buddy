@@ -1,13 +1,14 @@
+import { feedback } from '@/src/ui/feedback';
 import { ProfileFields } from './shared/ProfileFields';
-import { stableDisclosureFocus } from './shared/stableControlFocus';
-import { Info } from 'lucide-react';
+import { HelpPopover } from '@/src/components/ui/HelpPopover';
 import { SectionHeader } from './shared/SectionHeader';
 import { useSectionDraft } from './shared/useSectionDraft';
 import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef } from 'react';
 import type { Profile, LanguageEntry, LanguageProficiency } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
-import { RemoveButton } from './shared/RemoveButton';
+import { ConfirmRemoveButton } from './shared/ConfirmRemoveButton';
+import { removeEntryErrors } from './shared/entryErrors';
 import { SearchableLanguageSelect } from './shared/SearchableLanguageSelect';
 import { saveSection } from './shared/saveSection';
 import { SaveButton } from './shared/SaveButton';
@@ -22,20 +23,18 @@ interface Props {
 }
 
 const PROFICIENCY_OPTIONS: { value: LanguageProficiency; label: string }[] = [
-  { value: 'native_bilingual', label: 'Native or bilingual proficiency' },
-  { value: 'full_professional', label: 'Full professional proficiency (C1–C2)' },
-  { value: 'professional_working', label: 'Professional working proficiency (B2–C1)' },
-  { value: 'limited_working', label: 'Limited working proficiency (B1–B2)' },
-  { value: 'elementary', label: 'Elementary proficiency (A1–A2)' },
+  { value: 'native_bilingual', label: 'Native or bilingual' },
+  { value: 'full_professional', label: 'Full professional (C1–C2)' },
+  { value: 'professional_working', label: 'Professional working (B2–C1)' },
+  { value: 'limited_working', label: 'Limited working (B1–B2)' },
+  { value: 'elementary', label: 'Elementary (A1–A2)' },
 ];
 
 const PROFICIENCY_HELP: Record<string, string> = {
   native_bilingual: 'You use this language naturally in most situations.',
-  full_professional: 'You can handle complex discussions, negotiation, and detailed writing.',
-  professional_working:
-    'You can work independently and communicate about familiar professional topics.',
-  limited_working:
-    'You can manage routine conversations and tasks, with support for complex topics.',
+  full_professional: 'You can handle complex discussions and detailed writing.',
+  professional_working: 'You can work independently in this language.',
+  limited_working: 'You can handle routine tasks and simple conversations.',
   elementary: 'You can introduce yourself and exchange basic information.',
 };
 
@@ -56,14 +55,14 @@ function migrateProficiency(raw: string): LanguageProficiency {
   );
 }
 
-type Row = { language: string; proficiency: LanguageProficiency | '' };
+type Row = { rowId: string; language: string; proficiency: LanguageProficiency | '' };
 
 function initRow(raw: LanguageEntry): Row {
-  return { language: raw.language, proficiency: migrateProficiency(raw.proficiency) };
+  return { rowId: crypto.randomUUID(), language: raw.language, proficiency: migrateProficiency(raw.proficiency) };
 }
 
 function emptyRow(): Row {
-  return { language: '', proficiency: '' };
+  return { rowId: crypto.randomUUID(), language: '', proficiency: '' };
 }
 
 export function LanguagesSection({ profile, onSave }: Props) {
@@ -74,47 +73,50 @@ export function LanguagesSection({ profile, onSave }: Props) {
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
 
-  const [newEntryTick, setNewEntryTick] = useState(0);
   const entriesContainerRef = useRef<HTMLDivElement>(null);
-  useScrollToNewEntry(entriesContainerRef, newEntryTick);
+  const { focusEntry } = useScrollToNewEntry(entriesContainerRef);
 
   const update = (idx: number, key: keyof Row, value: string) => {
     setEntries((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
     const ek = `${idx}.${key}`;
     let err = '';
-    if (key === 'language' && !value.trim()) err = 'Language is required';
-    else if (key === 'proficiency' && !value) err = 'Proficiency is required';
+    if (key === 'language' && !value.trim()) err = 'Choose a language';
+    else if (key === 'proficiency' && !value) err = 'Choose a proficiency level';
     setErrors((e) => ({ ...e, [ek]: err }));
   };
 
   const handleProficiencyBlur = (idx: number) => {
-    const err = !entries[idx].proficiency ? 'Proficiency is required' : '';
+    const err = !entries[idx].proficiency ? 'Choose a proficiency level' : '';
     setErrors((e) => ({ ...e, [`${idx}.proficiency`]: err }));
   };
 
   const addEntry = () => {
-    setEntries((rows) => [...rows, emptyRow()]);
-    setNewEntryTick((t) => t + 1);
+    const existing = entries.find((row) => !row.language && !row.proficiency);
+    const row = existing ?? emptyRow();
+    if (!existing) setEntries((rows) => [...rows, row]);
+    focusEntry(row.rowId);
   };
 
-  const removeEntry = (idx: number) => setEntries((rows) => rows.filter((_, i) => i !== idx));
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!entries.length) e.general = 'At least one language is required';
+    if (!entries.length) e.general = 'Add at least one language';
     const seen = new Set<string>();
     entries.forEach((row, idx) => {
       const language = findLanguage(row.language)?.code ?? row.language.trim().toLowerCase();
       if (seen.has(language)) e[`${idx}.language`] = 'This language is already listed';
       seen.add(language);
-      if (!row.language.trim()) e[`${idx}.language`] = 'Language is required';
-      if (!row.proficiency) e[`${idx}.proficiency`] = 'Proficiency is required';
+      if (!row.language.trim()) e[`${idx}.language`] = 'Choose a language';
+      if (!row.proficiency) e[`${idx}.proficiency`] = 'Choose a proficiency level';
     });
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const saveDraft = useSectionDraft(entries, onSave);
+  const saveDraft = useSectionDraft(
+    entries.map(({ rowId: _rowId, ...row }) => row),
+    onSave,
+  );
 
   const handleSave = async () => {
     if (!validate()) return;
@@ -128,7 +130,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
         })),
       },
       showToast,
-      'Languages saved',
+      feedback.profileSaved,
     );
     setSaving(false);
   };
@@ -147,14 +149,22 @@ export function LanguagesSection({ profile, onSave }: Props) {
       <div className="mb-4" ref={entriesContainerRef}>
         {entries.map((row, idx) => (
           <div
-            key={idx}
-            className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3"
+            key={row.rowId}
+            data-entry-id={row.rowId}
+            className="profile-entry-fields @container/profile-entry relative p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3"
           >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                Entry {idx + 1}
-              </span>
-              <RemoveButton onClick={() => removeEntry(idx)} />
+            <div className="absolute right-4 top-4">
+              <ConfirmRemoveButton
+                compact
+                confirm={!!(row.language || row.proficiency)}
+                action={entries.length === 1 ? 'Clear' : 'Delete'}
+                onConfirm={() => {
+                  setEntries((rows) =>
+                    rows.length === 1 ? [emptyRow()] : rows.filter((_, i) => i !== idx),
+                  );
+                  setErrors((errors) => removeEntryErrors(errors, idx, ''));
+                }}
+              />
             </div>
             <ProfileFields
               index={idx}
@@ -177,6 +187,20 @@ export function LanguagesSection({ profile, onSave }: Props) {
                 proficiency: (field) => (
                   <FormField
                     label={field.label}
+                    labelAccessory={
+                      <HelpPopover label="Proficiency guide" compact>
+                        <dl className="space-y-3">
+                          {PROFICIENCY_OPTIONS.map((level) => (
+                            <div key={level.value}>
+                              <dt className="font-medium text-gray-900 dark:text-gray-100">
+                                {level.label}
+                              </dt>
+                              <dd className="mt-1">{PROFICIENCY_HELP[level.value]}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </HelpPopover>
+                    }
                     required={field.required}
                     error={errors[`${idx}.proficiency`]}
                   >
@@ -202,29 +226,7 @@ export function LanguagesSection({ profile, onSave }: Props) {
         ))}
       </div>
 
-      <details className="mb-4">
-        <summary
-          {...stableDisclosureFocus}
-          className="flex cursor-pointer items-center gap-2 py-1 text-xs font-medium text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400"
-        >
-          <Info aria-hidden="true" className="h-3.5 w-3.5" />
-          Proficiency guide
-        </summary>
-        <dl className="mt-3 grid gap-x-6 gap-y-3 text-xs sm:grid-cols-2">
-          {PROFICIENCY_OPTIONS.map((level) => (
-            <div key={level.value}>
-              <dt className="font-medium text-gray-700 dark:text-gray-200">{level.label}</dt>
-              <dd className="mt-1 text-gray-500 dark:text-gray-400">
-                {PROFICIENCY_HELP[level.value]}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </details>
-
-      <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
-        <SaveButton onClick={handleSave} saving={saving} label="Save Languages" />
-      </div>
+      <SaveButton onClick={handleSave} saving={saving} label="Save" />
     </div>
   );
 }

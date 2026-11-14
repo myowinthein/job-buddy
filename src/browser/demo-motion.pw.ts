@@ -11,7 +11,7 @@ for (const theme of ['light', 'dark'] as const) {
     test.skip(process.env.JB_CAPTURE_MOTION !== '1', 'Opt-in public demo recording.');
     test.setTimeout(90_000);
     await serveDemo(context);
-    await context.addInitScript((theme) => localStorage.setItem('theme', theme), theme);
+    await context.addInitScript((theme) => localStorage.setItem('job-buddy-theme', theme), theme);
     await extension.worker.evaluate(
       async ({ profile, theme }) => {
         await chrome.storage.local.set({

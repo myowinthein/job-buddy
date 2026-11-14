@@ -57,7 +57,7 @@ export function useDateRangeValidation<T extends { startDate: string; isCurrent?
       setErrors((e) => ({
         ...e,
         [ek]: isRequired
-          ? (key === 'startDate' ? 'Start date is required' : 'End date is required')
+          ? (key === 'startDate' ? 'Enter a start date' : 'Enter an end date')
           : '',
       }));
       return;
@@ -93,7 +93,7 @@ export function useDateRangeValidation<T extends { startDate: string; isCurrent?
       // Year is valid — clear any stale required error (user has entered something)
       setErrors((e) => {
         const cur = e[ek] ?? '';
-        return (cur === 'Start date is required' || cur === 'End date is required')
+        return (cur === 'Enter a start date' || cur === 'Enter an end date')
           ? { ...e, [ek]: '' }
           : e;
       });
@@ -103,7 +103,7 @@ export function useDateRangeValidation<T extends { startDate: string; isCurrent?
     // Partial year or month-only: in-progress — clear stale required errors only
     setErrors((e) => {
       const cur = e[ek] ?? '';
-      return (cur === 'Start date is required' || cur === 'End date is required')
+      return (cur === 'Enter a start date' || cur === 'Enter an end date')
         ? { ...e, [ek]: '' }
         : e;
     });

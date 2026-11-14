@@ -27,8 +27,8 @@ describe('useDateRangeValidation — handleYearChange (keystroke-level)', () => 
   it('leaves an unrelated error untouched while the year is still partial (< 4 digits)', () => {
     const { result, setErrors } = setup([{ startDate: '' }]);
     act(() => result.current.handleYearChange(0, 'startDate', '202'));
-    expect(applyUpdate(setErrors, { '0.startDate': 'Start date is required' }))
-      .toEqual({ '0.startDate': 'Start date is required' });
+    expect(applyUpdate(setErrors, { '0.startDate': 'Enter a start date' }))
+      .toEqual({ '0.startDate': 'Enter a start date' });
   });
 
   it('clears a stale "Year must be" range error while the year is still partial', () => {
@@ -73,13 +73,13 @@ describe('useDateRangeValidation — handleDateBlur required-field enforcement',
   it('requires a start date when both month and year are empty', () => {
     const { result, setErrors } = setup([{ startDate: '' }]);
     act(() => result.current.handleDateBlur(0, 'startDate', '', ''));
-    expect(applyUpdate(setErrors)).toEqual({ '0.startDate': 'Start date is required' });
+    expect(applyUpdate(setErrors)).toEqual({ '0.startDate': 'Enter a start date' });
   });
 
   it('requires an end date on a non-current entry when both fields are empty', () => {
     const { result, setErrors } = setup([{ startDate: '2020-01', isCurrent: false }]);
     act(() => result.current.handleDateBlur(0, 'endDate', '', ''));
-    expect(applyUpdate(setErrors)).toEqual({ '0.endDate': 'End date is required' });
+    expect(applyUpdate(setErrors)).toEqual({ '0.endDate': 'Enter an end date' });
   });
 
   it('does not require an end date on a currently-active entry', () => {
@@ -99,7 +99,7 @@ describe('useDateRangeValidation — handleDateBlur year-range at blur', () => {
   it('clears a stale required error once a valid year is entered', () => {
     const { result, setErrors } = setup([{ startDate: '' }]);
     act(() => result.current.handleDateBlur(0, 'startDate', '01', '2020'));
-    expect(applyUpdate(setErrors, { '0.startDate': 'Start date is required' })).toEqual({ '0.startDate': '' });
+    expect(applyUpdate(setErrors, { '0.startDate': 'Enter a start date' })).toEqual({ '0.startDate': '' });
   });
 });
 
@@ -121,7 +121,7 @@ describe('useDateRangeValidation — handleDateBlur end-before-start (work histo
   it('clears a stale end-before-start conflict error once the range becomes valid', () => {
     const { result, setErrors } = setup([{ startDate: '2020-06' }]);
     act(() => result.current.handleDateBlur(0, 'endDate', '06', '2020'));
-    // Only "Start/End date is required" is treated as stale-clearable here —
+    // Only required-date errors are treated as stale-clearable here —
     // a stale conflict message is left untouched by this branch, since the
     // real components always re-run full validate() at save time regardless.
     expect(applyUpdate(setErrors, { '0.endDate': 'End date cannot be before start date' }))
@@ -176,7 +176,7 @@ describe('useDateRangeValidation — handleDateBlur partial/in-progress input', 
   it('clears a stale required error on partial input without setting a new error', () => {
     const { result, setErrors } = setup([{ startDate: '' }]);
     act(() => result.current.handleDateBlur(0, 'startDate', '06', '')); // month picked, year not yet typed
-    expect(applyUpdate(setErrors, { '0.startDate': 'Start date is required' })).toEqual({ '0.startDate': '' });
+    expect(applyUpdate(setErrors, { '0.startDate': 'Enter a start date' })).toEqual({ '0.startDate': '' });
   });
 
   it('leaves an unrelated existing error untouched on partial input', () => {

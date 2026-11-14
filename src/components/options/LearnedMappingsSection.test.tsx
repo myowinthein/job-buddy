@@ -106,7 +106,7 @@ describe('Learned Mappings pagination', () => {
     await open('site1.test');
     const nav = screen.getByRole('navigation', { name: 'Learned mapping sites' });
     expect(within(nav).getByText('Sites 1–5 of 7')).toBeTruthy();
-    expect(within(nav).getByRole('status').textContent).toContain('7 mappings');
+    expect(within(nav).getByRole('status').textContent).toContain('7 mappings across 7 sites');
     expect(within(nav).getByRole('button', { name: 'Previous page' })).toHaveProperty(
       'disabled',
       true,
@@ -210,7 +210,8 @@ describe('Learned Mappings presentation and discovery', () => {
     expect(within(row('Unlabelled field')).getByText('Trusted')).toBeTruthy();
     expect(within(row('Inactive name')).getByText('Inactive')).toBeTruthy();
     expect(within(row('Inactive name')).queryByText('No saved profile data.')).toBeNull();
-    expect(within(row('LinkedIn')).getByText('No saved profile data.')).toBeTruthy();
+    expect(within(row('LinkedIn')).queryByText('No saved profile data.')).toBeNull();
+    expect(screen.queryByText('Choose a profile field to use this mapping again.')).toBeNull();
     expect(screen.getByRole('button', { name: 'All (4)' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Trusted (2)' })).toBeTruthy();
   });
@@ -270,9 +271,7 @@ describe('Learned Mappings presentation and discovery', () => {
     mappings = {};
     mount();
     expect(
-      await screen.findByText(
-        'No learned mappings yet. Correct an answer on a job form to start learning.',
-      ),
+      await screen.findByText('Correct an answer on a job form to start learning.'),
     ).toBeTruthy();
     expect(screen.queryByRole('searchbox')).toBeNull();
   });
@@ -301,7 +300,9 @@ describe('Learned Mappings presentation and discovery', () => {
     expect(within(tooltip).getByText('Trusted')).toBeTruthy();
     expect(within(tooltip).getByText('Inactive')).toBeTruthy();
     expect(tooltip.textContent).not.toContain('AI answers do not teach mappings.');
-    expect(tooltip.textContent).toContain('Use Review Mappings to let AI check your saved matches.');
+    expect(tooltip.textContent).toContain(
+      'Use Review Mappings to let AI check your saved matches.',
+    );
     expect(tooltip.textContent).not.toContain('Click for more details');
     const compactText = tooltip.textContent;
     fireEvent.click(help);
@@ -406,19 +407,18 @@ describe('explicit corrections and guarded writes', () => {
     await act(async () => finish());
     expect(await screen.findByText(feedback.mappingSaved)).toBeTruthy();
   });
-  it('updates profile availability live and opens the matching profile section', async () => {
-    const onOpenProfile = vi.fn();
+  it('updates the editable profile value live without an empty-data helper row', async () => {
     mappings = { 'acme.com': { linkedin: entry('links.linkedin', 2, 'LinkedIn') } };
-    mount({ onOpenProfile });
+    mount();
     await open();
-    fireEvent.click(screen.getByRole('button', { name: 'Open profile' }));
-    expect(onOpenProfile).toHaveBeenCalledWith(
-      'links.linkedin',
-      expect.objectContaining({ id: 'p' }),
-    );
+    expect(screen.queryByText('No saved profile data.')).toBeNull();
+    edit('LinkedIn');
+    expect(screen.queryByText(/Current value:/)).toBeNull();
     profile = { ...profile, links: { linkedin: 'https://www.linkedin.com/in/example/' } };
     await change({ profile: { newValue: profile } });
-    await waitFor(() => expect(screen.queryByText('No saved profile data.')).toBeNull());
+    await waitFor(() =>
+      expect(screen.getByText('https://www.linkedin.com/in/example/')).toBeTruthy(),
+    );
   });
   it('requires another selection after a profile change while editing', async () => {
     mount();
@@ -459,7 +459,10 @@ describe('deletion, failure recovery and storage subscriptions', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Delete mapping Applicant name on acme.com' }),
     );
-    expect(screen.getByText('Delete this mapping for “Applicant name” on acme.com?')).toBeTruthy();
+    expect(
+      within(row()).getByRole('button', { name: 'Delete' }).closest('span.inline-grid'),
+    ).toBeTruthy();
+    expect(screen.queryByText('Delete this mapping for “Applicant name” on acme.com?')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect(await screen.findByText(feedback.mappingDeleted)).toBeTruthy();
     expect(Object.keys(mappings['acme.com'])).toEqual(['surname']);
@@ -469,7 +472,7 @@ describe('deletion, failure recovery and storage subscriptions', () => {
     mount();
     await open();
     fireEvent.click(screen.getByRole('button', { name: 'Delete all mappings for acme.com' }));
-    expect(screen.getByText('Delete all 1 mapping for acme.com?')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Delete' }).closest('span.inline-grid')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect(await screen.findByText(feedback.mappingsSiteDeleted)).toBeTruthy();
     expect(Object.keys(mappings)).toEqual(['beta.com']);
@@ -541,4 +544,35 @@ describe('deletion, failure recovery and storage subscriptions', () => {
     result.unmount();
     expect(chrome.storage.onChanged.removeListener).toHaveBeenCalledWith(handler);
   });
+});
+
+it('shows a neutral spinner while mappings load', async () => {
+  vi.mocked(getLearnedMappings).mockReturnValue(new Promise(() => {}));
+  mount();
+  const status = screen.getByRole('status', { name: 'Loading learned mappings' });
+  expect(status.textContent).toBe('Loading learned mappings…');
+  expect(status.querySelector('.animate-spin')).not.toBeNull();
+  expect(status.querySelector('.animate-pulse')).toBeNull();
+});
+
+it('uses the shared empty state and load-error banner', async () => {
+  mappings = {};
+  const view = mount();
+  const title = await screen.findByText('No learned mappings yet');
+  expect(title.closest('[role=status]')!.className).toContain('text-center');
+  expect(title.closest('[role=status]')!.querySelector('svg')).not.toBeNull();
+  view.unmount();
+  vi.mocked(getLearnedMappings).mockRejectedValue(new Error('read failed'));
+  mount();
+  expect((await screen.findByRole('alert')).className).toContain('border-red-500');
+});
+
+
+it('focuses the field chooser after Edit without opening its options', async () => {
+  mount();
+  await open();
+  edit();
+  const chooser = screen.getByRole('button', { name: /^Profile field:/ });
+  expect(document.activeElement).toBe(chooser);
+  expect(chooser.getAttribute('aria-expanded')).toBe('false');
 });

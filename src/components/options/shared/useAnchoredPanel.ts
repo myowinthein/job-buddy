@@ -1,4 +1,5 @@
 import { useLayoutEffect, useState, type CSSProperties, type RefObject } from 'react';
+import { equalJsonValues } from '@/src/utils/equalJsonValues';
 
 // Portalled pickers must fit the viewport, including when their trigger is
 // inside a scrolling form or an entry card with overflow hidden.
@@ -37,7 +38,7 @@ export function useAnchoredPanel(
       const above = Math.max(0, rect.top - inset - gap);
       const flip = below < Math.min(240, preferredHeight) && above > below;
       const maxHeight = Math.min(preferredHeight, flip ? above : below);
-      setPosition({
+      const next: CSSProperties = {
         position: 'fixed',
         width,
         left: Math.max(leftEdge, Math.min(rect.left, rightEdge - width)),
@@ -45,11 +46,16 @@ export function useAnchoredPanel(
         ...(flip
           ? { bottom: Math.max(inset, window.innerHeight - rect.top + gap) }
           : { top: Math.max(inset, rect.bottom + gap) }),
-      });
+      };
+      setPosition((current) => equalJsonValues(current, next) ? current : next);
     };
     const schedule = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(place);
+    };
+    const onScroll = (event: Event) => {
+      if (event.target instanceof Element && !event.target.contains(anchor.current)) return;
+      schedule();
     };
     place();
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
@@ -57,12 +63,12 @@ export function useAnchoredPanel(
     const main = anchor.current?.closest('main');
     if (main) observer?.observe(main);
     window.addEventListener('resize', schedule);
-    window.addEventListener('scroll', schedule, true);
+    window.addEventListener('scroll', onScroll, true);
     return () => {
       cancelAnimationFrame(frame);
       observer?.disconnect();
       window.removeEventListener('resize', schedule);
-      window.removeEventListener('scroll', schedule, true);
+      window.removeEventListener('scroll', onScroll, true);
     };
   }, [open, anchor, minWidth, preferredHeight, withinMain]);
   return position;

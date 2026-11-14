@@ -9,7 +9,7 @@ const PANEL_MAX_HEIGHT = 360;
 const CLOSE_DELAY_MS = 150;
 
 /** An info button whose panel opens on hover or focus and stays open when clicked. */
-export function HelpPopover({ label, children }: { label: string; children: ReactNode }) {
+export function HelpPopover({ label, compact = false, children }: { label: string; compact?: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -75,9 +75,9 @@ export function HelpPopover({ label, children }: { label: string; children: Reac
           pinned.current = !pinned.current;
           setOpen(pinned.current);
         }}
-        className="grid h-8 w-8 place-items-center rounded-md text-gray-500 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-gray-400 dark:hover:bg-gray-800"
+        className={`grid ${compact ? 'h-6 w-6' : 'h-8 w-8'} place-items-center rounded-md text-gray-500 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-gray-400 dark:hover:bg-gray-800`}
       >
-        <Info aria-hidden="true" className="h-4 w-4" />
+        <Info aria-hidden="true" className="h-3.5 w-3.5" />
       </button>
       {open &&
         createPortal(

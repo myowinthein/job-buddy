@@ -15,8 +15,11 @@ import {
 } from '@/src/utils/storage';
 import { DEFAULT_GEMINI_MODEL } from '@/src/resume-ai/types';
 import { wrapStorageArea } from '@/src/utils/storageArea';
+import { developmentSession } from './session';
 
 export interface SurfaceState {
+  shared?: boolean;
+  sampleAI?: boolean;
   context?: DevContext;
   preset?: PreviewPreset;
   missingKey: boolean;
@@ -30,6 +33,7 @@ export interface DevSurface {
   setKeyEnabled(enabled: boolean): Promise<void>;
   setDriveConnected(connected: boolean): Promise<void>;
   exitUrl(): string;
+  restoreOriginal?(): Promise<string>;
   subscribe(listener: () => void): () => void;
 }
 
@@ -42,8 +46,33 @@ declare global {
 /** Each surface keeps its own Chrome APIs, provider mocks, and pending work. */
 export function createDevSurface(): DevSurface {
   let previousKey: GeminiSettings | null = null;
+  const shared = developmentSession();
+  const sharedUrl = () => {
+    const url = new URL(location.href);
+    url.search = '';
+    if (shared?.active?.id) url.searchParams.set('devSession', shared.active.id);
+    url.hash = '';
+    return url.href;
+  };
   return {
     async state() {
+      if (shared) {
+        const meta = shared.active;
+        return {
+          shared: true,
+          sampleAI: meta?.sampleAI,
+          context: meta?.id
+            ? {
+                id: meta.id,
+                extensionId: chrome.runtime.id,
+                version: chrome.runtime.getManifest().version,
+              }
+            : undefined,
+          preset: meta?.preset === 'original' ? undefined : meta?.preset,
+          missingKey: !!meta?.keyDisabled,
+          driveConnected: !meta?.driveDisabled,
+        };
+      }
       const context = devContext();
       const quick = readQuickPreview();
       const local = wrapStorageArea(() => chrome.storage.local, 'development controls');
@@ -64,10 +93,15 @@ export function createDevSurface(): DevSurface {
       );
     },
     async prepare(preset, missingKey, driveConnected = false) {
+      if (shared) {
+        await shared.activate(preset);
+        return sharedUrl();
+      }
       const seed = await preparePreview(preset);
       return previewUrl(preset, missingKey, seed, driveConnected);
     },
     async setKeyEnabled(enabled) {
+      if (shared) return shared.setEnabled('key', enabled);
       // A live surface must enter an isolated copy before changing credentials.
       if (!readQuickPreview() || !getSimulation()) throw new Error('Temporary data is required');
       const settings = await getGeminiSettings();
@@ -91,6 +125,7 @@ export function createDevSurface(): DevSurface {
       window.dispatchEvent(new Event('jb:dev:integration-state'));
     },
     async setDriveConnected(connected) {
+      if (shared) return shared.setEnabled('drive', connected);
       const simulation = getSimulation();
       if (!readQuickPreview() || !simulation) throw new Error('Temporary data is required');
       // Coordinate injected state with any simulated upload already in progress.
@@ -105,7 +140,14 @@ export function createDevSurface(): DevSurface {
       window.dispatchEvent(new Event('jb:dev:integration-state'));
     },
     exitUrl: exitPreviewUrl,
+    ...(shared && {
+      restoreOriginal: async () => {
+        await shared.activate('original', false);
+        return sharedUrl();
+      },
+    }),
     subscribe(listener) {
+      if (shared) return shared.subscribe(listener);
       const events = chrome.storage.onChanged;
       const changed = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
         if (

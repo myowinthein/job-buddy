@@ -7,8 +7,8 @@
 // an empty iframe is created up front, then its form HTML is fetched and
 // document.write()-ten in well after (confirmed on moroku.com/designer).
 // Re-injecting here is idempotent (see content.ts's __jobBuddyInjected
-// guard) so it's safe to call unconditionally rather than only retrying
-// frames that failed to respond. Best-effort per frame: frames that reject
+// guard). Actions inject first; read-only status checks inject only when
+// their existing receiver fails. Best-effort per frame: frames that reject
 // (chrome:// pages, frames that detached, etc.) are silently skipped.
 async function ensureContentScriptInjected(tabId: number, frameIds: number[]): Promise<void> {
   await Promise.all(
@@ -41,12 +41,20 @@ export async function sendToAllFrames(tabId: number, message: object): Promise<u
     // webNavigation unavailable or the call failed — fall back to top frame only.
   }
 
-  await ensureContentScriptInjected(tabId, frameIds);
+  const statusOnly = (message as { action?: unknown }).action === 'GET_STATUS';
+  if (!statusOnly) await ensureContentScriptInjected(tabId, frameIds);
 
   const responses = await Promise.all(
-    frameIds.map((frameId) =>
-      chrome.tabs.sendMessage(tabId, message, { frameId }).catch(() => undefined),
-    ),
+    frameIds.map(async (frameId) => {
+      try {
+        const response = await chrome.tabs.sendMessage(tabId, message, { frameId });
+        if (!statusOnly || response !== undefined) return response;
+      } catch {
+        if (!statusOnly) return undefined;
+      }
+      await ensureContentScriptInjected(tabId, [frameId]);
+      return chrome.tabs.sendMessage(tabId, message, { frameId }).catch(() => undefined);
+    }),
   );
   return responses.filter((r) => r !== undefined);
 }

@@ -18,7 +18,7 @@ function renderSection(profile: Partial<Profile>, onSave = vi.fn().mockResolvedV
 
 function fillCityAndSave() {
   fireEvent.change(document.getElementById('field-city')!, { target: { value: 'Bangkok' } });
-  fireEvent.click(screen.getByText('Save Address'));
+  fireEvent.click(screen.getByText('Save'));
 }
 
 describe('AddressSection — initCountryCode backward-compat loader', () => {
@@ -48,17 +48,17 @@ describe('AddressSection — initCountryCode backward-compat loader', () => {
 
   it('treats an empty stored country as unset (blocks save, shows required error)', () => {
     const { onSave } = renderSection({ address: { city: 'Bangkok', country: '' } });
-    fireEvent.click(screen.getByText('Save Address'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('Country is required')).toBeTruthy();
+    expect(screen.getByText('Choose a country')).toBeTruthy();
   });
 });
 
 describe('AddressSection — required-field validation', () => {
   it('blocks save when city is blank', () => {
     const { onSave } = renderSection({ address: { city: '', country: 'TH' } });
-    fireEvent.click(screen.getByText('Save Address'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('City is required')).toBeTruthy();
+    expect(screen.getByText('Enter a city')).toBeTruthy();
   });
 });

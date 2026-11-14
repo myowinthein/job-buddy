@@ -310,11 +310,10 @@ describe('buildPickerTree', () => {
   });
 
   describe('links section', () => {
-    it('includes linkedin, portfolio, and only well-formed custom links', () => {
+    it('includes linkedin and only well-formed custom links', () => {
       const p = emptyProfile();
       p.links = {
         linkedin: 'https://linkedin.com/in/jane',
-        portfolio: 'https://jane.dev',
         custom: [
           { label: 'GitHub', url: 'https://github.com/jane' },
           { label: '', url: 'https://missing-label.example' },
@@ -323,7 +322,7 @@ describe('buildPickerTree', () => {
       };
 
       const links = getSection(p, 'links');
-      expect(links.items.map((i) => ('label' in i ? i.label : ''))).toEqual(['LinkedIn', 'Portfolio', 'GitHub']);
+      expect(links.items.map((i) => ('label' in i ? i.label : ''))).toEqual(['LinkedIn', 'GitHub']);
     });
 
     it('is omitted when linkedin is empty and there are no other links', () => {

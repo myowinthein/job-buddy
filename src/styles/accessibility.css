@@ -7,6 +7,33 @@ html.dark {
   color-scheme: dark;
 }
 
+@layer base {
+  button:not(:disabled):not([aria-disabled="true"]),
+  summary:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  button[aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  :where(button, a, summary, [role="button"], input[type="checkbox"], input[type="radio"]):focus-visible {
+    outline: 2px solid var(--color-blue-500);
+    outline-offset: 2px;
+  }
+
+  :where(.overflow-y-auto, .overflow-auto) {
+    scroll-padding-block: 4px;
+  }
+}
+
+@layer components {
+  :where(button, a, [role="button"]):where([class~="border"], [class~="border-2"]):focus-visible {
+    outline-offset: 0;
+  }
+}
+
 .text-action {
   text-underline-offset: 2px;
 }
@@ -14,11 +41,6 @@ html.dark {
 .text-action:not(:disabled):not([aria-disabled='true']):is(:hover, :focus-visible) {
   text-decoration-line: underline;
   text-decoration-thickness: 2px;
-}
-
-:where(button, a, summary):focus-visible {
-  outline: 2px solid var(--color-blue-500);
-  outline-offset: 2px;
 }
 
 input::placeholder,
@@ -39,5 +61,9 @@ textarea::placeholder {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+
+  :is(button, a, summary):active {
+    scale: none !important;
   }
 }

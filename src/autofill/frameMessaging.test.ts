@@ -27,6 +27,27 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('sendToAllFrames', () => {
+  it('reads status from healthy frames without injecting content scripts again', async () => {
+    await sendToAllFrames(TAB, { action: 'GET_STATUS' });
+    expect(executeScript).not.toHaveBeenCalled();
+  });
+
+  it.each(['rejects', 'returns no response'])('recovers only the status frame that %s', async (failure) => {
+    let missing = true;
+    sendMessage.mockImplementation(async (_tab, _message, { frameId }) => {
+      if (frameId === 3 && missing) {
+        missing = false;
+        if (failure === 'rejects') throw new Error('no receiver');
+        return undefined;
+      }
+      return { frameId };
+    });
+    expect(await sendToAllFrames(TAB, { action: 'GET_STATUS' })).toEqual([
+      { frameId: 0 }, { frameId: 3 },
+    ]);
+    expect(executeScript.mock.calls.map(([options]) => options.target.frameIds)).toEqual([[3]]);
+  });
+
   it('sends the message to every enumerated frame with an explicit frame ID', async () => {
     await sendToAllFrames(TAB, { action: 'GET_STATUS' });
     expect(sendMessage.mock.calls.map(([, , options]) => options)).toEqual([

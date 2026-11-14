@@ -10,13 +10,21 @@ import { resolve } from 'node:path';
 const root = fileURLToPath(new URL('../', import.meta.url));
 execFileSync(
   'pnpm',
-  ['exec', 'playwright', 'test', 'src/browser/demo.pw.ts', '--grep', 'public screenshot'],
+  [
+    'exec',
+    'playwright',
+    'test',
+    'src/browser/demo.pw.ts',
+    '--grep',
+    'public screenshot',
+    '--output=.output/demo-capture',
+  ],
   {
     cwd: root,
     stdio: 'inherit',
   },
 );
-const results = resolve(root, '.output/browser-results');
+const results = resolve(root, '.output/demo-capture');
 const directories = (await readdir(results)).filter((name) => name.startsWith('demo.pw.ts-'));
 const captures = [];
 for (const directory of directories) {

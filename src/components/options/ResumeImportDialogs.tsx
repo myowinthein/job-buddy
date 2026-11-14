@@ -1,12 +1,13 @@
-import { ExternalLink } from 'lucide-react';
-import type { RefObject } from 'react';
-import { MODEL_DISPLAY_NAMES } from '@/src/resume-ai/types';
+import { LoaderCircle } from 'lucide-react';
+import { Notice } from '@/src/components/ui/Notice';
+import { useId, type RefObject } from 'react';
+import { useDialogFocus } from '@/src/components/ui/useDialogFocus';
+import { ModelFallbackNotice } from '@/src/components/shared/ModelFallbackNotice';
 import type {
   ImportErrorCode,
   ImportProgressStep,
   ResumeModelAttempt,
 } from '@/src/resume-ai/types';
-import { resumeUsageLimitNotice } from '@/src/ui/feedback';
 import { DOCUMENT_FILE_SIZE_LABEL } from '@/src/utils/documentLimits';
 import { primaryButtonCls } from '@/src/components/ui/buttonCls';
 
@@ -20,6 +21,7 @@ export function ResumeUploadDialog({
   apiKey,
   model,
   errorMsg,
+  errorCode = null,
   isDragging,
   selectedFile,
   fileInputRef,
@@ -33,6 +35,7 @@ export function ResumeUploadDialog({
   apiKey: string | null;
   model: string | null;
   errorMsg: string | null;
+  errorCode?: ImportErrorCode | null;
   isDragging: boolean;
   selectedFile: File | null;
   fileInputRef: RefObject<HTMLInputElement | null>;
@@ -43,22 +46,31 @@ export function ResumeUploadDialog({
   goToSettings: () => void;
   closeSection: () => void;
 }) {
+  const titleId = useId();
+  const descriptionId = useId();
+  const dialogRef = useDialogFocus();
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onClick={closeSection}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-lg mx-4 max-h-[90dvh] overflow-y-auto"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        tabIndex={-1}
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-lg mx-4 max-h-[90dvh] overflow-y-auto outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div>
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            <h3 id={titleId} className="text-base font-semibold text-gray-900 dark:text-gray-100">
               Import Resume
             </h3>
-            <p className="text-xs text-pretty text-gray-500 dark:text-gray-400 mt-0.5">
+            <p id={descriptionId} className="text-xs text-pretty text-gray-500 dark:text-gray-400 mt-0.5">
               Use Gemini to extract your details, then review what to import.
             </p>
           </div>
@@ -66,17 +78,33 @@ export function ResumeUploadDialog({
             type="button"
             onClick={closeSection}
             aria-label="Close"
-            className="ml-4 shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
+            className="ml-4 shrink-0 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none active:scale-95 transition-colors"
           >
             ×
           </button>
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5">
+        <div className="px-6 py-4">
+          {apiKey && model && errorMsg && (
+            <div className="mb-4">
+              <Notice tone="error">
+                <p>{errorMsg}</p>
+                {errorCode === 'auth' && (
+                  <button
+                    type="button"
+                    onClick={goToSettings}
+                    className="mt-1 font-medium text-blue-600 text-action dark:text-blue-400"
+                  >
+                    Go to Settings →
+                  </button>
+                )}
+              </Notice>
+            </div>
+          )}
           {/* No API key state ('' = confirmed no key after storage load) */}
           {apiKey !== null && (!apiKey || !model) && (
-            <div className="py-6 text-center">
+            <div className="flex flex-col items-center text-center">
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                 {errorMsg ||
                   (apiKey
@@ -141,10 +169,6 @@ export function ResumeUploadDialog({
                 )}
               </div>
 
-              {errorMsg && (
-                <p className="mt-2 text-sm text-red-700 dark:text-red-400">{errorMsg}</p>
-              )}
-
               <input
                 ref={fileInputRef}
                 type="file"
@@ -160,7 +184,18 @@ export function ResumeUploadDialog({
           )}
 
           {/* Still loading key — brief placeholder */}
-          {apiKey === null && <div className="py-8" />}
+          {apiKey === null && (
+            <div
+              role="status"
+              className="flex min-h-16 items-center justify-center gap-2 text-sm text-gray-500 dark:text-gray-400"
+            >
+              <LoaderCircle
+                aria-hidden="true"
+                className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
+              />
+              Loading AI settings…
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -202,42 +237,38 @@ export function ResumeProgressDialog({
   progressStep,
   attempt,
   showLongWait,
-  errorMsg,
-  errorCode,
-  needsAnotherFile,
-  chooseAnotherFile,
-  handleRetry,
   handleCancel,
-  closeSection,
 }: {
   progressStep: ImportProgressStep | null;
   attempt: ResumeModelAttempt | null;
   showLongWait: boolean;
-  errorMsg: string | null;
-  errorCode: ImportErrorCode | null;
-  needsAnotherFile: boolean;
-  chooseAnotherFile: () => void;
-  handleRetry: () => void;
   handleCancel: () => void;
-  closeSection: () => void;
 }) {
+  const titleId = useId();
+  const dialogRef = useDialogFocus();
   const currentStepIdx = PROGRESS_STEPS.findIndex((step) => step.id === progressStep);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-sm mx-4 px-6 py-8 max-h-[90dvh] overflow-y-auto">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-6 text-center">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-sm mx-4 px-6 py-8 max-h-[90dvh] overflow-y-auto outline-none"
+      >
+        <h3 id={titleId} className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-6 text-center">
           Analyzing Resume
         </h3>
-
         <div className="space-y-4" role="status" aria-live="polite" aria-atomic="true">
           {PROGRESS_STEPS.map((step, i) => {
-            const isDone = !errorMsg && currentStepIdx > i;
-            const isActive = !errorMsg && step.id === progressStep;
+            const isDone = currentStepIdx > i;
+            const isActive = step.id === progressStep;
             return (
               <div key={step.id} className="flex items-center gap-3">
                 <div className="w-5 h-5 shrink-0 flex items-center justify-center">
                   {isDone ? (
-                    <span className="text-green-500 dark:text-green-400 text-sm">✓</span>
+                    <span className="text-green-700 dark:text-green-400 text-sm">✓</span>
                   ) : isActive ? (
                     <span
                       aria-hidden="true"
@@ -251,9 +282,7 @@ export function ResumeProgressDialog({
                   className={`text-sm ${
                     isActive
                       ? 'font-medium text-gray-900 dark:text-gray-100'
-                      : isDone
-                        ? 'text-gray-500 dark:text-gray-400'
-                        : 'text-gray-400 dark:text-gray-600'
+                      : 'text-gray-500 dark:text-gray-400'
                   }`}
                 >
                   {step.label}
@@ -262,113 +291,19 @@ export function ResumeProgressDialog({
             );
           })}
         </div>
-
-        {attempt?.reason && !errorMsg && (
-          <div
-            role="status"
-            className="mt-5 text-xs text-center text-amber-700 dark:text-amber-400"
-          >
-            <p>
-              {attempt.reason === 'timeout'
-                ? 'The previous model took too long.'
-                : attempt.reason === 'rate_limit'
-                  ? 'The previous model reached its usage limit.'
-                  : 'The previous model is unavailable.'}
-            </p>
-            <p>Trying {MODEL_DISPLAY_NAMES[attempt.model]}.</p>
-          </div>
-        )}
-        {/* Long wait message */}
-        {showLongWait && !attempt?.reason && !errorMsg && (
+        {attempt?.reason && <ModelFallbackNotice model={attempt.model} reason={attempt.reason} />}
+        {showLongWait && !attempt?.reason && (
           <div className="mt-5 text-xs text-amber-700 dark:text-amber-400 text-center">
             <p>Still analyzing. You can cancel at any time.</p>
           </div>
         )}
-
-        {/* Error state */}
-        {errorMsg && (
-          <div className="mt-6">
-            {errorCode === 'rate_limit' ? (
-              <div className="mb-4">
-                <p className="text-sm text-red-700 dark:text-red-400">
-                  {resumeUsageLimitNotice.before}
-                  <a
-                    href={resumeUsageLimitNotice.href}
-                    aria-describedby="resume-limit-new-tab"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline hover:text-red-700 dark:hover:text-red-300"
-                  >
-                    {resumeUsageLimitNotice.linkLabel}<ExternalLink aria-hidden="true" className="ml-1 inline h-3 w-3" />
-                  </a>
-                  {resumeUsageLimitNotice.after}
-                </p>
-                <p id="resume-limit-new-tab" className="text-xs">Check limits opens in new tab.</p>
-              </div>
-            ) : (
-              <p className="text-sm text-red-700 dark:text-red-400 mb-4">{errorMsg}</p>
-            )}
-            <div className="flex flex-wrap justify-end gap-3">
-              <button
-                type="button"
-                onClick={closeSection}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={needsAnotherFile ? chooseAnotherFile : handleRetry}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:scale-95 transition-colors"
-              >
-                {needsAnotherFile ? 'Choose Another File' : 'Try again'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Cancel button (only while in-progress, no error) */}
-        {!errorMsg && (
-          <div className="mt-6 flex justify-center">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-export function ResumeDoneDialog({
-  summary,
-  closeSection,
-}: {
-  summary: { updated: number; conflicts: number; skipped: number; replaced?: boolean };
-  closeSection: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl dark:shadow-black/60 w-full max-w-sm mx-4 px-6 py-8 max-h-[90dvh] overflow-y-auto">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">
-          Import Complete
-        </h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-          {summary.replaced
-            ? `${summary.updated + summary.conflicts} selected detail${summary.updated + summary.conflicts !== 1 ? 's' : ''} saved.`
-            : `${summary.updated + summary.conflicts} detail${summary.updated + summary.conflicts !== 1 ? 's' : ''} saved${summary.skipped > 0 ? `, ${summary.skipped} left unchanged` : ''}.`}
-        </p>
-        <div className="flex justify-end">
+        <div className="mt-6 flex justify-center">
           <button
             type="button"
-            onClick={closeSection}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:scale-95 transition-colors"
+            onClick={handleCancel}
+            className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-95 transition-colors"
           >
-            Done
+            Cancel
           </button>
         </div>
       </div>

@@ -2,6 +2,7 @@ import { BACKUP_PROFILE_PATHS, PROFILE_POLICY_PATHS } from '../profile/fieldPoli
 import { profileShape, type ProfileShape } from '../profile/profileShape';
 import type { ProfileStoragePath } from '../profile/fieldCatalog';
 import type { Profile } from '../types/profile';
+import { migratePortfolio } from './migrate';
 
 // Project known fields without revalidating older, still-supported values.
 // Backups preserve document bytes and derived fields, never unknown properties.
@@ -26,7 +27,7 @@ function project(value: unknown, fields: Shape): unknown {
 }
 
 export function profileData<T extends Partial<Profile>>(profile: T): T {
-  return project(profile, shape) as T;
+  return project(migratePortfolio(profile), shape) as T;
 }
 
 /** Warn about credential settings without ever rendering their values. */
@@ -44,7 +45,7 @@ export function projectProfilePaths<T extends Partial<Profile>>(
   paths: readonly ProfileStoragePath[],
 ): Partial<Profile> {
   return project(
-    profile,
+    migratePortfolio(profile),
     profileShape(paths, () => true as const),
   ) as Partial<Profile>;
 }

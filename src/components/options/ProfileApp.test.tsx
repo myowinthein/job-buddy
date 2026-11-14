@@ -126,21 +126,25 @@ it('opens Background details on the first click when phone blur adds a validatio
   const stored = (await getProfile())!;
   await saveProfile({
     ...stored,
-    personal: { ...stored.personal, phone: { countryCode: 'US', callingCode: '+1', number: '' } },
+    personal: {
+      ...stored.personal,
+      phone: { countryCode: 'US', callingCode: '+1', number: '' },
+      dateOfBirth: '', gender: '', ethnicity: '', veteranStatus: '', disabilityStatus: '',
+    },
   });
   await openPersonal();
   const phone = screen.getByRole('textbox', { name: 'Phone number' });
   act(() => phone.focus());
-  const summary = screen.getByText('Background details');
+  const summary = screen.getByText('Background details').closest('summary')!;
   expect(fireEvent.mouseDown(summary)).toBe(false);
   expect(document.activeElement).toBe(phone);
   fireEvent.click(summary);
-  expect(screen.getByText('Phone number is required')).toBeTruthy();
+  expect(screen.getByText('Enter your phone number')).toBeTruthy();
   expect(summary.closest('details')?.open).toBe(true);
   expect(document.activeElement).toBe(summary);
 });
 
-it('protects a newly added experience and its partial dates from navigation', async () => {
+it('protects partial dates and clears the navigation guard when a reused experience is empty', async () => {
   const stored = (await getProfile())!;
   await saveProfile({ ...stored, workHistory: [] });
   const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
@@ -156,9 +160,8 @@ it('protects a newly added experience and its partial dates from navigation', as
   expect(confirm).toHaveBeenCalledTimes(1);
   expect(screen.getByRole('heading', { name: 'Work History' })).toBeTruthy();
   fireEvent.change(month, { target: { value: '' } });
-  expect(screen.getByText('Unsaved changes')).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Remove entry' }));
-  fireEvent.click(screen.getByRole('button', { name: /^Delete$/ }));
+  expect(screen.queryByText('Unsaved changes')).toBeNull();
+  fireEvent.click(screen.getAllByRole('button', { name: 'Remove entry' }).at(-1)!);
   expect(screen.queryByText('Unsaved changes')).toBeNull();
 });
 
@@ -169,7 +172,7 @@ it('protects a draft on navigation and closing, then clears the guard after savi
   fireEvent.change(name, { target: { value: 'Draft Jane' } });
   expect(screen.queryByText('Unsaved changes')).toBeNull();
   expect(
-    (screen.getByRole('button', { name: 'Save Personal' }) as HTMLButtonElement).disabled,
+    (screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled,
   ).toBe(false);
   const closing = new Event('beforeunload', { cancelable: true });
   window.dispatchEvent(closing);
@@ -181,12 +184,12 @@ it('protects a draft on navigation and closing, then clears the guard after savi
   fireEvent.blur(name);
   expect(screen.getByText('Unsaved changes').closest('main')).not.toBeNull();
   expect(
-    screen.getByText('Unsaved changes').parentElement?.contains(screen.getByText('Save Personal')),
+    screen.getByText('Unsaved changes').parentElement?.contains(screen.getByText('Save')),
   ).toBe(true);
 
-  fireEvent.click(screen.getByText('Save Personal'));
-  await screen.findByText('Saved');
-  expect(screen.queryByText('Unsaved changes')).toBeNull();
+  fireEvent.click(screen.getByText('Save'));
+  await screen.findByText('Profile saved.');
+  await waitFor(() => expect(screen.queryByText('Unsaved changes')).toBeNull());
   expect((await getProfile())?.personal.firstName).toBe('Draft Jane');
   await waitFor(() => {
     const savedClosing = new Event('beforeunload', { cancelable: true });
@@ -205,11 +208,11 @@ it('keeps save feedback quiet during editing and clears the saved message after 
   expect(screen.queryByText('Unsaved changes')).toBeNull();
   vi.useFakeTimers();
   fireEvent.change(name, { target: { value: 'Saved Jane' } });
-  fireEvent.click(screen.getByText('Save Personal'));
+  fireEvent.click(screen.getByText('Save'));
   await act(async () => {
     await vi.advanceTimersByTimeAsync(0);
   });
-  expect(screen.getByText('Saved')).toBeTruthy();
+  expect(screen.queryByText('Saved')).toBeNull();
   await act(async () => {
     await vi.advanceTimersByTimeAsync(2000);
   });
@@ -219,8 +222,8 @@ it('keeps save feedback quiet during editing and clears the saved message after 
 it('hides saved feedback as soon as another edit begins and waits for blur again', async () => {
   const name = await openPersonal();
   fireEvent.change(name, { target: { value: 'First edit' } });
-  fireEvent.click(screen.getByText('Save Personal'));
-  await screen.findByText('Saved');
+  fireEvent.click(screen.getByText('Save'));
+  await screen.findByText('Profile saved.');
   act(() => name.focus());
   fireEvent.change(name, { target: { value: 'Second edit' } });
   expect(screen.queryByText('Saved')).toBeNull();
@@ -243,11 +246,11 @@ it('discards a draft only after the user confirms leaving', async () => {
 it('focuses the first invalid field and associates its error text', async () => {
   const name = await openPersonal();
   fireEvent.change(name, { target: { value: '' } });
-  fireEvent.click(screen.getByText('Save Personal'));
+  fireEvent.click(screen.getByText('Save'));
   await waitFor(() => expect(document.activeElement).toBe(name));
   expect(name.getAttribute('aria-invalid')).toBe('true');
   const error = document.getElementById(name.getAttribute('aria-describedby')!);
-  expect(error?.textContent).toBe('First name is required');
+  expect(error?.textContent).toBe('Enter your first name');
 });
 
 it('merges a section save with newer stored changes from another Options tab', async () => {
@@ -255,8 +258,8 @@ it('merges a section save with newer stored changes from another Options tab', a
   const stored = (await getProfile())!;
   await saveProfile({ ...stored, address: { ...stored.address, city: 'Updated elsewhere' } });
   fireEvent.change(name, { target: { value: 'Local Jane' } });
-  fireEvent.click(screen.getByText('Save Personal'));
-  await screen.findByText('Saved');
+  fireEvent.click(screen.getByText('Save'));
+  await screen.findByText('Profile saved.');
   expect((await getProfile())?.address.city).toBe('Updated elsewhere');
   expect((await getProfile())?.personal.firstName).toBe('Local Jane');
 });
@@ -272,8 +275,8 @@ it('retains the unsaved guard when local persistence fails', async () => {
   act(() => name.focus());
   fireEvent.change(name, { target: { value: 'Cannot save' } });
   fireEvent.blur(name);
-  fireEvent.click(screen.getByText('Save Personal'));
-  await screen.findByText('Failed to save: storage may be full.');
+  fireEvent.click(screen.getByText('Save'));
+  await screen.findByText('Could not save your profile. Try again.');
   expect(screen.getByText('Unsaved changes')).toBeTruthy();
   expect(screen.queryByText('Saved')).toBeNull();
   expect((await getProfile())?.personal.firstName).toBe('Jane');
@@ -356,7 +359,7 @@ it('updates required progress only after a successful section save', async () =>
   const name = await openPersonal();
   fireEvent.change(name, { target: { value: 'Jane' } });
   expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('90');
-  fireEvent.click(screen.getByText('Save Personal'));
+  fireEvent.click(screen.getByText('Save'));
   await waitFor(() =>
     expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('100'),
   );
@@ -374,8 +377,8 @@ it('does not resurrect an old person’s editor data after another tab replaces 
   await saveProfile(replacement);
   fireEvent.change(name, { target: { value: 'Old draft' } });
   fireEvent.blur(name);
-  fireEvent.click(screen.getByText('Save Personal'));
-  await screen.findByText('Your profile was replaced in another tab. Reload before saving.');
+  fireEvent.click(screen.getByText('Save'));
+  await screen.findByRole('heading', { name: 'Review Unsaved Changes' });
   expect((await getProfile())?.personal.firstName).toBe('Sam');
   expect((await getProfile())?.id).toBe('replacement-person');
   expect(screen.queryByText('Saved')).toBeNull();

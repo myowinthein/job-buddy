@@ -25,6 +25,61 @@ body {
   color: #f1f5f9;            /* slate-100 */
 }
 
+/* Final grid fields leave their bottom margins inside the grid. Move that
+   spacing to the save row while preserving the gaps between field rows. */
+.grid:has(+ .profile-save-actions) {
+  row-gap: calc(var(--spacing) * 8);
+}
+
+.grid:has(+ .profile-save-actions) > [data-field-error] {
+  margin-bottom: 0;
+}
+
+/* Share the label row with the entry action while leaving labels readable. */
+.profile-entry-fields > .grid > [data-field-error] > [data-field-label] {
+  display: flex;
+  align-items: center;
+  min-height: 1.75rem;
+}
+
+.profile-entry-fields > .grid > [data-field-error]:first-child > [data-field-label] {
+  padding-right: 7rem;
+}
+
+/* Two 15rem fields and their 0.75rem gap fit at this container width. */
+@container profile-entry (min-width: 30.75rem) {
+  .profile-entry-fields > .grid > [data-field-error]:first-child > [data-field-label] {
+    padding-right: 0;
+  }
+
+  .profile-entry-fields > .grid > [data-field-error]:last-child > [data-field-label] {
+    padding-right: 7rem;
+  }
+}
+
+/* Current salary fields use 11rem columns with 1rem gaps. Keep the action above
+   the rightmost field in the first row at each column count. */
+@container profile-entry (min-width: 23rem) {
+  .profile-entry-fields-salary > .grid > [data-field-error]:first-child > [data-field-label],
+  .profile-entry-fields-salary > .grid > [data-field-error]:last-child > [data-field-label] {
+    padding-right: 0;
+  }
+
+  .profile-entry-fields-salary > .grid > [data-field-error]:nth-child(2) > [data-field-label] {
+    padding-right: 7rem;
+  }
+}
+
+@container profile-entry (min-width: 35rem) {
+  .profile-entry-fields-salary > .grid > [data-field-error]:nth-child(2) > [data-field-label] {
+    padding-right: 0;
+  }
+
+  .profile-entry-fields-salary > .grid > [data-field-error]:last-child > [data-field-label] {
+    padding-right: 7rem;
+  }
+}
+
 /* Keep native select behavior, with a consistent inset for the indicator. */
 select:not([multiple]):not([size]) {
   appearance: none;
@@ -77,4 +132,10 @@ select:not([multiple]):not([size]) {
   .review-dialog-body {
     overflow: visible;
   }
+}
+
+[data-entry-header]:has([data-entry-toggle]:focus-visible),
+[data-mapping-site-header]:has([data-mapping-site-toggle]:focus-visible) {
+  outline: 2px solid var(--color-blue-500);
+  outline-offset: -2px;
 }

@@ -2,6 +2,7 @@ import { composedParent, controlForm } from './dom';
 import { ariaName, ownText } from './labels';
 import { bestLabel } from './signals';
 import { isConsentGroup } from './consent';
+import { menuSelect } from './menuSelect';
 import type { FieldSignals } from './signals';
 
 /** Match layers a post-pass may rewrite: label-derived ones, never learned or autocomplete. */
@@ -21,7 +22,7 @@ export function ruleQuestionBlocked(signals: FieldSignals): boolean {
   const selection =
     (typeof HTMLSelectElement !== 'undefined' && signals.element instanceof HTMLSelectElement) ||
     signals.element?.getAttribute('role') === 'combobox' ||
-    signals.element?.getAttribute('aria-haspopup') === 'listbox';
+    signals.element?.getAttribute('aria-haspopup') === 'listbox' || !!(signals.element && menuSelect(signals.element));
   return (
     (selection &&
       isConsentGroup({ groupLabel: `${text} ${signals.nearbyText ?? ''}`, options: [] })) ||
@@ -30,8 +31,8 @@ export function ruleQuestionBlocked(signals: FieldSignals): boolean {
     ) ||
     /\b(nationality|country\s+of\s+(?:origin|birth)|citizenship|employment\s+type)\b/i.test(text) ||
     (signals.type === 'file' &&
-      /\b(work\s+permit|passport|identity|identification|certificates?|transcripts?|cover\s+letter|licenses?|licences?)\b/i.test(
-        text,
+      /\b(work\s+permit|passport|identity|identification|certificates?|transcripts?|licenses?|licences?)\b/i.test(
+        `${text} ${signals.nearbyText ?? ''}`,
       ))
   );
 }

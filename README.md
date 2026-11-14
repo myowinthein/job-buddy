@@ -1,13 +1,14 @@
 # Job Buddy
 
-AI-powered job application assistant browser extension
+AI-powered browser extension for job applications
 
 Save your profile once and use Job Buddy to fill supported job application forms.
 Import your resume, review your details, and fill forms with one click.
 
-[Chrome Web Store](https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk) · [Website & Docs](https://myowinthein.github.io/job-buddy/)
+[![Add to Chrome](docs/assets/badges/add-to-chrome.svg)](https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk)
+[![Website & Docs](docs/assets/badges/website-and-docs.svg)](https://myowinthein.github.io/job-buddy/)
 
-<img src="docs/assets/images/autofill-demo.png?v=109e0d8f927a" alt="Job Buddy autofilling the original Morrow Studio demo application with sample profile details" width="1000">
+<img src="docs/assets/images/autofill-demo.png?v=209f43c0914c" alt="Job Buddy autofilling the original Morrow Studio demo application with sample profile details" width="1000">
 
 ## Why I built this
 
@@ -34,17 +35,17 @@ enter them manually.
 Follow the [walkthrough](https://myowinthein.github.io/job-buddy/#start) to set up
 Job Buddy, add your profile and start autofill.
 
-Your profile stays in your browser. Resume import and autofill send relevant data
-to Gemini.
+Your profile stays in your browser. Resume import, autofill and mapping reviews
+send relevant data to Gemini.
 
 <a name="help-me-improve-it"></a>
 
 ## Contributing
 
-If you find a bug or have an idea for Job Buddy, [report a problem](https://github.com/myowinthein/job-buddy/issues/new?template=report-a-problem.yml) or [share an idea](https://github.com/myowinthein/job-buddy/issues). Tell me which version and browser you used, what you tried, what you expected and what happened.
+If a feature behaves unexpectedly, a guide is unclear or you have an idea for Job Buddy, [open an issue](https://github.com/myowinthein/job-buddy/issues/new/choose).
 
 ## License
 
-Job Buddy is licensed under the [MIT License](LICENSE). © 2026 Myo Win Thein (Martin).
+Job Buddy is licensed under the [MIT License](LICENSE). © 2026 Myo Win Thein.
 
 <!-- last-reviewed: 8cde4d4301f40fba8337ffe54f86aad8de0c09ef -->

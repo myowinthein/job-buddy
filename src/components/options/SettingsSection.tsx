@@ -1,15 +1,19 @@
 import { profileReviewMetadata } from '@/src/profile/fieldMetadata';
-import { feedback } from '@/src/ui/feedback';
+import { reviewCounts, selectChange } from '@/src/resume-ai/entrySelection';
+import { Notice } from '@/src/components/ui/Notice';
+import { feedback, driveStorageFullNotice } from '@/src/ui/feedback';
 import { documentFileSizeError } from '@/src/utils/documentLimits';
 import { QuickFillSettings } from './QuickFillSettings';
+import { VersionLink } from '@/src/components/ui/VersionLink';
 import { updateQuickFillPreferences } from '@/src/quick-fill/preferences';
 import { GeminiSettings } from './GeminiSettings';
+import { developmentSession } from '@/src/devtools/session';
 import { backupProfileData, hasCredentialSettings } from '@/src/utils/profileData';
 import { SettingsDialog } from './shared/SettingsDialog';
 import { ImportWarnings } from '@/src/components/shared/ImportWarnings';
 import { SectionHeader } from './shared/SectionHeader';
-import { useState, useRef, useEffect, useId } from 'react';
-import { ExternalLink } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { ExternalLink, LoaderCircle } from 'lucide-react';
 import type { Profile } from '@/src/types/profile';
 import type {
   LearnedMappings,
@@ -102,14 +106,6 @@ const btnSecondaryCls = secondaryButtonCls;
 const footerLinkCls =
   'text-action inline-flex items-center gap-1 rounded-sm hover:text-blue-600 focus-visible:text-blue-600 dark:hover:text-blue-400 dark:focus-visible:text-blue-400 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500 transition-colors';
 
-function issueReportUrl(): string {
-  const url = new URL('https://github.com/myowinthein/job-buddy/issues/new');
-  url.searchParams.set('template', 'report-a-problem.yml');
-  const version = typeof chrome !== 'undefined' ? chrome.runtime?.getManifest?.().version : undefined;
-  if (version) url.searchParams.set('version', version);
-  return url.href;
-}
-
 // ── Drive timestamp formatter ────────────────────────────────────────────────
 // Timestamps are stored as UTC ISO strings. Display converts to local timezone:
 //   "Today at HH:mm" / "Yesterday at HH:mm" / full locale date for older entries.
@@ -184,7 +180,6 @@ async function saveImportUnderLock(
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
-  const newTabHintId = useId();
   const { showToast } = useToast();
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -196,18 +191,27 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   const [importScreen, setImportScreen] = useState<'idle' | 'summary' | 'review'>('idle');
   const [importChanges, setImportChanges] = useState<FieldChange[]>([]);
   const [importBaseProfile, setImportBaseProfile] = useState<Partial<Profile>>({});
+  const [importError, setImportError] = useState('');
   const [importMode, setImportMode] = useState<ImportMode | null>('update');
   const chooseImportMode = (mode: ImportMode) => {
     if (!parsedImport) return;
     setImportMode(mode);
-    setImportChanges(backupImportChanges(
+    const changes = backupImportChanges(
       importBaseProfile, parsedImport.incoming, parsedImport.localMappings,
       parsedImport.backup, mode,
-    ));
+    );
+    setImportChanges(importError ? changes.map(change => selectChange(change, false)) : changes);
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importButtonRef = useRef<HTMLButtonElement>(null);
+  const importFocusPending = useRef(false);
+  useEffect(() => {
+    if (!importing && importFocusPending.current) {
+      importButtonRef.current?.focus();
+      importFocusPending.current = false;
+    }
+  }, [importing]);
 
   // ── Appearance state ─────────────────────────────────────────────────────────
   // getCurrentTheme() is synchronous — initTheme() is awaited before React
@@ -216,14 +220,11 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   useEffect(() => subscribeTheme(() => setThemePreference(getCurrentTheme())), []);
 
   const handleThemeChange = async (value: ThemePreference) => {
-    const previous = getCurrentTheme();
     setThemePreference(value);
     applyTheme(value);
     try {
       await saveThemePreference(value);
     } catch {
-      setThemePreference(previous);
-      applyTheme(previous);
       showToast('error', feedback.appearanceSaveFailed);
     }
   };
@@ -274,58 +275,60 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   };
   const [resetScope, setResetScope] = useState<'device' | 'everywhere'>('device');
 
+  const driveStateMounted = useRef(false);
+  const driveStateRevision = useRef(0);
+  const refreshDriveState = useCallback(() => {
+    const revision = ++driveStateRevision.current;
+    return getFullDriveState()
+      .then((state) => {
+        if (driveStateMounted.current && revision === driveStateRevision.current) setDriveState(state);
+      })
+      .catch(() => { /* Keep the last readable connection state. */ });
+  }, []);
+
   // Storage events reach other Options tabs and background-worker updates.
   useEffect(() => {
-    let active = true;
-    const handler = () => {
-      void getFullDriveState()
-        .then((state) => {
-          if (active) setDriveState(state);
-        })
-        .catch(() => {});
-    };
+    driveStateMounted.current = true;
+    const revision = driveStateRevision;
     const storageHandler = (
       changes: Record<string, chrome.storage.StorageChange>,
       area: string,
     ) => {
-      if (area === 'local' && ('driveToken' in changes || 'driveBackupState' in changes)) handler();
+      if (area === 'local' && ('driveToken' in changes || 'driveBackupState' in changes)) void refreshDriveState();
     };
-    handler();
-    window.addEventListener('jb:drive:state-changed', handler);
+    void refreshDriveState();
+    window.addEventListener('jb:drive:state-changed', refreshDriveState);
     if (typeof chrome !== 'undefined') chrome.storage?.onChanged?.addListener(storageHandler);
     return () => {
-      active = false;
-      window.removeEventListener('jb:drive:state-changed', handler);
+      driveStateMounted.current = false;
+      revision.current++;
+      window.removeEventListener('jb:drive:state-changed', refreshDriveState);
       if (typeof chrome !== 'undefined') chrome.storage?.onChanged?.removeListener(storageHandler);
     };
-  }, []);
+  }, [refreshDriveState]);
   useEffect(() => {
     if (!driveState.tokenExpiresAt) return;
     const delay = driveState.tokenExpiresAt - Date.now();
     if (delay <= 0) return;
     const timer = window.setTimeout(
       () => {
-        void getFullDriveState()
-          .then(setDriveState)
-          .catch(() => {});
+        void refreshDriveState();
       },
       Math.min(delay + 1, 2_147_483_647),
     );
     return () => window.clearTimeout(timer);
-  }, [driveState.tokenExpiresAt]);
+  }, [driveState.tokenExpiresAt, refreshDriveState]);
   useEffect(() => {
     if (!driveState.uploadingUntil) return;
     const delay = Math.max(0, driveState.uploadingUntil - Date.now());
     const timer = window.setTimeout(
       () => {
-        void getFullDriveState()
-          .then(setDriveState)
-          .catch(() => {});
+        void refreshDriveState();
       },
       Math.min(delay + 1, 2_147_483_647),
     );
     return () => window.clearTimeout(timer);
-  }, [driveState.uploadingUntil]);
+  }, [driveState.uploadingUntil, refreshDriveState]);
 
   // ── Export ──────────────────────────────────────────────────────────────────
 
@@ -356,7 +359,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `job-buddy-profile-${backupProfile.id.slice(0, 8)}-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `job-buddy-${import.meta.env.DEV && developmentSession()?.active?.id ? 'temporary-' : ''}profile-${backupProfile.id.slice(0, 8)}-${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
 
@@ -383,6 +386,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     }
 
     setImporting(true);
+    setImportError('');
     try {
       let parsed: unknown;
       try {
@@ -409,6 +413,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           path: 'AI settings',
           reason: 'API keys and connection settings are not imported.',
         });
+      let refreshed = false;
       let [currentProfile, localMappings] = await Promise.all([
         getProfile(),
         getLearnedMappings(),
@@ -442,18 +447,28 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           if (!(error instanceof ImportProfileChangedError)) throw error;
           currentProfile = error.current as Profile;
           localMappings = await getLearnedMappings();
-          showToast('warning', error.message);
+          refreshed = true;
         }
       }
       const mode = initialImportMode(currentProfile ?? {}, validation.sanitized);
       const diff = backupImportChanges(
         currentProfile ?? {}, validation.sanitized, localMappings, backup, mode,
       );
+      if (mode === 'update' && !invalidFields.length && !diff.some(change => {
+        const count = reviewCounts(change);
+        return count.new + count.changed > 0;
+      })) {
+        handleImportRejectAll();
+        importFocusPending.current = true;
+        showToast('success', feedback.importNoChanges);
+        return;
+      }
       setImportMode(mode);
       setImportBaseProfile(currentProfile ?? {});
-      setImportChanges(diff);
+      setImportChanges(refreshed ? diff.map(change => selectChange(change, false)) : diff);
       setParsedImport({ invalidFields, incoming: validation.sanitized, backup, localMappings });
-      setImportScreen('summary');
+      setImportError(refreshed ? feedback.profileRecoveryChanged : '');
+      setImportScreen(refreshed && mode ? 'review' : 'summary');
     } catch (err) {
       console.error('[Job Buddy] Import failed:', err);
       showToast('error', feedback.profileImportFailed);
@@ -468,7 +483,10 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     if (!parsedImport || !importMode) return;
     setImporting(true);
     try {
-      if (!finalChanges.some((change) => change.status !== 'unchanged' && change.accepted)) return;
+      if (!finalChanges.some((change) => change.status !== 'unchanged' && change.accepted)) {
+        if (importError) handleImportRejectAll();
+        return;
+      }
       if (importMode === 'replace') await replaceImportedProfile(importBaseProfile, finalChanges, false, parsedImport.incoming);
       else {
         await saveImportUnderLock(
@@ -489,6 +507,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       setImportChanges([]);
       setImportBaseProfile({});
       setParsedImport(null);
+      setImportError('');
       onImportComplete();
     } catch (err) {
       if (err instanceof ImportProfileChangedError) {
@@ -499,9 +518,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         setParsedImport({ ...parsedImport, localMappings });
         setImportChanges(backupImportChanges(
           err.current, parsedImport.incoming, localMappings, parsedImport.backup, mode,
-        ));
-        setImportScreen('summary');
-        showToast('warning', feedback.importReviewExpired);
+        ).map(change => selectChange(change, false)));
+        setImportScreen(mode ? 'review' : 'summary');
+        setImportError(feedback.profileRecoveryChanged);
         return;
       }
       console.error('[Job Buddy] Import failed:', err);
@@ -520,6 +539,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
     setImportChanges([]);
     setImportBaseProfile({});
     setParsedImport(null);
+    setImportError('');
   };
 
   // ── Cloud Backup — handlers ──────────────────────────────────────────────────
@@ -819,7 +839,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       await saveThemePreference('system');
       await updateQuickFillPreferences({
         enabled: true,
-        fillMode: 'merge',
+        fillMode: 'overwrite',
         disabledSites: [],
         position: undefined,
       });
@@ -874,7 +894,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               onClick={() => void handleThemeChange(opt)}
               aria-pressed={themePreference === opt}
               className={[
-                'px-4 py-1.5 text-sm font-medium capitalize transition-colors',
+                'px-4 py-1.5 text-sm font-medium capitalize transition-colors first:rounded-l-md last:rounded-r-md focus-visible:relative focus-visible:z-10 focus-visible:-outline-offset-2 aria-pressed:focus-visible:outline-white',
                 i < arr.length - 1 ? 'border-r border-gray-300 dark:border-gray-600' : '',
                 themePreference === opt
                   ? 'bg-blue-600 text-white border-blue-600 dark:border-blue-600'
@@ -899,7 +919,16 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           Back up your profile as JSON or transfer it to another browser or device.
         </p>
-        <button type="button" onClick={handleExport} disabled={exporting} className={btnPrimaryCls}>
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={exporting}
+          aria-busy={exporting}
+          className={`${btnPrimaryCls} inline-flex items-center justify-center gap-2`}
+        >
+          {exporting && (
+            <LoaderCircle aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" />
+          )}
           {exporting ? 'Exporting…' : 'Download File'}
         </button>
       </section>
@@ -940,10 +969,11 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         </p>
 
         {!driveState.connected && !driveConnecting && !isDriveConfigured() && (
-          <span role="status" className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-            <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
-            Google Drive backup is unavailable in this build.
-          </span>
+          <div className="max-w-md">
+            <Notice tone="neutral">
+              <p>Google Drive backup is unavailable in this build.</p>
+            </Notice>
+          </div>
         )}
         {!driveState.connected && isDriveConfigured() && (
           <div className="space-y-3">
@@ -1005,11 +1035,31 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                 </p>
               </div>
               {driveState.error && !driveBackupBusy && !driveConnecting && (
-                <p role="status" className="text-sm text-amber-700 dark:text-amber-400">
-                  {driveState.error === 'token_expired'
-                    ? feedback.driveSessionExpired
-                    : driveFailureText(driveState.error)}
-                </p>
+                <div className="max-w-md">
+                  <Notice
+                    tone={['storage_full', 'invalid_backup', 'delete_failed'].includes(driveState.error) ? 'error' : 'review'}
+                  >
+                    <p>
+                      {driveState.error === 'storage_full' ? (
+                        <>
+                          {driveStorageFullNotice.beforeLink}
+                          <a
+                            href={driveStorageFullNotice.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-blue-600 underline underline-offset-2 hover:decoration-2 focus-visible:decoration-2 dark:text-blue-400"
+                          >
+                            {driveStorageFullNotice.linkText}
+                            <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
+                          </a>
+                          {driveStorageFullNotice.afterLink}
+                        </>
+                      ) : driveState.error === 'token_expired' ? (
+                        feedback.driveSessionExpired
+                      ) : driveFailureText(driveState.error)}
+                    </p>
+                  </Notice>
+                </div>
               )}
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -1034,17 +1084,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
                 >
                   Disconnect
                 </button>
-                {driveState.error === 'storage_full' && (
-                  <a
-                    href="https://one.google.com/storage"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 underline"
-                  >
-                    Manage Storage
-                    <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" /> <span className="text-xs">(opens in new tab)</span>
-                  </a>
-                )}
               </div>
             </div>
           </div>
@@ -1052,7 +1091,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
       </section>
 
       {/* ── Reset All Data ───────────────────────────────────────────────────── */}
-      <section className="pt-2">
+      <section>
         <h3 className="text-base font-semibold text-red-700 dark:text-red-400 mb-1">
           Reset All Data
         </h3>
@@ -1068,47 +1107,33 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         </button>
       </section>
 
-      <footer className="mt-10 pt-5 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-        <span id={newTabHintId} className="block mb-2">Settings links open in new tabs.</span>
+      <footer className="mt-8 grid grid-cols-1 items-center gap-x-6 gap-y-3 border-t border-gray-200 pt-8 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400 lg:grid-cols-[minmax(0,1fr)_auto]">
         <nav
           aria-label="Settings links"
           className="flex flex-wrap items-center gap-x-3 gap-y-2 font-medium"
         >
           <a
-            href={issueReportUrl()}
+            href="https://myowinthein.github.io/job-buddy/"
             target="_blank"
             rel="noopener noreferrer"
-            aria-describedby={newTabHintId}
+            className={footerLinkCls}
+          >
+            Documentation
+            <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
+          </a>
+          <a
+            href="https://github.com/myowinthein/job-buddy/issues/new/choose"
+            target="_blank"
+            rel="noopener noreferrer"
             className={footerLinkCls}
           >
             Report an issue
             <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
           </a>
           <a
-            href="https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-describedby={newTabHintId}
-            className={footerLinkCls}
-          >
-            Chrome Web Store
-            <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
-          </a>
-          <a
-            href="https://github.com/myowinthein/job-buddy"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-describedby={newTabHintId}
-            className={footerLinkCls}
-          >
-            GitHub
-            <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
-          </a>
-          <a
             href="https://ko-fi.com/myowinthein"
             target="_blank"
             rel="noopener noreferrer"
-            aria-describedby={newTabHintId}
             className={`${footerLinkCls} font-normal`}
           >
             Support on Ko-fi
@@ -1118,7 +1143,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             href="https://myowinthein.github.io/job-buddy/legal/privacy/"
             target="_blank"
             rel="noopener noreferrer"
-            aria-describedby={newTabHintId}
             className={footerLinkCls}
           >
             Privacy Policy
@@ -1128,13 +1152,13 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             href="https://myowinthein.github.io/job-buddy/legal/disclaimer/"
             target="_blank"
             rel="noopener noreferrer"
-            aria-describedby={newTabHintId}
             className={footerLinkCls}
           >
             Disclaimer
             <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
           </a>
         </nav>
+        <VersionLink className="justify-self-end" />
       </footer>
 
       {/* ── Import Profile — summary / review dialogs ──────────────────────────── */}
@@ -1142,7 +1166,11 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         <ImportSummaryDialog
           changes={importChanges}
           title="Import Profile"
-          importControls={parsedImport && possibleDifferentPerson(importBaseProfile, parsedImport.incoming) && <ImportModeChoice current={importBaseProfile} incoming={parsedImport.incoming} mode={importMode} onChange={chooseImportMode} busy={importing} />}
+          error={importError ?? undefined}
+          errorTone="review"
+          importControls={parsedImport && (importError || possibleDifferentPerson(importBaseProfile, parsedImport.incoming)) && (
+              <ImportModeChoice current={importBaseProfile} incoming={parsedImport.incoming} mode={importMode} onChange={chooseImportMode} busy={importing} />
+          )}
           replacement={importMode === 'replace'}
           canProceed={importMode !== null && (importMode !== 'replace' || importChanges.some(c => c.hasIncomingValue === true))}
           forceDecision={importMode !== 'update'}
@@ -1173,6 +1201,9 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           onBack={() => setImportScreen('summary')}
           isSaving={importing}
           title="Review Profile"
+          error={importError}
+          errorTone="review"
+          emptySelectionLabel={importError ? 'Use Saved Profile' : undefined}
           replacement={importMode === 'replace'}
           saveLabel={importMode === 'replace' ? 'Replace Profile' : 'Import Selected'}
         />
@@ -1251,8 +1282,12 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               type="button"
               onClick={handleReset}
               disabled={resetConfirmText !== 'DELETE' || resetting}
-              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 active:scale-95 transition-colors"
+              aria-busy={resetting}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 active:scale-95 transition-colors"
             >
+              {resetting && (
+                <LoaderCircle aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" />
+              )}
               {resetting ? 'Resetting…' : 'Reset All Data'}
             </button>
           </div>
@@ -1296,12 +1331,14 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               type="button"
               onClick={() => void handleDriveDisconnect(disconnectDeleteBackup)}
               disabled={driveDisconnectBusy}
-              className={
+              aria-busy={driveDisconnectBusy}
+              className={`inline-flex items-center justify-center gap-2 ${
                 disconnectDeleteBackup
                   ? 'px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50'
                   : btnPrimaryCls
-              }
+              }`}
             >
+              {driveDisconnectBusy && <LoaderCircle aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" />}
               {driveDisconnectBusy
                 ? 'Disconnecting…'
                 : disconnectDeleteBackup
@@ -1334,8 +1371,10 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               type="button"
               onClick={handleRestoreFromDrive}
               disabled={driveRestoreBusy}
-              className={btnPrimaryCls}
+              aria-busy={driveRestoreBusy}
+              className={`inline-flex items-center justify-center gap-2 ${btnPrimaryCls}`}
             >
+              {driveRestoreBusy && <LoaderCircle aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" />}
               {driveRestoreBusy ? 'Restoring…' : 'Restore All'}
             </button>
           </div>

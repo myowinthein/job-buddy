@@ -1,7 +1,9 @@
 import { resolveRuleValue, ruleValuePath } from './ruleValue';
 import { observeFileImport } from './fileImportReadiness';
+import { resolveProfileDocumentFile } from './resolver';
 import { countryName } from '../data/countries';
 import { readFieldValue as getFieldValue } from './fieldValue';
+import { menuSelect } from './menuSelect';
 import {
   getProfile,
   getLearnedMappings,
@@ -21,6 +23,11 @@ import type { FieldSignals } from './signals';
 import { mapField } from './mapper';
 import type { FieldMatch } from './mapper';
 import { adjustPhoneMatches, callingCodeSibling } from './phoneResolution';
+import { adjustNameMatches } from './nameResolution';
+import {
+  adjustWorkAuthorizationMatches,
+  authorizationContextAvailable,
+} from './workAuthorizationResolution';
 import { adjustLanguageMatches } from './languageResolution';
 import { adjustEducationMatches, matchCurrentEducationCheckboxes } from './educationResolution';
 import {
@@ -28,7 +35,14 @@ import {
   matchCurrentWorkHistoryCheckboxes,
 } from './workHistoryResolution';
 import { adjustSalaryMatches } from './salaryResolution';
-import { fillField, fillFileField, fillCheckboxInput, resetDropdownBudget } from './filler';
+import {
+  fillField,
+  fillFileField,
+  fillCheckboxInput,
+  resetDropdownBudget,
+  type FillFieldContext,
+} from './filler';
+import { addressDependencies } from './addressDependencies';
 import { isOwnWriteEvent, getWriteConfidence, resetWriteSession, undoWrites } from './writeSession';
 import { multiSelectValues } from './ruleValue';
 import {
@@ -51,10 +65,9 @@ import { isConsentGroup } from './consent';
 import { aiQuestionIdentity } from './aiSafety';
 import { publishFillLog } from '@/src/fill-log/retention';
 
-
 export interface AutofillScanResult {
   preFilledCount: number;
-  totalMatched:   number;
+  totalMatched: number;
 }
 
 function fillMappedField(
@@ -63,17 +76,25 @@ function fillMappedField(
   active: () => boolean,
   profile: Profile,
   path: string | null,
+  context?: FillFieldContext,
 ): Promise<boolean> {
   if (
     path === 'personal.phone.callingCode' &&
-    (element.getAttribute('role') === 'combobox' || element.getAttribute('aria-haspopup') === 'listbox')
+    (element.getAttribute('role') === 'combobox' ||
+      element.getAttribute('aria-haspopup') === 'listbox')
   )
     return fillField(element, value, active, {
+      ...context,
       callingCodeCountry: profile.personal?.phone?.countryCode,
     });
   return path === 'address.city'
-    ? fillField(element, value, active, { cityCountry: countryName(profile.address?.country ?? '') })
-    : fillField(element, value, active);
+    ? fillField(element, value, active, {
+        ...context,
+        cityCountry: countryName(profile.address?.country ?? ''),
+      })
+    : context
+      ? fillField(element, value, active, context)
+      : fillField(element, value, active);
 }
 
 // Controls used by this fill and its edit watchers. writeSession owns the
@@ -126,10 +147,17 @@ function syncFillLogResult(result: AutofillResult | null = lastResult): void {
   if (!result || !fillLog) return;
   const counts = summarizeFillFields(fillLog.fields);
   Object.assign(result, {
-    noReview: counts.highConfidence + counts.manual, needReview: counts.review,
-    lowConfidence: counts.unmatched, noData: counts.missing, totalScanned: counts.detected,
-    kept: counts.kept, excluded: counts.excluded, failed: counts.failed, manual: counts.manual,
-    runId: fillLog.runId, startedAt: fillLog.startedAt,
+    noReview: counts.highConfidence + counts.manual,
+    needReview: counts.review,
+    lowConfidence: counts.unmatched,
+    noData: counts.missing,
+    totalScanned: counts.detected,
+    kept: counts.kept,
+    excluded: counts.excluded,
+    failed: counts.failed,
+    manual: counts.manual,
+    runId: fillLog.runId,
+    startedAt: fillLog.startedAt,
   });
 }
 
@@ -160,7 +188,9 @@ function attachReportWatchers(): void {
     for (const element of elements) {
       const handler = () => refreshTrackedField(element);
       for (const name of ['input', 'change', 'blur']) element.addEventListener(name, handler);
-      removals.push(() => { for (const name of ['input', 'change', 'blur']) element.removeEventListener(name, handler); });
+      removals.push(() => {
+        for (const name of ['input', 'change', 'blur']) element.removeEventListener(name, handler);
+      });
     }
   }
   removeReportWatchers = () => {
@@ -169,7 +199,8 @@ function attachReportWatchers(): void {
 }
 
 export function getFillLog(): FrameFillLog | null {
-  if (fillLog?.status === 'completed') for (const element of records.byElement.keys()) refreshTrackedField(element);
+  if (fillLog?.status === 'completed')
+    for (const element of records.byElement.keys()) refreshTrackedField(element);
   syncFillLogResult();
   return fillLog;
 }
@@ -184,7 +215,7 @@ type EditableFieldState = 'lowConfidence' | 'needReview' | 'noData';
 
 interface EditableField {
   element: HTMLElement;
-  state:   EditableFieldState;
+  state: EditableFieldState;
 }
 
 // Tracks the blur handler currently registered on each non-green field so we
@@ -201,7 +232,7 @@ function attachEditWatchers(fields: EditableField[], result: AutofillResult): vo
     const prev = editWatchers.get(element);
     if (prev) element.removeEventListener('blur', prev);
 
-    const valueAtAttach  = getFieldValue(element);
+    const valueAtAttach = getFieldValue(element);
     const capturedResult = result;
 
     const handler = () => {
@@ -227,7 +258,7 @@ function attachEditWatchers(fields: EditableField[], result: AutofillResult): vo
 
       result.noReview++;
       if (state === 'lowConfidence') result.lowConfidence = Math.max(0, result.lowConfidence - 1);
-      if (state === 'needReview')    result.needReview    = Math.max(0, result.needReview    - 1);
+      if (state === 'needReview') result.needReview = Math.max(0, result.needReview - 1);
       if (state === 'noData') {
         result.noData = Math.max(0, result.noData - 1);
         // Manually-resolved noData fields should also leave the silent-refill
@@ -260,9 +291,9 @@ export function getLastResult(): AutofillResult | null {
 
 // Scan results held between AUTOFILL_SCAN and AUTOFILL_FILL messages.
 interface PendingMatch {
-  element:          HTMLElement;
-  signals:          FieldSignals;
-  match:            FieldMatch;
+  element: HTMLElement;
+  signals: FieldSignals;
+  match: FieldMatch;
   hasExistingValue: boolean;
 }
 let pendingMatches: PendingMatch[] = [];
@@ -297,7 +328,7 @@ function runSilentRefill(): Promise<void> {
         if (!noData.entries.includes(entry)) continue;
         const { element, fieldPath } = entry;
         if (entry.identity !== aiQuestionIdentity(element)) {
-          noData.keepWhere(item => item !== entry);
+          noData.keepWhere((item) => item !== entry);
           clearElementHighlight(element);
           continue;
         }
@@ -310,8 +341,11 @@ function runSilentRefill(): Promise<void> {
         if (!sessionElements.includes(element)) sessionElements.push(element);
         writingElements.add(element);
         let filled: boolean | void;
-        try { filled = await fillMappedField(element, value, isActive, profile, fieldPath); }
-        finally { writingElements.delete(element); }
+        try {
+          filled = await fillMappedField(element, value, isActive, profile, fieldPath);
+        } finally {
+          writingElements.delete(element);
+        }
         if (!isActive()) return;
         if (!noData.entries.includes(entry)) continue; // a manual blur resolved it while awaiting
         if (filled === false) {
@@ -352,7 +386,9 @@ function runSilentRefill(): Promise<void> {
     }
   })();
   refillInFlight = task;
-  void task.finally(() => { if (refillInFlight === task) refillInFlight = null; });
+  void task.finally(() => {
+    if (refillInFlight === task) refillInFlight = null;
+  });
   return task;
 }
 
@@ -444,7 +480,7 @@ export async function scanAutofill(
   refillInFlight = null;
   dropPendingWork();
   sessionElements = [];
-  lastResult      = null;
+  lastResult = null;
 
   const profile = await getProfile();
   if (generation !== sessionGeneration) return { preFilledCount: 0, totalMatched: 0 };
@@ -458,10 +494,9 @@ export async function scanAutofill(
   if (generation !== sessionGeneration) return { preFilledCount: 0, totalMatched: 0 };
   const domain = fieldDomain();
 
-  // File inputs are only relevant when the user actually has a CV file to
-  // upload. Gating in the scanner keeps file inputs out of pendingMatches
-  // entirely when no CV is saved, so they never contribute to result counters.
-  const allowFileInputs = !!profile.documents?.cv?.file;
+  // Scan uploads when at least one document file is available. Matching selects
+  // the requested document; missing files never fall back to a different kind.
+  const allowFileInputs = Object.values(profile.documents ?? {}).some((entry) => !!entry?.file);
   const snapshot = scanForm({ allowFileInputs, scopeApplication: true });
   const fields = snapshot.fields;
   if (Object.keys(learnedMappings[domain] ?? {}).length) {
@@ -480,11 +515,13 @@ export async function scanAutofill(
   }
 
   let preFilledCount = 0;
-  let totalMatched   = 0;
+  let totalMatched = 0;
   const scanned = fields.map((element, i) => {
     const signals = snapshot.signals(element);
     const learned: LearnedCheck = { status: 'not_checked' };
-    const match = mapField(signals, profile, learnedMappings, domain, (check) => Object.assign(learned, check));
+    const match = mapField(signals, profile, learnedMappings, domain, (check) =>
+      Object.assign(learned, check),
+    );
     return {
       element,
       signals,
@@ -503,6 +540,8 @@ export async function scanAutofill(
   // field's match already computed, since it depends on whether ANY field
   // on the page resolved to the calling-code path (see phoneResolution.ts).
   adjustPhoneMatches(matches, profile);
+  adjustNameMatches(matches, profile);
+  adjustWorkAuthorizationMatches(matches, profile);
 
   // Sibling-aware index assignment for the unindexed languages.language /
   // languages.proficiency markers — see languageResolution.ts.
@@ -529,13 +568,15 @@ export async function scanAutofill(
     const record: FillLogField = {
       id: recordId,
       label: reportTitle(bestLabel(signals), 'text', fillLog!.fields.length + 1),
-      required: requiredField([element], bestLabel(signals)),
+      required:
+        requiredField([element], bestLabel(signals)) || !!menuSelect(element)?.select.required,
       kind:
         element instanceof HTMLInputElement && element.type === 'file'
           ? 'file'
           : element instanceof HTMLSelectElement ||
               element.getAttribute('role') === 'combobox' ||
-              element.getAttribute('aria-haspopup') === 'listbox'
+              element.getAttribute('aria-haspopup') === 'listbox' ||
+              !!menuSelect(element)
             ? 'select'
             : 'text',
       rule: {
@@ -548,7 +589,9 @@ export async function scanAutofill(
       },
       learned: {
         ...learned,
-        ...(learned.status === 'trusted' && match.fieldPath ? { profilePath: match.fieldPath } : {}),
+        ...(learned.status === 'trusted' && match.fieldPath
+          ? { profilePath: match.fieldPath }
+          : {}),
       },
       ai: { outcome: 'not_sent' },
       outcome: 'not_matched',
@@ -567,7 +610,9 @@ export async function scanAutofill(
         id: `${kind}_${index + 1}`,
         label: reportTitle(group.groupLabel || group.name, kind, index + 1),
         required: requiredField(
-          group.options.map(option => option.element), group.groupLabel, group.question,
+          group.options.map((option) => option.element),
+          group.groupLabel,
+          group.question,
         ),
         kind,
         learned: { status: 'not_checked' },
@@ -596,9 +641,10 @@ export async function scanAutofill(
     learned: { status: 'not_checked' } as LearnedCheck,
     signals: extractSignals(element),
     match: {
-      fieldPath, element,
+      fieldPath,
+      element,
       confidence: CONF_DICT_EXACT,
-      value:      'Yes',
+      value: 'Yes',
       matchLayer: 'checkbox_status' as const,
     },
     recordId: `field_${String(fields.length + i + 1).padStart(3, '0')}`,
@@ -607,7 +653,10 @@ export async function scanAutofill(
 
   const prefilledRecords = new Set<FillLogField>();
   for (const group of [...pendingRadioGroups, ...checkboxGroups]) {
-    if (!group.isConsent && !isConsentGroup(group)) for (const option of group.options) if (isChoiceChecked(option.element)) prefilledRecords.add(records.byElement.get(option.element)!);
+    if (!group.isConsent && !isConsentGroup(group))
+      for (const option of group.options)
+        if (isChoiceChecked(option.element))
+          prefilledRecords.add(records.byElement.get(option.element)!);
   }
   scanned.forEach(({ element, signals, match }) => {
     Object.assign(records.byElement.get(element)!.rule, {
@@ -671,6 +720,7 @@ interface FillRun {
   matches: PendingMatch[];
   editableFields: EditableField[];
   aiTextCandidates: AITextCandidate[];
+  fieldContexts: Map<HTMLElement, FillFieldContext>;
 }
 
 // Merge mode keeps answers the form already had, including an option already
@@ -707,8 +757,11 @@ async function fillMatch(
     record.reason = 'fill_failed';
     return true;
   }
-  if (match.fieldPath) {
-    match.fieldPath = ruleValuePath(profile,match.fieldPath,signals);
+  if (!authorizationContextAvailable(match, profile)) {
+    match.value = null;
+    match.ruleBlocked = true;
+  } else if (match.fieldPath) {
+    match.fieldPath = ruleValuePath(profile, match.fieldPath, signals);
     match.value = resolveRuleValue(profile, match.fieldPath, signals, match.value) || null;
   }
   Object.assign(record.rule, {
@@ -718,7 +771,10 @@ async function fillMatch(
     ...(match.fieldPath ? { profilePath: match.fieldPath } : {}),
   });
   // Merge mode: skip pre-filled fields that would otherwise be overwritten.
-  if (mode === 'merge' && (record.outcome === 'kept' || hasExistingValue || getFieldValue(element).trim() !== '')) {
+  if (
+    mode === 'merge' &&
+    (record.outcome === 'kept' || hasExistingValue || getFieldValue(element).trim() !== '')
+  ) {
     record.outcome = 'kept';
     record.rule.outcome = 'kept';
     record.reason = 'existing_value';
@@ -737,32 +793,62 @@ async function fillMatch(
     let filled = true;
     if (!ownedElements.includes(element)) ownedElements.push(element);
     if (isFileInput) {
-      const fileData = profile.documents?.cv?.file;
+      const fileData = resolveProfileDocumentFile(profile, match.fieldPath);
       // Scanner gating means fileData should always be present here, but
       // guard defensively — if reconstruction fails, skip without counting.
-      filled = fileData && match.fieldPath === 'documents.cv.file' ? await fillFileField(element as HTMLInputElement, fileData) : false;
+      filled = fileData ? await fillFileField(element as HTMLInputElement, fileData) : false;
     } else if (isCheckboxInput) {
       // matchCurrentEducationCheckboxes only ever produces a checkbox match
       // when the underlying entry is current — .value on a checkbox never
       // affects its checked state, so this needs its own dispatch.
       filled = (await fillCheckboxInput(element)) !== false;
     } else {
-      const value = element instanceof HTMLSelectElement && element.multiple ? multiSelectValues(profile, match.fieldPath, element) : match.value;
+      const value =
+        element instanceof HTMLSelectElement && element.multiple
+          ? multiSelectValues(profile, match.fieldPath, element)
+          : match.value;
       const beforeValue = getFieldValue(element);
-      filled = value !== null && (await fillMappedField(element, value, isActive, profile, match.fieldPath)) !== false;
+      filled =
+        value !== null &&
+        (await fillMappedField(
+          element,
+          value,
+          isActive,
+          profile,
+          match.fieldPath,
+          run.fieldContexts.get(element),
+        )) !== false;
       // Keep autocomplete priority. A rejected generic tel write may retry the
       // local number only when this contact has its own explicit dial-code field.
       if (
-        !filled && isActive() && element instanceof HTMLInputElement && element.type === 'tel' &&
-        match.matchLayer === 'autocomplete' && match.fieldPath === 'personal.phone.full' &&
+        !filled &&
+        isActive() &&
+        element instanceof HTMLInputElement &&
+        element.type === 'tel' &&
+        match.matchLayer === 'autocomplete' &&
+        match.fieldPath === 'personal.phone.full' &&
         signals.autocomplete.toLowerCase().trim().split(/\s+/).at(-1) === 'tel' &&
         !/\b(?:with|including|include)\b.*\b(?:country|calling|dial)\b/i.test(bestLabel(signals)) &&
         getFieldValue(element) === beforeValue
       ) {
-        const code = callingCodeSibling(match, run.matches.map((item) => item.match));
+        const code = callingCodeSibling(
+          match,
+          run.matches.map((item) => item.match),
+        );
         const local = profile.personal?.phone?.number;
-        if (code?.element && code.confidence >= CONF_FILL && isControlAvailable(code.element) && local) {
-          filled = await fillMappedField(element, local, isActive, profile, 'personal.phone.number');
+        if (
+          code?.element &&
+          code.confidence >= CONF_FILL &&
+          isControlAvailable(code.element) &&
+          local
+        ) {
+          filled = await fillMappedField(
+            element,
+            local,
+            isActive,
+            profile,
+            'personal.phone.number',
+          );
           if (filled) {
             match.fieldPath = 'personal.phone.number';
             match.value = local;
@@ -831,7 +917,12 @@ async function fillMatch(
       // "no signal matched" branch leaves it null, and that takes the
       // lowConfidence path above), but check explicitly for type safety.
       if (match.fieldPath) {
-        noData.add({ element, fieldPath: match.fieldPath, confidence: match.confidence, identity: aiQuestionIdentity(element) });
+        noData.add({
+          element,
+          fieldPath: match.fieldPath,
+          confidence: match.confidence,
+          identity: aiQuestionIdentity(element),
+        });
         addTextCandidate('noData');
       }
     }
@@ -894,14 +985,24 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   if (!isActive()) throw new Error(AUTOFILL_ERROR.failed);
 
   const result: AutofillResult = {
-    noReview: 0, needReview: 0, lowConfidence: 0, noData: 0,
+    noReview: 0,
+    needReview: 0,
+    lowConfidence: 0,
+    noData: 0,
     totalScanned: matchesToFill.length,
   };
   const interrupted = (): AutofillResult => {
     // Keep accepted writes and their Undo path; never overwrite a newer scan or Undo.
-    if (runLog && runLog === fillLog && cancelledRunLog === runLog &&
-      runLog.fields.some(record => (record.source === 'rules' || record.source === 'ai') &&
-        ['high_confidence','review'].includes(record.outcome))) {
+    if (
+      runLog &&
+      runLog === fillLog &&
+      cancelledRunLog === runLog &&
+      runLog.fields.some(
+        (record) =>
+          (record.source === 'rules' || record.source === 'ai') &&
+          ['high_confidence', 'review'].includes(record.outcome),
+      )
+    ) {
       runLog.status = 'completed';
       runLog.completedAt = Date.now();
       runLog.aiStatus = 'unavailable';
@@ -915,6 +1016,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     }
     throw new Error(AUTOFILL_ERROR.failed);
   };
+  const dependencies = addressDependencies(matchesToFill);
   const run: FillRun = {
     mode,
     profile,
@@ -925,6 +1027,7 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
     matches: matchesToFill,
     editableFields: [],
     aiTextCandidates: [],
+    fieldContexts: new Map(dependencies.map((item) => [item.country.element, item.context])),
   };
   const { editableFields } = run;
   if (fillLog) fillLog.mode = mode;
@@ -935,10 +1038,44 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
   clearMissingDataHighlights();
   noData.reset();
 
+  const countries = new Set(dependencies.map((item) => item.country));
   // Resume importers can asynchronously replace contact values. Upload before
   // writing the remaining saved answers, regardless of the picker's DOM order.
   const files = matchesToFill.filter((pending) => pending.signals.type === 'file');
-  const fillOrder = [...files, ...matchesToFill.filter((pending) => !files.includes(pending))];
+  const early = new Set([...countries, ...files]);
+  const fillOrder = [...early, ...matchesToFill.filter((pending) => !early.has(pending))];
+  const rebindRegion = (dependency: (typeof dependencies)[number]): boolean => {
+    const element = dependency.replacement();
+    if (!element || element === dependency.region.element) return false;
+    const region = dependency.region;
+    const previous = region.element;
+    const record = records.byElement.get(previous)!;
+    records.byElement.delete(previous);
+    region.element = element;
+    region.signals = extractSignals(element);
+    region.match.element = element;
+    region.hasExistingValue = getFieldValue(element).trim() !== '';
+    record.label = reportTitle(
+      bestLabel(region.signals),
+      'text',
+      fillLog!.fields.indexOf(record) + 1,
+    );
+    record.kind = element instanceof HTMLSelectElement || !!menuSelect(element) ? 'select' : 'text';
+    record.required =
+      requiredField([element], bestLabel(region.signals)) || !!menuSelect(element)?.select.required;
+    records.bind(record, [element]);
+    run.editableFields.splice(
+      0,
+      run.editableFields.length,
+      ...run.editableFields.filter((item) => item.element !== previous),
+    );
+    run.aiTextCandidates.splice(
+      0,
+      run.aiTextCandidates.length,
+      ...run.aiTextCandidates.filter((item) => item.element !== previous),
+    );
+    return true;
+  };
   for (const pending of fillOrder) {
     if (!isActive()) return interrupted();
     const importer = pending.signals.type === 'file'
@@ -953,6 +1090,22 @@ async function executePendingAutofill(mode: 'merge' | 'overwrite'): Promise<Auto
       }
     } finally {
       importer?.dispose();
+    }
+    if (records.byElement.get(pending.element)?.outcome === 'failed') {
+      const dependency = dependencies.find((item) => item.region === pending);
+      if (dependency && rebindRegion(dependency) && !(await fillMatch(run, pending)))
+        return interrupted();
+    }
+    const countryRecord = records.byElement.get(pending.element);
+    if (
+      countryRecord?.source === 'rules' &&
+      ['high_confidence', 'review'].includes(countryRecord.outcome)
+    ) {
+      for (const dependency of dependencies.filter((item) => item.country === pending)) {
+        await dependency.waitForReplacement(isActive);
+        if (!isActive()) return interrupted();
+        rebindRegion(dependency);
+      }
     }
   }
 

@@ -123,13 +123,14 @@ export async function reviewMappingsWithAI(
   items: MappingReviewItem[],
   catalog: ReviewCatalogField[],
   signal: AbortSignal,
-  onAttempt?: (model: GeminiModel) => void,
+  onAttempt?: (model: GeminiModel, reason?: ResumeModelAttempt['reason']) => void,
 ) {
   const models = fallbackModels(model);
   let lastError = feedback.resumeServiceUnavailable as string;
+  let reason: ResumeModelAttempt['reason'];
   for (const candidate of models) {
     signal.throwIfAborted();
-    onAttempt?.(candidate);
+    onAttempt?.(candidate, reason);
     try {
       const result = await geminiRequest(
         endpoint(candidate),
@@ -148,7 +149,10 @@ export async function reviewMappingsWithAI(
       signal.throwIfAborted();
       if (result.error) {
         lastError = KEY_ERROR_MESSAGES[result.error];
-        if (MAPPING_REVIEW_FALLBACK_ERRORS.includes(result.error)) continue;
+        if (MAPPING_REVIEW_FALLBACK_ERRORS.includes(result.error)) {
+          reason = result.error === 'rate_limit' ? 'rate_limit' : 'unavailable';
+          continue;
+        }
         throw new Error(lastError);
       }
       return {
@@ -159,6 +163,7 @@ export async function reviewMappingsWithAI(
       signal.throwIfAborted();
       if ((error as { name?: string })?.name === 'TimeoutError') {
         lastError = KEY_ERROR_MESSAGES.timeout;
+        reason = 'timeout';
         continue;
       }
       if (

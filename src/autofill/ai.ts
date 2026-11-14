@@ -3,6 +3,7 @@ import { getWriteConfidence } from './writeSession';
 import { readFieldValue } from './fieldValue';
 import { isConsentGroup } from './consent';
 import type { Profile } from '../types/profile';
+import { menuSelect } from './menuSelect';
 import type { FieldSignals } from './signals';
 import { bestLabel, extractSignals } from './signals';
 import { resolveRuleValue, ruleValuePath } from './ruleValue';
@@ -182,7 +183,7 @@ export async function runAIAutofill(
       // phase resolves the value and uses click-based option matching.
       const ariaRole = c.element.getAttribute('role');
       const ariaPopup = c.element.getAttribute('aria-haspopup');
-      if (ariaRole === 'combobox' || ariaPopup === 'listbox') {
+      if (ariaRole === 'combobox' || ariaPopup === 'listbox' || menuSelect(c.element)) {
         return { ...base, type: 'select' as const };
       }
       return { ...base, type: 'text' as const };

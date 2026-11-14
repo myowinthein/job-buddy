@@ -1,12 +1,13 @@
 import type { Profile } from '@/src/types/profile';
 import { DEV_PROFILE } from '@/src/utils/devProfile';
+import { version } from '../../package.json';
 
 type ChangeListener = (
   changes: Record<string, chrome.storage.StorageChange>,
   areaName: string,
 ) => void;
 
-/** Only the storage surface used by Options; no connection to extension APIs. */
+/** Preview-only storage and version metadata for Options. */
 type ThemeStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 const PREVIEW_THEME_KEY = 'jb:preview:themePreference';
 
@@ -19,7 +20,10 @@ export function createPreviewChrome(
   } = {},
 ) {
   const listeners = new Set<ChangeListener>();
-  const runtime: { lastError: { message: string } | undefined } = { lastError: undefined };
+  const runtime: {
+    lastError: { message: string } | undefined;
+    getManifest: () => { version: string };
+  } = { lastError: undefined, getManifest: () => ({ version }) };
   let themePreference: string | null = null;
   try {
     themePreference = themeStorage?.getItem(PREVIEW_THEME_KEY) ?? null;

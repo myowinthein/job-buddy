@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
 import ImportReviewScreen from './ImportReviewScreen';
+import type { Profile } from '@/src/types/profile';
 import type { FieldChange } from '@/src/resume-ai/types';
 
 afterEach(cleanup);
@@ -261,6 +262,36 @@ it('counts and imports education entries separately without comparing new entrie
   expect(screen.getByText('3 of 3 selected')).toBeTruthy();
 });
 
+it.each(['Review Resume', 'Review Profile', 'Review Drive Backup'])(
+  '%s labels new and changed languages and custom links individually',
+  async title => {
+    const { generateDiff } = await import('@/src/resume-ai/parser');
+    const cases = [
+      {
+        current: { languages: [{ language: 'en', proficiency: 'full_professional' as const }] },
+        incoming: { languages: [
+          { language: 'en', proficiency: 'native_bilingual' as const },
+          { language: 'my', proficiency: 'native_bilingual' as const },
+        ] },
+      },
+      {
+        current: { links: { linkedin: '', custom: [{ label: 'Project', url: 'https://example.test/old' }] } },
+        incoming: { links: { linkedin: '', custom: [
+          { label: 'Project', url: 'https://example.test/new' },
+          { label: 'Writing', url: 'https://example.test/writing' },
+        ] } },
+      },
+    ];
+    for (const { current, incoming } of cases) {
+      const view = render(<ImportReviewScreen title={title} changes={generateDiff(current, incoming)} onSave={vi.fn()} onBack={vi.fn()} />);
+      expect(screen.getByText('New').className).toContain('text-green-700');
+      expect(screen.getByText('Changed').className).toContain('text-amber-700');
+      expect(screen.getByText('2 of 2 selected')).toBeTruthy();
+      view.unmount();
+    }
+  },
+);
+
 it('presents each language with its proficiency and its own selection', async () => {
   const { generateDiff, applyChanges } = await import('@/src/resume-ai/parser');
   const languages = [
@@ -382,5 +413,98 @@ it.each(['update', 'replace'] as const)(
     expect(
       (screen.getByRole('button', { name: /^Import Selected/ }) as HTMLButtonElement).disabled,
     ).toBe(true);
+  },
+);
+
+it.each(['workHistory', 'education', 'workAuthorization', 'languages', 'links.custom'] as const)(
+  '%s reviews only actionable entries and preserves hidden saved rows',
+  async (section) => {
+    const { generateDiff, applyChanges } = await import('@/src/resume-ai/parser');
+    const records = {
+      workHistory: [
+        { company: 'Unchanged company', title: 'Engineer', startDate: '2020-01', isCurrent: true },
+        { company: 'Changed company', title: 'Engineer', startDate: '2021-01', isCurrent: true },
+      ],
+      education: [
+        {
+          institution: 'Unchanged school',
+          degree: 'BA',
+          fieldOfStudy: 'Design',
+          startDate: '2010',
+          endDate: '2014',
+        },
+        {
+          institution: 'Changed school',
+          degree: 'BA',
+          fieldOfStudy: 'Design',
+          startDate: '2015',
+          endDate: '2019',
+        },
+      ],
+      workAuthorization: [
+        { country: 'US', status: 'citizen_or_pr' },
+        { country: 'GB', status: 'work_visa' },
+      ],
+      languages: [
+        { language: 'en', proficiency: 'native_bilingual' },
+        { language: 'es', proficiency: 'professional_working' },
+      ],
+      'links.custom': [
+        { label: 'Unchanged link', url: 'https://example.test/one' },
+        { label: 'Changed link', url: 'https://example.test/two' },
+      ],
+    }[section];
+    const replacement = {
+      workHistory: { title: 'Lead Engineer' },
+      education: { degree: 'MA' },
+      workAuthorization: { status: 'requires_sponsorship' },
+      languages: { proficiency: 'full_professional' },
+      'links.custom': { url: 'https://example.test/updated' },
+    }[section];
+    const current =
+      section === 'links.custom' ? { links: { custom: records } } : { [section]: records };
+    const incomingRows = [records[0], { ...records[1], ...replacement }];
+    const incoming =
+      section === 'links.custom'
+        ? { links: { custom: incomingRows } }
+        : { [section]: incomingRows };
+    const changes = generateDiff(current as Partial<Profile>, incoming as Partial<Profile>);
+    const { onSave } = renderScreen(changes);
+    const hiddenLabel = {
+      workHistory: 'Unchanged company',
+      education: 'Unchanged school',
+      workAuthorization: 'United States',
+      languages: 'English',
+      'links.custom': 'Unchanged link',
+    }[section];
+    expect(screen.queryByText(new RegExp(hiddenLabel))).toBeNull();
+    if (['workHistory', 'education', 'workAuthorization'].includes(section)) {
+      expect(screen.getByText('(1 of 1)')).toBeTruthy();
+      expect(
+        (screen.getByRole('button', { name: 'Next entry' }) as HTMLButtonElement).disabled,
+      ).toBe(true);
+    }
+    fireEvent.click(screen.getByRole('radio', { name: /Keep Current/ }));
+    expect(screen.getByText('0 of 1 selected')).toBeTruthy();
+    fireEvent.click(screen.getByText('Select All'));
+    fireEvent.click(screen.getByRole('button', { name: /^Import Selected/ }));
+    const saved = applyChanges(current as Partial<Profile>, onSave.mock.calls[0][0]);
+    const rows = section === 'links.custom' ? saved.links?.custom : saved[section];
+    expect(rows).toEqual(incomingRows);
+  },
+);
+
+it.each(['workHistory', 'education', 'workAuthorization', 'languages', 'links.custom'] as const)(
+  'keeps identical incoming %s entries selectable when replacing a profile',
+  async (section) => {
+    const { DEV_PROFILE } = await import('@/src/utils/devProfile');
+    const { replacementChanges } = await import('@/src/utils/importPolicy');
+    const change = replacementChanges(DEV_PROFILE, DEV_PROFILE).find(
+      (change) => change.id === section,
+    )!;
+    render(<ImportReviewScreen changes={[change]} replacement onSave={vi.fn()} onBack={vi.fn()} />);
+    const entries = screen.getAllByRole('checkbox', { name: /^Import / });
+    expect(entries.length).toBeGreaterThan(0);
+    for (const entry of entries) expect((entry as HTMLInputElement).checked).toBe(true);
   },
 );

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QuickFillSettings } from './QuickFillSettings';
 import {
   getQuickFillPreferences,
@@ -31,17 +31,41 @@ beforeEach(() => {
   });
 });
 afterEach(cleanup);
+it.each(['resolve', 'reject'] as const)('keeps a newer storage event when the initial read later %ss', async (outcome) => {
+  let resolve!: (value: QuickFillPreferences) => void;
+  let reject!: (error: Error) => void;
+  vi.mocked(getQuickFillPreferences).mockImplementationOnce(() => new Promise((yes, no) => {
+    resolve = yes;
+    reject = no;
+  }));
+  render(<QuickFillSettings />);
+  act(() => vi.mocked(chrome.storage.onChanged.addListener).mock.calls[0][0](
+    { quickFillPreferences: { newValue: { ...preferences, enabled: false } } }, 'local',
+  ));
+  await act(async () => {
+    if (outcome === 'resolve') resolve(preferences);
+    else reject(new Error('old read failed'));
+  });
+  expect(screen.getByRole('button', { name: 'Off' }).getAttribute('aria-pressed')).toBe('true');
+  expect(screen.queryByRole('alert')).toBeNull();
+});
+
 it('keeps load failures inside Quick Fill and lets the user retry', async () => {
   vi.mocked(getQuickFillPreferences).mockRejectedValueOnce(new Error('read failed'));
   render(<QuickFillSettings />);
   expect(await screen.findByRole('alert')).toHaveProperty(
-    'textContent', 'Could not load quick fill settings.Retry',
+    'textContent',
+    'Could not load quick fill settings.Retry',
   );
+  expect(screen.getByRole('alert').className).toContain('bg-red-50');
+  expect(screen.getByRole('alert').querySelector('svg')).not.toBeNull();
   expect(toast).not.toHaveBeenCalled();
   expect((screen.getByRole('button', { name: 'On' }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
-  await waitFor(() => expect((screen.getByRole('button', { name: 'On' }) as HTMLButtonElement).disabled).toBe(false));
+  await waitFor(() =>
+    expect((screen.getByRole('button', { name: 'On' }) as HTMLButtonElement).disabled).toBe(false),
+  );
 });
 
 it('reports each failed explicit change even when its message repeats', async () => {
@@ -72,6 +96,72 @@ it('saves On/Off immediately and restores the saved state after a failed write',
   );
   expect(off.getAttribute('aria-pressed')).toBe('true');
 });
+
+it.each([true, false])(
+  'keeps the latest toggle selected when an earlier save succeeds: %s',
+  async (succeeds) => {
+    let finish!: () => void;
+    vi.mocked(updateQuickFillPreferences).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve, reject) => {
+          finish = () => {
+            if (succeeds) {
+              preferences.enabled = false;
+              resolve();
+            } else reject(new Error('write failed'));
+          };
+        }),
+    );
+    render(<QuickFillSettings />);
+    const on = screen.getByRole('button', { name: 'On' });
+    const off = screen.getByRole('button', { name: 'Off' });
+    await waitFor(() => expect(on.getAttribute('aria-pressed')).toBe('true'));
+    fireEvent.click(off);
+    expect(off).toHaveProperty('disabled', false);
+    fireEvent.click(on);
+    expect(on.getAttribute('aria-pressed')).toBe('true');
+    await waitFor(() => expect(finish).toBeTypeOf('function'));
+    expect(updateQuickFillPreferences).toHaveBeenCalledTimes(1);
+    await act(async () => finish());
+    await waitFor(() => expect(updateQuickFillPreferences).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole('combobox')).toHaveProperty('disabled', false));
+    expect(preferences.enabled).toBe(true);
+    expect(on.getAttribute('aria-pressed')).toBe('true');
+    expect(toast).toHaveBeenCalledTimes(succeeds ? 0 : 1);
+  },
+);
+
+it('keeps the pending toggle visible through storage events and restores the last saved value if reads fail', async () => {
+  let fail!: () => void;
+  vi.mocked(updateQuickFillPreferences).mockImplementationOnce(
+    () =>
+      new Promise<void>((_resolve, reject) => {
+        fail = () => reject(new Error('write failed'));
+      }),
+  );
+  render(<QuickFillSettings />);
+  const on = screen.getByRole('button', { name: 'On' });
+  const off = screen.getByRole('button', { name: 'Off' });
+  await waitFor(() => expect(on.getAttribute('aria-pressed')).toBe('true'));
+  fireEvent.click(off);
+  fireEvent.click(on);
+  await waitFor(() => expect(fail).toBeTypeOf('function'));
+  preferences.enabled = false;
+  act(() => {
+    vi.mocked(chrome.storage.onChanged.addListener).mock.calls[0][0](
+      { quickFillPreferences: { newValue: structuredClone(preferences) } },
+      'local',
+    );
+  });
+  expect(on.getAttribute('aria-pressed')).toBe('true');
+  vi.mocked(updateQuickFillPreferences).mockRejectedValue(new Error('write failed'));
+  vi.mocked(getQuickFillPreferences).mockRejectedValue(new Error('read failed'));
+  await act(async () => fail());
+  await waitFor(() => expect(toast).toHaveBeenCalledTimes(2));
+  expect(off.getAttribute('aria-pressed')).toBe('true');
+  expect(off).toHaveProperty('disabled', false);
+});
+
 it('saves fill behavior, restores it on remount, and keeps it when turning the button off', async () => {
   const view = render(<QuickFillSettings />);
   const select = await screen.findByRole('combobox', { name: 'Fields to fill' });

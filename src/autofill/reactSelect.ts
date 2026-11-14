@@ -1,0 +1,26 @@
+/** A searchable select's input is its query editor, not its committed answer. */
+export interface SearchableSelect {
+  control: HTMLElement;
+  value: string;
+}
+const part = (element: Element, suffix: string) =>
+  [...element.classList].some((name) => name.endsWith(`__${suffix}`));
+
+export function searchableSelect(element: HTMLElement): SearchableSelect | null {
+  if (!(element instanceof HTMLInputElement) || element.getAttribute('role') !== 'combobox')
+    return null;
+  let container = element.parentElement;
+  for (let depth = 0; container && depth < 3; depth++, container = container.parentElement) {
+    if (!part(container, 'value-container')) continue;
+    const control = container.parentElement;
+    if (!control || !part(control, 'control')) return null;
+    const editors = control.querySelectorAll(
+      'input:not([type="hidden"]),select,textarea,[role="combobox"],[role="textbox"]',
+    );
+    if (editors.length !== 1 || editors[0] !== element) return null;
+    const values = [...container.children].filter((child) => part(child, 'single-value'));
+    if (values.length > 1 || container.querySelector('[class*="__multi-value"]')) return null;
+    return { control, value: values[0]?.textContent?.trim() ?? '' };
+  }
+  return null;
+}

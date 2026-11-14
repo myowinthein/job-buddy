@@ -7,8 +7,10 @@ import {
 import { LanguageComparison } from './LanguageComparison';
 import { CustomLinkComparison } from './CustomLinkComparison';
 import { useId, useState, type RefObject } from 'react';
+import { LoaderCircle } from 'lucide-react';
 import type { FieldChange } from '@/src/resume-ai/types';
 import { ModalShell } from '@/src/components/ui/ModalShell';
+import { Notice } from '@/src/components/ui/Notice';
 import { secondaryButtonCls as secondaryCls } from '@/src/components/ui/buttonCls';
 import { PROFILE_SECTIONS } from '@/src/components/options/shared/profileSections';
 import { EntryComparison } from './EntryComparison';
@@ -25,6 +27,11 @@ export interface ImportReviewScreenProps {
   title?: string;
   saveLabel?: string;
   incomingLabel?: string;
+  description?: string;
+  backLabel?: string;
+  emptySelectionLabel?: string;
+  error?: string;
+  errorTone?: 'error' | 'review';
   warnings?: string[];
   warningsSummary?: string;
   replacement?: boolean;
@@ -41,6 +48,11 @@ export default function ImportReviewScreen({
   title = 'Review Profile',
   saveLabel = 'Import Selected',
   incomingLabel = 'Imported',
+  description = 'Select the details to save to your profile.',
+  backLabel = 'Back',
+  emptySelectionLabel,
+  error,
+  errorTone = 'error',
   warnings,
   warningsSummary,
   replacement = false,
@@ -106,7 +118,7 @@ export default function ImportReviewScreen({
               {title}
             </h3>
             <p id={descriptionId} className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Select the details to save to your profile.
+              {description}
             </p>
           </div>
           <button
@@ -114,7 +126,7 @@ export default function ImportReviewScreen({
             aria-label="Close import review"
             onClick={dismiss}
             disabled={isSaving}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl disabled:opacity-50"
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl disabled:opacity-50"
           >
             ×
           </button>
@@ -142,7 +154,8 @@ export default function ImportReviewScreen({
         </div>
         <ImportWarnings warnings={warnings} summary={warningsSummary} />
       </div>
-      <div className="review-dialog-body flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-3">
+      <div className="review-dialog-body flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-3">
+        {error && <Notice tone={errorTone} urgent><p>{error}</p></Notice>}
         {sections.map((section, index) => {
           const fields = grouped.get(section)!;
           const expanded = expandedSection === section;
@@ -227,22 +240,24 @@ export default function ImportReviewScreen({
           );
         })}
         {!reviewable.length && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-6">
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
             No changes to review.
           </p>
         )}
       </div>
       <div className="flex flex-wrap justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 shrink-0">
         <button type="button" onClick={onBack} disabled={isSaving} className={secondaryCls}>
-          Back
+          {backLabel}
         </button>
         <button
           type="button"
           onClick={() => void onSave(changes)}
-          disabled={isSaving || selectedCount === 0}
-          className={`px-4 py-2 text-white text-sm font-medium rounded-lg disabled:opacity-50 active:scale-95 transition-colors ${replacement ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+          disabled={isSaving || (selectedCount === 0 && !emptySelectionLabel)}
+          aria-busy={isSaving}
+          className={`inline-flex items-center justify-center gap-2 px-4 py-2 text-white text-sm font-medium rounded-lg disabled:opacity-50 active:scale-95 transition-colors ${replacement ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
         >
-          {isSaving ? 'Saving…' : `${saveLabel} (${selectedCount})`}
+          {isSaving && <LoaderCircle aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" />}
+          {isSaving ? 'Saving…' : selectedCount === 0 && emptySelectionLabel ? emptySelectionLabel : `${saveLabel} (${selectedCount})`}
         </button>
       </div>
     </ModalShell>

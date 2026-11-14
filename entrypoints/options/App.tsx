@@ -6,7 +6,6 @@ import type { ProfileUpdate } from '@/src/resume-ai/resumeImport';
 import { getProfile, saveProfile } from '@/src/utils/storage';
 import { sessionGet, sessionRemove } from '@/src/utils/sessionStorage';
 import { calculateCompletion, getSectionCompletion, getCompletionTarget, getSectionStartTarget } from '@/src/utils/profileCompletion';
-import { mappingProfileTarget } from '@/src/components/options/learnedMappingsView';
 import { calculateDerivedFields } from '@/src/utils/derivedFields';
 import { Sidebar } from '@/src/components/options/Sidebar';
 import { CompletionBanner } from '@/src/components/options/CompletionBanner';
@@ -32,6 +31,10 @@ import { withProfileWriteLock } from '@/src/utils/profileWriteLock';
 import { FillLogPage } from '@/src/components/fill-log/FillLogPage';
 import { selectFillLog } from '@/src/fill-log/client';
 import { FILL_DETAILS_REQUEST, takeFillDetailsRequest, lastFillDetailsSource, sourceFromQuery, sourceTabId } from '@/src/fill-log/navigation';
+import { ProfileRecoveryDialog, type ProfileRecovery } from '@/src/components/options/ProfileRecoveryDialog';
+import { assertImportCurrent } from '@/src/utils/importPolicy';
+import { applyChanges } from '@/src/resume-ai/parser';
+import { getScrollBehavior } from '@/src/utils/scrollBehavior';
 
 type SectionId =
   | 'personal'
@@ -89,7 +92,7 @@ function readSidebar(): boolean {
 
 // ── Autofocus helper (shared between two effects) ────────────────────────────
 function focusFirstEmpty(container: Element | null) {
-  if (!container) return;
+  if (!container || container.contains(document.activeElement)) return;
   const inputs = Array.from(
     container.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
       'input[type="text"], input[type="email"], input[type="number"], input[type="url"],' +
@@ -112,9 +115,9 @@ function App() {
   const [focusTarget, setFocusTarget] = useState<CompletionTarget | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [unsavedStatusVisible, setUnsavedStatusVisible] = useState(false);
-  const [savedFeedbackAt, setSavedFeedbackAt] = useState<number | null>(null);
   // Incremented on reset so all profile-editing sections remount and show cleared inputs.
   const [sectionSeq, setSectionSeq] = useState(0);
+  const [profileRecovery, setProfileRecovery] = useState<ProfileRecovery | null>(null);
 
   const skipAutoFocusRef  = useRef(false);
   const mountedRef        = useRef(false);
@@ -136,7 +139,6 @@ function App() {
     dirtyInputsRef.current.clear();
     setHasUnsavedChanges(false);
     setUnsavedStatusVisible(false);
-    setSavedFeedbackAt(null);
     setFocusTarget(null);
     setActiveSection(section);
     return true;
@@ -207,12 +209,6 @@ function App() {
   useEffect(() => {
     document.title = activeSection === 'fillDetails' ? 'Job Buddy: Fill Details' : initialTitle.current;
   }, [activeSection]);
-
-  useEffect(() => {
-    if (savedFeedbackAt === null) return;
-    const timer = window.setTimeout(() => setSavedFeedbackAt(null), 2000);
-    return () => window.clearTimeout(timer);
-  }, [savedFeedbackAt]);
 
   useEffect(() => {
     if (!hasUnsavedChanges) return;
@@ -360,7 +356,7 @@ function App() {
     const raf = requestAnimationFrame(() => {
       if (focusTarget.revealId) document.getElementById(focusTarget.revealId)?.click();
       const card = focusTarget.cardId ? document.getElementById(focusTarget.cardId) : null;
-      card?.querySelector<HTMLButtonElement>('button[aria-expanded="false"]')?.click();
+      card?.querySelector<HTMLButtonElement>('button[data-entry-toggle][aria-expanded="false"]')?.click();
       focusRaf = requestAnimationFrame(() => {
         const focusWhenReady = () => {
           const el = document.getElementById(focusTarget.id) ?? (focusTarget.fallbackId ? document.getElementById(focusTarget.fallbackId) : null);
@@ -370,7 +366,7 @@ function App() {
             if (parent instanceof HTMLDetailsElement) parent.open = true;
           el.focus({ preventScroll: true });
           if (document.activeElement !== el) return;
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.scrollIntoView({ behavior: getScrollBehavior(), block: 'center' });
           observer?.disconnect();
           setFocusTarget(null);
         };
@@ -417,7 +413,7 @@ function App() {
     // Keep changes saved by another Options tab in other profile sections.
     const latest = await getProfile({ rejectOnError: true });
     if (typeof update !== 'function' && latest?.id !== profile.id) {
-      showToast('warning', feedback.profileReplacedElsewhere);
+      setProfileRecovery({ original: profile, draft: { ...profile, ...update }, current: latest ?? {} });
       throw new ReportedSaveError('Profile replaced in another tab');
     }
     const base = latest ?? (typeof update === 'function' ? {} : profile);
@@ -438,7 +434,6 @@ function App() {
       throw new ReportedSaveError(feedback.profileStorageSaveFailed);
     }
     setProfile(synced);
-    setSavedFeedbackAt(Date.now());
     // Fire-and-forget Drive sync. Never blocks the local save flow.
     void syncProfileToDrive(synced).then(async (res) => {
       if (!res.success && res.errorCode && await claimDriveWarning(res.errorCode, synced.id)) {
@@ -468,13 +463,10 @@ function App() {
     navigateSection('personal');
   };
 
-  // All completion-derived values are recomputed only when `profile` changes,
-  // rather than on every render. calculateCompletion traverses the whole
-  // profile, and getSectionCompletion calls it internally — so both are kept
-  // inside a single memo keyed on profile.
+  // Share one completion calculation between the banner and section indicators.
   const { completion, sectionCompletion } = useMemo(() => {
     const completion = calculateCompletion(profile);
-    const sectionCompletion = getSectionCompletion(profile);
+    const sectionCompletion = getSectionCompletion(profile, completion);
     return { completion, sectionCompletion };
   }, [profile]);
   const sectionProps = { profile, onSave: handleSave };
@@ -500,10 +492,7 @@ function App() {
       case 'links':             return <LinksSection key={`links-${sectionSeq}`} {...sectionProps} />;
       case 'documents':         return <DocumentsSection key={`documents-${sectionSeq}`} {...sectionProps} />;
       case 'resume':            return <ResumeImportSection key="resume" profile={profile} onSave={handleSave} onReplace={async (base, changes) => { setProfile(await replaceImportedProfile(base, changes)); }} onGoToApiKey={handleGoToApiKey} onClose={handleCloseResumeImport} />;
-      case 'learnedMappings':   return <LearnedMappingsSection key="learnedMappings" onGoToApiKey={handleGoToApiKey} onProfileChange={setProfile} onOpenProfile={(path, currentProfile) => {
-        const link = mappingProfileTarget(currentProfile, path);
-        if (link) navigateAndFocus(link.section, { ...link.target, fallbackId: link.target.fallbackId ?? getSectionStartTarget(link.section)?.id });
-      }} />;
+      case 'learnedMappings':   return <LearnedMappingsSection key="learnedMappings" onGoToApiKey={handleGoToApiKey} onProfileChange={setProfile} />;
       case 'fillDetails':       return <FillLogPage key={`fillDetails-${fillDetailsTabId}`} tabId={fillDetailsTabId} />;
       case 'settings':          return <SettingsSection key="settings" onImportComplete={handleImportComplete} onResetComplete={handleResetComplete} />;
     }
@@ -536,13 +525,34 @@ function App() {
             <DraftStatusContext.Provider value={reportDraftStatus}>
               <SectionSaveStatusContext.Provider value={hasUnsavedChanges
                 ? unsavedStatusVisible ? 'unsaved' : 'idle'
-                : savedFeedbackAt !== null ? 'saved' : 'idle'}>
+                : 'idle'}>
                 {renderSection()}
               </SectionSaveStatusContext.Provider>
             </DraftStatusContext.Provider>
           </div>
         </main>
       </div>
+      {profileRecovery && <ProfileRecoveryDialog
+        recovery={profileRecovery}
+        onClose={() => setProfileRecovery(null)}
+        onApply={async (base, changes) => {
+          if (changes.some((change) => change.accepted && change.status !== 'unchanged')) {
+            await handleSave((latest) => {
+              assertImportCurrent(base, latest, changes);
+              return applyChanges(latest, changes);
+            });
+            showToast('success', feedback.profileSaved);
+          } else {
+            await withProfileWriteLock(async () => {
+              const latest = await getProfile({ rejectOnError: true }) ?? {};
+              assertImportCurrent(base, latest, changes);
+              setProfile(latest);
+            });
+          }
+          setProfileRecovery(null);
+          setSectionSeq((value) => value + 1);
+        }}
+      />}
     </div>
   );
 }

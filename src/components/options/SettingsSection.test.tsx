@@ -28,7 +28,9 @@ import { validateImportedProfile } from '@/src/utils/profileValidator';
 import { applyTheme, getCurrentTheme, subscribeTheme } from '@/src/utils/theme';
 import { generateDiff, applyChanges } from '@/src/resume-ai/parser';
 import type { Profile } from '@/src/types/profile';
+import type { FullDriveState } from '@/src/utils/driveSync';
 import type { KeyValidationResult, FieldChange } from '@/src/resume-ai/types';
+import { feedback } from '@/src/ui/feedback';
 
 function renderSection(onImportComplete = vi.fn(), onResetComplete = vi.fn()) {
   render(
@@ -71,6 +73,39 @@ afterEach(() => {
   URL.revokeObjectURL = revokeObjectURL;
 });
 
+it('keeps the latest Drive state when an earlier read finishes last', async () => {
+  let finishOldRead!: (state: FullDriveState) => void;
+  vi.mocked(getFullDriveState).mockImplementationOnce(() => new Promise(resolve => {
+    finishOldRead = resolve;
+  }));
+  renderSection();
+  vi.mocked(getFullDriveState).mockResolvedValue({
+    connected: true, lastSynced: null, pendingSync: false, error: null,
+  });
+  act(() => window.dispatchEvent(new Event('jb:drive:state-changed')));
+  await screen.findByRole('button', { name: 'Disconnect' });
+  await act(async () => finishOldRead({
+    connected: false, lastSynced: null, pendingSync: false, error: null,
+  }));
+  expect(screen.getByRole('button', { name: 'Disconnect' })).toBeTruthy();
+});
+
+it('shows the installed version as a release link in the Settings footer', async () => {
+  vi.stubGlobal('chrome', { runtime: { getManifest: () => ({ version: '7.6.5' }) } });
+  try {
+    renderSection();
+    const link = await screen.findByRole('link', { name: 'v7.6.5 release notes' });
+    expect(link.getAttribute('href')).toBe('https://github.com/myowinthein/job-buddy/releases/tag/v7.6.5');
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toContain('noopener');
+    expect(link.closest('footer')).not.toBeNull();
+    expect(link.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+  } finally {
+    cleanup();
+    vi.unstubAllGlobals();
+  }
+});
+
 describe('SettingsSection — explicit Gemini saves', () => {
   it('discards a cancelled probe when another key is checked and saved', async () => {
     vi.mocked(getGeminiSettings).mockResolvedValue({ apiKey: 'existing-key', model: 'gemini-3.5-flash-lite', preference: 'auto', revision: 'original', verifiedAt: null });
@@ -84,7 +119,7 @@ describe('SettingsSection — explicit Gemini saves', () => {
     fireEvent.change(screen.getByLabelText('Gemini API Key'), { target: { value: 'first-key' } });
     fireEvent.click(screen.getByText('Save Key'));
     await waitFor(() => expect(validateApiKey).toHaveBeenCalledTimes(1));
-    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     fireEvent.click(screen.getByText('Replace Key'));
     fireEvent.change(screen.getByLabelText('Gemini API Key'), { target: { value: 'second-key' } });
     fireEvent.click(screen.getByText('Save Key'));
@@ -131,6 +166,84 @@ function makeFieldChange(overrides: Partial<FieldChange> = {}): FieldChange {
 }
 
 describe('SettingsSection — importing into an existing (non-empty) profile', () => {
+  const uploadProfile = (profile: Profile) => {
+    const file = new File([JSON.stringify({ profile })], 'export.json', { type: 'application/json' });
+    fireEvent.change(document.querySelector('input[type="file"][accept=".json"]')!, { target: { files: [file] } });
+  };
+
+  it('shows a toast for an unchanged valid import without writing data or opening a dialog', async () => {
+    vi.mocked(getProfile).mockResolvedValue(makeProfile());
+    const { onImportComplete } = renderSection();
+    uploadProfile(makeProfile());
+    expect(await screen.findByText('No changes to import.')).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(saveProfile).not.toHaveBeenCalled();
+    expect(onImportComplete).not.toHaveBeenCalled();
+  });
+
+  it('opens the shared comparison with saved values selected after the profile changes', async () => {
+    const original = makeProfile();
+    const incoming = { ...original, personal: { ...original.personal, firstName: 'Janet' } };
+    const current = { ...original, personal: { ...original.personal, firstName: 'Joan' } };
+    vi.mocked(getProfile).mockResolvedValueOnce(original).mockResolvedValue(current);
+    vi.mocked(generateDiff).mockReturnValueOnce([makeFieldChange()]).mockReturnValueOnce([
+      makeFieldChange({ currentValue: 'Joan', displayCurrent: 'Joan' }),
+    ]);
+    renderSection();
+    uploadProfile(incoming);
+    fireEvent.click(await screen.findByRole('button', { name: 'Import All' }));
+    expect(await screen.findByRole('dialog', { name: 'Review Profile' })).toBeTruthy();
+    expect(screen.getByText('Joan')).toBeTruthy();
+    expect(screen.getByText('Janet')).toBeTruthy();
+    expect(screen.getByText('0 of 1 selected')).toBeTruthy();
+    expect(screen.getByRole('alert').className).toContain('bg-amber-50');
+    expect(screen.getByText(feedback.profileRecoveryChanged)).toBeTruthy();
+    expect(saveProfile).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /^Use Saved Profile/ }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(saveProfile).not.toHaveBeenCalled();
+  });
+
+  it('applies refreshed import choices against the latest saved profile after explicit review', async () => {
+    const original = makeProfile();
+    const incoming = { ...original, personal: { ...original.personal, firstName: 'Janet' } };
+    const current = { ...original, personal: { ...original.personal, firstName: 'Joan' } };
+    vi.mocked(getProfile).mockResolvedValueOnce(original).mockResolvedValue(current);
+    vi.mocked(generateDiff).mockReturnValueOnce([makeFieldChange()]).mockReturnValueOnce([
+      makeFieldChange({ currentValue: 'Joan', displayCurrent: 'Joan' }),
+    ]);
+    vi.mocked(applyChanges).mockReturnValueOnce(incoming);
+    const { onImportComplete } = renderSection();
+    uploadProfile(incoming);
+    fireEvent.click(await screen.findByRole('button', { name: 'Import All' }));
+    await screen.findByRole('dialog', { name: 'Review Profile' });
+    fireEvent.click(screen.getByText('Select All'));
+    fireEvent.click(screen.getByRole('button', { name: /^Import Selected/ }));
+    await waitFor(() => expect(onImportComplete).toHaveBeenCalledTimes(1));
+    expect(applyChanges).toHaveBeenCalledWith(current, [expect.objectContaining({ currentValue: 'Joan', accepted: true })]);
+    expect(saveProfile).toHaveBeenCalledTimes(1);
+  });
+
+  it('requires an import action if the refreshed profile belongs to someone else', async () => {
+    const original = makeProfile();
+    const incoming = { ...original, personal: { ...original.personal, firstName: 'Janet' } };
+    const current = { ...original, personal: { ...original.personal, firstName: 'Robin', email: 'robin@example.test' } };
+    vi.mocked(getProfile).mockResolvedValueOnce(original).mockResolvedValue(current);
+    vi.mocked(generateDiff).mockReturnValue([makeFieldChange({ currentValue: 'Robin', displayCurrent: 'Robin' })]);
+    renderSection();
+    uploadProfile(incoming);
+    fireEvent.click(await screen.findByRole('button', { name: 'Import All' }));
+    await screen.findByText('This may be another person’s profile');
+    expect((screen.getByRole('button', { name: 'Import All' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(saveProfile).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('radio', { name: /Update profile/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Review Changes' }));
+    expect(screen.getByRole('dialog', { name: 'Review Profile' })).toBeTruthy();
+    expect(screen.getByText('0 of 1 selected')).toBeTruthy();
+    expect(screen.getByText('Robin')).toBeTruthy();
+    expect(screen.getByText('Janet')).toBeTruthy();
+  });
+
   it('shows the diff summary dialog instead of importing immediately', async () => {
     vi.mocked(getProfile).mockResolvedValue(makeProfile());
     vi.mocked(generateDiff).mockReturnValueOnce([makeFieldChange()]);
@@ -172,7 +285,7 @@ describe('SettingsSection — importing into an existing (non-empty) profile', (
     await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
     expect(vi.mocked(applyChanges)).toHaveBeenCalledWith(existing, changes);
     expect(vi.mocked(saveProfile)).toHaveBeenCalledWith({ ...merged, derived: calculateDerivedFields(merged) });
-    expect(screen.getByRole('alert').textContent).toContain('Profile imported successfully');
+    expect(screen.getByRole('alert').textContent).toContain('Profile imported.');
     expect(screen.getByRole('alert').textContent).not.toMatch(/skipped|invalid/i);
   });
 
@@ -224,13 +337,13 @@ describe('SettingsSection — Appearance', () => {
     expect(screen.getByRole('button', { name: 'Dark' }).getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('restores the previous selection when saving appearance fails', async () => {
+  it('keeps the selected appearance for this page when saving fails', async () => {
     vi.mocked(saveThemePreference).mockRejectedValueOnce(new Error('Storage unavailable'));
     renderSection();
     fireEvent.click(screen.getByRole('button', { name: 'Dark' }));
-    await screen.findByText('Could not save appearance. Please try again.');
-    expect(screen.getByRole('button', { name: 'System' }).getAttribute('aria-pressed')).toBe('true');
-    expect(applyTheme).toHaveBeenLastCalledWith('system');
+    await screen.findByText(feedback.appearanceSaveFailed);
+    expect(screen.getByRole('button', { name: 'Dark' }).getAttribute('aria-pressed')).toBe('true');
+    expect(applyTheme).toHaveBeenLastCalledWith('dark');
   });
 });
 
@@ -248,7 +361,7 @@ describe('SettingsSection — Reset All Data confirmation gate', () => {
     fireEvent.click(await screen.findByText('Reset Now'));
     fireEvent.change(screen.getByPlaceholderText('DELETE'), { target: { value: 'DELETE' } });
     fireEvent.click(screen.getByRole('button', { name: 'Reset All Data' }));
-    await screen.findByText('Reset failed. Please try again.');
+    await screen.findByText('Could not reset all data. Try again.');
     expect(screen.getByRole('dialog', { name: 'Reset All Data' })).toBeTruthy();
     expect(onResetComplete).not.toHaveBeenCalled();
   });
@@ -336,6 +449,9 @@ describe('SettingsSection — Reset All Data confirmation gate', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reset All Data' }));
 
     await screen.findByText('Resetting…');
+    const resetButton = screen.getByRole('button', { name: 'Resetting…' });
+    expect(resetButton.querySelector('.animate-spin')).not.toBeNull();
+    expect((resetButton as HTMLButtonElement).disabled).toBe(true);
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.getByText('Resetting…')).toBeTruthy(); // dialog is still up, mid-reset
 
@@ -366,6 +482,31 @@ describe('SettingsSection — fmtDriveTimestamp (via the connected Drive state d
 });
 
 describe('SettingsSection — Google Drive connect/restore/conflict flow', () => {
+  it('presents unavailable builds in a neutral information banner', async () => {
+    const { isDriveConfigured } = await import('@/src/utils/driveSync');
+    vi.mocked(isDriveConfigured).mockReturnValueOnce(false).mockReturnValueOnce(false);
+    renderSection();
+    const message = await screen.findByText('Google Drive backup is unavailable in this build.');
+    const banner = message.closest('[role="status"]');
+    expect(banner?.className).toContain('bg-gray-50');
+    expect(banner?.querySelector('svg')).not.toBeNull();
+  });
+
+  it.each([
+    ['token_expired', 'bg-amber-50', feedback.driveSessionExpired],
+    ['sync_error', 'bg-amber-50', feedback.driveRetryPending],
+    ['invalid_backup', 'bg-red-50', feedback.driveBackupInvalid],
+    ['review_required', 'bg-amber-50', feedback.driveReviewRequired],
+    ['delete_failed', 'bg-red-50', feedback.driveBackupDeleteFailed],
+  ] as const)('presents %s in a status-appropriate alert banner', async (error, color, message) => {
+    vi.mocked(getFullDriveState).mockResolvedValue({ connected: true, lastSynced: null, pendingSync: false, error });
+    renderSection();
+    const text = await screen.findByText(message);
+    const banner = text.closest('[role="alert"], [role="status"]');
+    expect(banner?.className).toContain(color);
+    expect(banner?.querySelector('svg')).not.toBeNull();
+  });
+
   it('shows a restore dialog when connecting with an empty local profile and a Drive backup exists', async () => {
     vi.mocked(getProfile).mockResolvedValue(null);
     vi.mocked(connectDrive).mockResolvedValue({
@@ -497,7 +638,7 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));
     await screen.findByText('Restore Drive Backup');
-    fireEvent.click(screen.getByRole('radio', { name: /Update current profile/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /Update profile/ }));
     fireEvent.click(screen.getByText('Keep Current'));
 
     await waitFor(() => expect(vi.mocked(overwriteDriveWithLocal)).toHaveBeenCalledWith(localProfile, undefined));
@@ -519,7 +660,7 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     const { onImportComplete } = renderSection();
     fireEvent.click(await screen.findByText('Connect Google Drive'));
     await screen.findByText('Restore Drive Backup');
-    fireEvent.click(screen.getByRole('radio', { name: /Update current profile/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /Update profile/ }));
     fireEvent.click(screen.getByText('Review Changes'));
     await screen.findByText('Review Drive Backup');
     fireEvent.click(screen.getByText(/^Restore Selected/));
@@ -548,12 +689,23 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     expect(screen.queryByText('Restore your profile and learned mappings from Drive.')).toBeNull();
   });
 
-  it('shows the storage-full error state and its "Manage storage" link, not a retry button', async () => {
+  it('shows the storage-full error with its recovery link embedded in the alert banner', async () => {
     vi.mocked(getFullDriveState).mockResolvedValue({ connected: true, lastSynced: null, pendingSync: false, error: 'storage_full' });
 
     renderSection();
-    expect(await screen.findByText('Google Drive is full. Free up space and retry.')).toBeTruthy();
-    expect(screen.getByText('Manage Storage')).toBeTruthy();
+    const link = await screen.findByRole('link', { name: 'Manage storage' });
+    const alert = screen.getByRole('alert');
+    expect(alert.textContent).toBe(feedback.driveStorageFull);
+    expect(link.closest('[role="alert"]')).toBe(alert);
+    expect(link.getAttribute('href')).toBe('https://one.google.com/storage');
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('aria-describedby')).toBeNull();
+    expect(screen.queryByText('Settings links open in new tabs.')).toBeNull();
+    for (const footerLink of screen.getByRole('navigation', { name: 'Settings links' }).querySelectorAll('a')) {
+      expect(footerLink.getAttribute('aria-describedby')).toBeNull();
+      expect(footerLink.getAttribute('target')).toBe('_blank');
+    }
+    expect(link.querySelector('svg')).not.toBeNull();
   });
 
   it('Retry on a sync_error state calls syncProfileToDrive again', async () => {
@@ -576,7 +728,7 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     renderSection();
     fireEvent.click(await screen.findByText('Back Up Now'));
 
-    expect(await screen.findByText('Google Drive is full. Free up space and retry.')).toBeTruthy();
+    expect(await screen.findByText(feedback.driveStorageFull)).toBeTruthy();
   });
 
   it('Sync Now shows a reconnect-prompt toast when the token has expired', async () => {
@@ -646,7 +798,7 @@ describe('SettingsSection — Export', () => {
     expect(parsed.profile).toEqual(profile);
     expect(parsed.learnedMappings).toEqual({ 'a.com': { sig: { path: 'personal.firstName', count: 2 } } });
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock-url');
-    expect(await screen.findByText('Profile exported successfully')).toBeTruthy();
+    expect(await screen.findByText('Profile exported.')).toBeTruthy();
 
     createElementSpy.mockRestore();
   });
@@ -659,7 +811,7 @@ it('retains the profile and reports failure if reset cannot remove the Gemini cr
   fireEvent.click(await screen.findByText('Reset Now'));
   fireEvent.change(screen.getByPlaceholderText('DELETE'), { target: { value: 'DELETE' } });
   fireEvent.click(screen.getByRole('button', { name: 'Reset All Data' }));
-  expect(await screen.findByText('Reset failed. Please try again.')).toBeTruthy();
+  expect(await screen.findByText('Could not reset all data. Try again.')).toBeTruthy();
   expect(clearAllStorage).not.toHaveBeenCalled();
   expect(screen.queryByText('All data has been reset.')).toBeNull();
 });
@@ -725,6 +877,7 @@ describe('Settings loading presentation', () => {
     renderSection();
     fireEvent.click(screen.getByRole('button', { name: 'Download File' }));
     expect((screen.getByRole('button', { name: 'Exporting…' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole('button', { name: 'Exporting…' }).querySelector('.animate-spin')).not.toBeNull();
     await act(async () => { finish(null); });
     expect((screen.getByRole('button', { name: 'Download File' }) as HTMLButtonElement).disabled).toBe(false);
   });

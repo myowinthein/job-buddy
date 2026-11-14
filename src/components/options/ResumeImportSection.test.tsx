@@ -28,12 +28,13 @@ import type { Profile } from '@/src/types/profile';
 function renderSection(profile: Partial<Profile> = {}, onSave = vi.fn().mockResolvedValue(undefined)) {
   const onGoToApiKey = vi.fn();
   const onClose = vi.fn();
+  const onReplace = vi.fn().mockResolvedValue(undefined);
   render(
     <ToastProvider>
-      <ResumeImportSection profile={profile} onSave={update => onSave(typeof update === 'function' ? update(profile) : update)} onReplace={vi.fn().mockResolvedValue(undefined)} onGoToApiKey={onGoToApiKey} onClose={onClose} />
+      <ResumeImportSection profile={profile} onSave={update => onSave(typeof update === 'function' ? update(profile) : update)} onReplace={onReplace} onGoToApiKey={onGoToApiKey} onClose={onClose} />
     </ToastProvider>,
   );
-  return { onSave, onGoToApiKey, onClose };
+  return { onSave, onReplace, onGoToApiKey, onClose };
 }
 
 function pdfFile(name = 'resume.pdf', sizeBytes = 1024) {
@@ -55,12 +56,39 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
+it('keeps keyboard focus in the upload dialog and skips its hidden file input', async () => {
+  renderSection();
+  await screen.findByText(/Drop your resume here/);
+  const dialog = screen.getByRole('dialog', { name: 'Import Resume' });
+  expect(document.activeElement).toBe(dialog);
+  const cancel = screen.getByRole('button', { name: 'Cancel' });
+  cancel.focus();
+  fireEvent.keyDown(cancel, { key: 'Tab' });
+  const close = screen.getByRole('button', { name: 'Close' });
+  expect(document.activeElement).toBe(close);
+  fireEvent.keyDown(close, { key: 'Tab', shiftKey: true });
+  expect(document.activeElement).toBe(cancel);
+});
+
+it('shows a loading message and spinner while AI settings are being read', async () => {
+  let finish!: (key: string) => void;
+  vi.mocked(getGeminiApiKey).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  renderSection();
+  expect(screen.getByRole('status').textContent).toBe('Loading AI settings…');
+  expect(screen.getByRole('status').querySelector('svg')).not.toBeNull();
+  await act(async () => { finish('fake-key'); });
+  await screen.findByText(/Drop your resume here/);
+  expect(screen.queryByText('Loading AI settings…')).toBeNull();
+});
+
 describe('ResumeImportSection — file validation', () => {
   it('rejects a non-PDF/DOCX file with an error message', async () => {
     renderSection();
     await screen.findByText(/Drop your resume here/);
     await selectFile(new File(['hello'], 'resume.txt', { type: 'text/plain' }));
-    expect(await screen.findByText('Only PDF and DOCX files are supported.')).toBeTruthy();
+    const error = await screen.findByText('Choose a PDF or DOCX resume.');
+    expect(error.closest('[role="alert"]')?.className).toContain('bg-red-50');
+    expect(error.closest('[role="alert"]')?.querySelector('svg')).not.toBeNull();
   });
 
   it('rejects a file just over 4 MB', async () => {
@@ -82,9 +110,9 @@ describe('ResumeImportSection — file validation', () => {
     renderSection();
     await screen.findByText(/Drop your resume here/);
     await selectFile(new File(['x'], 'bad.txt', { type: 'text/plain' }));
-    await screen.findByText('Only PDF and DOCX files are supported.');
+    await screen.findByText('Choose a PDF or DOCX resume.');
     await selectFile(pdfFile());
-    expect(screen.queryByText('Only PDF and DOCX files are supported.')).toBeNull();
+    expect(screen.queryByText('Choose a PDF or DOCX resume.')).toBeNull();
     expect(screen.getByText('resume.pdf')).toBeTruthy();
   });
 });
@@ -143,7 +171,11 @@ describe('ResumeImportSection — cancel/abort during analysis', () => {
     fireEvent.click(screen.getByText('Analyze Resume'));
 
     await screen.findByText('Analyzing Resume', {}, { timeout: 12000 });
-    fireEvent.click(screen.getByText('Cancel'));
+    const progress = screen.getByRole('dialog', { name: 'Analyzing Resume' });
+    expect(document.activeElement).toBe(progress);
+    fireEvent.keyDown(progress, { key: 'Tab' });
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     // Cancel returns to the upload dialog (selectedFile is preserved — only
     // the screen reverts), not all the way back to the empty drop-zone state.
@@ -184,7 +216,7 @@ describe('ResumeImportSection — Escape on the initial dialog', () => {
 });
 
 describe('ResumeImportSection — rate_limit error branch', () => {
-  it('shows the rate-limit-specific message with a Google AI Studio link', async () => {
+  it('shows a compact rate-limit alert without a dashboard link', async () => {
     vi.mocked(extractFromResume).mockReset().mockRejectedValue(
       Object.assign(new Error('rate limited'), { code: 'rate_limit' }),
     );
@@ -196,8 +228,10 @@ describe('ResumeImportSection — rate_limit error branch', () => {
 
     const notice = await screen.findByText(/AI usage limit reached/);
     expect(notice.textContent).toBe(feedback.resumeUsageLimit);
-    const link = screen.getByText('Check limits') as HTMLAnchorElement;
-    expect(link.href).toBe('https://aistudio.google.com/rate-limit');
+    expect(screen.getByRole('alert').className).toContain('bg-red-50');
+    expect(screen.queryByText('Check limits opens in new tab.')).toBeNull();
+    expect(screen.queryByText('Reading resume…')).toBeNull();
+    expect(screen.queryByRole('link', { name: /Check limits/ })).toBeNull();
   });
 
   it('shows the raw error message for a non-rate_limit failure instead', async () => {
@@ -215,6 +249,31 @@ describe('ResumeImportSection — rate_limit error branch', () => {
   });
 });
 
+it.each(['invalid_file', 'not_resume', 'parse', 'auth', 'network', 'service', 'timeout', 'rate_limit'] as const)(
+  'returns a %s failure to the upload dialog with the appropriate recovery',
+  async code => {
+    const error = Object.assign(new Error('Test failure'), { code });
+    vi.mocked(extractFromResume).mockReset().mockRejectedValue(error);
+    if (code === 'invalid_file') vi.mocked(validateResumeFile).mockRejectedValueOnce(error);
+    const { onGoToApiKey } = renderSection();
+    await screen.findByText(/Drop your resume here/);
+    await selectFile(pdfFile());
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze Resume' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert.parentElement?.parentElement?.firstElementChild).toBe(alert.parentElement);
+    expect(alert.parentElement?.nextElementSibling?.getAttribute('role')).toBe('button');
+    expect(screen.getByRole('heading', { name: 'Import Resume' })).toBeTruthy();
+    expect(screen.queryByText('Analyzing Resume')).toBeNull();
+    const rejectedFile = code === 'invalid_file' || code === 'not_resume';
+    expect(screen.queryByText('resume.pdf') !== null).toBe(!rejectedFile);
+    expect((screen.getByRole('button', { name: 'Analyze Resume' }) as HTMLButtonElement).disabled).toBe(rejectedFile);
+    if (code === 'auth') {
+      fireEvent.click(screen.getByRole('button', { name: /Go to Settings/ }));
+      expect(onGoToApiKey).toHaveBeenCalledTimes(1);
+    }
+  },
+);
+
 describe('ResumeImportSection — retry after failure does not re-extract links', () => {
   it('reuses the already-read file and extracted links on retry rather than redoing them', { timeout: 20000 }, async () => {
     vi.mocked(extractFromResume)
@@ -230,11 +289,34 @@ describe('ResumeImportSection — retry after failure does not re-extract links'
     await screen.findByText('Network error', {}, { timeout: 12000 });
     expect(vi.mocked(extractLinks)).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByText('Try again'));
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze Resume' }));
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'Import Resume' })).toBeTruthy(), { timeout: 12000 });
-    // extractLinks is only called from the initial handleExtract path, never from handleRetry.
+    await screen.findByRole('button', { name: 'Import All' }, { timeout: 12000 });
     expect(vi.mocked(extractLinks)).toHaveBeenCalledTimes(1);
+    expect(validateResumeFile).toHaveBeenCalledTimes(1);
+    expect(extractFromResume).toHaveBeenCalledTimes(2);
+  });
+
+  it('reads and validates a replacement file after an analysis failure', async () => {
+    vi.mocked(extractFromResume).mockReset()
+      .mockRejectedValueOnce(Object.assign(new Error('Network error'), { code: 'network' }))
+      .mockResolvedValueOnce({});
+    const { onSave } = renderSection();
+    await screen.findByText(/Drop your resume here/);
+    await selectFile(pdfFile('first.pdf'));
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze Resume' }));
+    await screen.findByText('Network error');
+
+    await selectFile(new File(['%PDF-1.4 replacement'], 'second.pdf', { type: 'application/pdf' }));
+    expect(screen.queryByText('Network error')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Analyze Resume' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Import All' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0].documents.cv.file).toEqual(expect.objectContaining({
+      name: 'second.pdf', base64: `data:application/pdf;base64,${btoa('%PDF-1.4 replacement')}`,
+    }));
+    expect(validateResumeFile).toHaveBeenCalledTimes(2);
+    expect(extractLinks).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -262,7 +344,80 @@ describe('ResumeImportSection — pre-AI-call failure', () => {
     await selectFile(pdfFile());
     fireEvent.click(screen.getByText('Analyze Resume'));
 
-    expect(await screen.findByText('Something went wrong. Try again.')).toBeTruthy();
+    expect(await screen.findByText('Could not import this resume. Try again.')).toBeTruthy();
+  });
+});
+
+describe('ResumeImportSection — completion feedback', () => {
+  const savedProfile: Partial<Profile> = {
+    personal: {
+      firstName: 'Alex', lastName: 'Morgan', email: 'alex@example.test',
+      phone: { countryCode: 'US', callingCode: '+1', number: '' },
+    },
+    documents: { cv: { file: { name: 'resume.pdf', size: 1024, base64: btoa('%PDF-1.4 fake') } } },
+  };
+
+  it('closes with a toast without saving an identical resume', async () => {
+    vi.mocked(extractFromResume).mockReset().mockResolvedValue({ personal: savedProfile.personal });
+    const { onClose, onSave, onReplace } = renderSection(savedProfile);
+    await screen.findByText(/Drop your resume here/);
+    await selectFile(pdfFile());
+    fireEvent.click(screen.getByText('Analyze Resume'));
+
+    expect(await screen.findByText('No changes to import.')).toBeTruthy();
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onSave).not.toHaveBeenCalled();
+    expect(onReplace).not.toHaveBeenCalled();
+    expect(screen.queryByRole('heading', { name: 'No Changes Found' })).toBeNull();
+  });
+
+  it('still offers review when only the attached resume changes', async () => {
+    vi.mocked(extractFromResume).mockReset().mockResolvedValue({ personal: savedProfile.personal });
+    const { onClose } = renderSection(savedProfile);
+    await screen.findByText(/Drop your resume here/);
+    await selectFile(new File(['%PDF-1.4 updated'], 'resume.pdf', { type: 'application/pdf' }));
+    fireEvent.click(screen.getByText('Analyze Resume'));
+
+    expect(await screen.findByRole('heading', { name: 'Import Resume' })).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Review Changes' })).toBeTruthy();
+  });
+
+  it('waits for saving before closing with the saved-detail count', async () => {
+    vi.mocked(extractFromResume).mockReset().mockResolvedValue({});
+    let finish!: () => void;
+    const onSave = vi.fn().mockImplementation(() => new Promise<void>(resolve => { finish = resolve; }));
+    const { onClose } = renderSection({}, onSave);
+    await screen.findByText(/Drop your resume here/);
+    await selectFile(pdfFile());
+    fireEvent.click(screen.getByText('Analyze Resume'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Import All' }));
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Resume imported/)).toBeNull();
+    await act(async () => { finish(); });
+    expect(await screen.findByText('Resume imported. 1 detail saved.')).toBeTruthy();
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: 'Done' })).toBeNull();
+  });
+
+  it('closes after replacement with a plural saved-detail count', async () => {
+    vi.mocked(extractFromResume).mockReset().mockResolvedValue({
+      personal: { ...savedProfile.personal!, firstName: 'Jordan', lastName: 'Lee', email: 'jordan@example.test' },
+    });
+    const { onClose, onSave, onReplace } = renderSection({
+      personal: savedProfile.personal,
+    });
+    await screen.findByText(/Drop your resume here/);
+    await selectFile(pdfFile());
+    fireEvent.click(screen.getByText('Analyze Resume'));
+    fireEvent.click(await screen.findByRole('radio', { name: /Replace profile/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Replace Profile' }));
+
+    expect(await screen.findByText('Resume imported. 4 details saved.')).toBeTruthy();
+    expect(onReplace).toHaveBeenCalledTimes(1);
+    expect(onSave).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -307,7 +462,7 @@ describe('ResumeImportSection — CV invariant on save', () => {
   it('shows a toast and stays on the review screen when onSave rejects', async () => {
     vi.mocked(extractFromResume).mockReset().mockResolvedValue({});
     const onSave = vi.fn().mockRejectedValue(new Error('quota exceeded'));
-    renderSection({}, onSave);
+    const { onClose } = renderSection({}, onSave);
 
     await screen.findByText(/Drop your resume here/);
     await selectFile(pdfFile());
@@ -316,8 +471,9 @@ describe('ResumeImportSection — CV invariant on save', () => {
     await screen.findByRole('heading', { name: 'Import Resume' }, { timeout: 12000 });
     fireEvent.click(screen.getByText('Import All'));
 
-    expect(await screen.findByText('Save failed. Please try again.')).toBeTruthy();
-    // Never reached the 'done' screen — save failure keeps the user on review.
+    expect(await screen.findByText('Could not save the imported details. Try again.')).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Resume imported/)).toBeNull();
     expect(screen.getByRole('heading', { name: 'Import Resume' })).toBeTruthy();
   }, 20000);
 });
@@ -341,7 +497,7 @@ it('ignores a late response from an extraction that was cancelled before a new r
   await selectFile(pdfFile());
   fireEvent.click(screen.getByText('Analyze Resume'));
   await waitFor(() => expect(extractFromResume).toHaveBeenCalledTimes(1));
-  fireEvent.click(screen.getByText('Cancel'));
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
   fireEvent.click(screen.getByText('Analyze Resume'));
   await waitFor(() => expect(extractFromResume).toHaveBeenCalledTimes(2));
   await act(async () => { finishOld({}); });
@@ -425,12 +581,12 @@ it('blocks renamed text locally before sending a provider request and offers ano
   await screen.findByText(/Drop your resume here/);
   await selectFile(new File(['not a PDF'], 'renamed.pdf', { type: 'application/pdf' }));
   fireEvent.click(screen.getByText('Analyze Resume'));
-  await screen.findByText('Unreadable file. Choose a valid PDF or DOCX.');
+  await screen.findByText('Could not read this file. Choose a valid PDF or DOCX.');
   expect(extractFromResume).not.toHaveBeenCalled();
   expect(onSave).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole('button', { name: 'Choose Another File' }));
   expect(screen.getByText(/Drop your resume here/)).toBeTruthy();
   expect(screen.queryByText('renamed.pdf')).toBeNull();
+  expect((screen.getByRole('button', { name: 'Analyze Resume' }) as HTMLButtonElement).disabled).toBe(true);
 });
 it('stops a non-resume document without a review or save action', async () => {
   vi.mocked(extractFromResume)

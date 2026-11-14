@@ -1,0 +1,42 @@
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  background: transparent;
+  color: #182335;
+  border: 1px solid #dbe1ea;
+  border-radius: 4px;
+  padding: 8px;
+}
+.theme-toggle:hover {
+  background: #f0f3f8;
+}
+.theme-toggle:focus-visible {
+  outline: 3px solid #2f5ed6;
+  outline-offset: 0;
+}
+.theme-toggle svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.theme-toggle .theme-sun,
+:root.dark .theme-toggle .theme-moon {
+  display: none;
+}
+:root.dark .theme-toggle .theme-sun {
+  display: block;
+}
+:root.dark .theme-toggle {
+  color: #ecf0f7;
+  border-color: #334057;
+}
+:root.dark .theme-toggle:hover {
+  background: #202c3f;
+}
+:root.dark .theme-toggle:focus-visible {
+  outline-color: #7b9efa;
+}

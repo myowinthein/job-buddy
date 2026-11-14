@@ -18,6 +18,35 @@ function renderSection(profile: Partial<Profile>, onSave = vi.fn().mockResolvedV
   return { onSave };
 }
 
+it.each([
+  ['date of birth', { dateOfBirth: '1990-05-16' }],
+  ['gender', { gender: 'female' }],
+  ['ethnicity', { ethnicity: 'Asian' }],
+  ['veteran status', { veteranStatus: 'no' }],
+  ['disability status', { disabilityStatus: 'no' }],
+] as const)('opens Background details when %s is saved', (_, details) => {
+  renderSection({ personal: {
+    firstName: 'Jane', lastName: '', email: 'jane@example.test',
+    phone: { countryCode: 'US', callingCode: '+1', number: '2025550188' },
+    ...details,
+  } });
+  expect(screen.getByText('Background details').closest('details')?.open).toBe(true);
+});
+
+it('starts empty Background details collapsed and preserves manual opening while editing', () => {
+  renderSection({});
+  const details = screen.getByText('Background details').closest('details')!;
+  expect(details.open).toBe(false);
+  details.open = true;
+  fireEvent.change(screen.getByLabelText('Gender'), { target: { value: 'female' } });
+  details.open = false;
+  fireEvent.change(screen.getByLabelText(/^First Name/), { target: { value: 'Jane' } });
+  expect(details.open).toBe(false);
+  details.open = true;
+  fireEvent.change(screen.getByLabelText('Gender'), { target: { value: '' } });
+  expect(details.open).toBe(true);
+});
+
 function phoneNumberInput(): HTMLInputElement {
   return document.getElementById('field-phone') as HTMLInputElement;
 }
@@ -113,7 +142,7 @@ describe('PersonalSection — date of birth year-range validation at save time',
     fireEvent.change(document.getElementById('field-lastName')!, { target: { value: 'Doe' } });
     fireEvent.change(document.getElementById('field-email')!, { target: { value: 'jane@example.com' } });
     fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
-    fireEvent.click(screen.getByText('Save Personal'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText(`Date of birth cannot be after ${CURRENT_YEAR}`)).toBeTruthy();
@@ -127,7 +156,7 @@ describe('PersonalSection — date of birth year-range validation at save time',
     fireEvent.change(document.getElementById('field-lastName')!, { target: { value: 'Doe' } });
     fireEvent.change(document.getElementById('field-email')!, { target: { value: 'jane@example.com' } });
     fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
-    fireEvent.click(screen.getByText('Save Personal'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText(`Year must be ${CURRENT_YEAR - 100} or later`)).toBeTruthy();
@@ -141,7 +170,7 @@ describe('PersonalSection — date of birth year-range validation at save time',
     fireEvent.change(document.getElementById('field-lastName')!, { target: { value: 'Doe' } });
     fireEvent.change(document.getElementById('field-email')!, { target: { value: 'jane@example.com' } });
     fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
-    fireEvent.click(screen.getByText('Save Personal'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).toHaveBeenCalled();
     expect(screen.queryByText(/Date of birth cannot be after/)).toBeNull();
@@ -152,12 +181,12 @@ describe('PersonalSection — date of birth year-range validation at save time',
 describe('PersonalSection — save validation', () => {
   it('blocks save and shows required-field errors when mandatory fields are empty', () => {
     const { onSave } = renderSection({ personal: {} as unknown as Profile['personal'] });
-    fireEvent.click(screen.getByText('Save Personal'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('First name is required')).toBeTruthy();
+    expect(screen.getByText('Enter your first name')).toBeTruthy();
     expect(screen.queryByText('Last name is required')).toBeNull();
-    expect(screen.getByText('Email is required')).toBeTruthy();
-    expect(screen.getByText('Phone number is required')).toBeTruthy();
+    expect(screen.getByText('Enter your email address')).toBeTruthy();
+    expect(screen.getByText('Enter your phone number')).toBeTruthy();
   });
 
   it('saves successfully once all mandatory fields are valid', async () => {
@@ -167,7 +196,7 @@ describe('PersonalSection — save validation', () => {
     fireEvent.change(document.getElementById('field-email')!, { target: { value: 'jane@example.com' } });
     fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
 
-    fireEvent.click(screen.getByText('Save Personal'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).toHaveBeenCalledWith({
       personal: expect.objectContaining({
@@ -186,7 +215,7 @@ describe('PersonalSection — save validation', () => {
     fireEvent.change(document.getElementById('field-email')!, { target: { value: 'jane@example.com' } });
     fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
 
-    fireEvent.click(screen.getByText('Save Personal'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).toHaveBeenCalledWith({
       personal: expect.objectContaining({ nickname: undefined }),
@@ -201,7 +230,7 @@ describe('PersonalSection — save validation', () => {
     fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
     fireEvent.change(document.getElementById('field-nickname')!, { target: { value: '  Janey  ' } });
 
-    fireEvent.click(screen.getByText('Save Personal'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).toHaveBeenCalledWith({
       personal: expect.objectContaining({ nickname: 'Janey' }),
@@ -216,7 +245,7 @@ describe('PersonalSection — save validation', () => {
     fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
     fireEvent.change(document.getElementById('field-nickname')!, { target: { value: 'a'.repeat(101) } });
 
-    fireEvent.click(screen.getByText('Save Personal'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('Preferred name must be 100 characters or fewer')).toBeTruthy();
@@ -258,7 +287,7 @@ describe('PersonalSection — handleCountryChange (phone calling code)', () => {
     fireEvent.change(screen.getByPlaceholderText('Search country or code…'), { target: { value: 'Thailand' } });
     fireEvent.click(screen.getByText('Thailand'));
 
-    fireEvent.click(screen.getByText('Save Personal'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       personal: expect.objectContaining({
@@ -269,14 +298,14 @@ describe('PersonalSection — handleCountryChange (phone calling code)', () => {
 
   it('keeps the required phone error until a number is entered', () => {
     const { onSave } = renderSection({ personal: {} as unknown as Profile['personal'] });
-    fireEvent.click(screen.getByText('Save Personal')); // triggers "Phone number is required"
-    expect(screen.getByText('Phone number is required')).toBeTruthy();
+    fireEvent.click(screen.getByText('Save')); // triggers "Enter your phone number"
+    expect(screen.getByText('Enter your phone number')).toBeTruthy();
 
     fireEvent.click(screen.getByLabelText('Select country calling code'));
     fireEvent.change(screen.getByPlaceholderText('Search country or code…'), { target: { value: 'Thailand' } });
     fireEvent.click(screen.getByText('Thailand'));
 
-    expect(screen.getByText('Phone number is required')).toBeTruthy();
+    expect(screen.getByText('Enter your phone number')).toBeTruthy();
     expect(onSave).not.toHaveBeenCalled(); // country alone doesn't satisfy the phone number requirement
   });
 });
@@ -290,7 +319,7 @@ describe('PersonalSection — Date of Birth partial entry blocks save', () => {
     fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
     fireEvent.change(screen.getByLabelText('Day'), { target: { value: '15' } });
 
-    fireEvent.click(screen.getByText('Save Personal'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('Complete day, month, and year, or leave blank')).toBeTruthy();
@@ -303,7 +332,7 @@ describe('PersonalSection — Date of Birth partial entry blocks save', () => {
     fireEvent.change(document.getElementById('field-email')!, { target: { value: 'jane@example.com' } });
     fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
 
-    fireEvent.click(screen.getByText('Save Personal'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).toHaveBeenCalled();
   });
@@ -314,7 +343,7 @@ it('blocks an impossible day entered after choosing the month and year', () => {
   fireEvent.change(screen.getByLabelText('Month'), { target: { value: '2' } });
   fireEvent.change(screen.getByLabelText('Year'), { target: { value: '2001' } });
   fireEvent.change(screen.getByLabelText('Day'), { target: { value: '31' } });
-  fireEvent.click(screen.getByText('Save Personal'));
+  fireEvent.click(screen.getByText('Save'));
   expect(onSave).not.toHaveBeenCalled();
   expect(screen.getByText('Day must be between 1 and 28')).toBeTruthy();
 });

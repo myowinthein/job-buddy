@@ -1,3 +1,4 @@
+import { captureDevelopmentScope } from '@/src/devtools/session';
 import { withLearnedMappingsLock } from './learnedMappingsLock';
 import { createNamedLock } from './namedLock';
 import type { Profile } from '../types/profile';
@@ -26,6 +27,7 @@ import {
 } from './learnedMappingRepair';
 import {
   mappingPath,
+  migrateLearnedMappingPaths,
   readableMappings,
   safeMappingKey,
   validMapping,
@@ -62,9 +64,7 @@ export async function getProfile(
     return null;
   }
 
-  // On-read migrations are folded into a single write so the user never
-  // pays for two storage round-trips when both id backfill and salary period
-  // defaulting need to run on the same old profile.
+  // Profile migrations and their related mapping changes share one write.
   let profile = raw;
   let migrated = false;
 
@@ -83,7 +83,13 @@ export async function getProfile(
     const saved = await withLearnedMappingsLock(async () => {
       const current = await local.get('profile', { rejectOnError: true });
       if (!equalJsonValues(current.profile, raw)) return false;
-      await storageSet({ profile, learnedMappingsRevision: crypto.randomUUID() });
+      const storedMappings = await local.get('learnedMappings', { rejectOnError: true });
+      const mappings = migrateLearnedMappingPaths(storedMappings.learnedMappings);
+      await storageSet({
+        profile,
+        ...(mappings !== storedMappings.learnedMappings ? { learnedMappings: mappings, learnedMappingRepairs: {}, learnedMappingReviews: {} } : {}),
+        learnedMappingsRevision: crypto.randomUUID(),
+      });
       return true;
     });
     if (!saved) return getProfile(options);
@@ -165,6 +171,7 @@ export async function repairLearnedMappings(
   fields: LearnedRepairField[],
   context: LearningContext,
 ): Promise<LearnedMappings> {
+  const assertCurrent = captureDevelopmentScope();
   if (!safeMappingKey(domain) || !validRepairFields(fields))
     throw new Error('Invalid mapping repair');
   if (contentStorageClient()) {
@@ -196,7 +203,10 @@ export async function repairLearnedMappings(
       changes.learnedMappings = { ...raw, [domain]: updated };
     if (!equalJsonValues(result.state, checkpoints[domain]))
       changes.learnedMappingRepairs = { ...checkpoints, [domain]: result.state };
-    if (Object.keys(changes).length) await storageSet(changes);
+    if (Object.keys(changes).length) {
+      assertCurrent();
+      await storageSet(changes);
+    }
     return { [domain]: result.mappings };
   });
 }
@@ -288,6 +298,7 @@ export async function saveLearnedMappings(
   mappings: LearnedMappings,
   options: { labelsOnly?: boolean; base?: LearnedMappings; context?: LearningContext; strictBase?: boolean } = {},
 ): Promise<void> {
+  const assertCurrent = captureDevelopmentScope();
   if (options.labelsOnly && contentStorageClient()) {
     const response = await chrome.runtime.sendMessage({ action: 'SAVE_LEARNED_LABELS', mappings });
     if (!response?.ok) throw new Error('Could not save learned labels');
@@ -330,6 +341,7 @@ export async function saveLearnedMappings(
             Object.entries(entries).filter(([key]) => Object.hasOwn(current[domain], key)),
           )]),
       );
+      assertCurrent();
       await storageSet({
         learnedMappings: current,
         ...(kept ? { learnedMappingRepairs: kept } : {}),
@@ -337,6 +349,7 @@ export async function saveLearnedMappings(
       return;
     }
     if (!options.labelsOnly) {
+      assertCurrent();
       await storageSet({ learnedMappings: mappings, learnedMappingRepairs: {}, learnedMappingReviews: {} });
       return;
     }
@@ -352,7 +365,10 @@ export async function saveLearnedMappings(
         )
           current[domain][key] = { ...stored, label: value.label };
       }
-    if (!equalJsonValues(current, initial)) await storageSet({ learnedMappings: current });
+    if (!equalJsonValues(current, initial)) {
+      assertCurrent();
+      await storageSet({ learnedMappings: current });
+    }
   });
 }
 
@@ -486,6 +502,7 @@ export async function saveLearnedObservationLocally(
   domain: string,
   observation: LearnedObservation,
 ): Promise<void> {
+  const assertCurrent = captureDevelopmentScope();
   if (!safeMappingKey(domain) || !validObservation(observation))
     throw new Error('Invalid learned observation');
   await withLearnedMappingsLock(async () => {
@@ -516,7 +533,10 @@ export async function saveLearnedObservationLocally(
         ...(observation.scope ? { scope: observation.scope } : {}),
       };
     }
-    if (observation.signals.length) await storageSet({ learnedMappings: mappings });
+    if (observation.signals.length) {
+      assertCurrent();
+      await storageSet({ learnedMappings: mappings });
+    }
   });
 }
 

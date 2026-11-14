@@ -1,4 +1,6 @@
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, LoaderCircle } from 'lucide-react';
+import { Notice } from '@/src/components/ui/Notice';
+import { GeminiMessage } from '@/src/components/ui/GeminiMessage';
 import { feedback } from '@/src/ui/feedback';
 import { useEffect, useRef, useState } from 'react';
 import { checkApiKey, validateApiKey, KEY_ERROR_MESSAGES } from '@/src/resume-ai/gemini';
@@ -61,7 +63,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
   const [status, setStatus] = useState<Status>('loading');
   const [error, setError] = useState('');
   const [checkingLabel, setCheckingLabel] = useState('Check Key');
-  const [keyInvalid, setKeyInvalid] = useState(false);
+  const [validationError, setValidationError] = useState('');
   const [removeDialog, setRemoveDialog] = useState(false);
   const [removeError, setRemoveError] = useState('');
   const request = useRef<AbortController | null>(null);
@@ -99,13 +101,14 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
         setEditing(false);
         setStatus(storedStatus(value));
         setError('');
-        setKeyInvalid(false);
+        setValidationError('');
         setRemoveDialog(false);
         setRemoveError('');
       } catch {
         if (mounted.current && id === sequence.current) {
           setStatus('error');
           setError(feedback.geminiLoadFailed);
+          setValidationError('');
         }
       }
     }
@@ -150,15 +153,15 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
     setPreference(saved?.preference ?? 'auto');
     setStatus(storedStatus(saved));
     setError('');
-    setKeyInvalid(false);
+    setValidationError('');
   }
 
   async function verify(key: string, choice: GeminiModelPreference, save: boolean) {
     const trimmed = key.trim();
     if (!trimmed) {
       setStatus('error');
-      setError(feedback.geminiKeyRequired);
-      setKeyInvalid(true);
+      setError('');
+      setValidationError(feedback.geminiKeyRequired);
       keyInput.current?.focus();
       return;
     }
@@ -169,8 +172,9 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
       trimmed.length > 4096
     ) {
       setStatus('error');
-      setError(feedback.geminiKeyFormatInvalid);
-      setKeyInvalid(true);
+      setError('');
+      setValidationError(feedback.geminiKeyFormatInvalid);
+      keyInput.current?.focus();
       return;
     }
     if (!saved) {
@@ -186,7 +190,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
     setCheckingLabel(checkLabel);
     setStatus('checking');
     setError('');
-    setKeyInvalid(false);
+    setValidationError('');
     let committing = false;
     try {
       const check = await checkApiKey(trimmed, controller.signal);
@@ -194,7 +198,6 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
       if (check !== 'valid') {
         setStatus('error');
         setError(KEY_ERROR_MESSAGES[check]);
-        setKeyInvalid(check === 'invalid');
         return;
       }
       const result = await validateApiKey(
@@ -205,8 +208,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
       if (!current()) return;
       if (!result.valid || !result.model) {
         setStatus('error');
-        setError(result.error ?? 'Could not check this model. Please try again.');
-        setKeyInvalid(!!result.keyInvalid);
+        setError(result.error ?? 'Could not check this model. Try again.');
         setPreference(saved.preference);
         return;
       }
@@ -233,7 +235,8 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
       setPreference(updated.preference);
       setEditing(false);
       setDraft('');
-      if (save) showToast('success', replacing ? feedback.geminiKeySaved : feedback.geminiModelSaved);
+      if (save)
+        showToast('success', replacing ? feedback.geminiKeySaved : feedback.geminiModelSaved);
       setStatus('ready');
     } catch {
       if (current()) {
@@ -262,7 +265,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
       setDraft('');
       setEditing(false);
       setPreference('auto');
-      setKeyInvalid(false);
+      setValidationError('');
       setStatus('empty');
       setError('');
       focusEmptyKey.current = true;
@@ -367,39 +370,46 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
                 request.current?.abort();
                 setDraft(e.target.value);
                 setError('');
-                setKeyInvalid(false);
+                setValidationError('');
                 setStatus('empty');
               }}
               disabled={busy || !saved}
               placeholder="Paste your API key"
               autoComplete="off"
               spellCheck={false}
-              aria-invalid={keyInvalid || undefined}
-              aria-describedby={`gemini-key-help${error ? ' gemini-key-error' : ''}`}
-              className={fieldCls(keyInvalid ? error : undefined, busy || !saved)}
+              aria-invalid={!!validationError || undefined}
+              aria-describedby={`gemini-key-help${validationError ? ' gemini-key-validation' : ''}${error ? ' gemini-key-error' : ''}`}
+              className={fieldCls(validationError || undefined, busy || !saved)}
             />
+            {validationError && (
+              <p
+                id="gemini-key-validation"
+                role="alert"
+                className="mt-1 text-xs text-red-600 dark:text-red-400"
+              >
+                {validationError}
+              </p>
+            )}
             <p id="gemini-key-help" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               Create a key in{' '}
               <a
                 href="https://aistudio.google.com/api-keys"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 underline"
+                className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 underline underline-offset-2 hover:decoration-2 focus-visible:decoration-2"
               >
                 Google AI Studio
-                <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" /> <span className="text-xs">(opens in new tab)</span>
-                </a>
+                <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
+              </a>
               . No credit card required.
             </p>
           </>
         )}
         {error && (
-          <div
-            id="gemini-key-error"
-            role="alert"
-            className="mt-2 text-xs text-red-600 dark:text-red-400"
-          >
-            <p className="text-pretty">{error}</p>
+          <div id="gemini-key-error" className="mt-3">
+            <Notice tone="error">
+              <p><GeminiMessage message={error} /></p>
+            </Notice>
           </div>
         )}
         <div className="flex flex-wrap gap-2 mt-3">
@@ -414,7 +424,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
                 setLoadAttempt((attempt) => attempt + 1);
               }}
             >
-              Try Again
+              {status === 'error' ? 'Try Again' : 'Save Key'}
             </button>
           ) : replacing ? (
             <>
@@ -441,12 +451,13 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
                 type="button"
                 disabled={busy}
                 className={primary}
-                onClick={() => {
+                onClick={(event) => {
+                  event.preventDefault();
                   setEditing(true);
                   setDraft('');
                   setStatus('empty');
                   setError('');
-                  setKeyInvalid(false);
+                  setValidationError('');
                 }}
               >
                 Replace Key
@@ -476,9 +487,11 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
             AI features will be turned off.
           </p>
           {removeError && (
-            <p role="alert" className="mt-2 text-xs text-red-600 dark:text-red-400">
-              {removeError}
-            </p>
+            <div className="mt-3">
+              <Notice tone="error">
+                <p>{removeError}</p>
+              </Notice>
+            </div>
           )}
           <div className="mt-6 flex flex-wrap justify-end gap-3">
             <button
@@ -492,9 +505,16 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
             <button
               type="button"
               disabled={status === 'removing'}
-              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 active:scale-95 transition-colors"
+              aria-busy={status === 'removing'}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-50 active:scale-95 transition-colors"
               onClick={() => void removeKey()}
             >
+              {status === 'removing' && (
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
+                />
+              )}
               {status === 'removing' ? 'Removing…' : 'Remove Key'}
             </button>
           </div>
@@ -517,11 +537,11 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
               href="https://aistudio.google.com/rate-limit"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 underline underline-offset-2 hover:decoration-2 focus-visible:decoration-2 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
             >
               View usage and limits
-              <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" /> <span className="text-xs">(opens in new tab)</span>
-                </a>
+              <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
+            </a>
           </div>
           <div id="gemini-model-options" hidden={!modelOptionsOpen} className="mt-3">
             <label

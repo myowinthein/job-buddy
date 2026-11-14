@@ -76,11 +76,11 @@ export const DEV_PROFILE: Profile = {
   ],
   links: {
     linkedin: 'https://linkedin.com/in/janedoe-dev',
-    portfolio: 'https://janedoe.dev',
     github: 'https://github.com/janedoe',
     custom: [{ label: 'Blog', url: 'https://janedoe.dev/blog' }],
   },
   documents: {
     cv: { url: 'https://example.com/jane-doe-resume.pdf' },
+    portfolio: { url: 'https://janedoe.dev' },
   },
 };

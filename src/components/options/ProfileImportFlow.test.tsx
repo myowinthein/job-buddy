@@ -14,6 +14,7 @@ import {
 } from '@/src/utils/storage';
 import { settingsReviewProfile } from '@/src/testing/settingsReviewFixture';
 import { stubJsdomLayout } from '@/src/testing/jsdomLayout';
+import { feedback } from '@/src/ui/feedback';
 
 vi.mock('@/src/utils/driveSync', () => import('@/src/preview/driveSync'));
 vi.mock('@/src/resume-ai/gemini', () => import('@/src/preview/gemini'));
@@ -92,7 +93,7 @@ it('shows summary and notice period and saves only the one selected detail', asy
     }),
   );
   fireEvent.click(importSelected());
-  await screen.findByText('Profile imported successfully');
+  await screen.findByText('Profile imported.');
   const saved = await getProfile();
   expect(saved?.personal.firstName).toBe('Alex Imported');
   expect(saved?.personal.nickname).toBeUndefined();
@@ -138,7 +139,7 @@ it('Import All applies every update even after the review draft was cleared', as
   fireEvent.click(screen.getByText('Clear Selection'));
   fireEvent.click(screen.getByText('Back'));
   fireEvent.click(screen.getByText('Import All'));
-  await screen.findByText('Profile imported successfully');
+  await screen.findByText('Profile imported.');
   expect((await getProfile())?.personal.firstName).toBe('Alex Imported');
   expect((await getProfile())?.personal.nickname).toBe('Lex Imported');
   expect((await getProfile())?.professional.noticePeriod?.value).toBe(6);
@@ -155,7 +156,7 @@ it('offers explicit choices for a mappings-only import', async () => {
     within(screen.getByRole('group', { name: 'Learned Mappings' })).getByRole('checkbox'),
   );
   fireEvent.click(importSelected());
-  await screen.findByText('Profile imported successfully');
+  await screen.findByText('Profile imported.');
   expect(await getLearnedMappings()).toEqual({ 'new.example': { surname: 'personal.lastName' } });
 });
 
@@ -165,7 +166,7 @@ it('ignores unsupported backup metadata without storing it', async () => {
   profile.personal.firstName = 'Alex Imported';
   upload(profile, { retiredFeatureData: [{ value: 'not-supported' }] });
   fireEvent.click(await screen.findByText('Import All'));
-  await screen.findByText('Profile imported successfully');
+  await screen.findByText('Profile imported.');
   expect((await getProfile())?.personal.firstName).toBe('Alex Imported');
   expect(await new Promise((resolve) => chrome.storage.local.get('retiredFeatureData', resolve))).toEqual({});
 });
@@ -181,7 +182,7 @@ it('rejects invalid profile roots without reporting success or writing a profile
   upload(null);
   await screen.findByText('Select a valid Job Buddy export file.');
   expect(await getProfile()).toEqual({ id: 'empty-import-test' });
-  expect(screen.queryByText('Profile imported successfully')).toBeNull();
+  expect(screen.queryByText('Profile imported.')).toBeNull();
 });
 
 it('shows skipped fields before importing a partly invalid backup into an empty profile', async () => {
@@ -200,7 +201,7 @@ it('shows skipped fields before importing a partly invalid backup into an empty 
   expect(screen.queryByRole('radio', { name: /^(Update|Replace) current profile/ })).toBeNull();
   expect(await getProfile()).toEqual({ id: 'empty-import-test' });
   fireEvent.click(screen.getByText('Import All'));
-  await screen.findByText('Profile imported successfully');
+  await screen.findByText('Profile imported.');
   expect(screen.queryByText(/successfully.*skipped/)).toBeNull();
   expect((await getProfile())?.personal.firstName).toBe('Alex Imported');
   expect((await getProfile())?.personal.email).toBeUndefined();
@@ -231,15 +232,15 @@ it('does not confuse reordered object properties with changed values', () => {
   expect(generateDiff(profile, sanitized).every((c) => c.status === 'unchanged')).toBe(true);
 });
 
-it('shows Done for identical profile data and keeps the stored profile', async () => {
+it('shows a toast for identical profile data and keeps the stored profile', async () => {
   await mountBase();
+  const saved = await getProfile();
   upload(baseProfile());
-  await screen.findByRole('dialog', { name: 'No Changes Found' });
+  await screen.findByText(feedback.importNoChanges);
   expect(screen.queryByText('Import All')).toBeNull();
-  fireEvent.click(screen.getByText('Done'));
   expect(screen.queryByRole('dialog')).toBeNull();
-  expect(document.activeElement).toBe(screen.getByText('Choose File'));
-  expect((await getProfile())?.personal.firstName).toBe('Alex');
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByText('Choose File')));
+  expect(await getProfile()).toEqual(saved);
 });
 
 it.each(['Escape', 'backdrop'])(
@@ -273,12 +274,12 @@ it('preserves unrelated profile edits made while the import review is open', asy
   upload(incoming);
   fireEvent.click(await screen.findByText('Review Changes'));
   const latest = baseProfile();
-  latest.links.portfolio = 'https://example.com/new-portfolio';
+  latest.documents.portfolio = { url: 'https://example.com/new-portfolio' };
   await saveProfile(latest);
   fireEvent.click(importSelected());
-  await screen.findByText('Profile imported successfully');
+  await screen.findByText('Profile imported.');
   expect((await getProfile())?.personal.firstName).toBe('Alex Imported');
-  expect((await getProfile())?.links.portfolio).toBe('https://example.com/new-portfolio');
+  expect((await getProfile())?.documents.portfolio?.url).toBe('https://example.com/new-portfolio');
 });
 
 it('requires an owner decision, then replaces profile data without retaining the previous person’s details', async () => {
@@ -296,7 +297,7 @@ it('requires an owner decision, then replaces profile data without retaining the
     (screen.getByRole('button', { name: 'Review Changes' }) as HTMLButtonElement).disabled,
   ).toBe(true);
   expect((await getProfile())?.id).toBe(current.id);
-  fireEvent.click(screen.getByRole('radio', { name: /Replace current profile/ }));
+  fireEvent.click(screen.getByRole('radio', { name: /Replace profile/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Review Changes' }));
   expect(screen.queryByRole('radio', { name: /Keep Current/ })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: /^Replace Profile/ }));
@@ -316,15 +317,43 @@ it('asks for review again if the profile changes while replacement is open', asy
     personal: { ...current.personal, firstName: 'Sam', lastName: 'Lee', email: 'sam@example.com' },
   });
   await screen.findByText('This may be another person’s profile');
-  fireEvent.click(screen.getByRole('radio', { name: /Replace current profile/ }));
+  fireEvent.click(screen.getByRole('radio', { name: /Replace profile/ }));
   await saveProfile({ ...current, address: { city: 'Concurrent city', country: 'US' } });
   fireEvent.click(screen.getByRole('button', { name: 'Replace Profile' }));
-  await screen.findByText('Your profile changed in another tab. Review it or import the file again.');
+  await screen.findByText(feedback.profileRecoveryChanged);
+  expect(screen.getByRole('alert').className).toContain('bg-amber-50');
   expect((await getProfile())?.address.city).toBe('Concurrent city');
   expect((await getProfile())?.personal.email).toBe(current.personal.email);
   expect((screen.getByRole('button', { name: 'Import All' }) as HTMLButtonElement).disabled).toBe(
     true,
   );
+});
+
+it('refreshes repeated concurrent edits in the shared comparison before saving selected imports', async () => {
+  await mountBase();
+  upload(incomingProfile());
+  await screen.findByRole('button', { name: 'Import All' });
+  const latest = baseProfile();
+  latest.personal.firstName = 'Concurrent name';
+  await saveProfile(latest);
+  fireEvent.click(screen.getByRole('button', { name: 'Import All' }));
+  await screen.findByRole('dialog', { name: 'Review Profile' });
+  expect(screen.getByText('Concurrent name')).toBeTruthy();
+  expect(screen.getByText('0 of 4 selected')).toBeTruthy();
+  fireEvent.click(screen.getByText('Select All'));
+  latest.personal.firstName = 'Newer concurrent name';
+  await saveProfile(latest);
+  fireEvent.click(importSelected());
+  await screen.findByText('Newer concurrent name');
+  expect(screen.getByText('0 of 4 selected')).toBeTruthy();
+  expect((await getProfile())?.personal.firstName).toBe('Newer concurrent name');
+  fireEvent.click(within(screen.getByRole('group', { name: 'First Name' })).getByRole('radio', { name: /^Imported/ }));
+  fireEvent.click(importSelected());
+  await screen.findByText('Profile imported.');
+  const saved = await getProfile();
+  expect(saved?.personal.firstName).toBe('Alex Imported');
+  expect(saved?.personal.nickname).toBeUndefined();
+  expect(saved?.professional.summary).toBe(latest.professional.summary);
 });
 
 it('imports valid JSON into an empty profile without asking for an import action', async () => {
@@ -336,7 +365,7 @@ it('imports valid JSON into an empty profile without asking for an import action
   );
   await screen.findByText('Choose File');
   upload(baseProfile());
-  await screen.findByText('Profile imported successfully');
+  await screen.findByText('Profile imported.');
   expect(screen.queryByText('Import action')).toBeNull();
   expect(screen.queryByRole('dialog')).toBeNull();
   expect((await getProfile())?.personal).toEqual(baseProfile().personal);

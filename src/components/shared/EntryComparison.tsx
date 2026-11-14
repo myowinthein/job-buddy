@@ -64,16 +64,20 @@ export function EntryComparison({
     replacement: boolean;
   };
 }) {
+  const visibleEntries = entries
+    .map((entry, originalIndex) => ({ entry, originalIndex }))
+    .filter(({ entry }) => selection?.replacement || entry.status !== 'unchanged');
   const [index, setIndex] = useState(() =>
     Math.max(
       0,
-      entries.findIndex((entry) => entry.fields.some((field) => field.changed)),
+      visibleEntries.findIndex(({ entry }) => entry.fields.some((field) => field.changed)),
     ),
   );
   const [showUnchanged, setShowUnchanged] = useState(false);
-  const safeIndex = Math.min(index, entries.length - 1);
-  const entry = entries[safeIndex];
-  if (!entry) return null;
+  const safeIndex = Math.min(index, visibleEntries.length - 1);
+  const visible = visibleEntries[safeIndex];
+  if (!visible) return null;
+  const { entry, originalIndex } = visible;
   const incomingOnly = entry.status === 'new';
   const clearing = !!selection?.replacement && entry.status === 'removed';
   const selectable = selection && entryIsSelectable(entry, selection.replacement);
@@ -98,14 +102,14 @@ export function EntryComparison({
               aria-label={`${entry.status === 'removed' ? 'Remove' : 'Import'} ${entry.label}`}
               checked={checked}
               disabled={selection.isSaving}
-              onChange={() => selection.onSelect(safeIndex, !checked)}
+              onChange={() => selection.onSelect(originalIndex, !checked)}
               className="mt-1 accent-blue-600"
             />
           )}
           <p aria-live="polite" className="text-sm font-medium text-gray-800 dark:text-gray-200">
             {entry.label}{' '}
             <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
-              ({safeIndex + 1} of {entries.length})
+              ({safeIndex + 1} of {visibleEntries.length})
             </span>
           </p>
         </div>
@@ -120,7 +124,7 @@ export function EntryComparison({
           </button>
           <button
             type="button"
-            disabled={safeIndex === entries.length - 1 || selection?.isSaving}
+            disabled={safeIndex === visibleEntries.length - 1 || selection?.isSaving}
             onClick={() => setIndex(safeIndex + 1)}
             className="text-action disabled:opacity-40"
           >
@@ -134,11 +138,11 @@ export function EntryComparison({
             <label key={String(accepted)} className="flex items-center gap-2">
               <input
                 type="radio"
-                name={`entry-${safeIndex}`}
+                name={`entry-${originalIndex}`}
                 checked={checked === accepted}
                 disabled={selection.isSaving}
                 aria-label={`${accepted ? incomingLabel : 'Keep Current'} for ${entry.label}`}
-                onChange={() => selection.onSelect(safeIndex, accepted)}
+                onChange={() => selection.onSelect(originalIndex, accepted)}
                 className="accent-blue-600"
               />
               {accepted ? incomingLabel : 'Keep Current'}

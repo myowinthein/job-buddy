@@ -2,7 +2,9 @@ import { wrapStorageArea } from '@/src/utils/storageArea';
 import { getGeminiSettings, getProfile } from '@/src/utils/storage';
 import { calculateCompletion } from '@/src/utils/profileCompletion';
 import { AUTOFILL_ERROR } from './errorCodes';
+import { developmentScope } from '@/src/devtools/session';
 import { PERSISTED_RESULT_KEYS } from './fillResult';
+import { tabActivity } from './pageActivity';
 
 export const RUN_PREFIX = 'jb:autofill-run:';
 export const RUN_ALARM_PREFIX = 'jb:autofill-recover:';
@@ -12,6 +14,7 @@ export interface RunFrame {
   documentId?: string;
 }
 export interface AutofillRun {
+  devSessionId?: string | null;
   tabId: number;
   runId: string;
   startedAt: number;
@@ -28,6 +31,7 @@ const topDocumentId = (frames: RunFrame[]) =>
 // Runs saved before expiresAt existed fall back to the start time plus the limit.
 const runDeadline = (run: AutofillRun) => run.expiresAt ?? run.startedAt + RUN_LIMIT_MS;
 interface RunDependencies {
+  scope?: () => string | null;
   read: (tabId: number) => Promise<AutofillRun | null>;
   write: (tabId: number, run: AutofillRun | null) => Promise<void>;
   frames: (tabId: number) => Promise<RunFrame[]>;
@@ -38,6 +42,9 @@ interface RunDependencies {
   ) => Promise<unknown>;
   alarm: (tabId: number, pending: boolean) => Promise<void>;
   setup?: () => Promise<string | undefined>;
+  claim?: (run: AutofillRun) => Promise<boolean>;
+  release?: (run: AutofillRun) => Promise<void>;
+  blocked?: (tabId: number) => Promise<boolean>;
 }
 const pending = (run: AutofillRun) => run.stage === 'scanning' || run.stage === 'filling';
 
@@ -46,6 +53,14 @@ export class AutofillCoordinator {
   private queues = new Map<number, Promise<unknown>>();
   private running = new Map<number, { runId: string; work: Promise<AutofillRun | null> }>();
   constructor(private deps: RunDependencies) {}
+
+  async blocked(tabId: number): Promise<boolean> {
+    return (await this.deps.blocked?.(tabId)) ?? false;
+  }
+
+  private async release(run: AutofillRun): Promise<void> {
+    await this.deps.release?.(run).catch(() => {});
+  }
 
   private exclusive<T>(tabId: number, action: () => Promise<T>): Promise<T> {
     const result = (this.queues.get(tabId) ?? Promise.resolve()).then(action, action);
@@ -58,6 +73,7 @@ export class AutofillCoordinator {
 
   private async update(run: AutofillRun): Promise<boolean> {
     return this.exclusive(run.tabId, async () => {
+      if (this.deps.scope && run.devSessionId !== this.deps.scope()) return false;
       const current = await this.deps.read(run.tabId);
       if (
         current?.runId !== run.runId ||
@@ -76,14 +92,17 @@ export class AutofillCoordinator {
     mode?: 'merge' | 'overwrite',
     sourceDocumentId?: string,
   ): Promise<AutofillRun | null> {
+    const scope = this.deps.scope?.();
     const run = await this.exclusive(tabId, async () => {
       const existing = await this.deps.read(tabId);
       if (existing && (pending(existing) || existing.stage === 'confirming')) return existing;
       let error = await this.deps.setup?.();
       const frames = error ? [] : await this.deps.frames(tabId);
+      if (this.deps.scope && scope !== this.deps.scope()) return null;
       if (!error && sourceDocumentId && topDocumentId(frames) !== sourceDocumentId)
         error = AUTOFILL_ERROR.pageChanged;
       const run: AutofillRun = {
+        ...(this.deps.scope && { devSessionId: scope }),
         sourceDocumentId: topDocumentId(frames),
         tabId,
         runId: crypto.randomUUID(),
@@ -94,11 +113,18 @@ export class AutofillCoordinator {
         ...(mode ? { mode } : {}),
         ...(error ? { error } : {}),
       };
-      await this.deps.write(tabId, run);
-      await this.deps.alarm(tabId, pending(run));
+      if (!error && this.deps.claim && !(await this.deps.claim(run)))
+        return { ...run, stage: 'error' as const, error: AUTOFILL_ERROR.otherVersionBusy };
+      try {
+        await this.deps.write(tabId, run);
+        await this.deps.alarm(tabId, pending(run));
+      } catch (error) {
+        await this.release(run);
+        throw error;
+      }
       return run;
     });
-    return pending(run) ? this.drive(run) : run;
+    return run && pending(run) ? this.drive(run) : run;
   }
 
   async confirm(tabId: number, runId: string, mode: 'merge' | 'overwrite') {
@@ -114,8 +140,16 @@ export class AutofillCoordinator {
         mode,
         ...(error ? { error } : {}),
       };
-      await this.deps.write(tabId, next);
-      await this.deps.alarm(tabId, pending(next));
+      if (!error && this.deps.claim && !(await this.deps.claim(next)))
+        return { ...current, error: AUTOFILL_ERROR.otherVersionBusy };
+      try {
+        await this.deps.write(tabId, next);
+        await this.deps.alarm(tabId, pending(next));
+      } catch (error) {
+        await this.release(next);
+        throw error;
+      }
+      if (error) await this.release(current);
       return next;
     });
     return run && pending(run) ? this.drive(run) : run;
@@ -124,16 +158,18 @@ export class AutofillCoordinator {
   async status(tabId: number): Promise<AutofillRun | null> {
     const run = await this.deps.read(tabId);
     if (!run) return null;
+    if (run.stage === 'completed' || run.stage === 'error') await this.release(run);
     if (pending(run) && Date.now() > runDeadline(run)) {
       const expired: AutofillRun = { ...run, stage: 'error', error: AUTOFILL_ERROR.failed };
       if (!(await this.update(expired))) return this.deps.read(tabId);
-      void Promise.all(
+      await Promise.all(
         run.frames.map((frame) =>
           this.deps
             .send(run, frame, { action: 'AUTOFILL_CANCEL', runId: run.runId })
             .catch(() => {}),
         ),
       );
+      await this.release(run);
       return expired;
     }
     if (pending(run)) void this.drive(run).catch(() => {});
@@ -142,12 +178,7 @@ export class AutofillCoordinator {
 
   async navigated(tabId: number, documentId?: string): Promise<void> {
     const run = await this.deps.read(tabId);
-    if (
-      run &&
-      (!documentId ||
-        (run.sourceDocumentId ?? topDocumentId(run.frames)) !==
-          documentId)
-    )
+    if (run && (!documentId || (run.sourceDocumentId ?? topDocumentId(run.frames)) !== documentId))
       await this.cancel(tabId, run.runId);
   }
 
@@ -164,7 +195,7 @@ export class AutofillCoordinator {
       await this.deps.alarm(tabId, false);
       return current;
     });
-    if (previous)
+    if (previous) {
       await Promise.all(
         previous.frames.map((frame) =>
           this.deps
@@ -172,6 +203,47 @@ export class AutofillCoordinator {
             .catch(() => {}),
         ),
       );
+      await this.release(previous);
+    }
+  }
+
+  async undo(tabId: number, runId?: string): Promise<boolean> {
+    return this.exclusive(tabId, async () => {
+      const current = await this.deps.read(tabId);
+      if (current && (pending(current) || current.stage === 'confirming')) return false;
+      if (runId && (current?.runId !== runId || current.stage !== 'completed')) return false;
+      const frames =
+        current?.stage === 'completed' ? current.frames : await this.deps.frames(tabId);
+      const operation: AutofillRun = {
+        ...current,
+        ...(this.deps.scope && { devSessionId: this.deps.scope() }),
+        tabId,
+        runId: crypto.randomUUID(),
+        startedAt: Date.now(),
+        expiresAt: Date.now() + RUN_LIMIT_MS,
+        stage: 'filling',
+        frames,
+      };
+      if (this.deps.claim && !(await this.deps.claim(operation))) return false;
+      try {
+        const replies = await Promise.all(
+          frames.map((frame) =>
+            this.deps.send(operation, frame, { action: 'CLEAR' }).catch(() => null),
+          ),
+        );
+        const reachable = runId ? replies : replies.filter((reply) => reply !== null);
+        const success =
+          reachable.length > 0 &&
+          reachable.every((reply) => (reply as { success?: boolean } | null)?.success === true);
+        if (success) {
+          await this.deps.write(tabId, null);
+          await this.deps.alarm(tabId, false);
+        }
+        return success;
+      } finally {
+        await this.release(operation);
+      }
+    });
   }
 
   private drive(run: AutofillRun): Promise<AutofillRun | null> {
@@ -192,12 +264,12 @@ export class AutofillCoordinator {
     let run = initial;
     try {
       const frames = await this.deps.frames(run.tabId);
-      const original =
-        run.sourceDocumentId ?? topDocumentId(run.frames);
+      const original = run.sourceDocumentId ?? topDocumentId(run.frames);
       if (original && topDocumentId(frames) !== original)
         throw new Error(AUTOFILL_ERROR.pageChanged);
-      if (Date.now() > runDeadline(run))
-        throw new Error(AUTOFILL_ERROR.failed);
+      if (Date.now() > runDeadline(run)) throw new Error(AUTOFILL_ERROR.failed);
+      if (this.deps.claim && !(await this.deps.claim(run)))
+        throw new Error(AUTOFILL_ERROR.otherVersionBusy);
       if (run.stage === 'scanning') {
         const replies = await Promise.all(
           run.frames.map(async (frame) => ({
@@ -216,9 +288,9 @@ export class AutofillCoordinator {
             typeof (reply as { preFilledCount?: unknown })?.preFilledCount === 'number',
         );
         if (!scanned.length) throw new Error(AUTOFILL_ERROR.failed);
-        const needsChoice = run.mode === undefined && scanned.some(
-          ({ reply }) => (reply as { preFilledCount: number }).preFilledCount > 0,
-        );
+        const needsChoice =
+          run.mode === undefined &&
+          scanned.some(({ reply }) => (reply as { preFilledCount: number }).preFilledCount > 0);
         run = {
           ...run,
           frames: scanned.map(({ frame }) => frame),
@@ -228,7 +300,8 @@ export class AutofillCoordinator {
         if (!(await this.update(run))) return null;
       }
       if (run.stage === 'filling') {
-        if (run.mode !== 'merge' && run.mode !== 'overwrite') throw new Error(AUTOFILL_ERROR.failed);
+        if (run.mode !== 'merge' && run.mode !== 'overwrite')
+          throw new Error(AUTOFILL_ERROR.failed);
         const results = await Promise.all(
           run.frames.map((frame) =>
             this.deps
@@ -261,6 +334,8 @@ export class AutofillCoordinator {
         error: error instanceof Error ? error.message : AUTOFILL_ERROR.failed,
       };
       return (await this.update(run)) ? run : null;
+    } finally {
+      if (run.stage !== 'confirming') await this.release(run);
     }
   }
 }
@@ -270,6 +345,13 @@ export function createAutofillCoordinator() {
     rejectOnSetError: true,
   });
   return new AutofillCoordinator({
+    ...(import.meta.env.DEV && { scope: developmentScope }),
+    claim: (run) =>
+      tabActivity(run.tabId, 'claim', run.runId, runDeadline(run), run.sourceDocumentId),
+    release: async (run) => {
+      await tabActivity(run.tabId, 'release', run.runId, 0, run.sourceDocumentId);
+    },
+    blocked: (tabId) => tabActivity(tabId, 'blocked'),
     setup: async () => {
       try {
         const completion = calculateCompletion((await getProfile()) ?? {});
@@ -290,8 +372,11 @@ export function createAutofillCoordinator() {
         `${RUN_PREFIX}${tabId}`
       ] as AutofillRun) ?? null,
     write: async (tabId, run) => {
-      if (run) await storage.set({ [`${RUN_PREFIX}${tabId}`]: run });
-      else await storage.remove(`${RUN_PREFIX}${tabId}`, { rejectOnError: true });
+      if (run) {
+        if (import.meta.env.DEV && run.devSessionId !== developmentScope())
+          throw new Error('The development session changed');
+        await storage.set({ [`${RUN_PREFIX}${tabId}`]: run });
+      } else await storage.remove(`${RUN_PREFIX}${tabId}`, { rejectOnError: true });
     },
     frames: async (tabId) => {
       try {
@@ -307,16 +392,25 @@ export function createAutofillCoordinator() {
       return [{ frameId: 0 }];
     },
     send: async (run, frame, message) => {
+      if (import.meta.env.DEV && run.devSessionId !== developmentScope())
+        throw new Error('The development session changed');
       const target = frame.documentId
         ? { tabId: run.tabId, documentIds: [frame.documentId] }
         : { tabId: run.tabId, frameIds: [frame.frameId] };
       await chrome.scripting
         .executeScript({ target, files: ['content-scripts/content.js'] })
         .catch(() => {});
-      return chrome.tabs.sendMessage(run.tabId, message, {
-        frameId: frame.frameId,
-        ...(frame.documentId ? { documentId: frame.documentId } : {}),
-      });
+      return chrome.tabs.sendMessage(
+        run.tabId,
+        {
+          ...message,
+          ...(import.meta.env.DEV && { __jbDevSession: run.devSessionId }),
+        },
+        {
+          frameId: frame.frameId,
+          ...(frame.documentId ? { documentId: frame.documentId } : {}),
+        },
+      );
     },
     alarm: async (tabId, pending) => {
       if (pending)
@@ -332,4 +426,14 @@ export function requestAutofillRun(
   options: { runId?: string; mode?: 'merge' | 'overwrite' } = {},
 ): Promise<AutofillRun | null> {
   return chrome.runtime.sendMessage({ action: `AUTOFILL_RUN_${action}`, tabId, ...options });
+}
+
+export function requestAutofillBlocked(tabId: number): Promise<boolean> {
+  return chrome.runtime
+    .sendMessage({ action: 'AUTOFILL_RUN_BLOCKED', tabId })
+    .then((value) => value === true);
+}
+
+export function requestAutofillUndo(tabId: number): Promise<boolean> {
+  return chrome.runtime.sendMessage({ action: 'AUTOFILL_RUN_UNDO', tabId });
 }

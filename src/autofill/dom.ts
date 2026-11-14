@@ -1,4 +1,6 @@
 import { dropzoneSurface } from './dropzone';
+import { searchableSelect } from './reactSelect';
+
 /** DOM helpers shared by discovery and the write-time safety checks. */
 export function composedParent(element: Element): Element | null {
   if (element.assignedSlot) return element.assignedSlot;
@@ -111,6 +113,7 @@ export function isControlAvailable(element: HTMLElement): boolean {
     element instanceof HTMLInputElement && element.type === 'file'
       ? fileInputProxy(element)
       : undefined;
+  const selectProxy = searchableSelect(element);
   for (const ancestor of composedAncestors(element)) {
     if (
       ancestor.hasAttribute('data-job-buddy-ui') ||
@@ -129,7 +132,7 @@ export function isControlAvailable(element: HTMLElement): boolean {
       (parseFloat(style.opacity) === 0 &&
         (ancestor !== element ||
           !(element instanceof HTMLInputElement) ||
-          (!isChoice(element) && element.type !== 'file')))
+          (!isChoice(element) && element.type !== 'file' && !selectProxy?.value)))
     )
       return false;
   }
@@ -140,6 +143,8 @@ export function hasVisibleSurface(
   element: HTMLElement,
   cache = new WeakMap<Element, boolean>(),
 ): boolean {
+  const select = searchableSelect(element);
+  if (select) return hasVisibleSurface(select.control, cache);
   if (element instanceof HTMLInputElement && element.type === 'file') {
     const proxy = fileInputProxy(element);
     if (proxy) return hasVisibleSurface(proxy, cache);

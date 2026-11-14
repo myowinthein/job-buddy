@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import { profileTextLimit } from '@/src/profile/fieldPolicies';
 import { ProfileFields } from './shared/ProfileFields';
 import { SectionHeader } from './shared/SectionHeader';
@@ -17,6 +18,7 @@ import { saveSection } from './shared/saveSection';
 import { SaveButton } from './shared/SaveButton';
 import { EntryListHeader } from './shared/EntryListHeader';
 import { fieldCls as cls } from './shared/fieldCls';
+import { removeEntryErrors } from './shared/entryErrors';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 import { useDateRangeValidation } from './shared/useDateRangeValidation';
 
@@ -57,8 +59,17 @@ const emptyRow = (): Row => ({
   description: '',
 });
 
-const entrySummary = (row: Row, idx: number) =>
-  row.institution && row.degree ? `${row.institution}: ${row.degree}` : `Entry ${idx + 1}`;
+const started = (row: Row) =>
+  Object.entries(row).some(([key, value]) => key !== 'rowId' && !!value);
+
+const entrySummary = (row: Row) => (
+  <>
+    {row.institution || row.degree || 'New entry'}
+    {row.institution && row.degree && (
+      <span className="font-normal text-gray-500 dark:text-gray-400">: {row.degree}</span>
+    )}
+  </>
+);
 
 export function EducationSection({ profile, onSave }: Props) {
   const [entries, setEntries] = useState<Row[]>(() =>
@@ -69,9 +80,8 @@ export function EducationSection({ profile, onSave }: Props) {
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
 
-  const [newEntryTick, setNewEntryTick] = useState(0);
   const entriesContainerRef = useRef<HTMLDivElement>(null);
-  useScrollToNewEntry(entriesContainerRef, newEntryTick);
+  const { focusEntry, focusRequest } = useScrollToNewEntry(entriesContainerRef);
 
   // Shared by handleEntryBlur, update, and validate() — the one check each
   // required text field needs, regardless of when it fires.
@@ -79,9 +89,9 @@ export function EducationSection({ profile, onSave }: Props) {
     key: 'institution' | 'degree' | 'fieldOfStudy',
     value: string,
   ): string => {
-    if (key === 'institution' && !value.trim()) return 'Institution is required';
-    if (key === 'degree' && !value.trim()) return 'Degree is required';
-    if (key === 'fieldOfStudy' && !value.trim()) return 'Field of study is required';
+    if (key === 'institution' && !value.trim()) return 'Enter an institution';
+    if (key === 'degree' && !value.trim()) return 'Enter a degree';
+    if (key === 'fieldOfStudy' && !value.trim()) return 'Enter a field of study';
     const limit = profileTextLimit(`education.$.${key}`);
     if (value.length > limit) return `Use ${limit} characters or fewer`;
     return '';
@@ -108,7 +118,7 @@ export function EducationSection({ profile, onSave }: Props) {
     if (key === 'institution' || key === 'degree' || key === 'fieldOfStudy')
       err = textFieldError(key, String(value));
     else if (key === 'startDate') {
-      if (!String(value).trim()) err = 'Start date is required';
+      if (!String(value).trim()) err = 'Enter a start date';
       else {
         const y = parseInt((value as string).split('-')[0] ?? '', 10);
         if (!isNaN(y)) err = yearRangeError(y, EDU_MIN_YEAR, EDU_MAX_YEAR);
@@ -125,7 +135,7 @@ export function EducationSection({ profile, onSave }: Props) {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (entries.length === 0) e.general = 'At least one education entry is required';
+    if (entries.length === 0) e.general = 'Add at least one education entry';
     entries.forEach((row, idx) => {
       for (const key of ['institution', 'degree', 'fieldOfStudy'] as const) {
         const err = textFieldError(key, row[key]);
@@ -135,7 +145,7 @@ export function EducationSection({ profile, onSave }: Props) {
         e[`${idx}.${key}`] = error;
       for (const key of ['startDate', 'endDate'])
         if (partialDates[`${row.rowId}.${key}`])
-          e[`${idx}.${key}`] = 'Complete the year, or leave the optional date blank';
+          e[`${idx}.${key}`] = 'Enter a complete year';
       if ((row.grade?.length ?? 0) > profileTextLimit('education.$.grade'))
         e[`${idx}.grade`] = `Use ${profileTextLimit('education.$.grade')} characters or fewer`;
       if ((row.description?.length ?? 0) > profileTextLimit('education.$.description'))
@@ -146,7 +156,10 @@ export function EducationSection({ profile, onSave }: Props) {
     return Object.keys(e).length === 0;
   };
 
-  const saveDraft = useSectionDraft(entries, onSave);
+  const saveDraft = useSectionDraft(
+    entries.map(({ rowId: _rowId, ...row }) => row),
+    onSave,
+  );
 
   const handleSave = async () => {
     if (!validate()) return;
@@ -167,7 +180,7 @@ export function EducationSection({ profile, onSave }: Props) {
         })),
       },
       showToast,
-      'Education saved',
+      feedback.profileSaved,
     );
     setSaving(false);
   };
@@ -179,9 +192,15 @@ export function EducationSection({ profile, onSave }: Props) {
       <EntryListHeader
         id="add-education"
         onAdd={() => {
-          const row = emptyRow();
-          setEntries((rows) => [...rows, row]);
-          setNewEntryTick((t) => t + 1);
+          const existing = entries.find(
+            (row) =>
+              !started(row) &&
+              !partialDates[`${row.rowId}.startDate`] &&
+              !partialDates[`${row.rowId}.endDate`],
+          );
+          const row = existing ?? emptyRow();
+          if (!existing) setEntries((rows) => [...rows, row]);
+          focusEntry(row.rowId);
         }}
         label="+ Add Education"
       />
@@ -197,9 +216,34 @@ export function EducationSection({ profile, onSave }: Props) {
           <ExpandableCard
             id={`entry-education-${idx}`}
             key={row.rowId}
-            summary={entrySummary(row, idx)}
+            entryId={row.rowId}
+            expandRequest={focusRequest.rowId === row.rowId ? focusRequest.tick : 0}
+            summary={entrySummary(row)}
+            badge={
+              row.isCurrent ? (
+                <span className="shrink-0 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                  Current
+                </span>
+              ) : undefined
+            }
             subtitle={row.fieldOfStudy || undefined}
-            onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
+            confirmDelete={
+              started(row) ||
+              !!partialDates[`${row.rowId}.startDate`] ||
+              !!partialDates[`${row.rowId}.endDate`]
+            }
+            deleteLabel={entries.length === 1 ? 'Clear' : 'Delete'}
+            onDelete={() => {
+              setEntries((rows) =>
+                rows.length === 1 ? [emptyRow()] : rows.filter((_, i) => i !== idx),
+              );
+              setErrors((errors) => removeEntryErrors(errors, idx));
+              setPartialDates((dates) =>
+                Object.fromEntries(
+                  Object.entries(dates).filter(([key]) => !key.startsWith(`${row.rowId}.`)),
+                ),
+              );
+            }}
             defaultExpanded={!row.institution}
             invalid={Object.entries(errors).some(
               ([key, value]) => key.startsWith(`${idx}.`) && !!value,
@@ -208,6 +252,7 @@ export function EducationSection({ profile, onSave }: Props) {
             <ProfileFields
               index={idx}
               scope="education"
+              values={{ ...row }}
               renderers={{
                 institution: (field) => (
                   <FormField
@@ -222,7 +267,7 @@ export function EducationSection({ profile, onSave }: Props) {
                       onChange={(e) => update(idx, 'institution', e.target.value)}
                       onBlur={() => handleEntryBlur(idx, 'institution')}
                       placeholder="University of California, Berkeley"
-                      maxLength={field.maxLength}
+
                     />
                   </FormField>
                 ),
@@ -239,7 +284,7 @@ export function EducationSection({ profile, onSave }: Props) {
                       onChange={(e) => update(idx, 'degree', e.target.value)}
                       onBlur={() => handleEntryBlur(idx, 'degree')}
                       placeholder="Bachelor of Science"
-                      maxLength={field.maxLength}
+
                     />
                   </FormField>
                 ),
@@ -256,7 +301,7 @@ export function EducationSection({ profile, onSave }: Props) {
                       onChange={(e) => update(idx, 'fieldOfStudy', e.target.value)}
                       onBlur={() => handleEntryBlur(idx, 'fieldOfStudy')}
                       placeholder="Computer Science"
-                      maxLength={field.maxLength}
+
                     />
                   </FormField>
                 ),
@@ -329,7 +374,6 @@ export function EducationSection({ profile, onSave }: Props) {
                       className={cls()}
                       value={row.grade ?? ''}
                       onChange={(e) => update(idx, 'grade', e.target.value)}
-                      maxLength={field.maxLength}
                       placeholder="3.8 / 4.0"
                     />
                   </FormField>
@@ -339,13 +383,13 @@ export function EducationSection({ profile, onSave }: Props) {
                     label={field.label}
                     required={field.required}
                     error={errors[`${idx}.description`]}
+                    characterLimit={field.maxLength}
                   >
                     <textarea
                       id={field.inputId}
                       className={`${cls()} min-h-24`}
                       value={row.description ?? ''}
                       onChange={(e) => update(idx, 'description', e.target.value)}
-                      maxLength={field.maxLength}
                       placeholder="Honors, thesis, relevant coursework…"
                     />
                   </FormField>
@@ -357,9 +401,7 @@ export function EducationSection({ profile, onSave }: Props) {
       </div>
       {/* entriesContainerRef */}
 
-      <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
-        <SaveButton onClick={handleSave} saving={saving} label="Save Education" />
-      </div>
+      <SaveButton onClick={handleSave} saving={saving} label="Save" />
     </div>
   );
 }

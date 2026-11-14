@@ -1,3 +1,4 @@
+import { captureDevelopmentScope } from '@/src/devtools/session';
 import {
   saveLearnedObservationLocally,
   saveLearnedMappings,
@@ -19,7 +20,18 @@ import { registerDevelopmentContentScript } from '@/src/devtools/registerContent
 import { retainFrameFillLog } from '@/src/fill-log/retention';
 import { senderDomain, validLabelSignals } from '@/src/utils/senderValidation';
 
-export default defineBackground(() => {
+export default defineBackground(async () => {
+  if (import.meta.env.DEV) {
+    const ready = import('@/src/devtools/sessionChrome').then(({ installDevelopmentSession }) =>
+      installDevelopmentSession('background'),
+    );
+    chrome.runtime.onMessage.addListener((message, _sender, respond) => {
+      if (message.action !== 'JB_DEV_READY') return;
+      ready.then(() => respond(true)).catch(() => respond(false));
+      return true;
+    });
+    await ready;
+  }
   // WXT's dev manifest has no static content script. Register it even if the
   // hot-reload server is offline when this worker starts.
   if (import.meta.env.DEV)
@@ -34,6 +46,8 @@ export default defineBackground(() => {
         'AUTOFILL_RUN_STATUS',
         'AUTOFILL_RUN_CONFIRM',
         'AUTOFILL_RUN_CANCEL',
+        'AUTOFILL_RUN_BLOCKED',
+        'AUTOFILL_RUN_UNDO',
       ].includes(message.action)
     )
       return;
@@ -45,21 +59,29 @@ export default defineBackground(() => {
       return;
     if (!Number.isInteger(message.tabId) || message.tabId < 0) return;
     const task =
-      message.action === 'AUTOFILL_RUN_START'
-        ? autofill.start(message.tabId)
-        : message.action === 'AUTOFILL_RUN_STATUS'
-          ? autofill.status(message.tabId)
-          : message.action === 'AUTOFILL_RUN_CONFIRM'
-            ? typeof message.runId === 'string' && ['merge', 'overwrite'].includes(message.mode)
-              ? autofill.confirm(message.tabId, message.runId, message.mode)
-              : Promise.resolve(null)
-            : autofill.cancel(message.tabId, message.runId).then(() => null);
+      message.action === 'AUTOFILL_RUN_BLOCKED'
+        ? autofill.blocked(message.tabId).catch(() => false)
+        : message.action === 'AUTOFILL_RUN_UNDO'
+          ? autofill.undo(message.tabId)
+          : message.action === 'AUTOFILL_RUN_START'
+            ? autofill.start(message.tabId)
+            : message.action === 'AUTOFILL_RUN_STATUS'
+              ? autofill.status(message.tabId)
+              : message.action === 'AUTOFILL_RUN_CONFIRM'
+                ? typeof message.runId === 'string' && ['merge', 'overwrite'].includes(message.mode)
+                  ? autofill.confirm(message.tabId, message.runId, message.mode)
+                  : Promise.resolve(null)
+                : autofill.cancel(message.tabId, message.runId).then(() => null);
     task.then(respond).catch(() => respond(null));
     return true;
   });
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
-    if (!['SAVE_LEARNED_OBSERVATION', 'SAVE_LEARNED_LABELS', 'REPAIR_LEARNED_MAPPINGS']
-      .includes(message?.action)) return;
+    if (
+      !['SAVE_LEARNED_OBSERVATION', 'SAVE_LEARNED_LABELS', 'REPAIR_LEARNED_MAPPINGS'].includes(
+        message?.action,
+      )
+    )
+      return;
     if (sender.id !== chrome.runtime.id || !sender.tab || !sender.url) return;
     const domain = senderDomain(sender);
     if (!domain) return;
@@ -133,8 +155,14 @@ export default defineBackground(() => {
     if (changes.profile?.newValue == null && changes.learnedMappings?.newValue == null) return;
     void markDriveBackupPending();
     clearTimeout(syncTimer);
+    const assertCurrent = captureDevelopmentScope();
     syncTimer = setTimeout(() => {
-      void syncIfConnected();
+      try {
+        assertCurrent();
+        void syncIfConnected();
+      } catch {
+        /* Retired test session. */
+      }
     }, 5000);
   });
   registerQuickFill(autofill);

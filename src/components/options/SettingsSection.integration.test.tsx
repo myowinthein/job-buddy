@@ -89,7 +89,7 @@ it('preserves legacy links and editor-valid emails through a real JSON review', 
   const file = new File([JSON.stringify({ profile: { personal: { email: "o'brien@example.com" }, links } })], 'backup.json', { type: 'application/json' });
   fireEvent.change(document.querySelector('input[accept=".json"]')!, { target: { files: [file] } });
   await screen.findByText('This may be another person’s profile');
-  fireEvent.click(screen.getByRole('radio', { name: /Update current profile/ }));
+  fireEvent.click(screen.getByRole('radio', { name: /Update profile/ }));
   fireEvent.click(screen.getByText('Import All'));
   await waitFor(() => expect(onImportComplete).toHaveBeenCalled());
   expect(vi.mocked(saveProfile).mock.calls[0][0]).toMatchObject({
@@ -167,7 +167,7 @@ it.each([false, true])('uses one Drive profile/mapping save with storage failure
   fireEvent.click(await screen.findByText('Connect Google Drive'));
   fireEvent.click(await screen.findByText('Restore All'));
   if (failMappings) {
-    expect(await screen.findByText('Restore failed. Please try again.')).toBeTruthy();
+    expect(await screen.findByText('Could not restore the Drive backup. Try again.')).toBeTruthy();
     expect(saveProfile).toHaveBeenCalledTimes(1);
     expect(vi.mocked(saveProfile).mock.calls[0][1]).toMatchObject({ incoming: backup.learnedMappings });
     expect(saveLearnedMappings).not.toHaveBeenCalled();

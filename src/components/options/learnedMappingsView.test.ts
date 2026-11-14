@@ -2,7 +2,6 @@ import { expect, it } from 'vitest';
 import { groupMappings } from '../../learned-mappings/groups';
 import {
   mappingDestination,
-  mappingProfileTarget,
   matchesMapping,
   profileFieldLabels,
 } from './learnedMappingsView';
@@ -78,25 +77,4 @@ it('uses the actual profile entry to distinguish destinations and search results
   expect(mappingDestination('education.8.institution', labels)).toBe(
     'Education → Entry 9 → Institution',
   );
-});
-it('routes profile links to the selected scalar, custom link or repeated entry, with a safe removed-row fallback', () => {
-  expect(mappingProfileTarget({}, 'links.linkedin')).toMatchObject({
-    section: 'links',
-    target: { id: 'field-linkedin' },
-  });
-  expect(mappingProfileTarget({}, 'links.custom.1.url')).toMatchObject({
-    section: 'links',
-    target: { id: 'field-customLink-1-url', fallbackId: 'add-customLinks' },
-  });
-  expect(
-    mappingProfileTarget({ education: [{}] } as Partial<Profile>, 'education.0.institution'),
-  ).toMatchObject({
-    section: 'education',
-    target: { id: 'field-education-0-institution', cardId: 'entry-education-0' },
-  });
-  expect(mappingProfileTarget({}, 'education.9.institution')).toMatchObject({
-    section: 'education',
-    target: { id: 'add-education' },
-  });
-  expect(mappingProfileTarget({}, 'unsafe.nope')).toBeNull();
 });

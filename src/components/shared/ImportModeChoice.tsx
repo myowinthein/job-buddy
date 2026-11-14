@@ -12,12 +12,12 @@ export function ImportModeChoice({ current, incoming, mode, onChange, busy }: Pr
   const different = possibleDifferentPerson(current, incoming);
   if (!different) return null;
   return (
-    <div className="mt-4 space-y-3 border-t border-gray-200 pt-4 dark:border-gray-700">
+    <div className="mt-4 space-y-6 border-t border-gray-200 pt-4 dark:border-gray-700">
       <div className="space-y-3">
         <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
           This may be another person’s profile
         </p>
-        <dl className="space-y-2 text-xs">
+        <dl className="grid grid-cols-1 gap-4 text-xs sm:grid-cols-2">
           {(
             [
               ['Current', current],
@@ -26,11 +26,11 @@ export function ImportModeChoice({ current, incoming, mode, onChange, busy }: Pr
           ).map(([label, profile]) => {
             const identity = importIdentity(profile);
             return (
-              <div key={label} className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-3">
+              <div key={label} className="min-w-0">
                 <dt className="text-gray-500 dark:text-gray-400">{label}</dt>
-                <dd className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5 break-words text-gray-800 dark:text-gray-200">
-                  <span className="font-medium">{identity.name || 'Name not provided'}</span>
-                  <span className="break-all text-gray-500 dark:text-gray-400">
+                <dd className="mt-1 space-y-0.5 break-words text-gray-800 dark:text-gray-200">
+                  <span className="block font-medium">{identity.name || 'Name not provided'}</span>
+                  <span className="block break-all text-gray-500 dark:text-gray-400">
                     {identity.email || 'Email not provided'}
                   </span>
                 </dd>
@@ -51,7 +51,7 @@ export function ImportModeChoice({ current, incoming, mode, onChange, busy }: Pr
             className="mt-1 accent-blue-600"
           />
           <span>
-            Update current profile
+            Update profile
             <span className="block text-xs text-gray-500 dark:text-gray-400">
               Add or update details while keeping the rest.
             </span>
@@ -67,9 +67,9 @@ export function ImportModeChoice({ current, incoming, mode, onChange, busy }: Pr
             className="mt-1 accent-blue-600"
           />
           <span>
-            Replace current profile
+            Replace profile
             <span className="block text-xs text-gray-500 dark:text-gray-400">
-              Clear saved data and import new details.
+              Clear saved data and import these details.
             </span>
           </span>
         </label>

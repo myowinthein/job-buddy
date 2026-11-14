@@ -38,6 +38,10 @@ body {
 [hidden] {
   display: none !important;
 }
+.field-limit { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+.field-limit[data-over="true"] { color: #b91c1c; }
+:root.dark .field-limit[data-over="true"] { color: #fca5a5; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 button,
 input,
 select,
@@ -98,30 +102,17 @@ a:is(:hover, :focus-visible) {
   letter-spacing: 1px;
   font-weight: 500;
 }
-#theme {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
+.demo-actions {
   margin-left: auto;
-  color: var(--ink);
-  background: transparent;
-  border: 1px solid var(--line);
-  padding: 8px;
-  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
-#theme svg {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-#theme .theme-sun,
-:root.dark #theme .theme-moon {
-  display: none;
-}
-:root.dark #theme .theme-sun {
-  display: block;
+#return-to-guide {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+  text-underline-offset: 3px;
 }
 .application-layout,
 .page-footer {

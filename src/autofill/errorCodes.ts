@@ -6,6 +6,7 @@ export const AUTOFILL_ERROR = {
   profileUnavailable: 'profile_unavailable',
   aiSetupRequired: 'ai_setup_required',
   aiSettingsUnavailable: 'ai_settings_unavailable',
+  otherVersionBusy: 'other_version_busy',
 } as const;
 
 const PROFILE_SETUP_ERRORS: readonly string[] = [

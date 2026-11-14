@@ -45,7 +45,7 @@ function dateValues(id: string) {
   ).map((input) => (input as HTMLInputElement).value);
 }
 function expandEntries() {
-  screen.getAllByRole('button', { name: 'Expand' }).forEach((button) => fireEvent.click(button));
+  Array.from(document.querySelectorAll<HTMLButtonElement>('[data-entry-toggle][aria-expanded="false"]')).forEach((button) => fireEvent.click(button));
 }
 
 it('exports every saved field, resets immediately, and restores the downloaded JSON into all nine editors', async () => {
@@ -99,7 +99,7 @@ it('exports every saved field, resets immediately, and restores the downloaded J
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
   const file = new File([json], 'downloaded-backup.json', { type: 'application/json' });
   fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [file] } });
-  await screen.findByText('Profile imported successfully');
+  await screen.findByText('Profile imported.');
   await waitFor(async () => expect(await getProfile()).toEqual(profile));
   expect(await getLearnedMappings()).toEqual(SETTINGS_REVIEW_MAPPINGS);
 
@@ -123,6 +123,7 @@ it('exports every saved field, resets immediately, and restores the downloaded J
   expect(document.getElementById('field-country')!.textContent).toContain('United States');
 
   fireEvent.click(screen.getByRole('button', { name: 'Work Authorization' }));
+  for (const toggle of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-entry-toggle][aria-expanded="false"]'))) fireEvent.click(toggle);
   profile.workAuthorization.forEach((row, i) =>
     expect(value(`field-workAuthorization-${i}-status`)).toBe(row.status),
   );
@@ -194,7 +195,7 @@ it('exports every saved field, resets immediately, and restores the downloaded J
   expect(document.getElementById('field-languages-1-language')!.textContent).toContain('Spanish');
 
   fireEvent.click(screen.getByRole('button', { name: 'Links' }));
-  for (const key of ['linkedin', 'portfolio', 'github', 'twitter', 'dribbble', 'behance'] as const)
+  for (const key of ['linkedin', 'github', 'twitter', 'dribbble', 'behance'] as const)
     expect(value(`field-${key}`)).toBe(profile.links[key]);
   for (const row of profile.links.custom!) {
     expect(screen.getByDisplayValue(row.label)).toBeTruthy();
@@ -203,12 +204,15 @@ it('exports every saved field, resets immediately, and restores the downloaded J
 
   fireEvent.click(screen.getByRole('button', { name: 'Documents' }));
   expect(value('field-cv')).toBe(profile.documents.cv.url);
+  expect(value('field-portfolio')).toBe(profile.documents.portfolio!.url);
+  expect(screen.getByText('sample-portfolio.pdf')).toBeTruthy();
   expect(screen.getByText('sample-cv.pdf')).toBeTruthy();
-  fireEvent.click(screen.getByText(/Cover letter/, { selector: 'summary' }));
+  fireEvent.click(screen.getByText('Cover letter', { selector: 'summary span' }));
   expect(value('field-coverLetter')).toBe(profile.documents.coverLetter!.url);
   expect(screen.getByText('sample-cover.pdf')).toBeTruthy();
 
   fireEvent.click(screen.getByRole('button', { name: 'Salary' }));
+  for (const toggle of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-entry-toggle][aria-expanded="false"]'))) fireEvent.click(toggle);
   expect(value('field-currentAmount')).toBe('90000');
   expect(document.getElementById('field-currentCurrency')!.textContent).toContain('USD');
   profile.salary.expected.forEach((row, i) => {

@@ -354,22 +354,22 @@ describe('mapField — Layer 2: Dictionary exact match', () => {
     expect(result.fieldPath).toBe('professional.noticePeriod.formatted');
   });
 
-  it('matches "portfoliowebsite" → links.portfolio', () => {
+  it('matches "portfoliowebsite" → documents.portfolio.url', () => {
     const result = mapField(sig({ label: 'Portfolio Website' }), PROFILE, NO_MAPPINGS, DOMAIN);
     expect(result.matchLayer).toBe('dictionary_exact');
-    expect(result.fieldPath).toBe('links.portfolio');
+    expect(result.fieldPath).toBe('documents.portfolio.url');
   });
 
-  it('matches "websiteblogorportfolio" → links.portfolio', () => {
+  it('matches "websiteblogorportfolio" → documents.portfolio.url', () => {
     const result = mapField(sig({ label: 'Website, Blog or Portfolio' }), PROFILE, NO_MAPPINGS, DOMAIN);
     expect(result.matchLayer).toBe('dictionary_exact');
-    expect(result.fieldPath).toBe('links.portfolio');
+    expect(result.fieldPath).toBe('documents.portfolio.url');
   });
 
-  it('matches "websiteblogportfolio" → links.portfolio', () => {
+  it('matches "websiteblogportfolio" → documents.portfolio.url', () => {
     const result = mapField(sig({ label: 'Website / Blog / Portfolio' }), PROFILE, NO_MAPPINGS, DOMAIN);
     expect(result.matchLayer).toBe('dictionary_exact');
-    expect(result.fieldPath).toBe('links.portfolio');
+    expect(result.fieldPath).toBe('documents.portfolio.url');
   });
 
   it('matches "gender" → personal.gender', () => {
@@ -453,7 +453,7 @@ describe('mapField — signal priority: label beats name/id', () => {
       sig({ name: 'linkedin', label: 'Website, Blog or Portfolio' }),
       PROFILE, NO_MAPPINGS, DOMAIN,
     );
-    expect(result.fieldPath).toBe('links.portfolio');
+    expect(result.fieldPath).toBe('documents.portfolio.url');
     expect(result.matchLayer).toBe('dictionary_exact');
   });
 
@@ -462,7 +462,7 @@ describe('mapField — signal priority: label beats name/id', () => {
       sig({ id: 'linkedin', label: 'Portfolio Website' }),
       PROFILE, NO_MAPPINGS, DOMAIN,
     );
-    expect(result.fieldPath).toBe('links.portfolio');
+    expect(result.fieldPath).toBe('documents.portfolio.url');
   });
 
   it('still matches name when label is absent', () => {
@@ -483,7 +483,7 @@ describe('mapField — autocomplete: url is not mapped to linkedin', () => {
       sig({ autocomplete: 'url', label: 'Portfolio Website' }),
       PROFILE, NO_MAPPINGS, DOMAIN,
     );
-    expect(result.fieldPath).toBe('links.portfolio');
+    expect(result.fieldPath).toBe('documents.portfolio.url');
   });
 
   it('still maps autocomplete="url" field to linkedin when label says so', () => {
@@ -581,7 +581,7 @@ describe('mapField — Layer 3.5: Custom link labels', () => {
     };
     const result = mapField(sig({ label: 'Portfolio' }), p, NO_MAPPINGS, DOMAIN);
     expect(result.matchLayer).toBe('dictionary_exact');
-    expect(result.fieldPath).toBe('links.portfolio');
+    expect(result.fieldPath).toBe('documents.portfolio.url');
   });
 
   it('ignores a custom link entry with a blank label or url', () => {

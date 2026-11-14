@@ -12,7 +12,10 @@ import './style.css';
   const preview = import.meta.env.DEV ? await import('@/src/devtools/bootstrap') : null;
   // Fail closed if simulation setup fails: never mount a live App under a simulation URL.
   try {
-    preview?.initializeDevPreview();
+    if (import.meta.env.DEV && location.protocol === 'chrome-extension:') {
+      const { installDevelopmentSession } = await import('@/src/devtools/sessionChrome');
+      await installDevelopmentSession('options');
+    } else preview?.initializeDevPreview();
   } catch {
     const root = document.getElementById('root');
     if (root) {
@@ -34,9 +37,10 @@ import './style.css';
     import('./App'),
     import('@/src/utils/theme'),
   ]);
-  const DevShell = import.meta.env.DEV && !new URLSearchParams(location.search).has('devEmbedded')
-    ? (await import('@/src/devtools/SimulationShell')).default
-    : React.Fragment;
+  const DevShell =
+    import.meta.env.DEV && !new URLSearchParams(location.search).has('devEmbedded')
+      ? (await import('@/src/devtools/SimulationShell')).default
+      : React.Fragment;
   await initTheme();
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>

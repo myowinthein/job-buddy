@@ -62,7 +62,7 @@ export function completionFieldId(section: string, idOrLabel: string): string {
     (
       {
         'LinkedIn URL': 'links.linkedin',
-        'Portfolio URL': 'links.portfolio',
+        'Portfolio URL': 'documents.portfolio.url',
         'Current Salary Amount': 'salary.current.amount',
         'Current Salary Currency': 'salary.current.currency',
       } as Record<string, string>

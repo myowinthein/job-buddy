@@ -1,7 +1,8 @@
 import { feedback } from '@/src/ui/feedback';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/src/components/ui/useToast';
+import { RetryNotice } from '@/src/components/ui/RetryNotice';
 import { fieldCls } from './shared/fieldCls';
 import {
   getQuickFillPreferences,
@@ -23,18 +24,27 @@ export function QuickFillSettings() {
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
+  const savedPreferences = useRef<QuickFillPreferences | null>(null);
+  const pendingSaves = useRef(0);
+  const saveQueue = useRef(Promise.resolve());
+  const receivePreferences = useCallback((value: QuickFillPreferences) => {
+    savedPreferences.current = value;
+    if (!pendingSaves.current) setPrefs(value);
+  }, []);
   useEffect(() => {
     let active = true;
+    let receivedUpdate = false;
     void getQuickFillPreferences()
       .then((value) => {
-        if (active) setPrefs(value);
+        if (active && !receivedUpdate) receivePreferences(value);
       })
       .catch(() => {
-        if (active) setLoadError(true);
+        if (active && !receivedUpdate) setLoadError(true);
       });
     const listener = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
       if (active && area === 'local' && QUICK_FILL_KEY in changes) {
-        setPrefs(normalizePreferences(changes[QUICK_FILL_KEY].newValue));
+        receivedUpdate = true;
+        receivePreferences(normalizePreferences(changes[QUICK_FILL_KEY].newValue));
         setLoadError(false);
       }
     };
@@ -43,24 +53,32 @@ export function QuickFillSettings() {
       active = false;
       chrome.storage.onChanged.removeListener(listener);
     };
-  }, [loadAttempt]);
-  const save = async (change: Parameters<typeof updateQuickFillPreferences>[0]) => {
-    const previous = prefs;
+  }, [loadAttempt, receivePreferences]);
+  const save = (change: Parameters<typeof updateQuickFillPreferences>[0]) => {
+    pendingSaves.current++;
     setPrefs((current) =>
       current
         ? { ...current, ...(typeof change === 'function' ? change(current) : change) }
         : current,
     );
     setSaving(true);
-    try {
-      await updateQuickFillPreferences(change);
-      setPrefs(await getQuickFillPreferences());
-    } catch {
-      setPrefs(await getQuickFillPreferences().catch(() => previous));
-      showToast('error', feedback.quickFillSaveFailed);
-    } finally {
-      setSaving(false);
-    }
+    saveQueue.current = saveQueue.current.then(async () => {
+      try {
+        await updateQuickFillPreferences(change);
+        receivePreferences(await getQuickFillPreferences());
+      } catch {
+        const latest = await getQuickFillPreferences().catch(() => savedPreferences.current);
+        if (latest) receivePreferences(latest);
+        showToast('error', feedback.quickFillSaveFailed);
+      } finally {
+        pendingSaves.current--;
+        if (!pendingSaves.current) {
+          setPrefs(savedPreferences.current);
+          setSaving(false);
+        }
+      }
+    });
+    return saveQueue.current;
   };
   const hiddenSites = prefs?.disabledSites ?? [];
   const sites = hiddenSites
@@ -76,18 +94,13 @@ export function QuickFillSettings() {
         Fill fields using a floating button on job application forms.
       </p>
       {loadError && (
-        <div role="alert" className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-red-600 dark:text-red-400">
-          <p>{feedback.quickFillLoadFailed}</p>
-          <button
-            type="button"
-            className="rounded-sm underline hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500"
-            onClick={() => {
-              setLoadError(false);
-              setLoadAttempt((attempt) => attempt + 1);
-            }}
-          >
-            Retry
-          </button>
+        <div className="mb-4 max-w-md">
+          <RetryNotice onRetry={() => {
+            setLoadError(false);
+            setLoadAttempt((attempt) => attempt + 1);
+          }}>
+            {feedback.quickFillLoadFailed}
+          </RetryNotice>
         </div>
       )}
       <div
@@ -101,13 +114,13 @@ export function QuickFillSettings() {
           <button
             key={String(enabled)}
             type="button"
-            disabled={!prefs || saving}
+            disabled={!prefs}
             aria-pressed={prefs?.enabled === enabled}
             onClick={() => {
               if (prefs?.enabled !== enabled) void save({ enabled });
             }}
             className={[
-              'px-4 py-1.5 text-sm font-medium transition-colors disabled:opacity-50',
+              'px-4 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 first:rounded-l-md last:rounded-r-md focus-visible:relative focus-visible:z-10 focus-visible:-outline-offset-2 aria-pressed:focus-visible:outline-white',
               enabled ? 'border-r border-gray-300 dark:border-gray-600' : '',
               prefs?.enabled === enabled
                 ? 'bg-blue-600 text-white'

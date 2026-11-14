@@ -1,10 +1,7 @@
-import { catalogProfileTarget, catalogSectionStartTarget } from '@/src/profile/fieldMetadata';
 import type { Profile } from '@/src/types/profile';
 import type { MappingGroup } from '@/src/learned-mappings/groups';
 import { buildPickerTree } from '@/src/autofill/profileFieldTree';
 import { profileFieldName } from '@/src/profile/fieldMetadata';
-import type { CompletionTarget } from '@/src/utils/profileCompletion';
-import type { ProfileSectionId } from './shared/profileSections';
 
 export function profileFieldLabels(profile: Partial<Profile>): Map<string, string> {
   const labels = new Map<string, string>();
@@ -44,19 +41,4 @@ export function matchesMapping(
     .toLocaleLowerCase()
     .split(/\s+/)
     .every((word) => text.includes(word));
-}
-
-/** Deep links reuse the options page's section/focus guard and fall back to an Add control for removed entries. */
-export function mappingProfileTarget(
-  profile: Partial<Profile>,
-  path: string,
-): { section: ProfileSectionId; target: CompletionTarget } | null {
-  const target = catalogProfileTarget(profile, path);
-  if (target) return target;
-  const section =
-    path.startsWith('derived.current') || path.startsWith('derived.totalExperience')
-      ? 'workHistory'
-      : 'personal';
-  const fallback = catalogSectionStartTarget(section);
-  return path.startsWith('derived.') && fallback ? { section, target: fallback } : null;
 }

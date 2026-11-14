@@ -64,6 +64,30 @@ beforeEach(() => {
 });
 
 describe('profile storage', () => {
+  it('saves the migrated portfolio and mapping paths atomically and only once', async () => {
+    store.profile = { ...MINIMAL_PROFILE, links: { linkedin: '', portfolio: 'https://example.test/work' } };
+    store.learnedMappings = { 'jobs.example': {
+      website: { path: 'links.portfolio', count: 2, question: 'Website' },
+      email: 'personal.email',
+      unrelatedMalformed: { keep: 'historical metadata' },
+    } };
+    const write = vi.spyOn(chrome.storage.local, 'set');
+    const profile = await getProfile();
+    expect(profile?.documents.portfolio?.url).toBe('https://example.test/work');
+    expect(profile?.links).not.toHaveProperty('portfolio');
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(write.mock.calls[0][0]).toMatchObject({
+      profile,
+      learnedMappings: { 'jobs.example': {
+        website: { path: 'documents.portfolio.url', count: 2, question: 'Website' },
+        email: 'personal.email',
+        unrelatedMalformed: { keep: 'historical metadata' },
+      } },
+    });
+    await getProfile();
+    expect(write).toHaveBeenCalledTimes(1);
+    write.mockRestore();
+  });
   it('returns null when no profile is stored (production — DEV fallback does not apply)', async () => {
     vi.stubEnv('DEV', false);
     expect(await getProfile()).toBeNull();

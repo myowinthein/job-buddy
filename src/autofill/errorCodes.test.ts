@@ -10,6 +10,7 @@ describe('autofill error codes', () => {
       profileUnavailable: 'profile_unavailable',
       aiSetupRequired: 'ai_setup_required',
       aiSettingsUnavailable: 'ai_settings_unavailable',
+      otherVersionBusy: 'other_version_busy',
     });
   });
 
@@ -20,6 +21,7 @@ describe('autofill error codes', () => {
     ['ai_settings_unavailable', false, true],
     ['autofill_failed', false, false],
     ['page_changed', false, false],
+    ['other_version_busy', false, false],
     [undefined, false, false],
     [null, false, false],
     ['', false, false],

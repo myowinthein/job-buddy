@@ -1,4 +1,6 @@
+import { feedback } from '@/src/ui/feedback';
 import { ProfileFields } from './shared/ProfileFields';
+import { ProfileDisclosure } from './shared/ProfileDisclosure';
 import type { CatalogField } from '@/src/profile/fieldCatalog';
 import { stableDisclosureFocus } from './shared/stableControlFocus';
 import { SectionHeader } from './shared/SectionHeader';
@@ -11,10 +13,11 @@ import { saveSection } from './shared/saveSection';
 import { fieldCls } from './shared/fieldCls';
 import { SaveButton } from './shared/SaveButton';
 import { useSectionDraft } from './shared/useSectionDraft';
-import { isValidProfileUrl } from '@/src/utils/profileInputValidation';
+import { isValidProfileUrl, profileUrlLengthError } from '@/src/utils/profileInputValidation';
 import { withScheme } from '@/src/utils/url';
 import { downloadDocumentFile, viewDocumentPdf } from '@/src/utils/documentFiles';
 import { Download, Eye } from 'lucide-react';
+import { ConfirmRemoveButton } from './shared/ConfirmRemoveButton';
 
 interface Props {
   profile: Partial<Profile>;
@@ -43,7 +46,7 @@ function initDocState(entry?: DocumentEntry): DocState {
   };
 }
 const urlError = (value: string) =>
-  value.trim() && !isValidProfileUrl(value) ? 'Enter a valid URL' : '';
+  profileUrlLengthError(value) || (value.trim() && !isValidProfileUrl(value) ? 'Enter a valid URL' : '');
 function toEntry(state: DocState): DocumentEntry {
   return {
     ...(state.url.trim() ? { url: withScheme(state.url.trim()) } : {}),
@@ -84,7 +87,7 @@ function DocUploader({
       !['.pdf', '.doc', '.docx'].some((extension) => file.name.toLowerCase().endsWith(extension))
     ) {
       onChange({
-        typeError: 'Only PDF and Word documents (.pdf, .doc, .docx) are supported',
+        typeError: 'Choose a PDF or Word file.',
         reading: false,
       });
       return;
@@ -101,7 +104,7 @@ function DocUploader({
         onChange({ file: { name: file.name, size: file.size, base64 }, reading: false });
     } catch {
       if (current === generation.current)
-        onChange({ readError: 'Could not read file. Please try again.', reading: false });
+        onChange({ readError: 'Could not read this file. Choose it again.', reading: false });
     }
   };
   const drop = (event: DragEvent<HTMLDivElement>) => {
@@ -138,21 +141,11 @@ function DocUploader({
           type="url"
           className={fieldCls(state.urlError)}
           value={state.url}
-          maxLength={definition.maxLength}
           onChange={(event) => onChange({ url: event.target.value, urlError: '' })}
           onBlur={() => onChange({ urlError: urlError(state.url) })}
           placeholder="https://drive.google.com/file/..."
         />
       </FormField>
-      {state.url && (
-        <button
-          type="button"
-          className="text-xs text-red-600 dark:text-red-400 mb-3 hover:underline"
-          onClick={() => onChange({ url: '', urlError: '' })}
-        >
-          Remove URL
-        </button>
-      )}
       <div
         onDragOver={(event) => {
           event.preventDefault();
@@ -176,10 +169,9 @@ function DocUploader({
                   type="button"
                   className={fileActionCls}
                   onClick={() => handleFileAction('view')}
-                  title="View PDF in a new tab"
                 >
                   <Eye aria-hidden="true" className="h-3.5 w-3.5" />
-                  View PDF <span className="text-xs">(opens in new tab)</span>
+                  View PDF
                 </button>
               )}
               <button
@@ -190,17 +182,16 @@ function DocUploader({
                 <Download aria-hidden="true" className="h-3.5 w-3.5" />
                 Download
               </button>
-              <button
-                type="button"
-                className="text-xs text-red-600 dark:text-red-400 hover:underline"
-                onClick={() => {
+              <ConfirmRemoveButton
+                text
+                title="Remove file"
+                action="Remove"
+                onConfirm={() => {
                   generation.current++;
                   setFileActionError('');
                   onChange({ file: null, reading: false, readError: '' });
                 }}
-              >
-                Remove file
-              </button>
+              />
             </div>
           </div>
         )}
@@ -213,13 +204,13 @@ function DocUploader({
           {state.reading ? 'Reading file…' : state.file ? 'Replace file' : 'Upload file'}
         </button>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-          Or drop a PDF or Word document here · max {DOCUMENT_FILE_SIZE_LABEL}. URL and file can be
-          saved together.
+          PDF or Word · max {DOCUMENT_FILE_SIZE_LABEL}
         </p>
         <input
           ref={inputRef}
           aria-label={`Upload ${label}`}
           type="file"
+          tabIndex={-1}
           accept=".pdf,.doc,.docx"
           className="sr-only"
           onChange={(event) => {
@@ -244,26 +235,36 @@ export function DocumentsSection({ profile, onSave }: Props) {
   const [coverLetter, setCoverLetter] = useState(() =>
     initDocState(profile.documents?.coverLetter),
   );
+  const [portfolio, setPortfolio] = useState(() => initDocState(profile.documents?.portfolio));
   const coverRef = useRef<HTMLDetailsElement>(null);
+  const portfolioRef = useRef<HTMLDetailsElement>(null);
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
-  const saveDraft = useSectionDraft({ cv: toEntry(cv), coverLetter: toEntry(coverLetter) }, onSave);
+  const saveDraft = useSectionDraft({ cv: toEntry(cv), coverLetter: toEntry(coverLetter), portfolio: toEntry(portfolio) }, onSave);
   const handleSave = async () => {
     const cvError = urlError(cv.url),
-      coverError = urlError(coverLetter.url);
+      coverError = urlError(coverLetter.url),
+      portfolioError = urlError(portfolio.url);
     setCv((value) => ({ ...value, urlError: cvError }));
     setCoverLetter((value) => ({ ...value, urlError: coverError }));
+    setPortfolio((value) => ({ ...value, urlError: portfolioError }));
     if (coverError && coverRef.current) coverRef.current.open = true;
-    if (cvError || coverError || cv.reading || coverLetter.reading) return;
+    if (portfolioError && portfolioRef.current) portfolioRef.current.open = true;
+    if (cvError || coverError || portfolioError || cv.reading || coverLetter.reading || portfolio.reading) return;
     setSaving(true);
     const cover = toEntry(coverLetter);
+    const portfolioEntry = toEntry(portfolio);
     await saveSection(
       saveDraft,
       {
-        documents: { cv: toEntry(cv), coverLetter: Object.keys(cover).length ? cover : undefined },
+        documents: {
+          cv: toEntry(cv),
+          coverLetter: Object.keys(cover).length ? cover : undefined,
+          portfolio: Object.keys(portfolioEntry).length ? portfolioEntry : undefined,
+        },
       },
       showToast,
-      'Documents saved',
+      feedback.profileSaved,
     );
     setSaving(false);
   };
@@ -281,30 +282,43 @@ export function DocumentsSection({ profile, onSave }: Props) {
             />
           ),
           coverLetter: (field) => (
-            <details ref={coverRef} className="mb-4">
+            <ProfileDisclosure
+              ref={coverRef}
+              open={!!(coverLetter.file || coverLetter.url.trim())}
+              className="mb-4"
+            >
               <summary
                 {...stableDisclosureFocus}
-                className="cursor-pointer text-sm font-medium text-gray-800 dark:text-gray-200 mb-3"
+                className="cursor-pointer text-sm font-medium text-gray-800 dark:text-gray-200"
               >
-                {field.label}
-                {coverLetter.file || coverLetter.url ? ' · details added' : ''}
+                <span className="ml-2">{field.label}</span>
               </summary>
-              <DocUploader
-                definition={field}
-                state={coverLetter}
-                onChange={(updates) => setCoverLetter((value) => ({ ...value, ...updates }))}
-              />
-            </details>
+              <div className="mt-3">
+                <DocUploader
+                  definition={field}
+                  state={coverLetter}
+                  onChange={(updates) => setCoverLetter((value) => ({ ...value, ...updates }))}
+                />
+              </div>
+            </ProfileDisclosure>
+          ),
+          portfolio: (field) => (
+            <ProfileDisclosure ref={portfolioRef} open={!!(portfolio.file || portfolio.url.trim())} className="mb-4">
+              <summary {...stableDisclosureFocus} className="cursor-pointer text-sm font-medium text-gray-800 dark:text-gray-200">
+                <span className="ml-2">{field.label}</span>
+              </summary>
+              <div className="mt-3">
+                <DocUploader definition={field} state={portfolio} onChange={(updates) => setPortfolio((value) => ({ ...value, ...updates }))} />
+              </div>
+            </ProfileDisclosure>
           ),
         }}
       />
-      <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <SaveButton
-          onClick={handleSave}
-          saving={saving || cv.reading || coverLetter.reading}
-          label="Save Documents"
-        />
-      </div>
+      <SaveButton
+        onClick={handleSave}
+        saving={saving || cv.reading || coverLetter.reading || portfolio.reading}
+        label="Save"
+      />
     </div>
   );
 }

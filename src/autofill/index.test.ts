@@ -86,7 +86,8 @@ function makeProfile(): Profile {
   return {
     personal: { firstName: 'Jane', lastName: 'Doe' },
     derived: { fullName: 'Jane Doe' },
-    links: { linkedin: 'https://linkedin.com/in/janedoe', portfolio: 'https://myportfolio.com' },
+    links: { linkedin: 'https://linkedin.com/in/janedoe' },
+    documents: { portfolio: { url: 'https://myportfolio.com' } },
   } as unknown as Profile;
 }
 
@@ -509,7 +510,7 @@ describe('learned-mapping linking on blur (content-based, all tiers)', () => {
     userBlur(elGray);
 
     await vi.waitFor(() => expect(saveElementMappings).toHaveBeenCalledTimes(3));
-    expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, expect.objectContaining({element:elRed}), 'links.portfolio', expect.any(Object));
+    expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, expect.objectContaining({element:elRed}), 'documents.portfolio.url', expect.any(Object));
     expect(saveElementMappings).toHaveBeenCalledWith(window.location.hostname, expect.objectContaining({element:elGray}), 'links.linkedin', expect.any(Object));
   });
 

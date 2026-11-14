@@ -6,8 +6,10 @@ import { quickFillSenderTab } from './background';
 import { quickFillSummary } from './status';
 import { scanFields, scanAriaFields } from '@/src/autofill/scanner';
 import { QuickFillWidget } from './widget';
+import { pageActivity } from '@/src/autofill/pageActivity';
 
 beforeEach(() => {
+  document.documentElement.removeAttribute('data-job-buddy-activity');
   document.body.innerHTML = '';
   vi.stubGlobal('chrome', { runtime: { id: 'job-buddy' } });
   vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([
@@ -24,6 +26,23 @@ beforeEach(() => {
     y: 0,
     toJSON() {},
   });
+});
+
+it('disables Fill Form and Undo for a competing run while keeping existing results visible', () => {
+  const widget = new QuickFillWidget({ fill() {}, undo() {}, details() {}, hide() {}, disableSite() {}, settings() {}, position() {} });
+  try {
+    widget.render({ stage: 'completed', results: [{ noReview: 1, totalScanned: 1 }] } as never);
+    pageActivity('claim', 'other-extension', 'run', Date.now() + 60_000);
+    widget.setBlocked(true);
+    const root = widget.host.shadowRoot!;
+    expect(root.querySelector<HTMLButtonElement>('.fill')?.disabled).toBe(true);
+    expect(root.querySelector<HTMLButtonElement>('.undo')?.disabled).toBe(true);
+    expect(root.querySelector('.spin')).toBeNull();
+    expect(root.querySelector('.status')?.hasAttribute('hidden')).toBe(false);
+    pageActivity('release', 'other-extension', 'run');
+    widget.setBlocked(false);
+    expect(root.querySelector<HTMLButtonElement>('.fill')?.disabled).toBe(false);
+  } finally { widget.destroy(); }
 });
 
 describe('local application detection', () => {
@@ -120,6 +139,45 @@ it('ignores synthetic page clicks on all privileged widget actions', () => {
   widget.destroy();
 });
 
+it.each(['profile_setup_required', 'ai_setup_required', 'autofill_failed', 'page_changed'])(
+  'presents %s as a simple status message', error => {
+    const widget = new QuickFillWidget({ fill() {}, undo() {}, details() {}, hide() {}, disableSite() {}, settings() {}, position() {} });
+    try {
+      widget.render({ stage: 'error', error } as never);
+      const root = widget.host.shadowRoot!;
+      const setup = error.endsWith('setup_required');
+      expect(root.querySelector('.status')?.hasAttribute('data-banner')).toBe(false);
+      expect(root.querySelector('.status')?.getAttribute('data-tone')).toBe(setup ? 'setup' : 'error');
+      expect(root.querySelector(`p[role="${setup ? 'status' : 'alert'}"]`)).not.toBeNull();
+      expect(root.querySelector('.message-icon')).toBeNull();
+    } finally { widget.destroy(); }
+  },
+);
+
+it('restores polite status announcements when a later fill completes', () => {
+  const widget = new QuickFillWidget({ fill() {}, undo() {}, details() {}, hide() {}, disableSite() {}, settings() {}, position() {} });
+  try {
+    widget.render({ stage: 'error', error: 'autofill_failed' } as never);
+    widget.render({ stage: 'completed', results: [{ noReview: 1, totalScanned: 1 }] } as never);
+    const root = widget.host.shadowRoot!;
+    expect(root.querySelector('.status')?.hasAttribute('data-banner')).toBe(false);
+    expect(root.querySelector('p[role="status"]')?.textContent).toBe('1 field filled');
+    expect((root.querySelector('.undo') as HTMLButtonElement).hidden).toBe(false);
+  } finally { widget.destroy(); }
+});
+
+it('announces direct widget errors without losing previous Undo', () => {
+  const widget = new QuickFillWidget({ fill() {}, undo() {}, details() {}, hide() {}, disableSite() {}, settings() {}, position() {} });
+  try {
+    widget.render({ stage: 'completed', results: [{ noReview: 1, totalScanned: 1 }] } as never);
+    widget.error('Could not open settings.');
+    const root = widget.host.shadowRoot!;
+    expect(root.querySelector('.status')?.hasAttribute('data-banner')).toBe(false);
+    expect(root.querySelector('p[role="alert"]')?.textContent).toBe('Could not open settings.');
+    expect((root.querySelector('.undo') as HTMLButtonElement).hidden).toBe(false);
+  } finally { widget.destroy(); }
+});
+
 it.each([
   [1, '1 needs attention'],
   [2, '2 need attention'],
@@ -173,4 +231,49 @@ it.each([
   expect(root.querySelector<HTMLButtonElement>('.details')!.hidden).toBe(hidden);
   expect(root.querySelector<HTMLButtonElement>('.undo')!.hidden).toBe(true);
   widget.destroy();
+});
+
+it.each(['merge', 'overwrite'] as const)('keeps confirmation quiet in %s mode', (fillMode) => {
+  const widget = new QuickFillWidget({
+    fill() {}, undo() {}, details() {}, hide() {}, disableSite() {}, settings() {}, position() {},
+  });
+  try {
+    widget.preferences({ enabled: true, disabledSites: [], fillMode }, false);
+    widget.render({ stage: 'confirming' } as never);
+    const root = widget.host.shadowRoot!;
+    expect(root.querySelector('.label')?.textContent).toBe('Fill Form');
+    expect(root.querySelector<HTMLElement>('.status')?.hidden).toBe(true);
+    expect(root.querySelector<HTMLButtonElement>('.fill')?.disabled).toBe(false);
+  } finally { widget.destroy(); }
+});
+
+it('distinguishes starting and scanning from filling in the primary button', () => {
+  const widget = new QuickFillWidget({
+    fill() {},
+    undo() {},
+    details() {},
+    hide() {},
+    disableSite() {},
+    settings() {},
+    position() {},
+  });
+  try {
+    const root = widget.host.shadowRoot!;
+    const button = root.querySelector<HTMLButtonElement>('.fill')!;
+    widget.render(null, true);
+    expect(button.textContent).toContain('Scanning…');
+    expect(button.disabled).toBe(true);
+    widget.render({ stage: 'scanning' } as never);
+    expect(button.textContent).toContain('Scanning…');
+    expect(button.querySelector('.spin')).not.toBeNull();
+    widget.render({ stage: 'filling' } as never);
+    expect(button.textContent).toContain('Filling…');
+    expect(button.disabled).toBe(true);
+    widget.render(null);
+    expect(button.textContent).toContain('Fill Form');
+    expect(button.disabled).toBe(false);
+    expect(button.querySelector('.spin')).toBeNull();
+  } finally {
+    widget.destroy();
+  }
 });

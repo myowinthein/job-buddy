@@ -17,6 +17,15 @@ function renderSection(profile: Partial<Profile>, onSave = vi.fn().mockResolvedV
   return { onSave };
 }
 
+it('loads saved expected salaries collapsed with a precise amount, currency and period', () => {
+  renderSection({ salary: { expected: [{ amount: 1250.75, currency: 'USD', period: 'annual' }] } });
+  expect(screen.getByText('USD 1,250.75')).toBeTruthy();
+  expect(screen.getByText('per year')).toBeTruthy();
+  expect(screen.queryByPlaceholderText('100000')).toBeNull();
+  fireEvent.click(document.querySelector<HTMLButtonElement>('[data-entry-toggle][aria-expanded="false"]')!);
+  expect((screen.getByPlaceholderText('100000') as HTMLInputElement).value).toBe('1250.75');
+});
+
 describe('SalarySection — current-salary country migration (initCurrentCountry)', () => {
   it('passes an already-ISO country code through unchanged on save', () => {
     const { onSave } = renderSection({
@@ -25,7 +34,7 @@ describe('SalarySection — current-salary country migration (initCurrentCountry
         expected: [],
       },
     });
-    fireEvent.click(screen.getByText('Save Salary'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({
       salary: expect.objectContaining({ current: expect.objectContaining({ country: 'TH' }) }),
     });
@@ -38,7 +47,7 @@ describe('SalarySection — current-salary country migration (initCurrentCountry
         expected: [],
       },
     });
-    fireEvent.click(screen.getByText('Save Salary'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({
       salary: expect.objectContaining({ current: expect.objectContaining({ country: 'TH' }) }),
     });
@@ -48,7 +57,7 @@ describe('SalarySection — current-salary country migration (initCurrentCountry
     const { onSave } = renderSection({
       salary: { current: { amount: 5000, currency: 'THB', period: 'monthly' }, expected: [] },
     });
-    fireEvent.click(screen.getByText('Save Salary'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({
       salary: expect.objectContaining({
         current: expect.objectContaining({ currency: 'THB', country: undefined }),
@@ -61,7 +70,7 @@ describe('SalarySection — current-salary country migration (initCurrentCountry
     const { onSave } = renderSection({
       salary: { current: { amount: 5000, currency: 'USD', period: 'monthly' }, expected: [] },
     });
-    fireEvent.click(screen.getByText('Save Salary'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({
       salary: expect.objectContaining({
         current: expect.objectContaining({ currency: 'USD', country: undefined }),
@@ -78,7 +87,7 @@ describe('SalarySection — expected-salary rows', () => {
         expected: [],
       },
     });
-    fireEvent.click(screen.getByText('Save Salary'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({
       salary: expect.objectContaining({ expected: [] }),
     });
@@ -91,7 +100,7 @@ describe('SalarySection — expected-salary rows', () => {
         expected: [{ amount: 6000, currency: 'THB', period: 'annual' }],
       },
     });
-    fireEvent.click(screen.getByText('Save Salary'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({
       salary: expect.objectContaining({
         expected: [
@@ -116,9 +125,9 @@ describe('SalarySection — expected-salary rows', () => {
     // Type an amount into the (initially empty) expected row without picking a country.
     const amountInputs = screen.getAllByPlaceholderText('100000');
     fireEvent.change(amountInputs[0], { target: { value: '7000' } });
-    fireEvent.click(screen.getByText('Save Salary'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('Currency is required', { selector: 'p' })).toBeTruthy();
+    expect(screen.getByText('Choose a currency', { selector: 'p' })).toBeTruthy();
   });
 
   it('rejects a negative expected-salary amount', () => {
@@ -128,11 +137,12 @@ describe('SalarySection — expected-salary rows', () => {
         expected: [{ amount: 6000, currency: 'THB', country: 'TH', period: 'annual' }],
       },
     });
+    fireEvent.click(document.querySelector<HTMLButtonElement>('[data-entry-toggle][aria-expanded="false"]')!);
     const amountInputs = screen.getAllByPlaceholderText('100000');
     fireEvent.change(amountInputs[0], { target: { value: '-500' } });
     expect(screen.getByText('Enter a valid amount', { selector: 'p' })).toBeTruthy();
 
-    fireEvent.click(screen.getByText('Save Salary'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).not.toHaveBeenCalled();
   });
 
@@ -148,9 +158,11 @@ describe('SalarySection — expected-salary rows', () => {
     });
 
     // Expected rows appear first; the current-salary period follows.
+    for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-entry-toggle][aria-expanded="false"]')))
+      fireEvent.click(button);
     const periodSelects = screen.getAllByDisplayValue('Monthly');
     fireEvent.change(periodSelects[1], { target: { value: 'annual' } });
-    fireEvent.click(screen.getByText('Save Salary'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).toHaveBeenCalledWith({
       salary: expect.objectContaining({
@@ -177,7 +189,7 @@ describe('SalarySection — currency selection', () => {
     fireEvent.change(screen.getByPlaceholderText('Search by code or name…'), { target: { value: 'SGD' } });
     fireEvent.click(screen.getByRole('option', { name: /SGD/ }));
 
-    fireEvent.click(screen.getByText('Save Salary'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).toHaveBeenCalledWith({
       salary: expect.objectContaining({
@@ -211,7 +223,7 @@ describe('SalarySection — invalid current-salary amount', () => {
     fireEvent.change(document.getElementById('field-currentAmount')!, {
       target: { value: '-100' },
     });
-    fireEvent.click(screen.getByText('Save Salary'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).not.toHaveBeenCalled();
   });
 
