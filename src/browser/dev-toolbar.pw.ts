@@ -137,6 +137,9 @@ test('the dev bar previews profiles and missing keys without changing saved exte
           geminiApiKey: 'original-synthetic-key',
           geminiModel: model,
           geminiSettingsMeta: { revision: 'original', preference: 'auto', verifiedAt: Date.now() },
+          // The Drive switch masks a saved connection; it cannot create one.
+          driveToken: 'original-synthetic-token',
+          driveBackupState: { accountEmail: 'saved@example.test' },
         });
       },
       { profile: DEV_PROFILE, model: DEFAULT_GEMINI_MODEL },
@@ -180,7 +183,8 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     });
     await page.getByRole('button', { name: 'Education', exact: true }).click();
     await bar.getByRole('button', { name: 'Empty', exact: true }).click();
-    await expect(page).toHaveURL(/devPreview=empty/);
+    await expect(page).toHaveURL(/devSession=/);
+    const emptySession = page.url();
     const app = page.frameLocator('iframe[title="Job Buddy options"]');
     await expect(app.getByRole('heading', { name: 'Education', exact: true })).toBeVisible();
     expect(
@@ -201,10 +205,12 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     }
     await expect(surface).toHaveAttribute('data-repeat-check', 'unchanged');
     await bar.getByRole('button', { name: 'Required only', exact: true }).click();
-    await expect(page).toHaveURL(/devPreview=required/);
+    await expect(page).not.toHaveURL(emptySession);
+    const requiredSession = page.url();
     await expect(progress).toHaveAttribute('aria-valuenow', '100');
     await bar.getByRole('button', { name: 'Complete', exact: true }).click();
-    await expect(page).toHaveURL(/devPreview=complete/);
+    await expect(page).not.toHaveURL(requiredSession);
+    const completeSession = page.url();
     await app.getByRole('button', { name: 'Personal', exact: true }).click();
     const name = app.getByLabel('First Name', { exact: false });
     await name.fill('Draft in preview');
@@ -218,16 +224,20 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     const dialog = await cancelled;
     await dialog.dismiss();
     await presetClick;
-    await expect(page).toHaveURL(/devPreview=complete/);
+    await expect(page).toHaveURL(completeSession);
     await expect(name).toHaveValue('Draft in preview');
     await app.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(app.getByText('Profile saved.', { exact: true })).toBeVisible();
     const driveControl = bar.getByRole('switch', { name: 'Google Drive' });
     await driveControl.click();
-    await expect(page).toHaveURL(/devDrive=1/);
+    await expect(page).toHaveURL(completeSession);
     await expect(name).toHaveValue('Draft in preview');
     await expect(toggle).toHaveAttribute('aria-checked', 'false');
     await app.getByRole('button', { name: 'Settings', exact: true }).click();
+    await expect(
+      app.getByRole('button', { name: 'Connect Google Drive', exact: true }),
+    ).toBeVisible();
+    await driveControl.click();
     await expect(app.getByRole('button', { name: 'Disconnect', exact: true })).toBeVisible();
     for (const width of [320, 640]) {
       await page.setViewportSize({ width, height: 600 });

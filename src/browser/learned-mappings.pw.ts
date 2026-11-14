@@ -219,8 +219,8 @@ test('resolves learned generic education labels by row', async ({ page, extensio
   });
   await extension.send('AUTOFILL_SCAN');
   await extension.send('AUTOFILL_FILL', 'overwrite');
-  await expect(page.locator('#school1')).toHaveValue('Old University');
-  await expect(page.locator('#school2')).toHaveValue('New University');
+  await expect(page.locator('#school1')).toHaveValue('New University');
+  await expect(page.locator('#school2')).toHaveValue('Old University');
 });
 test('does not recreate mappings from a completed form after reset', async ({
   page,

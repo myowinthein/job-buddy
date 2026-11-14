@@ -56,25 +56,25 @@ test('preserves concrete row associations across partial work, education and lan
 }) => {
   await page.locator('form').evaluate((form) => {
     form.innerHTML += `<fieldset><legend>First work experience</legend><label>Company<input id="company1"></label><label>Job title<input id="title1"></label></fieldset><fieldset><legend>Second work experience</legend><label>Company<input id="company2"></label></fieldset>
-  <fieldset><legend>First education</legend><label>Institution<input id="school1"></label><label>Degree<input id="degree1"></label><label>No end date<input id="old-study" type="checkbox"></label></fieldset><fieldset><legend>Second education</legend><label>Institution<input id="school2"></label><label>No end date<input id="new-study" type="checkbox"></label></fieldset>
+  <fieldset><legend>First education</legend><label>Institution<input id="school1"></label><label>Degree<input id="degree1"></label><label>No end date<input id="first-study" type="checkbox"></label></fieldset><fieldset><legend>Second education</legend><label>Institution<input id="school2"></label><label>No end date<input id="second-study" type="checkbox"></label></fieldset>
   <fieldset><label>Language<input id="language1"></label><label>Proficiency<input id="level1"></label></fieldset><fieldset><label>Language<input id="language2"></label></fieldset>`;
   });
   await extension.send('AUTOFILL_SCAN');
   await extension.send('AUTOFILL_FILL', 'overwrite');
   for (const [id, value] of Object.entries({
-    company1: 'Old Company',
-    title1: 'Junior',
-    company2: 'New Company',
-    school1: 'Old University',
-    degree1: 'BSc',
-    school2: 'New University',
+    company1: 'New Company',
+    title1: 'Senior',
+    company2: 'Old Company',
+    school1: 'New University',
+    degree1: 'MSc',
+    school2: 'Old University',
     language1: 'English',
     language2: 'Burmese',
     level1: 'Native',
   }))
     await expect(page.locator(`#${id}`)).toHaveValue(value);
-  await expect(page.locator('#old-study')).not.toBeChecked();
-  await expect(page.locator('#new-study')).toBeChecked();
+  await expect(page.locator('#first-study')).toBeChecked();
+  await expect(page.locator('#second-study')).not.toBeChecked();
 });
 
 test('keeps phone-code inference inside the matching contact section', async ({
