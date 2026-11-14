@@ -8,6 +8,8 @@ const buildRoot = resolve('.output/chrome-mv3-dev-test');
 const extensionPath = resolve(buildRoot, 'chrome-mv3-dev');
 
 test.beforeAll(async () => {
+  // Earlier specs call Vite's build(), which leaves NODE_ENV=production in this process.
+  process.env.NODE_ENV = 'development';
   // Production-manifest tests cannot cover WXT's dynamic serve-mode scripts.
   const server = await createServer({
     outDir: buildRoot,
@@ -42,9 +44,7 @@ test('dev quick fill starts without the hot-reload server or popup, including af
     await context.route(/https?:\/\/(?!127\.0\.0\.1\/application)/, (route) => route.abort());
     const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
     await expect
-      .poll(() => worker.evaluate(() => chrome.scripting.getRegisteredContentScripts()), {
-        timeout: 15_000,
-      })
+      .poll(() => worker.evaluate(() => chrome.scripting.getRegisteredContentScripts()))
       .toEqual([
         expect.objectContaining({
           id: 'wxt:content-scripts/content.js',
