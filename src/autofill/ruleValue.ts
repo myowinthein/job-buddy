@@ -1,3 +1,4 @@
+import { mostRecentIdx } from './entryRecency';
 import type { Profile, CurrentSalary, ExpectedSalaryEntry } from '../types/profile';
 import type { FieldSignals } from './signals';
 import { languageName } from '../data/languages';
@@ -17,6 +18,29 @@ export function resolveRuleValue(
 ): string {
   const element = signals.element;
   const text = questionText(signals);
+  if (headlineQuestion(signals)) {
+    if (['professional.summary', 'derived.currentTitle'].includes(path))
+      return resolveProfileValue(profile, headlinePath(profile));
+    if (/^workHistory\.\d+\.title$/.test(path)) return resolveProfileValue(profile, path);
+  }
+  if (path === 'address.street' && fullAddressQuestion(signals)) {
+    const address = profile.address;
+    const parts = [
+      address?.street,
+      address?.city,
+      address?.state,
+      address?.postalCode,
+      countryName(address?.country ?? ''),
+    ];
+    const seen = new Set<string>();
+    return parts
+      .filter((part): part is string => {
+        if (!part?.trim() || seen.has(part.trim().toLowerCase())) return false;
+        seen.add(part.trim().toLowerCase());
+        return true;
+      })
+      .join(', ');
+  }
   // Availability is relative to the day of the write, even if a pending scan
   // was held open across midnight.
   if (isAvailabilityPath(path)) {
@@ -169,6 +193,8 @@ export function resolveRuleValue(
 
 /** Keep the source path aligned with the question's representation and currency. */
 export function ruleValuePath(profile: Profile, path: string, signals: FieldSignals): string {
+  if (headlineQuestion(signals) && ['professional.summary', 'derived.currentTitle'].includes(path))
+    return headlinePath(profile);
   if (isAvailabilityPath(path)) return availabilityPath(path, signals);
   const expected = path.match(/^salary\.expected\.(\d+)\.(formatted|amount)$/);
   if (!expected) return path;
@@ -178,6 +204,26 @@ export function ruleValuePath(profile: Profile, path: string, signals: FieldSign
   const index =
     profile.salary?.expected?.findIndex((entry) => entry.currency === currencies[0]) ?? -1;
   return index >= 0 ? `salary.expected.${index}.${expected[2]}` : path;
+}
+
+function headlineQuestion(signals: FieldSignals): boolean {
+  return /\bheadline\b/i.test(visibleQuestion(signals) || `${signals.name} ${signals.id}`);
+}
+function headlinePath(profile: Profile): string {
+  return profile.workHistory?.length
+    ? `workHistory.${mostRecentIdx(profile.workHistory)}.title`
+    : 'derived.currentTitle';
+}
+function fullAddressQuestion(signals: FieldSignals): boolean {
+  if (signals.autocomplete?.split(/\s+/).at(-1) === 'street-address') return false;
+  return (
+    /\bfull\s+(?:(?:mailing|postal|home|residential)\s+)?address\b/i.test(
+      visibleQuestion(signals),
+    ) ||
+    (/^address(?:\s*\(optional\))?\s*[*:]?$/i.test((signals.label || signals.ariaLabel).trim()) &&
+      /\b(?:city|town)\b/i.test(signals.nearbyText) &&
+      /\bcountry\b/i.test(signals.nearbyText))
+  );
 }
 
 const AVAILABLE_DATE = 'professional.noticePeriod.availableDate';

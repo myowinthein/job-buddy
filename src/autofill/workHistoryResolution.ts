@@ -19,7 +19,7 @@ export function adjustWorkHistoryMatches(matches: FieldMatch[], profile: Profile
 // Deliberately exact-match only — same safety reasoning as
 // matchCurrentEducationCheckboxes in educationResolution.ts.
 const CURRENT_WORK_HISTORY_CHECKBOX_TERMS = new Set([
-  'currentlyworkinghere', 'currentlyworking', 'currentlyemployed', 'currentlyemployedhere',
+  'icurrentlyworkhere', 'currentlyworkinghere', 'currentlyworking', 'currentlyemployed', 'currentlyemployedhere',
   'stillworkinghere', 'stillworking', 'stillemployed',
   'presentlyemployed', 'presentlyworking', 'currentjob', 'currentemployment',
   'iamcurrentlyemployed', 'iamcurrentlyworkinghere', 'thisismycurrentjob',

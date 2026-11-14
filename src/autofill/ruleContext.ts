@@ -78,7 +78,23 @@ export function sectionFamily(element: HTMLElement): 'education' | 'workHistory'
     const legend = container.querySelector(
       ':scope > legend,:scope > h1,:scope > h2,:scope > h3,:scope > h4',
     );
-    const text = `${ariaName(container)} ${legend ? ownText(legend) : ''}`;
+    const lists = container.querySelectorAll(':scope > ul,:scope > ol,:scope > [role="list"]');
+    const list = lists.length === 1 && containsControl(lists[0], element) ? lists[0] : null;
+    const listHeading = list
+      ? [...container.children]
+          .filter(
+            (child) =>
+              child !== list &&
+              !child.querySelector('input,select,textarea,[role="combobox"],[role="textbox"]'),
+          )
+          .map((child) => ownText(child))
+          .find((text) =>
+            /^(?:education|academic history|employment|work experience|experience|work history)(?:\s*\(optional\))?$/i.test(
+              text,
+            ),
+          )
+      : '';
+    const text = `${ariaName(container)} ${legend ? ownText(legend) : ''} ${listHeading ?? ''}`;
     const education = /\b(education|school|university|college|academic)\b/i.test(text);
     const work =
       !/\b(application|apply|authorization|eligibility|permit|visa)\b/i.test(text) &&

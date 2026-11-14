@@ -1,3 +1,5 @@
+import { languageChoiceAliases } from './languageChoices';
+import { sameTelephone } from './phoneWidget';
 import { dropzoneSurface, dropzonePreviews, waitDropzoneFile } from './dropzone';
 import {
   composedText,
@@ -37,6 +39,7 @@ export interface FillFieldContext {
   /** Only supplied for a mapped address.city; never infer locations from arbitrary labels. */
   cityCountry?: string;
   callingCodeCountry?: string;
+  optionAliases?: readonly string[];
 }
 let dropdownBudget = DROPDOWN_RUN_BUDGET_MS;
 export function resetDropdownBudget(): void {
@@ -88,6 +91,25 @@ function blur(element: HTMLElement): void {
 }
 function setText(element: HTMLElement, value: string): void {
   ownWriteEvents(() => {
+    // Date masks can cache the previous value on keydown (for example Cleave).
+    // A neutral key initializes that bookkeeping without navigation defaults.
+    const maskedDate =
+      element instanceof HTMLInputElement &&
+      /^(?:tel|numeric)$/.test(element.inputMode) &&
+      /^(?:[dmy]{1,4}[\s/.-]*){2,3}$/i.test(element.placeholder.trim());
+    if (
+      maskedDate &&
+      !element.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Unidentified',
+          bubbles: true,
+          composed: true,
+          cancelable: true,
+        }),
+      )
+    )
+      return;
+
     if (element instanceof HTMLInputElement) {
       if (nativeInputSetter) nativeInputSetter.call(element, value);
       else element.value = value;
@@ -96,6 +118,14 @@ function setText(element: HTMLElement, value: string): void {
       else element.value = value;
     } else element.textContent = value;
     notify(element, value);
+    if (maskedDate)
+      element.dispatchEvent(
+        new KeyboardEvent('keyup', {
+          key: 'Unidentified',
+          bubbles: true,
+          composed: true,
+        }),
+      );
   });
 }
 function safeClick(element: HTMLElement, pointer = false): void {
@@ -192,12 +222,21 @@ export function findBestMatch<T>(
   target: string,
   primary: (item: T) => string,
   secondary: (item: T) => string,
+  aliases: readonly string[] = [],
 ): T | null {
   if (!target || !normalize(target)) return null;
   for (const norm of [false, true]) {
     const equal = (text: string) =>
       norm ? normalize(text) === normalize(target) : text === target;
     const matches = items.filter((item) => equal(primary(item)) || equal(secondary(item)));
+    if (matches.length) return matches.length === 1 ? matches[0] : null;
+  }
+  for (const alias of aliases) {
+    const matches = items.filter(
+      (item) =>
+        normalize(primary(item)) === normalize(alias) ||
+        normalize(secondary(item)) === normalize(alias),
+    );
     if (matches.length) return matches.length === 1 ? matches[0] : null;
   }
   const scores = items
@@ -225,13 +264,7 @@ function equivalent(element: HTMLElement, expected: string): boolean {
   const actual = readFieldValue(element);
   if (actual === expected) return true;
   // Accept punctuation-only telephone masks, never missing digits or changed answers.
-  return (
-    element instanceof HTMLInputElement &&
-    element.type === 'tel' &&
-    /^\+?[\d\s().-]+$/.test(actual) &&
-    /^\+?[\d\s().-]+$/.test(expected) &&
-    actual.replace(/\D/g, '') === expected.replace(/\D/g, '')
-  );
+  return sameTelephone(element, actual, expected);
 }
 function valid(element: HTMLElement): boolean {
   if (!isControlAvailable(element)) return false;
@@ -247,11 +280,14 @@ function boxes(root: Document | ShadowRoot): HTMLElement[] {
 }
 function scopedOptions(trigger: HTMLElement, before: Set<HTMLElement>): HTMLElement[] {
   const root = trigger.getRootNode() as Document | ShadowRoot;
-  const ids =
-    `${trigger.getAttribute('aria-controls') ?? ''} ${trigger.getAttribute('aria-owns') ?? ''}`
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
+  const ids = [
+    ...new Set(
+      `${trigger.getAttribute('aria-controls') ?? ''} ${trigger.getAttribute('aria-owns') ?? ''}`
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean),
+    ),
+  ];
   if (ids.length) {
     // A native trigger can live inside an input component while its explicitly
     // linked menu belongs to an enclosing component's shadow root.
@@ -280,6 +316,23 @@ function scopedOptions(trigger: HTMLElement, before: Set<HTMLElement>): HTMLElem
       (!!trigger.id && box.getAttribute('aria-labelledby')?.split(/\s+/).includes(trigger.id)),
   );
   return candidates.length === 1 ? queryOpenElements(candidates[0], '[role="option"]') : [];
+}
+/** Real pointer clicks land on the option's label and bubble through its
+ * presentation wrappers. A click dispatched on the outer role node cannot
+ * reach handlers attached to an inner wrapper. Avoid nested action controls. */
+function optionClickTarget(option: HTMLElement): HTMLElement {
+  const walker = option.ownerDocument.createTreeWalker(option, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const parent = node.parentElement;
+    if (
+      node.textContent?.trim() &&
+      parent instanceof HTMLElement &&
+      !parent.closest('svg,button,a,input,select,textarea,[role="button"],[aria-hidden="true"]') &&
+      isControlAvailable(parent)
+    )
+      return parent;
+  }
+  return option;
 }
 function ariaOption(
   options: HTMLElement[],
@@ -336,6 +389,7 @@ function ariaOption(
     value,
     composedText,
     (option) => option.getAttribute('aria-label')?.trim() ?? '',
+    context.optionAliases,
   );
 }
 async function waitOption(
@@ -438,6 +492,7 @@ async function rawDropdown(
   placeholder = false,
   context: FillFieldContext = {},
 ): Promise<boolean> {
+  context = { ...context, optionAliases: languageChoiceAliases(extractSignals(element), value) };
   const root = element.getRootNode() as Document | ShadowRoot;
   const before = new Set([...boxes(root), ...boxes(document)]);
   const wasOpen = element.getAttribute('aria-expanded') === 'true';
@@ -463,10 +518,26 @@ async function rawDropdown(
       element.dataset.selected,
       element.dataset.value,
     ];
-    safeClick(option, true);
+    const target = optionClickTarget(option);
+    const pointer = target === option;
+    safeClick(target, pointer);
     await settleFramework();
-    const retained = readFieldValue(element);
-    const selected = option.isConnected && option.getAttribute('aria-selected') === 'true';
+    let retained = readFieldValue(element);
+    let selected = option.isConnected && option.getAttribute('aria-selected') === 'true';
+    // Inner presentation nodes can be recreated on mousedown. Prefer their
+    // click handler, then retain pointer-based selection for widgets that need it.
+    if (
+      !pointer &&
+      retained === priorValue &&
+      !selected &&
+      active() &&
+      isControlAvailable(option)
+    ) {
+      safeClick(optionClickTarget(option), true);
+      await settleFramework();
+      retained = readFieldValue(element);
+      selected = option.isConnected && option.getAttribute('aria-selected') === 'true';
+    }
     const knownValue =
       !!retained &&
       [value, label, option.getAttribute('data-value')].some(
@@ -653,6 +724,13 @@ export async function fillField(
     !isControlAvailable(element)
   )
     return false;
+  if (
+    typeof value === 'string' &&
+    (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) &&
+    element.maxLength >= 0 &&
+    value.length > element.maxLength
+  )
+    return false;
   setWriteConfidence(element, 1);
   return performWrite(
     element,
@@ -671,6 +749,7 @@ export async function fillField(
                 value,
                 (option) => option.value,
                 (option) => option.text.trim(),
+                languageChoiceAliases(extractSignals(element), value),
               ),
             ];
         if (targets.some((option) => !option) || (!element.multiple && targets.length !== 1))

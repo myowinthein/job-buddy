@@ -1,3 +1,5 @@
+import { proficiencyQuestion, questionLanguageCodes } from './languageChoices';
+import { findLanguage } from '../data/languages';
 import type { Profile } from '../types/profile';
 import { questionLabel } from './scanner';
 import type { AIFieldPayload, AIOptionPayload } from '../resume-ai/types';
@@ -9,6 +11,21 @@ import { compatibleLinkPath } from './linkPlatforms';
 
 /** A response can only name data exposed for this particular question. */
 export function allowedAIPath(profile: Profile, field: AIFieldPayload, path: string): boolean {
+  const languagePath = /^languages\.(\d+)\.proficiency$/.exec(path);
+  if (languagePath) {
+    const codes = questionLanguageCodes(
+      proficiencyQuestion({
+        label: field.label,
+        ariaLabel: field.visibleLabel ?? '',
+        placeholder: field.placeholder ?? '',
+      }),
+    );
+    if (
+      codes.length === 1 &&
+      findLanguage(profile.languages?.[Number(languagePath[1])]?.language ?? '')?.code !== codes[0]
+    )
+      return false;
+  }
   if (!compatibleLinkPath(profile, field, path)) return false;
   if (!/^[a-zA-Z]+(?:\.(?:[a-zA-Z]+|\d+))*$/.test(path)) return false;
   const safe = autofillProfilePayload(profile, [field]);

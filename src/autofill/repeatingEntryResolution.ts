@@ -9,6 +9,7 @@ import type { FieldMatch } from './mapper';
 import type { CheckboxOption } from './scanner';
 import { resolveProfileValue } from './resolver';
 import { normalize } from './normalizer';
+import { extractSignals, bestLabel } from './signals';
 import { composedParent } from './dom';
 import {
   ADJUSTABLE_LAYERS,
@@ -18,7 +19,7 @@ import {
   sectionFamily,
 } from './ruleContext';
 import { mostRecentIdx } from './entryRecency';
-import { CONF_FILL } from './constants';
+import { CONF_FILL, CONF_CONTEXT } from './constants';
 
 // Shared by education/work-history sibling-detection (see
 // educationResolution.ts / workHistoryResolution.ts) — same reasoning as
@@ -51,6 +52,34 @@ export function adjustRepeatingEntryMatches(
   family: ProfileCollectionPath,
   profile: Profile,
 ): void {
+  // Bare dates/title/summary only acquire meaning inside an identified row
+  // section. Never use these labels as global dictionary aliases.
+  if (family === 'education' || family === 'workHistory')
+    for (const match of matches) {
+      if (
+        !match.element ||
+        (!ADJUSTABLE_LAYERS.has(match.matchLayer) && match.matchLayer !== 'none') ||
+        sectionFamily(match.element) !== family
+      )
+        continue;
+      const label = normalize(
+        bestLabel(extractSignals(match.element)).replace(/\(optional\)|\(required\)/gi, ''),
+      );
+      const suffix =
+        label === 'startdate'
+          ? 'startDate.formatted'
+          : label === 'enddate'
+            ? 'endDate.formatted'
+            : family === 'workHistory' && label === 'title'
+              ? 'title'
+              : family === 'workHistory' && label === 'summary'
+                ? 'description'
+                : undefined;
+      if (!suffix) continue;
+      match.fieldPath = `${family}.${suffix}`;
+      match.confidence = CONF_CONTEXT;
+      match.matchLayer = 'context';
+    }
   const markers = repeatingEntryMarkers(family);
   const prefix = `${family}.`;
   const candidates = matches.filter(

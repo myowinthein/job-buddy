@@ -28,7 +28,7 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   // labels ("Company", "Job Title") go through workHistory.company/title
   // instead (see workHistoryResolution.ts) so they still resolve to the most
   // recent past job when nothing is currently active.
-  'derived.currentTitle':          ['currenttitle', 'currentposition', 'currentrole'],
+  'derived.currentTitle':          ['currenttitle', 'currentposition', 'currentrole', 'headline', 'professionalheadline', 'profileheadline'],
   'derived.currentCompany':        ['currentcompany', 'currentemployer'],
   'derived.totalExperience.years': ['yearsofexperience', 'experience', 'totalexperience', 'yearofexperience'],
   'derived.age':                   ['age', 'currentage', 'yourage'],

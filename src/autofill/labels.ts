@@ -26,7 +26,7 @@ export function ownText(element: Element, context?: LabelContext): string {
   const clone = element.cloneNode(true) as Element;
   clone
     .querySelectorAll(
-      'input,select,textarea,button,[role="combobox"],[role="textbox"],[role="radio"],[role="checkbox"],[contenteditable],[data-jb-field-description],script,style',
+      'input,select,textarea,button,[role="combobox"],[role="textbox"],[role="radio"],[role="checkbox"],[contenteditable],[data-jb-field-description],script,style,svg',
     )
     .forEach((node) => node.remove());
   const text = (clone.textContent ?? '').replace(/\s+/g, ' ').trim();
@@ -42,7 +42,11 @@ export function ariaReference(element: Element, attribute: string): string {
       const reference = root.getElementById?.(id);
       return reference?.hasAttribute('data-jb-field-description')
         ? ''
-        : (reference?.textContent?.trim() ?? '');
+        : reference
+          ? attribute === 'aria-labelledby'
+            ? ownText(reference)
+            : (reference.textContent?.trim() ?? '')
+          : '';
     })
     .filter(Boolean)
     .join(' ');

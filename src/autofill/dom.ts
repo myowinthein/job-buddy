@@ -100,7 +100,13 @@ export function fileInputProxy(element: HTMLInputElement): HTMLElement | undefin
 // label, and detached nodes must also be rejected after an asynchronous wait.
 export function isControlAvailable(element: HTMLElement): boolean {
   if (!element.isConnected || element.matches(':disabled')) return false;
-  if ('readOnly' in element && element.readOnly) return false;
+  if (
+    'readOnly' in element &&
+    element.readOnly &&
+    element.getAttribute('role') !== 'combobox' &&
+    element.getAttribute('aria-haspopup') !== 'listbox'
+  )
+    return false;
   const fileProxy =
     element instanceof HTMLInputElement && element.type === 'file'
       ? fileInputProxy(element)
