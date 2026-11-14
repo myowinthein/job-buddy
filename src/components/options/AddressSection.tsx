@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import { profileTextLimit } from '@/src/profile/fieldPolicies';
 import { ProfileFields } from './shared/ProfileFields';
 import { SectionHeader } from './shared/SectionHeader';
@@ -39,7 +40,7 @@ export function AddressSection({ profile, onSave }: Props) {
   const [saving, setSaving] = useState(false);
 
   const fieldError = (key: string, value: string): string => {
-    if (key === 'city' && !value.trim()) return 'City is required';
+    if (key === 'city' && !value.trim()) return 'Enter a city';
     const max = (
       {
         city: profileTextLimit('address.city'),
@@ -51,7 +52,7 @@ export function AddressSection({ profile, onSave }: Props) {
     if (max && value.length > max) return `Use ${max} characters or fewer`;
     if (key === 'countryCode')
       return !value
-        ? 'Country is required'
+        ? 'Choose a country'
         : !findCountryByNameOrCode(value)
           ? 'Select a valid country'
           : '';
@@ -90,7 +91,7 @@ export function AddressSection({ profile, onSave }: Props) {
         },
       },
       showToast,
-      'Address saved',
+      feedback.profileSaved,
     );
     setSaving(false);
   };
@@ -120,7 +121,7 @@ export function AddressSection({ profile, onSave }: Props) {
                 value={form.postalCode}
                 onChange={(e) => set('postalCode', e.target.value)}
                 placeholder="94105"
-                maxLength={field.maxLength}
+
               />
             </FormField>
           ),
@@ -132,7 +133,7 @@ export function AddressSection({ profile, onSave }: Props) {
                 value={form.street}
                 onChange={(e) => set('street', e.target.value)}
                 placeholder="123 Main Street, Apt 4B"
-                maxLength={field.maxLength}
+
               />
             </FormField>
           ),
@@ -144,7 +145,7 @@ export function AddressSection({ profile, onSave }: Props) {
                 onChange={(e) => set('city', e.target.value)}
                 id={field.inputId}
                 placeholder="San Francisco"
-                maxLength={field.maxLength}
+
               />
             </FormField>
           ),
@@ -156,16 +157,14 @@ export function AddressSection({ profile, onSave }: Props) {
                 value={form.state}
                 onChange={(e) => set('state', e.target.value)}
                 placeholder="CA"
-                maxLength={field.maxLength}
+
               />
             </FormField>
           ),
         }}
       />
 
-      <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
-        <SaveButton onClick={handleSave} saving={saving} label="Save Address" />
-      </div>
+      <SaveButton onClick={handleSave} saving={saving} label="Save" />
     </div>
   );
 }

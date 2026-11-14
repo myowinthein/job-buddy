@@ -114,7 +114,7 @@ function hasProfileLink(profile: Partial<Profile>): boolean {
   const links = profile.links;
   return (
     (!!links &&
-      (['linkedin', 'portfolio', 'github', 'twitter', 'dribbble', 'behance'] as const).some(
+      (['linkedin', 'github', 'twitter', 'dribbble', 'behance'] as const).some(
         (key) =>
           key === 'linkedin'
             ? isLinkedInUrl(links[key] ?? '')
@@ -310,8 +310,11 @@ export function calculateCompletion(profile: Partial<Profile>): CompletionResult
   };
 }
 
-export function getSectionCompletion(profile: Partial<Profile>): Record<string, boolean> {
-  const { missingGroups } = calculateCompletion(profile);
+export function getSectionCompletion(
+  profile: Partial<Profile>,
+  completion: CompletionResult = calculateCompletion(profile),
+): Record<string, boolean> {
+  const { missingGroups } = completion;
   const missing = new Set(missingGroups.map((g) => g.sectionId));
   return {
     personal: !missing.has('personal'),

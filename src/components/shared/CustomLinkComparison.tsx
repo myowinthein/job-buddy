@@ -3,14 +3,29 @@ import type { EntryComparison } from '@/src/resume-ai/entryComparison';
 import type { FieldChange } from '@/src/resume-ai/types';
 import { entryIsSelectable, entryIsSelected } from '@/src/resume-ai/entrySelection';
 
-function LinkValue({ entry, incoming }: { entry: EntryComparison; incoming: boolean }) {
+function LinkValue({
+  entry,
+  incoming,
+  showStatus = false,
+}: {
+  entry: EntryComparison;
+  incoming: boolean;
+  showStatus?: boolean;
+}) {
   const source = incoming ? 'suggested' : 'current';
   const label = entry.fields.find((field) => field.id === 'label')?.[source] ?? entry.label;
   const url = entry.fields.find((field) => field.id === 'url')?.[source];
   return (
     <span className="block min-w-0">
-      <span className="block break-words text-sm font-medium text-gray-800 dark:text-gray-200">
-        {label}
+      <span className="flex flex-wrap items-baseline gap-x-2 break-words text-sm text-gray-800 dark:text-gray-200">
+        <span className="min-w-0 break-words font-medium">{label}</span>
+        {showStatus && (entry.status === 'new' || entry.status === 'changed') && (
+          <span
+            className={`text-xs ${entry.status === 'new' ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}
+          >
+            {entry.status === 'new' ? 'New' : 'Changed'}
+          </span>
+        )}
       </span>
       <span className="mt-0.5 block break-all text-xs text-gray-500 dark:text-gray-400">{url}</span>
     </span>
@@ -35,6 +50,7 @@ export function CustomLinkComparison({
       <p className="mb-3 text-sm font-medium text-gray-800 dark:text-gray-200">{change.label}</p>
       <div className="space-y-4">
         {change.entries!.map((entry, index) => {
+          if (!replacement && entry.status === 'unchanged') return null;
           const selected = entryIsSelected(change, entry);
           const selectable = entryIsSelectable(entry, replacement);
           const changed = entry.status === 'changed';
@@ -59,7 +75,7 @@ export function CustomLinkComparison({
                         <span className="mb-1 block text-xs text-gray-500 dark:text-gray-400">
                           {accepted ? incomingLabel : 'Keep Current'}
                         </span>
-                        <LinkValue entry={entry} incoming={accepted} />
+                        <LinkValue entry={entry} incoming={accepted} showStatus={accepted} />
                       </span>
                     </label>
                   ))}
@@ -80,7 +96,7 @@ export function CustomLinkComparison({
                         {incomingLabel}
                       </span>
                     )}
-                    <LinkValue entry={entry} incoming={!removed} />
+                    <LinkValue entry={entry} incoming={!removed} showStatus />
                   </span>
                 </label>
               ) : (

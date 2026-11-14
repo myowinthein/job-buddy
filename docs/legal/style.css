@@ -1,5 +1,6 @@
 :root {
-  --brand: #4b79f7;
+  color-scheme: light;
+  --brand: #2659cf;
   --navy: #0d1b3e;
   --text: #1e293b;
   --muted: #64748b;
@@ -9,6 +10,19 @@
   --header-h: 58px;
   --reading-width: 730px;
   --content-w: calc(var(--reading-width) + 48px);
+}
+
+@media screen {
+  :root.dark {
+    color-scheme: dark;
+    --brand: #9ab6ff;
+    --navy: #ecf0f7;
+    --text: #ecf0f7;
+    --muted: #a5b2c6;
+    --border: #334057;
+    --bg: #111722;
+    --surface: #192232;
+  }
 }
 
 *,
@@ -34,11 +48,17 @@ body {
 
 a {
   color: var(--brand);
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-a:hover {
-  text-decoration: underline;
+a:is(:hover, :focus-visible) {
+  text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 5px;
 }
 
 .site-header {
@@ -112,6 +132,16 @@ a:hover {
 
 .section li {
   margin-bottom: 5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  body {
+    transition: none;
+  }
 }
 
 @media (max-width: 680px) {

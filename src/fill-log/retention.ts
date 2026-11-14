@@ -1,3 +1,4 @@
+import { captureDevelopmentScope } from '@/src/devtools/session';
 import type { FillLogField, FillLogSnapshot, FrameFillLog } from '@/src/autofill/fillLog';
 import {
   AI_OUTCOME_LABELS,
@@ -168,6 +169,7 @@ export async function selectRetainedFillLog(
   snapshot: FillLogSnapshot,
   requestedAt: number,
 ): Promise<void> {
+  const assertCurrent = captureDevelopmentScope();
   await locked(async () => {
     const previous = await readRetainedFillLog();
     if ((previous?.selectedAt ?? 0) > requestedAt) return;
@@ -181,6 +183,7 @@ export async function selectRetainedFillLog(
       !frames.length &&
       snapshot.frames.some((frame) => frame.log.status === 'scanning') &&
       previous?.tabId === snapshot.tabId;
+    assertCurrent();
     await session.set({
       [RETAINED_FILL_DETAILS]: {
         tabId: snapshot.tabId,
@@ -214,6 +217,7 @@ export async function retainFrameFillLog(
   value: unknown,
   profileId: unknown,
 ): Promise<void> {
+  const assertCurrent = captureDevelopmentScope();
   const tabId = sender.tab?.id;
   if (
     sender.id !== chrome.runtime.id ||
@@ -274,6 +278,7 @@ export async function retainFrameFillLog(
       ? previous!.frames.filter((frame) => frame.frameId !== sender.frameId)
       : [];
     frames.push({ frameId: sender.frameId!, log });
+    assertCurrent();
     await session.set({
       [RETAINED_FILL_DETAILS]: {
         tabId,

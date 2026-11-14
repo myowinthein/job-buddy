@@ -12,6 +12,8 @@ describe('Minimal Gemini profile payloads', () => {
     expect(payload.documents?.cv.url).toBe(profile.documents.cv.url);
     expect(payload.documents?.cv.file).toBeUndefined();
     expect(payload.documents?.coverLetter?.file).toBeUndefined();
+    expect(payload.documents?.portfolio?.url).toBe(profile.documents.portfolio?.url);
+    expect(payload.documents?.portfolio?.file).toBeUndefined();
     expect(payload.id).toBeUndefined();
     expect(payload.personal?.gender).toBeUndefined();
     expect(payload.personal?.dateOfBirth).toBeUndefined();

@@ -11,14 +11,14 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   'personal.phone.full':           ['phone'],
   'personal.phone.number':         ['phonenumber', 'mobile', 'cellphone', 'telephone', 'mobilenumber', 'localnumber'],
   'personal.phone.callingCode':    ['countrycode', 'callingcode', 'dialingcode', 'dialcode', 'phonecode'],
-  'personal.gender':               ['gender', 'sex'],
+  'personal.gender':               ['gender', 'sex', 'genderidentity', 'whatgenderidentitydoyoumostcloselyidentifywithselectone'],
   'personal.ethnicity':            ['ethnicity', 'race', 'raceethnicity'],
   'personal.veteranStatus':        ['veteranstatus', 'veteran'],
   'personal.disabilityStatus':     ['disabilitystatus', 'disability'],
-  'address.city':                  ['city', 'town', 'cityofresidence', 'currentcity'],
+  'address.city':                  ['city', 'town', 'cityofresidence', 'currentcity', 'locationcity'],
   'address.country':               ['country', 'countryofresidence'],
   'address.street':                ['street', 'streetaddress', 'address', 'addressline1'],
-  'address.state':                 ['state', 'province', 'region', 'stateorprovince'],
+  'address.state':                 ['state', 'province', 'region', 'stateorprovince', 'provinceorterritory'],
   'address.postalCode':            ['postalcode', 'zipcode', 'zip', 'postcode'],
   'derived.fullName':              ['fullname', 'name', 'yourname', 'applicantname'],
   // Scoped to explicitly "current"-qualified labels only — these correctly
@@ -33,7 +33,7 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   'derived.totalExperience.years': ['yearsofexperience', 'experience', 'totalexperience', 'yearofexperience'],
   'derived.age':                   ['age', 'currentage', 'yourage'],
   'links.linkedin':                ['linkedin', 'linkedinurl', 'linkedinprofile', 'linkedinlink'],
-  'links.portfolio':               ['portfolio', 'portfoliourl', 'personalwebsite', 'website', 'portfoliowebsite', 'portfoliolink', 'personalwebsiteurl', 'portfoliowebsiteurl', 'websiteorportfolio', 'websiteblogportfolio', 'websiteblogorportfolio', 'onlineportfolio', 'blogorwebsite', 'websiteorblog'],
+  'documents.portfolio.url':               ['portfolio', 'portfoliourl', 'personalwebsite', 'website', 'portfoliowebsite', 'portfoliolink', 'personalwebsiteurl', 'portfoliowebsiteurl', 'websiteorportfolio', 'websiteblogportfolio', 'websiteblogorportfolio', 'onlineportfolio', 'blogorwebsite', 'websiteorblog', 'uploadportfolio', 'attachportfolio', 'portfolioupload', 'uploadyourportfolio', 'attachyourportfolio'],
   'professional.summary':          ['summary', 'aboutme', 'bio', 'aboutyourself', 'profilesummary', 'professionalsummary'],
   'languages.formatted':           ['languages', 'languagesspoken', 'languagesknown', 'spokenlanguages', 'languageskills'],
   // Unindexed markers for a multi-entry language+proficiency dropdown pair —
@@ -53,7 +53,8 @@ export const FIELD_DICTIONARY: Record<string, string[]> = {
   // Also covers a URL/text field sharing the same label wording — mapper.ts's
   // resolveDictionaryHit() redirects to documents.cv.url for a non-file
   // element, so this entry doesn't need duplicate aliases of its own.
-  'documents.cv.file':             ['resume', 'cv', 'resumefile', 'cvfile', 'curriculumvitae', 'resumeupload', 'uploadresume', 'attachresume', 'uploadcv', 'myresume', 'uploadapplicationfiles', 'applicationfiles', 'applicationdocuments', 'uploadapplicationdocuments', 'bewerbungsunterlagen', 'bewerbungsdateien', 'uploadbewerbungsdateien', 'bewerbungsdateienhochladen', 'bewerbungsunterlagenhochladen'],
+  'documents.cv.file':             ['resume', 'cv', 'resumecv', 'cvresume', 'resumefile', 'cvfile', 'curriculumvitae', 'resumeupload', 'uploadresume', 'attachresume', 'uploadcv', 'myresume', 'uploadapplicationfiles', 'applicationfiles', 'applicationdocuments', 'uploadapplicationdocuments', 'bewerbungsunterlagen', 'bewerbungsdateien', 'uploadbewerbungsdateien', 'bewerbungsdateienhochladen', 'bewerbungsunterlagenhochladen'],
+  'documents.coverLetter.file':    ['coverletter', 'coverletterupload', 'uploadcoverletter', 'attachcoverletter', 'uploadyourcoverletter'],
   // Unindexed markers, same pattern as languages.language/proficiency above —
   // adjustEducationMatches() in educationResolution.ts rewrites these to a
   // concrete education.N.* path (single field on the page → the applicant's

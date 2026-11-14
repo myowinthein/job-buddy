@@ -23,7 +23,7 @@ describe('saveSection', () => {
     const save = vi.fn().mockRejectedValue(new Error('quota exceeded'));
     const showToast = vi.fn();
     await saveSection(save, patch, showToast, 'Saved!');
-    expect(showToast).toHaveBeenCalledWith('error', 'Failed to save. Please try again.');
+    expect(showToast).toHaveBeenCalledWith('error', 'Could not save your changes. Try again.');
   });
 
   it('resolves without a value on success', async () => {

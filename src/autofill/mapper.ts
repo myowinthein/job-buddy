@@ -10,7 +10,7 @@ import { resolveProfileValue } from './resolver';
 import { precedingChoicePrompt } from './labels';
 import type { MatchLayer } from './fillLog';
 import type { LearnedCheck } from './fillLog';
-import { validMapping } from '../utils/learnedMappingData';
+import { validMapping, mappingPath } from '../utils/learnedMappingData';
 import { sectionFamily } from './ruleContext';
 import {
   genericLearnedSignal,
@@ -40,6 +40,7 @@ export interface FieldMatch {
   element?: HTMLElement;
   ruleBlocked?: boolean;
   learnedScope?: 'field' | 'entry';
+  authorizationContext?: { element: HTMLElement; identity: string; country: string };
 }
 
 // ── Layer 1 — Autocomplete attribute map ────────────────────────────────────
@@ -135,25 +136,15 @@ function resolve(profile: Profile, fieldPath: string): string | null {
   return v || null;
 }
 
-// Layers 2-4 all resolve dictionary hits through the same static reverse
-// index (see EXACT_TERM_TO_PATH), so a text/url field sharing a resume/cv
-// label with the file-upload dictionary entry (documents.cv.file) would
-// otherwise resolve to the file's name rather than a URL — there's no
-// 'documents.cv.url' dictionary entry, since giving it the same alias terms
-// would just re-create the same collision. The disambiguating signal (is
-// this element actually a file input) only mapField() has — FieldMatch
-// itself carries no element info — so this can't be a page-wide
-// sibling-detection pass like phoneResolution.ts; it has to happen here.
+// Document labels resolve to a URL or uploaded file according to the control type.
 function resolveDictionaryHit(
   profile: Profile,
   fieldPath: string,
   signals: FieldSignals,
 ): { fieldPath: string; value: string | null } {
-  if (fieldPath === 'documents.cv.file' && signals.type !== 'file') {
-    // Redirect unconditionally, even if no url is stored — resolve() then
-    // correctly returns null (gray/noData tier) rather than falling back to
-    // filling the file's name into a text field, which is never right.
-    return { fieldPath: 'documents.cv.url', value: resolve(profile, 'documents.cv.url') };
+  if (/^documents\.(cv|coverLetter|portfolio)\.(file|url)$/.test(fieldPath)) {
+    fieldPath = fieldPath.replace(/\.(file|url)$/, signals.type === 'file' ? '.file' : '.url');
+    return { fieldPath, value: resolve(profile, fieldPath) };
   }
   const value = resolve(profile, fieldPath);
   if (!value && /^links\.(github|behance|dribbble|twitter)$/.test(fieldPath)) {
@@ -183,7 +174,7 @@ function matchLearned(
     if (!validMapping(learned) || genericLearnedSignal(n)) continue;
     // Legacy strings are trusted paths without counts; objects carry counts and metadata.
     const entry = typeof learned === 'string' ? undefined : learned;
-    const fieldPath = typeof learned === 'string' ? learned : learned.path;
+    const fieldPath = mappingPath(learned);
     if (!compatibleLinkPath(profile, signals, fieldPath)) {
       rejected({ status: 'incompatible' });
       continue;
@@ -315,12 +306,28 @@ export function mapField(
   }
 
   // ── Layer 2: Dictionary exact match ───────────────────────────────────────
+  // "Attach" names an action, not the requested document. An exact prompt
+  // on its single-control file group is stronger than a fuzzy action label
+  // or a stale technical ID. It remains context evidence, never a learned key.
+  const genericFileLabel = signals.type === 'file' &&
+    [signals.label, signals.ariaLabel].filter(Boolean).every(text =>
+      /^(?:(?:attach|upload|choose|browse|select|import)(?:\s+(?:your|a|the))?(?:\s+(?:files?|documents?|attachments?))?|(?:importez|joindre|télécharger)(?:\s+(?:vos|votre|un|des))?\s+(?:documents?|fichiers?)|file[-_ ]?input)\s*\*?$/i.test(text.trim()));
+  const fileContext = genericFileLabel ? dictionaryExact(normalize(signals.nearbyText)) : null;
+  if (fileContext?.startsWith('documents.')) {
+    const resolved = resolveDictionaryHit(profile, fileContext, signals);
+    return {...resolved, confidence: CONF_CONTEXT, matchLayer: 'context'};
+  }
   for (const n of normed) {
-    const resumeQuestion = signals.type === 'file' &&
-      [signals.label, signals.ariaLabel].some((text) => normalize(text) === n &&
-        /(?:^|[^\p{L}\p{N}])(?:r[eé]sum[eé]|cv|curriculum\s+vitae)(?:$|[^\p{L}\p{N}])/iu.test(text) &&
-        !/\b(no|not|except|excluding|without)\b/i.test(text));
-    const hit = dictionaryExact(n) ?? (resumeQuestion ? 'documents.cv.file' : null);
+    const fileQuestion = signals.type === 'file'
+      ? [signals.label, signals.ariaLabel].find((text) => normalize(text) === n &&
+          !/\b(no|not|except|excluding|without)\b/i.test(text))
+      : undefined;
+    const documentKinds = fileQuestion ? ([
+      ['cv', /(?:^|[^\p{L}\p{N}])(?:r[eé]sum[eé]|cv|curriculum\s+vitae)(?:$|[^\p{L}\p{N}])/iu],
+      ['coverLetter', /\bcover\s+letter\b/i],
+      ['portfolio', /\bportfolio\b/i],
+    ] as const).filter(([, pattern]) => pattern.test(fileQuestion)) : [];
+    const hit = dictionaryExact(n) ?? (documentKinds.length === 1 ? `documents.${documentKinds[0][0]}.file` : null);
     if (hit && compatibleLinkPath(profile, signals, hit)) {
       const resolved = resolveDictionaryHit(profile, hit, signals);
       const human = signals.label || signals.ariaLabel;
@@ -334,8 +341,11 @@ export function mapField(
       const related =
         (!asksProse || /\.(description|summary)$/.test(hit)) &&
         (FIELD_DICTIONARY[hit] ?? []).some((alias) => humanNorm.includes(alias));
+      // A generic upload action does not contradict an exact document-specific
+      // identifier such as upload_cv. Explicit document labels still win above.
+      const documentIdentifier = genericFileLabel && /^documents\.(cv|coverLetter|portfolio)\.(file|url)$/.test(hit);
       const countryIdentifier = hit === 'address.country' && countrySelectSupportsIdentifier(signals);
-      const confidence = human && !primary && !related && !countryIdentifier ? CONF_UNVERIFIED_SIGNAL : CONF_DICT_EXACT;
+      const confidence = human && !primary && !related && !documentIdentifier && !countryIdentifier ? CONF_UNVERIFIED_SIGNAL : CONF_DICT_EXACT;
       return {
         fieldPath: resolved.fieldPath,
         confidence,
@@ -436,7 +446,7 @@ export function mapField(
     .join(' ')
     .split(/(?<=[?!.])\s+/)[0];
   if (/\b(?:are|do|will|would|can)\s+you\b/i.test(question) &&
-      /\b(?:authori[sz]ed|eligible)\s+to\s+work\b|\bright\s+to\s+work\b/i.test(question)) {
+      /\b(?:authori[sz]ed|eligible)\s+to\s+work\b|\bright\s+to\s+work\b|\b(?:need|require)\b[^?.!]*\bsponsor(?:ship)?\b/i.test(question)) {
     return {
       fieldPath: 'workAuthorization',
       confidence: CONF_CONTEXT,

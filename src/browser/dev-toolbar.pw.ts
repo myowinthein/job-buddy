@@ -68,6 +68,53 @@ test.afterAll(async () => {
   });
 });
 
+test('Complete profile mode displays sample entries, links and uploaded PDFs', async ({
+  playwright,
+}) => {
+  const extensionPath = resolve(buildRoot, 'chrome-mv3-dev');
+  const context = await playwright.chromium.launchPersistentContext('', {
+    channel: 'chromium',
+    headless: true,
+    args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
+  });
+  try {
+    await context.route(/https?:\/\/(?!127\.0\.0\.1:4177)/, (route) => route.abort());
+    const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+    await worker.evaluate(() =>
+      chrome.storage.local.set({ devProfileDisabled: true, geminiDevDisabled: true }),
+    );
+    const page = await context.newPage();
+    await page.goto(new URL('options.html', worker.url()).href);
+    await page.getByRole('button', { name: 'Complete', exact: true }).click();
+    const app = page.frameLocator('iframe[title="Job Buddy options"]');
+    await app.getByRole('button', { name: 'Work History', exact: true }).click();
+    await expect(
+      app.getByRole('button', { name: /Acme Corp.*Senior Software Engineer/ }),
+    ).toBeVisible();
+    await expect(
+      app.getByRole('button', { name: /Beta Industries.*Software Engineer/ }),
+    ).toBeVisible();
+    await app.getByRole('button', { name: 'Education', exact: true }).click();
+    await expect(
+      app.getByRole('button', { name: /Georgia Institute of Technology/ }),
+    ).toBeVisible();
+    await expect(app.getByRole('button', { name: /University of Texas at Austin/ })).toBeVisible();
+    await app.getByRole('button', { name: 'Links', exact: true }).click();
+    for (const field of ['linkedin', 'github', 'twitter', 'dribbble', 'behance']) {
+      await expect(app.locator(`#field-${field}`)).not.toHaveValue('');
+    }
+    await app.getByRole('button', { name: 'Documents', exact: true }).click();
+    await expect(app.getByText('jane-doe-resume.pdf', { exact: true })).toBeVisible();
+    await expect(app.getByText('jane-doe-cover-letter.pdf', { exact: true })).toBeVisible();
+    await expect(app.getByRole('button', { name: 'View PDF', exact: true })).toHaveCount(3);
+    await app.getByRole('button', { name: 'Salary', exact: true }).click();
+    await expect(app.getByRole('button', { name: /USD 140,000 per year/ })).toBeVisible();
+    await expect(app.getByRole('button', { name: /EUR 125,000 per year/ })).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
 test('the dev bar previews profiles and missing keys without changing saved extension data', async ({
   playwright,
 }, info) => {
@@ -107,9 +154,7 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     await expect(bar).toBeVisible();
     for (const width of [320, 390, 640, 1280]) {
       await page.setViewportSize({ width, height: 600 });
-      expect(await fitsViewportWidth(page)).toBe(
-        true,
-      );
+      expect(await fitsViewportWidth(page)).toBe(true);
       for (const button of await bar.getByRole('button').all()) {
         const rect = await button.boundingBox();
         expect(rect!.x).toBeGreaterThanOrEqual(0);
@@ -175,8 +220,8 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     await presetClick;
     await expect(page).toHaveURL(/devPreview=complete/);
     await expect(name).toHaveValue('Draft in preview');
-    await app.getByRole('button', { name: 'Save Personal', exact: true }).click();
-    await expect(app.getByText('Saved', { exact: true })).toBeVisible();
+    await app.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(app.getByText('Profile saved.', { exact: true })).toBeVisible();
     const driveControl = bar.getByRole('switch', { name: 'Google Drive' });
     await driveControl.click();
     await expect(page).toHaveURL(/devDrive=1/);
@@ -186,7 +231,9 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     await expect(app.getByRole('button', { name: 'Disconnect', exact: true })).toBeVisible();
     for (const width of [320, 640]) {
       await page.setViewportSize({ width, height: 600 });
-      await expect.poll(() => app.locator('main').evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+      await expect
+        .poll(() => app.locator('main').evaluate((el) => el.scrollWidth <= el.clientWidth + 1))
+        .toBe(true);
       await app.getByRole('button', { name: 'Disconnect', exact: true }).click();
       const disconnect = app.getByRole('dialog', { name: 'Disconnect Google Drive' });
       await disconnect.getByRole('checkbox').check();

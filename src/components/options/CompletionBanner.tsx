@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight } from 'lucide-react';
 import type { CompletionGroup } from '@/src/utils/profileCompletion';
 
 interface CompletionBannerProps {
@@ -82,9 +82,10 @@ export function CompletionBanner({
       className="relative bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 min-h-16 py-3 flex flex-wrap items-center gap-2 sm:gap-4 shrink-0"
     >
       <div className="flex items-center gap-2" title="Based on saved required details">
-        <span
-          className={`text-sm font-bold ${isCoreComplete ? 'text-green-700 dark:text-green-400' : 'text-blue-700 dark:text-blue-400'}`}
-        >
+        {isCoreComplete && (
+          <Check aria-hidden="true" className="h-3.5 w-3.5 text-green-700 dark:text-green-400" />
+        )}
+        <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
           {percentage}%
         </span>
         <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
@@ -101,7 +102,7 @@ export function CompletionBanner({
         className="flex-1 min-w-20 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"
       >
         <div
-          className={`h-full rounded-full transition-all duration-500 ${isCoreComplete ? 'bg-green-500' : 'bg-blue-500'}`}
+          className="h-full rounded-full bg-blue-500 transition-all duration-500 motion-reduce:transition-none dark:bg-blue-400"
           style={{ width: `${percentage}%` }}
         />
       </div>
@@ -157,7 +158,7 @@ export function CompletionBanner({
                           onNavigate(group.sectionId);
                           setOpen(false);
                         }}
-                        className="flex w-full items-center justify-between px-3 py-1.5 text-left text-xs font-semibold text-gray-900 hover:text-blue-700 dark:text-gray-100 dark:hover:text-blue-300"
+                        className="flex w-full items-center justify-between focus-visible:-outline-offset-2 px-3 py-1.5 text-left text-xs font-semibold text-gray-900 hover:text-blue-700 dark:text-gray-100 dark:hover:text-blue-300"
                       >
                         {group.sectionLabel}
                         <ChevronRight aria-hidden="true" className="h-3 w-3" />

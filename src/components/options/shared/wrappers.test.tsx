@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { AddEntryButton } from './AddEntryButton';
 import { FormField } from './FormField';
 import { SaveButton } from './SaveButton';
 import { RemoveButton } from './RemoveButton';
+import { ConfirmRemoveButton } from './ConfirmRemoveButton';
 
 afterEach(cleanup);
 
@@ -60,9 +61,9 @@ describe('SaveButton', () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it('shows "Saving..." and is disabled while saving', () => {
+  it('shows "Saving…" and is disabled while saving', () => {
     render(<SaveButton onClick={vi.fn()} saving={true} label="Save Profile" />);
-    const button = screen.getByText('Saving...') as HTMLButtonElement;
+    const button = screen.getByText('Saving…') as HTMLButtonElement;
     expect(button.disabled).toBe(true);
     expect(screen.queryByText('Save Profile')).toBeNull();
   });
@@ -82,4 +83,43 @@ describe('RemoveButton', () => {
     render(<RemoveButton onClick={vi.fn()} title="Delete this learned input" />);
     expect(screen.getByTitle('Delete this learned input')).toBeTruthy();
   });
+});
+
+it('locks inline deletion while saving and restores its trigger after failure', () => {
+  const remove = vi.fn();
+  const view = render(<ConfirmRemoveButton title="Delete mapping" onConfirm={remove} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Delete mapping' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  expect(remove).toHaveBeenCalledOnce();
+  view.rerender(<ConfirmRemoveButton title="Delete mapping" onConfirm={remove} disabled busy />);
+  const pending = screen.getByRole('button', { name: 'Deleting…' });
+  expect(pending).toHaveProperty('disabled', true);
+  expect(screen.getByRole('button', { name: 'Cancel' })).toHaveProperty('disabled', true);
+  fireEvent.click(pending);
+  fireEvent.mouseDown(document.body);
+  expect(screen.getByRole('button', { name: 'Deleting…' })).toBeTruthy();
+  expect(remove).toHaveBeenCalledOnce();
+  view.rerender(<ConfirmRemoveButton title="Delete mapping" onConfirm={remove} />);
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Delete mapping' }));
+});
+
+it('keeps compact confirmation inline and returns focus after cancellation', async () => {
+  const remove = vi.fn();
+  render(<ConfirmRemoveButton compact onConfirm={remove} />);
+  const trigger = screen.getByRole('button', { name: 'Remove entry' });
+  fireEvent.click(trigger);
+  expect(trigger.parentElement?.parentElement?.contains(screen.getByRole('button', { name: 'Cancel' }))).toBe(true);
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Cancel' }), { key: 'Escape' });
+  await waitFor(() => expect(document.activeElement).toBe(trigger));
+  expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
+
+  fireEvent.click(trigger);
+  fireEvent.mouseDown(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  expect(remove).toHaveBeenCalledOnce();
+  expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
+
+  fireEvent.click(trigger);
+  fireEvent.mouseDown(document.body);
+  expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
 });

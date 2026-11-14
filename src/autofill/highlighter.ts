@@ -2,6 +2,7 @@ import { CONF_FILL, CONF_GREEN } from './constants';
 import { setFieldFeedback, clearFieldFeedback, clearAllFieldFeedback } from './fieldFeedback';
 import { isChoice, queryOpenElements } from './dom';
 import { backgroundTint, type FieldTint } from './backgroundTint';
+import { searchableSelect } from './reactSelect';
 
 // Confidence-based and missing-data background tints on form elements.
 // Original background-color and transition are saved in data attributes
@@ -16,6 +17,8 @@ const surfaceOwners = new WeakMap<HTMLElement, HTMLElement>();
 function highlightSurface(element: HTMLElement): HTMLElement {
   const previous = surfaces.get(element);
   if (previous) return previous;
+  const select = searchableSelect(element);
+  if (select) return select.control;
   if (
     !element.matches('input,textarea') ||
     isChoice(element) ||

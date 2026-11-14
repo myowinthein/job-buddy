@@ -89,7 +89,6 @@ export function settingsReviewProfile(): Profile {
     ],
     links: {
       linkedin: 'https://linkedin.com/in/alex-sample',
-      portfolio: 'https://example.com/portfolio',
       github: 'https://github.com/alex-sample',
       twitter: 'https://x.com/alex-sample',
       dribbble: 'https://dribbble.com/alex-sample',
@@ -101,6 +100,7 @@ export function settingsReviewProfile(): Profile {
     },
     documents: {
       cv: { url: 'https://example.com/cv.pdf', file: { ...file, name: 'sample-cv.pdf' } },
+      portfolio: { url: 'https://example.com/portfolio', file: { ...file, name: 'sample-portfolio.pdf' } },
       coverLetter: {
         url: 'https://example.com/cover.pdf',
         file: { ...file, name: 'sample-cover.pdf' },

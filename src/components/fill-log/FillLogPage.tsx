@@ -1,14 +1,7 @@
 import { memo, useEffect, useId, useMemo, useRef, useState } from 'react';
-import {
-  AlertTriangle,
-  ArrowLeft,
-  ExternalLink,
-  ChevronDown,
-  Info,
-  ListChecks,
-  LoaderCircle,
-} from 'lucide-react';
+import { ArrowLeft, ExternalLink, ChevronDown, Info, ListChecks, LoaderCircle } from 'lucide-react';
 import { FillDetailsHelp } from './FillDetailsHelp';
+import { Notice } from '@/src/components/ui/Notice';
 import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 import { feedback } from '@/src/ui/feedback';
 import { loadFillLog, returnToForm } from '@/src/fill-log/client';
@@ -284,7 +277,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
                   disabled={openingSource}
                   onClick={() => void openSource()}
                   onFocus={() => setSourceTooltipOpen(true)}
-                  aria-description={`${sourceUrl}. Uses the form tab when available; otherwise opens in new tab`}
+                  aria-description={sourceUrl}
                   aria-describedby={sourceUrl && sourceTooltipOpen ? sourceTooltipId : undefined}
                 >
                   {canReturn ? (
@@ -294,7 +287,6 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
                   )}
                   {openingSource ? 'Opening…' : canReturn ? 'Return to Form' : 'Open Form'}
                 </button>
-                <p className="mt-1 text-xs text-gray-500">Uses the form tab when available; otherwise opens in new tab.</p>
                 {sourceUrl && sourceTooltipOpen && (
                   <div className="absolute left-0 top-full z-30 w-full pt-2 sm:left-auto sm:right-0 sm:w-max sm:max-w-md">
                     <div
@@ -317,14 +309,14 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
         )}
       </header>
       {returnError && (
-        <p role="alert" className="mb-4 text-sm text-red-700 dark:text-red-400">
-          {feedback.fillDetailsFormOpenFailed}
-        </p>
+        <div className="mb-4">
+          <Notice tone="error">{feedback.fillDetailsFormOpenFailed}</Notice>
+        </div>
       )}
       {loading ? (
         <p
           role="status"
-          className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300"
+          className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400"
         >
           <LoaderCircle
             aria-hidden="true"
@@ -333,33 +325,13 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
           Loading fill details…
         </p>
       ) : unavailable ? (
-        <div
-          role="status"
-          className="rounded-xl border border-dashed border-gray-300 px-6 py-10 text-center dark:border-gray-700"
-        >
-          <Info
-            aria-hidden="true"
-            className="mx-auto mb-3 h-7 w-7 text-gray-400 dark:text-gray-500"
-          />
-          <p className="mx-auto max-w-md text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-            The source form is unavailable. Its tab may have closed.
-          </p>
-        </div>
+        <Notice tone="error">The source form is unavailable. Its tab may have closed.</Notice>
       ) : snapshot?.needsRefresh ? (
-        <div
-          role="status"
-          className="rounded-xl border border-amber-200 bg-amber-50/60 px-6 py-10 text-center dark:border-amber-900 dark:bg-amber-950/20"
-        >
-          <AlertTriangle
-            aria-hidden="true"
-            className="mx-auto mb-3 h-7 w-7 text-amber-600 dark:text-amber-400"
-          />
-          <p className="mx-auto max-w-md text-sm leading-relaxed text-amber-800 dark:text-amber-200">
-            This form was filled with an earlier version.
-            <br />
-            Refresh the form and fill again to view its fill details.
-          </p>
-        </div>
+        <Notice tone="review">
+          This form was filled with an earlier version.
+          <br />
+          Refresh the form and fill again to view its fill details.
+        </Notice>
       ) : fields.length === 0 ? (
         <div
           role="status"
@@ -398,13 +370,12 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
             </p>
           )}
           {aiFailed && (
-            <p
-              role="status"
-              className="mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-            >
-              AI assistance was unavailable for part or all of this fill. Existing rule-based fills
-              were kept.
-            </p>
+            <div className="mb-4">
+              <Notice tone="review">
+                AI assistance was unavailable for part or all of this fill. Existing rule-based
+                fills were kept.
+              </Notice>
+            </div>
           )}
           <section
             aria-label="Fill summary"
@@ -572,8 +543,8 @@ const FieldRow = memo(function FieldRow({ field }: { field: FillLogField }) {
             ? 'green'
             : 'gray';
   return (
-    <details className="group py-4" onToggle={(event) => setExpanded(event.currentTarget.open)}>
-      <summary className="grid cursor-pointer grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-x-3 gap-y-2 rounded-sm">
+    <details className="group" onToggle={(event) => setExpanded(event.currentTarget.open)}>
+      <summary className="grid cursor-pointer grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-x-3 gap-y-2 rounded-sm px-3 py-4 focus-visible:outline-offset-0">
         <span className="col-span-2 row-start-1 min-w-0 sm:col-span-1">
           <span className="block break-words text-sm font-medium">
             <span>{field.label}</span>
@@ -633,12 +604,10 @@ function StageDetails({
   const attributes = active
     ? [{ label: 'Result', value: active.result, mono: false }, ...active.details]
     : [];
+  if (explanation) attributes.push({ label: 'Reason', value: explanation, mono: false });
   const split = Math.ceil(attributes.length / 2);
   return (
-    <div className="mt-4 text-xs">
-      {explanation && (
-        <p className="mb-4 leading-relaxed text-gray-600 dark:text-gray-300">{explanation}</p>
-      )}
+    <div className="px-3 pb-4 text-xs">
       <ol aria-label="Matching stages" className="grid grid-cols-3">
         {stages.map((stage) => (
           <li
@@ -653,7 +622,7 @@ function StageDetails({
               disabled={!stage.enabled}
               onClick={() => onSelect(stage.id)}
               className={[
-                'relative flex w-full flex-col items-center gap-1.5 rounded-sm px-1 text-center focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500 disabled:cursor-default disabled:text-gray-400 dark:disabled:text-gray-500',
+                'relative mx-auto flex w-fit max-w-full flex-col items-center gap-1.5 rounded-sm px-1 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-default disabled:text-gray-400 dark:disabled:text-gray-500',
                 stage.id === activeId
                   ? 'text-blue-700 dark:text-blue-300'
                   : 'text-gray-600 enabled:hover:text-gray-900 dark:text-gray-400 dark:enabled:hover:text-gray-200',
@@ -685,11 +654,11 @@ function StageDetails({
           </li>
         ))}
       </ol>
-      {active && (
+      {attributes.length > 0 && (
         <div
           id={panelId}
           role="region"
-          aria-label={active.label + ' stage details'}
+          aria-label={active ? active.label + ' stage details' : 'Field details'}
           className="mt-4"
         >
           <div className="grid grid-cols-1 gap-x-8 gap-y-3 text-left lg:grid-cols-2">

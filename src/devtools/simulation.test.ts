@@ -10,7 +10,14 @@ import {
   finishDriveReview,
   retryPendingDriveSync,
 } from '@/src/utils/driveSync';
-import { extractFromResume, checkApiKey, RESUME_REQUEST_TIMEOUT_MS } from '@/src/resume-ai/gemini';
+import {
+  extractFromResume,
+  checkApiKey,
+  reviewMappingsWithAI,
+  RESUME_REQUEST_TIMEOUT_MS,
+} from '@/src/resume-ai/gemini';
+import { mappingReviewCatalog, mappingReviewItems } from '@/src/learned-mappings/review';
+import { groupMappings } from '@/src/learned-mappings/groups';
 import { resumeChanges, resumeFileChange } from '@/src/resume-ai/resumeImport';
 import { DEFAULT_GEMINI_MODEL } from '@/src/resume-ai/types';
 import { devContext, devLockName } from './context';
@@ -61,15 +68,67 @@ describe('development isolation', () => {
     expect(chrome.runtime.lastError).toBeUndefined();
   });
   it('uses distinct valid preset states and a real PDF structure', () => {
+    const complete = profilePreset('complete');
     expect(calculateCompletion(profilePreset('empty')).percentage).toBe(0);
     expect(calculateCompletion(profilePreset('required')).percentage).toBe(100);
-    expect(calculateCompletion(profilePreset('complete')).percentage).toBe(100);
+    expect(calculateCompletion(complete).percentage).toBe(100);
+    expect(complete.workHistory?.map((entry) => entry.isCurrent)).toEqual([true, false]);
+    expect(complete.education?.map((entry) => entry.isCurrent)).toEqual([true, false]);
+    expect(Object.values(complete.links!)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('linkedin.com'),
+        expect.stringContaining('github.com'),
+        expect.stringContaining('x.com'),
+        expect.stringContaining('dribbble.com'),
+        expect.stringContaining('behance.net'),
+      ]),
+    );
+    for (const entry of [complete.documents?.cv, complete.documents?.coverLetter, complete.documents?.portfolio]) {
+      const pdf = atob(entry!.file!.base64.split(',')[1]);
+      expect(pdf).toMatch(/^%PDF-1.4/);
+      expect(entry!.file!.size).toBe(pdf.length);
+    }
+    expect(complete.salary?.expected.map((entry) => entry.currency)).toEqual([
+      complete.salary?.current?.currency,
+      'EUR',
+    ]);
     expect(sampleResumeText()).toContain('xref');
     expect(sampleResumeText()).toMatch(/^%PDF-1.4/);
   });
 });
 
 describe('actual Gemini flows with fake responses', () => {
+  it('returns a complete simulated assessment for every mapping through the real review parser', async () => {
+    start('workspace');
+    const profile = (await getProfile())!;
+    const items = mappingReviewItems(
+      [
+        ...groupMappings({
+          'audif1.jobs.personio.de': Object.fromEntries(
+            Array.from({ length: 8 }, (_, index) => [
+              `salary${index}`,
+              { path: 'salary.current.amount', count: 2, question: `Expected salary ${index}` },
+            ]),
+          ),
+        }),
+      ].flatMap(([domain, groups]) => groups.map((group) => ({ domain, group }))),
+    );
+    const result = await reviewMappingsWithAI(
+      'simulated-key',
+      DEFAULT_GEMINI_MODEL,
+      items,
+      mappingReviewCatalog(profile),
+      new AbortController().signal,
+    );
+    expect(result.assessments).toEqual(
+      items.map((item) => ({
+        id: item.id,
+        verdict: 'uncertain',
+        path: null,
+        reason: 'Simulated review. Check this mapping before applying changes.',
+      })),
+    );
+  });
   it('uses the real timeout before switching away from a stalled simulated model', async () => {
     vi.useFakeTimers();
     start('ai-timeout');

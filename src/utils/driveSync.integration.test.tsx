@@ -165,18 +165,18 @@ it('keeps reporting profile save success while limiting Drive warnings across pa
   sessionStorage.setItem('jb:ui:section', 'personal');
   drive.lookupFailures = 3;
   mount(true);
-  const warning = 'Profile saved. Drive backup is pending.';
+  const warning = 'Profile saved. Google Drive backup is pending.';
   for (let attempt = 1; attempt <= 2; attempt++) {
-    fireEvent.click(await screen.findByRole('button', { name: 'Save Personal' }));
-    await waitFor(() => expect(screen.getAllByText('Personal information saved')).toHaveLength(attempt));
+    fireEvent.click(await screen.findByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.getAllByText('Profile saved.')).toHaveLength(attempt));
     await waitFor(() => expect(screen.getAllByText(warning)).toHaveLength(1));
     // Wait for the actual failed backup and warning claim before remounting.
     await waitFor(() => expect(drive.lookupFailures).toBe(3 - attempt));
   }
   cleanup();
   mount(true);
-  fireEvent.click(await screen.findByRole('button', { name: 'Save Personal' }));
-  await screen.findByText('Personal information saved');
+  fireEvent.click(await screen.findByRole('button', { name: 'Save' }));
+  await screen.findByText('Profile saved.');
   await waitFor(() => expect(drive.lookupFailures).toBe(0));
   expect(screen.queryByText(warning)).toBeNull();
 });
@@ -397,7 +397,7 @@ it('failed cloud deletion prevents reset from erasing local data or access', asy
   fireEvent.click(screen.getByRole('checkbox', { name: 'Also delete the Drive backup' }));
   fireEvent.change(screen.getByLabelText(/to confirm/), { target: { value: 'DELETE' } });
   fireEvent.click(screen.getByRole('button', { name: 'Reset All Data' }));
-  await screen.findByText('Reset failed. Please try again.');
+  await screen.findByText('Could not reset all data. Try again.');
   expect(done).not.toHaveBeenCalled();
   expect(await getProfile()).toEqual(settingsReviewProfile());
   expect(drive.remote).not.toBeNull();
@@ -480,9 +480,9 @@ it('JSON import automatically backs up the accepted result', async () => {
     },
   });
   await screen.findByText('This may be another person’s profile');
-  fireEvent.click(screen.getByRole('radio', { name: /Update current profile/ }));
+  fireEvent.click(screen.getByRole('radio', { name: /Update profile/ }));
   fireEvent.click(screen.getByText('Import All'));
-  await screen.findByText('Profile imported successfully');
+  await screen.findByText('Profile imported.');
   await waitFor(() => expect(drive.remote!.profile.personal.firstName).toBe('Imported'));
 });
 

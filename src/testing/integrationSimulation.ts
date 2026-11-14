@@ -68,6 +68,16 @@ export class IntegrationSimulation extends DevSimulation {
           : undefined,
     });
     this.backup = backup;
+    if (fixture === 'resume-identical') {
+      const {
+        id: _id,
+        derived: _derived,
+        documents: _documents,
+        salary: _salary,
+        ...extracted
+      } = profile;
+      this.extracted = { ...structuredClone(extracted), documents: { cv: {}, portfolio: { url: profile.documents?.portfolio?.url } } };
+    }
     if (fixture === 'resume-missing') {
       this.extracted.education![0].startDate = '';
       this.extracted.workHistory = this.extracted.workHistory!.slice(0, 1);

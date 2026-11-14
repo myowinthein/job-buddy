@@ -79,7 +79,6 @@ it('keeps field identifiers unique within each editor and admits every catalog m
     'workHistory.-1.company',
     'personal.password',
     'links.custom.0.label',
-    'documents.coverLetter.file',
     'documents.cv.file.base64',
     '__proto__.firstName',
     'personal.firstName.extra',

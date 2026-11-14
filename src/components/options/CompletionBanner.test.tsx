@@ -87,9 +87,7 @@ it.each([0, 40, 80, 93, 100])('exposes accessible saved progress at %s percent',
   renderBanner({ percentage, isCoreComplete: percentage === 100 });
   const bar = screen.getByRole('progressbar', { name: 'Saved required profile details' });
   expect(bar.getAttribute('aria-valuenow')).toBe(String(percentage));
-  expect(bar.firstElementChild?.className).toContain(
-    percentage === 100 ? 'bg-green-500' : 'bg-blue-500',
-  );
+  expect(bar.firstElementChild?.className).toContain('bg-blue-500');
 });
 
 it('closes on outside click and Escape, returning keyboard focus on Escape', () => {

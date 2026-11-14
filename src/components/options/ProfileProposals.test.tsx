@@ -34,7 +34,7 @@ it('saves a mononymous contact and starts optional personal details collapsed', 
   );
   expect((document.querySelector('details') as HTMLDetailsElement).open).toBe(false);
   expect(screen.getByLabelText('Preferred name')).toBeTruthy();
-  fireEvent.click(screen.getByText('Save Personal'));
+  fireEvent.click(screen.getByText('Save'));
   expect(onSave).toHaveBeenCalledWith(
     expect.objectContaining({
       personal: expect.objectContaining({ firstName: 'Jane', lastName: '' }),
@@ -50,7 +50,7 @@ it('saves expected pay independently of current pay and country', () => {
       onSave={onSave}
     />,
   );
-  fireEvent.click(screen.getByText('Save Salary'));
+  fireEvent.click(screen.getByText('Save'));
   expect(onSave).toHaveBeenCalledWith({
     salary: {
       current: undefined,
@@ -77,7 +77,7 @@ it('lets a currency override the country default', () => {
     target: { value: 'USD' },
   });
   fireEvent.click(screen.getByRole('option', { name: /USD/ }));
-  fireEvent.click(screen.getByText('Save Salary'));
+  fireEvent.click(screen.getByText('Save'));
   expect(onSave).toHaveBeenCalledWith({
     salary: expect.objectContaining({
       current: expect.objectContaining({ country: 'TH', currency: 'USD' }),
@@ -85,20 +85,19 @@ it('lets a currency override the country default', () => {
   });
 });
 
-it('saves portfolio and GitHub without LinkedIn', () => {
+it('saves GitHub without LinkedIn', () => {
   const onSave = save();
   show(
     <LinksSection
-      profile={{ links: { linkedin: '', portfolio: 'example.com', github: 'github.com/jane' } }}
+      profile={{ links: { linkedin: '', github: 'github.com/jane' } }}
       onSave={onSave}
     />,
   );
-  fireEvent.click(screen.getByText('Save Links'));
+  fireEvent.click(screen.getByText('Save'));
   expect(onSave).toHaveBeenCalledWith(
     expect.objectContaining({
       links: expect.objectContaining({
         linkedin: '',
-        portfolio: 'https://example.com',
         github: 'https://github.com/jane',
       }),
     }),
@@ -121,12 +120,12 @@ it.each([true, false])(
         onSave={onSave}
       />,
     );
-    fireEvent.click(screen.getByText('Save Work History'));
+    fireEvent.click(screen.getByText('Save'));
     if (!availability) {
       expect(onSave).not.toHaveBeenCalled();
       expect(screen.getByText('Select your availability')).toBeTruthy();
       fireEvent.click(screen.getByLabelText('Available Now'));
-      fireEvent.click(screen.getByText('Save Work History'));
+      fireEvent.click(screen.getByText('Save'));
     }
     expect(onSave).toHaveBeenCalledWith({
       workHistory: [],
@@ -143,7 +142,7 @@ it('does not drop a partially typed date in an otherwise empty experience row', 
   show(<WorkHistorySection profile={{ workHistory: [] }} onSave={onSave} />);
   fireEvent.click(screen.getByText('+ Add Entry'));
   fireEvent.change(screen.getAllByLabelText('Month')[0], { target: { value: '06' } });
-  fireEvent.click(screen.getByText('Save Work History'));
+  fireEvent.click(screen.getByText('Save'));
   expect(onSave).not.toHaveBeenCalled();
   expect(screen.getByText('Complete the month and year')).toBeTruthy();
 });
@@ -166,9 +165,10 @@ it('exposes visa metadata and rejects duplicate authorization countries', () => 
       onSave={onSave}
     />,
   );
+  fireEvent.click(Array.from(document.querySelectorAll<HTMLButtonElement>('[data-entry-toggle][aria-expanded="false"]'))[0]);
   expect(screen.getByDisplayValue('Employment Pass')).toBeTruthy();
   expect(screen.getByDisplayValue('2029-06-30')).toBeTruthy();
-  fireEvent.click(screen.getByText('Save Work Authorization'));
+  fireEvent.click(screen.getByText('Save'));
   expect(screen.getByText('This country is already listed')).toBeTruthy();
   expect(onSave).not.toHaveBeenCalled();
 });
@@ -186,7 +186,7 @@ it('rejects duplicate languages across legacy names and codes', () => {
       onSave={onSave}
     />,
   );
-  fireEvent.click(screen.getByText('Save Languages'));
+  fireEvent.click(screen.getByText('Save'));
   expect(screen.getByText('This language is already listed')).toBeTruthy();
   expect(onSave).not.toHaveBeenCalled();
 });
@@ -213,13 +213,13 @@ it('saves and imports future graduation dates and optional education details', (
       onSave={onSave}
     />,
   );
-  fireEvent.click(screen.getByText('University: BSc'));
+  fireEvent.click(screen.getByRole('button', { name: /^University: BSc/ }));
   fireEvent.click(screen.getByText('Grade and coursework'));
   fireEvent.change(screen.getByLabelText('Grade / GPA'), { target: { value: '3.9' } });
   fireEvent.change(screen.getByLabelText('Description'), {
     target: { value: 'Updated thesis' },
   });
-  fireEvent.click(screen.getByText('Save Education'));
+  fireEvent.click(screen.getByText('Save'));
   const patch = onSave.mock.calls[0][0];
   expect(patch.education[0]).toMatchObject({
     endDate: future,
@@ -238,10 +238,11 @@ it('saves a cover letter without a CV and removes its URL independently', async 
       onSave={onSave}
     />,
   );
-  fireEvent.click(screen.getByText(/Cover letter/, { selector: 'summary' }));
+  fireEvent.click(screen.getByText('Cover letter', { selector: 'summary span' }));
   expect(screen.getByText('cover.pdf')).toBeTruthy();
-  fireEvent.click(screen.getByText('Remove URL'));
-  fireEvent.click(screen.getByText('Save Documents'));
+  expect(screen.queryByRole('button', { name: 'Remove URL' })).toBeNull();
+  fireEvent.change(screen.getAllByRole('textbox', { name: 'Document URL' })[1], { target: { value: '' } });
+  fireEvent.click(screen.getByText('Save'));
   await waitFor(() =>
     expect(onSave).toHaveBeenCalledWith({ documents: { cv: {}, coverLetter: { file } } }),
   );

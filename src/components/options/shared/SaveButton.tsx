@@ -1,6 +1,8 @@
 import { useContext } from 'react';
 import { SectionSaveStatusContext } from './draftStatus';
 import { deferPointerFocus, focusOnClick } from './stableControlFocus';
+import { LoaderCircle } from 'lucide-react';
+import { getScrollBehavior } from '@/src/utils/scrollBehavior';
 
 interface Props {
   onClick: () => void;
@@ -11,7 +13,7 @@ interface Props {
 export function SaveButton({ onClick, saving, label }: Props) {
   const status = useContext(SectionSaveStatusContext);
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+    <div className="profile-save-actions mt-6 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-t border-gray-200 pt-6 dark:border-gray-700">
       <button
         type="button"
         onMouseDown={deferPointerFocus}
@@ -19,7 +21,7 @@ export function SaveButton({ onClick, saving, label }: Props) {
           focusOnClick(event);
           const section =
             event.currentTarget.closest('[data-profile-section]') ??
-            event.currentTarget.parentElement?.parentElement?.parentElement;
+            event.currentTarget.parentElement?.parentElement;
           onClick();
           // Validation and collapsed-card expansion must commit before focusing.
           window.setTimeout(() => {
@@ -30,21 +32,28 @@ export function SaveButton({ onClick, saving, label }: Props) {
               group?.querySelector<HTMLElement>(
                 'input:not(:disabled):not([type="file"]), select:not(:disabled), textarea:not(:disabled)',
               ) ?? group?.querySelector<HTMLElement>('button:not(:disabled)');
-            invalid?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+            invalid?.scrollIntoView?.({ block: 'center', behavior: getScrollBehavior() });
             invalid?.focus({ preventScroll: true });
           }, 0);
         }}
         disabled={saving}
-        className="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
+        aria-busy={saving}
+        className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 active:scale-95 transition-colors"
       >
-        {saving ? 'Saving...' : label}
+        {saving && (
+          <LoaderCircle
+            aria-hidden="true"
+            className="h-4 w-4 animate-spin motion-reduce:animate-none"
+          />
+        )}
+        {saving ? 'Saving…' : label}
       </button>
       <span
         role="status"
         aria-atomic="true"
-        className={`min-h-5 w-28 text-xs ${status === 'saved' ? 'text-green-700 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}
+        className="min-h-5 w-28 text-xs text-gray-500 dark:text-gray-400"
       >
-        {saving ? '' : status === 'unsaved' ? 'Unsaved changes' : status === 'saved' ? 'Saved' : ''}
+        {!saving && status === 'unsaved' ? 'Unsaved changes' : ''}
       </span>
     </div>
   );

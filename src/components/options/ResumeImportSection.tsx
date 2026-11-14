@@ -1,4 +1,4 @@
-import { feedback } from '@/src/ui/feedback';
+import { feedback, resumeImportSucceeded } from '@/src/ui/feedback';
 import { reviewCounts } from '@/src/resume-ai/entrySelection';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Profile } from '@/src/types/profile';
@@ -27,7 +27,7 @@ import {
   ImportProfileChangedError,
   type ImportMode,
 } from '@/src/utils/importPolicy';
-import { ResumeDoneDialog, ResumeProgressDialog, ResumeUploadDialog } from './ResumeImportDialogs';
+import { ResumeProgressDialog, ResumeUploadDialog } from './ResumeImportDialogs';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -58,7 +58,7 @@ interface Props {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-type Screen = 'dialog' | 'progress' | 'uncertain' | 'summary' | 'review' | 'done';
+type Screen = 'dialog' | 'progress' | 'uncertain' | 'summary' | 'review';
 
 export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, onClose }: Props) {
   const { showToast }  = useToast();
@@ -75,7 +75,6 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
   const [errorCode,    setErrorCode]    = useState<ImportErrorCode | null>(null);
   const [changes,      setChanges]      = useState<FieldChange[]>([]);
   const [saving,       setSaving]       = useState(false);
-  const [summary,      setSummary]      = useState<{ updated: number; conflicts: number; skipped: number; replaced?: boolean } | null>(null);
   const [extractedLinks, setExtractedLinks] = useState<string[]>([]);
   const [reviewBase, setReviewBase] = useState(profile);
   const [incomingProfile, setIncomingProfile] = useState<Partial<Profile>>({});
@@ -173,9 +172,9 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
     setScreen('dialog');
   }, []);
 
-  // Progress cancels its request; the upload, document notice, and completion
+  // Progress cancels its request; the upload and document notice
   // screens close the import. Shared summary/review dialogs handle dismissal.
-  useEscapeToClose(screen === 'dialog' || screen === 'done' || screen === 'uncertain' ? closeSection : undefined);
+  useEscapeToClose(screen === 'dialog' || screen === 'uncertain' ? closeSection : undefined);
 
   const goToSettings = useCallback(() => {
     abortControllerRef.current?.abort();
@@ -184,6 +183,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
   }, [onGoToApiKey]);
 
   const handleFileSelect = (file: File) => {
+    setErrorCode(null);
     try { getMimeType(file); } catch {
       setSelectedFile(null);
       setErrorMsg(feedback.resumeUnsupportedFile);
@@ -208,16 +208,25 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
     if (file) handleFileSelect(file);
   };
 
-  // ── Extract core (shared between handleExtract and handleRetry) ──────────────
+  // ── Resume analysis ────────────────────────────────────────────────────────
 
   const isCurrent = (controller: AbortController) =>
     abortControllerRef.current === controller && !controller.signal.aborted;
 
   const prepareReview = (incoming: Partial<Profile>) => {
     const mode = initialImportMode(reviewBase, incoming);
+    const nextChanges = buildChanges(reviewBase, incoming, mode);
+    if (mode === 'update' && !nextChanges.some(change => {
+        const count = reviewCounts(change);
+        return count.new + count.changed > 0;
+      })) {
+      showToast('success', feedback.importNoChanges);
+      closeSection();
+      return;
+    }
     setIncomingProfile(incoming);
     setImportMode(mode);
-    setChanges(buildChanges(reviewBase, incoming, mode));
+    setChanges(nextChanges);
     setScreen('summary');
   };
 
@@ -243,7 +252,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
     } else prepareReview(incoming);
   };
 
-  const analyze = async (reuseFile: boolean) => {
+  const handleExtract = async () => {
     if (!selectedFile || !apiKey || !model) return;
     abortControllerRef.current?.abort();
     if (longWaitTimerRef.current) clearTimeout(longWaitTimerRef.current);
@@ -257,14 +266,14 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
     longWaitTimerRef.current = setTimeout(() => { if (isCurrent(controller)) setShowLongWait(true); }, LONG_WAIT_MS);
     try {
       setProgressStep('reading');
-      const dataUri = reuseFile && fileDataUri ? fileDataUri : await fileToDataUri(selectedFile);
+      const dataUri = fileDataUri ?? await fileToDataUri(selectedFile);
       if (!isCurrent(controller)) return;
-      if (!(reuseFile && fileDataUri)) {
+      if (!fileDataUri) {
         const bytes = Uint8Array.from(atob(dataUri.split(',')[1] ?? ''), char => char.charCodeAt(0));
         await validateResumeFile(selectedFile, bytes, controller.signal);
         if (!isCurrent(controller)) return;
       }
-      const links = reuseFile && fileDataUri ? extractedLinks : await extractLinks(selectedFile);
+      const links = fileDataUri ? extractedLinks : await extractLinks(selectedFile);
       if (!isCurrent(controller)) return;
       setFileDataUri(dataUri);
       setExtractedLinks(links);
@@ -273,7 +282,13 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
       if (!isCurrent(controller) || (error as { name?: string })?.name === 'AbortError') return;
       const failure = error as { message?: string; code?: ImportErrorCode };
       setErrorCode(failure.code ?? null);
-      setErrorMsg(failure.message ?? feedback.resumeUnexpectedFailure);
+      setErrorMsg(failure.code === 'rate_limit' ? feedback.resumeUsageLimit : failure.message ?? feedback.resumeUnexpectedFailure);
+      if (failure.code === 'invalid_file' || failure.code === 'not_resume') {
+        setSelectedFile(null);
+        setFileDataUri(null);
+        setExtractedLinks([]);
+      }
+      setScreen('dialog');
     } finally {
       if (isCurrent(controller)) {
         if (longWaitTimerRef.current) clearTimeout(longWaitTimerRef.current);
@@ -282,8 +297,6 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
       }
     }
   };
-  const handleExtract = () => analyze(false);
-  const handleRetry = () => analyze(true);
 
   // ── Save ──────────────────────────────────────────────────────────────────────
 
@@ -293,7 +306,6 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
     const counted = importMode === 'replace' ? finalChanges.filter(c => c.hasIncomingValue !== false) : finalChanges;
     const newAccepted      = counted.filter(c => c.status === 'new').reduce((sum, c) => sum + reviewCounts(c).selected, 0);
     const conflictAccepted = counted.filter(c => c.status === 'conflict').reduce((sum, c) => sum + reviewCounts(c).selected, 0);
-    const skipped          = counted.reduce((sum, c) => { const count = reviewCounts(c); return sum + count.total - count.selected; }, 0);
     if (fileChange?.accepted && selectedFile) {
       const sizeError = documentFileSizeError(selectedFile.size);
       if (sizeError) { showToast('error', sizeError); return; }
@@ -306,8 +318,8 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
         assertImportCurrent(reviewBase, latest, finalChanges);
         return applyReviewedResumeChanges(latest, finalChanges);
       });
-      setSummary({ updated: newAccepted, conflicts: conflictAccepted, skipped, replaced: importMode === 'replace' });
-      setScreen('done');
+      showToast('success', resumeImportSucceeded(newAccepted + conflictAccepted));
+      closeSection();
     } catch (error) {
       if (error instanceof ImportProfileChangedError) {
         const mode = initialImportMode(error.current, incomingProfile);
@@ -328,8 +340,6 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
-  const needsAnotherFile = errorCode === 'invalid_file' || errorCode === 'not_resume';
-
   return (
     <div>
       {/* ════════════════════════════════════════════════════════════════════════
@@ -340,6 +350,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
           apiKey={apiKey}
           model={model}
           errorMsg={errorMsg}
+          errorCode={errorCode}
           isDragging={isDragging}
           selectedFile={selectedFile}
           fileInputRef={fileInputRef}
@@ -360,13 +371,7 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
           progressStep={progressStep}
           attempt={attempt}
           showLongWait={showLongWait}
-          errorMsg={errorMsg}
-          errorCode={errorCode}
-          needsAnotherFile={needsAnotherFile}
-          chooseAnotherFile={chooseAnotherFile}
-          handleRetry={handleRetry}
           handleCancel={handleCancel}
-          closeSection={closeSection}
         />
       )}
 
@@ -410,13 +415,6 @@ export function ResumeImportSection({ profile, onSave, onReplace, onGoToApiKey, 
           replacement={importMode === 'replace'}
           saveLabel={importMode === 'replace' ? 'Replace Profile' : 'Import Selected'}
         />
-      )}
-
-      {/* ════════════════════════════════════════════════════════════════════════
-          Done — summary
-          ════════════════════════════════════════════════════════════════════ */}
-      {screen === 'done' && summary && (
-        <ResumeDoneDialog summary={summary} closeSection={closeSection} />
       )}
     </div>
   );

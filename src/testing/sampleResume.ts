@@ -1,6 +1,10 @@
 // A small valid PDF keeps the normal file/link extraction pipeline involved.
-export function sampleResumeText(): string {
-  const stream = 'BT /F1 18 Tf 50 740 Td (Jane Doe - Senior Engineer) Tj ET';
+export function sampleResumeText(
+  lines: readonly string[] = ['Jane Doe - Senior Engineer'],
+): string {
+  const stream = `BT /F1 12 Tf 50 740 Td 18 TL ${lines
+    .map((line) => `(${line.replace(/[\\()]/g, '\\$&')}) Tj T*`)
+    .join('\n')} ET`;
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',

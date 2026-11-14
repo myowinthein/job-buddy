@@ -1,7 +1,8 @@
 import { feedback } from '@/src/ui/feedback';
 import { DevBadge } from '@/src/components/ui/DevBadge';
+import { VersionLink } from '@/src/components/ui/VersionLink';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Check, Sparkles } from 'lucide-react';
+import { Check, LoaderCircle, Sparkles } from 'lucide-react';
 import { PopupNotice } from '@/src/components/popup/PopupNotice';
 import type { PopupNoticeTone } from '@/src/components/popup/PopupNotice';
 import { getProfile, getGeminiApiKey } from '@/src/utils/storage';
@@ -15,12 +16,8 @@ import {
   mergeAutofillResults,
   type MergedAutofillResult as AutofillResult,
 } from '@/src/autofill/fillResult';
-import { requestAutofillRun, type AutofillRun } from '@/src/autofill/runCoordinator';
+import { requestAutofillRun, requestAutofillBlocked, requestAutofillUndo, type AutofillRun } from '@/src/autofill/runCoordinator';
 import { FIELD_DEFS } from '@/src/resume-ai/parser';
-
-// Read once from the manifest rather than hardcoded, so it can never drift
-// out of sync with what's actually installed.
-const EXTENSION_VERSION = chrome.runtime.getManifest().version;
 
 interface CompletionState {
   percentage: number;
@@ -29,7 +26,7 @@ interface CompletionState {
 
 // 'confirming' is shown when the scan found pre-filled fields and we need
 // the user to choose merge vs overwrite before proceeding.
-type AutofillState = 'idle' | 'loading' | 'confirming' | 'success' | 'error';
+type AutofillState = 'idle' | 'scanning' | 'loading' | 'confirming' | 'success' | 'error';
 
 /** True or false when the saved key is readable, null when storage fails. */
 const readKeyState = () =>
@@ -65,7 +62,9 @@ function App() {
   const [logOpenFailed, setLogOpenFailed] = useState(false);
   const [undoing, setUndoing] = useState(false);
   const [undoFailed, setUndoFailed] = useState(false);
+  const [otherVersionBusy, setOtherVersionBusy] = useState(false);
   const fillButtonRef = useRef<HTMLButtonElement>(null);
+  const keyRevision = useRef(0);
 
   const applyKeyState = useCallback((state: boolean | null) => {
     setHasGeminiKey(state);
@@ -73,38 +72,77 @@ function App() {
     setKeyLoading(false);
   }, []);
 
+  const refreshKeyState = useCallback(async () => {
+    const revision = ++keyRevision.current;
+    const state = await readKeyState();
+    if (revision === keyRevision.current) applyKeyState(state);
+  }, [applyKeyState]);
+
   const retryAISettings = async () => {
     setKeyLoading(true);
-    applyKeyState(await readKeyState());
+    await refreshKeyState();
   };
 
   useEffect(() => {
-    getProfile()
-      .then((p) => {
-        const r = calculateCompletion(p ?? {});
-        setCompletion({
-          percentage: r.percentage,
-          isCoreComplete: r.isCoreComplete,
+    let active = true;
+    let revision = 0;
+    const refresh = () => {
+      const request = ++revision;
+      void getProfile({ rejectOnError: true })
+        .then((p) => {
+          if (!active || request !== revision) return;
+          const r = calculateCompletion(p ?? {});
+          setCompletion({
+            percentage: r.percentage,
+            isCoreComplete: r.isCoreComplete,
+          });
+          setHasProfileData(!!p && FIELD_DEFS.some((field) => !field.isEmpty(field.getValue(p))));
+          setProfileLoadFailed(false);
+          // Reuse required-profile validation without making every completion check a fill gate.
+          setMissingAutofillFields(
+            r.missingFields
+              .filter((field) => field === 'First Name' || field === 'Email')
+              .map((field) => field.toLowerCase()),
+          );
+        })
+        .catch((err) => {
+          if (!active || request !== revision) return;
+          console.error('[Job Buddy] Failed to load profile:', err);
+          setProfileLoadFailed(true);
+        })
+        .finally(() => {
+          if (active && request === revision) setLoading(false);
         });
-        setHasProfileData(!!p && FIELD_DEFS.some((field) => !field.isEmpty(field.getValue(p))));
-        // Reuse required-profile validation without making every completion check a fill gate.
-        setMissingAutofillFields(
-          r.missingFields
-            .filter((field) => field === 'First Name' || field === 'Email')
-            .map((field) => field.toLowerCase()),
-        );
-      })
-      .catch((err) => {
-        console.error('[Job Buddy] Failed to load profile:', err);
-        setProfileLoadFailed(true);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    };
+    const changed = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      if (area === 'local' && ('profile' in changes || 'devProfileDisabled' in changes)) refresh();
+    };
+    chrome.storage.onChanged?.addListener(changed);
+    refresh();
+    return () => {
+      active = false;
+      chrome.storage.onChanged?.removeListener(changed);
+    };
   }, []);
 
+  useEffect(() => {
+    const reads = keyRevision;
+    const changed = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      if (area === 'local' && ['geminiApiKey', 'geminiModel', 'geminiSettingsMeta'].some(key => key in changes))
+        void refreshKeyState();
+    };
+    chrome.storage.onChanged?.addListener(changed);
+    void refreshKeyState();
+    return () => {
+      reads.current++;
+      chrome.storage.onChanged?.removeListener(changed);
+    };
+  }, [refreshKeyState]);
+
   const sendToActiveTab = useCallback(async (message: object): Promise<unknown[]> => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true }).finally(() => setSourceResolved(true));
+    const [tab] = await chrome.tabs
+      .query({ active: true, currentWindow: true })
+      .finally(() => setSourceResolved(true));
     if (!tab?.id) throw new Error('No active tab found');
     sourceTabId.current = tab.id;
     return sendToAllFrames(tab.id, message);
@@ -125,30 +163,56 @@ function App() {
     return false;
   }, []);
 
-  const applyRun = useCallback((run: AutofillRun | null) => {
-    if (!run) return;
-    if (activeRunId.current !== run.runId) setFillMode('merge');
-    activeRunId.current = run.runId;
-    if (run.stage === 'scanning' || run.stage === 'filling') {
-      setAutofillState('loading');
-    } else if (run.stage === 'confirming') {
-      setAutofillState('confirming');
-    } else if (run.stage === 'completed') {
-      const setupError = applySetupError(run.error ? [{ error: run.error }] : []);
-      const merged = mergeAutofillResults(run.results ?? [], run.runId);
-      if (merged) {
-        setResult(setupError ? { ...merged, aiStatus: 'unavailable' } : merged);
-        setAutofillState('success');
-      } else setAutofillState('error');
-    } else {
-      const setupError = applySetupError([{ error: run.error }]);
-      setAutofillState(setupError ? (resultRef.current ? 'success' : 'idle') : 'error');
-    }
-  }, [applySetupError, setResult]);
+  const applyRun = useCallback(
+    (run: AutofillRun | null) => {
+      if (!run) return;
+      if (run.error === AUTOFILL_ERROR.otherVersionBusy) {
+        setOtherVersionBusy(true);
+        setAutofillState(resultRef.current ? 'success' : 'idle');
+        return;
+      }
+      if (activeRunId.current !== run.runId) setFillMode('merge');
+      activeRunId.current = run.runId;
+      if (run.stage === 'scanning' || run.stage === 'filling') {
+        setAutofillState(run.stage === 'scanning' ? 'scanning' : 'loading');
+      } else if (run.stage === 'confirming') {
+        setAutofillState('confirming');
+      } else if (run.stage === 'completed') {
+        const setupError = applySetupError(run.error ? [{ error: run.error }] : []);
+        const merged = mergeAutofillResults(run.results ?? [], run.runId);
+        if (merged) {
+          setResult(setupError ? { ...merged, aiStatus: 'unavailable' } : merged);
+          setAutofillState('success');
+        } else setAutofillState('error');
+      } else {
+        const setupError = applySetupError([{ error: run.error }]);
+        setAutofillState(setupError ? (resultRef.current ? 'success' : 'idle') : 'error');
+      }
+    },
+    [applySetupError, setResult],
+  );
 
   // Reopening a popup observes the existing run; it never starts another one.
   useEffect(() => {
-    if (autofillState !== 'loading') return;
+    if (!sourceResolved) return;
+    let active = true;
+    let reading = false;
+    const check = async () => {
+      if (reading || sourceTabId.current === null) return;
+      reading = true;
+      try {
+        const blocked = await requestAutofillBlocked(sourceTabId.current);
+        if (active) setOtherVersionBusy(blocked);
+      } catch { /* Restricted pages keep their existing connection feedback. */ }
+      finally { reading = false; }
+    };
+    void check();
+    const timer = setInterval(() => { void check(); }, 500);
+    return () => { active = false; clearInterval(timer); };
+  }, [sourceResolved]);
+
+  useEffect(() => {
+    if (autofillState !== 'scanning' && autofillState !== 'loading') return;
     let cancelled = false;
     const revision = actionRevision.current;
     let polling = false;
@@ -158,10 +222,16 @@ function App() {
       try {
         const run = await requestAutofillRun('STATUS', sourceTabId.current);
         if (!cancelled && revision === actionRevision.current) applyRun(run);
-      } catch { /* The start request still supplies its final response. */ }
-      finally { polling = false; }
+      } catch {
+        /* The start request still supplies its final response. */
+      } finally {
+        polling = false;
+      }
     }, 300);
-    return () => { cancelled = true; clearInterval(timer); };
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
   }, [autofillState, applyRun]);
 
   const openLog = async () => {
@@ -174,7 +244,7 @@ function App() {
     }
   };
 
-  // On mount: restore the last fill and load the AI setup state.
+  // On mount: restore the last fill.
   useEffect(() => {
     let cancelled = false;
     const revision = actionRevision.current;
@@ -188,19 +258,17 @@ function App() {
         }
         if (sourceTabId.current !== null) {
           const run = await requestAutofillRun('STATUS', sourceTabId.current);
-          if (!cancelled && revision === actionRevision.current && run && run.stage !== 'completed') applyRun(run);
+          if (!cancelled && revision === actionRevision.current && run && run.stage !== 'completed')
+            applyRun(run);
         }
       } catch {
         // Content script not loaded on this page — stay in idle state.
       }
     })();
-    void readKeyState().then((state) => {
-      if (!cancelled) applyKeyState(state);
-    });
     return () => {
       cancelled = true;
     };
-  }, [sendToActiveTab, applyRun, setResult, applyKeyState]);
+  }, [sendToActiveTab, applyRun, setResult]);
 
   const openOptions = () => chrome.runtime.openOptionsPage();
 
@@ -213,67 +281,82 @@ function App() {
   };
 
   const handleAutofill = async () => {
+    if (otherVersionBusy) return;
     setUndoFailed(false);
     const revision = ++actionRevision.current;
     setLogOpenFailed(false);
-    setAutofillState('loading');
+    setAutofillState('scanning');
     try {
       if (sourceTabId.current === null) throw new Error('No source tab');
       // Hand off before awaiting settings, scanning, or any other popup work.
       const run = await requestAutofillRun('START', sourceTabId.current);
       if (!run) throw new Error('Could not start autofill');
       if (revision === actionRevision.current) applyRun(run);
-    } catch { if (revision === actionRevision.current) setAutofillState('error'); }
+    } catch {
+      if (revision === actionRevision.current) setAutofillState('error');
+    }
   };
 
   const handleConfirmFill = async () => {
+    if (otherVersionBusy) return;
     const revision = ++actionRevision.current;
     setAutofillState('loading');
     try {
       if (sourceTabId.current === null || !activeRunId.current) throw new Error('No pending run');
       const run = await requestAutofillRun('CONFIRM', sourceTabId.current, {
-        runId: activeRunId.current, mode: fillMode,
+        runId: activeRunId.current,
+        mode: fillMode,
       });
       if (!run) throw new Error('The pending run changed');
       if (revision === actionRevision.current) applyRun(run);
-    } catch { if (revision === actionRevision.current) setAutofillState('error'); }
+    } catch {
+      if (revision === actionRevision.current) setAutofillState('error');
+    }
   };
 
   const handleCancelFill = () => {
     actionRevision.current++;
     if (sourceTabId.current !== null)
-      void requestAutofillRun('CANCEL', sourceTabId.current, { runId: activeRunId.current }).catch(() => {});
+      void requestAutofillRun('CANCEL', sourceTabId.current, { runId: activeRunId.current }).catch(
+        () => {},
+      );
     setLogOpenFailed(false);
     setAutofillState('idle');
     setResult(null);
   };
 
   const handleUndo = async () => {
-    if (undoing) return;
+    if (undoing || otherVersionBusy) return;
     actionRevision.current++;
     setLogOpenFailed(false);
     setUndoFailed(false);
     setUndoing(true);
     try {
-      if (sourceTabId.current !== null)
-        await requestAutofillRun('CANCEL', sourceTabId.current).catch(() => null);
-      const responses = await sendToActiveTab({ action: 'CLEAR' });
-      if (!responses.length || responses.some(response => (response as { success?: boolean } | null)?.success !== true)) throw new Error('Undo incomplete');
+      if (sourceTabId.current === null || !(await requestAutofillUndo(sourceTabId.current)))
+        throw new Error('Undo incomplete');
       setAutofillState('idle');
       setResult(null);
     } catch {
-      setUndoFailed(true);
+      const blocked = sourceTabId.current !== null &&
+        await requestAutofillBlocked(sourceTabId.current).catch(() => false);
+      setOtherVersionBusy(blocked);
+      setUndoFailed(!blocked);
       // Retain the result and Undo action for widgets that could not restore.
       try {
         const statuses = await sendToActiveTab({ action: 'GET_STATUS' });
         const remaining = mergeAutofillResults(statuses);
         if (remaining) setResult(remaining);
-      } catch { /* Keep the previous result if a frame is unavailable. */ }
-    } finally { setUndoing(false); }
+      } catch {
+        /* Keep the previous result if a frame is unavailable. */
+      }
+    } finally {
+      setUndoing(false);
+    }
   };
 
   const { percentage, isCoreComplete } = completion;
-  const busy = autofillState === 'loading' || undoing;
+  const filling = autofillState === 'scanning' || autofillState === 'loading';
+  const busy = filling || undoing;
   const result = autofillState === 'success' ? autofillResult : null;
   const { filled, unfilled } = result ? resultCounts(result) : { filled: 0, unfilled: 0 };
   const aiUnavailable = !!result && result.totalScanned > 0 && result.aiStatus === 'unavailable';
@@ -281,7 +364,8 @@ function App() {
   const aiSetup = !loading && !profileLoadFailed && !profileSetup && !keyLoading && !hasGeminiKey;
   const waitingForKey = !loading && !profileLoadFailed && !profileSetup && keyLoading;
   const confirming = autofillState === 'confirming' && !profileSetup && !aiSetup && !keyReadFailed;
-  const primaryDisabled = loading || waitingForKey || busy || !sourceResolved;
+  const primaryDisabled = loading || waitingForKey || busy || !sourceResolved ||
+    (otherVersionBusy && !profileLoadFailed && !profileSetup && !keyReadFailed && !aiSetup);
 
   // Setup actions occupy the same place as Fill Form. Restore focus only when
   // the action becomes available, leaving the confirmation radios in control.
@@ -322,9 +406,6 @@ function App() {
   } else if (aiSetup) {
     tone = 'info';
     message = feedback.autofillKeyRequired;
-  } else if (autofillState === 'loading') {
-    tone = 'working';
-    message = 'Filling…';
   } else if (autofillState === 'error') {
     tone = 'error';
     message = feedback.autofillFailed;
@@ -362,18 +443,14 @@ function App() {
   const noticeMessage = message ?? aiWarning;
 
   return (
-    <div className="flex max-h-[600px] w-[380px] flex-col bg-white font-sans text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+    <div className="flex max-h-[var(--popup-max-height,600px)] w-[380px] flex-col bg-white font-sans text-gray-900 dark:bg-gray-900 dark:text-gray-100">
       <header className="flex shrink-0 items-center gap-2.5 px-5 pb-3 pt-5">
-        <img
-          src={LOGO_ICON_SRC}
-          alt="Job Buddy"
-          className="h-8 w-8 shrink-0"
-        />
+        <img src={LOGO_ICON_SRC} alt="Job Buddy" className="h-8 w-8 shrink-0" />
         <div className="flex flex-1 items-center gap-2">
           <h1 className="text-base font-bold">Job Buddy</h1>
           <DevBadge />
         </div>
-        <span className="text-xs text-gray-400 dark:text-gray-500">v{EXTENSION_VERSION}</span>
+        <VersionLink />
       </header>
 
       <div className="shrink-0 px-5">
@@ -381,11 +458,12 @@ function App() {
           {loading ? (
             <span className="h-3 w-28 animate-pulse rounded bg-gray-100 motion-reduce:animate-none dark:bg-gray-800" />
           ) : (
-            <span
-              className="flex items-center gap-1.5 font-medium text-gray-600 dark:text-gray-300"
-            >
+            <span className="flex items-center gap-1.5 font-medium text-gray-600 dark:text-gray-300">
               {isCoreComplete && !profileLoadFailed && (
-                <Check aria-hidden="true" className="h-3.5 w-3.5 text-green-700 dark:text-green-400" />
+                <Check
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 text-green-700 dark:text-green-400"
+                />
               )}
               {isCoreComplete && !profileLoadFailed
                 ? 'Required details complete'
@@ -394,7 +472,7 @@ function App() {
                 <span aria-label="Unavailable">—</span>
               ) : (
                 !isCoreComplete && (
-                  <span className="font-semibold text-blue-700 dark:text-blue-400">
+                  <span className="font-semibold text-gray-700 dark:text-gray-300">
                     {percentage}%
                   </span>
                 )
@@ -424,7 +502,7 @@ function App() {
             className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
           >
             <div
-              className={`h-full rounded-full transition-all motion-reduce:transition-none ${isCoreComplete ? 'bg-green-500' : 'bg-blue-500'}`}
+              className="h-full rounded-full bg-blue-500 transition-all motion-reduce:transition-none dark:bg-blue-400"
               style={{ width: `${percentage}%` }}
             />
           </div>
@@ -473,16 +551,29 @@ function App() {
         </fieldset>
       )}
 
-      <div className="flex shrink-0 gap-2 px-5 pb-4 pt-4">
+      <div className="flex shrink-0 gap-2 px-5 pb-4 pt-4"
+        title={otherVersionBusy ? feedback.autofillOtherVersionBusy : undefined}
+        tabIndex={otherVersionBusy ? 0 : undefined}
+        role={otherVersionBusy ? 'group' : undefined}
+        aria-label={otherVersionBusy ? feedback.autofillOtherVersionBusy : undefined}>
         <button
           type="button"
           ref={fillButtonRef}
           onClick={primaryAction}
           disabled={primaryDisabled}
+          aria-busy={filling}
           className={`${primaryButton} flex-1`}
         >
-          {primaryLabel}
-          {primaryIsAI && <Sparkles aria-hidden="true" className="h-4 w-4" />}
+          {filling && (
+            <LoaderCircle
+              aria-hidden="true"
+              className="h-4 w-4 animate-spin motion-reduce:animate-none"
+            />
+          )}
+          <span role={filling ? 'status' : undefined} aria-atomic="true">
+            {autofillState === 'scanning' ? feedback.autofillScanning : filling ? 'Filling…' : primaryLabel}
+          </span>
+          {!filling && primaryIsAI && <Sparkles aria-hidden="true" className="h-4 w-4" />}
         </button>
         {confirming ? (
           <button type="button" onClick={handleCancelFill} className={secondaryButton}>
@@ -490,7 +581,7 @@ function App() {
           </button>
         ) : (
           result && (
-            <button type="button" onClick={handleUndo} disabled={busy} className={secondaryButton}>
+            <button type="button" onClick={handleUndo} disabled={busy || otherVersionBusy} className={secondaryButton}>
               {undoing ? 'Undoing…' : 'Undo'}
             </button>
           )
@@ -498,28 +589,27 @@ function App() {
       </div>
 
       {showFeedback && (
-        <div
-          role="region"
-          aria-label="Autofill details"
-          tabIndex={0}
-          className="min-h-0 overflow-y-auto px-5 pb-5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-500"
-        >
-          <PopupNotice tone={tone} urgent={aiUnavailable && !message}>
-            {noticeMessage && <p>{noticeMessage}</p>}
-            {result && (
-              <div
-                className={
-                  noticeMessage ? 'mt-3 border-t border-gray-200/70 pt-3 dark:border-gray-700' : ''
-                }
-              >
-                {noticeMessage && (
-                  <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">Last fill</p>
-                )}
-                <ResultSummary result={result} onOpenDetails={() => void openLog()} />
-                {message && aiWarning && <p className="mt-1">{aiWarning}</p>}
-              </div>
-            )}
-          </PopupNotice>
+        <div className="flex min-h-0 flex-col px-5 pb-5">
+          <div
+            role="region"
+            aria-label="Autofill details"
+            tabIndex={0}
+            className="min-h-0 overflow-y-auto rounded-lg focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-500"
+          >
+            <PopupNotice tone={tone} urgent={aiUnavailable && !message}>
+              {noticeMessage && <p>{noticeMessage}</p>}
+              {result && (
+                <div
+                  className={
+                    noticeMessage ? 'mt-3 border-t border-gray-200/70 pt-3 dark:border-gray-700' : ''
+                  }
+                >
+                  <ResultSummary result={result} previous={!!noticeMessage} onOpenDetails={() => void openLog()} />
+                  {message && aiWarning && <p className="mt-1">{aiWarning}</p>}
+                </div>
+              )}
+            </PopupNotice>
+          </div>
         </div>
       )}
     </div>
@@ -543,9 +633,11 @@ function resultCounts(result: AutofillResult) {
 
 function ResultSummary({
   result,
+  previous = false,
   onOpenDetails,
 }: {
   result: AutofillResult;
+  previous?: boolean;
   onOpenDetails: () => void;
 }) {
   const { filled, unfilled } = resultCounts(result);
@@ -553,17 +645,20 @@ function ResultSummary({
   return (
     <section aria-label="Fill results">
       <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 text-sm font-semibold text-gray-900 dark:text-gray-100">
+        <div className="min-w-0">
+          {previous && <p className="mb-1 text-gray-500 dark:text-gray-400">Last fill</p>}
+          <p className={filled > 0 ? 'font-medium' : 'font-normal'}>
           {result.totalScanned === 0
             ? feedback.autofillNoFields
             : onlyKept
               ? `${result.kept} existing answer${result.kept === 1 ? '' : 's'} kept`
               : `${filled} field${filled === 1 ? '' : 's'} filled`}
-        </p>
+          </p>
+        </div>
         <button
           type="button"
           onClick={onOpenDetails}
-          className="-my-1 min-h-7 shrink-0 rounded-sm px-1 text-xs font-medium text-gray-600 underline text-action hover:text-gray-900 focus-visible:text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-gray-300 dark:hover:text-white dark:focus-visible:text-white"
+          className="shrink-0 self-start rounded-sm px-1 text-xs font-medium leading-[inherit] text-gray-600 underline text-action hover:text-gray-900 focus-visible:text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-gray-300 dark:hover:text-white dark:focus-visible:text-white"
         >
           View details
         </button>
@@ -592,6 +687,6 @@ function ResultSummary({
 const primaryButton =
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50';
 const secondaryButton =
-  'inline-flex min-h-11 items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800';
+  'inline-flex min-h-11 items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-blue-500 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800';
 
 export default App;

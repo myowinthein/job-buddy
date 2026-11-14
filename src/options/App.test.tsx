@@ -136,7 +136,7 @@ describe('options App — handleSave contract', () => {
     fireEvent.click(await screen.findByText('save-personal'));
 
     await waitFor(() => expect(vi.mocked(saveProfile)).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText('Profile saved. Drive backup is pending.')).toBeTruthy();
+    expect(await screen.findByText('Profile saved. Google Drive backup is pending.')).toBeTruthy();
   });
 
   it('shows an error toast and does not update profile state or sync to Drive when saveProfile rejects', async () => {
@@ -145,7 +145,7 @@ describe('options App — handleSave contract', () => {
     fireEvent.click(await screen.findByText('save-personal'));
 
     await waitFor(() => expect(vi.mocked(saveProfile)).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText('Failed to save: storage may be full.')).toBeTruthy();
+    expect(await screen.findByText('Could not save your profile. Try again.')).toBeTruthy();
     // Profile state was never updated with the value that failed to persist.
     expect(screen.getByText('personal-section:Jane')).toBeTruthy();
     expect(vi.mocked(syncProfileToDrive)).not.toHaveBeenCalled();
@@ -241,7 +241,7 @@ describe('options App — reload-after-import failure', () => {
 
     fireEvent.click(await screen.findByText('trigger-reset'));
 
-    expect(await screen.findByText("Saved, but the profile view couldn't refresh. Reload the page.")).toBeTruthy();
+    expect(await screen.findByText("Changes applied. Reload this page to see the latest data.")).toBeTruthy();
     expect(consoleError).toHaveBeenCalledWith('[Job Buddy] Failed to reload profile after import:', expect.any(Error));
 
     consoleError.mockRestore();
@@ -277,3 +277,38 @@ it('applies a reviewed resume update to the latest stored profile before saving 
   expect(saved.links.linkedin).toBe('https://linkedin.com/in/concurrent');
   expect(syncProfileToDrive).toHaveBeenCalledWith(saved);
 });
+
+for (const action of ['save', 'cancel', 'saved', 'changed again']) {
+  it(`recovers a replaced profile safely when the user chooses ${action}`, async () => {
+    const original = { id: 'old', personal: { firstName: 'Jane' } } as Profile;
+    const current = { id: 'new', personal: { firstName: 'Jordan', email: 'jordan@example.test' }, address: { city: 'Seattle' } } as Profile;
+    vi.mocked(getProfile).mockResolvedValueOnce(original).mockResolvedValue(current);
+    renderApp();
+    fireEvent.click(await screen.findByText('save-personal'));
+    await screen.findByRole('heading', { name: 'Review Unsaved Changes' });
+    expect(saveProfile).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Use Saved Profile' })).toBeTruthy();
+    if (action === 'cancel') {
+      fireEvent.click(screen.getByRole('button', { name: 'Keep Editing' }));
+      expect(screen.getByText('personal-section:Jane')).toBeTruthy();
+    } else if (action === 'saved') {
+      fireEvent.click(screen.getByRole('button', { name: 'Use Saved Profile' }));
+      await screen.findByText('personal-section:Jordan');
+      expect(saveProfile).not.toHaveBeenCalled();
+    } else {
+      fireEvent.click(screen.getByRole('button', { name: 'Select All' }));
+      if (action === 'changed again') vi.mocked(getProfile).mockResolvedValue({ ...current, id: 'third' });
+      fireEvent.click(screen.getByRole('button', { name: 'Save Selected (1)' }));
+      if (action === 'changed again') {
+        const notice = (await screen.findByText('Your profile changed. Review the refreshed values.')).closest('[role="alert"]');
+        expect(notice?.className).toContain('bg-amber-50');
+        expect(notice?.querySelector('svg')).not.toBeNull();
+        expect(saveProfile).not.toHaveBeenCalled();
+        expect(screen.getByRole('button', { name: 'Use Saved Profile' })).toBeTruthy();
+      } else {
+        await waitFor(() => expect(saveProfile).toHaveBeenCalledOnce());
+        expect(vi.mocked(saveProfile).mock.calls[0][0]).toMatchObject({ id: 'new', personal: { firstName: 'Updated', email: 'jordan@example.test' }, address: { city: 'Seattle' } });
+      }
+    }
+  });
+}

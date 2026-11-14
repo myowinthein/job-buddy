@@ -54,25 +54,6 @@ await initTheme();
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <div className="preview-shell">
-      {!embedded && (
-        <aside className="preview-notice" aria-label="Preview information">
-          <strong>Preview · sample data</strong>
-          <span>
-            {preview.getSimulation()
-              ? 'Temporary data and appearance reset on refresh. Providers are simulated.'
-              : 'Profile changes reset on refresh. Appearance is remembered. Gemini and Google Drive are disabled.'}
-          </span>
-          <span>
-            <a className="underline" href="/">
-              Sample profile
-            </a>{' '}
-            ·{' '}
-            <a className="underline" href="/?profile=empty">
-              Empty profile
-            </a>
-          </span>
-        </aside>
-      )}
       <div className="preview-app">
         <ToastProvider>
           <SurfaceShell>

@@ -1,9 +1,10 @@
 import { PROFILE_MAPPING_PATH_TEMPLATES } from '../profile/fieldCatalog';
 import type { LearnedMappingValue, LearnedMappings } from '../types/storage';
+import { canonicalProfilePath } from './migrate';
 
 /** The profile path of a legacy string mapping or a counted entry. */
 export const mappingPath = (value: LearnedMappingValue): string =>
-  typeof value === 'string' ? value : value.path;
+  canonicalProfilePath(typeof value === 'string' ? value : value.path);
 
 export const safeMappingKey = (key: string): boolean =>
   !!key.trim() && !['__proto__', 'constructor', 'prototype'].includes(key);
@@ -51,6 +52,30 @@ export function inactiveMapping(value: unknown): value is Exclude<LearnedMapping
   return mappingShape(value) && typeof value !== 'string' && value.inactive === true;
 }
 
+/** Rename supported historical paths while preserving unrelated stored records. */
+export function migrateLearnedMappingPaths(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+  let result = raw;
+  for (const [domain, signals] of Object.entries(raw)) {
+    if (
+      !safeMappingKey(domain) ||
+      !signals ||
+      typeof signals !== 'object' ||
+      Array.isArray(signals)
+    )
+      continue;
+    let group = signals;
+    for (const [key, value] of Object.entries(signals)) {
+      if (!safeMappingKey(key) || !mappingShape(value)) continue;
+      const path = mappingPath(value);
+      if (path === (typeof value === 'string' ? value : value.path)) continue;
+      group = { ...group, [key]: typeof value === 'string' ? path : { ...value, path } };
+    }
+    if (group !== signals) result = { ...result, [domain]: group };
+  }
+  return result;
+}
+
 /** Ignore malformed records in memory without deleting stored stale mappings. */
 export function readableMappings(raw: unknown, retainStalePaths = false): LearnedMappings {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
@@ -77,7 +102,11 @@ export function readableMappings(raw: unknown, retainStalePaths = false): Learne
             ? typeof value === 'string'
               ? { path: value, count: 2, inactive: true }
               : { ...value, inactive: true }
-            : value,
+            : typeof value === 'string'
+              ? mappingPath(value)
+              : value.path === mappingPath(value)
+                ? value
+                : { ...value, path: mappingPath(value) },
         ]);
       return entries.length ? [[domain, Object.fromEntries(entries)]] : [];
     }),

@@ -9,12 +9,16 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 execFileSync('ffmpeg', ['-version'], { stdio: 'ignore' });
 if (!process.argv.includes('--from-captures'))
-  execFileSync('pnpm', ['exec', 'playwright', 'test', 'src/browser/demo-motion.pw.ts'], {
-    cwd: root,
-    env: { ...process.env, JB_CAPTURE_MOTION: '1' },
-    stdio: 'inherit',
-  });
-const results = resolve(root, '.output/browser-results');
+  execFileSync(
+    'pnpm',
+    ['exec', 'playwright', 'test', 'src/browser/demo-motion.pw.ts', '--output=.output/demo-motion'],
+    {
+      cwd: root,
+      env: { ...process.env, JB_CAPTURE_MOTION: '1' },
+      stdio: 'inherit',
+    },
+  );
+const results = resolve(root, '.output/demo-motion');
 const output = resolve(root, 'docs/assets/videos');
 await mkdir(output, { recursive: true });
 const versions = new Map();

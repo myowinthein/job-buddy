@@ -21,6 +21,31 @@ const renderShell = (props: { busy?: boolean; onDismiss?: () => void } = {}) =>
   );
 
 describe('ModalShell', () => {
+  it.each(['negative tabindex', 'hidden ancestor', 'inert ancestor', 'display none ancestor', 'collapsed details'])(
+    'keeps %s controls out of the keyboard focus loop',
+    (hidden) => {
+      const hiddenControl = <button type="button">Hidden action</button>;
+      render(
+        <ModalShell titleId="focus-title" onDismiss={vi.fn()} className="panel">
+          <h3 id="focus-title">Focus test</h3>
+          {hidden === 'negative tabindex' && <button type="button" tabIndex={-1}>Hidden action</button>}
+          {hidden === 'hidden ancestor' && <div hidden>{hiddenControl}</div>}
+          {hidden === 'inert ancestor' && <div inert>{hiddenControl}</div>}
+          {hidden === 'display none ancestor' && <div style={{ display: 'none' }}>{hiddenControl}</div>}
+          {hidden === 'collapsed details' && <details><summary>More options</summary>{hiddenControl}</details>}
+          <button type="button">Visible action</button>
+        </ModalShell>,
+      );
+      const dialog = screen.getByRole('dialog');
+      fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Visible action' }));
+      fireEvent.keyDown(document.activeElement!, { key: 'Tab' });
+      expect(document.activeElement).toBe(hidden === 'collapsed details'
+        ? screen.getByText('More options')
+        : screen.getByRole('button', { name: 'Visible action' }));
+    },
+  );
+
   it('labels the dialog with its title and description', () => {
     renderShell();
     const dialog = screen.getByRole('dialog', { name: 'Title' });

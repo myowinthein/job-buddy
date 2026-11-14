@@ -9,6 +9,8 @@ import {
 } from './preferences';
 import { QuickFillWidget } from './widget';
 import { affectsApplicationDetection, DETECTION_ATTRIBUTES } from './detectionChanges';
+import { AUTOFILL_ERROR } from '@/src/autofill/errorCodes';
+import { pageActivity } from '@/src/autofill/pageActivity';
 
 export function installQuickFill(): void {
   const likelyApplicationForm = createApplicationFormDetector();
@@ -52,6 +54,12 @@ export function installQuickFill(): void {
           void request('START')
             .then((next) => {
               if (currentRevision !== revision) return;
+              if (next?.error === AUTOFILL_ERROR.otherVersionBusy) {
+                starting = false;
+                widget?.render(run);
+                widget?.setBlocked(true);
+                return;
+              }
               run = next;
               starting = false;
               paint();
@@ -67,6 +75,10 @@ export function installQuickFill(): void {
           const id = run?.runId;
           void request('UNDO', { runId: id })
             .then((success) => {
+              if (!success && pageActivity('blocked', chrome.runtime.id)) {
+                widget?.setBlocked(true);
+                return;
+              }
               if (!success) throw new Error('Undo failed');
               run = null;
               paint();

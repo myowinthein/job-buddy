@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import { SALARY_PERIOD_OPTIONS } from '@/src/profile/fieldPolicies';
 import { ProfileFields } from './shared/ProfileFields';
 import { findCountryByNameOrCode } from '@/src/data/countries';
@@ -8,7 +9,9 @@ import { useToast } from '@/src/components/ui/useToast';
 import { isValidAmount, isValidProfileCurrency } from '@/src/utils/profileInputValidation';
 import { FormField } from './shared/FormField';
 import { SearchableCurrencySelect } from './shared/SearchableCurrencySelect';
-import { RemoveButton } from './shared/RemoveButton';
+import { ConfirmRemoveButton } from './shared/ConfirmRemoveButton';
+import { ExpandableCard } from './shared/ExpandableCard';
+import { removeEntryErrors } from './shared/entryErrors';
 import { saveSection } from './shared/saveSection';
 import { SaveButton } from './shared/SaveButton';
 import { EntryListHeader } from './shared/EntryListHeader';
@@ -20,8 +23,20 @@ interface Props {
   profile: Partial<Profile>;
   onSave: (updates: Partial<Profile>) => Promise<void>;
 }
-type SalaryRow = { country: string; currency: string; amount: string; period: SalaryPeriod };
-const emptyRow = (): SalaryRow => ({ country: '', currency: '', amount: '', period: 'monthly' });
+type SalaryRow = {
+  rowId: string;
+  country: string;
+  currency: string;
+  amount: string;
+  period: SalaryPeriod;
+};
+const emptyRow = (): SalaryRow => ({
+  rowId: crypto.randomUUID(),
+  country: '',
+  currency: '',
+  amount: '',
+  period: 'monthly',
+});
 function initRow(raw?: {
   country?: string;
   currency?: string;
@@ -30,6 +45,7 @@ function initRow(raw?: {
 }): SalaryRow {
   if (!raw) return emptyRow();
   return {
+    rowId: crypto.randomUUID(),
     country: findCountryByNameOrCode(raw.country ?? '')?.code ?? '',
     currency: raw.currency ?? '',
     amount: raw.amount != null ? String(raw.amount) : '',
@@ -37,12 +53,29 @@ function initRow(raw?: {
   };
 }
 const started = (row: SalaryRow) => !!(row.currency || row.amount.trim());
+function expectedSalarySummary(row: SalaryRow) {
+  const amount = row.amount.trim();
+  if (!started(row) && row.period === 'monthly') return 'New entry';
+  return (
+    <>
+      {[
+        row.currency,
+        amount && isValidAmount(amount)
+          ? Number(amount).toLocaleString('en-US', { maximumFractionDigits: 20 })
+          : amount,
+      ].filter(Boolean).join(' ') || 'New entry'}
+      <span className="font-normal text-gray-500 dark:text-gray-400">
+        {row.period === 'annual' ? ' per year' : ' per month'}
+      </span>
+    </>
+  );
+}
 function rowErrors(row: SalaryRow): Record<string, string> {
   if (!started(row)) return {};
   const errors: Record<string, string> = {};
-  if (!row.amount.trim()) errors.amount = 'Amount is required';
+  if (!row.amount.trim()) errors.amount = 'Enter an amount';
   else if (!isValidAmount(row.amount)) errors.amount = 'Enter a valid amount';
-  if (!row.currency) errors.currency = 'Currency is required';
+  if (!row.currency) errors.currency = 'Choose a currency';
   else if (!isValidProfileCurrency(row.currency))
     errors.currency = 'Select a valid currency';
   return errors;
@@ -64,10 +97,15 @@ export function SalarySection({ profile, onSave }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const { showToast } = useToast();
-  const [newEntryTick, setNewEntryTick] = useState(0);
   const entriesContainerRef = useRef<HTMLDivElement>(null);
-  useScrollToNewEntry(entriesContainerRef, newEntryTick);
-  const saveDraft = useSectionDraft({ current, expected }, onSave);
+  const { focusEntry, focusRequest } = useScrollToNewEntry(entriesContainerRef);
+  const saveDraft = useSectionDraft(
+    {
+      current: { ...current, rowId: undefined },
+      expected: expected.map(({ rowId: _rowId, ...row }) => row),
+    },
+    onSave,
+  );
 
   const update = (row: SalaryRow, key: keyof SalaryRow, value: string): SalaryRow => ({
     ...row,
@@ -112,7 +150,7 @@ export function SalarySection({ profile, onSave }: Props) {
         },
       },
       showToast,
-      'Salary saved',
+      feedback.profileSaved,
     );
     setSaving(false);
   };
@@ -126,6 +164,7 @@ export function SalarySection({ profile, onSave }: Props) {
     const isCurrent = expectedIndex === undefined;
     return (
       <ProfileFields
+        key={row.rowId}
         index={expectedIndex}
         scope={isCurrent ? 'currentSalary' : 'expectedSalary'}
         renderers={{
@@ -193,32 +232,43 @@ export function SalarySection({ profile, onSave }: Props) {
                 title={field.label}
                 id="add-expected"
                 onAdd={() => {
-                  setExpected((rows) => [...rows, emptyRow()]);
-                  setNewEntryTick((value) => value + 1);
+                  const existing = expected.find(
+                    (row) => !started(row) && row.period === 'monthly',
+                  );
+                  const row = existing ?? emptyRow();
+                  if (!existing) setExpected((rows) => [...rows, row]);
+                  focusEntry(row.rowId);
                 }}
                 label="+ Add Entry"
               />
               <div ref={entriesContainerRef}>
                 {expected.map((row, index) => (
-                  <div
-                    key={index}
-                    className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3"
+                  <ExpandableCard
+                    id={`entry-salary-${index}`}
+                    key={row.rowId}
+                    entryId={row.rowId}
+                    expandRequest={focusRequest.rowId === row.rowId ? focusRequest.tick : 0}
+                    summary={expectedSalarySummary(row)}
+                    defaultExpanded={!row.amount.trim() || !row.currency}
+                    invalid={Object.entries(errors).some(
+                      ([key, value]) => key.startsWith(`expected.${index}.`) && !!value,
+                    )}
+                    confirmDelete={started(row) || row.period !== 'monthly'}
+                    deleteLabel={expected.length === 1 ? 'Clear' : 'Delete'}
+                    onDelete={() => {
+                      setExpected((rows) =>
+                        rows.length === 1 ? [emptyRow()] : rows.filter((_, i) => i !== index),
+                      );
+                      setErrors((errors) => removeEntryErrors(errors, index, 'expected.'));
+                    }}
                   >
-                    <div className="flex justify-between mb-3">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        Entry {index + 1}
-                      </span>
-                      <RemoveButton
-                        onClick={() => setExpected((rows) => rows.filter((_, i) => i !== index))}
-                      />
-                    </div>
                     {renderRow(
                       row,
                       `expected.${index}`,
                       (key, value) => changeExpected(index, key, value),
                       index,
                     )}
-                  </div>
+                  </ExpandableCard>
                 ))}
               </div>
             </section>
@@ -228,28 +278,26 @@ export function SalarySection({ profile, onSave }: Props) {
               <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
                 {field.label}
               </h3>
-              {started(current) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCurrent(emptyRow());
-                    checkRow('current', emptyRow());
-                  }}
-                  className="mb-3 text-xs text-red-600 dark:text-red-400 hover:underline"
-                >
-                  Remove current salary
-                </button>
-              )}
-              <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <div className="profile-entry-fields profile-entry-fields-salary @container/profile-entry relative p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <div className="absolute right-4 top-4">
+                  <ConfirmRemoveButton
+                    compact
+                    title="Clear salary"
+                    action="Clear"
+                    confirm={started(current)}
+                    onConfirm={() => {
+                      setCurrent(emptyRow());
+                      checkRow('current', emptyRow());
+                    }}
+                  />
+                </div>
                 {renderRow(current, 'current', changeCurrent)}
               </div>
             </section>
           ),
         }}
       />
-      <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <SaveButton onClick={handleSave} saving={saving} label="Save Salary" />
-      </div>
+      <SaveButton onClick={handleSave} saving={saving} label="Save" />
     </div>
   );
 }

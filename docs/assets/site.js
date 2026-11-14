@@ -9,7 +9,10 @@ function prepareImage(source) {
     const image = new Image();
     image.decoding = 'async';
     image.src = source;
-    preparedImages.set(source, image.decode().catch(() => {}));
+    const ready = image.decode().catch(() => {
+      if (preparedImages.get(source) === ready) preparedImages.delete(source);
+    });
+    preparedImages.set(source, ready);
     // Keep prefetching bounded as the reader moves through the walkthrough.
     if (preparedImages.size > 16) preparedImages.delete(preparedImages.keys().next().value);
   }
@@ -17,7 +20,7 @@ function prepareImage(source) {
 }
 function showScreenshot(img) {
   const source = screenshotSource(img);
-  if (img.getAttribute('src') === source) return;
+  if (img.getAttribute('src') === source && (!img.complete || img.naturalWidth > 0)) return;
   if (nearbyImages.has(img)) {
     void prepareImage(source).then(() => {
       // A rapid theme change must not restore an older screenshot.
@@ -46,42 +49,16 @@ const prepareTheme = () => nearbyImages.forEach((img) => {
 });
 themeButton?.addEventListener('pointerenter', prepareTheme);
 themeButton?.addEventListener('focus', prepareTheme);
-let userTheme = false;
-try {
-  userTheme = ['light', 'dark'].includes(localStorage.getItem('theme'));
-} catch {
-  /* Storage is optional. */
-}
-function updateTheme() {
-  const dark = root.classList.contains('dark');
-  themeButton?.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
-  themeButton?.setAttribute('title', dark ? 'Switch to light mode' : 'Switch to dark mode');
-  themeButton?.setAttribute('aria-pressed', String(dark));
-  screenshots.forEach(showScreenshot);
-  document.dispatchEvent(new Event('jb-theme-change'));
-}
-themeButton?.addEventListener('click', () => {
-  root.classList.toggle('dark');
-  userTheme = true;
-  try {
-    localStorage.setItem('theme', root.classList.contains('dark') ? 'dark' : 'light');
-  } catch {
-    /* Keep the selected theme for this visit. */
-  }
-  updateTheme();
-});
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (event) => {
-  if (!userTheme) {
-    root.classList.toggle('dark', event.matches);
-    updateTheme();
-  }
-});
-updateTheme();
+screenshots.forEach(showScreenshot);
 
 const dialog = document.querySelector('.image-dialog');
 const dialogImage = dialog?.querySelector('img');
 const dialogCaption = dialog?.querySelector('p');
 let lastTrigger;
+document.addEventListener('jb-theme-change', () => {
+  screenshots.forEach(showScreenshot);
+  if (dialog?.open) dialogImage.src = screenshotSource(lastTrigger.querySelector('img'));
+});
 function sizeViewer() {
   if (dialogImage?.naturalWidth) {
     // One source pixel per screen pixel, including browser zoom / Retina density.
@@ -94,7 +71,7 @@ document.querySelectorAll('[data-enlarge]').forEach((button) => {
   button.addEventListener('click', () => {
     const img = button.querySelector('img');
     lastTrigger = button;
-    dialogImage.src = img.currentSrc || img.src;
+    dialogImage.src = screenshotSource(img);
     dialogImage.alt = img.alt;
     dialogCaption.textContent = img.alt;
     sizeViewer();
@@ -149,12 +126,15 @@ document.querySelectorAll('[data-visual-tour]').forEach((tour) => {
 });
 
 const chapters = [...document.querySelectorAll('main > [id]')];
-const links = [...document.querySelectorAll('.chapter-nav a')];
+const chapterNavigation = document.querySelector('.chapter-nav');
+const links = [...(chapterNavigation?.querySelectorAll('a') ?? [])];
 // Use the current positions rather than only the last observer transition.
 // This also handles jumping back to the top or expanding a long chapter.
 let navigationFrame = 0;
+let activeChapterLink;
 function updateChapter() {
   navigationFrame = 0;
+  if (!chapterNavigation || getComputedStyle(chapterNavigation).display === 'none') return;
   const marker =
     (document.querySelector('.site-header')?.getBoundingClientRect().height || 0) + 100;
   let active = chapters[0];
@@ -162,10 +142,14 @@ function updateChapter() {
     if (chapter.getBoundingClientRect().top <= marker) active = chapter;
     else break;
   }
-  links.forEach((link) => {
-    if (active && link.hash === '#' + active.id) link.setAttribute('aria-current', 'location');
-    else link.removeAttribute('aria-current');
-  });
+  // A short final chapter cannot always reach the tracking line above the footer.
+  if (scrollY > 0 && Math.ceil(scrollY + innerHeight) >= root.scrollHeight)
+    active = chapters.at(-1);
+  const nextLink = links.find((link) => active && link.hash === '#' + active.id);
+  if (nextLink === activeChapterLink) return;
+  activeChapterLink?.removeAttribute('aria-current');
+  nextLink?.setAttribute('aria-current', 'location');
+  activeChapterLink = nextLink;
 }
 function scheduleChapter() {
   if (!navigationFrame) navigationFrame = requestAnimationFrame(updateChapter);

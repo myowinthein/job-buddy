@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import { profileTextLimit } from '@/src/profile/fieldPolicies';
 import { ProfileFields } from './shared/ProfileFields';
 import type { CatalogField } from '@/src/profile/fieldCatalog';
@@ -7,51 +8,57 @@ import { useToast } from '@/src/components/ui/useToast';
 import { useState, useRef } from 'react';
 import type { Profile, CustomLink } from '@/src/types/profile';
 import { FormField } from './shared/FormField';
-import { RemoveButton } from './shared/RemoveButton';
+import { ConfirmRemoveButton } from './shared/ConfirmRemoveButton';
+import { removeEntryErrors } from './shared/entryErrors';
 import { saveSection } from './shared/saveSection';
 import { SaveButton } from './shared/SaveButton';
 import { EntryListHeader } from './shared/EntryListHeader';
 import { fieldCls as cls } from './shared/fieldCls';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 import { withScheme } from '@/src/utils/url';
-import { isLinkedInUrl, isValidProfileUrl } from '@/src/utils/profileInputValidation';
+import { isLinkedInUrl, isValidProfileUrl, profileUrlLengthError } from '@/src/utils/profileInputValidation';
 
 interface Props {
   profile: Partial<Profile>;
   onSave: (updates: Partial<Profile>) => Promise<void>;
 }
 
+type LocalLink = CustomLink & { rowId: string };
+const emptyLink = (): LocalLink => ({ rowId: crypto.randomUUID(), label: '', url: '' });
+
 export function LinksSection({ profile, onSave }: Props) {
   const l = profile.links;
   const [form, setForm] = useState({
     linkedin: l?.linkedin ?? '',
-    portfolio: l?.portfolio ?? '',
     github: l?.github ?? '',
     twitter: l?.twitter ?? '',
     dribbble: l?.dribbble ?? '',
     behance: l?.behance ?? '',
   });
-  const [custom, setCustom] = useState<CustomLink[]>(
-    l?.custom?.length ? l.custom : [{ label: '', url: '' }],
+  const [custom, setCustom] = useState<LocalLink[]>(
+    l?.custom?.length ? l.custom.map((link) => ({ ...link, rowId: crypto.randomUUID() })) : [emptyLink()],
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
 
-  const [newEntryTick, setNewEntryTick] = useState(0);
   const customContainerRef = useRef<HTMLDivElement>(null);
-  useScrollToNewEntry(customContainerRef, newEntryTick);
+  const { focusEntry } = useScrollToNewEntry(customContainerRef);
 
   const isValidUrl = isValidProfileUrl;
 
   // Shared by updateCustom, handleCustomUrlBlur, and validate() — the one
   // check every custom-link URL field needs, regardless of when it fires.
   const customUrlError = (url: string, label = ''): string => {
-    if (label.trim() && !url.trim()) return 'URL is required';
+    if (label.trim() && !url.trim()) return 'Enter a URL';
+    const lengthError = profileUrlLengthError(url);
+    if (lengthError) return lengthError;
     return url.trim() && !isValidUrl(url.trim()) ? 'Enter a valid URL' : '';
   };
 
   const fieldError = (key: string, value: string): string => {
+    const lengthError = profileUrlLengthError(value);
+    if (lengthError) return lengthError;
     if (key === 'linkedin') {
       if (!value.trim()) return '';
       if (!isLinkedInUrl(value)) return 'Enter a valid LinkedIn URL';
@@ -77,7 +84,7 @@ export function LinksSection({ profile, onSave }: Props) {
     const next = { ...custom[idx], [key]: value };
     setErrors((e) => ({
       ...e,
-      [`custom.${idx}.label`]: next.url.trim() && !next.label.trim() ? 'Label is required' : '',
+      [`custom.${idx}.label`]: next.url.trim() && !next.label.trim() ? 'Enter a link label' : '',
       [`custom.${idx}.url`]: customUrlError(next.url, next.label),
     }));
   };
@@ -90,7 +97,6 @@ export function LinksSection({ profile, onSave }: Props) {
     const e: Record<string, string> = {};
     for (const key of [
       'linkedin',
-      'portfolio',
       'github',
       'twitter',
       'dribbble',
@@ -102,7 +108,7 @@ export function LinksSection({ profile, onSave }: Props) {
     custom.forEach((c, idx) => {
       const err = customUrlError(c.url, c.label);
       if (err) e[`custom.${idx}.url`] = err;
-      if (c.url.trim() && !c.label.trim()) e[`custom.${idx}.label`] = 'Label is required';
+      if (c.url.trim() && !c.label.trim()) e[`custom.${idx}.label`] = 'Enter a link label';
       else if (c.label.length > profileTextLimit('links.custom.$.label'))
         e[`custom.${idx}.label`] =
           `Use ${profileTextLimit('links.custom.$.label')} characters or fewer`;
@@ -111,7 +117,10 @@ export function LinksSection({ profile, onSave }: Props) {
     return Object.keys(e).length === 0;
   };
 
-  const saveDraft = useSectionDraft({ form, custom }, onSave);
+  const saveDraft = useSectionDraft(
+    { form, custom: custom.map(({ rowId: _rowId, ...row }) => row) },
+    onSave,
+  );
 
   const handleSave = async () => {
     if (!validate()) return;
@@ -121,10 +130,9 @@ export function LinksSection({ profile, onSave }: Props) {
       {
         links: {
           linkedin: form.linkedin.trim() ? withScheme(form.linkedin.trim()) : '',
-          portfolio: form.portfolio.trim() ? withScheme(form.portfolio.trim()) : undefined,
           custom: custom
             .filter((c) => c.label.trim() && c.url.trim())
-            .map((c) => ({ ...c, url: withScheme(c.url.trim()) })),
+            .map((c) => ({ label: c.label, url: withScheme(c.url.trim()) })),
           // Dedicated controls also retain compatibility with existing social-link paths
           github: form.github.trim() ? withScheme(form.github.trim()) : undefined,
           twitter: form.twitter.trim() ? withScheme(form.twitter.trim()) : undefined,
@@ -133,14 +141,13 @@ export function LinksSection({ profile, onSave }: Props) {
         },
       },
       showToast,
-      'Links saved',
+      feedback.profileSaved,
     );
     setSaving(false);
   };
 
   const placeholders = {
     linkedin: 'https://www.linkedin.com/in/johnsmith',
-    portfolio: 'https://johnsmith.dev',
     github: 'https://github.com/you',
     twitter: 'https://x.com/you',
     dribbble: 'https://dribbble.com/you',
@@ -156,7 +163,7 @@ export function LinksSection({ profile, onSave }: Props) {
         onChange={(e) => set(key, e.target.value)}
         onBlur={() => handleBlur(key)}
         placeholder={placeholders[key]}
-        maxLength={field.maxLength}
+
       />
     </FormField>
   );
@@ -169,7 +176,6 @@ export function LinksSection({ profile, onSave }: Props) {
         scope="links"
         renderers={{
           linkedin: (field) => renderLink('linkedin', field),
-          portfolio: (field) => renderLink('portfolio', field),
           github: (field) => renderLink('github', field),
           twitter: (field) => renderLink('twitter', field),
           dribbble: (field) => renderLink('dribbble', field),
@@ -193,23 +199,31 @@ export function LinksSection({ profile, onSave }: Props) {
                   id="add-customLinks"
                   title={field.label}
                   onAdd={() => {
-                    setCustom((rows) => [...rows, { label: '', url: '' }]);
-                    setNewEntryTick((t) => t + 1);
+                    const existing = custom.find((row) => !row.label && !row.url);
+                    const row = existing ?? emptyLink();
+                    if (!existing) setCustom((rows) => [...rows, row]);
+                    focusEntry(row.rowId);
                   }}
                   label="+ Add Entry"
                 />
                 <div ref={customContainerRef}>
                   {custom.map((c, idx) => (
                     <div
-                      key={idx}
-                      className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3"
+                      key={c.rowId}
+                      data-entry-id={c.rowId}
+                      className="profile-entry-fields @container/profile-entry relative p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-3"
                     >
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                          Entry {idx + 1}
-                        </span>
-                        <RemoveButton
-                          onClick={() => setCustom((rows) => rows.filter((_, i) => i !== idx))}
+                      <div className="absolute right-4 top-4">
+                        <ConfirmRemoveButton
+                          compact
+                          confirm={!!(c.label || c.url)}
+                          action={custom.length === 1 ? 'Clear' : 'Delete'}
+                          onConfirm={() => {
+                            setCustom((rows) =>
+                              rows.length === 1 ? [emptyLink()] : rows.filter((_, i) => i !== idx),
+                            );
+                            setErrors((errors) => removeEntryErrors(errors, idx, 'custom.'));
+                          }}
                         />
                       </div>
                       <ProfileFields
@@ -229,7 +243,7 @@ export function LinksSection({ profile, onSave }: Props) {
                                 onChange={(e) => updateCustom(idx, 'label', e.target.value)}
                                 placeholder="My Blog"
                                 list="custom-link-labels"
-                                maxLength={field.maxLength}
+
                               />
                             </FormField>
                           ),
@@ -247,7 +261,7 @@ export function LinksSection({ profile, onSave }: Props) {
                                 onChange={(e) => updateCustom(idx, 'url', e.target.value)}
                                 onBlur={(e) => handleCustomUrlBlur(idx, e.target.value)}
                                 placeholder="https://blog.johnsmith.dev"
-                                maxLength={field.maxLength}
+
                               />
                             </FormField>
                           ),
@@ -262,9 +276,7 @@ export function LinksSection({ profile, onSave }: Props) {
           ),
         }}
       />
-      <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
-        <SaveButton onClick={handleSave} saving={saving} label="Save Links" />
-      </div>
+      <SaveButton onClick={handleSave} saving={saving} label="Save" />
     </div>
   );
 }

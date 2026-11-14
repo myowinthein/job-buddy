@@ -18,8 +18,11 @@ import { readFieldValue } from './fieldValue';
 import { captureField, sameFieldState } from './fieldState';
 import type { FieldState } from './fieldState';
 import { ownWriteEvents, performWrite, setWriteConfidence } from './writeSession';
+import type { WriteDependencies } from './writeSession';
 import type { DocumentFile } from '../types/profile';
 import { countryName } from '../data/countries';
+import { searchableSelect } from './reactSelect';
+import { menuSelect, selectMenu, selectMenuSearch } from './menuSelect';
 import { normalize, similarity, isSkippableOption, PLACEHOLDER_OPTION_NORMS } from './normalizer';
 import { CONF_FUZZY_THRESHOLD, CONF_AI_YELLOW } from './constants';
 
@@ -42,6 +45,9 @@ export interface FillFieldContext {
   /** Only supplied for a mapped address.city; never infer locations from arbitrary labels. */
   cityCountry?: string;
   callingCodeCountry?: string;
+  /** A country change may recreate an already identified region control. */
+  restoreAfter?: (active: () => boolean) => Promise<boolean>;
+  dependencies?: WriteDependencies;
   optionAliases?: readonly string[];
 }
 let dropdownBudget = DROPDOWN_RUN_BUDGET_MS;
@@ -131,7 +137,7 @@ function setText(element: HTMLElement, value: string): void {
       );
   });
 }
-function safeClick(element: HTMLElement, pointer = false): void {
+function safeClick(element: HTMLElement, pointer = false, menuMouse = !!menuSelect(element)): void {
   // Cancel native navigation/submission while allowing the widget's handlers.
   const blockDefault = (event: Event) => {
     if (
@@ -168,6 +174,7 @@ function safeClick(element: HTMLElement, pointer = false): void {
         if (mouseDown && element.isConnected)
           element.dispatchEvent(
             new MouseEvent('mousedown', {
+              ...(menuMouse ? { view: element.ownerDocument.defaultView, detail: 1 } : {}),
               bubbles: true,
               composed: true,
               cancelable: true,
@@ -188,10 +195,29 @@ function safeClick(element: HTMLElement, pointer = false): void {
             }),
           );
         element.dispatchEvent(
-          new MouseEvent('mouseup', { bubbles: true, composed: true, cancelable: true, button: 0 }),
+          new MouseEvent('mouseup', {
+            ...(menuMouse ? { view: element.ownerDocument.defaultView, detail: 1 } : {}),
+            bubbles: true,
+            composed: true,
+            cancelable: true,
+            button: 0,
+          }),
         );
       }
-      if (element.isConnected) element.click();
+      if (element.isConnected) {
+        if (pointer && menuMouse)
+          element.dispatchEvent(
+            new MouseEvent('click', {
+              view: element.ownerDocument.defaultView,
+              detail: 1,
+              bubbles: true,
+              composed: true,
+              cancelable: true,
+              button: 0,
+            }),
+          );
+        else element.click();
+      }
     });
   } finally {
     element.removeEventListener('click', blockDefault, true);
@@ -282,6 +308,12 @@ function boxes(root: Document | ShadowRoot): HTMLElement[] {
   return queryOpenElements(root, '[role="listbox"]').filter(isControlAvailable);
 }
 function scopedOptions(trigger: HTMLElement, before: Set<HTMLElement>): HTMLElement[] {
+  if (menuSelect(trigger)) {
+    const menu = selectMenu(trigger);
+    return menu
+      ? queryOpenElements(menu, '[role="menuitem"],[role="menuitemradio"],[role="option"]')
+      : [];
+  }
   const root = trigger.getRootNode() as Document | ShadowRoot;
   const ids = [
     ...new Set(
@@ -308,7 +340,9 @@ function scopedOptions(trigger: HTMLElement, before: Set<HTMLElement>): HTMLElem
   if (
     parent &&
     !parent.matches('body,form') &&
-    parent.querySelectorAll('[role="combobox"],[aria-haspopup="listbox"]').length <= 1
+    parent.querySelectorAll(
+      '[role="combobox"],[aria-haspopup="listbox"],button[aria-haspopup="true"][data-menu-id]',
+    ).length <= 1
   ) {
     const local = parent.querySelectorAll<HTMLElement>('[role="listbox"]');
     if (local.length === 1) return queryOpenElements(local[0], '[role="option"]');
@@ -406,13 +440,15 @@ async function waitOption(
   const linked =
     trigger.hasAttribute('aria-controls') ||
     trigger.hasAttribute('aria-owns') ||
-    trigger.getAttribute('aria-expanded') === 'true';
+    trigger.getAttribute('aria-expanded') === 'true' ||
+    !!menuSelect(trigger);
   const limit = Math.min(dropdownBudget, linked ? DROPDOWN_WAIT_MS : UNBOUND_DROPDOWN_WAIT_MS);
   const start = Date.now();
   const root = trigger.getRootNode();
   return new Promise((resolve) => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let finished = false;
+    let searched = false;
     const observer = new MutationObserver(check);
     function finish(option: HTMLElement | null) {
       if (finished) return;
@@ -433,6 +469,11 @@ async function waitOption(
         if (visible && [composedText(visible), visible.getAttribute('aria-label') ?? ''].some((label) => exact.has(normalize(label))))
           return finish(visible);
       }
+      const search = selectMenuSearch(trigger);
+      if (!searched && search && isControlAvailable(search)) {
+        searched = true;
+        setText(search, value);
+      }
       const options = scopedOptions(trigger, before);
       const option = ariaOption(options, value, placeholder, context);
       if (option) return finish(option);
@@ -440,6 +481,8 @@ async function waitOption(
         Date.now() - start >= limit ||
         (options.length &&
           !(trigger instanceof HTMLInputElement) &&
+          !menuSelect(trigger) &&
+          !search &&
           trigger.getAttribute('aria-busy') !== 'true')
       )
         return finish(null);
@@ -525,14 +568,15 @@ async function rawDropdown(
     const text = composedText(option);
     const label = option.getAttribute('aria-label') || text;
     const priorValue = readFieldValue(element);
+    const priorBacking = menuSelect(element)?.select.value;
     const priorExplicit = [
       element.getAttribute('aria-valuetext'),
       element.dataset.selected,
       element.dataset.value,
     ];
     const target = optionClickTarget(option);
-    const pointer = target === option;
-    safeClick(target, pointer);
+    const pointer = target === option || !!menuSelect(element);
+    safeClick(target, pointer, !!menuSelect(element));
     await settleFramework();
     let retained = readFieldValue(element);
     let selected = option.isConnected && option.getAttribute('aria-selected') === 'true';
@@ -545,7 +589,7 @@ async function rawDropdown(
       active() &&
       isControlAvailable(option)
     ) {
-      safeClick(optionClickTarget(option), true);
+      safeClick(optionClickTarget(option), true, !!menuSelect(element));
       await settleFramework();
       retained = readFieldValue(element);
       selected = option.isConnected && option.getAttribute('aria-selected') === 'true';
@@ -572,7 +616,13 @@ async function rawDropdown(
       optionConfidence(element, value, label, text);
       if (!selected && !knownValue) setWriteConfidence(element, CONF_AI_YELLOW);
     }
-    return accepted && isControlAvailable(element);
+    return (
+      accepted &&
+      isControlAvailable(element) &&
+      (priorBacking === undefined ||
+        retained === priorValue ||
+        menuSelect(element)?.select.value !== priorBacking)
+    );
   } finally {
     if (active() && !wasOpen) await closeDropdown(element, active);
     if (active()) blur(element);
@@ -618,11 +668,15 @@ function clearControl(element: HTMLElement): HTMLElement | null {
     parent && !parent.matches('form,body');
     parent = parent.parentElement
   ) {
-    if (parent.querySelectorAll('[role="combobox"],[aria-haspopup="listbox"]').length > 1)
+    if (
+      parent.querySelectorAll(
+        '[role="combobox"],[aria-haspopup="listbox"],button[aria-haspopup="true"][data-menu-id]',
+      ).length > 1
+    )
       return null;
     const controls = [
       ...parent.querySelectorAll<HTMLElement>(
-        'input,select,textarea,[role="combobox"],[role="textbox"]',
+        'input,select,textarea,[role="combobox"],[role="textbox"],button[aria-haspopup="true"][data-menu-id]',
       ),
     ].filter(
       (control) =>
@@ -660,6 +714,31 @@ export async function restore(
   active: () => boolean,
 ): Promise<boolean> {
   if (!active() || !isControlAvailable(element)) return false;
+  if (searchableSelect(element)) {
+    if (state.value) return rawDropdown(element, state.value, active);
+    const clear = clearControl(element);
+    if (clear && isControlAvailable(clear)) safeClick(clear);
+    else {
+      focus(element);
+      setText(element, '');
+      ownWriteEvents(() =>
+        element.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 'Backspace',
+            code: 'Backspace',
+            bubbles: true,
+            composed: true,
+            cancelable: true,
+          }),
+        ),
+      );
+    }
+    await settleFramework();
+    if (active()) await closeDropdown(element, active);
+    blur(element);
+    await settleFramework();
+    return sameFieldState(state, captureField(element));
+  }
   if (state.choices) {
     for (const item of [...state.choices].sort((a, b) => Number(b.checked) - Number(a.checked))) {
       if (!active() || !isControlAvailable(item.element)) return false;
@@ -796,7 +875,8 @@ export async function fillField(
       if (Array.isArray(value)) return false;
       if (
         element.getAttribute('role') === 'combobox' ||
-        element.getAttribute('aria-haspopup') === 'listbox'
+        element.getAttribute('aria-haspopup') === 'listbox' ||
+        !!menuSelect(element)
       )
         return rawDropdown(element, value, current, false, context);
       if (
@@ -827,7 +907,11 @@ export async function fillField(
       await settleFramework();
       return valid(element) && equivalent(element, target);
     },
-    (state, current) => restore(element, state, current),
+    async (state, current) => {
+      if (!(await restore(element, state, current))) return false;
+      return !context.restoreAfter || (await context.restoreAfter(current));
+    },
+    context.dependencies,
   );
 }
 

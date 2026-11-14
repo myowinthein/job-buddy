@@ -1,4 +1,5 @@
 import type { Profile } from '../types/profile';
+import { canonicalProfilePath } from '../utils/migrate';
 import {
   PROFILE_FIELD_LAYOUTS,
   PROFILE_SECTION_DEFINITIONS,
@@ -35,6 +36,7 @@ const fields = Object.entries(PROFILE_FIELD_LAYOUTS).flatMap(([scope, nodes]) =>
   })),
 );
 export function profileFieldMetadata(path: string) {
+  path = canonicalProfilePath(path);
   const template = path.replace(/\.\d+(?=\.|$)/g, '.$');
   for (const definition of fields) {
     const { field } = definition;
@@ -73,7 +75,7 @@ export function profileReviewMetadata(
         };
     }
   }
-  if (/^documents\.(cv|coverLetter)\.file$/.test(path)) {
+  if (/^documents\.(cv|coverLetter|portfolio)\.file$/.test(path)) {
     const definition = profileReviewMetadata(path.replace(/\.file$/, '.url'))!;
     const field = profileFieldMetadata(path.replace(/\.file$/, '.url'))!.field;
     return { ...definition, label: `${field.label} file`, order: definition.order + 0.1 };
@@ -118,7 +120,7 @@ function collectionTarget(
   const section = sectionFor(field.paths[0]);
   return {
     id: field.inputId!.replaceAll('$', String(index)),
-    ...(scope === 'workEntry' || scope === 'education'
+    ...(['workEntry', 'education', 'workAuthorization', 'expectedSalary'].includes(scope)
       ? { cardId: `entry-${section}-${index}` }
       : {}),
     ...(field.paths[0].includes('$')
@@ -148,8 +150,9 @@ export function catalogProfileTarget(
   profile: Partial<Profile>,
   path: string,
 ): { section: ProfileSectionId; target: ProfileInputTarget } | null {
+  path = canonicalProfilePath(path);
   if (path === 'derived.fullName') path = 'personal.firstName';
-  if (/^documents\.(cv|coverLetter)\.file/.test(path)) path = path.replace(/\.file.*$/, '.url');
+  if (/^documents\.(cv|coverLetter|portfolio)\.file/.test(path)) path = path.replace(/\.file.*$/, '.url');
   if (path.startsWith('professional.noticePeriod')) {
     return {
       section: 'workHistory',

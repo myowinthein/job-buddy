@@ -82,13 +82,14 @@ it.each(['update', 'replace'] as const)(
     );
     fireEvent.click(
       screen.getByRole('radio', {
-        name: mode === 'replace' ? /Replace current profile/ : /Update current profile/,
+        name: mode === 'replace' ? /Replace profile/ : /Update profile/,
       }),
     );
     fireEvent.click(
       screen.getByRole('button', { name: mode === 'replace' ? 'Replace Profile' : 'Import All' }),
     );
-    await screen.findByText('Import Complete');
+    await screen.findByText(/Resume imported\. \d+ details? saved\./);
+    expect(screen.getByRole('heading', { name: 'Personal' })).toBeTruthy();
     const saved = (await getProfile())!;
     expect(saved.personal.email).toBe('sam@example.com');
     expect(saved.documents.cv.file?.name).toBe('sam.pdf');
@@ -122,6 +123,7 @@ function setupDrive(profile = incoming() as typeof DEV_PROFILE) {
 it.each(['conflict', 'newer-count', 'local-only'] as const)(
   'reconciles %s learned mappings before Drive reports an unchanged profile current', async difference => {
     const remote = setupDrive(DEV_PROFILE);
+    await new Promise<void>(resolve => remote.chrome.storage.local.set({ profile: DEV_PROFILE }, resolve));
     const local = { 'example.test': { name: { path: 'personal.firstName', count: 3 } } };
     remote.backup!.learnedMappings = difference === 'local-only' ? {} : {
       'example.test': { name: { path: difference === 'conflict' ? 'personal.lastName' : 'personal.firstName', count: 1 } },
@@ -149,7 +151,7 @@ it('JSON review respects mapping deletions made in another tab before Import All
   const submit = await screen.findByRole('button', { name: 'Import All' });
   await new Promise<void>(resolve => preview.storage.local.set({ learnedMappings: {} }, resolve));
   fireEvent.click(submit);
-  await screen.findByText('Profile imported successfully');
+  await screen.findByText('Profile imported.');
   expect(await getLearnedMappings()).toEqual(incomingMappings);
 });
 
@@ -202,7 +204,7 @@ it.each(['json-update', 'json-replace', 'drive-empty', 'drive-replace'] as const
         new File([JSON.stringify({ profile, learnedMappings: mappings })], 'validated.json', { type: 'application/json' }),
       ] } });
     }
-    if (replace) fireEvent.click(await screen.findByRole('radio', { name: /Replace current profile/ }));
+    if (replace) fireEvent.click(await screen.findByRole('radio', { name: /Replace profile/ }));
     fireEvent.click(await screen.findByRole('button', { name: replace ? 'Replace Profile' : flow.startsWith('drive') ? 'Restore All' : 'Import All' }));
     await waitFor(async () => expect((await getLearnedMappings())['example.test']?.kept).toMatchObject({ path: 'education.0.institution' }));
     expect((await getLearnedMappings())['example.test'].dropped).toMatchObject({ inactive: true });
@@ -220,9 +222,9 @@ it('Drive person mismatch can be cancelled without uploading or changing either 
   );
   const description = 'Restore this backup or upload your saved profile.';
   expect(screen.getByText(description)).toBeTruthy();
-  fireEvent.click(screen.getByRole('radio', { name: /Update current profile/ }));
+  fireEvent.click(screen.getByRole('radio', { name: /Update profile/ }));
   expect(screen.getByText(description)).toBeTruthy();
-  fireEvent.click(screen.getByRole('radio', { name: /Replace current profile/ }));
+  fireEvent.click(screen.getByRole('radio', { name: /Replace profile/ }));
   expect(screen.getByText(description)).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
   expect((await getProfile())?.personal.email).toBe(DEV_PROFILE.personal.email);
@@ -234,7 +236,7 @@ it('Drive replacement adopts only the incoming person', async () => {
   mount();
   fireEvent.click(await screen.findByText('Connect Google Drive'));
   await screen.findByText('This may be another person’s profile');
-  fireEvent.click(screen.getByRole('radio', { name: /Replace current profile/ }));
+  fireEvent.click(screen.getByRole('radio', { name: /Replace profile/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Replace Profile' }));
   await waitFor(async () => expect((await getProfile())?.personal.email).toBe('sam@example.com'));
   expect((await getProfile())?.address).toBeUndefined();
@@ -273,7 +275,8 @@ it.each(['empty', 'matching'] as const)(
       false,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Import All' }));
-    await screen.findByText('Import Complete');
+    await screen.findByText(/Resume imported\. \d+ details? saved\./);
+    expect(screen.getByRole('heading', { name: 'Personal' })).toBeTruthy();
     const saved = (await getProfile())!;
     expect(saved.personal.email).toBe(DEV_PROFILE.personal.email);
     expect(saved.workHistory).toHaveLength(

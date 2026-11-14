@@ -80,6 +80,57 @@ afterEach(() => {
 });
 
 describe('Gemini explicit key setup', () => {
+  it('keeps Save Key disabled while settings load and uses Try Again only after failure', async () => {
+    let finish!: (value: SavedSettings) => void;
+    vi.mocked(getGeminiSettings).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    renderSettings();
+    expect((screen.getByRole('button', { name: 'Save Key' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Try Again' })).toBeNull();
+    await act(async () => { finish(empty); });
+    expect((screen.getByRole('button', { name: 'Save Key' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('places local validation immediately below the key input', async () => {
+    renderSettings();
+    const saveButton = await screen.findByRole('button', { name: 'Save Key' }) as HTMLButtonElement;
+    await waitFor(() => expect(saveButton.disabled).toBe(false));
+    fireEvent.click(saveButton);
+    const input = screen.getByLabelText('Gemini API Key');
+    expect(input.nextElementSibling).toBe(screen.getByRole('alert'));
+    expect(screen.getByRole('alert').className).not.toContain('bg-red-50');
+  });
+
+  it('opens the replacement editor without validating an untouched input', async () => {
+    vi.mocked(getGeminiSettings).mockResolvedValue(existing);
+    renderSettings();
+    fireEvent.click(await screen.findByRole('button', { name: 'Replace Key' }));
+    expect(screen.getByLabelText('Gemini API Key').getAttribute('aria-invalid')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(checkApiKey).not.toHaveBeenCalled();
+  });
+
+  it('uses an alert banner for provider failures while preserving the draft', async () => {
+    vi.mocked(checkApiKey).mockResolvedValue('invalid');
+    renderSettings();
+    await enterKey();
+    fireEvent.click(screen.getByRole('button', { name: 'Save Key' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert.className).toContain('bg-red-50');
+    expect(alert.querySelector('svg')).not.toBeNull();
+    expect((screen.getByLabelText('Gemini API Key') as HTMLInputElement).value).toBe('new-key');
+  });
+
+  it('shows a spinner inside the removing button in the confirmation dialog', async () => {
+    vi.mocked(getGeminiSettings).mockResolvedValue(existing);
+    vi.mocked(clearGeminiSettings).mockImplementation(() => new Promise(() => {}));
+    renderSettings();
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove Key' }));
+    confirmRemoval();
+    const button = within(screen.getByRole('dialog')).getByRole('button', { name: 'Removing…' });
+    expect(button.querySelector('.animate-spin')).not.toBeNull();
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it.each(['Save Key', 'Check Key', 'Check again', 'Try Again'])(
     'keeps %s visible and disabled while the indicator reports checking',
     async (label) => {
@@ -120,7 +171,7 @@ describe('Gemini explicit key setup', () => {
     expect(await screen.findByText('Enter your Gemini API key.')).toBeTruthy();
     expect(screen.getByLabelText('Gemini API Key').getAttribute('aria-invalid')).toBe('true');
     expect(screen.getByLabelText('Gemini API Key').getAttribute('aria-describedby')).toContain(
-      'gemini-key-error',
+      'gemini-key-validation',
     );
     expect(checkApiKey).not.toHaveBeenCalled();
   });
@@ -163,7 +214,7 @@ describe('Gemini explicit key setup', () => {
     expect((await screen.findByRole('alert')).textContent).toBe(KEY_ERROR_MESSAGES[failure]);
     expect(saveGeminiSettings).not.toHaveBeenCalled();
   });
-  it('keeps the Studio link in the key help and presents the no-model error as plain text', async () => {
+  it('links Google AI Studio inside the no-model alert and keeps the key help', async () => {
     vi.mocked(validateApiKey).mockResolvedValue({
       valid: false,
       error: KEY_ERROR_MESSAGES.no_model,
@@ -174,9 +225,9 @@ describe('Gemini explicit key setup', () => {
     fireEvent.click(screen.getByText('Save Key'));
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toBe(KEY_ERROR_MESSAGES.no_model);
-    expect(within(alert).queryByRole('link')).toBeNull();
-    expect(screen.getAllByRole('link', { name: 'Google AI Studio (opens in new tab)' })).toHaveLength(1);
-    const link = screen.getByRole('link', { name: 'Google AI Studio (opens in new tab)' });
+    expect(alert.className).toContain('bg-red-50');
+    expect(screen.getAllByRole('link', { name: 'Google AI Studio' })).toHaveLength(2);
+    const link = within(alert).getByRole('link', { name: 'Google AI Studio' });
     expect(link.getAttribute('href')).toBe('https://aistudio.google.com/api-keys');
     expect(link.getAttribute('rel')).toBe('noopener noreferrer');
     expect(saveGeminiSettings).not.toHaveBeenCalled();
@@ -196,7 +247,7 @@ describe('Gemini explicit key setup', () => {
     renderSettings();
     await enterKey();
     fireEvent.click(screen.getByText('Save Key'));
-    expect(await screen.findByText('Could not save AI settings. Please try again.')).toBeTruthy();
+    expect(await screen.findByText('Could not save AI settings. Try again.')).toBeTruthy();
     expect(screen.queryByText('Ready')).toBeNull();
     expect((screen.getByLabelText('Gemini API Key') as HTMLInputElement).value).toBe('new-key');
   });
@@ -241,7 +292,7 @@ describe('Gemini explicit key setup', () => {
     renderSettings();
     fireEvent.click(await screen.findByRole('button', { name: 'Check Key' }));
     expect(
-      await screen.findByText('AI settings changed in another tab. Review them and try again.'),
+      await screen.findByText('AI settings changed. Start again.'),
     ).toBeTruthy();
     expect(screen.queryByText('Ready')).toBeNull();
     expect(screen.queryByText(/^Last checked:/)).toBeNull();
@@ -268,7 +319,7 @@ describe('Gemini explicit key setup', () => {
     expect(screen.getByRole('alert').textContent).toBe(KEY_ERROR_MESSAGES.invalid);
     expect(clearGeminiSettings).not.toHaveBeenCalled();
     expect(saveGeminiSettings).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByLabelText('Gemini API Key')).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Replace Key' }));
   });
@@ -292,7 +343,8 @@ describe('Gemini explicit key setup', () => {
     renderSettings();
     fireEvent.click(await screen.findByText('Remove Key'));
     confirmRemoval();
-    expect(await screen.findByText('Could not remove the API key. Please try again.')).toBeTruthy();
+    expect(await screen.findByText('Could not remove the API key. Try again.')).toBeTruthy();
+    expect(within(screen.getByRole('dialog')).getByRole('alert').className).toContain('bg-red-50');
     expect(
       within(screen.getByRole('dialog')).getByRole('button', { name: 'Remove Key' }),
     ).toBeTruthy();
@@ -320,7 +372,7 @@ describe('Gemini explicit key setup', () => {
     renderSettings();
     await replaceKey();
     await waitFor(() => expect(validateApiKey).toHaveBeenCalled());
-    fireEvent.click(screen.getByText('Cancel'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await act(async () => {
       finish({ valid: true, model: 'gemini-3.8-flash' });
     });
@@ -368,7 +420,7 @@ describe('Gemini explicit key setup', () => {
     await enterKey();
     fireEvent.click(screen.getByText('Save Key'));
     expect(
-      await screen.findByText('AI settings changed in another tab. Review them and try again.'),
+      await screen.findByText('AI settings changed. Start again.'),
     ).toBeTruthy();
     expect(screen.queryByText('Ready')).toBeNull();
   });
@@ -380,6 +432,7 @@ it('shows Unavailable and allows retry when local settings cannot be loaded', as
     .mockResolvedValue(empty);
   renderSettings();
   expect(await screen.findByText('Unavailable')).toBeTruthy();
+  expect(screen.getByRole('alert').className).toContain('bg-red-50');
   expect((screen.getByLabelText('Gemini API Key') as HTMLInputElement).disabled).toBe(true);
   fireEvent.click(screen.getByText('Try Again'));
   expect(await screen.findByRole('button', { name: 'Save Key' })).toBeTruthy();

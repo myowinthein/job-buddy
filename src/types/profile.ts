@@ -138,7 +138,6 @@ export interface Profile {
   languages: LanguageEntry[];
   links: {
     linkedin: string;
-    portfolio?: string;
     custom?: CustomLink[];
     // Dedicated social profiles; retained paths keep older backups compatible
     github?: string;
@@ -149,6 +148,7 @@ export interface Profile {
   documents: {
     cv: DocumentEntry;
     coverLetter?: DocumentEntry;
+    portfolio?: DocumentEntry;
   };
   derived?: DerivedFields;
 }

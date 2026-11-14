@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
+import { getTabbableElements } from '@/src/components/ui/focusableElements';
 
 // Open/search/outside-click/focus-on-open plumbing shared by both
 // useDropdownPanel and useSearchableDropdown — extracted since they had
@@ -41,8 +42,26 @@ export function useDropdownOpenState(
         onCloseRef.current?.();
       }
     };
+    const leaveWithTab = (event: KeyboardEvent) => {
+      const panel = portalRef?.current;
+      if (event.key !== 'Tab' || !panel?.contains(event.target as Node)) return;
+      const controls = getTabbableElements(panel);
+      const boundary = event.shiftKey ? controls[0] : controls.at(-1);
+      if (document.activeElement !== boundary) return;
+      const trigger = containerRef.current?.querySelector<HTMLButtonElement>('button');
+      if (!trigger) return;
+      setOpen(false);
+      setSearch('');
+      onCloseRef.current?.();
+      // Native Tab continues from the trigger's place in the form.
+      trigger.focus({ preventScroll: true });
+    };
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('keydown', leaveWithTab);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('keydown', leaveWithTab);
+    };
   }, [open, portalRef]);
 
   return { open, setOpen, search, setSearch, containerRef, searchRef };

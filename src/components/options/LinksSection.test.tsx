@@ -19,20 +19,20 @@ function renderSection(profile: Partial<Profile>, onSave = vi.fn().mockResolvedV
 describe('LinksSection — LinkedIn validation', () => {
   it('can save links without a LinkedIn URL', () => {
     const { onSave } = renderSection({ links: { linkedin: '' } });
-    fireEvent.click(screen.getByText('Save Links'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ links: expect.objectContaining({ linkedin: '' }) }));
   });
 
   it('rejects a URL that does not contain linkedin.com', () => {
     const { onSave } = renderSection({ links: { linkedin: 'https://example.com/in/johnsmith' } });
-    fireEvent.click(screen.getByText('Save Links'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('Enter a valid LinkedIn URL')).toBeTruthy();
   });
 
   it('accepts a valid linkedin.com URL', () => {
     const { onSave } = renderSection({ links: { linkedin: 'https://www.linkedin.com/in/johnsmith' } });
-    fireEvent.click(screen.getByText('Save Links'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalled();
   });
 
@@ -42,38 +42,38 @@ describe('LinksSection — LinkedIn validation', () => {
     // add https:// at save time so a filled field never silently fails to
     // validate on submit.
     const { onSave } = renderSection({ links: { linkedin: 'linkedin.com/in/johnsmith' } });
-    fireEvent.click(screen.getByText('Save Links'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       links: expect.objectContaining({ linkedin: 'https://linkedin.com/in/johnsmith' }),
     }));
   });
 });
 
-describe('LinksSection — isValidUrl (via the optional Portfolio field)', () => {
+describe('LinksSection — isValidUrl (via the optional GitHub field)', () => {
   it('accepts a bare domain without a protocol, saving it with an added https:// scheme', () => {
     // A scheme-less stored value looks "filled" but fails native type="url"
     // constraint validation on job sites, silently blocking submission even
     // though autofill visibly wrote a value into the field — so the scheme
     // is added at save time, not just accepted for validation.
-    const { onSave } = renderSection({ links: { linkedin: 'https://linkedin.com/in/x', portfolio: 'johnsmith.dev' } });
-    fireEvent.click(screen.getByText('Save Links'));
+    const { onSave } = renderSection({ links: { linkedin: 'https://linkedin.com/in/x', github: 'johnsmith.dev' } });
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-      links: expect.objectContaining({ portfolio: 'https://johnsmith.dev' }),
+      links: expect.objectContaining({ github: 'https://johnsmith.dev' }),
     }));
   });
 
   it('rejects a hostname with no dot (e.g. "localhost")', () => {
-    const { onSave } = renderSection({ links: { linkedin: 'https://linkedin.com/in/x', portfolio: 'localhost' } });
-    fireEvent.click(screen.getByText('Save Links'));
+    const { onSave } = renderSection({ links: { linkedin: 'https://linkedin.com/in/x', github: 'localhost' } });
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('Enter a valid URL')).toBeTruthy();
   });
 
-  it('leaves portfolio unset (undefined, not empty string) when left blank', () => {
-    const { onSave } = renderSection({ links: { linkedin: 'https://linkedin.com/in/x', portfolio: '' } });
-    fireEvent.click(screen.getByText('Save Links'));
+  it('leaves github unset (undefined, not empty string) when left blank', () => {
+    const { onSave } = renderSection({ links: { linkedin: 'https://linkedin.com/in/x', github: '' } });
+    fireEvent.click(screen.getByText('Save'));
     const saved = onSave.mock.calls[0][0];
-    expect(saved.links.portfolio).toBeUndefined();
+    expect(saved.links.github).toBeUndefined();
   });
 });
 
@@ -82,9 +82,9 @@ describe('LinksSection — incomplete custom links', () => {
     const { onSave } = renderSection({
       links: { linkedin: 'https://linkedin.com/in/x', custom: [{ label: 'My Blog', url: '' }] },
     });
-    fireEvent.click(screen.getByText('Save Links'));
+    fireEvent.click(screen.getByText('Save'));
 
-    expect(screen.getByText('URL is required')).toBeTruthy();
+    expect(screen.getByText('Enter a URL')).toBeTruthy();
     expect(screen.getByDisplayValue('My Blog')).toBeTruthy();
     expect(onSave).not.toHaveBeenCalled();
   });
@@ -93,8 +93,8 @@ describe('LinksSection — incomplete custom links', () => {
     const { onSave } = renderSection({
       links: { linkedin: 'https://linkedin.com/in/x', custom: [{ label: '', url: 'https://blog.dev' }] },
     });
-    fireEvent.click(screen.getByText('Save Links'));
-    expect(screen.getByText('Label is required')).toBeTruthy();
+    fireEvent.click(screen.getByText('Save'));
+    expect(screen.getByText('Enter a link label')).toBeTruthy();
     expect(screen.getByDisplayValue('https://blog.dev')).toBeTruthy();
     expect(onSave).not.toHaveBeenCalled();
   });
@@ -109,11 +109,11 @@ describe('LinksSection — incomplete custom links', () => {
         ],
       },
     });
-    fireEvent.click(screen.getByText('Save Links'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('URL is required')).toBeTruthy();
+    expect(screen.getByText('Enter a URL')).toBeTruthy();
     fireEvent.change(screen.getAllByPlaceholderText('https://blog.johnsmith.dev')[1], { target: { value: 'https://second.dev' } });
-    fireEvent.click(screen.getByText('Save Links'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       links: expect.objectContaining({ custom: [{ label: 'My Blog', url: 'https://blog.dev' }, { label: 'Incomplete', url: 'https://second.dev' }] }),
     }));
@@ -123,7 +123,7 @@ describe('LinksSection — incomplete custom links', () => {
     const { onSave } = renderSection({
       links: { linkedin: 'https://linkedin.com/in/x', custom: [{ label: 'My Blog', url: 'not a url' }] },
     });
-    fireEvent.click(screen.getByText('Save Links'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('Enter a valid URL')).toBeTruthy();
   });
@@ -132,7 +132,7 @@ describe('LinksSection — incomplete custom links', () => {
     const { onSave } = renderSection({
       links: { linkedin: 'https://linkedin.com/in/x', custom: [{ label: 'My Blog', url: 'blog.dev' }] },
     });
-    fireEvent.click(screen.getByText('Save Links'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       links: expect.objectContaining({ custom: [{ label: 'My Blog', url: 'https://blog.dev' }] }),
     }));
@@ -156,7 +156,7 @@ describe('LinksSection — custom link CRUD via UI interaction', () => {
     fireEvent.change(labelInputs[1], { target: { value: 'GitHub Profile' } });
     fireEvent.change(urlInputs[1], { target: { value: 'https://github.com/janedoe' } });
 
-    fireEvent.click(screen.getByText('Save Links'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       links: expect.objectContaining({
@@ -178,16 +178,16 @@ describe('LinksSection — custom link CRUD via UI interaction', () => {
     const labelInputs = screen.getAllByPlaceholderText('My Blog');
     expect(labelInputs).toHaveLength(2);
     const urlInputs = screen.getAllByPlaceholderText('https://blog.johnsmith.dev');
-    fireEvent.change(labelInputs[1], { target: { value: 'Portfolio Site' } });
+    fireEvent.change(labelInputs[1], { target: { value: 'GitHub Site' } });
     fireEvent.change(urlInputs[1], { target: { value: 'https://janedoe.dev' } });
 
-    fireEvent.click(screen.getByText('Save Links'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       links: expect.objectContaining({
         custom: [
           { label: 'My Blog', url: 'https://blog.dev' },
-          { label: 'Portfolio Site', url: 'https://janedoe.dev' },
+          { label: 'GitHub Site', url: 'https://janedoe.dev' },
         ],
       }),
     }));
@@ -205,8 +205,9 @@ describe('LinksSection — custom link CRUD via UI interaction', () => {
       },
     });
 
-    fireEvent.click(screen.getAllByLabelText('Remove')[1]); // remove "Second"
-    fireEvent.click(screen.getByText('Save Links'));
+    fireEvent.click(screen.getAllByLabelText('Remove entry')[1]);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' })); // remove "Second"
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       links: expect.objectContaining({
@@ -230,7 +231,7 @@ describe('LinksSection — preserves dedicated social fields', () => {
         behance: 'https://behance.net/johnsmith',
       },
     });
-    fireEvent.click(screen.getByText('Save Links'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       links: expect.objectContaining({
         github: 'https://github.com/johnsmith',

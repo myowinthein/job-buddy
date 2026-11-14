@@ -4,6 +4,8 @@ import { isAISetupError, isProfileSetupError } from '@/src/autofill/errorCodes';
 import { quickFillSummary } from './status';
 import { QUICK_FILL_HOST } from './detect';
 import type { QuickFillPreferences } from './preferences';
+import { avoidQuickFillOverlap, QUICK_FILL_INSET } from './placement';
+import { pageActivity } from '@/src/autofill/pageActivity';
 
 interface Actions {
   fill: () => void;
@@ -24,7 +26,7 @@ const CSS = `
 .shell { font:13px/1.45 system-ui,-apple-system,sans-serif; color:var(--fg); background:var(--bg); border:1px solid var(--line); border-radius:15px; box-shadow:0 3px 18px #0002; max-width:328px; }
 .controls { display:flex; align-items:center; padding:5px; gap:2px; }
 button { appearance:none; font:inherit; border:0; margin:0; background:transparent; color:inherit; cursor:pointer; border-radius:9px; padding:8px; line-height:1.3; }
-button:hover { background:var(--hover); }
+button:hover:not(:disabled) { background:var(--hover); }
 button:focus-visible { outline:2px solid var(--brand); outline-offset:1px; }
 button:disabled { cursor:default; opacity:.65; }
 .fill { display:flex; align-items:center; gap:8px; font-weight:600; padding:7px 10px 7px 6px; white-space:nowrap; }
@@ -53,6 +55,23 @@ button:disabled { cursor:default; opacity:.65; }
 @keyframes spin { to { transform:rotate(360deg); } }
 @media(prefers-reduced-motion:reduce) { .spin { animation:none; border-style:dotted; } }
 `;
+
+function occupiedBounds(host: HTMLElement) {
+  const control = host.getBoundingClientRect();
+  const menu = host.shadowRoot
+    ?.querySelector<HTMLElement>('.menu:not([hidden])')
+    ?.getBoundingClientRect();
+  if (!menu || !menu.width || !menu.height) return control;
+  const left = Math.min(control.left, menu.left);
+  const top = Math.min(control.top, menu.top);
+  return {
+    left,
+    top,
+    width: Math.max(control.right, menu.right) - left,
+    height: Math.max(control.bottom, menu.bottom) - top,
+  };
+}
+
 export class QuickFillWidget {
   readonly host = document.createElement('div');
   private root: ShadowRoot;
@@ -65,9 +84,23 @@ export class QuickFillWidget {
   private menu: HTMLElement;
   private more: HTMLButtonElement;
   private position?: QuickFillPreferences['position'];
+  private adjustedPosition?: QuickFillPreferences['position'];
+  private stopAvoiding?: () => void;
+  private peerPointer?: number;
   private fillMode: QuickFillPreferences['fillMode'] = 'overwrite';
-  private drag?: { x: number; y: number; left: number; top: number; moved: boolean };
+  private drag?: {
+    pointerId: number;
+    x: number;
+    y: number;
+    left: number;
+    top: number;
+    moved: boolean;
+  };
   private busy = false;
+  private otherVersionBusy = false;
+  private lastRun: AutofillRun | null = null;
+  private starting = false;
+  private activityTimer: number;
   private resize = () => this.place();
   private outside = (event: Event) => {
     if (!event.composedPath().includes(this.host)) this.closeMenu();
@@ -77,10 +110,11 @@ export class QuickFillWidget {
     this.host.setAttribute(QUICK_FILL_HOST, '');
     this.host.setAttribute('role', 'region');
     this.host.setAttribute('aria-label', 'Job Buddy quick fill');
+    this.host.setAttribute('data-job-buddy-owner', typeof chrome !== 'undefined' ? chrome.runtime?.id ?? '' : '');
     if (import.meta.env.DEV) this.host.setAttribute('data-dev', '');
     this.root = this.host.attachShadow({ mode: 'open' });
     // Static markup only. Page text and stored data always use textContent.
-    this.root.innerHTML = `<style>${CSS}</style><div class="shell"><div class="controls"><button type="button" class="grip" aria-label="Move Job Buddy" title="Drag to move. Use arrow keys when focused.">⠿</button><button type="button" class="fill"><span class="brand" aria-hidden="true">${ICON}</span><span class="label">Fill Form</span></button><button type="button" class="more" aria-label="Quick fill options" aria-expanded="false" aria-controls="quick-menu">⋯</button></div><div class="status" hidden><p role="status" aria-live="polite"></p><div class="links"><button type="button" class="undo" hidden>Undo</button><button type="button" class="details" hidden>View details</button></div></div><div id="quick-menu" class="menu" hidden><button type="button" data-action="hide">Hide until refresh</button><button type="button" data-action="disableSite">Disable on this site</button><button type="button" data-action="settings">Quick fill settings</button></div></div>`;
+    this.root.innerHTML = `<style>${CSS}</style><div class="shell"><div class="controls"><button type="button" class="grip" aria-label="Move Job Buddy" title="Drag to move. Use arrow keys when focused.">⠿</button><button type="button" class="fill"><span class="brand" aria-hidden="true">${ICON}</span><span class="label">Fill Form</span></button><button type="button" class="more" aria-label="Quick fill options" aria-expanded="false" aria-controls="quick-menu">⋯</button></div><div class="status" hidden><div class="message"><p role="status" aria-live="polite" aria-atomic="true"></p></div><div class="links"><button type="button" class="undo" hidden>Undo</button><button type="button" class="details" hidden>View details</button></div></div><div id="quick-menu" class="menu" hidden><button type="button" data-action="hide">Hide until refresh</button><button type="button" data-action="disableSite">Disable on this site</button><button type="button" data-action="settings">Quick fill settings</button></div></div>`;
     const get = <T extends HTMLElement>(selector: string) => this.root.querySelector<T>(selector)!;
     this.primary = get('.fill');
     this.primary.title = feedback.quickFillEmptyFieldsHint;
@@ -98,7 +132,7 @@ export class QuickFillWidget {
       }
     });
     this.undo.addEventListener('click', (e) => {
-      if (e.isTrusted) actions.undo();
+      if (e.isTrusted && !this.busy) actions.undo();
     });
     this.details.addEventListener('click', (e) => {
       if (e.isTrusted) actions.details();
@@ -108,7 +142,7 @@ export class QuickFillWidget {
       const opening = this.menu.hidden;
       this.menu.hidden = !opening;
       this.more.setAttribute('aria-expanded', String(opening));
-      this.placeMenu();
+      this.place();
       if (opening) this.menu.querySelector('button')?.focus();
     });
     this.root.addEventListener('focusout', (event) => {
@@ -132,27 +166,38 @@ export class QuickFillWidget {
     }
     const grip = get<HTMLButtonElement>('.grip');
     grip.addEventListener('pointerdown', (e) => {
-      if (!e.isTrusted || e.button !== 0) return;
+      if (!e.isTrusted || e.button !== 0 || this.drag) return;
       e.preventDefault();
       this.closeMenu();
       const rect = this.host.getBoundingClientRect();
-      this.drag = { x: e.clientX, y: e.clientY, left: rect.left, top: rect.top, moved: false };
+      this.drag = {
+        pointerId: e.pointerId,
+        x: e.clientX,
+        y: e.clientY,
+        left: rect.left,
+        top: rect.top,
+        moved: false,
+      };
       grip.setPointerCapture(e.pointerId);
     });
     grip.addEventListener('pointermove', (e) => {
-      if (!e.isTrusted || !this.drag) return;
+      if (!e.isTrusted || !this.drag || e.pointerId !== this.drag.pointerId) return;
       const d = this.drag;
       const dx = e.clientX - d.x,
         dy = e.clientY - d.y;
       d.moved ||= Math.abs(dx) + Math.abs(dy) > 4;
       if (d.moved) this.move(d.left + dx, d.top + dy);
     });
-    const endDrag = () => {
-      if (this.drag?.moved && this.position) actions.position(this.position);
+    const endDrag = (event: PointerEvent) => {
+      if (!this.drag || event.pointerId !== this.drag.pointerId) return;
+      const moved = this.drag.moved;
       this.drag = undefined;
+      this.place();
+      if (moved && this.position) actions.position(this.position);
     };
     grip.addEventListener('pointerup', endDrag);
     grip.addEventListener('pointercancel', endDrag);
+    grip.addEventListener('lostpointercapture', endDrag);
     grip.addEventListener('keydown', (e) => {
       if (!e.isTrusted || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key))
         return;
@@ -169,6 +214,88 @@ export class QuickFillWidget {
     document.addEventListener('pointerdown', this.outside, true);
     document.documentElement.append(this.host);
     this.place();
+    if (import.meta.env.DEV) this.stopAvoiding = this.watchOtherWidgets();
+    const checkActivity = () => this.setBlocked(pageActivity('blocked', this.host.getAttribute('data-job-buddy-owner') ?? ''));
+    this.activityTimer = window.setInterval(checkActivity, 500);
+    checkActivity();
+  }
+
+  private watchOtherWidgets() {
+    const selector = `[${QUICK_FILL_HOST}]:not([data-dev])`;
+    let frame = 0;
+    const schedule = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        if (!this.drag && this.peerPointer === undefined) this.place();
+      });
+    };
+    const sizes = typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(schedule);
+    const styles = new MutationObserver(schedule);
+    const refresh = () => {
+      styles.disconnect();
+      sizes?.disconnect();
+      sizes?.observe(this.host);
+      for (const peer of document.querySelectorAll<HTMLElement>(selector)) {
+        if (peer === this.host) continue;
+        styles.observe(peer, { attributes: true, attributeFilter: ['style', 'hidden', 'class'] });
+        if (peer.shadowRoot)
+          styles.observe(peer.shadowRoot, {
+            attributes: true,
+            childList: true,
+            subtree: true,
+            attributeFilter: ['hidden', 'style', 'class'],
+          });
+        sizes?.observe(peer);
+      }
+      schedule();
+    };
+    const tree = new MutationObserver((records) => {
+      if (
+        records.some((record) =>
+          [...record.addedNodes, ...record.removedNodes].some(
+            (node) =>
+              node instanceof Element && (node.matches(selector) || !!node.querySelector(selector)),
+          ),
+        )
+      )
+        refresh();
+    });
+    const start = (event: PointerEvent) => {
+      if (
+        event.isTrusted &&
+        event.button === 0 &&
+        event
+          .composedPath()
+          .some(
+            (node) => node instanceof HTMLElement && node !== this.host && node.matches(selector),
+          )
+      )
+        this.peerPointer = event.pointerId;
+    };
+    const reset = () => {
+      this.peerPointer = undefined;
+      schedule();
+    };
+    const end = (event: PointerEvent) => {
+      if (event.pointerId === this.peerPointer) reset();
+    };
+    tree.observe(document.documentElement, { childList: true, subtree: true });
+    document.addEventListener('pointerdown', start, true);
+    document.addEventListener('pointerup', end, true);
+    document.addEventListener('pointercancel', end, true);
+    window.addEventListener('blur', reset);
+    refresh();
+    return () => {
+      cancelAnimationFrame(frame);
+      tree.disconnect();
+      styles.disconnect();
+      sizes?.disconnect();
+      document.removeEventListener('pointerdown', start, true);
+      document.removeEventListener('pointerup', end, true);
+      document.removeEventListener('pointercancel', end, true);
+      window.removeEventListener('blur', reset);
+    };
   }
   private closeMenu() {
     this.menu.hidden = true;
@@ -180,7 +307,10 @@ export class QuickFillWidget {
     const width = this.menu.getBoundingClientRect().width;
     const above = Math.max(0, rect.top - 20);
     const below = Math.max(0, innerHeight - rect.bottom - 20);
-    const openBelow = above < this.menu.scrollHeight + 2 && below > above;
+    const menuHeight = this.menu.scrollHeight + 2;
+    const openBelow =
+      (import.meta.env.DEV && this.menu.hasAttribute('data-below') && below >= menuHeight) ||
+      (above < menuHeight && below > above);
     this.menu.toggleAttribute('data-below', openBelow);
     this.menu.style.maxHeight = `${openBelow ? below : above}px`;
     const left = Math.max(12, Math.min(rect.right - width, innerWidth - width - 12));
@@ -188,63 +318,113 @@ export class QuickFillWidget {
   }
   private move(left: number, top: number) {
     const rect = this.host.getBoundingClientRect();
-    const width = Math.max(1, innerWidth - rect.width - 24),
-      height = Math.max(1, innerHeight - rect.height - 24);
+    const width = Math.max(1, innerWidth - rect.width - QUICK_FILL_INSET * 2),
+      height = Math.max(1, innerHeight - rect.height - QUICK_FILL_INSET * 2);
+    this.adjustedPosition = undefined;
     this.position = {
-      x: Math.max(0, Math.min(1, (left - 12) / width)),
-      y: Math.max(0, Math.min(1, (top - 12) / height)),
+      x: Math.max(0, Math.min(1, (left - QUICK_FILL_INSET) / width)),
+      y: Math.max(0, Math.min(1, (top - QUICK_FILL_INSET) / height)),
     };
     this.place();
   }
   private place() {
+    if (this.peerPointer !== undefined && !this.drag) return;
     const rect = this.host.getBoundingClientRect();
-    const x = this.position?.x ?? 1,
-      y = this.position?.y ?? 1;
-    this.host.style.setProperty(
-      'left',
-      `${12 + x * Math.max(0, innerWidth - rect.width - 24)}px`,
-      'important',
-    );
-    this.host.style.setProperty(
-      'top',
-      `${12 + y * Math.max(0, innerHeight - rect.height - 24)}px`,
-      'important',
-    );
+    const position = this.adjustedPosition ?? this.position;
+    const width = Math.max(0, innerWidth - rect.width - QUICK_FILL_INSET * 2);
+    const height = Math.max(0, innerHeight - rect.height - QUICK_FILL_INSET * 2);
+    let left = QUICK_FILL_INSET + (position?.x ?? 1) * width;
+    let top = QUICK_FILL_INSET + (position?.y ?? 1) * height;
+    if (import.meta.env.DEV && !this.drag) {
+      const peers = [
+        ...document.querySelectorAll<HTMLElement>(`[${QUICK_FILL_HOST}]:not([data-dev])`),
+      ]
+        .filter((peer) => peer !== this.host)
+        .map(occupiedBounds)
+        .filter((peer) => peer.width > 0 && peer.height > 0);
+      if (peers.length) {
+        if (!this.menu.hidden) this.applyPlacement(left, top);
+        const bounds = this.menu.hidden
+          ? { left, top, width: rect.width, height: rect.height }
+          : occupiedBounds(this.host);
+        const next = avoidQuickFillOverlap(bounds, peers, {
+          width: innerWidth,
+          height: innerHeight,
+        });
+        if (Math.abs(next.left - bounds.left) > 0.01 || Math.abs(next.top - bounds.top) > 0.01) {
+          left += next.left - bounds.left;
+          top += next.top - bounds.top;
+          this.adjustedPosition = {
+            x: width ? (left - QUICK_FILL_INSET) / width : 0,
+            y: height ? (top - QUICK_FILL_INSET) / height : 0,
+          };
+        }
+      }
+    }
+    this.applyPlacement(left, top);
+  }
+  private applyPlacement(left: number, top: number) {
+    this.host.style.setProperty('left', `${left}px`, 'important');
+    this.host.style.setProperty('top', `${top}px`, 'important');
     this.host.style.setProperty('right', 'auto', 'important');
     this.host.style.setProperty('bottom', 'auto', 'important');
     this.placeMenu();
   }
   preferences(prefs: QuickFillPreferences, dark: boolean) {
-    this.position = prefs.position;
+    if (!this.drag) {
+      if (this.position?.x !== prefs.position?.x || this.position?.y !== prefs.position?.y) {
+        this.adjustedPosition = undefined;
+      }
+      this.position = prefs.position;
+    }
     this.fillMode = prefs.fillMode;
     this.primary.title =
       prefs.fillMode === 'overwrite'
-        ? 'Fill empty and existing fields with your Job Buddy profile.'
+        ? feedback.quickFillAllFieldsHint
         : feedback.quickFillEmptyFieldsHint;
     this.host.toggleAttribute('data-dark', dark);
     this.place();
   }
+  private announceError(error: boolean) {
+    this.text.setAttribute('role', error ? 'alert' : 'status');
+    this.text.setAttribute('aria-live', error ? 'assertive' : 'polite');
+  }
   render(run: AutofillRun | null, starting = false) {
-    this.busy = starting || run?.stage === 'scanning' || run?.stage === 'filling';
+    this.lastRun = run;
+    this.starting = starting;
+    const scanning = starting || run?.stage === 'scanning';
+    const working = scanning || run?.stage === 'filling';
+    this.busy = working || this.otherVersionBusy;
     this.primary.disabled = this.busy;
-    this.label.textContent = this.busy
-      ? 'Filling…'
-      : run?.stage === 'confirming'
-        ? this.fillMode === 'overwrite'
-          ? 'Fill All Fields'
-          : 'Fill Empty Fields'
+    this.undo.disabled = this.busy;
+    this.primary.title = this.otherVersionBusy ? feedback.autofillOtherVersionBusy :
+      this.fillMode === 'merge' ? feedback.quickFillEmptyFieldsHint : feedback.quickFillAllFieldsHint;
+    const controls = this.root.querySelector<HTMLElement>('.controls')!;
+    controls.title = this.otherVersionBusy ? feedback.autofillOtherVersionBusy : '';
+    controls.tabIndex = this.otherVersionBusy ? 0 : -1;
+    if (this.otherVersionBusy) {
+      controls.setAttribute('role', 'group');
+      controls.setAttribute('aria-label', feedback.autofillOtherVersionBusy);
+    } else {
+      controls.removeAttribute('role');
+      controls.removeAttribute('aria-label');
+    }
+    this.label.textContent = scanning
+      ? feedback.autofillScanning
+      : working
+        ? 'Filling…'
         : 'Fill Form';
     const spinner = this.primary.querySelector('.spin');
     spinner?.remove();
-    this.primary.querySelector<HTMLElement>('.brand')!.hidden = this.busy;
-    if (this.busy) {
+    this.primary.querySelector<HTMLElement>('.brand')!.hidden = working;
+    if (working) {
       const icon = document.createElement('span');
       icon.className = 'spin';
       icon.setAttribute('aria-hidden', 'true');
       this.primary.insertBefore(icon, this.label);
     }
-    this.status.hidden = !run || this.busy;
-    this.status.toggleAttribute('data-complete', run?.stage === 'completed' && !this.busy);
+    this.status.hidden = !run || working || run.stage === 'confirming';
+    this.status.toggleAttribute('data-complete', run?.stage === 'completed' && !working);
     this.undo.hidden = true;
     this.details.hidden = true;
     if (run?.stage === 'completed') {
@@ -267,9 +447,6 @@ export class QuickFillWidget {
       }
       this.undo.hidden = summary.filled === 0;
       this.details.hidden = summary.filled === 0 && !summary.review;
-    } else if (run?.stage === 'confirming') {
-      this.text.textContent = 'Existing answers will be kept.';
-      this.status.dataset.tone = 'neutral';
     } else if (run?.stage === 'error') {
       const profile = isProfileSetupError(run.error);
       const ai = isAISetupError(run.error);
@@ -281,11 +458,12 @@ export class QuickFillWidget {
           ? feedback.autofillKeyRequired
           : feedback.autofillFailed;
     }
+    this.announceError(this.status.dataset.tone === 'error');
     this.place();
   }
   error(text: string) {
-    this.busy = false;
-    this.primary.disabled = false;
+    this.busy = this.otherVersionBusy;
+    this.primary.disabled = this.otherVersionBusy;
     this.label.textContent = 'Try Again';
     this.primary.querySelector<HTMLElement>('.brand')!.hidden = false;
     this.primary.querySelector('.spin')?.remove();
@@ -293,11 +471,21 @@ export class QuickFillWidget {
     this.status.removeAttribute('data-complete');
     this.status.dataset.tone = 'error';
     this.text.textContent = text;
+    this.announceError(true);
     this.place();
   }
   destroy() {
+    window.clearInterval(this.activityTimer);
+    this.stopAvoiding?.();
+    this.drag = undefined;
     window.removeEventListener('resize', this.resize);
     document.removeEventListener('pointerdown', this.outside, true);
     this.host.remove();
+  }
+
+  setBlocked(blocked: boolean) {
+    if (blocked === this.otherVersionBusy) return;
+    this.otherVersionBusy = blocked;
+    this.render(this.lastRun, this.starting);
   }
 }

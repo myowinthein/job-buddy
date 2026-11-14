@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { Notice } from '@/src/components/ui/Notice';
 import { useDialogFocus } from '@/src/components/ui/useDialogFocus';
 
 export function ResumeDocumentNotice({
@@ -31,10 +32,14 @@ export function ResumeDocumentNotice({
         <h3 id={title} className="text-base font-semibold text-gray-900 dark:text-gray-100">
           Check Document
         </h3>
-        <p id={description} className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-          We couldn’t confirm this is a resume. You can review the extracted details or choose
-          another file.
-        </p>
+        <div className="mt-3">
+          <Notice tone="review">
+            <p id={description}>
+              Gemini couldn’t confirm this is a resume. Review the extracted details or choose
+              another file.
+            </p>
+          </Notice>
+        </div>
         <div className="mt-6 flex flex-wrap justify-end gap-2">
           <button
             type="button"

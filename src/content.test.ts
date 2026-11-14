@@ -2,6 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/src/quick-fill/content', () => ({ installQuickFill: vi.fn() }));
 vi.mock('@/src/demo/presence', () => ({ installDemoPresence: vi.fn() }));
+vi.mock('@/src/devtools/sessionChrome', () => ({
+  installDevelopmentSession: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock('@/src/utils/storage', () => ({ getGeminiSettings: vi.fn() }));
 
@@ -28,19 +31,34 @@ const { onMessageAddListener } = vi.hoisted(() => {
 
 import contentScript from '@/entrypoints/content';
 import {
-  scanAutofill, executeAutofill, undoAutofill, getLastResult, getFillLog, cancelAutofillRun,
+  scanAutofill,
+  executeAutofill,
+  undoAutofill,
+  getLastResult,
+  getFillLog,
+  cancelAutofillRun,
 } from '@/src/autofill/index';
 
 import { getGeminiSettings } from '@/src/utils/storage';
 import { DEFAULT_GEMINI_MODEL } from '@/src/resume-ai/types';
-const settings = { apiKey: 'synthetic-key', model: DEFAULT_GEMINI_MODEL, preference: 'auto' as const, revision: null, verifiedAt: null };
+const settings = {
+  apiKey: 'synthetic-key',
+  model: DEFAULT_GEMINI_MODEL,
+  preference: 'auto' as const,
+  revision: null,
+  verifiedAt: null,
+};
 
 type SendResponse = (r: unknown) => void;
-function getListener(): (message: object, sender: object, sendResponse: SendResponse) => boolean | undefined {
+function getListener(): (
+  message: object,
+  sender: object,
+  sendResponse: SendResponse,
+) => boolean | undefined {
   return onMessageAddListener.mock.calls[0][0];
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
   vi.mocked(undoAutofill).mockResolvedValue(true);
   vi.mocked(getGeminiSettings).mockReset().mockResolvedValue(settings);
@@ -48,19 +66,33 @@ beforeEach(() => {
   // globalThis that would otherwise persist across tests in this same file
   // and silently no-op every main() call after the first.
   delete (globalThis as { __jobBuddyInjected?: boolean }).__jobBuddyInjected;
-  (contentScript as { main: () => void }).main();
+  await (contentScript as { main: () => Promise<void> }).main();
 });
 
 describe('content script — message dispatcher', () => {
   it('reuses a scan and fill when a background worker retries the same run', async () => {
     vi.mocked(scanAutofill).mockResolvedValue({ preFilledCount: 0, totalMatched: 1 });
-    vi.mocked(executeAutofill).mockResolvedValue({ noReview: 1, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 1 });
+    vi.mocked(executeAutofill).mockResolvedValue({
+      noReview: 1,
+      needReview: 0,
+      lowConfidence: 0,
+      noData: 0,
+      totalScanned: 1,
+    });
     const responses = [vi.fn(), vi.fn(), vi.fn(), vi.fn()];
     getListener()({ action: 'AUTOFILL_SCAN', runId: 'durable-run' }, {}, responses[0]);
     getListener()({ action: 'AUTOFILL_SCAN', runId: 'durable-run' }, {}, responses[1]);
     await vi.waitFor(() => expect(responses[1]).toHaveBeenCalled());
-    getListener()({ action: 'AUTOFILL_FILL', runId: 'durable-run', mode: 'merge' }, {}, responses[2]);
-    getListener()({ action: 'AUTOFILL_FILL', runId: 'durable-run', mode: 'merge' }, {}, responses[3]);
+    getListener()(
+      { action: 'AUTOFILL_FILL', runId: 'durable-run', mode: 'merge' },
+      {},
+      responses[2],
+    );
+    getListener()(
+      { action: 'AUTOFILL_FILL', runId: 'durable-run', mode: 'merge' },
+      {},
+      responses[3],
+    );
     await vi.waitFor(() => expect(responses[3]).toHaveBeenCalled());
     expect(scanAutofill).toHaveBeenCalledOnce();
     expect(executeAutofill).toHaveBeenCalledOnce();
@@ -81,23 +113,30 @@ describe('content script — message dispatcher', () => {
     expect(undoAutofill).not.toHaveBeenCalled();
   });
 
-  it.each(['AUTOFILL_SCAN', 'AUTOFILL_FILL'])('cancels %s even while its settings check is pending', async action => {
-    vi.mocked(scanAutofill).mockResolvedValue({ preFilledCount: 0, totalMatched: 1 });
-    const scanned = vi.fn();
-    getListener()({ action: 'AUTOFILL_SCAN', runId: 'cancel-during-settings' }, {}, scanned);
-    await vi.waitFor(() => expect(scanned).toHaveBeenCalled());
-    vi.mocked(scanAutofill).mockClear();
-    let release!: (value: typeof settings) => void;
-    vi.mocked(getGeminiSettings).mockReturnValueOnce(new Promise(resolve => { release = resolve; }));
-    const response = vi.fn();
-    const runId = action === 'AUTOFILL_SCAN' ? 'new-run' : 'cancel-during-settings';
-    getListener()({ action, runId }, {}, response);
-    getListener()({ action: 'AUTOFILL_CANCEL', runId }, {}, vi.fn());
-    release(settings);
-    await vi.waitFor(() => expect(response).toHaveBeenCalledWith({ error: 'autofill_failed' }));
-    expect(scanAutofill).not.toHaveBeenCalled();
-    expect(executeAutofill).not.toHaveBeenCalled();
-  });
+  it.each(['AUTOFILL_SCAN', 'AUTOFILL_FILL'])(
+    'cancels %s even while its settings check is pending',
+    async (action) => {
+      vi.mocked(scanAutofill).mockResolvedValue({ preFilledCount: 0, totalMatched: 1 });
+      const scanned = vi.fn();
+      getListener()({ action: 'AUTOFILL_SCAN', runId: 'cancel-during-settings' }, {}, scanned);
+      await vi.waitFor(() => expect(scanned).toHaveBeenCalled());
+      vi.mocked(scanAutofill).mockClear();
+      let release!: (value: typeof settings) => void;
+      vi.mocked(getGeminiSettings).mockReturnValueOnce(
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+      );
+      const response = vi.fn();
+      const runId = action === 'AUTOFILL_SCAN' ? 'new-run' : 'cancel-during-settings';
+      getListener()({ action, runId }, {}, response);
+      getListener()({ action: 'AUTOFILL_CANCEL', runId }, {}, vi.fn());
+      release(settings);
+      await vi.waitFor(() => expect(response).toHaveBeenCalledWith({ error: 'autofill_failed' }));
+      expect(scanAutofill).not.toHaveBeenCalled();
+      expect(executeAutofill).not.toHaveBeenCalled();
+    },
+  );
 
   it('declares allFrames: true and matches all URLs', () => {
     expect(contentScript.matches).toEqual(['*://*/*']);
@@ -110,7 +149,9 @@ describe('content script — message dispatcher', () => {
     const handled = getListener()({ action: 'AUTOFILL_SCAN' }, {}, sendResponse);
 
     expect(handled).toBe(true);
-    await vi.waitFor(() => expect(sendResponse).toHaveBeenCalledWith({ preFilledCount: 2, totalMatched: 5 }));
+    await vi.waitFor(() =>
+      expect(sendResponse).toHaveBeenCalledWith({ preFilledCount: 2, totalMatched: 5 }),
+    );
   });
 
   it('reports a scan failure instead of a zero-field success', async () => {
@@ -142,7 +183,13 @@ describe('content script — message dispatcher', () => {
   });
 
   it('routes AUTOFILL_FILL with mode "merge" through unchanged', async () => {
-    vi.mocked(executeAutofill).mockResolvedValue({ noReview: 1, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 1 });
+    vi.mocked(executeAutofill).mockResolvedValue({
+      noReview: 1,
+      needReview: 0,
+      lowConfidence: 0,
+      noData: 0,
+      totalScanned: 1,
+    });
     const sendResponse = vi.fn();
     getListener()({ action: 'AUTOFILL_FILL', mode: 'merge' }, {}, sendResponse);
 
@@ -150,7 +197,13 @@ describe('content script — message dispatcher', () => {
   });
 
   it('defaults any AUTOFILL_FILL mode other than "merge" to "overwrite"', async () => {
-    vi.mocked(executeAutofill).mockResolvedValue({ noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0 });
+    vi.mocked(executeAutofill).mockResolvedValue({
+      noReview: 0,
+      needReview: 0,
+      lowConfidence: 0,
+      noData: 0,
+      totalScanned: 0,
+    });
     const sendResponse = vi.fn();
     getListener()({ action: 'AUTOFILL_FILL', mode: undefined }, {}, sendResponse);
 
@@ -175,7 +228,9 @@ describe('content script — message dispatcher', () => {
   });
 
   it('reports incomplete or rejected Undo instead of success', async () => {
-    vi.mocked(undoAutofill).mockResolvedValueOnce(false).mockRejectedValueOnce(new Error('restore failed'));
+    vi.mocked(undoAutofill)
+      .mockResolvedValueOnce(false)
+      .mockRejectedValueOnce(new Error('restore failed'));
     for (let i = 0; i < 2; i++) {
       const response = vi.fn();
       getListener()({ action: 'CLEAR' }, {}, response);
@@ -185,22 +240,43 @@ describe('content script — message dispatcher', () => {
 
   it('coalesces concurrent Undo requests for the same scan', async () => {
     let finish!: (success: boolean) => void;
-    vi.mocked(undoAutofill).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
-    const first = vi.fn(), second = vi.fn();
+    vi.mocked(undoAutofill).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const first = vi.fn(),
+      second = vi.fn();
     getListener()({ action: 'CLEAR' }, {}, first);
     getListener()({ action: 'CLEAR' }, {}, second);
     expect(undoAutofill).toHaveBeenCalledOnce();
     expect(first).not.toHaveBeenCalled();
     finish(true);
-    await vi.waitFor(() => { expect(first).toHaveBeenCalledWith({ success: true }); expect(second).toHaveBeenCalledWith({ success: true }); });
+    await vi.waitFor(() => {
+      expect(first).toHaveBeenCalledWith({ success: true });
+      expect(second).toHaveBeenCalledWith({ success: true });
+    });
   });
 
   it('routes GET_STATUS to getLastResult synchronously', () => {
-    vi.mocked(getLastResult).mockReturnValue({ noReview: 3, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 3 });
+    vi.mocked(getLastResult).mockReturnValue({
+      noReview: 3,
+      needReview: 0,
+      lowConfidence: 0,
+      noData: 0,
+      totalScanned: 3,
+    });
     const sendResponse = vi.fn();
     getListener()({ action: 'GET_STATUS' }, {}, sendResponse);
 
-    expect(sendResponse).toHaveBeenCalledWith({ noReview: 3, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 3 });
+    expect(sendResponse).toHaveBeenCalledWith({
+      noReview: 3,
+      needReview: 0,
+      lowConfidence: 0,
+      noData: 0,
+      totalScanned: 3,
+    });
   });
 
   it('does not respond to an unrecognized action', () => {

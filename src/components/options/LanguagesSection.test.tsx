@@ -27,7 +27,7 @@ describe('LanguagesSection — legacy proficiency migration', () => {
     const { onSave } = renderSection({
       languages: [{ language: 'es', proficiency: legacy } as unknown as LanguageEntry],
     });
-    fireEvent.click(screen.getByText('Save Languages'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({
       languages: [{ language: 'es', proficiency: migrated }],
     });
@@ -37,7 +37,7 @@ describe('LanguagesSection — legacy proficiency migration', () => {
     const { onSave } = renderSection({
       languages: [{ language: 'fr', proficiency: 'full_professional' }],
     });
-    fireEvent.click(screen.getByText('Save Languages'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({
       languages: [{ language: 'fr', proficiency: 'full_professional' }],
     });
@@ -47,7 +47,7 @@ describe('LanguagesSection — legacy proficiency migration', () => {
     const { onSave } = renderSection({
       languages: [{ language: 'de', proficiency: 'nonsense' } as unknown as LanguageEntry],
     });
-    fireEvent.click(screen.getByText('Save Languages'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({
       languages: [{ language: 'de', proficiency: 'professional_working' }],
     });
@@ -55,12 +55,39 @@ describe('LanguagesSection — legacy proficiency migration', () => {
 });
 
 describe('LanguagesSection — validation and entry management', () => {
+  it('shows CEFR ranges in the options and keeps explanations inside the guide', () => {
+    renderSection({ languages: [{ language: 'en', proficiency: 'native_bilingual' }] });
+    const select = screen.getByRole('combobox', { name: 'Proficiency*' });
+    expect(screen.getByRole('option', { name: 'Full professional (C1–C2)' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'Professional working (B2–C1)' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'Limited working (B1–B2)' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'Elementary (A1–A2)' })).toBeTruthy();
+    expect(screen.queryByText('You use this language naturally in most situations.')).toBeNull();
+    fireEvent.change(select, { target: { value: 'elementary' } });
+    expect(screen.queryByText('You can introduce yourself and exchange basic information.')).toBeNull();
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('opens the complete proficiency guide beside the label without changing the selection', () => {
+    renderSection({ languages: [{ language: 'en', proficiency: 'professional_working' }] });
+    const help = screen.getByRole('button', { name: 'Proficiency guide' });
+    fireEvent.focus(help);
+    expect(screen.getByRole('tooltip').querySelectorAll('dt')).toHaveLength(5);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    fireEvent.click(help);
+    expect(screen.getByRole('tooltip')).toBeTruthy();
+    expect((screen.getByRole('combobox', { name: 'Proficiency*' }) as HTMLSelectElement).value).toBe(
+      'professional_working',
+    );
+  });
+
   it('requires both language and proficiency on an empty row', () => {
     const { onSave } = renderSection({ languages: [] });
-    fireEvent.click(screen.getByText('Save Languages'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('Language is required')).toBeTruthy();
-    expect(screen.getByText('Proficiency is required')).toBeTruthy();
+    expect(screen.getByText('Choose a language')).toBeTruthy();
+    expect(screen.getByText('Choose a proficiency level')).toBeTruthy();
   });
 
   it('adds and saves a new entry via the searchable language picker and proficiency select', () => {
@@ -72,7 +99,7 @@ describe('LanguagesSection — validation and entry management', () => {
 
     fireEvent.change(screen.getByText('Select proficiency…').closest('select')!, { target: { value: 'elementary' } });
 
-    fireEvent.click(screen.getByText('Save Languages'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({
       languages: [{ language: 'es', proficiency: 'elementary' }],
     });
@@ -85,16 +112,18 @@ describe('LanguagesSection — validation and entry management', () => {
         { language: 'fr', proficiency: 'elementary' },
       ],
     });
-    expect(screen.getByText('Entry 2')).toBeTruthy();
-    fireEvent.click(screen.getAllByTitle('Remove')[1]);
-    expect(screen.queryByText('Entry 2')).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'Remove entry' })).toHaveLength(2);
+    fireEvent.click(screen.getAllByTitle('Remove entry')[1]);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(screen.getAllByRole('button', { name: 'Remove entry' })).toHaveLength(1);
   });
 });
 
 it('requires at least one language after removing every row', () => {
   const { onSave } = renderSection({ languages: [] });
-  fireEvent.click(screen.getByTitle('Remove'));
-  fireEvent.click(screen.getByText('Save Languages'));
-  expect(screen.getByText('At least one language is required')).toBeTruthy();
+  fireEvent.click(screen.getByTitle('Remove entry'));
+  fireEvent.click(screen.getByText('Save'));
+  expect(screen.getByText('Choose a language')).toBeTruthy();
+  expect(screen.getAllByRole('button', { name: 'Remove entry' })).toHaveLength(1);
   expect(onSave).not.toHaveBeenCalled();
 });

@@ -15,6 +15,7 @@ import {
   precedingChoicePrompt,
 } from './labels';
 import type { LabelContext } from './labels';
+import { menuSelect } from './menuSelect';
 
 export interface FieldSignals {
   element: HTMLElement;
@@ -98,7 +99,7 @@ function getNearbyText(element: HTMLElement, context?: LabelContext): string {
       const prompts = queryOpenElements(ancestor, 'label').filter(
         (label) =>
           label instanceof HTMLLabelElement && (!label.control || label.control === element) &&
-          !/^(?:choose|select|browse|upload|attach|add)(?:\s+(?:a|your))?\s+files?(?:\s+or\s+drop\s+it\s+here)?\s*\*?$/i.test(composedText(label).trim()),
+          !/^(?:choose|select|browse|upload|attach|add)(?:\s+(?:a|your))?(?:\s+files?)?(?:\s+or\s+drop\s+it\s+here)?\s*\*?$/i.test(composedText(label).trim()),
       );
       if (prompts.length === 1 && composedText(prompts[0])) return composedText(prompts[0]);
       const titles = [...ancestor.querySelectorAll(':scope > p')].filter((prompt) =>
@@ -140,21 +141,24 @@ export function displayLabel(signals: FieldSignals): string | undefined {
 
 export function extractSignals(element: HTMLElement, context?: LabelContext): FieldSignals {
   const native = element.matches('input,textarea,select');
+  const menu = menuSelect(element);
   return {
     element,
-    type: native
-      ? (element as HTMLInputElement).type || element.tagName.toLowerCase()
-      : element.getAttribute('role') ||
-        (isTextEditor(element) ? 'textbox' : element.tagName.toLowerCase()),
-    name: withHostFallback(element, (el) => el.getAttribute('name') || ''),
-    id: withHostFallback(element, (el) => el.id || ''),
+    type: menu
+      ? 'select'
+      : native
+        ? (element as HTMLInputElement).type || element.tagName.toLowerCase()
+        : element.getAttribute('role') ||
+          (isTextEditor(element) ? 'textbox' : element.tagName.toLowerCase()),
+    name: menu?.select.name || withHostFallback(element, (el) => el.getAttribute('name') || ''),
+    id: menu?.select.id || withHostFallback(element, (el) => el.id || ''),
     placeholder: withHostFallback(
       element,
       (el) => el.getAttribute('placeholder') || el.getAttribute('aria-placeholder') || '',
     ),
     autocomplete: withHostFallback(element, (el) => el.getAttribute('autocomplete') || ''),
-    ariaLabel: withHostFallback(element, ariaName),
-    label: getLabelText(element, context),
+    ariaLabel: menu?.label || withHostFallback(element, ariaName),
+    label: menu?.label || getLabelText(element, context),
     nearbyText: getNearbyText(element, context),
   };
 }

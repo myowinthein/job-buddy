@@ -4,17 +4,6 @@
   height: 100dvh;
 }
 
-.preview-notice {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 1rem;
-  flex-shrink: 0;
-  padding: 0.5rem 1rem;
-  background: #fef3c7;
-  color: #78350f;
-  font-size: 0.75rem;
-}
-
 .preview-app {
   flex: 1;
   min-height: 0;

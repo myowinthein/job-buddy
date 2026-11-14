@@ -224,6 +224,7 @@ describe('Fill Details page', () => {
     expect(times[0].textContent).toContain('2026');
     expect(times[0].textContent).not.toContain(':05');
     expect(screen.queryByText(/^Modified/)).toBeNull();
+    expect(screen.queryByText(/Uses the form tab when available/)).toBeNull();
     expect(screen.getByRole('button', { name: 'Return to Form' })).toBeTruthy();
   });
 
@@ -586,14 +587,16 @@ describe('Fill Details page', () => {
     const consent = screen.getByText('Privacy consent').closest('details')!;
     expect(consent.querySelector('summary')!.textContent).not.toContain('Consent is left');
     await openDetails(consent);
-    expect(within(consent).getByText('Consent is left for you to decide.')).toBeTruthy();
+    expect(within(consent).getByText('Consent is left for you to decide.').tagName).toBe('DD');
+    expect(within(consent).getByText('Reason').tagName).toBe('DT');
+    expect(consent.querySelector('ol')!.previousElementSibling).toBeNull();
     expect(screen.queryByText('Location')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Kept current (1)' }));
     expect(screen.getByText('Email')).toBeTruthy();
     const kept = screen.getByText('Email').closest('details')!;
     expect(kept.querySelector('summary')!.textContent).not.toContain('Kept your existing answer.');
     await openDetails(kept);
-    expect(within(kept).getByText('Kept your existing answer.')).toBeTruthy();
+    expect(within(kept).getByText('Kept your existing answer.').tagName).toBe('DD');
   });
 
   it('keeps gray match details in the expansion and searchable by readable profile names', async () => {
@@ -705,6 +708,7 @@ describe('Fill Details page', () => {
       'textContent',
       expect.stringContaining('Could not open the form'),
     );
+    expect(screen.getByRole('alert').className).toContain('border-red-500');
   });
 
   it('populates an already-open empty page on session updates without clicking View details', async () => {
@@ -723,13 +727,18 @@ describe('Fill Details page', () => {
   it('handles a closed source with no retained report', async () => {
     vi.mocked(loadFillLog).mockRejectedValue(new Error('closed'));
     render(<FillLogPage tabId={10} />);
-    expect(await screen.findByText(/The source form is unavailable/)).toBeTruthy();
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      'The source form is unavailable. Its tab may have closed.',
+    );
+    expect(screen.getByRole('alert').className).toContain('border-red-500');
   });
 
   it('explains older scripts without incomplete zero totals', async () => {
     vi.mocked(loadFillLog).mockResolvedValue({ ...snapshot(), needsRefresh: true });
     render(<FillLogPage tabId={10} />);
-    expect(await screen.findByText(/This form was filled with an earlier version/)).toBeTruthy();
+    const message = await screen.findByText(/This form was filled with an earlier version/);
+    expect(message.closest('[role=status]')!.className).toContain('border-amber-500');
     expect(screen.queryByRole('region', { name: 'Fill summary' })).toBeNull();
   });
 
@@ -741,7 +750,10 @@ describe('Fill Details page', () => {
     });
     vi.mocked(loadFillLog).mockResolvedValue(data);
     await showFields();
-    expect(screen.getByText(/AI assistance was unavailable for part or all/)).toBeTruthy();
+    expect(
+      screen.getByText(/AI assistance was unavailable for part or all/).closest('[role=status]')!
+        .className,
+    ).toContain('border-amber-500');
     expect(screen.getByText(/These fills were undone/)).toBeTruthy();
   });
 
@@ -769,4 +781,13 @@ describe('Fill Details page', () => {
     expect(document.querySelectorAll('time')).toHaveLength(1);
     expect(document.querySelector('time')!.getAttribute('datetime')).toBe(filledTime);
   });
+});
+
+it('uses the neutral loading style while the initial report is pending', async () => {
+  vi.mocked(loadFillLog).mockReturnValue(new Promise(() => {}));
+  render(<FillLogPage tabId={10} />);
+  const status = screen.getByRole('status');
+  expect(status.textContent).toContain('Loading fill details…');
+  expect(status.className).toContain('text-gray-500');
+  expect(status.querySelector('.animate-spin')).not.toBeNull();
 });

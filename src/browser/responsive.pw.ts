@@ -72,13 +72,18 @@ test('audits options layouts', async ({ context, extension }, info) => {
     ]) {
       await page.goto(new URL(`options.html?section=${section}`, extension.worker.url()).href);
       await expect(page.locator('main h2')).toBeVisible();
-      while (await page.getByRole('button', { name: 'Expand', exact: true }).count())
-        await page.getByRole('button', { name: 'Expand', exact: true }).first().click();
+      while (await page.locator('[data-entry-toggle][aria-expanded="false"]').count())
+        await page.locator('[data-entry-toggle][aria-expanded="false"]').first().click();
       await page
         .locator('main details')
         .evaluateAll((elements) =>
           elements.forEach((element) => ((element as HTMLDetailsElement).open = true)),
         );
+      if (width <= 390) {
+        for (const title of await page.locator('[data-entry-toggle] > span > span:first-child').all()) {
+          expect((await title.boundingBox())!.width).toBeGreaterThanOrEqual(100);
+        }
+      }
       if (section === 'personal' && width === 320) {
         await page.locator('main details').first().scrollIntoViewIfNeeded();
         await page.screenshot({
@@ -117,8 +122,8 @@ test('audits dropdowns and short dialogs', async ({ context, extension }, info) 
     for (const section of ['personal', 'address', 'workHistory', 'salary']) {
       await page.goto(new URL(`options.html?section=${section}`, extension.worker.url()).href);
       await expect(page.locator('main h2')).toBeVisible();
-      while (await page.getByRole('button', { name: 'Expand', exact: true }).count())
-        await page.getByRole('button', { name: 'Expand', exact: true }).first().click();
+      while (await page.locator('[data-entry-toggle][aria-expanded="false"]').count())
+        await page.locator('[data-entry-toggle][aria-expanded="false"]').first().click();
       const buttons = page.locator('main button[aria-haspopup="listbox"]');
       for (let i = 0; i < (await buttons.count()); i++) {
         await buttons.nth(i).click();
@@ -219,7 +224,7 @@ test('keeps reset, shared import review, and mapping review usable in short wind
   });
   await expect(page.getByRole('dialog', { name: 'Import Profile' })).toBeVisible();
   await reachable(page.getByRole('dialog'));
-  await page.getByRole('radio', { name: /Update current profile/ }).check();
+  await page.getByRole('radio', { name: /Update profile/ }).check();
   await page.getByRole('button', { name: 'Review Changes', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Review Profile' })).toBeVisible();
   await page.getByRole('button', { name: 'Work History', exact: true }).last().click();
@@ -231,7 +236,7 @@ test('keeps reset, shared import review, and mapping review usable in short wind
   await reachable(page.getByRole('tooltip'));
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Review Mappings', exact: true }).click();
-  await page.getByLabel('Sites to review').click();
+  await expect(page.getByRole('group', { name: 'Sites to review' })).toBeVisible();
   await reachable(page.getByRole('dialog'));
   await page.screenshot({ path: info.outputPath('mapping-review-short.png') });
 });
@@ -292,6 +297,11 @@ test('keeps the toolbar popup within its Chrome surface for setup and choices', 
   const popup = await openPinnedPopup(context, extension.worker.url(), extension.sourceTabId);
   await popup.getByRole('button', { name: 'Fill Form', exact: true }).click();
   await expect(popup.getByRole('radio', { name: /^Fill empty fields/ })).toBeVisible();
+  for (const height of [300, 450, 600]) {
+    await popup.setViewportSize({ width: 380, height });
+    await expect(popup.getByRole('button', { name: 'Fill Form', exact: true })).toBeInViewport({ ratio: 1 });
+    await expect(popup.getByRole('button', { name: 'Cancel', exact: true })).toBeInViewport({ ratio: 1 });
+  }
   expect(
     await popup.evaluate(
       () =>
@@ -312,4 +322,29 @@ test('keeps the toolbar popup within its Chrome surface for setup and choices', 
         document.documentElement.scrollHeight <= innerHeight,
     ),
   ).toBe(true);
+});
+
+test('lets native popup choices grow into available screen space', async ({ context, extension }) => {
+  const popup = await openPinnedPopup(context, extension.worker.url(), extension.sourceTabId);
+  await popup.addInitScript(() => {
+    chrome.extension.getViews = () => [window];
+    Object.defineProperty(screen, 'availHeight', { value: 600 });
+    Object.defineProperty(screen, 'availTop', { value: 0 });
+    Object.defineProperty(window, 'screenY', { value: 100 });
+    Object.defineProperty(chrome.runtime, 'sendMessage', {
+      value: async (message: { action: string }) => {
+        if (message.action === 'AUTOFILL_RUN_BLOCKED') return false;
+        if (message.action !== 'AUTOFILL_RUN_START') return null;
+        return {
+          tabId: 1, runId: 'responsive-test', startedAt: Date.now(),
+          frames: [{ frameId: 0 }], stage: 'confirming',
+        };
+      },
+    });
+  });
+  await popup.setViewportSize({ width: 380, height: 200 });
+  await popup.reload();
+  await popup.getByRole('button', { name: 'Fill Form', exact: true }).click();
+  await expect(popup.getByRole('radio', { name: /^Fill empty fields/ })).toBeVisible();
+  expect(await popup.locator('fieldset').evaluate((el) => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
 });

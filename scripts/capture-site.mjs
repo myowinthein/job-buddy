@@ -14,12 +14,22 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 // Fail before running captures if the lossless WebP encoder is unavailable.
 execFileSync('cwebp', ['-version']);
 if (!process.argv.includes('--from-captures'))
-  execFileSync('pnpm', ['exec', 'playwright', 'test', 'src/browser/site-captures.pw.ts'], {
-    cwd: root,
-    env: { ...process.env, JB_CAPTURE_SITE: '1' },
-    stdio: 'inherit',
-  });
-const results = resolve(root, '.output/browser-results');
+  execFileSync(
+    'pnpm',
+    [
+      'exec',
+      'playwright',
+      'test',
+      'src/browser/site-captures.pw.ts',
+      '--output=.output/site-captures',
+    ],
+    {
+      cwd: root,
+      env: { ...process.env, JB_CAPTURE_SITE: '1' },
+      stdio: 'inherit',
+    },
+  );
+const results = resolve(root, '.output/site-captures');
 const assets = resolve(root, 'docs/assets/screenshots');
 const pages = process.argv.includes('--user-guide')
   ? ['docs/index.html']

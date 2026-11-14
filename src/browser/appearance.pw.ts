@@ -1,5 +1,61 @@
 import { test, expect, extensionUrl } from './fixtures';
 
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+  test(`profile navigation and shared animations follow ${reducedMotion}`, async ({ context, extension }) => {
+    const page = await context.newPage();
+    await page.emulateMedia({ reducedMotion });
+    await page.addInitScript(() => {
+      const requests: ScrollIntoViewOptions[] = [];
+      Reflect.set(window, 'motionScrolls', requests);
+      const scroll = Element.prototype.scrollIntoView;
+      Element.prototype.scrollIntoView = function (options) {
+        if (typeof options === 'object') requests.push(options);
+        scroll.call(this, options);
+      };
+    });
+    await page.setViewportSize({ width: 390, height: 600 });
+    await page.goto(extensionUrl(extension, 'options.html'));
+    page.on('dialog', (dialog) => dialog.accept());
+    const behavior = reducedMotion === 'reduce' ? 'instant' : 'smooth';
+    await page.getByRole('textbox', { name: /^First Name/ }).fill('');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => Reflect.get(window, 'motionScrolls').at(-1)))
+      .toEqual({ block: 'center', behavior });
+    await page.getByRole('button', { name: 'Languages', exact: true }).click();
+    await page.getByRole('button', { name: '+ Add Language', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => Reflect.get(window, 'motionScrolls').at(-1)))
+      .toEqual({ block: 'nearest', behavior });
+    await extension.worker.evaluate(() => chrome.storage.session.set({ 'jb:focusOnLoad': 'field-firstName' }));
+    await expect(page.getByRole('textbox', { name: /^First Name/ })).toBeFocused();
+    await expect.poll(() => page.evaluate(() => Reflect.get(window, 'motionScrolls').at(-1)))
+      .toEqual({ behavior, block: 'center' });
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    const download = page.getByRole('button', { name: 'Download File', exact: true });
+    await download.scrollIntoViewIfNeeded();
+    await download.hover();
+    await page.mouse.down();
+    expect(await download.evaluate((button) => getComputedStyle(button).scale))
+      .toBe(reducedMotion === 'reduce' ? 'none' : '0.95');
+    await page.mouse.move(0, 0);
+    await page.mouse.up();
+
+    const popup = await context.newPage();
+    await popup.emulateMedia({ reducedMotion });
+    await popup.goto(extensionUrl(extension, 'popup.html'));
+    for (const surface of [page, popup]) {
+      const animation = await surface.evaluate(() => {
+        const spinner = document.createElement('span');
+        spinner.className = 'animate-spin';
+        document.body.append(spinner);
+        const name = getComputedStyle(spinner).animationName;
+        spinner.remove();
+        return name;
+      });
+      expect(animation).toBe(reducedMotion === 'reduce' ? 'none' : 'spin');
+    }
+  });
+}
+
 test('appearance follows the saved choice across open pages, native controls and reset', async ({
   context,
   extension,
@@ -63,8 +119,8 @@ test('appearance follows the saved choice across open pages, native controls and
   expect(await callingCode.evaluate((e) => getComputedStyle(e).outlineStyle)).toBe('solid');
   expect(await callingCode.evaluate((e) => getComputedStyle(e).outlineWidth)).toBe('2px');
 
-  await first.getByRole('button', { name: 'Save Personal', exact: true }).click();
-  const notification = first.getByRole('alert').filter({ hasText: 'Personal information saved' });
+  await first.getByRole('button', { name: 'Save', exact: true }).click();
+  const notification = first.getByRole('alert').filter({ hasText: 'Profile saved.' });
   await expect(notification).toBeVisible();
   expect(await notification.evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
   await notification.getByRole('button', { name: 'Dismiss notification' }).click();

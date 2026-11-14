@@ -5,6 +5,7 @@ import type { FieldSignals } from './signals';
 import { languageName } from '../data/languages';
 import { normalize } from './normalizer';
 import { questionText, visibleQuestion } from './ruleContext';
+import { menuSelect } from './menuSelect';
 import { resolveProfileValue } from './resolver';
 import { CURRENCIES } from '../data/currencies';
 import { COUNTRIES, countryName } from '../data/countries';
@@ -58,7 +59,7 @@ export function resolveRuleValue(
   const isSelect =
     element instanceof HTMLSelectElement ||
     element?.getAttribute('role') === 'combobox' ||
-    element?.getAttribute('aria-haspopup') === 'listbox';
+    element?.getAttribute('aria-haspopup') === 'listbox' || !!(element && menuSelect(element));
   if (path === 'address.country') {
     const code = profile.address?.country ?? '';
     const ac = signals.autocomplete?.split(/\s+/).at(-1);
@@ -67,16 +68,22 @@ export function resolveRuleValue(
       [...element.options].some((option) => option.value.toUpperCase() === code.toUpperCase())
     )
       return code;
-    return !isSelect && ac === 'country'
-      ? code
-      : countryName(code);
+    return !isSelect && ac === 'country' ? code : countryName(code);
   }
-  if (path === 'workAuthorization') {
+  const authorizationEntry = /^workAuthorization\.(\d+)(?:\.status)?$/.exec(path);
+  if (path === 'workAuthorization' || authorizationEntry) {
     const entries = profile.workAuthorization ?? [];
     const countries = mentionedCountries(text);
     if (countries.length > 1) return '';
-    const relevant =
-      countries.length === 1
+    const indexed = authorizationEntry ? entries[Number(authorizationEntry[1])] : undefined;
+    if (
+      authorizationEntry &&
+      (!indexed || (countries.length === 1 && indexed.country !== countries[0].code))
+    )
+      return '';
+    const relevant = indexed
+      ? [indexed]
+      : countries.length === 1
         ? entries.filter((entry) => entry.country === countries[0].code)
         : entries;
     if (
@@ -311,7 +318,7 @@ const COUNTRY_NAME_PATTERNS = COUNTRIES.map((country) => {
   };
 });
 
-function mentionedCountries(text: string) {
+export function mentionedCountries(text: string) {
   const named = COUNTRY_NAME_PATTERNS.filter(({ country, name }) => {
     const code =
       text.includes(country.code) &&

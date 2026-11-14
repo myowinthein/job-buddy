@@ -1,6 +1,7 @@
 import type { ProfileStoragePath } from '../profile/fieldCatalog';
 import { profileTextLimit, URL_MAX_LENGTH } from '../profile/fieldPolicies';
 import { profileData } from './profileData';
+import { migratePortfolio } from './migrate';
 import type { Profile } from '../types/profile';
 import { findCountryByNameOrCode } from '../data/countries';
 import { findLanguage } from '../data/languages';
@@ -533,7 +534,6 @@ function validateLinks(
       err('links.linkedin', 'expected string');
     }
   }
-  copyUrl(lnk, sl, 'links.portfolio', err);
   copyUrl(lnk, sl, 'links.github', err);
   copyUrl(lnk, sl, 'links.twitter', err);
   copyUrl(lnk, sl, 'links.dribbble', err);
@@ -585,6 +585,9 @@ function validateDocuments(
       err,
     );
   }
+  if ('portfolio' in docs && typeof docs.portfolio === 'object' && docs.portfolio !== null) {
+    sd.portfolio = validateDocumentEntry('documents.portfolio', docs.portfolio as Record<string, unknown>, err);
+  }
 
   return Object.keys(sd).length > 0 ? (sd as Profile['documents']) : undefined;
 }
@@ -603,7 +606,10 @@ export function validateImportedProfile(
 
   const errors: InvalidField[] = [];
   const err: ErrFn = (path, reason) => errors.push({ path, reason });
-  const data = raw as Record<string, unknown>;
+  const data = migratePortfolio(raw as Partial<Profile>) as Record<string, unknown>;
+  const legacyLinks = data.links as Record<string, unknown> | undefined;
+  if (legacyLinks && typeof legacyLinks.portfolio !== 'undefined' && legacyLinks.portfolio !== null)
+    err('documents.portfolio.url', 'expected a portfolio URL string');
   const s: Partial<Profile> = {};
   const kept = (family: string): AcceptedEntry => {
     const indices = options.entryIndices

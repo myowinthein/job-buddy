@@ -11,12 +11,7 @@ import {
   replaceProfileData,
   saveLearnedMappings,
 } from '../utils/storage';
-import {
-  applyMappingReview,
-  mappingReviewKeys,
-  readMappingReviews,
-  saveMappingReviews,
-} from '../utils/learnedMappingReview';
+import { applyMappingReview } from '../utils/learnedMappingReview';
 import { reviewMappingsWithAI, GEMINI_REQUEST_TIMEOUT_MS } from '../resume-ai/gemini';
 import { feedback } from '../ui/feedback';
 import { KEY_ERROR_MESSAGES } from '../resume-ai/keyErrors';
@@ -205,86 +200,10 @@ it('keeps confirmations unchanged and only trusts explicitly approved changes', 
   expect(inactive['jobs.example.test'].salaryalias).toMatchObject({ inactive: true, count: 2 });
 });
 
-it('reuses local assessments only for matching mapping, model, profile and entry structure', async () => {
+it('rejects old review changes after reset and clears legacy assessments on replacement', async () => {
   const profile = (await getProfile())!;
-  const keys = await mappingReviewKeys(profile, items, model);
-  await saveMappingReviews(profile, items, keys, [changed, correct], model);
-  expect((await readMappingReviews(profile, items, keys)).size).toBe(2);
-  expect(await getLearnedMappings()).toEqual(mappings);
-  expect(
-    await mappingReviewKeys(
-      { ...profile, personal: { ...profile.personal, firstName: 'Another name' } },
-      items,
-      model,
-    ),
-  ).toEqual(keys);
-  for (const other of [
-    { ...profile, id: 'other-profile' },
-    { ...profile, education: [...profile.education].reverse() },
-  ]) {
-    if (JSON.stringify(other) === JSON.stringify(profile)) continue;
-    expect(
-      (await readMappingReviews(other, items, await mappingReviewKeys(other, items, model))).size,
-    ).toBe(0);
-  }
-  expect(
-    (
-      await readMappingReviews(
-        profile,
-        items,
-        await mappingReviewKeys(profile, items, 'gemini-3.5-flash-lite'),
-      )
-    ).size,
-  ).toBe(0);
-  const edited = items.map((item) =>
-    item.id === salary.id
-      ? {
-          ...item,
-          members: item.members.map(
-            ([key, value]) =>
-              [
-                key,
-                typeof value === 'string' ? value : { ...value, count: 9 },
-              ] as (typeof item.members)[number],
-          ),
-        }
-      : item,
-  );
-  expect(
-    (await readMappingReviews(profile, edited, await mappingReviewKeys(profile, edited, model)))
-      .size,
-  ).toBe(1);
-});
-
-it('rejects malformed cache data and preserves good cached results', async () => {
-  const profile = (await getProfile())!;
-  const keys = await mappingReviewKeys(profile, items, model);
-  await saveMappingReviews(profile, items, keys, [changed, correct], model);
-  const stored = (await read('learnedMappingReviews')).learnedMappingReviews as Record<
-    string,
-    unknown
-  >;
-  await write({
-    learnedMappingReviews: {
-      ...stored,
-      [keys.get(salary.id)!]: {
-        assessment: { ...changed, path: 'settings.apiKey' },
-        model,
-        reviewedAt: 1,
-      },
-    },
-  });
-  expect((await readMappingReviews(profile, items, keys)).size).toBe(1);
-});
-
-it('does not resurrect cached reviews or mappings after reset or profile replacement', async () => {
-  const profile = (await getProfile())!;
-  const keys = await mappingReviewKeys(profile, items, model);
-  await saveMappingReviews(profile, items, keys, [changed], model);
+  await write({ learnedMappingReviews: { legacy: { assessment: changed, model, reviewedAt: 1 } } });
   await clearAllStorage();
-  await expect(saveMappingReviews(profile, items, keys, [changed], model)).rejects.toThrow(
-    feedback.mappingReviewChanged,
-  );
   await expect(
     applyMappingReview(profile, mappings, items, {
       [salary.id]: { action: 'change', path: changed.path! },
@@ -292,7 +211,7 @@ it('does not resurrect cached reviews or mappings after reset or profile replace
   ).rejects.toThrow(feedback.mappingReviewChanged);
   expect((await read('learnedMappingReviews')).learnedMappingReviews).toBeUndefined();
   await write({ profile, learnedMappings: mappings });
-  await saveMappingReviews(profile, items, keys, [changed], model);
+  await write({ learnedMappingReviews: { legacy: { assessment: changed, model, reviewedAt: 1 } } });
   await replaceProfileData({ ...profile, id: 'replacement' }, profile, {});
   expect((await read('learnedMappingReviews')).learnedMappingReviews).toEqual({});
 });
@@ -319,16 +238,15 @@ it('atomically rejects concurrent edits and preserves unrelated mappings', async
   });
 });
 
-it('keeps cache outside portable mappings and clears it on full mapping replacement', async () => {
-  const profile = (await getProfile())!;
-  const keys = await mappingReviewKeys(profile, items, model);
-  await saveMappingReviews(profile, items, keys, [changed], model);
+it('keeps legacy assessments outside portable mappings and clears them on full replacement', async () => {
+  await write({ learnedMappingReviews: { legacy: { assessment: changed, model, reviewedAt: 1 } } });
   expect(JSON.stringify(await getLearnedMappings())).not.toContain('reviewedAt');
   await saveLearnedMappings({});
   expect((await read('learnedMappingReviews')).learnedMappingReviews).toEqual({});
 });
 
 it('authenticates with a header and falls back from the chosen model on limits', async () => {
+  const onAttempt = vi.fn();
   const fetcher = vi
     .fn()
     .mockResolvedValueOnce(new Response('{}', { status: 429 }))
@@ -340,7 +258,12 @@ it('authenticates with a header and falls back from the chosen model on limits',
     [salary],
     catalog,
     new AbortController().signal,
+    onAttempt,
   );
+  expect(onAttempt.mock.calls).toEqual([
+    [model, undefined],
+    ['gemini-3.5-flash-lite', 'rate_limit'],
+  ]);
   expect(result.assessments).toEqual([changed]);
   expect(result.model).toBe('gemini-3.5-flash-lite');
   expect(fetcher.mock.calls[0][0]).toContain(model);
@@ -352,7 +275,7 @@ it('authenticates with a header and falls back from the chosen model on limits',
   }
 });
 
-it('reports failures as failures and never caches them as uncertain assessments', async () => {
+it('reports failures without producing uncertain assessments', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 403 })));
   await expect(
     reviewMappingsWithAI('key', model, [salary], catalog, new AbortController().signal),

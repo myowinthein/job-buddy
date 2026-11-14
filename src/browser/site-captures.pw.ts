@@ -1,5 +1,5 @@
 import type { Locator, Page, TestInfo } from '@playwright/test';
-import { test, expect, geminiResponse, extensionUrl } from './fixtures';
+import { test, expect, geminiResponse, extensionUrl, mappingReviewRequest } from './fixtures';
 import { serveDemo, ready, sample, publicURL } from './demoSupport';
 import type { Profile } from '../types/profile';
 import { readFile } from 'node:fs/promises';
@@ -56,8 +56,8 @@ async function captureInPage(page: Page, info: TestInfo, name: string, target: L
   });
 }
 
-async function captureProfile(page: Page, info: TestInfo, name: string, saveLabel: string) {
-  const save = page.getByRole('button', { name: saveLabel, exact: true });
+async function captureProfile(page: Page, info: TestInfo, name: string) {
+  const save = page.getByRole('button', { name: 'Save', exact: true });
   await expect(save).toBeVisible();
   const button = await save.boundingBox();
   const lastCategory = await page
@@ -139,7 +139,7 @@ for (const theme of ['light', 'dark'] as const) {
   test(`Quick Fill on a job form in ${theme} mode`, async ({ context, page, extension }, info) => {
     test.skip(process.env.JB_CAPTURE_QUICK_FILL !== '1', 'Opt-in Quick Fill capture.');
     await serveDemo(context);
-    await context.addInitScript((theme) => localStorage.setItem('theme', theme), theme);
+    await context.addInitScript((theme) => localStorage.setItem('job-buddy-theme', theme), theme);
     await extension.worker.evaluate(
       async ({ profile, theme }) => {
         await chrome.storage.local.set({
@@ -187,7 +187,7 @@ for (const theme of ['light', 'dark'] as const) {
     await serveDemo(context);
     await context.addInitScript((theme) => {
       try {
-        localStorage.setItem('theme', theme);
+        localStorage.setItem('job-buddy-theme', theme);
       } catch {
         /* Extension origins may restrict storage. */
       }
@@ -217,7 +217,7 @@ for (const theme of ['light', 'dark'] as const) {
                 question: 'First name',
               },
               portfolio: {
-                path: 'links.portfolio',
+                path: 'documents.portfolio.url',
                 count: 2,
                 label: 'Portfolio or website',
                 question: 'Portfolio or website',
@@ -310,14 +310,14 @@ for (const theme of ['light', 'dark'] as const) {
     await options.setViewportSize({ width: 1280, height: 1300 });
     await options.getByRole('button', { name: 'Personal', exact: true }).click();
     await expect(options.getByLabel('First Name', { exact: false }).first()).toBeVisible();
-    await captureProfile(options, info, `profile-${theme}`, 'Save Personal');
+    await captureProfile(options, info, `profile-${theme}`);
     for (const [name, section] of [
       ['profile-work', 'Work History'],
       ['profile-documents', 'Documents'],
     ]) {
       await options.getByRole('button', { name: section, exact: true }).click();
       await expect(options.getByRole('heading', { name: section, exact: true })).toBeVisible();
-      await captureProfile(options, info, `${name}-${theme}`, `Save ${section}`);
+      await captureProfile(options, info, `${name}-${theme}`);
     }
 
     const partial = structuredClone(profile);
@@ -327,7 +327,7 @@ for (const theme of ['light', 'dark'] as const) {
     await options.reload();
     await expect(options.getByRole('button', { name: /required remaining/ })).toBeVisible();
     await options.getByRole('button', { name: /required remaining/ }).click();
-    await captureProfile(options, info, `completion-${theme}`, 'Save Documents');
+    await captureProfile(options, info, `completion-${theme}`);
     await options.keyboard.press('Escape');
     await extension.worker.evaluate((profile) => chrome.storage.local.set({ profile }), profile);
     await options.reload();
@@ -350,9 +350,12 @@ for (const theme of ['light', 'dark'] as const) {
     await capture(options, info, `mapping-edit-${theme}`);
     await options.keyboard.press('Escape');
     await options.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await context.route('https://generativelanguage.googleapis.com/**', (route) => {
-      const text = route.request().postDataJSON().contents[0].parts[0].text as string;
-      const payload = JSON.parse(text.slice(text.indexOf('{"fields":'))) as {
+    let finishReview: (() => void) | undefined;
+    const reviewPending = new Promise<void>((resolve) => {
+      finishReview = resolve;
+    });
+    await context.route('https://generativelanguage.googleapis.com/**', async (route) => {
+      const payload = mappingReviewRequest(route) as {
         mappings: { id: string; currentPath: string }[];
       };
       const results = payload.mappings.map((item) => ({
@@ -369,13 +372,26 @@ for (const theme of ['light', 'dark'] as const) {
             ? 'The question asks about expected pay.'
             : 'Review the saved question in context.',
       }));
+      await reviewPending;
       return route.fulfill({
         json: geminiResponse(JSON.stringify(results)),
       });
     });
     await options.getByRole('button', { name: 'Review Mappings', exact: true }).click();
     const mappingReview = options.getByRole('dialog');
-    await mappingReview.getByRole('button', { name: 'Review Mappings', exact: true }).click();
+    await expect(
+      mappingReview.getByRole('button', { name: 'Analyze Mappings', exact: true }),
+    ).toBeEnabled();
+    await capture(options, info, `mapping-review-sites-${theme}`, mappingReview);
+    try {
+      await mappingReview.getByRole('button', { name: 'Analyze Mappings', exact: true }).click();
+      await expect(
+        mappingReview.getByRole('heading', { name: 'Analyzing Mappings' }),
+      ).toBeVisible();
+      await capture(options, info, `mapping-review-progress-${theme}`, mappingReview);
+    } finally {
+      finishReview?.();
+    }
     await expect(mappingReview.getByText('Better match found', { exact: true })).toBeVisible();
     await capture(options, info, `mapping-review-${theme}`, mappingReview);
     await mappingReview.getByRole('button', { name: 'Close review' }).click();
@@ -496,15 +512,10 @@ for (const theme of ['light', 'dark'] as const) {
       'http://127.0.0.1:4173/?devPreview=complete&devPreviewSeed=site-capture&devDrive=1',
     );
     await expect(preview.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
-    await captureRegion(
-      preview,
-      info,
-      `dev-bar-${theme}`,
-      [
-        preview.getByRole('complementary', { name: 'Development controls' }),
-        preview.getByRole('heading', { name: 'Appearance', exact: true }).locator('..'),
-      ],
-    );
+    await captureRegion(preview, info, `dev-bar-${theme}`, [
+      preview.getByRole('complementary', { name: 'Development controls' }),
+      preview.getByRole('heading', { name: 'Appearance', exact: true }).locator('..'),
+    ]);
     await preview.setViewportSize({ width: 800, height: 900 });
     await preview
       .getByRole('heading', { name: 'Cloud Backup', exact: true })

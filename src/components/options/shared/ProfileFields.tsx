@@ -1,12 +1,14 @@
 import { Fragment, type ComponentPropsWithRef, type ReactNode } from 'react';
 import {
   PROFILE_FIELD_LAYOUTS,
+  catalogFields,
   type CatalogField,
   type CatalogNode,
   type ProfileFieldKey,
   type ProfileFieldScope,
 } from '@/src/profile/fieldCatalog';
 import { stableDisclosureFocus } from './stableControlFocus';
+import { ProfileDisclosure } from './ProfileDisclosure';
 
 type FieldRenderers<Scope extends ProfileFieldScope> = {
   [Key in ProfileFieldKey<Scope>]: (field: CatalogField) => ReactNode;
@@ -41,15 +43,23 @@ export function ProfileFields<Scope extends ProfileFieldScope>({
       }
       if (node.disclosure)
         return (
-          <details key={node.key} className={node.className} {...disclosureProps?.[node.key]}>
+          <ProfileDisclosure
+            key={node.key}
+            className={node.className}
+            open={catalogFields(node.children).some((field) => {
+              const value = values?.[field.key];
+              return typeof value === 'string' ? !!value.trim() : value != null;
+            })}
+            {...disclosureProps?.[node.key]}
+          >
             <summary
               {...stableDisclosureFocus}
               className="cursor-pointer text-sm font-medium text-gray-700 dark:text-gray-300"
             >
-              {node.disclosure}
+              <span className="ml-2">{node.disclosure}</span>
             </summary>
             <div className="mt-3">{render(node.children)}</div>
-          </details>
+          </ProfileDisclosure>
         );
       return (
         <div key={node.key} className={node.className}>

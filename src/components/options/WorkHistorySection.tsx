@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import {
   profileTextLimit,
   WORK_ARRANGEMENTS,
@@ -30,6 +31,7 @@ import { saveSection } from './shared/saveSection';
 import { SaveButton } from './shared/SaveButton';
 import { EntryListHeader } from './shared/EntryListHeader';
 import { fieldCls as cls } from './shared/fieldCls';
+import { removeEntryErrors } from './shared/entryErrors';
 import { useScrollToNewEntry } from './shared/useScrollToNewEntry';
 import { useDateRangeValidation } from './shared/useDateRangeValidation';
 
@@ -45,6 +47,7 @@ const MIN_YEAR = CURRENT_YEAR - 100;
 // arrangement is kept as a string to allow the empty placeholder state.
 type LocalRow = {
   rowId: string;
+  placeholder?: boolean;
   company: string;
   title: string;
   startDate: string;
@@ -56,7 +59,8 @@ type LocalRow = {
   description: string;
 };
 
-const emptyRow = (): LocalRow => ({
+const emptyRow = (placeholder = false): LocalRow => ({
+  placeholder,
   rowId: crypto.randomUUID(),
   company: '',
   title: '',
@@ -95,15 +99,22 @@ function initRow(raw: WorkHistoryEntry): LocalRow {
   };
 }
 
-const cardSummary = (row: LocalRow, idx: number) =>
-  row.company && row.title
-    ? `${row.company}: ${row.title}`
-    : `Entry ${idx + 1}`;
+const started = (row: LocalRow) =>
+  Object.entries(row).some(([key, value]) => key !== 'rowId' && key !== 'placeholder' && !!value);
+
+const cardSummary = (row: LocalRow) => (
+  <>
+    {row.company || row.title || 'New entry'}
+    {row.company && row.title && (
+      <span className="font-normal text-gray-500 dark:text-gray-400">: {row.title}</span>
+    )}
+  </>
+);
 
 export function WorkHistorySection({ profile, onSave }: Props) {
   // ── Work entries ────────────────────────────────────────────────────────────
   const [entries, setEntries] = useState<LocalRow[]>(() =>
-    profile.workHistory?.map(initRow) ?? [],
+    profile.workHistory?.length ? profile.workHistory.map(initRow) : [emptyRow(true)],
   );
 
   // ── Career summary ──────────────────────────────────────────────────────────
@@ -123,9 +134,8 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   const [saving, setSaving] = useState(false);
 
   // Scroll to and focus the first input of a newly added work entry.
-  const [newEntryTick, setNewEntryTick] = useState(0);
   const entriesContainerRef = useRef<HTMLDivElement>(null);
-  useScrollToNewEntry(entriesContainerRef, newEntryTick);
+  const { focusEntry, focusRequest } = useScrollToNewEntry(entriesContainerRef);
 
   // Experience calculation reads only startDate / isCurrent / endDate — safe cast.
   // Memoized on just those fields (not the whole `entries` reference, which
@@ -141,8 +151,8 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   // Shared by handleEntryBlur, updateEntry, and validate() — the one check
   // each required text field needs, regardless of when it fires.
   const textFieldError = (key: 'company' | 'title', value: string): string => {
-    if (key === 'company' && !value.trim()) return 'Company name is required';
-    if (key === 'title' && !value.trim()) return 'Job title is required';
+    if (key === 'company' && !value.trim()) return 'Enter a company name';
+    if (key === 'title' && !value.trim()) return 'Enter a job title';
     const limit = profileTextLimit(`workHistory.$.${key}`);
     if (value.length > limit) return `Use ${limit} characters or fewer`;
     return '';
@@ -184,6 +194,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
     if (summary.length > profileTextLimit('professional.summary'))
       e.summary = `Use ${profileTextLimit('professional.summary')} characters or fewer`;
     entries.forEach((row, idx) => {
+      if (row.placeholder && !started(row) && !partialDates[`${row.rowId}.startDate`] && !partialDates[`${row.rowId}.endDate`]) return;
       for (const key of ['company', 'title'] as const) {
         const err = textFieldError(key, row[key]);
         if (err) e[`${idx}.${key}`] = err;
@@ -213,7 +224,13 @@ export function WorkHistorySection({ profile, onSave }: Props) {
   };
 
   const saveDraft = useSectionDraft(
-    { entries, summary, noticeImmediate, noticeValue, noticeUnit },
+    {
+      entries: entries.map(({ rowId: _rowId, placeholder: _placeholder, ...row }) => row),
+      summary,
+      noticeImmediate,
+      noticeValue,
+      noticeUnit,
+    },
     onSave,
   );
 
@@ -223,7 +240,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
     await saveSection(
       saveDraft,
       {
-        workHistory: entries.map((r) => ({
+        workHistory: entries.filter(started).map((r) => ({
           company: r.company.trim(),
           title: r.title.trim(),
           startDate: r.startDate,
@@ -252,7 +269,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
         },
       },
       showToast,
-      'Work history saved',
+      feedback.profileSaved,
     );
     setSaving(false);
   };
@@ -269,15 +286,18 @@ export function WorkHistorySection({ profile, onSave }: Props) {
               error={errors.summary}
               label={field.label}
               required={field.required}
-              hint={`${summary.length} / ${field.maxLength}`}
+              characterLimit={field.maxLength}
             >
               <textarea
                 id={field.inputId}
                 className={`${cls()} min-h-[100px] resize-y`}
                 value={summary}
-                onChange={(e) => setSummary(e.target.value)}
+                onChange={(e) => {
+                  setSummary(e.target.value);
+                  setErrors((current) => ({ ...current, summary: '' }));
+                }}
                 placeholder="A brief overview of your background and key strengths..."
-                maxLength={field.maxLength}
+
               />
             </FormField>
           ),
@@ -288,9 +308,15 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                 title={field.label}
                 id="add-workHistory"
                 onAdd={() => {
-                  const row = emptyRow();
-                  setEntries((rows) => [...rows, row]);
-                  setNewEntryTick((t) => t + 1);
+                  const existing = entries.find(
+                    (row) =>
+                      !started(row) &&
+                      !partialDates[`${row.rowId}.startDate`] &&
+                      !partialDates[`${row.rowId}.endDate`],
+                  );
+                  const row = existing ?? emptyRow();
+                  if (!existing) setEntries((rows) => [...rows, row]);
+                  focusEntry(row.rowId);
                 }}
                 label="+ Add Entry"
               />
@@ -311,7 +337,9 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                   <ExpandableCard
                     id={`entry-workHistory-${idx}`}
                     key={row.rowId}
-                    summary={cardSummary(row, idx)}
+                    entryId={row.rowId}
+                    expandRequest={focusRequest.rowId === row.rowId ? focusRequest.tick : 0}
+                    summary={cardSummary(row)}
                     badge={
                       row.isCurrent ? (
                         <span className="shrink-0 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
@@ -319,7 +347,23 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                         </span>
                       ) : undefined
                     }
-                    onDelete={() => setEntries((rows) => rows.filter((_, i) => i !== idx))}
+                    confirmDelete={
+                      started(row) ||
+                      !!partialDates[`${row.rowId}.startDate`] ||
+                      !!partialDates[`${row.rowId}.endDate`]
+                    }
+                    deleteLabel={entries.length === 1 ? 'Clear' : 'Delete'}
+                    onDelete={() => {
+                      setEntries((rows) =>
+                        rows.length === 1 ? [emptyRow(true)] : rows.filter((_, i) => i !== idx),
+                      );
+                      setErrors((errors) => removeEntryErrors(errors, idx));
+                      setPartialDates((dates) =>
+                        Object.fromEntries(
+                          Object.entries(dates).filter(([key]) => !key.startsWith(`${row.rowId}.`)),
+                        ),
+                      );
+                    }}
                     defaultExpanded={!row.company}
                     invalid={Object.entries(errors).some(
                       ([key, value]) => key.startsWith(`${idx}.`) && !!value,
@@ -342,7 +386,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                               onChange={(e) => updateEntry(idx, 'company', e.target.value)}
                               onBlur={() => handleEntryBlur(idx, 'company')}
                               placeholder="Acme Inc."
-                              maxLength={field.maxLength}
+
                             />
                           </FormField>
                         ),
@@ -359,7 +403,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                               onChange={(e) => updateEntry(idx, 'title', e.target.value)}
                               onBlur={() => handleEntryBlur(idx, 'title')}
                               placeholder="Senior Software Engineer"
-                              maxLength={field.maxLength}
+
                             />
                           </FormField>
                         ),
@@ -384,7 +428,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                               value={row.locationCity}
                               onChange={(e) => updateEntry(idx, 'locationCity', e.target.value)}
                               placeholder="San Francisco"
-                              maxLength={field.maxLength}
+
                             />
                           </FormField>
                         ),
@@ -491,7 +535,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                             label={field.label}
                             required={field.required}
                             error={errors[`${idx}.description`]}
-                            hint={`${row.description.length} / ${field.maxLength}`}
+                            characterLimit={field.maxLength}
                           >
                             <textarea
                               className={`${cls(errors[`${idx}.description`])} min-h-[100px] resize-y`}
@@ -499,7 +543,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                               value={row.description}
                               onChange={(e) => updateEntry(idx, 'description', e.target.value)}
                               placeholder="Key responsibilities and achievements..."
-                              maxLength={field.maxLength}
+
                             />
                           </FormField>
                         ),
@@ -647,9 +691,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
           ),
         }}
       />
-      <div className="pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
-        <SaveButton onClick={handleSave} saving={saving} label="Save Work History" />
-      </div>
+      <SaveButton onClick={handleSave} saving={saving} label="Save" />
     </div>
   );
 }

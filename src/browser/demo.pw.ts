@@ -26,7 +26,8 @@ test('the original demo fills with the production extension and produces the pub
   await expect(page.getByRole('heading', { name: 'Frontend Engineer', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'What you’ll do' })).toBeVisible();
   expect(await page.locator('body').innerText()).not.toContain('Job Buddy');
-  await expect(page.locator('a[href="../"], #test-controls, #test-fields')).toHaveCount(0);
+  await expect(page.locator('#return-to-guide')).toBeHidden();
+  await expect(page.locator('#test-controls, #test-fields')).toHaveCount(0);
   const title = page.locator('#role-title');
   expect(
     await title.evaluate(

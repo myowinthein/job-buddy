@@ -59,8 +59,8 @@ const PROFILE: Profile = {
     { language: 'English', proficiency: 'native_bilingual' },
     { language: 'th', proficiency: 'full_professional' },
   ],
-  links: { linkedin: 'https://linkedin.com/in/jane', portfolio: 'https://jane.dev' },
-  documents: {
+  links: { linkedin: 'https://linkedin.com/in/jane' },
+  documents: { portfolio: { url: 'https://jane.dev' },
     cv: { url: 'https://example.com/cv.pdf', file: { name: 'jane-cv.pdf', size: 1024, base64: 'abc' } },
   },
   derived: {

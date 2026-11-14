@@ -55,7 +55,10 @@ export class DevSimulation {
       salary: _salary,
       ...extracted
     } = sample;
-    this.extracted = extracted;
+    this.extracted = {
+      ...extracted,
+      documents: { cv: {}, portfolio: { url: sample.documents.portfolio?.url } },
+    };
     this.backup = null;
     const connected = options.driveConnected ?? false;
     const base = createPreviewChrome(profile, undefined, {
@@ -185,10 +188,30 @@ export class DevSimulation {
     if (!url.pathname.includes(':generateContent'))
       return json({ models: [{ name: DEFAULT_GEMINI_MODEL }] });
     const body = JSON.parse(String(init.body ?? '{}'));
-    const text =
-      body.generationConfig?.maxOutputTokens === 1
-        ? 'OK'
-        : JSON.stringify({ documentType: 'resume', ...this.extracted });
+    let text = 'OK';
+    if (body.generationConfig?.maxOutputTokens !== 1) {
+      const prompt = body.contents?.[0]?.parts?.[0]?.text;
+      if (
+        typeof prompt === 'string' &&
+        prompt.startsWith('Review saved job-application field mappings.')
+      ) {
+        const request = JSON.parse(prompt.slice(prompt.lastIndexOf('\n') + 1)) as {
+          mappings: { id: string }[];
+        };
+        text = JSON.stringify(
+          request.mappings.map(({ id }) => ({
+            id,
+            verdict: 'uncertain',
+            path: null,
+            reason: 'Simulated review. Check this mapping before applying changes.',
+          })),
+        );
+      } else if (typeof prompt === 'string' && prompt.startsWith('You are an autofill assistant')) {
+        text = '[]';
+      } else {
+        text = JSON.stringify({ documentType: 'resume', ...this.extracted });
+      }
+    }
     return json({ candidates: [{ content: { parts: [{ text }] } }] });
   }
 

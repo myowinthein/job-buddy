@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { WorkHistorySection } from './WorkHistorySection';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import type { Profile, WorkHistoryEntry } from '@/src/types/profile';
@@ -20,9 +20,25 @@ it('keeps the Current badge visible on a collapsed role and updates it with curr
   renderSection({ workHistory: [{ company: 'Acme', title: 'Engineer', startDate: '2020-01', isCurrent: true }] });
   expect(screen.getByText('Current')).toBeTruthy();
   expect(screen.queryByText(/\(Active\)/)).toBeNull();
-  fireEvent.click(screen.getByText('Acme: Engineer'));
+  fireEvent.click(screen.getByRole('button', { name: /^Acme: Engineer/ }));
   fireEvent.click(screen.getByLabelText('I currently work here'));
   expect(screen.queryByText('Current')).toBeNull();
+});
+
+it('keeps an over-limit summary intact and rejects saving until it is shortened', async () => {
+  const { onSave } = renderSection({});
+  const summary = screen.getByPlaceholderText('A brief overview of your background and key strengths...');
+  expect(summary.hasAttribute('maxlength')).toBe(false);
+  const value = '😀'.repeat(1001);
+  fireEvent.change(summary, { target: { value } });
+  fireEvent.click(screen.getByText('Save'));
+  expect((summary as HTMLTextAreaElement).value).toBe(value);
+  expect(onSave).not.toHaveBeenCalled();
+  expect(screen.getByText('Use 2000 characters or fewer')).toBeTruthy();
+  fireEvent.change(summary, { target: { value: 'A shorter summary.' } });
+  expect(screen.queryByText('Use 2000 characters or fewer')).toBeNull();
+  fireEvent.click(screen.getByText('Save'));
+  await waitFor(() => expect(onSave).toHaveBeenCalled());
 });
 
 describe('WorkHistorySection — initRow location backward-compat loader', () => {
@@ -33,7 +49,7 @@ describe('WorkHistorySection — initRow location backward-compat loader', () =>
         location: 'San Francisco, CA' as unknown as WorkHistoryEntry['location'],
       }],
     });
-    fireEvent.click(screen.getByText('Save Work History'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       workHistory: [expect.objectContaining({ location: { countryCode: undefined, city: 'San Francisco, CA' } })],
     }));
@@ -46,7 +62,7 @@ describe('WorkHistorySection — initRow location backward-compat loader', () =>
         location: { countryCode: 'US', city: 'Austin' },
       }],
     });
-    fireEvent.click(screen.getByText('Save Work History'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       workHistory: [expect.objectContaining({ location: { countryCode: 'US', city: 'Austin' } })],
     }));
@@ -56,7 +72,7 @@ describe('WorkHistorySection — initRow location backward-compat loader', () =>
     const { onSave } = renderSection({
       workHistory: [{ company: 'Acme', title: 'Engineer', startDate: '2020-01', isCurrent: true }],
     });
-    fireEvent.click(screen.getByText('Save Work History'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       workHistory: [expect.objectContaining({ location: undefined })],
     }));
@@ -84,21 +100,19 @@ describe('WorkHistorySection — date validation across the keystroke/blur/save-
 
   it('requires company, title, and start date once an entry is started', () => {
     const { onSave } = renderSection({ workHistory: [] });
-    fireEvent.click(screen.getByText('+ Add Entry'));
     fireEvent.change(screen.getByPlaceholderText('San Francisco'), { target: { value: 'Austin' } });
-    fireEvent.click(screen.getByText('Save Work History'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('Company name is required')).toBeTruthy();
-    expect(screen.getByText('Job title is required')).toBeTruthy();
-    expect(screen.getByText('Start date is required')).toBeTruthy();
+    expect(screen.getByText('Enter a company name')).toBeTruthy();
+    expect(screen.getByText('Enter a job title')).toBeTruthy();
+    expect(screen.getByText('Enter a start date')).toBeTruthy();
   });
 
   it('shows a required company-name error on blur even without typing (blur path)', () => {
     renderSection({ workHistory: [] });
-    fireEvent.click(screen.getByText('+ Add Entry'));
     const companyInput = screen.getByPlaceholderText('Acme Inc.');
     fireEvent.blur(companyInput);
-    expect(screen.getByText('Company name is required')).toBeTruthy();
+    expect(screen.getByText('Enter a company name')).toBeTruthy();
   });
 
   it('rejects an end date before the start date at save time', () => {
@@ -106,7 +120,7 @@ describe('WorkHistorySection — date validation across the keystroke/blur/save-
       workHistory: [{ company: 'Acme', title: 'Engineer', startDate: '2022-06', isCurrent: false, endDate: '2020-01' }],
     });
     // Saving must reveal errors even though populated entries start collapsed.
-    fireEvent.click(screen.getByText('Save Work History'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('End date cannot be before start date')).toBeTruthy();
   });
@@ -115,7 +129,7 @@ describe('WorkHistorySection — date validation across the keystroke/blur/save-
     const { onSave } = renderSection({
       workHistory: [{ company: 'Acme', title: 'Engineer', startDate: '2020-01', isCurrent: true }],
     });
-    fireEvent.click(screen.getByText('Save Work History'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalled();
   });
 });
@@ -133,7 +147,7 @@ describe('WorkHistorySection — Work Arrangement radio group', () => {
     const { onSave } = renderSection({
       workHistory: [{ company: 'Acme', title: 'Engineer', startDate: '2020-01', isCurrent: true }],
     });
-    fireEvent.click(screen.getByText(/Acme: Engineer/)); // expand the collapsed card
+    fireEvent.click(screen.getByRole('button', { name: /^Acme: Engineer/ })); // expand the collapsed card
     const remote = screen.getByDisplayValue('remote') as HTMLInputElement;
 
     fireEvent.click(remote);
@@ -142,7 +156,7 @@ describe('WorkHistorySection — Work Arrangement radio group', () => {
     fireEvent.click(remote);
     expect(remote.checked).toBe(false);
 
-    fireEvent.click(screen.getByText('Save Work History'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       workHistory: [expect.objectContaining({ arrangement: undefined })],
     }));
@@ -152,7 +166,7 @@ describe('WorkHistorySection — Work Arrangement radio group', () => {
     const { onSave } = renderSection({
       workHistory: [{ company: 'Acme', title: 'Engineer', startDate: '2020-01', isCurrent: true }],
     });
-    fireEvent.click(screen.getByText(/Acme: Engineer/));
+    fireEvent.click(screen.getByRole('button', { name: /^Acme: Engineer/ }));
     const remote = screen.getByDisplayValue('remote') as HTMLInputElement;
     const hybrid = screen.getByDisplayValue('hybrid') as HTMLInputElement;
 
@@ -161,7 +175,7 @@ describe('WorkHistorySection — Work Arrangement radio group', () => {
     expect(remote.checked).toBe(false);
     expect(hybrid.checked).toBe(true);
 
-    fireEvent.click(screen.getByText('Save Work History'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       workHistory: [expect.objectContaining({ arrangement: 'hybrid' })],
     }));
@@ -176,13 +190,13 @@ describe('WorkHistorySection — Notice Period validation', () => {
     });
     expect((screen.getByLabelText('Available Now') as HTMLInputElement).checked).toBe(false);
     expect((screen.getByLabelText('Available Later') as HTMLInputElement).checked).toBe(false);
-    fireEvent.click(screen.getByText('Save Work History'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('Select your availability')).toBeTruthy();
-    await screen.findByText('Save Work History');
+    await screen.findByText('Save');
     fireEvent.click(screen.getByText('Available Now'));
     expect(screen.queryByText('Select your availability')).toBeNull();
-    fireEvent.click(screen.getByText('Save Work History'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       professional: expect.objectContaining({ noticePeriod: expect.objectContaining({ immediate: true }) }),
     }));
@@ -248,7 +262,7 @@ describe('WorkHistorySection — Notice Period save round-trip', () => {
     fireEvent.click(screen.getByText('Available Later'));
     fireEvent.change(screen.getByPlaceholderText('3'), { target: { value: '2' } });
 
-    fireEvent.click(screen.getByText('Save Work History'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       professional: expect.objectContaining({
@@ -262,7 +276,7 @@ describe('WorkHistorySection — Notice Period save round-trip', () => {
     fireEvent.click(screen.getByText('Available Later'));
     fireEvent.change(screen.getByPlaceholderText('3'), { target: { value: '0' } });
 
-    fireEvent.click(screen.getByText('Save Work History'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('Must be at least 1')).toBeTruthy();
@@ -275,7 +289,7 @@ describe('WorkHistorySection — Notice Period save round-trip', () => {
     });
     fireEvent.click(screen.getByText('Available Now'));
 
-    fireEvent.click(screen.getByText('Save Work History'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       professional: expect.objectContaining({
@@ -293,7 +307,7 @@ describe('WorkHistorySection — Notice Period save round-trip', () => {
     expect((screen.getByPlaceholderText('3') as HTMLInputElement).value).toBe('6');
     expect(screen.getByDisplayValue('months')).toBeTruthy();
 
-    fireEvent.click(screen.getByText('Save Work History'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       professional: expect.objectContaining({
@@ -307,7 +321,7 @@ describe('WorkHistorySection — Notice Period save round-trip', () => {
 describe('WorkHistorySection — row identity', () => {
   it.each([false, true])('deleting a populated row preserves the successor date (partial: %s)', (partial) => {
     renderSection({ workHistory: [{ company: 'Old', title: 'Role', startDate: '2020-03', endDate: '2021-05', isCurrent: false }] });
-    fireEvent.click(screen.getByText('Old: Role'));
+    fireEvent.click(screen.getByRole('button', { name: /^Old: Role/ }));
     fireEvent.click(screen.getByText('+ Add Entry'));
     const months = screen.getAllByLabelText('Month') as HTMLSelectElement[];
     const years = screen.getAllByLabelText('Year') as HTMLInputElement[];
@@ -316,25 +330,30 @@ describe('WorkHistorySection — row identity', () => {
       fireEvent.change(years[2], { target: { value: '20' } });
     }
     fireEvent.click(screen.getAllByRole('button', { name: 'Remove entry' })[0]);
-    fireEvent.click(screen.getByText('Delete'));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect((screen.getAllByLabelText('Month')[0] as HTMLSelectElement).value).toBe(partial ? '06' : '');
     expect((screen.getAllByLabelText('Year')[0] as HTMLInputElement).value).toBe(partial ? '20' : '');
     expect((screen.getAllByLabelText('Month')[1] as HTMLSelectElement).value).toBe('');
     expect((screen.getAllByLabelText('Year')[1] as HTMLInputElement).value).toBe('');
     fireEvent.click(screen.getByText('+ Add Entry'));
-    expect((screen.getAllByLabelText('Month')[2] as HTMLSelectElement).value).toBe('');
-    expect((screen.getAllByLabelText('Year')[2] as HTMLInputElement).value).toBe('');
+    expect(screen.getAllByRole('button', { name: 'Remove entry' })).toHaveLength(partial ? 2 : 1);
+    if (partial) {
+      expect((screen.getAllByLabelText('Month')[2] as HTMLSelectElement).value).toBe('');
+      expect((screen.getAllByLabelText('Year')[2] as HTMLInputElement).value).toBe('');
+    }
   });
 });
 
 
 it('shows required errors for an explicitly added blank experience instead of silently dropping it', () => {
-  const { onSave } = renderSection({ workHistory: [] });
-  expect(screen.queryByLabelText('Company*')).toBeNull();
+  const { onSave } = renderSection({
+    workHistory: [{ company: 'Example', title: 'Engineer', startDate: '2020-01', isCurrent: true }],
+  });
+  expect(screen.getAllByRole('button', { name: 'Remove entry' })).toHaveLength(1);
   fireEvent.click(screen.getByText('+ Add Entry'));
-  fireEvent.click(screen.getByText('Save Work History'));
+  fireEvent.click(screen.getByText('Save'));
   expect(onSave).not.toHaveBeenCalled();
-  for (const error of ['Company name is required', 'Job title is required', 'Start date is required', 'End date is required']) {
+  for (const error of ['Enter a company name', 'Enter a job title', 'Enter a start date', 'Enter an end date']) {
     expect(screen.getByText(error)).toBeTruthy();
   }
 });
@@ -342,7 +361,7 @@ it('shows required errors for an explicitly added blank experience instead of si
 it('can save a summary and availability with no work experience', () => {
   const { onSave } = renderSection({ workHistory: [] });
   fireEvent.change(screen.getByLabelText('Career Summary'), { target: { value: 'Starting my career' } });
-  fireEvent.click(screen.getByText('Save Work History'));
+  fireEvent.click(screen.getByText('Save'));
   expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ workHistory: [] }));
   expect(screen.queryByRole('alert', { name: /required/ })).toBeNull();
 });

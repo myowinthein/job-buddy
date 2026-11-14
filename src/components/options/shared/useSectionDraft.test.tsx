@@ -53,3 +53,24 @@ it('does not acknowledge drafts when saving fails', async () => {
   await expect(result.current({})).rejects.toThrow('storage full');
   expect(report).toHaveBeenLastCalledWith(expect.any(String), true);
 });
+
+it('keeps document edits made during saving dirty and recognizes a reverted draft', async () => {
+  const report = vi.fn();
+  let finish!: () => void;
+  const save = () => new Promise<void>((resolve) => { finish = resolve; });
+  const file = { name: 'resume.pdf', size: 750000, base64: 'A'.repeat(1000000) };
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <DraftStatusContext.Provider value={report}>{children}</DraftStatusContext.Provider>
+  );
+  const { result, rerender } = renderHook(({ url }) => useSectionDraft({ file, url }, save), {
+    initialProps: { url: 'https://example.test/original' }, wrapper,
+  });
+  rerender({ url: 'https://example.test/submitted' });
+  let pending!: Promise<void>;
+  act(() => { pending = result.current({}); });
+  rerender({ url: 'https://example.test/further-edit' });
+  await act(async () => { finish(); await pending; });
+  expect(report).toHaveBeenLastCalledWith(expect.any(String), true);
+  rerender({ url: 'https://example.test/submitted' });
+  expect(report).toHaveBeenLastCalledWith(expect.any(String), false);
+});

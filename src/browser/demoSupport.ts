@@ -38,14 +38,14 @@ export async function serveDemo(context: BrowserContext) {
     const file = files.get(new URL(route.request().url()).pathname);
     return route.fulfill(file ?? { status: 404, body: 'Not found' });
   });
-  await context.route(
-    'https://myowinthein.github.io/job-buddy/assets/theme-init.js',
-    async (route) =>
+  for (const name of ['theme-init.js', 'theme-toggle.css']) {
+    await context.route(`https://myowinthein.github.io/job-buddy/assets/${name}`, async (route) =>
       route.fulfill({
-        contentType: 'application/javascript',
-        body: await readFile(resolve('docs/assets/theme-init.js'), 'utf8'),
+        contentType: name.endsWith('.css') ? 'text/css' : 'application/javascript',
+        body: await readFile(resolve('docs/assets', name), 'utf8'),
       }),
-  );
+    );
+  }
   // Keep capture and integration tests reproducible without a real API key.
   // The production matching, writing, feedback, and Undo code still runs.
   await context.route('https://generativelanguage.googleapis.com/**', (route) => {

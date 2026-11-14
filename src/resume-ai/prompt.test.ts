@@ -51,8 +51,8 @@ describe('buildPrompt — schema structure matches Profile', () => {
     expect(prompt).toContain('salary.expected: always return empty array []');
   });
 
-  it('excludes fields that must not be extracted (derived, documents, coverLetter, id)', () => {
-    expect(prompt).toContain('Do not include: id, derived, documents, coverLetter');
+  it('excludes local documents while permitting a portfolio URL', () => {
+    expect(prompt).toContain('Under documents, extract only portfolio.url.');
     // coverLetter must never appear as a schema key
     expect(prompt).not.toContain('"coverLetter"');
   });

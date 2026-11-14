@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+vi.mock('@/src/devtools/sessionChrome', () => ({
+  installDevelopmentSession: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock('@/src/utils/storage', async (original) => ({
   ...(await original<typeof import('./utils/storage')>()),
@@ -6,7 +9,11 @@ vi.mock('@/src/utils/storage', async (original) => ({
   saveLearnedMappings: vi.fn().mockResolvedValue(undefined),
   repairLearnedMappings: vi.fn().mockResolvedValue({}),
 }));
-import { saveLearnedObservationLocally, saveLearnedMappings, repairLearnedMappings } from './utils/storage';
+import {
+  saveLearnedObservationLocally,
+  saveLearnedMappings,
+  repairLearnedMappings,
+} from './utils/storage';
 
 vi.mock('@/src/devtools/registerContentScript', () => ({
   registerDevelopmentContentScript: vi.fn().mockResolvedValue(undefined),
@@ -81,10 +88,10 @@ function getStorageChangedListener(): (changes: object, areaName: string) => voi
   return storageOnChangedAddListener.mock.calls[0][0];
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks();
   vi.useFakeTimers();
-  background.main?.();
+  await background.main?.();
 });
 
 afterEach(() => {
@@ -168,7 +175,7 @@ it('does not back up removals during reset', async () => {
 
 describe('background autofill entry point', () => {
   const sender = { id: 'job-buddy', url: 'chrome-extension://job-buddy/popup.html' };
-  const listener = () => vi.mocked(chrome.runtime.onMessage.addListener).mock.calls[0][0];
+  const listener = () => vi.mocked(chrome.runtime.onMessage.addListener).mock.calls[1][0];
   it('keeps the response channel open while owning the popup request', async () => {
     const respond = vi.fn();
     expect(listener()({ action: 'AUTOFILL_RUN_START', tabId: 42 }, sender, respond)).toBe(true);
@@ -203,22 +210,28 @@ describe('background autofill entry point', () => {
 });
 
 describe('background learning writes', () => {
-  const learningListener = () => vi.mocked(chrome.runtime.onMessage.addListener).mock.calls[1][0];
+  const learningListener = () => vi.mocked(chrome.runtime.onMessage.addListener).mock.calls[2][0];
   it('repairs only the sender site and ignores a message-supplied site', async () => {
     const respond = vi.fn();
     const fields = [{ keys: ['email'], question: 'Email' }];
     const context = { profileId: 'profile', revision: null };
-    expect(learningListener()(
-      { action: 'REPAIR_LEARNED_MAPPINGS', domain: 'other.test', fields, context },
-      { id: 'job-buddy', url: 'https://actual.test/apply', tab: { id: 1 } } as chrome.runtime.MessageSender,
-      respond,
-    )).toBe(true);
+    expect(
+      learningListener()(
+        { action: 'REPAIR_LEARNED_MAPPINGS', domain: 'other.test', fields, context },
+        {
+          id: 'job-buddy',
+          url: 'https://actual.test/apply',
+          tab: { id: 1 },
+        } as chrome.runtime.MessageSender,
+        respond,
+      ),
+    ).toBe(true);
     expect(repairLearnedMappings).toHaveBeenCalledWith('actual.test', fields, context);
     await Promise.resolve();
     expect(respond).toHaveBeenCalledWith({ ok: true, mappings: {} });
   });
   it('derives the domain from the sender, including inherited-origin frames', async () => {
-    const respond=vi.fn();
+    const respond = vi.fn();
     expect(
       learningListener()(
         {
@@ -245,10 +258,10 @@ describe('background learning writes', () => {
       context: { profileId: 'profile', revision: null },
     });
     await Promise.resolve();
-    expect(respond).toHaveBeenCalledWith({ok:true});
+    expect(respond).toHaveBeenCalledWith({ ok: true });
   });
   it('accepts label patches containing legacy strings without touching their trust', async () => {
-    const respond=vi.fn();
+    const respond = vi.fn();
     const mappings = {
       'actual.test': {
         legacy: 'personal.email',
@@ -268,7 +281,7 @@ describe('background learning writes', () => {
     ).toBe(true);
     expect(saveLearnedMappings).toHaveBeenCalledWith(mappings, { labelsOnly: true });
     await Promise.resolve();
-    expect(respond).toHaveBeenCalledWith({ok:true});
+    expect(respond).toHaveBeenCalledWith({ ok: true });
   });
   it('rejects foreign senders and invalid paths', () => {
     learningListener()(

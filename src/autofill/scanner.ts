@@ -1,4 +1,5 @@
 import { isConsentGroup } from './consent';
+import { menuSelect } from './menuSelect';
 import {
   composedAncestors,
   composedParent,
@@ -115,7 +116,7 @@ function insideWidget(element: HTMLElement): boolean {
 export function getAriaElementType(element: HTMLElement): 'text' | 'select' | null {
   if (isTextEditor(element)) return 'text';
   return element.getAttribute('role') === 'combobox' ||
-    element.getAttribute('aria-haspopup') === 'listbox'
+    element.getAttribute('aria-haspopup') === 'listbox' || !!menuSelect(element)
     ? 'select'
     : null;
 }

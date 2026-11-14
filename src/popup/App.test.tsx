@@ -5,52 +5,52 @@ import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-libra
 vi.mock('@/src/fill-log/client', () => ({ openFillLog: vi.fn().mockResolvedValue(undefined) }));
 
 vi.mock('@/src/utils/storage', () => ({
-  getProfile: vi.fn().mockResolvedValue({ personal: { firstName: 'Jane', lastName: 'Doe', email: 'jane@x.com' } }),
+  getProfile: vi
+    .fn()
+    .mockResolvedValue({ personal: { firstName: 'Jane', lastName: 'Doe', email: 'jane@x.com' } }),
   getGeminiApiKey: vi.fn().mockResolvedValue('fake-key'),
 }));
 vi.mock('@/src/utils/sessionStorage', () => ({
   sessionSet: vi.fn().mockResolvedValue(undefined),
 }));
 
-// `entrypoints/popup/App.tsx` reads `chrome.runtime.getManifest()` at module
-// top level (EXTENSION_VERSION), which runs at import time — before any
-// plain `vi.stubGlobal` call textually preceding the import would execute,
-// per real ESM import evaluation order. `vi.hoisted` forces this to run
-// first, same as `vi.mock` factories.
-const { sendMessageMock, getAllFramesMock, tabsQueryMock, executeScriptMock, runtimeSendMock } = vi.hoisted(() => {
-  const sendMessageMock = vi.fn();
-  const getAllFramesMock = vi.fn();
-  const tabsQueryMock = vi.fn();
-  const executeScriptMock = vi.fn().mockResolvedValue(undefined);
-  const runtimeSendMock = vi.fn();
+// Keep Chrome APIs available before the popup and its dependencies load.
+const { sendMessageMock, getAllFramesMock, tabsQueryMock, executeScriptMock, runtimeSendMock } =
+  vi.hoisted(() => {
+    const sendMessageMock = vi.fn();
+    const getAllFramesMock = vi.fn();
+    const tabsQueryMock = vi.fn();
+    const executeScriptMock = vi.fn().mockResolvedValue(undefined);
+    const runtimeSendMock = vi.fn();
 
-  vi.stubGlobal('chrome', {
-    runtime: {
-      getManifest: () => ({ version: '9.9.9' }),
-      openOptionsPage: vi.fn(),
-      lastError: null,
-      sendMessage: runtimeSendMock,
-    },
-    tabs: {
-      query: tabsQueryMock,
-      sendMessage: sendMessageMock,
-    },
-    webNavigation: {
-      getAllFrames: getAllFramesMock,
-    },
-    scripting: {
-      executeScript: executeScriptMock,
-    },
-    storage: {
-      session: {
-        get: (_key: string, cb: (r: object) => void) => cb({}),
-        set: (_items: object, cb: () => void) => cb(),
+    vi.stubGlobal('chrome', {
+      runtime: {
+        getManifest: () => ({ version: '9.9.9' }),
+        openOptionsPage: vi.fn(),
+        lastError: null,
+        sendMessage: runtimeSendMock,
       },
-    },
-  });
+      tabs: {
+        query: tabsQueryMock,
+        sendMessage: sendMessageMock,
+      },
+      webNavigation: {
+        getAllFrames: getAllFramesMock,
+      },
+      scripting: {
+        executeScript: executeScriptMock,
+      },
+      storage: {
+        onChanged: { addListener: vi.fn(), removeListener: vi.fn() },
+        session: {
+          get: (_key: string, cb: (r: object) => void) => cb({}),
+          set: (_items: object, cb: () => void) => cb(),
+        },
+      },
+    });
 
-  return { sendMessageMock, getAllFramesMock, tabsQueryMock, executeScriptMock, runtimeSendMock };
-});
+    return { sendMessageMock, getAllFramesMock, tabsQueryMock, executeScriptMock, runtimeSendMock };
+  });
 
 import App from '@/entrypoints/popup/App';
 import { openFillLog } from '@/src/fill-log/client';
@@ -65,15 +65,24 @@ function renderApp() {
 }
 
 async function readyFill() {
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Fill Form' })).toHaveProperty('disabled', false));
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Fill Form' })).toHaveProperty('disabled', false),
+  );
   return screen.getByRole('button', { name: 'Fill Form' });
 }
 
 // A "scan"/"status" response shape as returned by content.ts's AUTOFILL_SCAN
 // or GET_STATUS handlers, keyed per frame.
-function statusResult(overrides: Partial<Record<string, number>> = {}, aiStatus: AIAutofillStatus = 'not_needed') {
+function statusResult(
+  overrides: Partial<Record<string, number>> = {},
+  aiStatus: AIAutofillStatus = 'not_needed',
+) {
   return {
-    noReview: 0, needReview: 0, lowConfidence: 0, noData: 0, totalScanned: 0,
+    noReview: 0,
+    needReview: 0,
+    lowConfidence: 0,
+    noData: 0,
+    totalScanned: 0,
     ...overrides,
     aiStatus,
   };
@@ -88,7 +97,9 @@ function respondToStatus(status: () => unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(getProfile).mockResolvedValue({ personal: { firstName: 'Jane', lastName: 'Doe', email: 'jane@x.com' } } as Profile);
+  vi.mocked(getProfile).mockResolvedValue({
+    personal: { firstName: 'Jane', lastName: 'Doe', email: 'jane@x.com' },
+  } as Profile);
   vi.mocked(getGeminiApiKey).mockResolvedValue('fake-key');
   tabsQueryMock.mockResolvedValue([{ id: 123 }]);
   getAllFramesMock.mockRejectedValue(new Error('unavailable')); // single top frame by default
@@ -96,49 +107,126 @@ beforeEach(() => {
   executeScriptMock.mockResolvedValue(undefined); // injection succeeds by default
   const records = new Map<number, AutofillRun>();
   const coordinator = new AutofillCoordinator({
-    read: async tabId => records.get(tabId) ?? null,
-    write: async (tabId, run) => { if (run) records.set(tabId, run); else records.delete(tabId); },
+    read: async (tabId) => records.get(tabId) ?? null,
+    write: async (tabId, run) => {
+      if (run) records.set(tabId, run);
+      else records.delete(tabId);
+    },
     setup: async () => {
-      try { return await getGeminiApiKey() ? undefined : 'ai_setup_required'; }
-      catch { return 'ai_settings_unavailable'; }
+      try {
+        return (await getGeminiApiKey()) ? undefined : 'ai_setup_required';
+      } catch {
+        return 'ai_settings_unavailable';
+      }
     },
     frames: async () => {
-      try { return await getAllFramesMock(); } catch { return [{ frameId: 0 }]; }
+      try {
+        return await getAllFramesMock();
+      } catch {
+        return [{ frameId: 0 }];
+      }
     },
     send: async (run, frame, message) => {
-      await executeScriptMock({ target: { tabId: run.tabId, frameIds: [frame.frameId] }, files: ['content-scripts/content.js'] });
+      await executeScriptMock({
+        target: { tabId: run.tabId, frameIds: [frame.frameId] },
+        files: ['content-scripts/content.js'],
+      });
       return sendMessageMock(run.tabId, message, { frameId: frame.frameId });
     },
     alarm: async () => {},
   });
-  runtimeSendMock.mockImplementation(async message => {
+  runtimeSendMock.mockImplementation(async (message) => {
     if (message.action === 'AUTOFILL_RUN_START') return coordinator.start(message.tabId);
     if (message.action === 'AUTOFILL_RUN_STATUS') return coordinator.status(message.tabId);
-    if (message.action === 'AUTOFILL_RUN_CONFIRM') return coordinator.confirm(message.tabId, message.runId, message.mode);
-    if (message.action === 'AUTOFILL_RUN_CANCEL') { await coordinator.cancel(message.tabId, message.runId); return null; }
+    if (message.action === 'AUTOFILL_RUN_BLOCKED') return coordinator.blocked(message.tabId);
+    if (message.action === 'AUTOFILL_RUN_UNDO') return coordinator.undo(message.tabId);
+    if (message.action === 'AUTOFILL_RUN_CONFIRM')
+      return coordinator.confirm(message.tabId, message.runId, message.mode);
+    if (message.action === 'AUTOFILL_RUN_CANCEL') {
+      await coordinator.cancel(message.tabId, message.runId);
+      return null;
+    }
     return null;
   });
 });
 
 afterEach(cleanup);
 
+it('links the header version to the matching installed release in a new tab', async () => {
+  renderApp();
+  await readyFill();
+  const link = screen.getByRole('link', { name: 'v9.9.9 release notes' });
+  expect(link.getAttribute('href')).toBe('https://github.com/myowinthein/job-buddy/releases/tag/v9.9.9');
+  expect(link.getAttribute('target')).toBe('_blank');
+  expect(link.getAttribute('rel')).toContain('noopener');
+  expect(link.closest('header')).not.toBeNull();
+  expect(link.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+});
+
+it('refreshes profile readiness after storage changes while the popup stays open', async () => {
+  renderApp();
+  await readyFill();
+  vi.mocked(getProfile).mockResolvedValue(null);
+  act(() => {
+    for (const [listener] of vi.mocked(chrome.storage.onChanged.addListener).mock.calls)
+      listener({ profile: {} }, 'local');
+  });
+  await screen.findByText('Add your profile details to start using autofill.');
+});
+
+it('keeps the newest AI setup state when an earlier key read finishes last', async () => {
+  let finishOldRead!: (key: string | null) => void;
+  vi.mocked(getGeminiApiKey).mockImplementationOnce(() => new Promise(resolve => {
+    finishOldRead = resolve;
+  }));
+  renderApp();
+  vi.mocked(getGeminiApiKey).mockResolvedValue(null);
+  act(() => {
+    for (const [listener] of vi.mocked(chrome.storage.onChanged.addListener).mock.calls)
+      listener({ geminiApiKey: {} }, 'local');
+  });
+  await act(async () => finishOldRead('old-key'));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Set Up AI Autofill' })).toBeTruthy());
+});
+
+it('disables Fill Form and Undo while the other extension is active, then restores them', async () => {
+  respondToStatus(() => statusResult({ noReview: 1, totalScanned: 1 }));
+  let blocked = true;
+  const normal = runtimeSendMock.getMockImplementation()!;
+  runtimeSendMock.mockImplementation(message =>
+    message.action === 'AUTOFILL_RUN_BLOCKED' ? Promise.resolve(blocked) : normal(message),
+  );
+  renderApp();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Fill Form' })).toHaveProperty('disabled', true));
+  await screen.findByRole('group', { name: 'The other Job Buddy version is filling this form.' });
+  expect(screen.getByRole('button', { name: 'Undo' })).toHaveProperty('disabled', true);
+  expect(screen.getByText('1 field filled')).toBeTruthy();
+  blocked = false;
+  await readyFill();
+  expect(screen.getByRole('button', { name: 'Undo' })).toHaveProperty('disabled', false);
+});
+
 describe('popup App — active content-script re-injection', () => {
   // Chrome's declarative content_scripts injection doesn't reliably re-run
   // for a frame whose document was populated asynchronously via
   // document.write() after the frame was created (e.g. HubSpot's
-  // embedded-form iframe) — sendToAllFrames actively re-injects via
-  // chrome.scripting.executeScript before messaging as a fallback.
-  it('injects the content script into every frame before sending a message to it', async () => {
+  // embedded-form iframe). Status reads inject when their receiver is missing.
+  it('injects only the frame whose status listener is missing', async () => {
     getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 5 }]);
-    sendMessageMock.mockResolvedValue(statusResult());
+    const listening = new Set([0]);
+    executeScriptMock.mockImplementation(({ target }: { target: { frameIds: number[] } }) => {
+      listening.add(target.frameIds[0]);
+      return Promise.resolve(undefined);
+    });
+    sendMessageMock.mockImplementation((_tabId, _message, { frameId }) =>
+      listening.has(frameId)
+        ? Promise.resolve(statusResult())
+        : Promise.reject(new Error('no listener')),
+    );
 
     renderApp();
-    await waitFor(() => expect(executeScriptMock).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(executeScriptMock).toHaveBeenCalledTimes(1));
 
-    expect(executeScriptMock).toHaveBeenCalledWith({
-      target: { tabId: 123, frameIds: [0] },
-      files: ['content-scripts/content.js'],
-    });
     expect(executeScriptMock).toHaveBeenCalledWith({
       target: { tabId: 123, frameIds: [5] },
       files: ['content-scripts/content.js'],
@@ -148,11 +236,20 @@ describe('popup App — active content-script re-injection', () => {
   it('still messages a frame whose injection call rejects (already has the script from declarative injection)', async () => {
     getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 5 }]);
     executeScriptMock.mockImplementation(({ target }: { target: { frameIds: number[] } }) =>
-      target.frameIds[0] === 5 ? Promise.reject(new Error('already injected')) : Promise.resolve(undefined),
+      target.frameIds[0] === 5
+        ? Promise.reject(new Error('already injected'))
+        : Promise.resolve(undefined),
     );
+    let firstStatus = true;
     sendMessageMock.mockImplementation((_tabId, message, opts) => {
       if (message.action !== 'GET_STATUS') return Promise.reject(new Error('n/a'));
-      if (opts.frameId === 5) return Promise.resolve(statusResult({ noReview: 3, totalScanned: 3 }));
+      if (opts.frameId === 5) {
+        if (firstStatus) {
+          firstStatus = false;
+          return Promise.reject(new Error('no listener yet'));
+        }
+        return Promise.resolve(statusResult({ noReview: 3, totalScanned: 3 }));
+      }
       return Promise.reject(new Error('no listener'));
     });
 
@@ -166,8 +263,10 @@ describe('popup App — GET_STATUS frame aggregation on mount', () => {
     getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 7 }]);
     sendMessageMock.mockImplementation((_tabId, message, opts) => {
       if (message.action !== 'GET_STATUS') return Promise.reject(new Error('n/a'));
-      if (opts.frameId === 0) return Promise.resolve(statusResult({ noReview: 2, totalScanned: 3 }));
-      if (opts.frameId === 7) return Promise.resolve(statusResult({ noReview: 1, totalScanned: 2 }));
+      if (opts.frameId === 0)
+        return Promise.resolve(statusResult({ noReview: 2, totalScanned: 3 }));
+      if (opts.frameId === 7)
+        return Promise.resolve(statusResult({ noReview: 1, totalScanned: 2 }));
       return Promise.reject(new Error('no listener'));
     });
 
@@ -190,7 +289,8 @@ describe('popup App — GET_STATUS frame aggregation on mount', () => {
     getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 9 }]);
     sendMessageMock.mockImplementation((_tabId, message, opts) => {
       if (message.action !== 'GET_STATUS') return Promise.reject(new Error('n/a'));
-      if (opts.frameId === 0) return Promise.resolve(statusResult({ noReview: 5, totalScanned: 5 }));
+      if (opts.frameId === 0)
+        return Promise.resolve(statusResult({ noReview: 5, totalScanned: 5 }));
       return Promise.reject(new Error('no listener')); // frame 9: ad/tracker iframe, no content script
     });
 
@@ -207,11 +307,15 @@ describe('popup App — GET_STATUS frame aggregation on mount', () => {
 
   it('restores filled fields even when a later unrelated empty frame reports another run', async () => {
     getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 9 }]);
-    sendMessageMock.mockImplementation((_id, message, options) => Promise.resolve(
-      message.action !== 'GET_STATUS' ? null : options.frameId === 0
-        ? { ...statusResult({ noReview: 4, totalScanned: 4 }), runId: 'form', startedAt: 10 }
-        : { ...statusResult(), runId: 'empty-sandbox', startedAt: 20 },
-    ));
+    sendMessageMock.mockImplementation((_id, message, options) =>
+      Promise.resolve(
+        message.action !== 'GET_STATUS'
+          ? null
+          : options.frameId === 0
+            ? { ...statusResult({ noReview: 4, totalScanned: 4 }), runId: 'form', startedAt: 10 }
+            : { ...statusResult(), runId: 'empty-sandbox', startedAt: 20 },
+      ),
+    );
     renderApp();
     expect(await screen.findByText('4 fields filled')).toBeTruthy();
     expect(screen.queryByText('No fillable fields found.')).toBeNull();
@@ -219,26 +323,45 @@ describe('popup App — GET_STATUS frame aggregation on mount', () => {
 
   it('keeps an earlier script’s filled result when only an empty iframe has run metadata', async () => {
     getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 9 }]);
-    sendMessageMock.mockImplementation((_id, message, options) => Promise.resolve(
-      message.action !== 'GET_STATUS' ? null : options.frameId === 0
-        ? statusResult({ noReview: 7, lowConfidence: 5, totalScanned: 12 })
-        : { ...statusResult(), runId: 'empty-sandbox', startedAt: 20 },
-    ));
+    sendMessageMock.mockImplementation((_id, message, options) =>
+      Promise.resolve(
+        message.action !== 'GET_STATUS'
+          ? null
+          : options.frameId === 0
+            ? statusResult({ noReview: 7, lowConfidence: 5, totalScanned: 12 })
+            : { ...statusResult(), runId: 'empty-sandbox', startedAt: 20 },
+      ),
+    );
     renderApp();
     expect(await screen.findByText('7 fields filled')).toBeTruthy();
   });
 
   it('keeps every frame in the latest run and excludes older or legacy results', async () => {
-    getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 3 }, { frameId: 7 }, { frameId: 9 }]);
+    getAllFramesMock.mockResolvedValue([
+      { frameId: 0 },
+      { frameId: 3 },
+      { frameId: 7 },
+      { frameId: 9 },
+    ]);
     const replies = [
       { ...statusResult({ noReview: 8, totalScanned: 8 }), runId: 'old', startedAt: 100 },
-      { ...statusResult({ noReview: 2, kept: 1, failed: 1, totalScanned: 4 }), runId: 'latest', startedAt: 200 },
-      { ...statusResult({ noReview: 1, excluded: 1, totalScanned: 2 }), runId: 'latest', startedAt: 201 },
+      {
+        ...statusResult({ noReview: 2, kept: 1, failed: 1, totalScanned: 4 }),
+        runId: 'latest',
+        startedAt: 200,
+      },
+      {
+        ...statusResult({ noReview: 1, excluded: 1, totalScanned: 2 }),
+        runId: 'latest',
+        startedAt: 201,
+      },
       statusResult({ noReview: 5, totalScanned: 5 }),
     ];
-    sendMessageMock.mockImplementation((_id, message, options) => Promise.resolve(
-      message.action === 'GET_STATUS' ? replies[[0, 3, 7, 9].indexOf(options.frameId)] : null,
-    ));
+    sendMessageMock.mockImplementation((_id, message, options) =>
+      Promise.resolve(
+        message.action === 'GET_STATUS' ? replies[[0, 3, 7, 9].indexOf(options.frameId)] : null,
+      ),
+    );
     renderApp();
     expect(await screen.findByText('3 fields filled')).toBeTruthy();
     expect(screen.getByText('1 field still needs your input.')).toBeTruthy();
@@ -249,10 +372,14 @@ describe('popup App — GET_STATUS frame aggregation on mount', () => {
     getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 3 }]);
     sendMessageMock.mockImplementation((_tabId, message, opts) => {
       if (message.action !== 'GET_STATUS') return Promise.resolve(null);
-      return Promise.resolve(statusResult({ totalScanned: 1 }, opts.frameId === 0 ? 'unavailable' : 'succeeded'));
+      return Promise.resolve(
+        statusResult({ totalScanned: 1 }, opts.frameId === 0 ? 'unavailable' : 'succeeded'),
+      );
     });
     renderApp();
-    expect(await screen.findByText('AI was unavailable, but basic autofill still ran.')).toBeTruthy();
+    expect(
+      await screen.findByText('AI was unavailable, but basic autofill still ran.'),
+    ).toBeTruthy();
     expect(screen.getByRole('alert').className).toContain('border-amber-500');
   });
 });
@@ -263,10 +390,16 @@ describe('popup App — handleAutofill scan orchestration', () => {
     let runId = '';
     sendMessageMock.mockImplementation((_id, message, options) => {
       if (message.action === 'GET_STATUS') return Promise.resolve(null);
-      if (message.action === 'AUTOFILL_SCAN') { runId = message.runId; return Promise.resolve({ preFilledCount: 0 }); }
-      if (message.action === 'AUTOFILL_FILL') return Promise.resolve(options.frameId === 0
-        ? { ...statusResult({ noReview: 4, totalScanned: 4 }), runId: 'old', startedAt: 10 }
-        : { ...statusResult(), runId, startedAt: 20 });
+      if (message.action === 'AUTOFILL_SCAN') {
+        runId = message.runId;
+        return Promise.resolve({ preFilledCount: 0 });
+      }
+      if (message.action === 'AUTOFILL_FILL')
+        return Promise.resolve(
+          options.frameId === 0
+            ? { ...statusResult({ noReview: 4, totalScanned: 4 }), runId: 'old', startedAt: 10 }
+            : { ...statusResult(), runId, startedAt: 20 },
+        );
       return Promise.resolve(null);
     });
     renderApp();
@@ -288,7 +421,10 @@ describe('popup App — handleAutofill scan orchestration', () => {
     renderApp();
     fireEvent.click(await readyFill());
     expect(await screen.findByText('This form already has some answers.')).toBeTruthy();
-    expect(screen.getByRole('radio', { name: /^Fill empty fields/ })).toHaveProperty('checked', true);
+    expect(screen.getByRole('radio', { name: /^Fill empty fields/ })).toHaveProperty(
+      'checked',
+      true,
+    );
   });
 
   it('dispatches an overwrite fill directly when the scan sums to zero pre-filled fields', async () => {
@@ -329,11 +465,13 @@ describe('popup App — handleAutofill scan orchestration', () => {
     tabsQueryMock.mockResolvedValue([]); // no tab.id
     renderApp();
     fireEvent.click(await readyFill());
-    expect(await screen.findByText(/Refresh the page to retry after an autofill error/)).toBeTruthy();
+    expect(
+      await screen.findByText(/Refresh the page to retry after an autofill error/),
+    ).toBeTruthy();
     expect(screen.queryByRole('link', { name: /Report/ })).toBeNull();
   });
 
-  it('shows an error state when every frame\'s fill response is invalid, distinct from the no-tab case', async () => {
+  it("shows an error state when every frame's fill response is invalid, distinct from the no-tab case", async () => {
     // A tab is found and the scan succeeds, but AUTOFILL_FILL comes back
     // shaped wrong in every frame — mergeAutofillResults filters all of them
     // out and returns null, taking the else-branch setAutofillState('error')
@@ -347,7 +485,9 @@ describe('popup App — handleAutofill scan orchestration', () => {
 
     renderApp();
     fireEvent.click(await readyFill());
-    expect(await screen.findByText(/Refresh the page to retry after an autofill error/)).toBeTruthy();
+    expect(
+      await screen.findByText(/Refresh the page to retry after an autofill error/),
+    ).toBeTruthy();
   });
 });
 
@@ -357,9 +497,12 @@ describe('popup App — Fill Details access', () => {
     renderApp();
     const details = await screen.findByRole('button', { name: 'View details' });
     expect(details.closest('section')).toBe(screen.getByRole('region', { name: 'Fill results' }));
+    expect(details.classList.contains('underline')).toBe(true);
     fireEvent.click(details);
     expect(openFillLog).toHaveBeenCalledWith(123);
-    expect(sendMessageMock.mock.calls.some(([, message]) => message.action === 'GET_DEBUG_SESSION')).toBe(false);
+    expect(
+      sendMessageMock.mock.calls.some(([, message]) => message.action === 'GET_DEBUG_SESSION'),
+    ).toBe(false);
   });
 
   it('keeps the logo noninteractive while the public details action remains available', async () => {
@@ -379,12 +522,14 @@ describe('popup App — Fill Details access', () => {
     respondToStatus(() => statusResult({ noReview: 1, totalScanned: 1 }));
     renderApp();
     fireEvent.click(await screen.findByRole('button', { name: 'View details' }));
-    expect(await screen.findByText('Please try opening Fill Details again.')).toBeTruthy();
+    expect(await screen.findByText('Could not open Fill Details. Try again.')).toBeTruthy();
     expect(screen.getByRole('alert').className).toContain('border-red-500');
     expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Fill Form' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'View details' }));
-    await waitFor(() => expect(screen.queryByText('Please try opening Fill Details again.')).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByText('Could not open Fill Details. Try again.')).toBeNull(),
+    );
     expect(screen.getByText('1 field filled')).toBeTruthy();
   });
 });
@@ -466,7 +611,8 @@ describe('popup App — Undo', () => {
     getAllFramesMock.mockResolvedValue([{ frameId: 0 }, { frameId: 2 }]);
     let clearCalledFrames: number[] = [];
     sendMessageMock.mockImplementation((_tabId, message, opts) => {
-      if (message.action === 'GET_STATUS') return Promise.resolve(statusResult({ noReview: 1, totalScanned: 1 }));
+      if (message.action === 'GET_STATUS')
+        return Promise.resolve(statusResult({ noReview: 1, totalScanned: 1 }));
       if (message.action === 'CLEAR') {
         clearCalledFrames.push(opts.frameId);
         if (opts.frameId === 2) return Promise.reject(new Error('gone'));
@@ -483,14 +629,19 @@ describe('popup App — Undo', () => {
     expect(clearCalledFrames.sort()).toEqual([0, 2]);
   });
   it('keeps Undo and the previous results visible after an incomplete restoration', async () => {
-    sendMessageMock.mockImplementation((_tabId, message) => Promise.resolve(message.action === 'CLEAR' ? { success: false } : statusResult({ noReview: 1, totalScanned: 1 })));
+    sendMessageMock.mockImplementation((_tabId, message) =>
+      Promise.resolve(
+        message.action === 'CLEAR'
+          ? { success: false }
+          : statusResult({ noReview: 1, totalScanned: 1 }),
+      ),
+    );
     renderApp();
     fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
     await screen.findByText('Undo incomplete. Review the remaining answers.');
     expect(screen.getByRole('button', { name: 'Undo' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Fill Form' })).toHaveProperty('disabled', false);
   });
-
 });
 
 // Required progress uses all completion checks; autofill needs a valid first name and email.
@@ -509,9 +660,7 @@ describe('popup profile and action presentation', () => {
     await screen.findByRole('progressbar');
     const progress = screen.getByRole('progressbar', { name: 'Saved required profile details' });
     expect(progress.getAttribute('aria-valuenow')).toBe(String(percentage));
-    expect(progress.firstElementChild?.className).toContain(
-      percentage === 100 ? 'bg-green-500' : 'bg-blue-500',
-    );
+    expect(progress.firstElementChild?.className).toContain('bg-blue-500');
     expect(
       screen.getByText(percentage === 100 ? 'Required details complete' : 'Required profile'),
     ).toBeTruthy();
@@ -524,18 +673,23 @@ describe('popup profile and action presentation', () => {
     { links: { linkedin: 'https://linkedin.com/in/jane' } },
     { personal: { lastName: 'Doe' } },
     { professional: { summary: 'Frontend engineer' } },
-  ])('requires identity setup at 0%% even when optional profile data exists: %j', async (profile) => {
-    vi.mocked(getProfile).mockResolvedValue(profile as unknown as Profile);
-    renderApp();
-    const setup = await screen.findByRole('button', { name: 'Set Up Profile' });
-    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('0');
-    await waitFor(() => expect(document.activeElement).toBe(setup));
-    expect(screen.queryByRole('button', { name: 'Fill Form' })).toBeNull();
-    expect(screen.getByText('Add your first name and email to enable autofill.')).toBeTruthy();
-    fireEvent.click(setup);
-    expect(chrome.runtime.openOptionsPage).toHaveBeenCalled();
-    expect(sendMessageMock.mock.calls.some(([, message]) => message.action === 'AUTOFILL_SCAN')).toBe(false);
-  });
+  ])(
+    'requires identity setup at 0%% even when optional profile data exists: %j',
+    async (profile) => {
+      vi.mocked(getProfile).mockResolvedValue(profile as unknown as Profile);
+      renderApp();
+      const setup = await screen.findByRole('button', { name: 'Set Up Profile' });
+      expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('0');
+      await waitFor(() => expect(document.activeElement).toBe(setup));
+      expect(screen.queryByRole('button', { name: 'Fill Form' })).toBeNull();
+      expect(screen.getByText('Add your first name and email to enable autofill.')).toBeTruthy();
+      fireEvent.click(setup);
+      expect(chrome.runtime.openOptionsPage).toHaveBeenCalled();
+      expect(
+        sendMessageMock.mock.calls.some(([, message]) => message.action === 'AUTOFILL_SCAN'),
+      ).toBe(false);
+    },
+  );
 
   it.each([
     [{ firstName: 'Jane' }, 'email'],
@@ -561,7 +715,9 @@ describe('popup profile and action presentation', () => {
   it('retains previous results and Undo when identity setup is needed', async () => {
     vi.mocked(getProfile).mockResolvedValue({ personal: { firstName: 'Jane' } } as Profile);
     sendMessageMock.mockImplementation(async (_id, message) =>
-      message.action === 'GET_STATUS' ? statusResult({ noReview: 1, totalScanned: 1 }) : { success: true },
+      message.action === 'GET_STATUS'
+        ? statusResult({ noReview: 1, totalScanned: 1 })
+        : { success: true },
     );
     renderApp();
     await screen.findByRole('button', { name: 'Set Up Profile' });
@@ -617,7 +773,7 @@ it('does not ask for another AI key when a saved key exists but the fill did not
   );
   renderApp();
   await screen.findByRole('button', { name: 'Undo' });
-  expect(screen.getByRole('banner').querySelector('svg')).toBeNull();
+  expect(screen.getByRole('banner').querySelector('.lucide-sparkles')).toBeNull();
   expect(screen.getByRole('button', { name: 'Fill Form' }).querySelector('svg')).not.toBeNull();
   expect(screen.queryByRole('button', { name: 'Dismiss AI suggestion' })).toBeNull();
   expect(screen.getByText('3 fields filled')).toBeTruthy();
@@ -661,7 +817,11 @@ it('preserves the overwrite choice and fills without rescanning after confirmati
   await screen.findByRole('button', { name: 'Undo' });
   expect(sendMessageMock).toHaveBeenCalledWith(
     123,
-    expect.objectContaining({ action: 'AUTOFILL_FILL', mode: 'overwrite', runId: expect.any(String) }),
+    expect.objectContaining({
+      action: 'AUTOFILL_FILL',
+      mode: 'overwrite',
+      runId: expect.any(String),
+    }),
     { frameId: 0 },
   );
   expect(
@@ -724,10 +884,14 @@ it('announces a pending fill, prevents duplicate actions, and returns focus afte
   });
   renderApp();
   fireEvent.click(await readyFill());
-  await screen.findByText('Filling…');
-  expect(screen.getByRole('button', { name: 'Fill Form' })).toHaveProperty('disabled', true);
+  const filling = await screen.findByRole('button', { name: 'Filling…' });
+  expect(filling).toHaveProperty('disabled', true);
+  expect(filling.getAttribute('aria-busy')).toBe('true');
+  expect(filling.querySelector('.animate-spin')).not.toBeNull();
   expect(screen.getByRole('button', { name: 'Complete Profile' })).toHaveProperty('disabled', true);
   expect(screen.getByRole('status').textContent).toBe('Filling…');
+  expect(filling.contains(screen.getByRole('status'))).toBe(true);
+  expect(screen.queryByRole('region', { name: 'Autofill details' })).toBeNull();
   await waitFor(() => expect(complete).toBeTypeOf('function'));
   complete(statusResult({ noReview: 1, totalScanned: 1 }));
   await screen.findByRole('button', { name: 'Undo' });
@@ -796,9 +960,7 @@ it.each(['succeeded', 'not_needed'] as const)(
     respondToStatus(() => statusResult({ noReview: 1, totalScanned: 1 }, aiStatus));
     renderApp();
     await screen.findByRole('button', { name: 'Undo' });
-    expect(
-      screen.queryByText('AI was unavailable, but basic autofill still ran.'),
-    ).toBeNull();
+    expect(screen.queryByText('AI was unavailable, but basic autofill still ran.')).toBeNull();
   },
 );
 
@@ -832,13 +994,15 @@ it('can undo previous fills after the key is removed', async () => {
   expect(sendMessageMock).toHaveBeenCalledWith(123, { action: 'CLEAR' }, { frameId: 0 });
 });
 
-
 it('does not restore a cancelled choice from a delayed startup reply', async () => {
   let release!: () => void;
   const route = runtimeSendMock.getMockImplementation()!;
-  runtimeSendMock.mockImplementation(async message => {
+  runtimeSendMock.mockImplementation(async (message) => {
     const result = await route(message);
-    if (message.action === 'AUTOFILL_RUN_START') await new Promise<void>(resolve => { release = resolve; });
+    if (message.action === 'AUTOFILL_RUN_START')
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
     return result;
   });
   sendMessageMock.mockImplementation(async (_tabId, message) => {
@@ -850,8 +1014,38 @@ it('does not restore a cancelled choice from a delayed startup reply', async () 
   // Polling discovers the choice while the original message is still pending.
   await screen.findByRole('radio', { name: /^Fill empty fields/ });
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-  await act(async () => { release(); });
+  await act(async () => {
+    release();
+  });
   expect(screen.queryByRole('radio')).toBeNull();
   expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull();
   expect(screen.getByRole('button', { name: 'Fill Form' })).toHaveProperty('disabled', false);
+});
+
+it('announces scanning inside the button before polling transitions to filling', async () => {
+  let finishScan!: (result: { preFilledCount: number }) => void;
+  let finishFill!: (result: ReturnType<typeof statusResult>) => void;
+  sendMessageMock.mockImplementation(async (_tabId, message) => {
+    if (message.action === 'AUTOFILL_SCAN')
+      return new Promise<{ preFilledCount: number }>((resolve) => {
+        finishScan = resolve;
+      });
+    if (message.action === 'AUTOFILL_FILL')
+      return new Promise<ReturnType<typeof statusResult>>((resolve) => {
+        finishFill = resolve;
+      });
+    return null;
+  });
+  renderApp();
+  fireEvent.click(await readyFill());
+  const scanning = await screen.findByRole('button', { name: 'Scanning…' });
+  expect(scanning).toHaveProperty('disabled', true);
+  expect(scanning.contains(screen.getByRole('status'))).toBe(true);
+  await waitFor(() => expect(finishScan).toBeTypeOf('function'));
+  await act(async () => finishScan({ preFilledCount: 0 }));
+  const filling = await screen.findByRole('button', { name: 'Filling…' });
+  expect(filling).toHaveProperty('disabled', true);
+  await waitFor(() => expect(finishFill).toBeTypeOf('function'));
+  await act(async () => finishFill(statusResult({ noReview: 1, totalScanned: 1 })));
+  await screen.findByRole('button', { name: 'Undo' });
 });

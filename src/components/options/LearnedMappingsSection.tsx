@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, Pencil, Trash2, Sparkles } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  Sparkles,
+  LoaderCircle,
+  ListChecks,
+} from 'lucide-react';
 import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings, LearnedMappingValue } from '@/src/types/storage';
 import {
@@ -15,16 +23,21 @@ import { profileData } from '@/src/utils/profileData';
 import { equalJsonValues } from '@/src/utils/equalJsonValues';
 import { feedback } from '@/src/ui/feedback';
 import { useToast } from '@/src/components/ui/useToast';
-import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
+import { RetryNotice } from '@/src/components/ui/RetryNotice';
+import { ConfirmRemoveButton } from './shared/ConfirmRemoveButton';
 import { SearchableProfileFieldSelect } from './shared/SearchableProfileFieldSelect';
 import { fieldCls } from './shared/fieldCls';
 import { LearnedMappingsHelp } from './LearnedMappingsHelp';
 import { MappingReviewDialog } from './MappingReviewDialog';
-import { groupMappings, type MappingGroup, type MappingStatus } from '@/src/learned-mappings/groups';
+import {
+  groupMappings,
+  type MappingGroup,
+  type MappingStatus,
+} from '@/src/learned-mappings/groups';
 import { mappingDestination, matchesMapping, profileFieldLabels } from './learnedMappingsView';
 
 const secondary =
-  'rounded-md border border-gray-300 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800';
+  'rounded-md border border-gray-300 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800';
 const primary =
   'rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50';
 const action =
@@ -38,46 +51,6 @@ const profileKey = (profile: Partial<Profile>) => JSON.stringify(profileData(pro
 const same = equalJsonValues;
 const SITES_PER_PAGE = 5;
 const MAPPINGS_PER_BATCH = 20;
-
-function DeleteConfirmation({
-  text,
-  busy,
-  onConfirm,
-  onCancel,
-}: {
-  text: string;
-  busy: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  const cancelRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    cancelRef.current?.focus();
-  }, []);
-  useEscapeToClose(busy ? undefined : onCancel);
-  return (
-    <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/30 dark:text-red-200">
-      <p className="w-full break-words">{text}</p>
-      <button
-        type="button"
-        disabled={busy}
-        onClick={onConfirm}
-        className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:opacity-50"
-      >
-        {busy ? 'Deleting…' : 'Delete'}
-      </button>
-      <button
-        ref={cancelRef}
-        type="button"
-        disabled={busy}
-        onClick={onCancel}
-        className={secondary}
-      >
-        Cancel
-      </button>
-    </div>
-  );
-}
 
 interface MappingRowProps {
   group: MappingGroup;
@@ -94,7 +67,6 @@ interface MappingRowProps {
   ) => Promise<boolean>;
   onDelete: (group: MappingGroup) => Promise<boolean>;
   onAfterDelete: () => void;
-  onOpenProfile?: (path: string, currentProfile: Partial<Profile>) => void;
 }
 function MappingRow({
   group,
@@ -107,22 +79,17 @@ function MappingRow({
   onUpdate,
   onDelete,
   onAfterDelete,
-  onOpenProfile,
 }: MappingRowProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(group.path);
   const [reviewedProfile, setReviewedProfile] = useState(profile);
   const [reviewedRevision, setReviewedRevision] = useState(revision);
   const [reviewedGroup, setReviewedGroup] = useState(group);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const editRef = useRef<HTMLButtonElement>(null);
-  const deleteRef = useRef<HTMLButtonElement>(null);
-  const rowRef = useRef<HTMLDivElement>(null);
   const rowId = useId();
   const operation = `${domain}:${group.id}`;
   const saving = busy === `save:${operation}`;
   const deleting = busy === `delete:${operation}`;
-  const empty = !resolveProfileValue(profile as Profile, group.path);
   const profileChanged = editing && revision !== reviewedRevision;
   const mappingChanged = editing && !same(group.members, reviewedGroup.members);
   const value = availableFields.has(editValue)
@@ -134,22 +101,8 @@ function MappingRow({
     setEditing(false);
     requestAnimationFrame(() => editRef.current?.focus());
   };
-  const cancelDelete = () => {
-    setConfirmDelete(false);
-    requestAnimationFrame(() => deleteRef.current?.focus());
-  };
-  useEffect(() => {
-    if (!confirmDelete || deleting) return;
-    const outside = (event: PointerEvent) => {
-      if (event.target instanceof Node && !rowRef.current?.contains(event.target))
-        setConfirmDelete(false);
-    };
-    document.addEventListener('pointerdown', outside);
-    return () => document.removeEventListener('pointerdown', outside);
-  }, [confirmDelete, deleting]);
   return (
     <div
-      ref={rowRef}
       role="group"
       aria-labelledby={rowId}
       tabIndex={-1}
@@ -180,66 +133,44 @@ function MappingRow({
             {group.status}
           </span>
           {!editing && (
-            <div className="flex shrink-0 items-center gap-1">
-              <button
-                ref={editRef}
-                type="button"
-                disabled={!!busy}
-                aria-label={`Edit ${group.title} on ${domain}`}
-                title="Edit mapping"
-                className={`${action} grid h-8 w-8 place-items-center`}
-                onClick={() => {
-                  setEditValue(group.path);
-                  setReviewedProfile(profile);
-                  setReviewedRevision(revision);
-                  setReviewedGroup(group);
-                  setConfirmDelete(false);
-                  setEditing(true);
-                }}
-              >
-                <Pencil aria-hidden="true" className="h-4 w-4" />
-              </button>
-              <button
-                ref={deleteRef}
-                type="button"
-                disabled={!!busy}
-                aria-label={`Delete mapping ${group.title} on ${domain}`}
-                title="Delete mapping"
-                className={`${action} grid h-8 w-8 place-items-center`}
-                onClick={() => setConfirmDelete(true)}
-              >
-                <Trash2 aria-hidden="true" className="h-4 w-4" />
-              </button>
-            </div>
+            <ConfirmRemoveButton
+              title={`Delete mapping ${group.title} on ${domain}`}
+              compact
+              disabled={!!busy}
+              busy={deleting}
+              onConfirm={() => {
+                void onDelete(group).then((deleted) => {
+                  if (deleted) requestAnimationFrame(onAfterDelete);
+                });
+              }}
+              leadingAction={
+                <button
+                  ref={editRef}
+                  type="button"
+                  disabled={!!busy}
+                  aria-label={`Edit ${group.title} on ${domain}`}
+                  title="Edit mapping"
+                  className={`${action} grid h-8 w-8 place-items-center`}
+                  onClick={() => {
+                    setEditValue(group.path);
+                    setReviewedProfile(profile);
+                    setReviewedRevision(revision);
+                    setReviewedGroup(group);
+                    setEditing(true);
+                  }}
+                >
+                  <Pencil aria-hidden="true" className="h-4 w-4" />
+                </button>
+              }
+            />
           )}
         </div>
       </div>
-      {!editing && group.status !== 'Inactive' && empty && (
-        <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-          No saved profile data.
-          {onOpenProfile && (
-            <>
-              {' '}
-              <button
-                type="button"
-                onClick={() => onOpenProfile(group.path, profile)}
-                className="rounded-sm text-blue-700 underline underline-offset-2 focus-visible:outline-2 dark:text-blue-300"
-              >
-                Open profile
-              </button>
-            </>
-          )}
-        </p>
-      )}
-      {!editing && group.status === 'Inactive' && (
-        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-          Choose a profile field to use this mapping again.
-        </p>
-      )}
       {editing && (
         <div className="mt-3 max-w-2xl space-y-3">
           <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Profile field</p>
           <SearchableProfileFieldSelect
+            autoFocus
             disabled={!!busy}
             profile={profile}
             value={editValue}
@@ -263,7 +194,8 @@ function MappingRow({
             <button
               type="button"
               disabled={!!busy || !value || unchanged || profileChanged || mappingChanged}
-              className={primary}
+              aria-busy={saving}
+              className={`inline-flex items-center justify-center gap-2 ${primary}`}
               onClick={async () => {
                 if (await onUpdate(reviewedGroup, editValue, reviewedProfile)) {
                   setEditing(false);
@@ -271,6 +203,7 @@ function MappingRow({
                 }
               }}
             >
+              {saving && <LoaderCircle aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" />}
               {saving ? 'Saving…' : 'Save'}
             </button>
             <button type="button" disabled={saving} onClick={cancelEdit} className={secondary}>
@@ -278,19 +211,6 @@ function MappingRow({
             </button>
           </div>
         </div>
-      )}
-      {confirmDelete && (
-        <DeleteConfirmation
-          text={`Delete this mapping for “${group.title}” on ${domain}?`}
-          busy={deleting}
-          onCancel={cancelDelete}
-          onConfirm={async () => {
-            if (await onDelete(group)) {
-              setConfirmDelete(false);
-              requestAnimationFrame(onAfterDelete);
-            }
-          }}
-        />
       )}
     </div>
   );
@@ -309,7 +229,6 @@ function MappingSite({
   labels,
   onUpdate,
   onDelete,
-  onOpenProfile,
   onFallbackFocus,
 }: {
   domain: string;
@@ -324,47 +243,33 @@ function MappingSite({
   labels: Map<string, string>;
   onUpdate: MappingRowProps['onUpdate'];
   onDelete: MappingRowProps['onDelete'];
-  onOpenProfile?: MappingRowProps['onOpenProfile'];
   onFallbackFocus: () => void;
 }) {
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [visibleCount, setVisibleCount] = useState(MAPPINGS_PER_BATCH);
   const headerRef = useRef<HTMLButtonElement>(null);
-  const deleteRef = useRef<HTMLButtonElement>(null);
-  const root = useRef<HTMLElement>(null);
   const panelId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const remaining = Math.max(0, groups.length - visibleCount);
   const deleting = busy === `site:${domain}`;
-  const cancel = () => {
-    setConfirmDelete(false);
-    requestAnimationFrame(() => deleteRef.current?.focus());
-  };
-  useEffect(() => {
-    if (!confirmDelete || deleting) return;
-    const outside = (event: PointerEvent) => {
-      if (event.target instanceof Node && !root.current?.contains(event.target))
-        setConfirmDelete(false);
-    };
-    document.addEventListener('pointerdown', outside);
-    return () => document.removeEventListener('pointerdown', outside);
-  }, [confirmDelete, deleting]);
   return (
     <section
-      ref={root}
       aria-label={`Mappings for ${domain}`}
       className="mb-3 min-w-0 rounded-xl border border-gray-200 dark:border-gray-700"
     >
-      <div className="flex items-center gap-2 rounded-t-xl bg-gray-50 px-3 dark:bg-gray-800/60">
+      <div
+        data-mapping-site-header=""
+        className={`flex items-center gap-2 bg-gray-50 px-3 dark:bg-gray-800/60 ${expanded ? 'rounded-t-xl' : 'rounded-xl'}`}
+      >
         <h3 className="min-w-0 flex-1">
           <button
             ref={headerRef}
+            data-mapping-site-toggle=""
             type="button"
             disabled={!!busy}
             aria-expanded={expanded}
             aria-controls={panelId}
             onClick={onToggle}
-            className="flex w-full items-center gap-3 rounded-md py-3 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-60"
+            className="flex w-full items-center gap-3 rounded-md py-3 text-left focus-visible:outline-none disabled:opacity-60"
           >
             <ChevronDown
               aria-hidden="true"
@@ -382,32 +287,17 @@ function MappingSite({
             </span>
           </button>
         </h3>
-        <button
-          ref={deleteRef}
-          type="button"
+        <ConfirmRemoveButton
+          title={`Delete all mappings for ${domain}`}
           disabled={!!busy}
-          aria-label={`Delete all mappings for ${domain}`}
-          onClick={() => setConfirmDelete(true)}
-          className={action}
-        >
-          <Trash2 aria-hidden="true" className="h-4 w-4" />
-        </button>
+          busy={deleting}
+          onConfirm={() => {
+            void onDeleteSite().then((deleted) => {
+              if (deleted) requestAnimationFrame(onFallbackFocus);
+            });
+          }}
+        />
       </div>
-      {confirmDelete && (
-        <div className="px-4 pb-3">
-          <DeleteConfirmation
-            text={`Delete all ${total} mapping${total === 1 ? '' : 's'} for ${domain}?`}
-            busy={deleting}
-            onCancel={cancel}
-            onConfirm={async () => {
-              if (await onDeleteSite()) {
-                setConfirmDelete(false);
-                requestAnimationFrame(onFallbackFocus);
-              }
-            }}
-          />
-        </div>
-      )}
       <div
         ref={panelRef}
         id={panelId}
@@ -429,7 +319,6 @@ function MappingSite({
                 busy={busy}
                 onUpdate={onUpdate}
                 onDelete={onDelete}
-                onOpenProfile={onOpenProfile}
                 onAfterDelete={() => (headerRef.current ?? { focus: onFallbackFocus }).focus()}
               />
             ))}
@@ -471,11 +360,9 @@ function MappingSite({
 }
 
 export function LearnedMappingsSection({
-  onOpenProfile,
   onProfileChange,
   onGoToApiKey,
 }: {
-  onOpenProfile?: MappingRowProps['onOpenProfile'];
   onProfileChange?: (profile: Partial<Profile>) => void;
   onGoToApiKey?: () => void;
 } = {}) {
@@ -572,6 +459,7 @@ export function LearnedMappingsSection({
   const firstSite = currentPage * SITES_PER_PAGE;
   const pagedSites = shownSites.slice(firstSite, firstSite + SITES_PER_PAGE);
   const filtering = !!search.trim() || filter !== 'All';
+  const mappingSummary = `${shown.length} mapping${shown.length === 1 ? '' : 's'} across ${shownSites.length} site${shownSites.length === 1 ? '' : 's'}`;
 
   const mutate = async (
     key: string,
@@ -723,41 +611,43 @@ export function LearnedMappingsSection({
         />
       )}
       {loadError && (
-        <div
-          role="alert"
-          className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200"
-        >
-          <p>{feedback.mappingsLoadFailed}</p>
-          <button
-            type="button"
-            disabled={reloading}
-            className={`${secondary} mt-3`}
-            onClick={() => {
-              setReloading(true);
-              void refresh();
-            }}
-          >
-            {reloading ? 'Retrying…' : 'Retry'}
-          </button>
+        <div className="mb-4">
+          <RetryNotice busy={reloading} onRetry={() => {
+            setReloading(true);
+            void refresh();
+          }}>
+            {feedback.mappingsLoadFailed}
+          </RetryNotice>
         </div>
       )}
       {loading ? (
-        <div role="status" aria-label="Loading learned mappings" className="space-y-3">
-          <span className="sr-only">Loading learned mappings…</span>
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="h-14 animate-pulse rounded-lg bg-gray-100 motion-reduce:animate-none dark:bg-gray-800"
-            />
-          ))}
-        </div>
+        <p
+          role="status"
+          aria-label="Loading learned mappings"
+          className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400"
+        >
+          <LoaderCircle
+            aria-hidden="true"
+            className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
+          />
+          Loading learned mappings…
+        </p>
       ) : !sites.length ? (
         !loadError && (
           <div
             role="status"
-            className="rounded-xl border border-dashed border-gray-300 p-6 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-400"
+            className="rounded-xl border border-dashed border-gray-300 px-6 py-12 text-center dark:border-gray-700"
           >
-            No learned mappings yet. Correct an answer on a job form to start learning.
+            <ListChecks
+              aria-hidden="true"
+              className="mx-auto mb-3 h-8 w-8 text-gray-400 dark:text-gray-500"
+            />
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              No learned mappings yet
+            </p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Correct an answer on a job form to start learning.
+            </p>
           </div>
         )
       ) : (
@@ -788,7 +678,7 @@ export function LearnedMappingsSection({
                     setSitePage(0);
                     setFilteredCollapsed(new Set());
                   }}
-                  className={`rounded-md border px-2.5 py-1.5 text-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-40 ${filter === status ? 'border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-950/50 dark:text-blue-300' : 'border-gray-300 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'}`}
+                  className={`rounded-md border px-2.5 py-1.5 text-xs focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-40 ${filter === status ? 'border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-950/50 dark:text-blue-300' : 'border-gray-300 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'}`}
                 >
                   {status} ({counts[status]})
                 </button>
@@ -812,9 +702,7 @@ export function LearnedMappingsSection({
                 role="status"
                 className="flex flex-wrap items-center gap-x-1 text-xs text-gray-500 dark:text-gray-400"
               >
-                <span>
-                  {shown.length} mapping{shown.length === 1 ? '' : 's'}
-                </span>
+                <span>{mappingSummary}</span>
                 <span aria-hidden="true">·</span>
                 <span>
                   Sites {firstSite + 1}–{Math.min(firstSite + SITES_PER_PAGE, shownSites.length)} of{' '}
@@ -847,8 +735,7 @@ export function LearnedMappingsSection({
           )}
           {shown.length > 0 && shownSites.length <= SITES_PER_PAGE && (
             <p role="status" className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-              {shown.length} mapping{shown.length === 1 ? '' : 's'} across {shownSites.length} site
-              {shownSites.length === 1 ? '' : 's'}
+              {mappingSummary}
             </p>
           )}
           {pagedSites.map((domain) => (
@@ -877,7 +764,6 @@ export function LearnedMappingsSection({
               }
               onDelete={(group) => remove(domain, group)}
               onDeleteSite={() => removeSite(domain)}
-              onOpenProfile={onOpenProfile}
               onFallbackFocus={() => (searchRef.current ?? headingRef.current)?.focus()}
             />
           ))}

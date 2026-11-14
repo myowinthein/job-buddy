@@ -10,6 +10,8 @@ import { installQuickFill } from '@/src/quick-fill/content';
 import { AUTOFILL_ERROR } from '@/src/autofill/errorCodes';
 import { getGeminiSettings } from '@/src/utils/storage';
 import { installDemoPresence } from '@/src/demo/presence';
+import { developmentScope } from '@/src/devtools/session';
+import { pageActivity } from '@/src/autofill/pageActivity';
 
 // Check fresh settings in each frame before an explicit scan or fill. Undo and
 // previous results remain available after a key is removed.
@@ -42,7 +44,7 @@ export default defineContentScript({
   // alongside it for broader engine/version coverage.
   matchAboutBlank: true,
   matchOriginAsFallback: true,
-  main() {
+  async main() {
     // Idempotency guard: popup/App.tsx's sendToAllFrames() actively
     // re-injects this same script via chrome.scripting.executeScript before
     // every message, as a fallback for frames whose document was populated
@@ -55,6 +57,15 @@ export default defineContentScript({
     const g = globalThis as unknown as { __jobBuddyInjected?: boolean };
     if (g.__jobBuddyInjected) return;
     g.__jobBuddyInjected = true;
+    if (import.meta.env.DEV) {
+      try {
+        const { installDevelopmentSession } = await import('@/src/devtools/sessionChrome');
+        await installDevelopmentSession('content');
+      } catch {
+        g.__jobBuddyInjected = false;
+        return;
+      }
+    }
     installDemoPresence();
     installQuickFill();
 
@@ -67,10 +78,19 @@ export default defineContentScript({
       cancelled?: boolean;
     }
     let run: ContentRun | null = null;
+    let reportScope = developmentScope();
     let scanRevision = 0;
     let clearing: { revision: number; task: Promise<boolean> } | undefined;
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message.action === 'AUTOFILL_PAGE_ACTIVITY') {
+        if (_sender.id !== chrome.runtime.id || window !== window.top) return;
+        if (!['claim', 'release', 'blocked'].includes(message.operation)) return;
+        if (typeof message.token !== 'string' || typeof message.until !== 'number') return;
+        sendResponse(pageActivity(message.operation, chrome.runtime.id, message.token, message.until));
+        return;
+      }
       if (message.action === 'AUTOFILL_SCAN') {
+        reportScope = developmentScope();
         const id = typeof message.runId === 'string' ? message.runId : undefined;
         if (!id || !run || run.id !== id) {
           scanRevision++;
@@ -130,9 +150,15 @@ export default defineContentScript({
         if (!clearing || clearing.revision !== scanRevision) {
           const task = undoAutofill();
           clearing = { revision: scanRevision, task };
-          void task.finally(() => { if (clearing?.task === task) clearing = undefined; }).catch(() => {});
+          void task
+            .finally(() => {
+              if (clearing?.task === task) clearing = undefined;
+            })
+            .catch(() => {});
         }
-        clearing.task.then(success => sendResponse({ success })).catch(() => sendResponse({ success: false }));
+        clearing.task
+          .then((success) => sendResponse({ success }))
+          .catch(() => sendResponse({ success: false }));
         return true;
       }
 
@@ -142,7 +168,9 @@ export default defineContentScript({
       }
 
       if (message.action === 'GET_FILL_LOG') {
-        sendResponse(getFillLog());
+        sendResponse(
+          import.meta.env.DEV && reportScope !== developmentScope() ? null : getFillLog(),
+        );
         return true;
       }
     });

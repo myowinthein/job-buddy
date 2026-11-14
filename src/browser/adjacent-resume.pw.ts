@@ -79,3 +79,53 @@ test('detects a resume importer outside the form and fills the current address l
       .evaluate((input) => (input as HTMLInputElement).files?.length),
   ).toBe(0);
 });
+
+test('waits for a country-dependent region with only a stable id and a changing label', async ({
+  page,
+  context,
+  extension,
+}) => {
+  await stubEmptyGemini(context);
+  await extension.worker.evaluate(async () => {
+    const { profile } = await chrome.storage.local.get<{ profile: Profile }>('profile');
+    profile.address = { country: 'TH', city: 'Bangkok', state: 'Bangkok' };
+    await chrome.storage.local.set({ profile });
+  });
+  await page.evaluate(() => {
+    document.body.innerHTML = `<main><form><h1>Job application</h1>
+      <label>Country<select id="country"><option value="CA">Canada</option><option value="TH">Thailand</option></select></label>
+      <div id="region"><label>Province or Territory<select id="address.region"><option value="">Please Select</option><option value="ON">Ontario</option></select></label></div>
+      <label>First name<input name="firstName" required></label><label>Email<input name="email" type="email" required></label>
+      <output id="region-change"></output></form></main>`;
+    document.querySelector('#country')!.addEventListener('change', (event) => {
+      const thailand = (event.target as HTMLSelectElement).value === 'TH';
+      setTimeout(() => {
+        document.querySelector('#region')!.innerHTML = thailand
+          ? '<label>Province<select id="address.region"><option value="">Please Select</option></select></label>'
+          : '<label>Province or Territory<select id="address.region"><option value="">Please Select</option><option value="ON">Ontario</option></select></label>';
+        document.getElementById('address.region')!.addEventListener('change', (event) => {
+          document.querySelector('#region-change')!.textContent = (
+            event.target as HTMLSelectElement
+          ).value;
+        });
+        if (thailand)
+          setTimeout(() => {
+            document
+              .getElementById('address.region')!
+              .insertAdjacentHTML('beforeend', '<option value="TH-10">Bangkok</option>');
+          }, 300);
+      }, 300);
+    });
+  });
+  await extension.send('AUTOFILL_SCAN');
+  await extension.send('AUTOFILL_FILL', 'overwrite');
+  await expect(page.locator('#country')).toHaveValue('TH');
+  await expect(page.locator('[id="address.region"]')).toHaveValue('TH-10');
+  await expect(page.locator('#region-change')).toHaveText('TH-10');
+  expect(
+    await page.locator('form').evaluate((form) => (form as HTMLFormElement).checkValidity()),
+  ).toBe(true);
+  await extension.send('CLEAR');
+  await expect(page.locator('#country')).toHaveValue('CA');
+  await expect(page.getByLabel('Province or Territory')).toHaveValue('');
+});

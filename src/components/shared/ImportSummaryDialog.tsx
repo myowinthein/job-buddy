@@ -1,7 +1,9 @@
 import { reviewCounts } from '@/src/resume-ai/entrySelection';
+import { LoaderCircle } from 'lucide-react';
 import { useId, type ReactNode, type RefObject } from 'react';
 import type { FieldChange } from '@/src/resume-ai/types';
 import { ModalShell } from '@/src/components/ui/ModalShell';
+import { Notice } from '@/src/components/ui/Notice';
 import { ImportWarnings } from './ImportWarnings';
 import { secondaryButtonCls as secondaryCls } from '@/src/components/ui/buttonCls';
 
@@ -9,6 +11,8 @@ export interface ImportSummaryDialogProps {
   changes: FieldChange[];
   title?: string;
   description?: string;
+  error?: string;
+  errorTone?: 'error' | 'review';
   warnings?: string[];
   warningsSummary?: string;
   returnFocusRef?: RefObject<HTMLElement | null>;
@@ -29,6 +33,8 @@ export default function ImportSummaryDialog({
   changes,
   title = 'Import Profile',
   description = 'Import all details or review the changes first.',
+  error,
+  errorTone = 'error',
   warnings,
   warningsSummary,
   returnFocusRef,
@@ -75,6 +81,11 @@ export default function ImportSummaryDialog({
       <p id={descriptionId} className="mt-2 text-pretty text-sm text-gray-500 dark:text-gray-400">
         {hasChanges ? description : 'Your saved details will stay as they are.'}
       </p>
+      {error && (
+        <div className="mt-4">
+          <Notice tone={errorTone} urgent><p>{error}</p></Notice>
+        </div>
+      )}
       {hasChanges && replacement && (
         <p className="mt-4 text-xs text-gray-600 dark:text-gray-400">
           {counts.incoming} incoming details · {counts.cleared} cleared
@@ -95,33 +106,42 @@ export default function ImportSummaryDialog({
       )}
       <ImportWarnings warnings={warnings} summary={warningsSummary} />
       {importControls}
-      <div className="mt-6 flex flex-wrap justify-end gap-2">
+      <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
         {hasChanges ? (
           <>
             <button
               type="button"
               onClick={onRejectAll}
               disabled={isProcessing}
-              className={secondaryCls}
+              className={`${secondaryCls} mr-auto whitespace-nowrap`}
             >
               {rejectLabel}
             </button>
-            <button
-              type="button"
-              onClick={onReview}
-              disabled={isProcessing || !canProceed}
-              className={secondaryCls}
-            >
-              Review Changes
-            </button>
-            <button
-              type="button"
-              onClick={onAcceptAll}
-              disabled={isProcessing || !canProceed}
-              className={`px-4 py-2 text-white text-sm font-medium rounded-lg disabled:opacity-50 active:scale-95 transition-colors ${replacement ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
-            >
-              {isProcessing ? 'Saving…' : acceptLabel}
-            </button>
+            <div className="ml-auto flex max-w-full flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={onReview}
+                disabled={isProcessing || !canProceed}
+                className={`${secondaryCls} whitespace-nowrap`}
+              >
+                Review Changes
+              </button>
+              <button
+                type="button"
+                onClick={onAcceptAll}
+                disabled={isProcessing || !canProceed}
+                aria-busy={isProcessing}
+                className={`inline-flex items-center justify-center gap-2 whitespace-nowrap px-4 py-2 text-white text-sm font-medium rounded-lg disabled:opacity-50 active:scale-95 transition-colors ${replacement ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+              >
+                {isProcessing && (
+                  <LoaderCircle
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
+                  />
+                )}
+                {isProcessing ? 'Saving…' : acceptLabel}
+              </button>
+            </div>
           </>
         ) : (
           <button

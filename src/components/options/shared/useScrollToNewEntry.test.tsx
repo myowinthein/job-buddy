@@ -14,6 +14,7 @@ beforeEach(() => {
 
 afterEach(() => {
   container.remove();
+  vi.unstubAllGlobals();
 });
 
 async function flushRaf() {
@@ -21,29 +22,43 @@ async function flushRaf() {
 }
 
 describe('useScrollToNewEntry', () => {
-  it('does nothing on the initial render (tick=0)', async () => {
+  it('scrolls instantly while preserving focus when reduced motion is enabled', async () => {
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })));
+    const entry = document.createElement('div');
+    entry.dataset.entryId = 'reduced-motion';
+    entry.innerHTML = '<input type="text" />';
+    container.appendChild(entry);
+    const { result } = renderHook(() => useScrollToNewEntry({ current: container }));
+    act(() => result.current.focusEntry('reduced-motion'));
+    await flushRaf();
+    expect(entry.scrollIntoView).toHaveBeenCalledWith({ behavior: 'instant', block: 'nearest' });
+    expect(document.activeElement).toBe(entry.querySelector('input'));
+  });
+
+  it('does nothing until an entry is requested', async () => {
     const child = document.createElement('div');
     child.innerHTML = '<input type="text" />';
     container.appendChild(child);
     const ref: RefObject<HTMLDivElement | null> = { current: container };
 
-    renderHook(({ tick }) => useScrollToNewEntry(ref, tick), { initialProps: { tick: 0 } });
+    renderHook(() => useScrollToNewEntry(ref));
     await flushRaf();
 
     expect(vi.mocked(child.scrollIntoView)).not.toHaveBeenCalled();
     expect(document.activeElement).not.toBe(child.querySelector('input'));
   });
 
-  it('scrolls the last child into view and focuses its first focusable descendant when tick increments', async () => {
+  it('scrolls the requested entry into view and focuses its first focusable descendant', async () => {
     const first = document.createElement('div');
     first.innerHTML = '<input type="text" />';
     const last = document.createElement('div');
+    last.dataset.entryId = 'last';
     last.innerHTML = '<input type="text" />';
     container.append(first, last);
     const ref: RefObject<HTMLDivElement | null> = { current: container };
 
-    const { rerender } = renderHook(({ tick }) => useScrollToNewEntry(ref, tick), { initialProps: { tick: 0 } });
-    rerender({ tick: 1 });
+    const { result } = renderHook(() => useScrollToNewEntry(ref));
+    act(() => result.current.focusEntry('last'));
     await flushRaf();
 
     // Element.prototype.scrollIntoView is one shared mock across all
@@ -57,6 +72,7 @@ describe('useScrollToNewEntry', () => {
 
   it('skips radio, checkbox, hidden, and readonly inputs, focusing the first real text input instead', async () => {
     const last = document.createElement('div');
+    last.dataset.entryId = 'last';
     last.innerHTML = `
       <input type="radio" />
       <input type="checkbox" />
@@ -67,8 +83,8 @@ describe('useScrollToNewEntry', () => {
     container.appendChild(last);
     const ref: RefObject<HTMLDivElement | null> = { current: container };
 
-    const { rerender } = renderHook(({ tick }) => useScrollToNewEntry(ref, tick), { initialProps: { tick: 0 } });
-    rerender({ tick: 1 });
+    const { result } = renderHook(() => useScrollToNewEntry(ref));
+    act(() => result.current.focusEntry('last'));
     await flushRaf();
 
     expect(document.activeElement).toBe(last.querySelector('#real-target'));
@@ -76,12 +92,13 @@ describe('useScrollToNewEntry', () => {
 
   it('cancels the pending animation frame on unmount, never touching a since-removed element', async () => {
     const last = document.createElement('div');
+    last.dataset.entryId = 'last';
     last.innerHTML = '<input type="text" />';
     container.appendChild(last);
     const ref: RefObject<HTMLDivElement | null> = { current: container };
 
-    const { rerender, unmount } = renderHook(({ tick }) => useScrollToNewEntry(ref, tick), { initialProps: { tick: 0 } });
-    rerender({ tick: 1 });
+    const { result, unmount } = renderHook(() => useScrollToNewEntry(ref));
+    act(() => result.current.focusEntry('last'));
     unmount(); // before the rAF callback has a chance to fire
     await flushRaf();
 
@@ -90,12 +107,13 @@ describe('useScrollToNewEntry', () => {
 
   it('focuses a select or an aria-haspopup=listbox button when present instead of skipping to nothing', async () => {
     const last = document.createElement('div');
+    last.dataset.entryId = 'last';
     last.innerHTML = `<select><option>a</option></select>`;
     container.appendChild(last);
     const ref: RefObject<HTMLDivElement | null> = { current: container };
 
-    const { rerender } = renderHook(({ tick }) => useScrollToNewEntry(ref, tick), { initialProps: { tick: 0 } });
-    rerender({ tick: 1 });
+    const { result } = renderHook(() => useScrollToNewEntry(ref));
+    act(() => result.current.focusEntry('last'));
     await flushRaf();
 
     expect(document.activeElement).toBe(last.querySelector('select'));

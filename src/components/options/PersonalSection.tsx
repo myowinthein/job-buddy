@@ -1,3 +1,4 @@
+import { feedback } from '@/src/ui/feedback';
 import {
   profileTextLimit,
   PERSONAL_GENDER_OPTIONS,
@@ -79,7 +80,7 @@ export function PersonalSection({ profile, onSave }: Props) {
   const fieldError = (key: string, value: string): string => {
     switch (key) {
       case 'firstName':
-        if (!value.trim()) return 'First name is required';
+        if (!value.trim()) return 'Enter your first name';
         if (value.length > profileTextLimit('personal.firstName'))
           return `First name must be ${profileTextLimit('personal.firstName')} characters or fewer`;
         return '';
@@ -92,13 +93,13 @@ export function PersonalSection({ profile, onSave }: Props) {
           ? `Preferred name must be ${profileTextLimit('personal.nickname')} characters or fewer`
           : '';
       case 'email':
-        if (!value.trim()) return 'Email is required';
+        if (!value.trim()) return 'Enter your email address';
         if (value.length > profileTextLimit('personal.email'))
           return `Email must be ${profileTextLimit('personal.email')} characters or fewer`;
         if (!isValidProfileEmail(value)) return 'Enter a valid email address';
         return '';
       case 'phoneNumber':
-        if (!value.trim()) return 'Phone number is required';
+        if (!value.trim()) return 'Enter your phone number';
         if (!isValidProfilePhone(value)) return 'Enter 4 to 15 digits';
         return '';
       case 'dateOfBirth':
@@ -200,7 +201,7 @@ export function PersonalSection({ profile, onSave }: Props) {
         },
       },
       showToast,
-      'Personal information saved',
+      feedback.profileSaved,
     );
     setSaving(false);
   };
@@ -211,6 +212,7 @@ export function PersonalSection({ profile, onSave }: Props) {
 
       <ProfileFields
         scope="personal"
+        values={form}
         disclosureProps={{ background: { ref: optionalDetailsRef } }}
         renderers={{
           firstName: (field) => (
@@ -222,7 +224,7 @@ export function PersonalSection({ profile, onSave }: Props) {
                 onBlur={() => handleBlur('firstName')}
                 id={field.inputId}
                 placeholder="John"
-                maxLength={field.maxLength}
+
               />
             </FormField>
           ),
@@ -235,7 +237,7 @@ export function PersonalSection({ profile, onSave }: Props) {
                 onBlur={() => handleBlur('lastName')}
                 id={field.inputId}
                 placeholder="Smith"
-                maxLength={field.maxLength}
+
               />
             </FormField>
           ),
@@ -248,7 +250,7 @@ export function PersonalSection({ profile, onSave }: Props) {
                 onBlur={() => handleBlur('nickname')}
                 id={field.inputId}
                 placeholder="Johnny"
-                maxLength={field.maxLength}
+
               />
             </FormField>
           ),
@@ -262,7 +264,7 @@ export function PersonalSection({ profile, onSave }: Props) {
                 onBlur={() => handleBlur('email')}
                 id={field.inputId}
                 placeholder="john.smith@example.com"
-                maxLength={field.maxLength}
+
               />
             </FormField>
           ),
@@ -273,9 +275,7 @@ export function PersonalSection({ profile, onSave }: Props) {
                   errors.phoneNumber
                     ? 'border-red-300 dark:border-red-500'
                     : 'border-gray-300 dark:border-gray-600'
-                } focus-within:ring-2 ${
-                  errors.phoneNumber ? 'focus-within:ring-red-500' : 'focus-within:ring-blue-500'
-                } focus-within:border-transparent`}
+                }`}
               >
                 <SearchableCallingCodeSelect
                   value={form.phoneCountry}
@@ -285,8 +285,7 @@ export function PersonalSection({ profile, onSave }: Props) {
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  maxLength={field.maxLength}
-                  className="rounded-r-lg min-w-0 w-0 flex-1 px-3 py-2 text-sm focus:outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className={`rounded-r-lg min-w-0 w-0 flex-1 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-inset ${errors.phoneNumber ? 'focus:ring-red-500' : 'focus:ring-blue-500'} bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100`}
                   value={form.phoneNumber}
                   onChange={(e) => handlePhoneNumberChange(e.target.value)}
                   onBlur={() => handleBlur('phoneNumber')}
@@ -403,9 +402,7 @@ export function PersonalSection({ profile, onSave }: Props) {
         }}
       />
 
-      <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-3">
-        <SaveButton onClick={handleSave} saving={saving} label="Save Personal" />
-      </div>
+      <SaveButton onClick={handleSave} saving={saving} label="Save" />
     </div>
   );
 }

@@ -40,6 +40,13 @@ it('uses editor order and names for empty data and aggregate review rows', () =>
   expect(profileEntryFields('links.custom').map((field) => field.id)).toEqual(['label', 'url']);
 });
 
+it.each([
+  ['workAuthorization.0.country', 'entry-workAuthorization-0'],
+  ['salary.expected.1.amount', 'entry-salary-1'],
+])('opens the entry card when navigating to %s', (path, cardId) => {
+  expect(catalogProfileTarget(settingsReviewProfile(), path)?.target.cardId).toBe(cardId);
+});
+
 it('keeps legacy string locations visible beside new structured locations in shared review', () => {
   const current = { company: 'Example', title: 'Engineer', location: 'Test City' };
   const incoming = { ...current, location: { countryCode: 'US', city: 'New City' } };

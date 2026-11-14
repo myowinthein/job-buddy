@@ -1,4 +1,5 @@
 import { devContext, devLockName } from '@/src/devtools/context';
+import { developmentSession, captureDevelopmentScope, SESSION_ENDED } from '@/src/devtools/session';
 import { profileData, backupProfileData } from './profileData';
 import type { Profile } from '../types/profile';
 import type { DriveBackupFile, DriveBackupState, DriveError } from '../types/storage';
@@ -18,7 +19,8 @@ import { resetSecondaryFeedback, takeSecondaryFeedback } from './secondaryFeedba
 // ── OAuth ────────────────────────────────────────────────────────────────────
 
 const CLIENT_ID = (import.meta.env.VITE_GOOGLE_DRIVE_CLIENT_ID as string | undefined) ?? '';
-const configuredClientId = () => import.meta.env.DEV && devContext() ? 'simulation-client' : CLIENT_ID;
+const configuredClientId = () =>
+  import.meta.env.DEV && devContext() && !developmentSession() ? 'simulation-client' : CLIENT_ID;
 const PLACEHOLDER = 'your_google_drive_oauth_client_id_here';
 const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 
@@ -256,10 +258,18 @@ async function deleteFromDrive(token: string, fileId: string): Promise<void> {
 // also covers test runtimes without the browser lock manager.
 let queue: Promise<unknown> = Promise.resolve();
 function withDriveLock<T>(operation: () => Promise<T>): Promise<T> {
+  const assertCurrent = captureDevelopmentScope();
+  const guarded = () => {
+    assertCurrent();
+    return operation();
+  };
   const run = async (): Promise<T> =>
     typeof navigator !== 'undefined' && navigator.locks
-      ? await navigator.locks.request(import.meta.env.DEV ? devLockName('job-buddy:drive-backup') : 'job-buddy:drive-backup', operation)
-      : await operation();
+      ? await navigator.locks.request(
+          import.meta.env.DEV ? devLockName('job-buddy:drive-backup') : 'job-buddy:drive-backup',
+          guarded,
+        )
+      : await guarded();
   const result = queue.then(run, run);
   queue = result.catch(() => {});
   return result;
@@ -272,16 +282,18 @@ export function protectProfileReplacement<T>(
   return withDriveLock(async () => {
     const token = await getDriveToken({ rejectOnError: true });
     const state = await getDriveBackupState({ rejectOnError: true });
-    const paused: DriveBackupState | undefined = token ? {
-      ...state,
-      reviewRequired: true,
-      error: 'review_required',
-      pendingSync: false,
-      reviewId: undefined,
-      remoteHash: undefined,
-      retryAt: undefined,
-      uploadingUntil: undefined,
-    } : undefined;
+    const paused: DriveBackupState | undefined = token
+      ? {
+          ...state,
+          reviewRequired: true,
+          error: 'review_required',
+          pendingSync: false,
+          reviewId: undefined,
+          remoteHash: undefined,
+          retryAt: undefined,
+          uploadingUntil: undefined,
+        }
+      : undefined;
     const result = await save(paused);
     if (paused) {
       // The durable state was saved with the profile. Alarm cleanup is best effort.
@@ -317,6 +329,8 @@ function errorCode(error: unknown): Exclude<DriveError, null> {
   return error instanceof DriveApiError ? classifyError(error.status, error.body)! : 'sync_error';
 }
 async function recordFailure(state: DriveBackupState, error: unknown): Promise<SyncResult> {
+  if (error instanceof Error && error.message === SESSION_ENDED)
+    return { success: false, errorCode: null };
   const code = errorCode(error);
   const count = (state.retryCount ?? 0) + 1;
   try {
@@ -381,6 +395,7 @@ async function driveAccountEmail(token: string): Promise<string | undefined> {
   return typeof data.user?.emailAddress === 'string' ? data.user.emailAddress : undefined;
 }
 async function renewUnlocked(token: string, state: DriveBackupState) {
+  const assertCurrent = captureDevelopmentScope();
   if (!state.accountEmail || !state.oauthClientId)
     throw new DriveApiError(401, 'Reconnect required');
   try {
@@ -398,19 +413,24 @@ async function renewUnlocked(token: string, state: DriveBackupState) {
             : null
           : state.error,
     };
+    assertCurrent();
     await saveDriveToken(authorization.token);
     await updateState(next);
     return { token: authorization.token, state: next };
-  } catch {
+  } catch (error) {
+    assertCurrent();
+    if (error instanceof Error && error.message === SESSION_ENDED) throw error;
     throw new DriveApiError(401, 'Reconnect required');
   }
 }
 export async function refreshDriveConnection(): Promise<void> {
+  const assertCurrent = captureDevelopmentScope();
   try {
     await withDriveLock(async () => {
       const token = await getDriveToken();
       if (!token) return;
       const state = await getDriveBackupState();
+      assertCurrent();
       if (!state.tokenExpiresAt || state.tokenExpiresAt - Date.now() > 60_000) {
         await updateState(state);
         return;
@@ -467,6 +487,7 @@ export interface ConnectResult {
 }
 
 async function inspectUnlocked(token: string, state: DriveBackupState): Promise<ConnectResult> {
+  const assertCurrent = captureDevelopmentScope();
   // Persist the pause before lookup: errors and migration writes cannot upload
   // over an unseen backup, including from another extension context.
   const reviewId = crypto.randomUUID();
@@ -491,6 +512,7 @@ async function inspectUnlocked(token: string, state: DriveBackupState): Promise<
         /* Optional account label must not block a backup. */
       }
     }
+    assertCurrent();
     await updateState({
       ...paused,
       fileId,
@@ -502,6 +524,7 @@ async function inspectUnlocked(token: string, state: DriveBackupState): Promise<
     });
     return { token, fileId, backup, reviewId };
   } catch (error) {
+    assertCurrent();
     const result = await recordFailure(paused, error);
     return { token, fileId: paused.fileId, backup: null, errorCode: result.errorCode };
   }
@@ -583,7 +606,13 @@ export async function claimDriveWarning(error?: DriveError, profileId?: string):
       // A delayed result must not warn about a disconnected or replaced profile,
       // a recovered backup, or an issue that has since changed.
       const issue = error ?? state.error;
-      if (!token || !profile || !issue || (profileId !== undefined && profile.id !== profileId) || state.error !== issue)
+      if (
+        !token ||
+        !profile ||
+        !issue ||
+        (profileId !== undefined && profile.id !== profileId) ||
+        state.error !== issue
+      )
         return false;
       const scope = JSON.stringify([profile.id, state.accountEmail ?? '']);
       return takeSecondaryFeedback('drive', scope, issue);
@@ -598,6 +627,7 @@ async function uploadUnlocked(
   allowReview = false,
   reviewId?: string,
 ): Promise<SyncResult> {
+  const assertCurrent = captureDevelopmentScope();
   let token = await getDriveToken();
   if (!token) return { success: false, errorCode: null };
   let state = await getDriveBackupState();
@@ -605,6 +635,7 @@ async function uploadUnlocked(
     try {
       ({ token, state } = await renewUnlocked(token, state));
     } catch (error) {
+      assertCurrent();
       return recordFailure(state, error);
     }
   }
@@ -642,6 +673,7 @@ async function uploadUnlocked(
     if (downloaded) {
       const hash = await fingerprint(downloaded.backup);
       if (equalJsonValues(contents(downloaded.backup), contents(payload))) {
+        assertCurrent();
         await updateState({
           ...state,
           fileId,
@@ -658,6 +690,7 @@ async function uploadUnlocked(
         return { success: true, errorCode: null };
       }
       if (state.remoteHash !== hash) {
+        assertCurrent();
         await updateState({
           ...state,
           fileId,
@@ -671,8 +704,10 @@ async function uploadUnlocked(
       }
     }
     state = { ...state, fileId, uploadingUntil: Date.now() + UPLOAD_ACTIVITY_MS, error: null };
+    assertCurrent();
     await updateState(state);
     const newFileId = await uploadToDrive(token, payload, fileId, downloaded?.etag);
+    assertCurrent();
     await updateState({
       ...state,
       fileId: newFileId,
@@ -688,12 +723,24 @@ async function uploadUnlocked(
     await resetSecondaryFeedback('drive');
     return { success: true, errorCode: null };
   } catch (error) {
+    assertCurrent();
     return recordFailure(state, error);
   }
 }
 /** Uploads settle with a result; network/storage failure never blocks a local save. */
 export async function syncProfileToDrive(profile?: Profile): Promise<SyncResult> {
   try {
+    if (import.meta.env.DEV && developmentSession()?.active?.id) {
+      await updateState({
+        ...(await getDriveBackupState()),
+        lastSynced: new Date().toISOString(),
+        pendingSync: false,
+        error: null,
+        uploadingUntil: undefined,
+        retryAt: undefined,
+      });
+      return { success: true, errorCode: null };
+    }
     return await withDriveLock(() => uploadUnlocked(profile));
   } catch {
     return { success: false, errorCode: 'sync_error' };
@@ -711,6 +758,8 @@ export async function overwriteDriveWithLocal(
   }
 }
 export async function retryPendingDriveSync(): Promise<void> {
+  if (import.meta.env.DEV && developmentSession()?.active?.id) return;
+  const assertCurrent = captureDevelopmentScope();
   try {
     await withDriveLock(async () => {
       const token = await getDriveToken();
@@ -730,6 +779,7 @@ export async function retryPendingDriveSync(): Promise<void> {
           await updateState({ ...state, reviewRequired: false, error: null });
         }
       }
+      assertCurrent();
       await uploadUnlocked(undefined);
     });
   } catch {
@@ -742,10 +792,12 @@ export async function syncIfConnected(): Promise<void> {
 
 /** Make the saved-but-not-yet-backed-up state visible during the debounce. */
 export async function markDriveBackupPending(): Promise<void> {
+  const assertCurrent = captureDevelopmentScope();
   try {
     await withDriveLock(async () => {
       if (!(await getDriveToken())) return;
       const state = await getDriveBackupState();
+      assertCurrent();
       await updateState({ ...state, pendingSync: true });
     });
   } catch {

@@ -1,9 +1,15 @@
 import { dropzonePreviews } from './dropzone';
 import { isTextEditor, isChoice, isChoiceChecked } from './dom';
 import { isSkippableOption, normalize, PLACEHOLDER_OPTION_NORMS } from './normalizer';
+import { searchableSelect } from './reactSelect';
+import { menuSelect } from './menuSelect';
 
 // Read answers rather than control labels or unchecked input submission values.
 export function readFieldValue(element: HTMLElement): string {
+  const menu = menuSelect(element);
+  if (menu) return menu.value;
+  const select = searchableSelect(element);
+  if (select) return select.value;
   if (isChoice(element)) return isChoiceChecked(element) ? 'checked' : '';
   if (element instanceof HTMLInputElement) {
     if (element.type === 'file')

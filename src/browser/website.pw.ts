@@ -1,7 +1,8 @@
-import { test, expect, type BrowserContext } from '@playwright/test';
+import { test, expect, type BrowserContext, type Locator } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import { fitsViewportWidth } from './layout';
+import { visibleDividerGaps } from './dividerGeometry';
 
 const origin = 'http://127.0.0.1';
 const prefix = '/job-buddy/';
@@ -32,6 +33,123 @@ async function serveSite(context: BrowserContext) {
   });
 }
 
+async function expectVisibleFocus(control: Locator) {
+  await control.page().keyboard.press('Tab');
+  await control.focus();
+  await expect(control).toHaveCSS('outline-style', 'solid');
+  expect(
+    await control.evaluate((element) => {
+      const style = getComputedStyle(element);
+      const box = element.getBoundingClientRect();
+      const expansion = Math.max(0, parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset));
+      for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+        const css = getComputedStyle(parent);
+        if (css.position === 'fixed') break;
+        const clip = parent.getBoundingClientRect();
+        if (
+          /auto|scroll|hidden|clip/.test(css.overflowX) &&
+          (box.left - expansion < clip.left - 1 || box.right + expansion > clip.right + 1)
+        ) return false;
+        if (
+          /auto|scroll|hidden|clip/.test(css.overflowY) &&
+          (box.top - expansion < clip.top - 1 || box.bottom + expansion > clip.bottom + 1)
+        ) return false;
+      }
+      return element.matches(':focus-visible') && parseFloat(style.outlineWidth) >= 2;
+    }),
+  ).toBe(true);
+}
+
+test('keyboard outlines stay visible inside documentation navigation, captures, tables and command tabs', async ({ context, page }) => {
+  await serveSite(context);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const theme of ['light', 'dark']) {
+    await page.addInitScript((theme) => localStorage.setItem('job-buddy-theme', theme), theme);
+    for (const path of ['', 'developers/']) {
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.goto(origin + prefix + path);
+      await expectVisibleFocus(page.locator('.chapter-nav a').first());
+      await expectVisibleFocus(page.locator('[data-enlarge]').first());
+      if (path === 'developers/') {
+        await expectVisibleFocus(page.locator('#tech-stack .table-scroll a').first());
+        await expectVisibleFocus(page.getByRole('tab', { name: 'Develop', exact: true }));
+        await page.keyboard.press('ArrowRight');
+        await expectVisibleFocus(page.getByRole('tab', { name: 'Check', exact: true }));
+      }
+    }
+  }
+});
+
+test('external link text and arrow share the same focus boundary', async ({ context, page }) => {
+  await serveSite(context);
+  const links = [
+    ['', 'a[href="https://aistudio.google.com/api-keys"]'],
+    ['developers/', 'a[href$="/LICENSE"]'],
+    ['developers/', 'a[href*="what-is-mv3"]'],
+    ['developers/', 'a[href="https://tailwindcss.com/"]'],
+    ['developers/', 'a[href="https://www.google.com/chrome/"]'],
+    ['developers/', '#release a[href="https://chrome.google.com/webstore/devconsole"]'],
+  ];
+  for (const theme of ['light', 'dark']) {
+    await page.addInitScript(theme => localStorage.setItem('job-buddy-theme', theme), theme);
+    for (const width of [320, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const [path, selector] of links) {
+        await page.goto(origin + prefix + path);
+        const link = page.locator(selector).first();
+        await expectVisibleFocus(link);
+        const bounds = await link.evaluate(element => ({
+          link: element.getBoundingClientRect().toJSON(),
+          tail: element.querySelector('.external-link-tail')!.getBoundingClientRect().toJSON(),
+        }));
+        expect(bounds.tail.top).toBeGreaterThanOrEqual(bounds.link.top - 1);
+        expect(bounds.tail.bottom).toBeLessThanOrEqual(bounds.link.bottom + 1);
+      }
+    }
+  }
+});
+
+test('public pages expose canonical search metadata and exclude demo and error pages', async ({ context, page }) => {
+  await serveSite(context);
+  const sitemap = await readFile(resolve(docs, 'sitemap.xml'), 'utf8');
+  for (const path of ['', 'developers/', 'legal/privacy/', 'legal/disclaimer/']) {
+    await page.goto(origin + prefix + path);
+    const canonical = 'https://myowinthein.github.io/job-buddy/' + path;
+    await expect(page.locator('head link[rel="canonical"]')).toHaveAttribute('href', canonical);
+    await expect(page.locator('head meta[name="description"]')).toHaveAttribute('content', /\S/);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+    expect(sitemap).toContain(`<loc>${canonical}</loc>`);
+    if (!path.startsWith('legal/')) {
+      await expect(page.locator('head meta[property="og:url"]')).toHaveAttribute('content', canonical);
+      await expect(page.locator('head meta[property="og:image:alt"]')).toHaveAttribute('content', /\S/);
+    }
+  }
+  for (const path of ['demo/', '404.html']) {
+    await page.goto(origin + prefix + path);
+    await expect(page.locator('head meta[name="robots"]')).toHaveAttribute('content', 'noindex');
+    expect(sitemap).not.toContain('https://myowinthein.github.io/job-buddy/' + path);
+  }
+});
+
+test('retries a failed screenshot when its current visual tab is selected again', async ({ context, page }) => {
+  await serveSite(context);
+  let unavailable = true;
+  await context.route('**/assets/screenshots/ai-empty-light.webp*', (route) =>
+    unavailable ? route.abort() : route.fallback(),
+  );
+  await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
+  await page.goto(origin + prefix + '#ai');
+  const image = page.locator('#gemini-views-0 img');
+  await image.scrollIntoViewIfNeeded();
+  await expect.poll(() => image.evaluate((image: HTMLImageElement) =>
+    image.complete && image.naturalWidth === 0,
+  )).toBe(true);
+  unavailable = false;
+  await page.getByRole('group', { name: 'Gemini setup screenshots' })
+    .getByRole('button', { name: 'Without a key', exact: true }).click();
+  await expect.poll(() => image.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0);
+});
+
 test('walkthrough, themes, screenshots and developer navigation work under the GitHub Pages path', async ({
   context,
   page,
@@ -55,6 +173,14 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   });
   await screenshot.click();
   await expect(page.getByRole('dialog', { name: 'Screenshot viewer' })).toBeVisible();
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.locator('.image-dialog img')).toHaveAttribute(
+    'src', /-dark\.webp(?:\?v=[a-f0-9]+)?$/,
+  );
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(page.locator('.image-dialog img')).toHaveAttribute(
+    'src', /-light\.webp(?:\?v=[a-f0-9]+)?$/,
+  );
   await page.keyboard.press('Escape');
   await expect(screenshot).toBeFocused();
   const geminiStates = page.getByRole('group', { name: 'Gemini setup screenshots' });
@@ -172,6 +298,40 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   await page.getByRole('button', { name: 'Copy UI preview command', exact: true }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('pnpm dev:preview');
   expect(errors).toEqual([]);
+});
+
+test('chapter navigation updates only when needed and resumes after mobile layouts', async ({ context, page }) => {
+  await serveSite(context);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(origin + prefix);
+  await expect(page.locator('.chapter-nav [aria-current="location"]')).toHaveAttribute('href', '#start');
+  await page.evaluate(() => {
+    document.documentElement.dataset.navigationWrites = '0';
+    new MutationObserver((records) => {
+      const root = document.documentElement;
+      root.dataset.navigationWrites = String(Number(root.dataset.navigationWrites) + records.length);
+    }).observe(document.querySelector('.chapter-nav')!, {
+      subtree: true, attributes: true, attributeFilter: ['aria-current'],
+    });
+  });
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.waitForTimeout(100);
+    await page.evaluate(() => { document.documentElement.dataset.navigationWrites = '0'; });
+    for (let i = 1; i <= 6; i++) {
+      await page.evaluate((top) => scrollTo(0, top), i * 5);
+      await page.waitForTimeout(25);
+    }
+    expect(await page.locator('html').getAttribute('data-navigation-writes')).toBe('0');
+    if (width === 1440) {
+      await page.locator('.chapter-nav a[href="#your-data"]').click();
+      await expect(page.locator('.chapter-nav [aria-current="location"]')).toHaveAttribute('href', '#your-data');
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(page.locator('.chapter-nav [aria-current="location"]')).toHaveAttribute('href', '#start');
 });
 
 test('command tabs support keyboard navigation, copying and links to hidden instructions', async ({
@@ -296,25 +456,22 @@ test('an unavailable recording falls back to the completed still', async ({ cont
   await expect(figure.locator('video')).toBeHidden();
 });
 
-test('demo opens separately, offers installation guidance, and rechecks availability', async ({
+test('demo opens from the walkthrough, offers installation guidance, and rechecks availability', async ({
   context,
   page,
 }, info) => {
   await serveSite(context);
   await page.goto(origin + prefix);
-  const links = page.locator('a[href="./demo/"]');
+  const links = page.getByRole('link', { name: 'Try the demo', exact: true });
   await expect(links).toHaveCount(1);
   for (const link of await links.all()) {
-    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).not.toHaveAttribute('target', '_blank');
     await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   }
-  const [demo] = await Promise.all([
-    context.waitForEvent('page'),
-    links.click(),
-  ]);
-  await expect(demo).toHaveURL(origin + prefix + 'demo/');
-  expect(await demo.evaluate(() => window.opener === null)).toBe(true);
-  await expect(page).toHaveURL(origin + prefix);
+  await links.click();
+  const demo = page;
+  await expect(demo).toHaveURL(origin + prefix + 'demo/?from=walkthrough');
+  await expect(demo.getByRole('link', { name: /Back to guide/ })).toHaveAttribute('href', '../');
   const notice = demo.locator('#job-buddy-setup');
   await expect(notice).toHaveAttribute('data-status', 'not-detected');
   await expect(notice).toBeVisible();
@@ -362,46 +519,55 @@ test('demo opens separately, offers installation guidance, and rechecks availabi
   await demo.close();
 });
 
-test('task links open new tabs with a visual hint and accessible description', async ({
+test('demo returns to its source guide and hides the return link for direct visits', async ({ context, page }) => {
+  await serveSite(context);
+  for (const width of [320, 1280]) {
+    for (const [path, from] of [['', 'walkthrough'], ['developers/', 'developers']]) {
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.goto(origin + prefix + path);
+      await page.getByRole('link', { name: 'Try the demo', exact: true }).click();
+      await expect(page).toHaveURL(origin + prefix + 'demo/?from=' + from);
+      await page.setViewportSize({ width, height: 900 });
+      const back = page.getByRole('link', { name: /Back to guide/ });
+      await expectVisibleFocus(back);
+      expect(await fitsViewportWidth(page)).toBe(true);
+      const backBox = (await back.boundingBox())!;
+      const themeBox = (await page.locator('#theme').boundingBox())!;
+      expect(backBox.x + backBox.width).toBeLessThan(themeBox.x);
+      await page.keyboard.press('Enter');
+      await expect(page).toHaveURL(origin + prefix + path);
+    }
+  }
+  for (const query of ['', '?from=https://example.com/', '?from=unknown']) {
+    await page.goto(origin + prefix + 'demo/' + query);
+    await expect(page.locator('#return-to-guide')).toBeHidden();
+  }
+});
+
+test('task links preserve their opening behaviour without opening notices', async ({
   context,
   page,
 }) => {
   await serveSite(context);
-  const taskHosts = new Set([
-    'chromewebstore.google.com',
-    'chrome.google.com',
-    'aistudio.google.com',
-    'console.cloud.google.com',
-  ]);
-  const toolPages = new Set([
-    'https://nodejs.org/en/download',
-    'https://pnpm.io/installation#installing-a-specific-version',
-    'https://git-scm.com/install/',
-    'https://www.google.com/chrome/',
-    'https://developer.chrome.com/docs/extensions/develop/migrate/what-is-mv3',
-    'https://wxt.dev/',
-    'https://react.dev/',
-    'https://www.typescriptlang.org/',
-    'https://tailwindcss.com/',
-    'https://vitest.dev/',
-    'https://playwright.dev/',
-  ]);
   for (const path of ['', 'developers/', 'demo/']) {
     await page.goto(origin + prefix + path);
     for (const link of await page.locator('a[href]').all()) {
+      await expect(link).not.toHaveText(/opens? in (?:a )?new (?:tab|window)/i);
+      expect((await link.getAttribute('title')) ?? '').not.toMatch(/new (?:tab|window)/i);
+      expect((await link.getAttribute('aria-label')) ?? '').not.toMatch(/new (?:tab|window)/i);
       const href = await link.getAttribute('href');
       const url = new URL(href!, page.url());
       const newTab =
-        taskHosts.has(url.hostname) ||
-        toolPages.has(url.href) ||
-        (!href!.startsWith('#') && url.pathname === prefix + 'demo/');
+        (path === '' && url.hostname === 'aistudio.google.com') ||
+        (path === 'developers/' && ['chrome.google.com', 'console.cloud.google.com'].includes(url.hostname)) ||
+        (path === 'demo/' && url.hostname === 'chromewebstore.google.com');
       if (newTab) {
         const panelId = await link.evaluate((el) => el.closest('[role="tabpanel"]')?.id);
         if (panelId) await page.locator(`[role="tab"][aria-controls="${panelId}"]`).click();
         await expect(link).toHaveAttribute('target', '_blank');
         await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-        await expect(link).toHaveAccessibleDescription('Opens in a new tab.');
-        const icon = link.locator('svg.new-tab-icon[aria-hidden="true"]');
+        await expect(link).toHaveAccessibleDescription('');
+        const icon = link.locator('svg.external-link-icon[aria-hidden="true"]');
         await expect(icon).toHaveCount(1);
         await expect(icon.locator('use')).toHaveAttribute(
           'href',
@@ -417,7 +583,7 @@ test('task links open new tabs with a visual hint and accessible description', a
     }
   }
   // Intercept the destination so this check never visits the store or creates a key.
-  await page.goto(origin + prefix);
+  await page.goto(origin + prefix + 'demo/');
   await context.route('https://chromewebstore.google.com/**', (route) =>
     route.fulfill({ body: 'Store preview' }),
   );
@@ -427,7 +593,7 @@ test('task links open new tabs with a visual hint and accessible description', a
   ]);
   await expect(store).toHaveURL(/chromewebstore\.google\.com/);
   expect(await store.evaluate(() => window.opener === null)).toBe(true);
-  await expect(page).toHaveURL(origin + prefix);
+  await expect(page).toHaveURL(origin + prefix + 'demo/');
   await store.close();
 });
 
@@ -499,6 +665,7 @@ test('screenshot selectors work with mouse, keyboard, themes, and narrow layouts
   context,
   page,
 }, info) => {
+  test.setTimeout(90_000);
   await serveSite(context);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -646,13 +813,13 @@ for (const theme of ['light', 'dark'] as const) {
   }, info) => {
     test.setTimeout(60_000);
     await serveSite(context);
-    await page.addInitScript((theme) => localStorage.setItem('theme', theme), theme);
+    await page.addInitScript((theme) => localStorage.setItem('job-buddy-theme', theme), theme);
     const failures: string[] = [];
     page.on('pageerror', (error) => failures.push(error.message));
     page.on('response', (response) => {
       if (response.status() >= 400) failures.push(response.url());
     });
-    for (const path of ['', 'developers/', 'demo/', '404.html']) {
+    for (const path of ['', 'developers/', 'demo/', '404.html', 'legal/privacy/', 'legal/disclaimer/']) {
       for (const width of [320, 390, 768, 1024, 1440]) {
         await page.setViewportSize({ width, height: 1000 });
         await page.goto(origin + prefix + path);
@@ -708,7 +875,106 @@ for (const theme of ['light', 'dark'] as const) {
   });
 }
 
-test('the guide works with storage blocked', async ({
+for (const path of ['', 'developers/', 'demo/']) {
+  test(`appearance preferences stay local to Job Buddy and synchronize open views: /${path}`, async ({ context }) => {
+    await serveSite(context);
+    await context.addInitScript(() => localStorage.setItem('theme', 'dark'));
+    const first = await context.newPage();
+    const second = await context.newPage();
+    await first.emulateMedia({ colorScheme: 'light' });
+    await second.emulateMedia({ colorScheme: 'light' });
+    await first.goto(origin + prefix + path);
+    await second.goto(origin + prefix + (path === 'demo/' ? '' : 'demo/'));
+    const toggle = first.getByRole('button', { name: /Switch to .* mode/ });
+
+    // A sibling site's saved theme must not override this site's system default.
+    await expect(first.locator('html')).not.toHaveClass(/dark/);
+    await first.emulateMedia({ colorScheme: 'dark' });
+    await expect(first.locator('html')).toHaveClass(/dark/);
+    await toggle.click();
+    await first.emulateMedia({ colorScheme: 'light' });
+    await first.emulateMedia({ colorScheme: 'dark' });
+    await expect(first.locator('html')).not.toHaveClass(/dark/);
+    await first.reload();
+    await expect(first.locator('html')).not.toHaveClass(/dark/);
+
+    await toggle.focus();
+    await first.keyboard.press('Space');
+    await expect(second.locator('html')).toHaveClass(/dark/);
+    await expect(second.getByRole('button', { name: 'Switch to light mode' })).toBeVisible();
+    expect(await first.evaluate(() => localStorage.getItem('job-buddy-theme'))).toBe('dark');
+    expect(await first.evaluate(() => localStorage.getItem('theme'))).toBe('dark');
+    expect(await second.locator('html').evaluate((e) => getComputedStyle(e).colorScheme)).toBe('dark');
+
+    // Clearing the override elsewhere restores each open page's own OS preference.
+    await first.emulateMedia({ colorScheme: 'light' });
+    await second.evaluate(() => localStorage.removeItem('job-buddy-theme'));
+    await expect(first.locator('html')).not.toHaveClass(/dark/);
+    await first.emulateMedia({ colorScheme: 'dark' });
+    await expect(first.locator('html')).toHaveClass(/dark/);
+    expect(await first.evaluate(() => localStorage.getItem('job-buddy-theme'))).toBeNull();
+
+    await toggle.click();
+    await second.evaluate(() => localStorage.setItem('job-buddy-theme', 'invalid'));
+    await expect(first.locator('html')).toHaveClass(/dark/);
+    await first.emulateMedia({ colorScheme: 'light' });
+    await expect(first.locator('html')).not.toHaveClass(/dark/);
+
+    await toggle.click();
+    await second.evaluate(() => localStorage.clear());
+    await expect(first.locator('html')).not.toHaveClass(/dark/);
+  });
+}
+
+test('legal pages follow the website appearance and live preference changes', async ({ context, page }) => {
+  await serveSite(context);
+  const other = await context.newPage();
+  await other.goto(origin + prefix);
+  for (const path of ['legal/privacy/', 'legal/disclaimer/']) {
+    await other.evaluate(() => localStorage.removeItem('job-buddy-theme'));
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.goto(origin + prefix + path);
+    await expect(page.locator('html')).toHaveClass('dark');
+    expect(await page.locator('html').evaluate((el) => getComputedStyle(el).colorScheme)).toBe('dark');
+    await page.emulateMedia({ media: 'print', colorScheme: 'dark' });
+    expect(await page.locator('html').evaluate((el) => getComputedStyle(el).colorScheme)).toBe('light');
+    await page.emulateMedia({ media: 'screen', colorScheme: 'dark' });
+    expect(await page.locator('html').evaluate((el) => getComputedStyle(el).colorScheme)).toBe('dark');
+
+    await other.evaluate(() => localStorage.setItem('job-buddy-theme', 'light'));
+    await expect(page.locator('html')).not.toHaveClass(/dark/);
+    await page.reload();
+    await expect(page.locator('html')).not.toHaveClass(/dark/);
+
+    await other.evaluate(() => localStorage.setItem('job-buddy-theme', 'dark'));
+    await expect(page.locator('html')).toHaveClass('dark');
+    await other.evaluate(() => localStorage.removeItem('job-buddy-theme'));
+    await page.emulateMedia({ colorScheme: 'light' });
+    await expect(page.locator('html')).not.toHaveClass(/dark/);
+  }
+});
+
+test('demo preserves long pasted answers and explains limits before completion', async ({ context, page }) => {
+  await serveSite(context);
+  await page.goto(origin + prefix + 'demo/');
+  const answer = page.getByLabel('What interests you about this position?');
+  const value = '😀'.repeat(1501);
+  await answer.fill(value);
+  await expect(answer).toHaveValue(value);
+  await expect(answer).not.toHaveAttribute('maxlength');
+  await expect(page.locator('#interest-limit')).toHaveText('2 characters over the 3000-character limit');
+  expect(await answer.evaluate((field: HTMLTextAreaElement) => field.checkValidity())).toBe(false);
+  await answer.fill('A shorter answer.');
+  expect(await answer.evaluate((field: HTMLTextAreaElement) => field.checkValidity())).toBe(true);
+  await expect(page.locator('#interest-limit')).toHaveText('Up to 3000 characters');
+
+  const firstName = page.getByLabel('First name', { exact: false });
+  await firstName.fill('n'.repeat(101));
+  await expect(firstName).toHaveValue('n'.repeat(101));
+  expect(await firstName.evaluate((field: HTMLInputElement) => field.checkValidity())).toBe(false);
+});
+
+test('guides and demo keep manual choices in memory with storage blocked', async ({
   context,
   page,
 }) => {
@@ -722,8 +988,65 @@ test('the guide works with storage blocked', async ({
   );
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto(origin + prefix);
-  await page.getByRole('button', { name: /Switch to .* mode/ }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  for (const path of ['', 'developers/', 'demo/']) {
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.goto(origin + prefix + path);
+    await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.emulateMedia({ colorScheme: 'light' });
+    await expect(page.locator('html')).toHaveClass(/dark/);
+    await expect(page.getByRole('button', { name: 'Switch to light mode' })).toBeVisible();
+    await page.reload();
+    await expect(page.locator('html')).not.toHaveClass(/dark/);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  }
   expect(errors).toEqual([]);
+});
+
+test('chapter and footer dividers keep equal spacing in both guides', async ({ context, page }) => {
+  await serveSite(context);
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const path of ['', 'developers/']) {
+      await page.goto(origin + prefix + path);
+      const gaps = await page.evaluate(() => {
+        const chapters = [...document.querySelectorAll<HTMLElement>('.chapter')];
+        const footer = document.querySelector<HTMLElement>('.site-footer')!;
+        const footerBox = footer.getBoundingClientRect();
+        const lastContent = chapters.at(-1)!.lastElementChild!.getBoundingClientRect();
+        return {
+          chapters: chapters.slice(0, -1).map((chapter) => ({
+            above: getComputedStyle(chapter).paddingBottom,
+            below: getComputedStyle(chapter.nextElementSibling!).paddingTop,
+          })),
+          footer: {
+            above: footerBox.top - lastContent.bottom,
+            below:
+              footer.firstElementChild!.getBoundingClientRect().top -
+              footerBox.top -
+              parseFloat(getComputedStyle(footer).borderTopWidth),
+          },
+        };
+      });
+      for (const chapter of gaps.chapters) expect(chapter.above).toBe(chapter.below);
+      expect(gaps.footer).toEqual({ above: 32, below: 32 });
+      for (const expanded of [false, true]) {
+        if (expanded)
+          await page.locator('main details').evaluateAll((elements) => {
+            for (const element of elements) (element as HTMLDetailsElement).open = true;
+          });
+        for (const chapter of await page.locator('main .chapter').all()) {
+          const spacing = await chapter.evaluate(visibleDividerGaps);
+          expect(spacing).toEqual({
+            above: width < 800 ? 40 : 64,
+            below: width < 800 ? 40 : 64,
+          });
+        }
+        for (const question of await page.locator('main .detail-list > details + details').all()) {
+          if (await question.isVisible())
+            expect(await question.evaluate(visibleDividerGaps)).toEqual({ above: 16, below: 16 });
+        }
+      }
+    }
+  }
 });

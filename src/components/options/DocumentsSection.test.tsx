@@ -3,7 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor, act, within } from '@testing-library/react';
 import { DocumentsSection } from './DocumentsSection';
 import { ToastProvider } from '@/src/components/ui/Toast';
-import type { Profile } from '@/src/types/profile';
+import type { DocumentEntry, Profile } from '@/src/types/profile';
 import * as documentFiles from '@/src/utils/documentFiles';
 
 afterEach(cleanup);
@@ -17,6 +17,34 @@ function renderSection(profile: Partial<Profile>, onSave = vi.fn().mockResolvedV
   return { onSave };
 }
 
+describe('DocumentsSection — cover letter disclosure', () => {
+  const file = { name: 'cover.pdf', size: 9, base64: 'JVBERi0xLjcK' };
+  const cases: [string, DocumentEntry | undefined, boolean][] = [
+    ['missing', undefined, false],
+    ['empty', { url: '   ' }, false],
+    ['link', { url: 'https://example.test/cover.pdf' }, true],
+    ['file', { file }, true],
+    ['link and file', { url: 'https://example.test/cover.pdf', file }, true],
+  ];
+  it.each(cases)('loads %s cover letter content in the expected disclosure state', (_, coverLetter, open) => {
+    renderSection({ documents: { cv: {}, coverLetter } });
+    const details = screen.getByText('Cover letter', { selector: 'summary span' }).closest('details')!;
+    expect(details.open).toBe(open);
+    expect(details.querySelector('summary')!.textContent).toBe('Cover letter');
+  });
+
+  it('preserves manual opening and closing while document values change', () => {
+    renderSection({ documents: { cv: {}, coverLetter: { url: 'https://example.test/cover.pdf' } } });
+    const details = screen.getByText('Cover letter', { selector: 'summary span' }).closest('details')!;
+    details.open = false;
+    fireEvent.change(document.getElementById('field-cv')!, { target: { value: 'https://example.test/resume.pdf' } });
+    expect(details.open).toBe(false);
+    details.open = true;
+    fireEvent.change(document.getElementById('field-coverLetter')!, { target: { value: '' } });
+    expect(details.open).toBe(true);
+  });
+});
+
 describe('DocumentsSection — local viewing and downloads', () => {
   it('offers PDF viewing and downloads for both attachments without saving or changing data', () => {
     const cv = { name: 'resume.pdf', size: 9, base64: 'JVBERi0xLjcK' };
@@ -28,14 +56,16 @@ describe('DocumentsSection — local viewing and downloads', () => {
       document.querySelector('details')!.open = true;
       const cvSection = within(screen.getByRole('region', { name: 'CV / Résumé' }));
       const letterSection = within(screen.getByRole('region', { name: 'Cover letter' }));
-      fireEvent.click(cvSection.getByText('View PDF'));
+      const viewButton = cvSection.getByRole('button', { name: 'View PDF' });
+      expect(viewButton.getAttribute('title')).toBeNull();
+      fireEvent.click(viewButton);
       fireEvent.click(cvSection.getByText('Download'));
       fireEvent.click(letterSection.getByText('Download'));
       expect(view).toHaveBeenCalledWith(cv);
       expect(download.mock.calls.map(([file]) => file)).toEqual([cv, letter]);
       expect(letterSection.queryByText('View PDF')).toBeNull();
       expect(onSave).not.toHaveBeenCalled();
-      fireEvent.click(screen.getByText('Save Documents'));
+      fireEvent.click(screen.getByText('Save'));
       expect(onSave).toHaveBeenCalledWith({ documents: { cv: { file: cv }, coverLetter: { file: letter } } });
     } finally { view.mockRestore(); download.mockRestore(); }
   });
@@ -57,7 +87,7 @@ describe('DocumentsSection — toDocumentEntry: URL and file must never become m
     const { onSave } = renderSection({ documents: { cv: { url, file } } });
     expect(screen.getByText('cv.pdf')).toBeTruthy();
     expect(document.getElementById('field-cv')).toBeTruthy();
-    fireEvent.click(screen.getByText('Save Documents'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({
       documents: { cv: { ...(url ? { url } : {}), file }, coverLetter: undefined },
     });
@@ -67,7 +97,7 @@ describe('DocumentsSection — toDocumentEntry: URL and file must never become m
     const { onSave } = renderSection({
       documents: { cv: { url: 'https://example.com/cv.pdf', file: { name: 'cv.pdf', size: 1024, base64: 'abc' } } },
     });
-    fireEvent.click(screen.getByText('Save Documents'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({
       documents: expect.objectContaining({
         cv: { url: 'https://example.com/cv.pdf', file: { name: 'cv.pdf', size: 1024, base64: 'abc' } },
@@ -85,7 +115,7 @@ describe('DocumentsSection — toDocumentEntry: URL and file must never become m
 
     await waitFor(() => expect(screen.getByText('resume.pdf')).toBeTruthy());
 
-    fireEvent.click(screen.getByText('Save Documents'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({
       documents: expect.objectContaining({
         cv: expect.objectContaining({ url: 'https://example.com/cv.pdf', file: expect.objectContaining({ name: 'resume.pdf' }) }),
@@ -95,7 +125,7 @@ describe('DocumentsSection — toDocumentEntry: URL and file must never become m
 
   it('does not include a file field at all when only a URL is set (never mode is file)', () => {
     const { onSave } = renderSection({ documents: { cv: { url: 'https://example.com/cv.pdf' } } });
-    fireEvent.click(screen.getByText('Save Documents'));
+    fireEvent.click(screen.getByText('Save'));
     const call = onSave.mock.calls[0][0];
     expect(call.documents.cv).toEqual({ url: 'https://example.com/cv.pdf' });
     expect('file' in call.documents.cv).toBe(false);
@@ -105,14 +135,14 @@ describe('DocumentsSection — toDocumentEntry: URL and file must never become m
 describe('DocumentsSection — required-field and URL-format validation', () => {
   it('allows clearing CV data while other documents remain independent', () => {
     const { onSave } = renderSection({ documents: { cv: {} } });
-    fireEvent.click(screen.getByText('Save Documents'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({ documents: { cv: {}, coverLetter: undefined } });
   });
 
   it('blocks save on an invalid URL', () => {
     const { onSave } = renderSection({ documents: { cv: {} } });
     fireEvent.change(document.getElementById('field-cv')!, { target: { value: 'not a url' } });
-    fireEvent.click(screen.getByText('Save Documents'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('Enter a valid URL')).toBeTruthy();
   });
@@ -126,7 +156,7 @@ describe('DocumentsSection — file-type restriction (drag-and-drop bypasses the
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(fileInput, { target: { files: [file] } });
 
-    expect(await screen.findByText('Only PDF and Word documents (.pdf, .doc, .docx) are supported')).toBeTruthy();
+    expect(await screen.findByText('Choose a PDF or Word file.')).toBeTruthy();
     expect(screen.queryByText('malware.exe')).toBeNull();
   });
 
@@ -149,7 +179,7 @@ describe('DocumentsSection — drag-and-drop upload', () => {
     renderSection({ documents: { cv: {} } });
 
     const file = new File(['fake pdf content'], 'resume.pdf', { type: 'application/pdf' });
-    const dropzone = screen.getAllByText(/Or drop a PDF or Word document here/)[0].parentElement!;
+    const dropzone = screen.getAllByText(/PDF or Word · max/)[0].parentElement!;
     fireEvent.drop(dropzone, { dataTransfer: { files: [file] } });
 
     expect(await screen.findByText('resume.pdf')).toBeTruthy();
@@ -159,16 +189,16 @@ describe('DocumentsSection — drag-and-drop upload', () => {
     renderSection({ documents: { cv: {} } });
 
     const file = new File(['not a document'], 'malware.exe', { type: 'application/octet-stream' });
-    const dropzone = screen.getAllByText(/Or drop a PDF or Word document here/)[0].parentElement!;
+    const dropzone = screen.getAllByText(/PDF or Word · max/)[0].parentElement!;
     fireEvent.drop(dropzone, { dataTransfer: { files: [file] } });
 
-    expect(await screen.findByText('Only PDF and Word documents (.pdf, .doc, .docx) are supported')).toBeTruthy();
+    expect(await screen.findByText('Choose a PDF or Word file.')).toBeTruthy();
   });
 
   it('clears dragOver highlighting state via onDrop, not just the file itself', async () => {
     renderSection({ documents: { cv: {} } });
 
-    const dropzone = screen.getAllByText(/Or drop a PDF or Word document here/)[0].parentElement!;
+    const dropzone = screen.getAllByText(/PDF or Word · max/)[0].parentElement!;
     fireEvent.dragOver(dropzone);
     const file = new File(['fake pdf content'], 'resume.pdf', { type: 'application/pdf' });
     fireEvent.drop(dropzone, { dataTransfer: { files: [file] } });
@@ -192,9 +222,11 @@ describe('DocumentsSection — Remove file', () => {
     await screen.findByText('resume.pdf');
 
     fireEvent.click(screen.getByText('Remove file'));
+    expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
 
     expect(screen.queryByText('resume.pdf')).toBeNull();
-    expect(screen.getAllByText(/Or drop a PDF or Word document here/)[0]).toBeTruthy();
+    expect(screen.getAllByText(/PDF or Word · max/)[0]).toBeTruthy();
   });
 
   it('does not also trigger the dropzone click-to-browse handler (event does not bubble to open the file picker)', async () => {
@@ -207,6 +239,8 @@ describe('DocumentsSection — Remove file', () => {
 
     const clickSpy = vi.spyOn(fileInput, 'click');
     fireEvent.click(screen.getByText('Remove file'));
+    expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
 
     expect(clickSpy).not.toHaveBeenCalled();
   });
@@ -216,7 +250,7 @@ describe('DocumentsSection — file-size restriction (4 MB cap)', () => {
   it('preserves an existing file above the new upload limit when saving', async () => {
     const file = { name: 'existing.pdf', size: 6 * 1024 * 1024, base64: 'existing-data' };
     const { onSave } = renderSection({ documents: { cv: { file } } });
-    fireEvent.click(screen.getByText('Save Documents'));
+    fireEvent.click(screen.getByText('Save'));
     await waitFor(() => expect(onSave).toHaveBeenCalled());
     expect(onSave.mock.calls[0][0].documents.cv.file).toEqual(file);
   });
@@ -254,7 +288,7 @@ describe('DocumentsSection — cover letter preservation', () => {
         coverLetter: { url: 'https://example.com/cover.pdf' },
       },
     });
-    fireEvent.click(screen.getByText('Save Documents'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({
       documents: expect.objectContaining({ coverLetter: { url: 'https://example.com/cover.pdf' } }),
     });
@@ -284,7 +318,7 @@ describe('DocumentsSection — file read lifecycle', () => {
       await screen.findByText('b.pdf');
       await finish(0, 'data:application/pdf;base64,YQ==');
       await waitFor(() => expect(screen.queryByText('a.pdf')).toBeNull());
-      fireEvent.click(screen.getByText('Save Documents'));
+      fireEvent.click(screen.getByText('Save'));
       expect(onSave.mock.calls[0][0].documents.cv.file.name).toBe('b.pdf');
     } finally { read.mockRestore(); }
   });
@@ -296,8 +330,8 @@ describe('DocumentsSection — file read lifecycle', () => {
       const { onSave } = renderSection({ documents: { cv: { file: original } } });
       fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [new File(['x'], 'new.pdf')] } });
       readers[0].dispatchEvent(new Event('error'));
-      await screen.findByText('Could not read file. Please try again.');
-      fireEvent.click(screen.getByText('Save Documents'));
+      await screen.findByText('Could not read this file. Choose it again.');
+      fireEvent.click(screen.getByText('Save'));
       expect(onSave.mock.calls[0][0].documents.cv.file).toEqual(original);
     } finally { read.mockRestore(); }
   });
@@ -308,6 +342,8 @@ describe('DocumentsSection — file read lifecycle', () => {
       renderSection({ documents: { cv: { file: { name: 'old.pdf', size: 10, base64: 'old' } } } });
       fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [new File(['x'], 'new.pdf')] } });
       fireEvent.click(screen.getByText('Remove file'));
+    expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
       await finish(0, 'data:application/pdf;base64,eA==');
       await waitFor(() => expect(screen.queryByText('new.pdf')).toBeNull());
     } finally { read.mockRestore(); }

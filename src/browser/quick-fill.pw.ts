@@ -7,11 +7,15 @@ test('one click preserves existing answers across frames and keeps details and U
   context,
   extension,
 }, info) => {
+  await extension.worker.evaluate(() => chrome.storage.local.set({
+    quickFillPreferences: { enabled: true, disabledSites: [], fillMode: 'merge' },
+  }));
   expect(
     await extension.worker.evaluate(() => chrome.runtime.getManifest().commands),
   ).toBeUndefined();
   const host = page.locator(hostSelector);
   await expect(host).toHaveCount(1);
+  await expect(host.getByRole('button', { name: 'Fill Form', exact: true })).toHaveAttribute('title', 'Fill empty fields with your Job Buddy profile.');
   await host.getByRole('button', { name: 'Fill Form', exact: true }).click();
   await expect(page.locator('input[name="firstName"]')).toHaveValue('Jane');
   await expect(page.locator('input[name="lastName"]')).toHaveValue('Existing answer');
@@ -48,6 +52,9 @@ test('saved overwrite mode fills empty and existing fields, preserves unmatched 
   context,
   extension,
 }, info) => {
+  await extension.worker.evaluate(() => chrome.storage.local.set({
+    quickFillPreferences: { enabled: true, disabledSites: [], fillMode: 'merge' },
+  }));
   const settings = await context.newPage();
   await settings.addInitScript(() => sessionStorage.setItem('jb:ui:section', 'settings'));
   await settings.goto(extensionUrl(extension, 'options.html'));
@@ -121,7 +128,7 @@ test('saved overwrite mode fills empty and existing fields, preserves unmatched 
   await reset.getByRole('button', { name: 'Reset All Data', exact: true }).click();
   await expect(reset).toHaveCount(0);
   await settings.getByRole('button', { name: 'Settings', exact: true }).click();
-  await expect(mode).toHaveValue('merge');
+  await expect(mode).toHaveValue('overwrite');
   expect(
     await extension.worker.evaluate(
       async () =>
@@ -131,7 +138,7 @@ test('saved overwrite mode fills empty and existing fields, preserves unmatched 
           }
         ).fillMode,
     ),
-  ).toBe('merge');
+  ).toBe('overwrite');
 });
 
 test('stays fixed when scrolling, can be moved, and can be hidden per page, site or globally', async ({
@@ -258,6 +265,9 @@ test('hiding the button during AI leaves the background fill running', async ({
   context,
   extension,
 }) => {
+  await extension.worker.evaluate(() => chrome.storage.local.set({
+    quickFillPreferences: { enabled: true, disabledSites: [], fillMode: 'merge' },
+  }));
   await page.evaluate(() => {
     const label = document.createElement('label');
     label.textContent = 'Zqx identifier';
@@ -393,8 +403,8 @@ test('completed feedback keeps filled counts neutral, accents attention, and exp
   const undo = host.getByRole('button', { name: 'Undo', exact: true });
   const details = host.getByRole('button', { name: 'View details', exact: true });
   await page.mouse.move(20, 20);
-  await expect(undo).toHaveCSS('text-decoration-line', 'none');
-  await expect(details).toHaveCSS('text-decoration-line', 'none');
+  await expect(undo).toHaveCSS('text-decoration-line', 'underline');
+  await expect(details).toHaveCSS('text-decoration-line', 'underline');
   await details.hover();
   await expect(details).toHaveCSS('text-decoration-line', 'underline');
   await page.mouse.move(20, 20);

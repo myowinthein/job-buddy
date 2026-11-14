@@ -24,7 +24,7 @@ export const PROFILE_SECTION_DEFINITIONS = [
     entries: { scope: 'languages', path: 'languages', heading: 'language' },
   },
   { id: 'links', label: 'Links', description: 'Your online profiles' },
-  { id: 'documents', label: 'Documents', description: 'Your CV and cover letter' },
+  { id: 'documents', label: 'Documents', description: 'Your CV, portfolio and cover letter' },
   { id: 'salary', label: 'Salary', description: 'Your gross base pay before tax' },
 ] as const;
 
@@ -181,7 +181,9 @@ function salaryFields<const Prefix extends 'current' | 'expected.$'>(prefix: Pre
         field('currency', 'Currency', `salary.${prefix}.currency`),
         field('period', 'Period', `salary.${prefix}.period`),
       ],
-      'grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-x-4',
+      prefix === 'current'
+        ? 'grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-x-4'
+        : 'grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-x-4',
       {
         pickerGroup: {
           label: prefix === 'current' ? 'Current Salary' : 'Expected Salary',
@@ -436,7 +438,6 @@ export const PROFILE_FIELD_LAYOUTS = {
   ],
   links: [
     field('linkedin', 'LinkedIn', 'links.linkedin'),
-    field('portfolio', 'Portfolio', 'links.portfolio'),
     field('github', 'GitHub', 'links.github'),
     field('twitter', 'X / Twitter', 'links.twitter'),
     field('dribbble', 'Dribbble', 'links.dribbble'),
@@ -458,6 +459,12 @@ export const PROFILE_FIELD_LAYOUTS = {
     field('coverLetter', 'Cover letter', 'documents.coverLetter.url', {
       pickerGroup: {},
       inputLabel: 'Document URL',
+      picker: [{ path: 'documents.coverLetter.url' }, { path: 'documents.coverLetter.file', label: 'File' }],
+    }),
+    field('portfolio', 'Portfolio', 'documents.portfolio.url', {
+      pickerGroup: {},
+      inputLabel: 'Document URL',
+      picker: [{ path: 'documents.portfolio.url' }, { path: 'documents.portfolio.file', label: 'File' }],
     }),
   ],
   salary: [
@@ -499,6 +506,9 @@ export const PROFILE_NON_EDITOR_PATHS = [
   'documents.coverLetter.file.name',
   'documents.coverLetter.file.size',
   'documents.coverLetter.file.base64',
+  'documents.portfolio.file.name',
+  'documents.portfolio.file.size',
+  'documents.portfolio.file.base64',
   'derived.fullName',
   'derived.currentTitle',
   'derived.currentCompany',

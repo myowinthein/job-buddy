@@ -118,7 +118,7 @@ describe('saveElementMappings', () => {
     wrapper.append(question, el);
     document.body.appendChild(wrapper);
 
-    await saveElementMappings('example.com', el, 'links.portfolio');
+    await saveElementMappings('example.com', el, 'documents.portfolio.url');
     expect(savedMappings.length).toBeGreaterThan(0);
     expect(savedMappings.every((m) => m.label === 'Question 3: describe your experience')).toBe(
       true,

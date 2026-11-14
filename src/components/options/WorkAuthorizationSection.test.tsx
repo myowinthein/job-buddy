@@ -17,12 +17,23 @@ function renderSection(profile: Partial<Profile>, onSave = vi.fn().mockResolvedV
   return { onSave };
 }
 
+it('loads saved authorizations collapsed with readable country and status summaries', () => {
+  renderSection({ workAuthorization: [{ country: 'SG', status: 'work_visa', visaType: 'Employment Pass' }] });
+  expect(screen.getByText('Singapore')).toBeTruthy();
+  expect(screen.getByText(': Authorized to work without sponsorship')).toBeTruthy();
+  expect(screen.getByText('🇸🇬').getAttribute('aria-hidden')).toBe('true');
+  expect(screen.queryByLabelText('Visa type')).toBeNull();
+  fireEvent.click(document.querySelector<HTMLButtonElement>('[data-entry-toggle][aria-expanded="false"]')!);
+  expect((screen.getByLabelText('Visa type') as HTMLInputElement).value).toBe('Employment Pass');
+});
+
 describe('WorkAuthorizationSection — initRow country backward-compat loader', () => {
   it('preserves imported visa details when editing another entry and deleting its predecessor', () => {
     const kept = { country: 'SG', status: 'work_visa' as const, visaType: 'Employment Pass', expiryDate: '2028-06-15' };
     const { onSave } = renderSection({ workAuthorization: [{ country: 'US', status: 'citizen_or_pr' }, kept] });
-    fireEvent.click(screen.getAllByTitle('Remove')[0]);
-    fireEvent.click(screen.getByText('Save Work Authorization'));
+    fireEvent.click(screen.getAllByTitle('Remove entry')[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({ workAuthorization: [kept] });
   });
 
@@ -30,7 +41,7 @@ describe('WorkAuthorizationSection — initRow country backward-compat loader', 
     const { onSave } = renderSection({
       workAuthorization: [{ country: 'SG', status: 'citizen_or_pr' }],
     });
-    fireEvent.click(screen.getByText('Save Work Authorization'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({
       workAuthorization: [{ country: 'SG', status: 'citizen_or_pr' }],
     });
@@ -40,7 +51,7 @@ describe('WorkAuthorizationSection — initRow country backward-compat loader', 
     const { onSave } = renderSection({
       workAuthorization: [{ country: 'Singapore', status: 'work_visa' }],
     });
-    fireEvent.click(screen.getByText('Save Work Authorization'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).toHaveBeenCalledWith({
       workAuthorization: [{ country: 'SG', status: 'work_visa' }],
     });
@@ -50,8 +61,8 @@ describe('WorkAuthorizationSection — initRow country backward-compat loader', 
     const { onSave } = renderSection({
       workAuthorization: [{ country: 'Atlantis', status: 'requires_sponsorship' }],
     });
-    fireEvent.click(screen.getByText('Save Work Authorization'));
-    expect(screen.getByText('Atlantis')).toBeTruthy();
+    fireEvent.click(screen.getByText('Save'));
+    expect(screen.getAllByText('Atlantis').length).toBeGreaterThan(0);
     expect(screen.getByText('Select a valid country')).toBeTruthy();
     expect(onSave).not.toHaveBeenCalled();
   });
@@ -60,10 +71,10 @@ describe('WorkAuthorizationSection — initRow country backward-compat loader', 
 describe('WorkAuthorizationSection — validation and entry management', () => {
   it('blocks save and shows required errors when a row is entirely empty', () => {
     const { onSave } = renderSection({ workAuthorization: [] });
-    fireEvent.click(screen.getByText('Save Work Authorization'));
+    fireEvent.click(screen.getByText('Save'));
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('Country is required')).toBeTruthy();
-    expect(screen.getByText('Status is required')).toBeTruthy();
+    expect(screen.getByText('Choose a country')).toBeTruthy();
+    expect(screen.getByText('Choose a work authorization status')).toBeTruthy();
   });
 
   it('removes an entry when its remove button is clicked', () => {
@@ -73,10 +84,11 @@ describe('WorkAuthorizationSection — validation and entry management', () => {
         { country: 'US', status: 'work_visa' },
       ],
     });
-    expect(screen.getByText('Entry 2')).toBeTruthy();
-    const removeButtons = screen.getAllByTitle('Remove');
+    expect(screen.getAllByRole('button', { name: 'Remove entry' })).toHaveLength(2);
+    const removeButtons = screen.getAllByTitle('Remove entry');
     fireEvent.click(removeButtons[1]);
-    expect(screen.queryByText('Entry 2')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(screen.getAllByRole('button', { name: 'Remove entry' })).toHaveLength(1);
   });
 
   it('editing one entry\'s status by index does not affect a different entry', () => {
@@ -87,9 +99,11 @@ describe('WorkAuthorizationSection — validation and entry management', () => {
       ],
     });
 
+    for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-entry-toggle][aria-expanded="false"]')))
+      fireEvent.click(button);
     const statusSelects = screen.getAllByRole('combobox');
     fireEvent.change(statusSelects[1], { target: { value: 'requires_sponsorship' } });
-    fireEvent.click(screen.getByText('Save Work Authorization'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).toHaveBeenCalledWith({
       workAuthorization: [
@@ -107,11 +121,13 @@ describe('WorkAuthorizationSection — validation and entry management', () => {
       ],
     });
 
+    for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-entry-toggle][aria-expanded="false"]')))
+      fireEvent.click(button);
     const countryTriggers = document.querySelectorAll('button[aria-haspopup="listbox"]');
     fireEvent.click(countryTriggers[1]);
     fireEvent.change(screen.getByPlaceholderText('Search country or code…'), { target: { value: 'Thailand' } });
     fireEvent.click(screen.getByText('Thailand'));
-    fireEvent.click(screen.getByText('Save Work Authorization'));
+    fireEvent.click(screen.getByText('Save'));
 
     expect(onSave).toHaveBeenCalledWith({
       workAuthorization: [

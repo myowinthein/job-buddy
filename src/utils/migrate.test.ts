@@ -24,6 +24,28 @@ function baseProfile(): Profile {
 }
 
 describe('normalizeProfile', () => {
+  it('migrates a legacy portfolio alongside an uploaded file without changing its input', () => {
+    const profile = baseProfile();
+    Object.assign(profile.links, { portfolio: 'janedoe.dev' });
+    const file = { name: 'portfolio.pdf', size: 3, base64: 'YWJj' };
+    profile.documents.portfolio = { file };
+    const migrated = normalizeProfile(profile);
+    expect(migrated.documents.portfolio).toEqual({ url: 'https://janedoe.dev', file });
+    expect(migrated.links).not.toHaveProperty('portfolio');
+    expect(profile.links).toHaveProperty('portfolio', 'janedoe.dev');
+    expect(normalizeProfile(migrated)).toBe(migrated);
+  });
+
+  it('preserves both URLs from a mixed-version profile in the normal reviewable schema', () => {
+    const profile = baseProfile();
+    Object.assign(profile.links, { portfolio: 'https://old.example/portfolio' });
+    profile.documents.portfolio = { url: 'https://new.example/portfolio' };
+    const migrated = normalizeProfile(profile);
+    expect(migrated.documents.portfolio?.url).toBe('https://new.example/portfolio');
+    expect(migrated.links.custom).toEqual([{ label: 'Previous portfolio', url: 'https://old.example/portfolio' }]);
+    expect(normalizeProfile(migrated)).toBe(migrated);
+  });
+
   it('returns the same reference when nothing needs migrating', () => {
     const p = baseProfile();
     expect(normalizeProfile(p)).toBe(p);
@@ -131,9 +153,10 @@ describe('normalizeProfile', () => {
 
   it('adds a scheme to a bare portfolio URL', () => {
     const p = baseProfile();
-    p.links.portfolio = 'janedoe.dev';
+    Object.assign(p.links, { portfolio: 'janedoe.dev' });
     const out = normalizeProfile(p);
-    expect(out.links.portfolio).toBe('https://janedoe.dev');
+    expect(out.documents.portfolio?.url).toBe('https://janedoe.dev');
+    expect(out.links).not.toHaveProperty('portfolio');
   });
 
   it('adds a scheme to each bare custom link URL', () => {
@@ -156,14 +179,14 @@ describe('normalizeProfile', () => {
 
   it('leaves an empty portfolio value alone instead of producing "https://"', () => {
     const p = baseProfile();
-    p.links.portfolio = '';
+    Object.assign(p.links, { portfolio: '' });
     const out = normalizeProfile(p);
-    expect(out.links.portfolio).toBe('');
+    expect(out.links).not.toHaveProperty('portfolio');
   });
 
   it('returns the same links reference when every URL already has a scheme', () => {
     const p = baseProfile();
-    p.links = { linkedin: 'https://linkedin.com/in/jane', portfolio: 'https://janedoe.dev' };
+    p.links = { linkedin: 'https://linkedin.com/in/jane' };
     const out = normalizeProfile(p);
     expect(out.links).toBe(p.links);
     expect(out).toBe(p);

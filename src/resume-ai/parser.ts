@@ -362,9 +362,9 @@ const FIELD_OPERATIONS: Omit<FieldDef, 'label' | 'section'>[] = [
     display: (v) => String(v ?? ''),
   },
   {
-    id: 'links.portfolio',
-    getValue: (p) => p.links?.portfolio ?? null,
-    setValue: setNestedField('links', 'portfolio', {} as Profile['links']),
+    id: 'documents.portfolio.url',
+    getValue: (p) => p.documents?.portfolio?.url ?? null,
+    setValue: setDoublyNestedField('documents', 'portfolio', 'url'),
     isEmpty: emptyStr,
     display: (v) => String(v ?? ''),
   },
@@ -408,6 +408,16 @@ const FIELD_OPERATIONS: Omit<FieldDef, 'label' | 'section'>[] = [
     id: 'documents.coverLetter.file',
     getValue: (p) => p.documents?.coverLetter?.file ?? null,
     setValue: setDoublyNestedField('documents', 'coverLetter', 'file'),
+    isEmpty: (v) => !v || typeof v !== 'object',
+    display: (v) => {
+      if (!v || typeof v !== 'object') return '';
+      const file = v as { name: string; size?: number };
+      return [file.name, file.size != null && `${(file.size / 1024).toFixed(1)} KB`].filter(Boolean).join(' · ');
+    },
+  },  {
+    id: 'documents.portfolio.file',
+    getValue: (p) => p.documents?.portfolio?.file ?? null,
+    setValue: setDoublyNestedField('documents', 'portfolio', 'file'),
     isEmpty: (v) => !v || typeof v !== 'object',
     display: (v) => {
       if (!v || typeof v !== 'object') return '';

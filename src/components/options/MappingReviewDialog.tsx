@@ -1,16 +1,13 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { ChevronDown, LoaderCircle, Sparkles } from 'lucide-react';
+import { ChevronDown, LoaderCircle } from 'lucide-react';
+import { GeminiMessage } from '@/src/components/ui/GeminiMessage';
+import { RetryNotice } from '@/src/components/ui/RetryNotice';
 import type { Profile } from '@/src/types/profile';
 import type { LearnedMappings } from '@/src/types/storage';
 import { getGeminiSettings } from '@/src/utils/storage';
-import { toGeminiModel } from '@/src/resume-ai/types';
+import { toGeminiModel, type ResumeModelAttempt } from '@/src/resume-ai/types';
 import { reviewMappingsWithAI } from '@/src/resume-ai/gemini';
-import {
-  applyMappingReview,
-  mappingReviewKeys,
-  readMappingReviews,
-  saveMappingReviews,
-} from '@/src/utils/learnedMappingReview';
+import { applyMappingReview } from '@/src/utils/learnedMappingReview';
 import {
   hasReviewQuestion,
   mappingReviewBatches,
@@ -28,6 +25,9 @@ import { MappingReviewTitle } from './MappingReviewTitle';
 import { useDialogFocus } from '../ui/useDialogFocus';
 import { useEscapeToClose } from '../ui/useEscapeToClose';
 import { feedback } from '@/src/ui/feedback';
+import { Notice } from '@/src/components/ui/Notice';
+import { ModelFallbackNotice } from '@/src/components/shared/ModelFallbackNotice';
+import { equalJsonValues } from '@/src/utils/equalJsonValues';
 
 const secondary =
   'rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-40 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700';
@@ -63,14 +63,15 @@ export function MappingReviewDialog({
   const [hasKey, setHasKey] = useState(false);
   const [selectedSites, setSelectedSites] = useState<Set<string> | null>(null);
   const [limit, setLimit] = useState(20);
-  const [collapsedSites, setCollapsedSites] = useState<Set<string>>(() => new Set());
+  const [expandedSite, setExpandedSite] = useState<string | null | undefined>(undefined);
   const [results, setResults] = useState<Record<string, MappingAssessment>>({});
   const [decisions, setDecisions] = useState<Record<string, MappingReviewDecision>>({});
   const [working, setWorking] = useState(false);
+  const [phase, setPhase] = useState<'setup' | 'analyzing' | 'results'>('setup');
+  const [attempt, setAttempt] = useState<ResumeModelAttempt | null>(null);
   const [applying, setApplying] = useState(false);
   const [stale, setStale] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [warning, setWarning] = useState<string | null>(null);
   const items = useMemo(
     () =>
       mappingReviewItems(
@@ -84,6 +85,7 @@ export function MappingReviewDialog({
   const labels = useMemo(() => profileFieldLabels(profile), [profile]);
   const sites = useMemo(() => [...new Set(items.map((item) => item.domain))].sort(), [items]);
   const scoped = items.filter((item) => selectedSites === null || selectedSites.has(item.domain));
+  const selectedSiteCount = new Set(scoped.map((item) => item.domain)).size;
   const completed = scoped.filter((item) => results[item.id]);
   const attention = completed.filter((item) => {
     const verdict = results[item.id].verdict;
@@ -95,15 +97,17 @@ export function MappingReviewDialog({
     group.push(item);
     findingSites.set(item.domain, group);
   }
-  const selectedDecisions: Record<string, MappingReviewDecision> = Object.fromEntries(
+  const suggestedDecisions: Record<string, MappingReviewDecision> = Object.fromEntries(
     completed.map((item) => {
       const assessment = results[item.id];
       let suggested: MappingReviewDecision = { action: 'keep' };
       if (assessment.verdict === 'change') suggested = { action: 'change', path: assessment.path! };
       else if (assessment.verdict === 'inactive') suggested = { action: 'inactive' };
-      return [item.id, decisions[item.id] ?? suggested];
+      return [item.id, suggested];
     }),
   );
+  const selectedDecisions = { ...suggestedDecisions, ...decisions };
+  const suggestionsChanged = !equalJsonValues(selectedDecisions, suggestedDecisions);
   const changes = scoped.filter((item) => {
     const choice = selectedDecisions[item.id];
     return (
@@ -117,19 +121,10 @@ export function MappingReviewDialog({
   const load = async () => {
     setLoading(true);
     setError(null);
-    setWarning(null);
     try {
       const settings = await getGeminiSettings();
       if (!live.current) return;
       setHasKey(!!settings.apiKey && !!settings.model);
-      if (!settings.apiKey || !settings.model) return;
-      const keys = await mappingReviewKeys(profile, items, toGeminiModel(settings.model));
-      const cached = await readMappingReviews(profile, items, keys).catch(() => {
-        if (live.current) setWarning(feedback.mappingReviewCacheFailed);
-        return new Map();
-      });
-      if (!live.current) return;
-      setResults(Object.fromEntries([...cached].map(([id, value]) => [id, value.assessment])));
     } catch {
       if (live.current) setError(feedback.geminiLoadFailed);
     } finally {
@@ -147,6 +142,7 @@ export function MappingReviewDialog({
         !applyingRef.current
       ) {
         abortRef.current?.abort();
+        setWorking(false);
         setStale(true);
         setError(feedback.mappingReviewChanged);
       }
@@ -155,10 +151,15 @@ export function MappingReviewDialog({
         ['geminiApiKey', 'geminiModel', 'geminiSettingsMeta'].some((key) => key in changes)
       ) {
         abortRef.current?.abort();
+        setWorking(false);
         if ('geminiApiKey' in changes && !changes.geminiApiKey.newValue) {
           setHasKey(false);
+          setPhase('setup');
           setError(null);
-        } else setError(feedback.geminiChangedInAnotherTab);
+        } else {
+          setStale(true);
+          setError(feedback.geminiChangedInAnotherTab);
+        }
       }
     };
     chrome.storage.onChanged.addListener(changed);
@@ -169,8 +170,12 @@ export function MappingReviewDialog({
       chrome.storage.onChanged.removeListener(changed);
     };
     // The owner captures one immutable review base when opening this dialog.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    dialog.current?.focus({ preventScroll: true });
+    dialog.current?.querySelector('.review-dialog-body')?.scrollTo?.(0, 0);
+  }, [phase, dialog]);
 
   const close = () => {
     abortRef.current?.abort();
@@ -179,54 +184,43 @@ export function MappingReviewDialog({
   useEscapeToClose(applying ? undefined : close);
 
   const run = async () => {
-    if (abortRef.current && !abortRef.current.signal.aborted) return;
+    if (stale || !scoped.length || (abortRef.current && !abortRef.current.signal.aborted)) return;
     const controller = new AbortController();
     abortRef.current = controller;
     setWorking(true);
+    setPhase('analyzing');
+    setAttempt(null);
     setLimit(20);
     setError(null);
-    setWarning(null);
     try {
       const settings = await getGeminiSettings();
       controller.signal.throwIfAborted();
       if (!settings.apiKey || !settings.model) {
         setHasKey(false);
+        setPhase('setup');
         return;
       }
       const model = toGeminiModel(settings.model);
-      const keys = await mappingReviewKeys(profile, scoped, model);
-      controller.signal.throwIfAborted();
-      const selectedIds = new Set(scoped.map((item) => item.id));
-      setResults((current) =>
-        Object.fromEntries(Object.entries(current).filter(([id]) => !selectedIds.has(id))),
-      );
-      setDecisions((current) =>
-        Object.fromEntries(Object.entries(current).filter(([id]) => !selectedIds.has(id))),
-      );
-      const accept = async (assessments: MappingAssessment[], usedModel: string) => {
+      const remaining = scoped.filter((item) => !results[item.id]);
+      const accept = (assessments: MappingAssessment[]) => {
+        controller.signal.throwIfAborted();
         if (!live.current) return;
         setResults((current) => ({
           ...current,
           ...Object.fromEntries(assessments.map((result) => [result.id, result])),
         }));
-        try {
-          await saveMappingReviews(profile, scoped, keys, assessments, usedModel);
-        } catch {
-          if (live.current) setWarning(feedback.mappingReviewCacheFailed);
-        }
       };
-      const missingContext = scoped.filter((item) => !hasReviewQuestion(item));
+      const missingContext = remaining.filter((item) => !hasReviewQuestion(item));
       if (missingContext.length)
-        await accept(
+        accept(
           missingContext.map((item) => ({
             id: item.id,
             verdict: 'uncertain',
             path: null,
             reason: feedback.mappingReviewMissingContext,
           })),
-          'local-context-check',
         );
-      for (const batch of mappingReviewBatches(scoped.filter(hasReviewQuestion), catalog)) {
+      for (const batch of mappingReviewBatches(remaining.filter(hasReviewQuestion), catalog)) {
         controller.signal.throwIfAborted();
         const result = await reviewMappingsWithAI(
           settings.apiKey,
@@ -234,10 +228,14 @@ export function MappingReviewDialog({
           batch,
           catalog,
           controller.signal,
+          (model, reason) => {
+            if (live.current && !controller.signal.aborted) setAttempt({ model, reason });
+          },
         );
         controller.signal.throwIfAborted();
-        await accept(result.assessments, result.model);
+        accept(result.assessments);
       }
+      if (live.current) setPhase('results');
     } catch (failure) {
       if (live.current && !controller.signal.aborted)
         setError(failure instanceof Error ? failure.message : feedback.mappingReviewFailed);
@@ -247,7 +245,7 @@ export function MappingReviewDialog({
     }
   };
   const apply = async () => {
-    if (applyingRef.current) return;
+    if (applyingRef.current || stale || working || !hasKey) return;
     applyingRef.current = true;
     setApplying(true);
     setError(null);
@@ -267,6 +265,17 @@ export function MappingReviewDialog({
     }
   };
 
+  const partialReviewError = phase === 'analyzing' && completed.length > 0 && !stale && !!error;
+  const errorNotice = error && (
+    !hasKey && !stale ? (
+      <RetryNotice busy={loading} onRetry={() => void load()}>{error}</RetryNotice>
+    ) : (
+      <Notice tone={stale || partialReviewError ? 'review' : 'error'} urgent>
+        <p><GeminiMessage message={error} /></p>
+      </Notice>
+    )
+  );
+
   return (
     <div
       className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4"
@@ -278,39 +287,103 @@ export function MappingReviewDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`review-dialog flex max-h-[90dvh] w-full ${!loading && !hasKey ? 'max-w-lg' : 'max-w-3xl'} flex-col rounded-xl bg-white shadow-2xl outline-none dark:bg-gray-800`}
+        className={`review-dialog flex max-h-[90dvh] w-full ${phase === 'results' ? 'max-w-3xl' : phase === 'analyzing' ? 'max-w-sm' : 'max-w-lg'} flex-col rounded-xl bg-white shadow-2xl outline-none dark:bg-gray-800`}
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="flex shrink-0 items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-          <div>
-            <h3 id={titleId} className="text-base font-semibold text-gray-900 dark:text-gray-100">
-              Review Mappings
-            </h3>
-            <p className="mt-0.5 text-pretty text-xs text-gray-500 dark:text-gray-400">
-              Check saved matches with Gemini and choose any corrections.
-            </p>
-          </div>
-          <button
-            type="button"
-            aria-label="Close review"
-            disabled={applying}
-            onClick={close}
-            className="ml-4 shrink-0 text-xl leading-none text-gray-400 transition-colors hover:text-gray-600 active:scale-95 disabled:opacity-40 dark:text-gray-500 dark:hover:text-gray-300"
+        <header
+          className={
+            phase === 'analyzing'
+              ? 'shrink-0 px-6 pt-8 text-center'
+              : 'shrink-0 border-b border-gray-200 px-6 py-4 dark:border-gray-700'
+          }
+        >
+          <div
+            className={
+              phase === 'analyzing' ? undefined : 'flex items-center justify-between gap-4'
+            }
           >
-            ×
-          </button>
+            <div>
+              <h3 id={titleId} className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                {phase === 'analyzing' ? 'Analyzing Mappings' : 'Review Mappings'}
+              </h3>
+              {phase !== 'analyzing' && (
+                <p className="mt-0.5 text-pretty text-xs text-gray-500 dark:text-gray-400">
+                  {phase === 'setup'
+                    ? 'Use Gemini to check saved matches, then review any corrections.'
+                    : 'Choose which corrections to apply.'}
+                </p>
+              )}
+            </div>
+            {phase !== 'analyzing' && (
+              <button
+                type="button"
+                aria-label="Close review"
+                disabled={applying}
+                onClick={close}
+                className="ml-4 shrink-0 text-xl leading-none text-gray-500 transition-colors hover:text-gray-600 active:scale-95 disabled:opacity-40 dark:text-gray-400 dark:hover:text-gray-300"
+              >
+                ×
+              </button>
+            )}
+          </div>
+          {hasKey && phase === 'results' && (
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+              <span className="text-gray-500 dark:text-gray-400" aria-live="polite">
+                Reviewed {completed.length} of {scoped.length}{' '}
+                {scoped.length === 1 ? 'mapping' : 'mappings'}.
+              </span>
+              {!!attention.length && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setDecisions({})}
+                    disabled={!suggestionsChanged || applying || stale}
+                    className="text-blue-600 text-action disabled:opacity-50 dark:text-blue-400"
+                  >
+                    Use Suggestions
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDecisions(
+                        Object.fromEntries(
+                          completed.map((item) => [item.id, { action: 'keep' as const }]),
+                        ),
+                      )
+                    }
+                    disabled={!changes.length || applying || stale}
+                    className="text-blue-600 text-action disabled:opacity-50 dark:text-blue-400"
+                  >
+                    Keep All Current
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </header>
         <div
-          className={`review-dialog-body min-h-0 overflow-y-auto px-6 ${!loading && !hasKey ? 'py-5' : 'pt-4 pb-4'}`}
+          className={`review-dialog-body min-h-0 overflow-y-auto px-6 ${phase === 'analyzing' ? 'py-6' : 'py-4'}`}
         >
+          {error && !partialReviewError && (
+            <div className="mb-4 last:mb-0">
+              {errorNotice}
+            </div>
+          )}
           {loading ? (
-            <p role="status" className="text-sm text-gray-500">
+            <p
+              role="status"
+              className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400"
+            >
+              <LoaderCircle
+                aria-hidden="true"
+                className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
+              />
               Loading AI settings…
             </p>
           ) : (
             <>
               {!hasKey && !error && (
-                <div className="py-6 text-center">
+                <div className="flex flex-col items-center text-center">
                   <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
                     {feedback.mappingReviewKeyRequired}
                   </p>
@@ -328,33 +401,25 @@ export function MappingReviewDialog({
                   )}
                 </div>
               )}
-              {hasKey && (
-                <>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
-                    <MappingReviewSites
-                      sites={sites}
-                      selected={selectedSites}
-                      disabled={working || applying || stale}
-                      onChange={(selected) => {
-                        setSelectedSites(selected);
-                        setLimit(20);
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className={`${primary} shrink-0 self-start sm:mt-6`}
-                      disabled={working || applying || stale || !scoped.length}
-                      onClick={() => void run()}
-                    >
-                      <span className="flex items-center gap-1.5">
-                        Review Mappings
-                        <Sparkles aria-hidden="true" className="w-3.5 h-3.5 shrink-0 text-white" />
-                      </span>
-                    </button>
-                  </div>
+              {hasKey && phase === 'setup' && (
+                <div>
+                  <MappingReviewSites
+                    sites={sites}
+                    selected={selectedSites}
+                    disabled={working || applying || stale}
+                    onChange={(selected) => {
+                      setSelectedSites(selected);
+                      setLimit(20);
+                    }}
+                  />
+                </div>
+              )}
+              {hasKey && phase === 'analyzing' && (
+                <div>
                   <div
                     role="status"
-                    className="mt-3 flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-300"
+                    aria-atomic="true"
+                    className="flex items-center justify-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200"
                   >
                     {working && (
                       <LoaderCircle
@@ -364,155 +429,156 @@ export function MappingReviewDialog({
                       />
                     )}
                     <span>
-                      Reviewed {completed.length} of {scoped.length} mappings.
+                      Reviewed {completed.length} of {scoped.length}{' '}
+                      {scoped.length === 1 ? 'mapping' : 'mappings'}.
                     </span>
-                    {working && (
-                      <button
-                        type="button"
-                        className="ml-auto text-blue-600 underline dark:text-blue-400"
-                        onClick={() => abortRef.current?.abort()}
-                      >
-                        Stop review
-                      </button>
-                    )}
                   </div>
-                </>
+                  <p className="mt-1 text-center text-xs text-gray-500 dark:text-gray-400">
+                    From {selectedSiteCount} selected {selectedSiteCount === 1 ? 'site' : 'sites'}
+                  </p>
+                  <div
+                    role="progressbar"
+                    aria-label="Mappings reviewed"
+                    aria-valuemin={0}
+                    aria-valuemax={scoped.length}
+                    aria-valuenow={completed.length}
+                    className="mt-4 h-1.5 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"
+                  >
+                    <div
+                      className="h-full bg-blue-600"
+                      style={{
+                        width: `${scoped.length ? (completed.length / scoped.length) * 100 : 0}%`,
+                      }}
+                    />
+                  </div>
+                  {working && attempt?.reason && (
+                    <ModelFallbackNotice model={attempt.model} reason={attempt.reason} />
+                  )}
+                  {partialReviewError && <div className="mt-4">{errorNotice}</div>}
+                </div>
               )}
             </>
           )}
-          {error && (
-            <div
-              role="alert"
-              className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200"
-            >
-              <p>{error}</p>
-              {!hasKey && !stale && (
-                <button type="button" className="mt-2 underline" onClick={() => void load()}>
-                  Retry
-                </button>
-              )}
-            </div>
-          )}
-          {hasKey && warning && (
-            <p role="status" className="mt-3 text-sm text-amber-700 dark:text-amber-400">
-              {warning}
-            </p>
-          )}
-          {hasKey && !!completed.length && (
+          {hasKey && phase === 'results' && (
             <>
               {!attention.length && (
-                <p className="py-5 text-sm text-gray-600 dark:text-gray-300">
-                  No changes suggested for the reviewed mappings.
-                </p>
+                <Notice tone="success">No changes suggested for the reviewed mappings.</Notice>
               )}
               {!!attention.length && (
-                <div className="mt-5 space-y-4">
-                  {[...findingSites].map(([domain, group]) => (
-                    <div
-                      key={domain}
-                      role="group"
-                      aria-label={`Findings for ${domain}`}
-                      className="rounded-xl border border-gray-200 dark:border-gray-700"
-                    >
-                      <h4>
-                        <button
-                          type="button"
-                          aria-expanded={!collapsedSites.has(domain)}
-                          aria-controls={`${titleId}-site-${encodeURIComponent(domain)}`}
-                          onClick={() =>
-                            setCollapsedSites((current) => {
-                              const next = new Set(current);
-                              if (next.has(domain)) next.delete(domain);
-                              else next.add(domain);
-                              return next;
-                            })
-                          }
-                          className={`flex w-full items-center gap-3 rounded-t-xl bg-gray-50 px-4 py-3 text-left text-sm font-semibold text-gray-800 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-500 dark:bg-gray-900/30 dark:text-gray-200 ${collapsedSites.has(domain) ? 'rounded-b-xl' : 'border-b border-gray-200 dark:border-gray-700'}`}
-                        >
-                          <ChevronDown
-                            aria-hidden="true"
-                            className={`h-4 w-4 shrink-0 text-gray-500 transition-transform motion-reduce:transition-none ${collapsedSites.has(domain) ? '-rotate-90' : ''}`}
-                          />
-                          <span className="min-w-0 break-all">{domain}</span>
-                        </button>
-                      </h4>
+                <div className="space-y-3">
+                  {[...findingSites].map(([domain, group], index) => {
+                    const expanded =
+                      expandedSite === undefined ? index === 0 : expandedSite === domain;
+                    const siteCount = attention.filter((item) => item.domain === domain).length;
+                    return (
                       <div
-                        id={`${titleId}-site-${encodeURIComponent(domain)}`}
-                        hidden={collapsedSites.has(domain)}
-                        className="divide-y divide-gray-200/70 p-4 dark:divide-gray-700/60"
+                        key={domain}
+                        role="group"
+                        aria-label={`Findings for ${domain}`}
+                        className="rounded-lg border border-gray-200 dark:border-gray-700"
                       >
-                        {group.map((item) => {
-                          const assessment = results[item.id];
-                          const verdict = verdicts[assessment.verdict];
-                          const choice = selectedDecisions[item.id];
-                          return (
-                            <section
-                              key={item.id}
-                              aria-label={`Review ${item.title}`}
-                              className="py-2.5 first:pt-0 last:pb-0"
-                            >
-                              <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_15rem] md:gap-5">
-                                <div className="min-w-0">
-                                  <MappingReviewTitle text={item.question || item.title} />
-                                  <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
-                                    <dt className="text-gray-500 dark:text-gray-400">Current</dt>
-                                    <dd className="min-w-0 break-words text-gray-600 dark:text-gray-300">
-                                      {mappingDestination(item.path, labels)}
-                                      {item.status === 'Inactive' ? ' (Inactive)' : ''}
-                                    </dd>
-                                    <dt className="text-gray-500 dark:text-gray-400">Review result</dt>
-                                    <dd className={`min-w-0 break-words ${verdict.color}`}>
-                                      {verdict.label}
-                                    </dd>
-                                  </dl>
-                                </div>
-                                <div className="flex min-w-0 flex-col gap-2">
-                                  <select
-                                    aria-label={`Action for ${item.title}`}
-                                    className={fieldCls()}
-                                    value={choice.action}
-                                    disabled={working || applying || stale}
-                                    onChange={(event) =>
-                                      setDecisions((current) => ({
-                                        ...current,
-                                        [item.id]:
-                                          event.target.value === 'change'
-                                            ? {
-                                                action: 'change',
-                                                path: assessment.path ?? item.path,
-                                              }
-                                            : {
-                                                action: event.target.value as 'keep' | 'inactive',
-                                              },
-                                      }))
-                                    }
-                                  >
-                                    <option value="keep">Keep current</option>
-                                    <option value="change">Change field</option>
-                                    <option value="inactive">Make inactive</option>
-                                  </select>
-                                  {choice.action === 'change' && (
-                                    <SearchableProfileFieldSelect
-                                      profile={profile}
-                                      includeEmpty
-                                      value={choice.path}
+                        <h4>
+                          <button
+                            type="button"
+                            aria-label={domain}
+                            aria-expanded={expanded}
+                            aria-controls={`${titleId}-site-${encodeURIComponent(domain)}`}
+                            disabled={applying}
+                            onClick={() => setExpandedSite(expanded ? null : domain)}
+                            className="flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-left hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50 dark:hover:bg-gray-700/40"
+                          >
+                            <span className="min-w-0 flex-1 break-all text-sm font-semibold text-gray-800 dark:text-gray-200">
+                              {domain}
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {siteCount} {siteCount === 1 ? 'mapping' : 'mappings'}
+                            </span>
+                            <ChevronDown
+                              aria-hidden="true"
+                              className={`h-4 w-4 shrink-0 text-gray-400 ${expanded ? 'rotate-180' : ''}`}
+                            />
+                          </button>
+                        </h4>
+                        <div
+                          id={`${titleId}-site-${encodeURIComponent(domain)}`}
+                          hidden={!expanded}
+                          className="divide-y divide-gray-200 px-4 pb-2 dark:divide-gray-700"
+                        >
+                          {group.map((item) => {
+                            const assessment = results[item.id];
+                            const verdict = verdicts[assessment.verdict];
+                            const choice = selectedDecisions[item.id];
+                            return (
+                              <section
+                                key={item.id}
+                                aria-label={`Review ${item.title}`}
+                                className="py-2.5 last:pb-0"
+                              >
+                                <div className="grid items-start gap-3 md:grid-cols-[minmax(0,1fr)_15rem] md:gap-5">
+                                  <div className="min-w-0">
+                                    <MappingReviewTitle text={item.question || item.title} />
+                                    <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
+                                      <dt className="text-gray-500 dark:text-gray-400">Current</dt>
+                                      <dd className="min-w-0 break-words text-gray-600 dark:text-gray-300">
+                                        {mappingDestination(item.path, labels)}
+                                        {item.status === 'Inactive' ? ' (Inactive)' : ''}
+                                      </dd>
+                                      <dt className="text-gray-500 dark:text-gray-400">
+                                        Review result
+                                      </dt>
+                                      <dd className={`min-w-0 break-words ${verdict.color}`}>
+                                        {verdict.label}
+                                      </dd>
+                                    </dl>
+                                  </div>
+                                  <div className="flex min-w-0 flex-col gap-2">
+                                    <select
+                                      aria-label={`Action for ${item.title}`}
+                                      className={fieldCls()}
+                                      value={choice.action}
                                       disabled={working || applying || stale}
-                                      onChange={(path) =>
+                                      onChange={(event) =>
                                         setDecisions((current) => ({
                                           ...current,
-                                          [item.id]: { action: 'change', path },
+                                          [item.id]:
+                                            event.target.value === 'change'
+                                              ? {
+                                                  action: 'change',
+                                                  path: assessment.path ?? item.path,
+                                                }
+                                              : {
+                                                  action: event.target.value as 'keep' | 'inactive',
+                                                },
                                         }))
                                       }
-                                    />
-                                  )}
+                                    >
+                                      <option value="keep">Keep current</option>
+                                      <option value="change">Change field</option>
+                                      <option value="inactive">Make inactive</option>
+                                    </select>
+                                    {choice.action === 'change' && (
+                                      <SearchableProfileFieldSelect
+                                        profile={profile}
+                                        includeEmpty
+                                        value={choice.path}
+                                        disabled={working || applying || stale}
+                                        onChange={(path) =>
+                                          setDecisions((current) => ({
+                                            ...current,
+                                            [item.id]: { action: 'change', path },
+                                          }))
+                                        }
+                                      />
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            </section>
-                          );
-                        })}
+                              </section>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               {attention.length > limit && (
@@ -527,22 +593,59 @@ export function MappingReviewDialog({
             </>
           )}
         </div>
-        <footer className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-gray-200 px-6 py-4 dark:border-gray-700">
+        <footer
+          className={
+            phase === 'analyzing'
+              ? 'flex shrink-0 flex-wrap justify-center gap-3 px-6 pb-8'
+              : 'flex shrink-0 flex-wrap justify-end gap-3 border-t border-gray-200 px-6 py-4 dark:border-gray-700'
+          }
+        >
           <button
             type="button"
             className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 active:scale-95 disabled:opacity-40 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
             disabled={applying}
             onClick={close}
           >
-            Close
+            {phase === 'results' && !attention.length ? 'Done' : 'Cancel'}
           </button>
-          {hasKey && (
+          {hasKey && phase === 'setup' && (
             <button
               type="button"
               className={primary}
+              disabled={loading || stale || !scoped.length}
+              onClick={() => void run()}
+            >
+              Analyze Mappings
+            </button>
+          )}
+          {hasKey && phase === 'analyzing' && error && !stale && (
+            <>
+              {!!completed.length && (
+                <button
+                  type="button"
+                  className={secondary}
+                  onClick={() => {
+                    setError(null);
+                    setPhase('results');
+                  }}
+                >
+                  Review Completed
+                </button>
+              )}
+              <button type="button" className={primary} onClick={() => void run()}>
+                Retry
+              </button>
+            </>
+          )}
+          {hasKey && phase === 'results' && !!attention.length && (
+            <button
+              type="button"
+              className={`inline-flex items-center justify-center gap-2 ${primary}`}
               disabled={!changes.length || working || applying || stale}
+              aria-busy={applying}
               onClick={() => void apply()}
             >
+              {applying && <LoaderCircle aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" />}
               {applying
                 ? 'Applying…'
                 : `Apply Changes${changes.length ? ` (${changes.length})` : ''}`}

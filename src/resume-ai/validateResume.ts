@@ -3,7 +3,7 @@ import { RESUME_PROFILE_PATHS, profileFieldPolicy } from '../profile/fieldPolici
 import { feedback } from '@/src/ui/feedback';
 import type { Profile } from '@/src/types/profile';
 import { findCountryByNameOrCode } from '@/src/data/countries';
-import { normalizeProfile } from '@/src/utils/migrate';
+import { normalizeProfile, migratePortfolio } from '@/src/utils/migrate';
 import { validateImportedProfile } from '@/src/utils/profileValidator';
 import { normalizeExtractedProfile } from './normalize';
 
@@ -35,7 +35,7 @@ function read(value: unknown, expected: Shape): unknown {
 
 export function validateResumeProfile(raw: unknown): Partial<Profile> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw invalid();
-  const clean = read(raw, shape) as Partial<Profile>;
+  const clean = read(migratePortfolio(raw as Partial<Profile>), shape) as Partial<Profile>;
   // Unknown dates stay blank; never invent education dates to satisfy editor requirements.
   const workStatuses = clean.workHistory?.map((entry) => entry.isCurrent);
   for (const entry of clean.workHistory ?? []) entry.isCurrent ??= false;

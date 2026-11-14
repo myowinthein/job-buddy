@@ -1,13 +1,22 @@
 import { calculateDerivedFields } from '../utils/derivedFields';
-import type { Profile } from '../types/profile';
+import type { DocumentFile, Profile } from '../types/profile';
+import { canonicalProfilePath } from '../utils/migrate';
 import { countryName } from '../data/countries';
 import { readProfilePath } from '../profile/fieldMetadata';
 import { WORK_AUTH_STATUS_LABELS } from '../data/workAuthorization';
 import { languageName, LANGUAGE_PROFICIENCY_LABELS } from '../data/languages';
 import { fmtYearMonth, fmtAmount, formatISODate, withCurrency } from '../utils/dateFormat';
 
+export function resolveProfileDocumentFile(profile: Profile, fieldPath: string | null): DocumentFile | undefined {
+  if (!fieldPath || !/^documents\.(cv|coverLetter|portfolio)\.file$/.test(fieldPath)) return undefined;
+  return readProfilePath(profile, fieldPath) as DocumentFile | undefined;
+}
+
 export function resolveProfileValue(profile: Profile, fieldPath: string): string {
   if (!fieldPath) return '';
+  fieldPath = canonicalProfilePath(fieldPath);
+  if (/^documents\.(cv|coverLetter|portfolio)\.file$/.test(fieldPath))
+    return resolveProfileDocumentFile(profile, fieldPath)?.name ?? '';
 
   if (fieldPath === 'derived.age' || fieldPath.startsWith('derived.totalExperience.')) {
     try {
@@ -112,13 +121,6 @@ export function resolveProfileValue(profile: Profile, fieldPath: string): string
       return `${np.value} ${unitLabel}${np.value !== 1 ? 's' : ''}`;
     }
 
-    case 'documents.cv.file': {
-      // Returns the filename for pipeline / mapper purposes only — used to
-      // ensure match.value is non-empty so a file input doesn't fall into the
-      // noData bucket. The actual upload reads the file payload from the
-      // profile directly via filler.fillFileField().
-      return profile.documents?.cv?.file?.name ?? '';
-    }
   }
 
   // Handle workAuthorization.N — indexed entry, returns specific status label.
@@ -218,7 +220,7 @@ export interface FlatProfileValue {
 // every non-empty string/number leaf as a (path, value) pair — used to match
 // a manually-typed value back to whichever profile field it most resembles,
 // independent of any prior field-match guess. Skips 'id' (not a real
-// answerable field) and documents.cv.file / documents.coverLetter.file (each
+// answerable field) and uploaded document files (each
 // a multi-MB base64 blob — never a meaningful comparison target). Only raw
 // stored values; does not include virtual/computed paths (phone.full,
 // address.countryName, formatted salary, etc.) that resolveProfileValue can
@@ -228,7 +230,7 @@ export function flattenProfileValues(profile: Profile): FlatProfileValue[] {
 
   function walk(node: unknown, path: string): void {
     if (node == null) return;
-    if (path === 'id' || path === 'documents.cv.file' || path === 'documents.coverLetter.file') return;
+    if (path === 'id' || /^documents\.[^.]+\.file$/.test(path)) return;
 
     if (typeof node === 'string') {
       if (node) out.push({ path, value: node });

@@ -353,12 +353,12 @@ describe('FIELD_DEFS display functions', () => {
     });
   });
 
-  describe('links.portfolio', () => {
+  describe('documents.portfolio.url', () => {
     it('returns the URL as-is', () => {
-      expect(display('links.portfolio', 'https://jane.dev')).toBe('https://jane.dev');
+      expect(display('documents.portfolio.url', 'https://jane.dev')).toBe('https://jane.dev');
     });
     it('returns "" for a null value', () => {
-      expect(display('links.portfolio', null)).toBe('');
+      expect(display('documents.portfolio.url', null)).toBe('');
     });
   });
 

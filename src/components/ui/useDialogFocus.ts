@@ -1,3 +1,4 @@
+import { getTabbableElements } from './focusableElements';
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 
 /** Move focus into a modal, contain keyboard navigation, and restore its opener. */
@@ -10,11 +11,7 @@ export function useDialogFocus(returnFocusRef?: RefObject<HTMLElement | null>) {
     dialog.focus({ preventScroll: true });
     const trapTab = (event: KeyboardEvent) => {
       if (event.key !== 'Tab') return;
-      const controls = Array.from(
-        dialog.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), a[href], summary, input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]',
-        ),
-      ).filter((element) => !element.hidden && getComputedStyle(element).display !== 'none');
+      const controls = getTabbableElements(dialog);
       const first = controls[0];
       const last = controls[controls.length - 1];
       const active = document.activeElement;
