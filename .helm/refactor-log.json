@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "assessed_commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
-  "full_scan_commit": "c6d10eaf598841af1000527fb54c52d5032c1969",
+  "assessed_commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+  "full_scan_commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
   "findings": [
     {
       "id": "r-5bd45a4c-b50a-4438-85c3-28d2faa8d1a3",
@@ -3084,6 +3084,358 @@
           }
         ]
       }
+    },
+    {
+      "id": "r-8bd58a50-099f-4378-9f9d-8587068aeea7",
+      "category": "Tests",
+      "summary": "Share the in-memory React fixture build contract across seven browser specs",
+      "paths": [
+        "src/browser/controlled-phone.pw.ts",
+        "src/browser/deferred-select.pw.ts",
+        "src/browser/education-choice.pw.ts",
+        "src/browser/history-calendar.pw.ts",
+        "src/browser/menu-address.pw.ts",
+        "src/browser/resume-parser.pw.ts",
+        "src/browser/searchable-select.pw.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15",
+        "priority": "medium",
+        "risk": "safe",
+        "reason": "Seven active browser regression specs repeat Vite configuration, output normalization, chunk lookup and missing-chunk handling, so fixture-loader changes require coordinated edits.",
+        "evidence": [
+          "The seven loaders use configFile:false, write:false, silent logging, IIFE library output and the same production define; controlled-phone builds inside its test while the other six use beforeAll. Four explicitly disable minification and three leave it unspecified."
+        ],
+        "invariant": "Preserve all scenario inputs/assertions, build options including omitted minify, first-output/first-chunk semantics, original error text and lifecycle timing; introduce no caching or filesystem output."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-af666347-2840-48ec-93f5-48a563e4788e",
+      "category": "Tests",
+      "summary": "Drain filler test writer and restore promises before teardown without moving existing observations",
+      "paths": [
+        "src/autofill/filler.test.ts",
+        "src/testing/clearField.ts",
+        "src/autofill/filler.ts",
+        "src/autofill/nativeSelectCommit.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15",
+        "priority": "medium",
+        "risk": "needs-review",
+        "reason": "Several unit cases finish while production write/restore timers and framework settlement remain pending, allowing work to continue into DOM and global teardown.",
+        "evidence": [
+          "filler.test.ts:206 discards fillField after waiting only for change; :451 discards fillCheckboxInput; :435,467,595,605,618,704,713,879 do not drain async clearFieldValue. Restore/native-select commit continue through reconciliation and settlement."
+        ],
+        "invariant": "Keep every existing synchronous assertion at its immediate observation point, the radio case's explicit microtask observation, and unsupported-DataTransfer synchronous no-throw assertion. Capture each operation once and drain it in finally before test teardown; preserve all fixtures, assertions, jsdom layer and production timing."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-5467a999-76f2-4c04-8734-2b5be538e9d4",
+      "category": "Architecture",
+      "summary": "Move the pure learned-mapping merge algorithm out of the storage service",
+      "paths": [
+        "src/utils/storage.ts",
+        "src/utils/learnedMappingData.ts",
+        "src/utils/backupImport.ts",
+        "src/testing/settingsSectionMocks.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "Pure backup-review construction depends on the storage service for one algorithm, forcing Settings mocks to maintain an inaccurate shallow-merge imitation.",
+        "evidence": [
+          "storage.ts:216-264 defines pure mergeLearnedMappings; backupImport.ts imports it only to build review changes; settingsSectionMocks.ts supplies a top-level spread imitation. Production direct callers are saveProfile and backupDataChanges."
+        ],
+        "invariant": "Move the algorithm unchanged into learnedMappingData, retain the storage compatibility export and import the pure owner in backupImport; remove only the now-unused mock imitation. Preserve mapping normalization, insertion order, local conflicts/inactive state, legacy trust, max counts, metadata precedence, locking and atomic writes."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-16fcbf2b-8bbc-4496-b660-e4efb6ab1760",
+      "category": "Performance",
+      "summary": "Lazily initialize repeated editor rows instead of rebuilding discarded initial state",
+      "paths": [
+        "src/components/options/LanguagesSection.tsx",
+        "src/components/options/LinksSection.tsx",
+        "src/components/options/WorkAuthorizationSection.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "Ordinary editor rerenders remap saved rows, normalize values and generate UUIDs whose results React discards after initial state setup.",
+        "evidence": [
+          "LanguagesSection.tsx:69, LinksSection.tsx:38 and WorkAuthorizationSection.tsx:53 eagerly evaluate row-array initializers. Education, WorkHistory and Salary already use initializer functions."
+        ],
+        "invariant": "Wrap the existing row expressions in lazy useState initializers. Preserve mount-time defaults/migration, stored rows, retained IDs, editing/deletion, draft tracking, profile replacement remounts and save payloads. No measured speedup is claimed."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-eb62704a-bfb6-4e7a-81f5-529e373bcdaa",
+      "category": "Consistency",
+      "summary": "Share the narrow select-like control classification used by rules and reporting",
+      "paths": [
+        "src/autofill/ruleContext.ts",
+        "src/autofill/ruleValue.ts",
+        "src/autofill/index.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "The same current adapter union is maintained independently for consent exclusion, country/authorization formatting and report kind.",
+        "evidence": [
+          "ruleContext.ts:22, ruleValue.ts:59 and index.ts:576 enumerate native select, role=combobox, aria-haspopup=listbox and menuSelect. Other adapter checks deliberately have different contracts."
+        ],
+        "invariant": "Extract only the equivalent union with absent-DOM and undefined-element guards; preserve short-circuit/adapter lookup order, form/root scope, consent, formatted values and report kinds. Do not change calling-code, region-replacement, readonly eligibility, AI/filler dispatch or discovery predicates. Add bounded characterization of existing categories."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-bfce6392-0abd-4d0d-b785-e7fa333c7031",
+      "category": "Consistency",
+      "summary": "Centralize the development Gemini sample-key sentinel",
+      "paths": [
+        "src/devtools/context.ts",
+        "src/devtools/session.ts",
+        "src/devtools/simulation.ts",
+        "src/devtools/surface.ts",
+        "src/devtools/sessionChrome.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "Four modules independently produce or discriminate the same sentinel that controls sample-state display and simulated versus native provider routing.",
+        "evidence": [
+          "The literal simulated-key occurs in session read/write/activate/restore logic, simulation seed, surface restoration and sessionChrome fetch routing. Existing lightweight context.ts can own the constant without provider initialization."
+        ],
+        "invariant": "Preserve the exact sentinel string, sample/native routing, saved-key restoration, state/tooltips, isolation, scope checks, errors, timing, storage events and Drive restrictions; retain independent literal test expectations and the intentionally distinct model defaults."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-050640f0-c541-4dde-93c7-a062a61a12b9",
+      "category": "Tests",
+      "summary": "Keep upload and availability regressions in their owning test suites",
+      "paths": [
+        "src/autofill/menuSelect.test.ts",
+        "src/autofill/fileChooser.test.ts",
+        "src/autofill/availability.test.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15",
+        "priority": "low",
+        "risk": "safe",
+        "reason": "Upload and date behavior is hidden in the menu-select suite, adding navigation and failure-discovery cost when those features change.",
+        "evidence": [
+          "menuSelect.test.ts:62-85 contains four hidden-file upload scenarios; :86-115 contains five available-date refresh/month-rollover scenarios unrelated to menuSelect."
+        ],
+        "invariant": "Move cases unchanged to fileChooser and availability suites with exact import/setup companions; preserve all nine names, fixtures/assertions, jsdom discovery, 200x40 geometry, local dates and fake-clock cleanup."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-36114d7d-5222-4195-96cc-481926bdbc27",
+      "category": "Tests",
+      "summary": "Align test descriptions with their preserved assertions",
+      "paths": [
+        "src/components/options/shared/useDateRangeValidation.test.ts",
+        "src/components/options/EducationSection.test.tsx",
+        "src/popup/App.test.tsx"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15",
+        "priority": "low",
+        "risk": "safe",
+        "reason": "Three descriptions contradict the guarantees their assertions and current implementation express, misleading readers of source and failure reports.",
+        "evidence": [
+          "The date-range case at :121 says it clears a conflict but asserts preservation; EducationSection.test.tsx says grade/coursework are no longer exposed although controls exist; popup App.test.tsx's final case says scanning is announced inside the button while asserting the status is outside."
+        ],
+        "invariant": "Rename only the three descriptions to state conflict preservation, saved optional-detail round-trip, and an accessible scanning button with separate announcement. Keep inputs, assertions, comments, timing, discovery and existing behavior unchanged."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-5d5a2baa-5fc1-4e76-9257-17a22d9b4d27",
+      "category": "Tests",
+      "summary": "Name the browser keyboard-focus helper for its actual operation",
+      "paths": [
+        "src/browser/keyboard-focus.pw.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15",
+        "priority": "low",
+        "risk": "safe",
+        "reason": "The name tabTo implies keyboard traversal although the helper explicitly focuses the requested locator, overstating what outline checks prove.",
+        "evidence": [
+          "keyboard-focus.pw.ts:5-9 waits a frame, presses Tab, calls control.focus and checks focus. Adjacent explicit Tab/Shift+Tab assertions test actual traversal independently."
+        ],
+        "invariant": "Rename the helper and same-file call sites to focusInKeyboardMode; preserve frame wait, Tab, explicit focus, all outline checks and real traversal assertions."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-21213273-325b-455e-8b8e-eda542da9775",
+      "category": "Tests",
+      "summary": "Release missing-data registry listeners in test teardown",
+      "paths": [
+        "src/autofill/noDataRegistry.test.ts",
+        "src/autofill/noDataRegistry.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15",
+        "priority": "low",
+        "risk": "safe",
+        "reason": "Document-level visibility listeners from earlier cases remain active and retain callbacks/fixtures during later cases.",
+        "evidence": [
+          "Five NoDataRegistry.test.ts cases call listen without stop/clear; afterEach only dispatches a visible event. NoDataRegistry.ts:46-57 removes listeners only in stop/clear."
+        ],
+        "invariant": "Use a local tracked-registry factory and afterEach clear every created registry before restoring visible state. Preserve all nine scenarios/assertions and listener idempotence, settle, reset-versus-clear behavior."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-76723098-cafe-40b9-8f67-2d881a14592a",
+      "category": "Tests",
+      "summary": "Give Quick Fill widget tests guaranteed resource teardown",
+      "paths": [
+        "src/quick-fill/quickFill.test.ts",
+        "src/quick-fill/widget.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15",
+        "priority": "low",
+        "risk": "safe",
+        "reason": "Several widget tests destroy resources only after assertions, so a failed assertion can leave host nodes, interval callbacks and observers active for subsequent cases.",
+        "evidence": [
+          "quickFill.test.ts mixes try/finally destruction with end-of-case widget.destroy after assertions; widget hosts attach to documentElement while beforeEach clears only body, and destroy releases activity timers and listeners."
+        ],
+        "invariant": "Register widgets through a local factory and destroy them in afterEach, preserving supplied actions/spies and every scenario/assertion. Leave product code unchanged and avoid broad test restructuring."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-a8bf53d2-e331-4a01-9b5d-fbaa0c975e99",
+      "category": "Tests",
+      "summary": "Reuse existing Gemini request and envelope helpers in the new incremental-batch regression",
+      "paths": [
+        "src/browser/incremental-ai.pw.ts",
+        "src/browser/fixtures.ts"
+      ],
+      "found": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15"
+      },
+      "assessment": {
+        "origin": "native",
+        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+        "date": "2026-11-15",
+        "priority": "low",
+        "risk": "safe",
+        "reason": "The newly added incremental-AI spec reintroduces a prompt parser and verbose response envelope already centralized for browser regressions.",
+        "evidence": [
+          "incremental-ai.pw.ts:15-43 repeats fixtures.ts autofillRequest/geminiResponse. The file did not exist at closure 5f5f4f89920a5e29f5ccb31508f1ec786c84b8c9 and was added by aa956ec; the earlier consolidation remains genuinely closed."
+        ],
+        "invariant": "Reuse existing fixture exports already imported by this spec; preserve field filtering/IDs, response contents/confidence, request counts, held-response timing, route registration, manual edits and Undo. Do not change the separately retained demoSupport stub or capture dependencies."
+      },
+      "state": "open",
+      "depends_on": [],
+      "recurrence_of": "r-eda250fc-e702-40b3-9690-04cea88110ef"
     }
   ]
 }
