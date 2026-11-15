@@ -483,6 +483,9 @@ pre code {
 }
 .footer-links--legal {
   margin-left: auto;
+  align-items: center;
+  gap: 8px 16px;
+  font-size: 14px;
 }
 .footer-links a {
   color: var(--muted);
@@ -490,6 +493,10 @@ pre code {
   white-space: nowrap;
 }
 .footer-links a:is(:hover, :focus-visible) {
+  color: var(--link);
+  text-decoration-line: underline;
+}
+.footer-links--legal a {
   color: var(--link);
   text-decoration-line: underline;
 }
