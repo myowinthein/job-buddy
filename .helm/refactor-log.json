@@ -3416,8 +3416,36 @@
         ],
         "invariant": "Rename only the three descriptions to state conflict preservation, saved optional-detail round-trip, and an accessible scanning button with separate announcement. Keep inputs, assertions, comments, timing, discovery and existing behavior unchanged."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "d3cf6d180d1d5721955abd4ba939f3ba0e8cd213",
+        "date": "2026-11-15",
+        "method": "runtime",
+        "evidence": [
+          "Three descriptions now accurately state preserved conflict errors, saved grade/description round-trip, and a scanning status separate from its button.",
+          "Only descriptions changed; all scenario inputs, assertions, comments, timing and discovery remain intact. No configured name filters or external references were found."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/components/options/shared/useDateRangeValidation.test.ts src/components/options/EducationSection.test.tsx src/popup/App.test.tsx --reporter=dot",
+            "scope": "Date-range validation, education and popup suites",
+            "outcome": "109 passed after renaming; these same scenarios also passed in the unchanged baseline."
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "Whole-project TypeScript under Node 22.20.0 / pnpm 11.7.0",
+            "outcome": "Passed after the changes, before code commit."
+          },
+          {
+            "command": "pnpm exec eslint src/components/options/shared/useDateRangeValidation.test.ts src/components/options/EducationSection.test.tsx src/popup/App.test.tsx src/browser/keyboard-focus.pw.ts",
+            "scope": "Four naming-only test files",
+            "outcome": "Passed without diagnostics."
+          }
+        ]
+      }
     },
     {
       "id": "r-5d5a2baa-5fc1-4e76-9257-17a22d9b4d27",
@@ -3443,8 +3471,36 @@
         ],
         "invariant": "Rename the helper and same-file call sites to focusInKeyboardMode; preserve frame wait, Tab, explicit focus, all outline checks and real traversal assertions."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "d3cf6d180d1d5721955abd4ba939f3ba0e8cd213",
+        "date": "2026-11-15",
+        "method": "runtime",
+        "evidence": [
+          "Renamed tabTo and its 15 same-file call sites to focusInKeyboardMode, accurately describing explicit focus under keyboard modality.",
+          "The helper body, frame wait, Tab key, explicit focus, outline checks and independent Tab/Shift+Tab navigation assertions are unchanged."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec playwright test src/browser/keyboard-focus.pw.ts",
+            "scope": "All nine keyboard-focus Chromium cases with the latest production build",
+            "outcome": "9 passed after renaming; the unchanged baseline also passed all nine."
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "Whole-project TypeScript under Node 22.20.0 / pnpm 11.7.0",
+            "outcome": "Passed after the changes, before code commit."
+          },
+          {
+            "command": "pnpm exec eslint src/components/options/shared/useDateRangeValidation.test.ts src/components/options/EducationSection.test.tsx src/popup/App.test.tsx src/browser/keyboard-focus.pw.ts",
+            "scope": "Four naming-only test files",
+            "outcome": "Passed without diagnostics."
+          }
+        ]
+      }
     },
     {
       "id": "r-21213273-325b-455e-8b8e-eda542da9775",
