@@ -3265,8 +3265,41 @@
         ],
         "invariant": "Wrap the existing row expressions in lazy useState initializers. Preserve mount-time defaults/migration, stored rows, retained IDs, editing/deletion, draft tracking, profile replacement remounts and save payloads. No measured speedup is claimed."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "6b33a456842ec4cd27589efde9b49e663b861310",
+        "date": "2026-11-15",
+        "method": "runtime",
+        "evidence": [
+          "Languages, custom links and work authorization now pass their unchanged row expressions as useState initializer functions, matching the existing education/work-history/salary pattern.",
+          "Only three lines changed. Mount-time defaults/migration, retained row IDs, editing/deletion and save payloads are preserved; ordinary rerenders no longer evaluate discarded row maps/UUID generation. No measured speedup is claimed."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/components/options/LanguagesSection.test.tsx src/components/options/LinksSection.test.tsx src/components/options/WorkAuthorizationSection.test.tsx --reporter=dot",
+            "scope": "Three editor suites covering saved/legacy rows, validation, additions, edits, deletion and save payloads",
+            "outcome": "37 passed after the initializer changes; these scenarios also passed in the unchanged baseline."
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "Whole-project TypeScript under Node 22.20.0 / pnpm 11.7.0",
+            "outcome": "Passed after the changes, before code commit."
+          },
+          {
+            "command": "pnpm exec eslint src/components/options/LanguagesSection.tsx src/components/options/LinksSection.tsx src/components/options/WorkAuthorizationSection.tsx",
+            "scope": "Three changed editor components",
+            "outcome": "Passed without diagnostics."
+          },
+          {
+            "command": "pnpm build",
+            "scope": "Production Chrome extension with the changed editor components",
+            "outcome": "Passed after the changes."
+          }
+        ]
+      }
     },
     {
       "id": "r-eb62704a-bfb6-4e7a-81f5-529e373bcdaa",
