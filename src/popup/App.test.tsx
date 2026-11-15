@@ -1023,7 +1023,7 @@ it('does not restore a cancelled choice from a delayed startup reply', async () 
   expect(screen.getByRole('button', { name: 'Fill Form' })).toHaveProperty('disabled', false);
 });
 
-it('announces scanning inside the button before polling transitions to filling', async () => {
+it('announces scanning separately from the button before polling transitions to filling', async () => {
   let finishScan!: (result: { preFilledCount: number }) => void;
   let finishFill!: (result: ReturnType<typeof statusResult>) => void;
   sendMessageMock.mockImplementation(async (_tabId, message) => {
