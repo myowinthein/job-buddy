@@ -28,7 +28,11 @@ test.beforeAll(async () => {
   `,
     ],
     {
-      env: { ...process.env, NODE_ENV: 'development' },
+      env: {
+        ...process.env,
+        NODE_ENV: 'development',
+        VITE_GOOGLE_DRIVE_CLIENT_ID: 'synthetic-browser-client.apps.googleusercontent.com',
+      },
       stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
     },
   );
