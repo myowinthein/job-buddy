@@ -35,6 +35,7 @@ import { ProfileRecoveryDialog, type ProfileRecovery } from '@/src/components/op
 import { assertImportCurrent } from '@/src/utils/importPolicy';
 import { applyChanges } from '@/src/resume-ai/parser';
 import { getScrollBehavior } from '@/src/utils/scrollBehavior';
+import { RetryNotice } from '@/src/components/ui/RetryNotice';
 
 type SectionId =
   | 'personal'
@@ -112,6 +113,8 @@ function App() {
   const initialTitle = useRef(document.title);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(readSidebar);
   const [loading, setLoading] = useState(true);
+  const [profileLoadError, setProfileLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [focusTarget, setFocusTarget] = useState<CompletionTarget | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [unsavedStatusVisible, setUnsavedStatusVisible] = useState(false);
@@ -150,7 +153,7 @@ function App() {
   const detailsBusy = useRef(false);
   const detailsAgain = useRef(false);
   useEffect(() => {
-    if (loading) return;
+    if (loading || profileLoadError) return;
     detailsLive.current = true;
     const applyDetailsRequest = async () => {
       if (document.visibilityState !== 'visible') return;
@@ -182,7 +185,7 @@ function App() {
       chrome.storage.onChanged.removeListener(changed);
       document.removeEventListener('visibilitychange', visible);
     };
-  }, [loading, showToast]);
+  }, [loading, profileLoadError, showToast]);
 
   useEffect(() => {
     // A fresh options tab can still open the last explicitly requested form from Tools.
@@ -222,15 +225,23 @@ function App() {
 
   // ── Load profile ────────────────────────────────────────────────────────────
   useEffect(() => {
-    getProfile()
+    let active = true;
+    getProfile({ rejectOnError: true })
       .then(async (p) => {
+        if (!active) return;
         setProfile(p ?? {});
+        setProfileLoadError(false);
         if (detailsQuery.current && initialDetailsSource.current !== null)
           await selectFillLog(initialDetailsSource.current).catch(() => { /* A retained closed-form report can still be displayed. */ });
       })
-      .catch((err) => { console.error('[Job Buddy] Failed to initialize profile:', err); })
-      .finally(() => { setLoading(false); });
-  }, []);
+      .catch((err) => {
+        if (!active) return;
+        console.error('[Job Buddy] Failed to initialize profile:', err);
+        setProfileLoadError(true);
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [loadAttempt]);
 
   // Skips the "autofocus first empty input" effect that would otherwise fire
   // on the section switch below, then focuses the specific target field once
@@ -253,6 +264,7 @@ function App() {
   // popup called openOptionsPage(), which just focused the existing tab
   // without a reload.
   const applyFocusTarget = useCallback(() => {
+    if (loading || profileLoadError) return;
     sessionGet('jb:focusOnLoad').then((r) => {
       const target = r?.['jb:focusOnLoad'];
       if (target == null) return;
@@ -264,7 +276,7 @@ function App() {
         focusGeminiKey();
       }
     });
-  }, [focusGeminiKey, navigateAndFocus]);
+  }, [loading, profileLoadError, focusGeminiKey, navigateAndFocus]);
 
   useEffect(() => {
     if (loading) return;
@@ -327,7 +339,7 @@ function App() {
 
   // ── Restore scroll + autofocus once after profile loads ─────────────────────
   useEffect(() => {
-    if (loading) return;
+    if (loading || profileLoadError) return;
     if (initialLoadDoneRef.current) return;
     initialLoadDoneRef.current = true;
     const raf = requestAnimationFrame(() => {
@@ -338,7 +350,7 @@ function App() {
       if (!skipAutoFocusRef.current) focusFirstEmpty(mainRef.current);
     });
     return () => cancelAnimationFrame(raf);
-  }, [loading]);
+  }, [loading, profileLoadError]);
 
   // ── Autofocus first empty input when navigating sections ────────────────────
   useEffect(() => {
@@ -472,6 +484,16 @@ function App() {
   const sectionProps = { profile, onSave: handleSave };
 
   const renderSection = () => {
+    if (profileLoadError) {
+      return (
+        <RetryNotice busy={loading} onRetry={() => {
+          setLoading(true);
+          setLoadAttempt((attempt) => attempt + 1);
+        }}>
+          {feedback.profileLoadFailed}
+        </RetryNotice>
+      );
+    }
     if (loading) {
       return (
         <div className="space-y-4">
@@ -505,10 +527,10 @@ function App() {
         onSelect={(id) => { navigateSection(id as SectionId); }}
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed((c) => !c)}
-        sectionCompletion={sectionCompletion}
+        sectionCompletion={loading || profileLoadError ? {} : sectionCompletion}
       />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <CompletionBanner
+        {!loading && !profileLoadError && <CompletionBanner
           percentage={completion.percentage}
           isCoreComplete={completion.isCoreComplete}
           optionalFieldsRemaining={completion.optionalFieldsRemaining}
@@ -516,9 +538,9 @@ function App() {
           missingGroups={completion.missingGroups}
           onNavigate={(sectionId) => { navigateAndFocus(sectionId as SectionId, getSectionStartTarget(sectionId)); }}
           onFocusField={handleFocusField}
-        />
+        />}
         <main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-8">
-          <div data-profile-section={activeSection} data-dev-ready={import.meta.env.DEV && !loading ? '' : undefined} className={SECTION_WIDTHS[activeSection] ?? 'max-w-2xl'}
+          <div data-profile-section={activeSection} data-dev-ready={import.meta.env.DEV && !loading && !profileLoadError ? '' : undefined} className={SECTION_WIDTHS[activeSection] ?? 'max-w-2xl'}
             onBlurCapture={() => {
               if (dirtyInputsRef.current.size > 0) setUnsavedStatusVisible(true);
             }}>

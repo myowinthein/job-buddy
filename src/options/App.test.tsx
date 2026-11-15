@@ -83,6 +83,7 @@ import { calculateDerivedFields } from '@/src/utils/derivedFields';
 import { syncProfileToDrive } from '@/src/utils/driveSync';
 import type { Profile } from '@/src/types/profile';
 import { stubScrolling } from '@/src/testing/jsdomLayout';
+import { feedback } from '@/src/ui/feedback';
 
 function renderApp() {
   render(
@@ -249,18 +250,66 @@ describe('options App — reload-after-import failure', () => {
 });
 
 describe('options App — initial profile load failure', () => {
-  it('degrades to an empty profile and finishes loading rather than hanging, on a getProfile rejection', async () => {
+  it('blocks editing after a failed load and recovers the saved profile on retry', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.mocked(getProfile).mockReset().mockRejectedValue(new Error('storage unavailable'));
+    vi.mocked(getProfile).mockRejectedValueOnce(new Error('storage unavailable'));
 
     renderApp();
 
-    // The app still renders past the loading state, with the section stub's
-    // fallback ("(empty)") — a rejected load must not leave the page stuck.
-    await waitFor(() => expect(screen.getByText('personal-section:(empty)')).toBeTruthy());
-    expect(consoleError).toHaveBeenCalledWith('[Job Buddy] Failed to initialize profile:', expect.any(Error));
+    expect((await screen.findByRole('alert')).textContent).toContain(feedback.profileLoadFailed);
+    expect(getProfile).toHaveBeenCalledWith({ rejectOnError: true });
+    expect(screen.queryByText(/personal-section/)).toBeNull();
+    expect(screen.queryByText('focus-city')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'open-settings' }));
+    expect(screen.queryByText('settings-section')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('settings-section')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(saveProfile).not.toHaveBeenCalled();
+    expect(syncProfileToDrive).not.toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalledWith(
+      '[Job Buddy] Failed to initialize profile:',
+      expect.any(Error),
+    );
 
     consoleError.mockRestore();
+  });
+
+  it('keeps Retry visible and disabled while pending, and allows another attempt after failure', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let rejectRetry!: (error: Error) => void;
+    vi.mocked(getProfile)
+      .mockRejectedValueOnce(new Error('storage unavailable'))
+      .mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectRetry = reject;
+          }),
+      );
+    renderApp();
+    const retry = await screen.findByRole('button', { name: 'Retry' });
+    fireEvent.click(retry);
+    expect(retry.hasAttribute('disabled')).toBe(true);
+    expect(retry.getAttribute('aria-busy')).toBe('true');
+    expect(screen.getByRole('alert').textContent).toContain(feedback.profileLoadFailed);
+    fireEvent.click(retry);
+    expect(getProfile).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      rejectRetry(new Error('still unavailable'));
+    });
+    expect(retry.hasAttribute('disabled')).toBe(false);
+    expect(screen.queryByText(/personal-section/)).toBeNull();
+    fireEvent.click(retry);
+    expect(await screen.findByText('personal-section:Jane')).toBeTruthy();
+    expect(saveProfile).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
+  it('allows a genuinely missing profile to open the new-profile editor', async () => {
+    vi.mocked(getProfile).mockResolvedValueOnce(null);
+    renderApp();
+    expect(await screen.findByText('personal-section:(empty)')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });
 

@@ -66,6 +66,7 @@ export const feedback = {
   mappingReviewMissingContext: 'The saved question does not provide enough context.',
   sectionSaveFailed: 'Could not save your changes. Try again.',
   profileStorageSaveFailed: 'Could not save your profile. Try again.',
+  profileLoadFailed: 'Could not load your profile. Your saved data has not been reset.',
   quickFillEmptyFieldsHint: 'Fill empty fields with your Job Buddy profile.',
   quickFillAllFieldsHint: 'Fill empty and existing fields with your Job Buddy profile.',
   driveDisconnectedKept: 'Drive disconnected. Your backup was kept.',

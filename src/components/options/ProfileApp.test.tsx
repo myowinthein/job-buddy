@@ -7,6 +7,7 @@ import { ToastProvider } from '@/src/components/ui/Toast';
 import { createPreviewChrome } from '@/src/preview/chrome';
 import { getProfile, saveProfile } from '@/src/utils/storage';
 import { stubJsdomLayout } from '@/src/testing/jsdomLayout';
+import { feedback } from '@/src/ui/feedback';
 
 vi.mock('@/src/components/options/SettingsSection', () => ({ SettingsSection: () => null }));
 vi.mock('@/src/components/options/ResumeImportSection', () => ({
@@ -43,6 +44,61 @@ async function openPersonal() {
   );
   return await screen.findByRole('textbox', { name: /First Name/ });
 }
+
+it.each(['read', 'migration'] as const)(
+  'preserves stored data after a profile %s failure and recovers it on Retry',
+  async (failure) => {
+    const saved = (await getProfile())!;
+    if (failure === 'migration') saved.id = '';
+    let blocked = true;
+    const preview = createPreviewChrome(saved, undefined, {
+      initialData: { learnedMappings: {}, untouched: 'keep this value' },
+      failWrite: () => (failure === 'migration' && blocked ? 'synthetic write failure' : undefined),
+    });
+    vi.stubGlobal('chrome', preview);
+    const originalGet = preview.storage.local.get;
+    vi.spyOn(preview.storage.local, 'get').mockImplementation((key, callback) => {
+      if (failure !== 'read' || key !== 'profile' || !blocked) return originalGet(key, callback);
+      queueMicrotask(() => {
+        preview.runtime.lastError = { message: 'synthetic read failure' };
+        try {
+          callback({});
+        } finally {
+          preview.runtime.lastError = undefined;
+        }
+      });
+    });
+    const readStored = () =>
+      new Promise<Record<string, unknown>>((resolve) => {
+        originalGet(null, resolve);
+      });
+    const before = await readStored();
+    const remove = vi.spyOn(preview.storage.local, 'remove');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(
+      <ToastProvider>
+        <App />
+      </ToastProvider>,
+    );
+
+    expect((await screen.findByRole('alert')).textContent).toContain(feedback.profileLoadFailed);
+    expect(screen.queryByRole('textbox', { name: /First Name/ })).toBeNull();
+    expect(await readStored()).toEqual(before);
+    expect(remove).not.toHaveBeenCalled();
+
+    blocked = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    const firstName = await screen.findByRole('textbox', { name: /First Name/ });
+    expect((firstName as HTMLInputElement).value).toBe(saved.personal.firstName);
+    expect(screen.queryByRole('alert')).toBeNull();
+    const after = await readStored();
+    expect((after.profile as Profile).personal).toEqual(saved.personal);
+    expect((after.profile as Profile).documents).toEqual(saved.documents);
+    expect(after.learnedMappings).toEqual(before.learnedMappings);
+    expect(after.untouched).toBe(before.untouched);
+    expect(remove).not.toHaveBeenCalled();
+  },
+);
 
 const categoryFocusCases: [string, string, (profile: Profile) => Profile][] = [
   ['Personal', 'field-firstName', (p) => ({ ...p, personal: { ...p.personal, email: '' } })],
