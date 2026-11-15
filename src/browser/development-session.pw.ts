@@ -37,7 +37,11 @@ test('development sessions share autofill and learning without changing saved da
     setInterval(() => {}, 1000);
   `,
     ],
-    { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe'] },
+    {
+      cwd: process.cwd(),
+      env: { ...process.env, NODE_ENV: 'development' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
   );
   await new Promise<void>((done, reject) => {
     const timeout = setTimeout(

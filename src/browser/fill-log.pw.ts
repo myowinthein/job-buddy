@@ -29,6 +29,7 @@ test('source navigation returns to an open form and reopens a fresh form after n
       }),
     )
     .toBe(true);
+  await back.blur();
   await back.focus();
   await expect(options.getByRole('tooltip')).toHaveText(url);
   await options.keyboard.press('Escape');
@@ -67,6 +68,7 @@ test('source navigation returns to an open form and reopens a fresh form after n
   ).toBeVisible();
   await expect(reopen).toBeVisible();
   await options.setViewportSize({ width: 390, height: 844 });
+  await reopen.blur();
   await reopen.focus();
   await expect(options.getByRole('tooltip')).toHaveText(url);
   const tip = await options.getByRole('tooltip').boundingBox();
@@ -245,9 +247,11 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
       animations: 'disabled',
     });
   await logPage.setViewportSize({ width: 375, height: 812 });
-  const narrowMethod = await methodRow.boundingBox();
-  const narrowScore = await scoreRow.boundingBox();
-  expect(narrowScore!.y).toBeGreaterThan(narrowMethod!.y);
+  await expect.poll(async () => {
+    const narrowMethod = await methodRow.boundingBox();
+    const narrowScore = await scoreRow.boundingBox();
+    return narrowScore!.y - narrowMethod!.y;
+  }).toBeGreaterThan(0);
   await expectCollapsedSidebar(logPage);
   expect(await fitsViewportWidth(logPage)).toBe(
     true,

@@ -8,18 +8,24 @@ const buildRoot = resolve('.output/chrome-mv3-dev-test');
 const extensionPath = resolve(buildRoot, 'chrome-mv3-dev');
 
 test.beforeAll(async () => {
-  // Earlier specs call Vite's build(), which leaves NODE_ENV=production in this process.
-  process.env.NODE_ENV = 'development';
-  // Production-manifest tests cannot cover WXT's dynamic serve-mode scripts.
-  const server = await createServer({
-    outDir: buildRoot,
-    webExt: { disabled: true },
-    dev: { server: { port: 4175, strictPort: true } },
-  });
+  const previousNodeEnv = process.env.NODE_ENV;
   try {
-    await server.start();
+    // Earlier specs call Vite's build(), which leaves NODE_ENV=production in this process.
+    process.env.NODE_ENV = 'development';
+    // Production-manifest tests cannot cover WXT's dynamic serve-mode scripts.
+    const server = await createServer({
+      outDir: buildRoot,
+      webExt: { disabled: true },
+      dev: { server: { port: 4175, strictPort: true } },
+    });
+    try {
+      await server.start();
+    } finally {
+      await server.stop();
+    }
   } finally {
-    await server.stop();
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
   }
 });
 
