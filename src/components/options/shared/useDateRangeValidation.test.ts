@@ -118,7 +118,7 @@ describe('useDateRangeValidation — handleDateBlur end-before-start (work histo
     expect(applyUpdate(setErrors)).toEqual({});
   });
 
-  it('clears a stale end-before-start conflict error once the range becomes valid', () => {
+  it('preserves an existing end-before-start conflict error when blur sees a valid range', () => {
     const { result, setErrors } = setup([{ startDate: '2020-06' }]);
     act(() => result.current.handleDateBlur(0, 'endDate', '06', '2020'));
     // Only required-date errors are treated as stale-clearable here —

@@ -2,7 +2,7 @@ import { test, expect, extensionUrl, geminiResponse, mappingReviewRequest, openP
 import { DEV_PROFILE } from '../utils/devProfile';
 import type { Locator } from '@playwright/test';
 
-async function tabTo(control: Locator) {
+async function focusInKeyboardMode(control: Locator) {
   await control.evaluate(() => new Promise(requestAnimationFrame));
   await control.page().keyboard.press('Tab');
   await control.focus();
@@ -35,13 +35,13 @@ test('keyboard outlines remain whole on sidebar rows and segmented settings', as
     for (const width of [390, 1280]) {
       await page.setViewportSize({ width, height: 900 });
       for (const button of await page.locator('#options-sidebar button:visible').all()) {
-        await tabTo(button);
+        await focusInKeyboardMode(button);
         await expectUnclippedOutline(button);
       }
       await page.getByRole('button', { name: 'Settings', exact: true }).click();
       for (const name of ['System', 'Light', 'Dark', 'On', 'Off']) {
         const button = page.getByRole('button', { name, exact: true });
-        await tabTo(button);
+        await focusInKeyboardMode(button);
         await expectUnclippedOutline(button);
       }
     }
@@ -54,7 +54,7 @@ test('the resume drop zone has a visible focus outline and its dialog traps keyb
   await page.getByRole('button', { name: 'Import Resume', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Import Resume', exact: true });
   const upload = dialog.getByRole('button', { name: /Drop your resume here/ });
-  await tabTo(upload);
+  await focusInKeyboardMode(upload);
   await expectUnclippedOutline(upload);
   const cancel = dialog.getByRole('button', { name: 'Cancel', exact: true });
   await cancel.focus();
@@ -74,7 +74,7 @@ test('popup result focus follows the notice card and short results remain scroll
     await extension.worker.evaluate(theme => chrome.storage.local.set({ themePreference: theme }), theme);
     for (const height of [240, 600]) {
       await popup.setViewportSize({ width: 380, height });
-      await tabTo(region);
+      await focusInKeyboardMode(region);
       await expectUnclippedOutline(region);
       const bounds = await region.evaluate(element => ({
         region: element.getBoundingClientRect().toJSON(),
@@ -101,10 +101,10 @@ test('each phone control has its own focus marker and entries have one header to
   const page = await context.newPage();
   await page.goto(extensionUrl(extension, 'options.html'));
   const prefix = page.getByRole('button', { name: 'Select country calling code' });
-  await tabTo(prefix);
+  await focusInKeyboardMode(prefix);
   await expectUnclippedOutline(prefix);
   const number = page.getByRole('textbox', { name: 'Phone number', exact: true });
-  await tabTo(number);
+  await focusInKeyboardMode(number);
   await expect(number).not.toHaveCSS('box-shadow', 'none');
   expect(await number.locator('..').evaluate(element => getComputedStyle(element).boxShadow)).toBe('none');
   for (const width of [390, 1280]) {
@@ -112,7 +112,7 @@ test('each phone control has its own focus marker and entries have one header to
     for (const section of ['Work Authorization', 'Work History', 'Education', 'Salary']) {
       await page.getByRole('button', { name: section, exact: true }).click();
       const toggle = page.locator('[data-entry-toggle]').first();
-      await tabTo(toggle);
+      await focusInKeyboardMode(toggle);
       await expectUnclippedOutline(toggle.locator('..'));
       const header = toggle.locator('..');
       await expect(header.locator('button[aria-expanded]')).toHaveCount(1);
@@ -136,23 +136,23 @@ test('focus spacing follows outlined, filled, icon and segmented control styles'
     await extension.worker.evaluate(theme => chrome.storage.local.set({ themePreference: theme }), theme);
     await page.getByRole('button', { name: 'Personal', exact: true }).click();
     const save = page.getByRole('button', { name: 'Save', exact: true });
-    await tabTo(save);
+    await focusInKeyboardMode(save);
     await expect(save).toHaveCSS('outline-offset', '2px');
     await page.getByRole('button', { name: 'Languages', exact: true }).click();
     const info = page.getByRole('button', { name: 'Proficiency guide', exact: true });
-    await tabTo(info);
+    await focusInKeyboardMode(info);
     await expect(info).toHaveCSS('outline-offset', '2px');
     await expect(info.locator('svg')).toHaveCSS('width', '14px');
     await expect(info).toHaveCSS('width', '24px');
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const appearance = page.getByRole('button', { name: 'System', exact: true });
-    await tabTo(appearance);
+    await focusInKeyboardMode(appearance);
     await expect(appearance).toHaveCSS('outline-offset', '-2px');
     await page.getByRole('button', { name: 'Import Resume', exact: true }).click();
     const cancel = page.getByRole('dialog', { name: 'Import Resume', exact: true })
       .getByRole('button', { name: 'Cancel', exact: true });
-    await tabTo(cancel);
+    await focusInKeyboardMode(cancel);
     await expect(cancel).toHaveCSS('outline-offset', '0px');
     await expectUnclippedOutline(cancel);
     await cancel.click();
@@ -173,7 +173,7 @@ test('Fill Details outlines cover row headers and fit individual matching stages
       const row = page.getByLabel('Field results').locator('details').first();
       const summary = row.locator('summary');
       await row.evaluate(element => { (element as HTMLDetailsElement).open = false; });
-      await tabTo(summary);
+      await focusInKeyboardMode(summary);
       const rowBox = (await row.boundingBox())!;
       const summaryBox = (await summary.boundingBox())!;
       expect(Math.abs(rowBox.height - summaryBox.height)).toBeLessThanOrEqual(1);
@@ -184,7 +184,7 @@ test('Fill Details outlines cover row headers and fit individual matching stages
       const stages = row.getByRole('list', { name: 'Matching stages' });
       await expect(stages).toBeVisible();
       for (const stage of await stages.locator('button:enabled').all()) {
-        await tabTo(stage);
+        await focusInKeyboardMode(stage);
         await expectUnclippedOutline(stage);
         await expect(stage).toHaveCSS('outline-offset', '2px');
         if (width === 1280) {
@@ -214,7 +214,7 @@ test('mapping site outlines cover headers and Edit stays beside Delete through c
       const site = page.getByRole('region', { name: 'Mappings for jobs.example.test' });
       const toggle = site.locator('h3 button');
       const header = site.locator('h3').locator('..');
-      await tabTo(toggle);
+      await focusInKeyboardMode(toggle);
       await expectUnclippedOutline(header);
       await expect(header).toHaveCSS('outline-offset', '-2px');
       if (await toggle.getAttribute('aria-expanded') === 'false') await toggle.click();
@@ -243,7 +243,7 @@ test('document upload buttons do not add invisible file-input keyboard stops', a
   await page.locator('main details').evaluateAll(details => { for (const item of details) if (item instanceof HTMLDetailsElement) item.open = true; });
   const uploads = page.getByRole('button', { name: /^(Upload file|Replace file)$/ });
   for (const button of await uploads.all()) {
-    await tabTo(button);
+    await focusInKeyboardMode(button);
     await page.keyboard.press('Tab');
     expect(await page.evaluate(() => document.activeElement?.matches('input[type="file"]'))).toBe(false);
   }

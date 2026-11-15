@@ -69,7 +69,7 @@ describe('EducationSection — initRow legacy-profile defaults', () => {
     }));
   });
 
-  it('preserves grade and description on save even though the form no longer exposes them', () => {
+  it('preserves saved grade and description on save', () => {
     const { onSave } = renderSection({
       education: [{
         institution: 'MIT', degree: 'BSc', fieldOfStudy: 'CS', startDate: '2014-09', endDate: '2018-05',
