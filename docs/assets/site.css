@@ -172,6 +172,27 @@ main {
 .intro {
   padding: 68px 0 44px;
 }
+.not-found {
+  max-width: calc(var(--reading-width) + 48px);
+  margin: 12vh auto;
+  padding: 24px;
+}
+.not-found-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.not-found .intro {
+  padding: 40px 0 0;
+}
+.not-found h1 {
+  font-size: clamp(32px, 4vw, 44px);
+  margin-bottom: 16px;
+}
+.not-found .lede {
+  font-size: 18px;
+}
 .intro-note {
   color: var(--muted);
   font-size: 14px;
