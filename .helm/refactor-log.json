@@ -3115,8 +3115,41 @@
         ],
         "invariant": "Preserve all scenario inputs/assertions, build options including omitted minify, first-output/first-chunk semantics, original error text and lifecycle timing; introduce no caching or filesystem output."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "27fdde4798b6e337c18b818384c73821f0971573",
+        "date": "2026-11-15",
+        "method": "runtime",
+        "evidence": [
+          "Seven specs now use buildFixtureScript; preserved the four explicit minify:false settings, three omitted minify settings, original errors and first-output/first-chunk selection.",
+          "Controlled phone still builds inside its test and the six other loaders remain in beforeAll; all scenario inputs, assertions and fixtures are unchanged."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec playwright test src/browser/controlled-phone.pw.ts src/browser/deferred-select.pw.ts src/browser/education-choice.pw.ts src/browser/history-calendar.pw.ts src/browser/menu-address.pw.ts src/browser/resume-parser.pw.ts src/browser/searchable-select.pw.ts src/browser/incremental-ai.pw.ts",
+            "scope": "src/browser/controlled-phone.pw.ts, src/browser/deferred-select.pw.ts, src/browser/education-choice.pw.ts, src/browser/history-calendar.pw.ts, src/browser/menu-address.pw.ts, src/browser/resume-parser.pw.ts, src/browser/searchable-select.pw.ts, src/browser/incremental-ai.pw.ts",
+            "outcome": "Passed all 14 existing browser tests; unchanged baseline also passed these cases."
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "Whole-project TypeScript under Node 22.20.0 / pnpm 11.7.0",
+            "outcome": "Passed after the changes, before code commit."
+          },
+          {
+            "command": "pnpm exec eslint src/browser/buildFixture.ts src/browser/controlled-phone.pw.ts src/browser/deferred-select.pw.ts src/browser/education-choice.pw.ts src/browser/history-calendar.pw.ts src/browser/menu-address.pw.ts src/browser/resume-parser.pw.ts src/browser/searchable-select.pw.ts src/browser/incremental-ai.pw.ts",
+            "scope": "The new fixture helper and eight changed browser specs",
+            "outcome": "Passed without diagnostics."
+          },
+          {
+            "command": "pnpm build",
+            "scope": "Production Chrome extension",
+            "outcome": "Passed baseline; reused for this test-only unit with unchanged production inputs."
+          }
+        ]
+      }
     },
     {
       "id": "r-af666347-2840-48ec-93f5-48a563e4788e",
@@ -3433,9 +3466,42 @@
         ],
         "invariant": "Reuse existing fixture exports already imported by this spec; preserve field filtering/IDs, response contents/confidence, request counts, held-response timing, route registration, manual edits and Undo. Do not change the separately retained demoSupport stub or capture dependencies."
       },
-      "state": "open",
+      "state": "resolved",
       "depends_on": [],
-      "recurrence_of": "r-eda250fc-e702-40b3-9690-04cea88110ef"
+      "recurrence_of": "r-eda250fc-e702-40b3-9690-04cea88110ef",
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "27fdde4798b6e337c18b818384c73821f0971573",
+        "date": "2026-11-15",
+        "method": "runtime",
+        "evidence": [
+          "incremental-ai reuses existing autofillRequest and geminiResponse exports; their parser and envelope match the removed implementations.",
+          "Batch counts, held response timing, manual-edit protection and Undo assertions are unchanged and passed in Chromium."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec playwright test src/browser/controlled-phone.pw.ts src/browser/deferred-select.pw.ts src/browser/education-choice.pw.ts src/browser/history-calendar.pw.ts src/browser/menu-address.pw.ts src/browser/resume-parser.pw.ts src/browser/searchable-select.pw.ts src/browser/incremental-ai.pw.ts",
+            "scope": "src/browser/controlled-phone.pw.ts, src/browser/deferred-select.pw.ts, src/browser/education-choice.pw.ts, src/browser/history-calendar.pw.ts, src/browser/menu-address.pw.ts, src/browser/resume-parser.pw.ts, src/browser/searchable-select.pw.ts, src/browser/incremental-ai.pw.ts",
+            "outcome": "Passed all 14 existing browser tests; unchanged baseline also passed these cases."
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "Whole-project TypeScript under Node 22.20.0 / pnpm 11.7.0",
+            "outcome": "Passed after the changes, before code commit."
+          },
+          {
+            "command": "pnpm exec eslint src/browser/buildFixture.ts src/browser/controlled-phone.pw.ts src/browser/deferred-select.pw.ts src/browser/education-choice.pw.ts src/browser/history-calendar.pw.ts src/browser/menu-address.pw.ts src/browser/resume-parser.pw.ts src/browser/searchable-select.pw.ts src/browser/incremental-ai.pw.ts",
+            "scope": "The new fixture helper and eight changed browser specs",
+            "outcome": "Passed without diagnostics."
+          },
+          {
+            "command": "pnpm build",
+            "scope": "Production Chrome extension",
+            "outcome": "Passed baseline; reused for this test-only unit with unchanged production inputs."
+          }
+        ]
+      }
     }
   ]
 }
