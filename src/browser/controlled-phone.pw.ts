@@ -1,4 +1,4 @@
-import { build } from 'vite';
+import { buildFixtureScript } from './buildFixture';
 import { test, expect, stubEmptyGemini } from './fixtures';
 import type { Profile } from '../types/profile';
 
@@ -8,23 +8,12 @@ test('retains controlled phone values, closes the portal and tints the visible f
   extension,
 }) => {
   await stubEmptyGemini(context);
-  const bundle = await build({
-    configFile: false,
-    logLevel: 'silent',
-    build: {
-      write: false,
-      minify: false,
-      lib: {
-        entry: 'src/browser/fixtures/controlled-phone.tsx',
-        formats: ['iife'],
-        name: 'PhoneFixture',
-      },
-    },
-    define: { 'process.env.NODE_ENV': JSON.stringify('production') },
+  const script = await buildFixtureScript({
+    entry: 'src/browser/fixtures/controlled-phone.tsx',
+    name: 'PhoneFixture',
+    missingChunkMessage: 'Missing phone fixture',
+    minify: false,
   });
-  const output = Array.isArray(bundle) ? bundle[0].output : 'output' in bundle ? bundle.output : [];
-  const script = output.find((item) => item.type === 'chunk');
-  if (!script || script.type !== 'chunk') throw new Error('Missing phone fixture');
   await extension.worker.evaluate(async () => {
     const { profile } = await chrome.storage.local.get<{ profile: Profile }>('profile');
     profile.personal.phone = { countryCode: 'TH', callingCode: '+66', number: '812345678' };
@@ -33,7 +22,7 @@ test('retains controlled phone values, closes the portal and tints the visible f
   await page.evaluate(() => {
     document.body.innerHTML = '<div id="root"></div>';
   });
-  await page.addScriptTag({ content: script.code });
+  await page.addScriptTag({ content: script });
   await expect(page.locator('#phone')).toBeVisible();
   await extension.send('AUTOFILL_SCAN');
   await extension.send('AUTOFILL_FILL', 'overwrite');

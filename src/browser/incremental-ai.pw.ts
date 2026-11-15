@@ -1,5 +1,4 @@
-import { test, expect } from './fixtures';
-import type { AIFieldPayload } from '../resume-ai/types';
+import { test, expect, autofillRequest, geminiResponse } from './fixtures';
 
 test('shows a fast AI batch while another is pending, then preserves a manual edit and supports Undo', async ({
   page,
@@ -12,32 +11,19 @@ test('shows a fast AI batch while another is pending, then preserves a manual ed
   });
   let batches = 0;
   await context.route('https://generativelanguage.googleapis.com/**', async (route) => {
-    const prompt = route.request().postDataJSON().contents[0].parts[0].text as string;
-    const fields = (
-      JSON.parse(prompt.slice(prompt.lastIndexOf('\n\n{') + 2)) as { fields: AIFieldPayload[] }
-    ).fields;
+    const { fields } = autofillRequest(route);
     batches++;
     if (fields.length < 20) await late;
     await route.fulfill({
-      json: {
-        candidates: [
+      json: geminiResponse(
+        JSON.stringify([
           {
-            content: {
-              parts: [
-                {
-                  text: JSON.stringify([
-                    {
-                      fieldId: fields[0].fieldId,
-                      profilePath: 'personal.firstName',
-                      confidence: 'high',
-                    },
-                  ]),
-                },
-              ],
-            },
+            fieldId: fields[0].fieldId,
+            profilePath: 'personal.firstName',
+            confidence: 'high',
           },
-        ],
-      },
+        ]),
+      ),
     });
   });
   await extension.worker.evaluate(() =>

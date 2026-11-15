@@ -1,27 +1,15 @@
-import { build } from 'vite';
+import { buildFixtureScript } from './buildFixture';
 import { test, expect, stubEmptyGemini } from './fixtures';
 import type { Profile, WorkAuthorizationStatus } from '../types/profile';
 
 let fixtureScript: string;
 test.beforeAll(async () => {
-  const bundle = await build({
-    configFile: false,
-    logLevel: 'silent',
-    build: {
-      write: false,
-      minify: false,
-      lib: {
-        entry: 'src/browser/fixtures/searchable-select.tsx',
-        formats: ['iife'],
-        name: 'SelectFixture',
-      },
-    },
-    define: { 'process.env.NODE_ENV': JSON.stringify('production') },
+  fixtureScript = await buildFixtureScript({
+    entry: 'src/browser/fixtures/searchable-select.tsx',
+    name: 'SelectFixture',
+    missingChunkMessage: 'Missing fixture',
+    minify: false,
   });
-  const output = Array.isArray(bundle) ? bundle[0].output : 'output' in bundle ? bundle.output : [];
-  const script = output.find((item) => item.type === 'chunk');
-  if (!script || script.type !== 'chunk') throw new Error('Missing fixture');
-  fixtureScript = script.code;
 });
 for (const [status, authorized, sponsor] of [
   ['requires_sponsorship', 'No', 'Yes'],

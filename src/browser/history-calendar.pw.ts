@@ -1,26 +1,14 @@
-import { build } from 'vite';
+import { buildFixtureScript } from './buildFixture';
 import { test, expect, stubEmptyGemini } from './fixtures';
 import type { Profile } from '../types/profile';
 
 let script: string;
 test.beforeAll(async () => {
-  const bundle = await build({
-    configFile: false,
-    logLevel: 'silent',
-    build: {
-      write: false,
-      lib: {
-        entry: 'src/browser/fixtures/history-calendar.tsx',
-        formats: ['iife'],
-        name: 'HistoryCalendarFixture',
-      },
-    },
-    define: { 'process.env.NODE_ENV': JSON.stringify('production') },
+  script = await buildFixtureScript({
+    entry: 'src/browser/fixtures/history-calendar.tsx',
+    name: 'HistoryCalendarFixture',
+    missingChunkMessage: 'Missing calendar fixture',
   });
-  const output = Array.isArray(bundle) ? bundle[0].output : 'output' in bundle ? bundle.output : [];
-  const chunk = output.find((item) => item.type === 'chunk');
-  if (!chunk || chunk.type !== 'chunk') throw new Error('Missing calendar fixture');
-  script = chunk.code;
 });
 test('floating fill handles scoped From/To dates, year-only widgets and closes calendars; Undo preserves manual edits', async ({
   context,
