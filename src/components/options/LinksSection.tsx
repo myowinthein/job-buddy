@@ -35,7 +35,7 @@ export function LinksSection({ profile, onSave }: Props) {
     dribbble: l?.dribbble ?? '',
     behance: l?.behance ?? '',
   });
-  const [custom, setCustom] = useState<LocalLink[]>(
+  const [custom, setCustom] = useState<LocalLink[]>(() =>
     l?.custom?.length ? l.custom.map((link) => ({ ...link, rowId: crypto.randomUUID() })) : [emptyLink()],
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
