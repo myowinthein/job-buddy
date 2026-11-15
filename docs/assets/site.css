@@ -177,21 +177,12 @@ main {
   margin: 12vh auto;
   padding: 24px;
 }
-.not-found-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-}
 .not-found .intro {
-  padding: 40px 0 0;
+  padding: 56px 0 44px;
 }
 .not-found h1 {
-  font-size: clamp(32px, 4vw, 44px);
-  margin-bottom: 16px;
-}
-.not-found .lede {
-  font-size: 18px;
+  font-size: clamp(36px, 4.5vw, 56px);
+  margin-bottom: 24px;
 }
 .intro-note {
   color: var(--muted);
