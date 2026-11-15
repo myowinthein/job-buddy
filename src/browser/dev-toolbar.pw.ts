@@ -160,7 +160,7 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     await expect(bar).toBeVisible();
     for (const width of [320, 390, 640, 1280]) {
       await page.setViewportSize({ width, height: 600 });
-      expect(await fitsViewportWidth(page)).toBe(true);
+      await expect.poll(() => fitsViewportWidth(page)).toBe(true);
       for (const button of await bar.getByRole('button').all()) {
         const rect = await button.boundingBox();
         expect(rect!.x).toBeGreaterThanOrEqual(0);

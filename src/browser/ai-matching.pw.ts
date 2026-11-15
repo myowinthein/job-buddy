@@ -202,7 +202,7 @@ test('a saved value absent from dropdown options is red rather than missing prof
 }) => {
   await page.locator('form').evaluate((form) => {
     form.innerHTML +=
-      '<label>Country of residence<select id="country" required><option value="">Choose</option><option value="JP">Japan</option></select></label>';
+      '<label>Country of residence<select id="country" required style="background-color:white"><option value="">Choose</option><option value="JP">Japan</option></select></label>';
   });
   await context.route('https://generativelanguage.googleapis.com/**', (route) =>
     route.fulfill({
