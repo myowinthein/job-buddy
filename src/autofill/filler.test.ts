@@ -203,8 +203,12 @@ describe('fillField — select: change event', () => {
       { text: 'Germany',  value: 'DE' },
     ]);
     const changed = waitChange(sel);
-    void fillField(sel, 'Germany');
-    await expect(changed).resolves.toBeUndefined();
+    const filling = fillField(sel, 'Germany');
+    try {
+      await expect(changed).resolves.toBeUndefined();
+    } finally {
+      await filling;
+    }
   });
 
   it('focuses the select before filling and dispatches a real FocusEvent blur after', async () => {
@@ -424,7 +428,7 @@ describe('fillField — text input (regression)', () => {
 });
 
 describe('clearFieldValue — text input', () => {
-  it('dispatches a real InputEvent with inputType "deleteContentBackward" on clear', () => {
+  it('dispatches a real InputEvent with inputType "deleteContentBackward" on clear', async () => {
     const el = document.createElement('input');
     el.type = 'text';
     el.value = 'existing';
@@ -432,31 +436,37 @@ describe('clearFieldValue — text input', () => {
     let captured: Event | null = null;
     el.addEventListener('input', (e) => { captured = e; });
 
-    clearFieldValue(el);
-
-    expect(captured).toBeInstanceOf(InputEvent);
-    expect((captured as unknown as InputEvent).inputType).toBe('deleteContentBackward');
-    expect(el.value).toBe('');
+    const clearing = clearFieldValue(el);
+    try {
+      expect(captured).toBeInstanceOf(InputEvent);
+      expect((captured as unknown as InputEvent).inputType).toBe('deleteContentBackward');
+      expect(el.value).toBe('');
+    } finally {
+      await clearing;
+    }
   });
 });
 
 describe('fillCheckboxInput', () => {
-  it('checks the box and dispatches change/input events', () => {
+  it('checks the box and dispatches change/input events', async () => {
     const el = document.createElement('input');
     el.type = 'checkbox';
     document.body.appendChild(el);
     let changed = false;
     el.addEventListener('change', () => { changed = true; });
 
-    fillCheckboxInput(el);
-
-    expect(el.checked).toBe(true);
-    expect(changed).toBe(true);
+    const filling = fillCheckboxInput(el);
+    try {
+      expect(el.checked).toBe(true);
+      expect(changed).toBe(true);
+    } finally {
+      await filling;
+    }
   });
 });
 
 describe('clearFieldValue — checkbox', () => {
-  it('unchecks the box rather than touching its value attribute', () => {
+  it('unchecks the box rather than touching its value attribute', async () => {
     const el = document.createElement('input');
     el.type = 'checkbox';
     el.checked = true;
@@ -464,10 +474,13 @@ describe('clearFieldValue — checkbox', () => {
     let changed = false;
     el.addEventListener('change', () => { changed = true; });
 
-    clearFieldValue(el);
-
-    expect(el.checked).toBe(false);
-    expect(changed).toBe(true);
+    const clearing = clearFieldValue(el);
+    try {
+      expect(el.checked).toBe(false);
+      expect(changed).toBe(true);
+    } finally {
+      await clearing;
+    }
   });
 });
 
@@ -592,11 +605,14 @@ describe('clearFieldValue — file input', () => {
     input.addEventListener('input',  () => { inputFired = true; });
     input.addEventListener('change', () => { changeFired = true; });
 
-    clearFieldValue(input);
-
-    expect(input.files?.length).toBe(0);
-    expect(inputFired).toBe(true);
-    expect(changeFired).toBe(true);
+    const clearing = clearFieldValue(input);
+    try {
+      expect(input.files?.length).toBe(0);
+      expect(inputFired).toBe(true);
+      expect(changeFired).toBe(true);
+    } finally {
+      await clearing;
+    }
   });
 
   it('does not throw when DataTransfer is unavailable (older/unsupported environments)', () => {
@@ -609,14 +625,18 @@ describe('clearFieldValue — file input', () => {
 // ── clearFieldValue — select ──────────────────────────────────────────────────
 
 describe('clearFieldValue — select', () => {
-  it('resets selectedIndex to 0', () => {
+  it('resets selectedIndex to 0', async () => {
     const sel = makeSelect([
       { text: 'A', value: 'a' },
       { text: 'B', value: 'b' },
     ]);
     sel.selectedIndex = 1;
-    clearFieldValue(sel);
-    expect(sel.selectedIndex).toBe(0);
+    const clearing = clearFieldValue(sel);
+    try {
+      expect(sel.selectedIndex).toBe(0);
+    } finally {
+      await clearing;
+    }
   });
 });
 
@@ -701,18 +721,26 @@ describe('clearFieldValue — ARIA textbox', () => {
     el.setAttribute('role', 'textbox');
     el.textContent = 'original';
     document.body.appendChild(el);
-    clearFieldValue(el);
-    expect(el.textContent).toBe('');
+    const clearing = clearFieldValue(el);
+    try {
+      expect(el.textContent).toBe('');
+    } finally {
+      await clearing;
+    }
   });
 
-  it('is a no-op for ARIA combobox (cannot reverse dropdown selection)', () => {
+  it('is a no-op for ARIA combobox (cannot reverse dropdown selection)', async () => {
     const el = document.createElement('div');
     el.setAttribute('role', 'combobox');
     el.textContent = 'Thailand';
     document.body.appendChild(el);
-    clearFieldValue(el); // must not throw
-    // textContent is NOT cleared for combobox
-    expect(el.textContent).toBe('Thailand');
+    const clearing = clearFieldValue(el); // must not throw
+    try {
+      // textContent is NOT cleared for combobox
+      expect(el.textContent).toBe('Thailand');
+    } finally {
+      await clearing;
+    }
   });
 });
 
@@ -876,10 +904,14 @@ describe('fill and clear ownership regressions', () => {
     const radio = document.createElement('input');
     radio.type = 'radio'; radio.name = 'authorization'; radio.value = 'yes'; radio.checked = true;
     document.body.appendChild(radio);
-    clearFieldValue(radio);
-    await Promise.resolve();
-    expect(radio.checked).toBe(false);
-    expect(radio.value).toBe('yes');
+    const clearing = clearFieldValue(radio);
+    try {
+      await Promise.resolve();
+      expect(radio.checked).toBe(false);
+      expect(radio.value).toBe('yes');
+    } finally {
+      await clearing;
+    }
   });
 
   it('selects an option for an input-button listbox trigger instead of rewriting its label', async () => {

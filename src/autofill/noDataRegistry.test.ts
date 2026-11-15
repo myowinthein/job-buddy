@@ -14,26 +14,36 @@ const setVisibility = (state: DocumentVisibilityState) => {
   document.dispatchEvent(new Event('visibilitychange'));
 };
 
-afterEach(() => setVisibility('visible'));
+const registries: NoDataRegistry[] = [];
+const createRegistry = (onVisible: () => void) => {
+  const registry = new NoDataRegistry(onVisible);
+  registries.push(registry);
+  return registry;
+};
+
+afterEach(() => {
+  for (const registry of registries.splice(0)) registry.clear();
+  setVisibility('visible');
+});
 
 describe('NoDataRegistry', () => {
   it('calls back when the tab becomes visible', () => {
     const onVisible = vi.fn();
-    new NoDataRegistry(onVisible).listen();
+    createRegistry(onVisible).listen();
     setVisibility('visible');
     expect(onVisible).toHaveBeenCalledTimes(1);
   });
 
   it('ignores the tab becoming hidden', () => {
     const onVisible = vi.fn();
-    new NoDataRegistry(onVisible).listen();
+    createRegistry(onVisible).listen();
     setVisibility('hidden');
     expect(onVisible).not.toHaveBeenCalled();
   });
 
   it('adds the listener only once', () => {
     const onVisible = vi.fn();
-    const registry = new NoDataRegistry(onVisible);
+    const registry = createRegistry(onVisible);
     registry.listen();
     registry.listen();
     setVisibility('visible');
@@ -42,7 +52,7 @@ describe('NoDataRegistry', () => {
 
   it('stops calling back after stop', () => {
     const onVisible = vi.fn();
-    const registry = new NoDataRegistry(onVisible);
+    const registry = createRegistry(onVisible);
     registry.listen();
     registry.stop();
     setVisibility('visible');
@@ -51,7 +61,7 @@ describe('NoDataRegistry', () => {
 
   it('keeps listening while an entry remains', () => {
     const onVisible = vi.fn();
-    const registry = new NoDataRegistry(onVisible);
+    const registry = createRegistry(onVisible);
     registry.add(entry());
     registry.listen();
     registry.settle();
@@ -61,7 +71,7 @@ describe('NoDataRegistry', () => {
 
   it('stops listening when settled with no entries', () => {
     const onVisible = vi.fn();
-    const registry = new NoDataRegistry(onVisible);
+    const registry = createRegistry(onVisible);
     registry.listen();
     registry.settle();
     setVisibility('visible');
@@ -69,7 +79,7 @@ describe('NoDataRegistry', () => {
   });
 
   it('keeps only the entries the predicate accepts', () => {
-    const registry = new NoDataRegistry(vi.fn());
+    const registry = createRegistry(vi.fn());
     const kept = entry();
     registry.add(kept);
     registry.add(entry());
@@ -79,7 +89,7 @@ describe('NoDataRegistry', () => {
 
   it('reset forgets entries but keeps listening', () => {
     const onVisible = vi.fn();
-    const registry = new NoDataRegistry(onVisible);
+    const registry = createRegistry(onVisible);
     registry.add(entry());
     registry.listen();
     registry.reset();
@@ -89,7 +99,7 @@ describe('NoDataRegistry', () => {
 
   it('clear forgets entries and stops listening', () => {
     const onVisible = vi.fn();
-    const registry = new NoDataRegistry(onVisible);
+    const registry = createRegistry(onVisible);
     registry.add(entry());
     registry.listen();
     registry.clear();

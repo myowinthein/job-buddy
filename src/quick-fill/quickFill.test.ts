@@ -133,10 +133,13 @@ it('ignores synthetic page clicks on all privileged widget actions', () => {
     position: vi.fn(),
   };
   const widget = new QuickFillWidget(actions);
-  const root = widget.host.shadowRoot!;
-  root.querySelectorAll<HTMLButtonElement>('button').forEach((button) => button.click());
-  for (const action of Object.values(actions)) expect(action).not.toHaveBeenCalled();
-  widget.destroy();
+  try {
+    const root = widget.host.shadowRoot!;
+    root.querySelectorAll<HTMLButtonElement>('button').forEach((button) => button.click());
+    for (const action of Object.values(actions)) expect(action).not.toHaveBeenCalled();
+  } finally {
+    widget.destroy();
+  }
 });
 
 it.each(['profile_setup_required', 'ai_setup_required', 'autofill_failed', 'page_changed'])(
@@ -200,12 +203,15 @@ it.each([
     settings() {},
     position() {},
   });
-  widget.render(result);
-  const message = widget.host.shadowRoot!.querySelector('[role="status"]')!;
-  expect(message.textContent).toBe(`11 filled, ${wording}`);
-  expect(message.querySelector('.attention')?.textContent).toBe(wording);
-  expect(message.firstElementChild?.textContent).toBe('11 filled');
-  widget.destroy();
+  try {
+    widget.render(result);
+    const message = widget.host.shadowRoot!.querySelector('[role="status"]')!;
+    expect(message.textContent).toBe(`11 filled, ${wording}`);
+    expect(message.querySelector('.attention')?.textContent).toBe(wording);
+    expect(message.firstElementChild?.textContent).toBe('11 filled');
+  } finally {
+    widget.destroy();
+  }
 });
 
 it.each([
@@ -223,14 +229,17 @@ it.each([
     settings: vi.fn(),
     position: vi.fn(),
   });
-  const root = widget.host.shadowRoot!;
-  // A later empty result must also clear details from a previous successful fill.
-  widget.render({ stage: 'completed', results: [{ totalScanned: 1, noReview: 1 }] } as never);
-  expect(root.querySelector<HTMLButtonElement>('.details')!.hidden).toBe(false);
-  widget.render({ stage: 'completed', results: [result] } as never);
-  expect(root.querySelector<HTMLButtonElement>('.details')!.hidden).toBe(hidden);
-  expect(root.querySelector<HTMLButtonElement>('.undo')!.hidden).toBe(true);
-  widget.destroy();
+  try {
+    const root = widget.host.shadowRoot!;
+    // A later empty result must also clear details from a previous successful fill.
+    widget.render({ stage: 'completed', results: [{ totalScanned: 1, noReview: 1 }] } as never);
+    expect(root.querySelector<HTMLButtonElement>('.details')!.hidden).toBe(false);
+    widget.render({ stage: 'completed', results: [result] } as never);
+    expect(root.querySelector<HTMLButtonElement>('.details')!.hidden).toBe(hidden);
+    expect(root.querySelector<HTMLButtonElement>('.undo')!.hidden).toBe(true);
+  } finally {
+    widget.destroy();
+  }
 });
 
 it.each(['merge', 'overwrite'] as const)('keeps confirmation quiet in %s mode', (fillMode) => {
