@@ -50,7 +50,7 @@ function initRow(raw: WorkAuthorizationEntry): LocalRow {
 }
 
 export function WorkAuthorizationSection({ profile, onSave }: Props) {
-  const [entries, setEntries] = useState<LocalRow[]>(
+  const [entries, setEntries] = useState<LocalRow[]>(() =>
     profile.workAuthorization?.length ? profile.workAuthorization.map(initRow) : [emptyRow()],
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
