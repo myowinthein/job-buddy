@@ -1,27 +1,15 @@
-import { build } from 'vite';
+import { buildFixtureScript } from './buildFixture';
 import { test, expect, stubEmptyGemini } from './fixtures';
 import type { Profile } from '../types/profile';
 
 let script: string;
 test.beforeAll(async () => {
-  const bundle = await build({
-    configFile: false,
-    logLevel: 'silent',
-    build: {
-      write: false,
-      minify: false,
-      lib: {
-        entry: 'src/browser/fixtures/deferred-select.tsx',
-        formats: ['iife'],
-        name: 'DeferredSelectFixture',
-      },
-    },
-    define: { 'process.env.NODE_ENV': JSON.stringify('production') },
+  script = await buildFixtureScript({
+    entry: 'src/browser/fixtures/deferred-select.tsx',
+    name: 'DeferredSelectFixture',
+    missingChunkMessage: 'Missing deferred select fixture',
+    minify: false,
   });
-  const output = Array.isArray(bundle) ? bundle[0].output : 'output' in bundle ? bundle.output : [];
-  const chunk = output.find((item) => item.type === 'chunk');
-  if (!chunk || chunk.type !== 'chunk') throw new Error('Missing deferred select fixture');
-  script = chunk.code;
 });
 
 test('commits a deferred React country value before blur, Undo, refill and Next', async ({

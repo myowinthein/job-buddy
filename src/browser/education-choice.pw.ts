@@ -1,26 +1,14 @@
-import { build } from 'vite';
+import { buildFixtureScript } from './buildFixture';
 import { test, expect, stubEmptyGemini } from './fixtures';
 import type { Profile } from '../types/profile';
 
 let script: string;
 test.beforeAll(async () => {
-  const bundle = await build({
-    configFile: false,
-    logLevel: 'silent',
-    build: {
-      write: false,
-      lib: {
-        entry: 'src/browser/fixtures/education-choice.tsx',
-        formats: ['iife'],
-        name: 'EducationChoiceFixture',
-      },
-    },
-    define: { 'process.env.NODE_ENV': JSON.stringify('production') },
+  script = await buildFixtureScript({
+    entry: 'src/browser/fixtures/education-choice.tsx',
+    name: 'EducationChoiceFixture',
+    missingChunkMessage: 'Missing education choice fixture',
   });
-  const output = Array.isArray(bundle) ? bundle[0].output : 'output' in bundle ? bundle.output : [];
-  const chunk = output.find((item) => item.type === 'chunk');
-  if (!chunk || chunk.type !== 'chunk') throw new Error('Missing education choice fixture');
-  script = chunk.code;
 });
 
 test('selects a loaded honours-degree equivalent without a failing search or wait; Undo restores the actual value', async ({
