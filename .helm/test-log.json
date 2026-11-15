@@ -648,15 +648,27 @@
       "reason": "About 55 specs (roughly 13k lines) check real focus, events, shadow DOM, dropdowns and extension coexistence that jsdom tests cannot show, and nothing runs them automatically, so a regression there is recoverable but can reach a release unseen. The 189 Vitest files protect most logic, and no escaped regression is evidenced. Whether manual-only is deliberate is not documented as a decision.",
       "action": "improve",
       "layer": "e2e",
-      "state": "open",
+      "state": "resolved",
       "assessed_commit": "1a3f5334feef218b2d066e1778946b1d9dfcb51e",
       "tests": [
         "src/browser/autofill.pw.ts",
         "src/browser/rule-matching.pw.ts"
       ],
-      "blocker": {
-        "kind": "clarification",
-        "note": "Owner intent unknown: manual gate by design or a missing CI step. Any CI or release workflow change needs its own reviewed scope, outside this test workflow."
+      "closure": {
+        "reason": "tested",
+        "refs": [
+          ".github/workflows/release.yml",
+          ".github/workflows/browser-tests.yml",
+          "package.json",
+          "playwright.config.ts",
+          "AGENTS.md",
+          "https://github.com/myowinthein/job-buddy/actions/runs/43684692545"
+        ],
+        "method": "runtime",
+        "outcome": "The owner-approved workflow choice runs browser tests automatically before release packaging and on demand through Browser tests. GitHub Actions run 43684692545 succeeded on the exact recorded source: 246 tests passed, 8 opt-in capture tests skipped, with no failures or flaky results. The release workflow contains the browser gate before production configuration and packaging; no release or Chrome Web Store upload was executed. AGENTS.md now describes these workflows.",
+        "commit": "ea614a20653ada7a8cc567b11eef15c78f8c76a1",
+        "command": "pnpm test:browser",
+        "scope": "Full GitHub Actions Browser tests workflow_dispatch run on ubuntu-latest, Chromium, one worker, source ea614a20653ada7a8cc567b11eef15c78f8c76a1."
       }
     },
     {
