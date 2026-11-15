@@ -1,4 +1,66 @@
 import { test, expect, extensionUrl } from './fixtures';
+import { feedback } from '../ui/feedback';
+import type { Profile } from '../types/profile';
+
+for (const theme of ['light', 'dark']) {
+  test(`profile load failure preserves data and supports keyboard retry in ${theme} mode`, async ({
+    context,
+    extension,
+  }) => {
+    await extension.worker.evaluate(async (theme) => {
+      await chrome.storage.local.set({ themePreference: theme });
+    }, theme);
+    const before = await extension.worker.evaluate(() => chrome.storage.local.get(null));
+    const options = await context.newPage();
+    await options.addInitScript(() => {
+      const original = chrome.storage.local.get.bind(chrome.storage.local);
+      (window as Window & { failProfileRead?: boolean }).failProfileRead = true;
+      chrome.storage.local.get = ((keys: unknown, ...args: unknown[]) => {
+        if (
+          keys === 'profile' &&
+          (window as Window & { failProfileRead?: boolean }).failProfileRead
+        )
+          throw new Error('Simulated profile read failure');
+        return (original as (keys: unknown, ...args: unknown[]) => unknown)(keys, ...args);
+      }) as typeof chrome.storage.local.get;
+    });
+    await options.goto(extensionUrl(extension, 'options.html'));
+    const retry = options.getByRole('button', { name: 'Retry', exact: true });
+    for (const width of [320, 768, 1280]) {
+      await options.setViewportSize({ width, height: 760 });
+      await expect(options.getByRole('alert')).toContainText(feedback.profileLoadFailed);
+      await expect(retry).toBeInViewport({ ratio: 1 });
+      await expect(options.getByRole('textbox', { name: /First Name/ })).toHaveCount(0);
+      expect(await options.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+    }
+    await retry.click();
+    await expect(retry).toBeEnabled();
+    await expect(options.getByRole('alert')).toContainText(feedback.profileLoadFailed);
+    expect(await extension.worker.evaluate(() => chrome.storage.local.get(null))).toEqual(before);
+
+    await options.evaluate(() => {
+      document.documentElement.style.zoom = '2';
+    });
+    await expect(retry).toBeInViewport({ ratio: 1 });
+    expect(await options.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await options.evaluate(() => {
+      document.documentElement.style.zoom = '';
+      (window as Window & { failProfileRead?: boolean }).failProfileRead = false;
+    });
+    await retry.focus();
+    await retry.press('Enter');
+    await expect(options.getByRole('textbox', { name: /First Name/ })).toHaveValue('Jane');
+    await expect(options.getByRole('alert')).toHaveCount(0);
+    const after = await extension.worker.evaluate(() => chrome.storage.local.get(null));
+    expect((after.profile as Profile).personal).toEqual((before.profile as Profile).personal);
+    expect((after.profile as Profile).documents).toEqual((before.profile as Profile).documents);
+    expect(after.learnedMappings).toEqual(before.learnedMappings);
+  });
+}
 
 test('experience validation is visible, and an empty profile cannot download an empty backup', async ({
   context,

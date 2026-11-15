@@ -28,7 +28,7 @@ export function RetryNotice({
               className="h-3 w-3 shrink-0 animate-spin motion-reduce:animate-none"
             />
           )}
-          {busy ? 'Retrying…' : 'Retry'}
+          Retry
         </button>
       </div>
     </Notice>
