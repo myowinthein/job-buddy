@@ -3178,8 +3178,36 @@
         ],
         "invariant": "Keep every existing synchronous assertion at its immediate observation point, the radio case's explicit microtask observation, and unsupported-DataTransfer synchronous no-throw assertion. Capture each operation once and drain it in finally before test teardown; preserve all fixtures, assertions, jsdom layer and production timing."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "bcb97f450f35dcfd3fd097bd3bf9a41098308696",
+        "date": "2026-11-15",
+        "method": "runtime",
+        "evidence": [
+          "Nine pending filler/clear operations are captured once and awaited in finally before teardown, with all prior immediate/event assertions and the radio case's explicit microtask observation preserved.",
+          "The unsupported-DataTransfer synchronous no-throw case remains unchanged: restore throws before scheduling work and clearFieldValue catches it. No production helpers, waits or timeouts changed."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/autofill/filler.test.ts src/autofill/scanner.regression.test.ts src/autofill/noDataRegistry.test.ts src/quick-fill/quickFill.test.ts --reporter=dot",
+            "scope": "Four jsdom suites covering filler, shared clear helper consumers, registry and widget",
+            "outcome": "134 passed; all scenario inputs and assertions retained; the same suites passed in the 280-test baseline."
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "Whole-project TypeScript under Node 22.20.0 / pnpm 11.7.0",
+            "outcome": "Passed after the changes, before code commit."
+          },
+          {
+            "command": "pnpm exec eslint src/autofill/filler.test.ts src/autofill/noDataRegistry.test.ts src/quick-fill/quickFill.test.ts",
+            "scope": "Three changed test files",
+            "outcome": "Passed without diagnostics."
+          }
+        ]
+      }
     },
     {
       "id": "r-5467a999-76f2-4c04-8734-2b5be538e9d4",
@@ -3410,8 +3438,36 @@
         ],
         "invariant": "Use a local tracked-registry factory and afterEach clear every created registry before restoring visible state. Preserve all nine scenarios/assertions and listener idempotence, settle, reset-versus-clear behavior."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "bcb97f450f35dcfd3fd097bd3bf9a41098308696",
+        "date": "2026-11-15",
+        "method": "runtime",
+        "evidence": [
+          "All nine registry test instances use a local tracked factory; afterEach clears them before restoring visibility, releasing document listeners even after assertion failures.",
+          "Listener idempotence, stop/settle behavior, entries, reset-versus-clear assertions and the production registry are unchanged."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/autofill/filler.test.ts src/autofill/scanner.regression.test.ts src/autofill/noDataRegistry.test.ts src/quick-fill/quickFill.test.ts --reporter=dot",
+            "scope": "Four jsdom suites covering filler, shared clear helper consumers, registry and widget",
+            "outcome": "134 passed; all scenario inputs and assertions retained; the same suites passed in the 280-test baseline."
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "Whole-project TypeScript under Node 22.20.0 / pnpm 11.7.0",
+            "outcome": "Passed after the changes, before code commit."
+          },
+          {
+            "command": "pnpm exec eslint src/autofill/filler.test.ts src/autofill/noDataRegistry.test.ts src/quick-fill/quickFill.test.ts",
+            "scope": "Three changed test files",
+            "outcome": "Passed without diagnostics."
+          }
+        ]
+      }
     },
     {
       "id": "r-76723098-cafe-40b9-8f67-2d881a14592a",
@@ -3438,8 +3494,36 @@
         ],
         "invariant": "Register widgets through a local factory and destroy them in afterEach, preserving supplied actions/spies and every scenario/assertion. Leave product code unchanged and avoid broad test restructuring."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "bcb97f450f35dcfd3fd097bd3bf9a41098308696",
+        "date": "2026-11-15",
+        "method": "runtime",
+        "evidence": [
+          "The three previously unprotected widget construction sites now destroy in finally. All other sites already protected cleanup and remain unchanged.",
+          "Supplied actions/spies, scanner exclusion, summaries, status, blocking, details and button assertions are preserved; no product changes or new fixture abstraction."
+        ],
+        "checks": [
+          {
+            "command": "pnpm exec vitest run src/autofill/filler.test.ts src/autofill/scanner.regression.test.ts src/autofill/noDataRegistry.test.ts src/quick-fill/quickFill.test.ts --reporter=dot",
+            "scope": "Four jsdom suites covering filler, shared clear helper consumers, registry and widget",
+            "outcome": "134 passed; all scenario inputs and assertions retained; the same suites passed in the 280-test baseline."
+          },
+          {
+            "command": "pnpm compile",
+            "scope": "Whole-project TypeScript under Node 22.20.0 / pnpm 11.7.0",
+            "outcome": "Passed after the changes, before code commit."
+          },
+          {
+            "command": "pnpm exec eslint src/autofill/filler.test.ts src/autofill/noDataRegistry.test.ts src/quick-fill/quickFill.test.ts",
+            "scope": "Three changed test files",
+            "outcome": "Passed without diagnostics."
+          }
+        ]
+      }
     },
     {
       "id": "r-a8bf53d2-e331-4a01-9b5d-fbaa0c975e99",
