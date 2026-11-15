@@ -27,7 +27,10 @@ test.beforeAll(async () => {
     });
   `,
     ],
-    { stdio: ['pipe', 'pipe', 'pipe', 'ipc'] },
+    {
+      env: { ...process.env, NODE_ENV: 'development' },
+      stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+    },
   );
   await new Promise<void>((resolveReady, reject) => {
     let output = '';

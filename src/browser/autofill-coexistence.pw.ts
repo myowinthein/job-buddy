@@ -356,6 +356,7 @@ for (const owner of ['live', 'dev'] as const) {
       expect((await start(h[`${peer}Popup`], h.tabId)).stage).toBe('completed');
       await h[`${peer}Popup`].close();
       const peerPopup = await openPinnedPopup(h.context, h[peer].url(), h.tabId);
+      await expect(peerPopup.getByRole('button', { name: 'Fill Form', exact: true })).toBeEnabled();
       const previous = await peerPopup.getByRole('region', { name: 'Fill results' }).textContent();
       const peerWidget = h.page.locator(
         `[data-job-buddy-owner="${new URL(h[peer].url()).hostname}"]`,
