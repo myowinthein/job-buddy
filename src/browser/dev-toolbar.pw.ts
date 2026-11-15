@@ -158,7 +158,10 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     await page.goto(new URL('options.html', worker.url()).href);
     const bar = page.getByRole('complementary', { name: 'Development controls' });
     await expect(bar).toBeVisible();
-    for (const width of [320, 390, 640, 1280]) {
+    for (const [width, font] of [
+      [320, ''], [390, ''], [640, ''], [1280, ''], [320, 'monospace'],
+    ] as const) {
+      await bar.evaluate((element, font) => { element.style.fontFamily = font; }, font);
       await page.setViewportSize({ width, height: 600 });
       await expect.poll(() => fitsViewportWidth(page)).toBe(true);
       for (const button of await bar.getByRole('button').all()) {
@@ -167,6 +170,7 @@ test('the dev bar previews profiles and missing keys without changing saved exte
         expect(rect!.x + rect!.width).toBeLessThanOrEqual(width);
       }
     }
+    await bar.evaluate(element => { element.style.removeProperty('font-family'); });
     await page.setViewportSize({ width: 1280, height: 900 });
     await expect(page.getByRole('button', { name: 'Dev Tools', exact: true })).toHaveCount(0);
     await expect(page.getByLabel('First Name', { exact: false })).toBeVisible();

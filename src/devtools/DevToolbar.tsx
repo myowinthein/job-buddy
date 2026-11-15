@@ -4,7 +4,7 @@ import type { DevSurface, SurfaceState } from './surface';
 
 const PROFILE_OPTIONS = [{ id: 'original', label: 'Original' }, ...PROFILE_PRESETS] as const;
 const groupCls =
-  'inline-flex shrink-0 overflow-hidden rounded-md border border-amber-400 bg-white/70 divide-x divide-amber-300 dark:border-amber-700 dark:bg-amber-900/50 dark:divide-amber-700';
+  'inline-flex min-w-0 max-w-full overflow-hidden rounded-md border border-amber-400 bg-white/70 divide-x divide-amber-300 dark:border-amber-700 dark:bg-amber-900/50 dark:divide-amber-700';
 const optionCls = (selected: boolean) =>
   `px-2.5 py-1 transition-colors first:rounded-l-sm last:rounded-r-sm focus-visible:relative focus-visible:z-10 focus-visible:-outline-offset-2 dark:aria-pressed:focus-visible:outline-white ${selected ? 'bg-amber-200 font-medium dark:bg-amber-700' : 'hover:bg-amber-100 dark:hover:bg-amber-800'}`;
 
@@ -142,7 +142,7 @@ export default function DevToolbar({
       className="relative z-[60] shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100"
     >
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3">
           <span
             title={
               context
