@@ -353,14 +353,11 @@ test('command tabs support keyboard navigation, copying and links to hidden inst
   await page.keyboard.press('End');
   await expect(tabs.getByRole('tab', { name: 'Capture', exact: true })).toBeFocused();
   await page.locator('#website-captures > summary').click();
-  await page.getByRole('button', { name: 'Copy capture preview command' }).click();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-    '# Terminal 1 (keep running)\npnpm dev:preview',
-  );
-  await page.getByRole('button', { name: 'Copy website capture commands' }).click();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-    '# Terminal 2\npnpm build\nnode scripts/capture-site.mjs',
-  );
+  await page.getByRole('button', { name: 'Copy website capture command' }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('node scripts/capture-site.mjs');
+  await page.locator('#promo-captures > summary').click();
+  await page.getByRole('button', { name: 'Copy promo capture command' }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('pnpm capture:promo');
   await page.goto(origin + prefix + 'developers/#preview-commands');
   await expect(tabs.getByRole('tab', { name: 'Develop', exact: true })).toHaveAttribute('aria-selected', 'true');
   await tabs.getByRole('tab', { name: 'Capture', exact: true }).click();
@@ -374,9 +371,9 @@ test('command tabs support keyboard navigation, copying and links to hidden inst
   await expect(page.locator('#browser-commands > summary')).toBeInViewport();
   await page.evaluate(() => { location.hash = '#demo'; });
   await expect(tabs.getByRole('tab', { name: 'Capture', exact: true })).toHaveAttribute('aria-selected', 'true');
-  await page.getByRole('button', { name: 'Copy demo capture commands' }).click();
+  await page.getByRole('button', { name: 'Copy demo screenshot command' }).click();
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-    'pnpm build\nnode scripts/capture-demo.mjs\nnode scripts/capture-demo-motion.mjs',
+    'node scripts/capture-demo.mjs',
   );
   await page.goBack();
   await expect(tabs.getByRole('tab', { name: 'Check', exact: true })).toHaveAttribute('aria-selected', 'true');

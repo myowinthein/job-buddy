@@ -24,7 +24,7 @@ Use Node 22 (`.nvmrc`) and pnpm 11.7.0 (`package.json`).
 - `pnpm format`: Prettier writes; scope formatting to the task.
 - `pnpm serve:landing`: serve `docs/`.
 - `pnpm dev:preview`: serves the source UI with synthetic data at `127.0.0.1:4173`, without the extension or `VITE_*` keys. `pnpm test:browser`: builds, then runs the Playwright specs in `src/browser/*.pw.ts` with one worker. The release workflow runs them before packaging; the Browser tests workflow runs them on demand on GitHub.
-- `scripts/capture-site.mjs` refreshes website screenshots (needs `cwebp`, `pnpm build` and `pnpm dev:preview`); `capture-demo.mjs` and `capture-demo-motion.mjs` re-record the demo after `pnpm build`. Review captures before committing.
+- Capture commands are `node scripts/capture-demo.mjs`, `node scripts/capture-site.mjs`, `node scripts/capture-demo-motion.mjs` and `pnpm capture:promo`. They report changes and ask for confirmation, prepare the build, and start or reuse the isolated preview when needed. `--check` reports only; `--yes` confirms a reviewed non-interactive run. Website captures need `cwebp`; videos need FFmpeg/FFprobe. Promo narration uses local Kokoro. Review outputs before committing.
 - User guidance is in `docs/index.html`; developer and integration setup is in `docs/developers/index.html`. The env template is `.env.example`.
 
 CI runs compile, lint, unit tests, and build on branch pushes/PRs. Release tags run a separate workflow with compile, lint, unit tests, browser tests, zip, Chrome Web Store upload, and GitHub release creation.

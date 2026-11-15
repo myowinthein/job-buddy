@@ -1,0 +1,241 @@
+{
+  "voice": "af_heart",
+  "speed": 1,
+  "chapters": [
+    {
+      "id": "intro",
+      "title": "Meet Alex",
+      "inputs": [
+        "docs/demo",
+        "src/quick-fill"
+      ],
+      "scenes": [
+        {
+          "id": "intro-form",
+          "text": "Meet Alex, a frontend engineer looking for a new role. Each day brings another application, with the same name, contact information and work experience to enter again."
+        },
+        {
+          "id": "intro-typing",
+          "text": "Typing those details over and over takes time and interrupts the job search. Alex wants to spend more time choosing suitable roles and preparing thoughtful answers."
+        },
+        {
+          "id": "intro-profile",
+          "text": "Job Buddy is an AI-assisted Chrome extension that keeps a reusable profile in the browser. Alex can import a resume, review the details and use them across supported application forms."
+        }
+      ]
+    },
+    {
+      "id": "setup",
+      "title": "Set up Job Buddy",
+      "inputs": [
+        "src/components/options/PersonalSection.tsx",
+        "src/components/options/CompletionBanner.tsx",
+        "src/components/options/GeminiSettings.tsx",
+        "src/utils/profileCompletion.ts"
+      ],
+      "scenes": [
+        {
+          "id": "install",
+          "external": "install-and-pin.mp4",
+          "text": "Alex adds Job Buddy from the Chrome Web Store, confirms the installation and pins its icon through Chrome's extensions menu. The pinned icon provides quick access while browsing job applications."
+        },
+        {
+          "id": "setup-profile",
+          "text": "The profile is organised into categories. Amber dots identify sections with missing required details. Green ticks show sections whose required details are complete. The progress bar follows those required details."
+        },
+        {
+          "id": "setup-missing",
+          "text": "The missing-details button lists what remains. Clicking a field takes Alex directly to its section. Autofill becomes available with a valid saved first name, email and Gemini setup. Optional details provide more information for matching."
+        },
+        {
+          "id": "gemini",
+          "external": "gemini-setup.mp4",
+          "text": "Alex opens Google AI Studio, signs in with a Google account and creates an API key. Gemini offers free usage within its current limits. Alex's key stays in the browser and is excluded from profile backups."
+        },
+        {
+          "id": "setup-key",
+          "text": "In Settings, Alex enters the key in AI Features and saves it. Job Buddy checks the key and finds a working model. The ready indicator confirms setup. Model options allow a different choice, and temporary model failures can trigger a fallback."
+        }
+      ]
+    },
+    {
+      "id": "resume",
+      "title": "Import a resume",
+      "inputs": [
+        "src/components/options/ResumeImportSection.tsx",
+        "src/components/options/ResumeImportDialogs.tsx",
+        "src/components/shared",
+        "src/resume-ai"
+      ],
+      "scenes": [
+        {
+          "id": "resume-upload",
+          "text": "Alex could type each profile field, but importing a resume provides a starting point. With Gemini configured, Alex opens Import Resume and chooses the resume file."
+        },
+        {
+          "id": "resume-analyze",
+          "text": "Analyze Resume sends the document to Gemini for extraction. The progress dialog shows the analysis. Extracted details are held for review before the profile is updated."
+        },
+        {
+          "id": "resume-summary",
+          "text": "Alex can keep the current profile, import all incoming details or review individual changes. If the identity differs, Job Buddy also asks whether to update the profile or replace it with the incoming person's details."
+        },
+        {
+          "id": "resume-review",
+          "text": "The review groups changes by profile section. Alex can choose individual entries, compare changed values and leave unwanted details out. New entries show the incoming information directly."
+        },
+        {
+          "id": "resume-apply",
+          "text": "Alex imports the selected details and checks the profile. Required information missing from the resume can be added by hand. The progress indicator reaches one hundred percent when all required details are complete."
+        }
+      ]
+    },
+    {
+      "id": "autofill",
+      "title": "Fill an application",
+      "inputs": [
+        "src/autofill",
+        "src/quick-fill",
+        "entrypoints/popup",
+        "src/components/popup",
+        "src/components/options/QuickFillSettings.tsx",
+        "docs/demo"
+      ],
+      "scenes": [
+        {
+          "id": "autofill-popup",
+          "text": "On a job application, Alex opens Job Buddy from the toolbar and clicks Fill Form. Once filling starts, the popup can close while the extension continues working in the background."
+        },
+        {
+          "id": "autofill-choice",
+          "text": "When answers already exist, the popup offers a choice. Empty fields only preserves existing answers. Empty and existing fields fills both using the saved profile. Alex reviews the result before submitting the application."
+        },
+        {
+          "id": "autofill-undo",
+          "text": "Undo restores the values from before Job Buddy filled the form, while preserving later manual edits where possible. This is useful when Alex wants to try a different fill mode."
+        },
+        {
+          "id": "autofill-quick",
+          "text": "Quick Fill appears when Job Buddy detects an application form. Alex can fill directly from this floating control, drag its handle to move it, and open its menu to hide it or change settings."
+        },
+        {
+          "id": "autofill-settings",
+          "text": "Quick Fill defaults to filling empty and existing fields. Settings can change that preference or turn the button off. Hidden sites can be searched and restored. Position, fill mode and hidden sites stay saved in this browser."
+        }
+      ]
+    },
+    {
+      "id": "details",
+      "title": "Read Fill Details",
+      "inputs": [
+        "src/components/fill-log",
+        "src/fill-log",
+        "src/autofill/fillLog.ts",
+        "src/autofill/fillResult.ts"
+      ],
+      "scenes": [
+        {
+          "id": "details-open",
+          "text": "After autofill, Alex opens View details. Fill Details shows the latest selected form and updates as answers change. Its summary counts detected fields, filled answers, unfilled fields, kept answers and skipped questions."
+        },
+        {
+          "id": "details-stages",
+          "text": "Each field can pass through learned mappings, rules and AI. A trusted saved mapping is checked first. Rules use the field's available signals. AI handles eligible fields that still need help."
+        },
+        {
+          "id": "details-filter",
+          "text": "Green means a confident fill or an answer confirmed by Alex. Yellow means a filled answer needs review. Red means it could not be filled. Gray means a profile match was found but its value is missing. Filters and search help Alex focus on a result."
+        },
+        {
+          "id": "details-explain",
+          "text": "Expanding a field shows what happened at each stage. Rule scores describe the strength of the match, while AI reports qualitative confidence. Consent questions are skipped, and existing answers are kept when using empty fields only. These results explain what still needs attention."
+        }
+      ]
+    },
+    {
+      "id": "mappings",
+      "title": "Learn from corrections",
+      "inputs": [
+        "src/components/options/LearnedMappingsSection.tsx",
+        "src/components/options/MappingReviewDialog.tsx",
+        "src/components/options/MappingReviewSites.tsx",
+        "src/learned-mappings",
+        "src/autofill/learning.ts",
+        "src/utils/learnedMapping"
+      ],
+      "scenes": [
+        {
+          "id": "mappings-correct",
+          "text": "Alex sometimes corrects an answer after autofill. When the corrected value matches saved profile information, Job Buddy can remember the relationship between that question and the profile field."
+        },
+        {
+          "id": "mappings-list",
+          "text": "The first recorded correction is Learning. A second matching correction makes it Trusted for future autofill. Learned Mappings lists these relationships by site. Search and status filters make them easier to find. Inactive mappings are excluded from matching."
+        },
+        {
+          "id": "mappings-edit",
+          "text": "Alex can edit a mapping's destination using the profile-field chooser, or delete an unwanted mapping. Saving an explicit correction here trusts it immediately. Automatic repair also handles supported older mapping issues when Alex autofills that site again."
+        },
+        {
+          "id": "mappings-analyze",
+          "text": "Review Mappings uses Gemini to check saved questions against the profile-field catalog. Alex chooses the sites to review and starts analysis. Questions and field names are checked without sending the applicant's saved values."
+        },
+        {
+          "id": "mappings-review",
+          "text": "The results show mappings needing attention and suggested actions. Alex reviews them before applying changes. If analysis stops, Retry continues unfinished mappings, while Review Completed opens the available results. Opening a new review starts a fresh session."
+        }
+      ]
+    },
+    {
+      "id": "backups",
+      "title": "Keep a backup",
+      "inputs": [
+        "src/components/options/SettingsSection.tsx",
+        "src/utils/backup",
+        "src/utils/driveSync.ts",
+        "src/components/shared",
+        "src/preview"
+      ],
+      "scenes": [
+        {
+          "id": "backups-export",
+          "text": "In Settings, Export Profile saves a JSON backup containing profile information, uploaded documents and learned mappings. The Gemini key, appearance and other local settings are excluded. Alex can use the file to transfer the profile to another browser or device."
+        },
+        {
+          "id": "backups-import",
+          "text": "Import Profile validates the backup and compares it with saved data. Alex can keep the current profile, import all changes or review individual details, using the same comparison interface as resume import."
+        },
+        {
+          "id": "backups-drive",
+          "text": "Optional Google Drive backup keeps a copy in Alex's own account. Profile and mapping changes queue a backup after a short delay. Back Up Now requests a backup immediately. A different existing backup is reviewed before the profiles are reconciled."
+        },
+        {
+          "id": "backups-disconnect",
+          "text": "Disconnect stops the connection and offers a choice to keep or delete the Drive backup. Keeping the backup preserves the saved copy for a later connection. Deleting it removes the remote copy."
+        },
+        {
+          "id": "backups-reset",
+          "text": "Reset All Data clears the local profile, documents, mappings and settings, removes the Gemini key and disconnects Drive. A connected account offers an option to delete its backup too. Alex exports a backup first if those details will be needed later."
+        }
+      ]
+    },
+    {
+      "id": "closing",
+      "title": "Ready for the next application",
+      "inputs": [
+        "src/components/options/PersonalSection.tsx",
+        "src/components/options/SettingsSection.tsx"
+      ],
+      "scenes": [
+        {
+          "id": "closing-profile",
+          "text": "Alex now has one reusable profile for the next application. Job Buddy handles repeated details, while Alex reviews the answers and completes questions that need a personal response."
+        },
+        {
+          "id": "closing-finish",
+          "text": "Job Buddy is free and open source, with no ads or analytics and no Job Buddy account or subscription. Profile data stays in the browser. Gemini requests use Alex's own key, and optional Drive backups use Alex's own account. The website has the walkthrough and source links."
+        }
+      ]
+    }
+  ]
+}
