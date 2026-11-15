@@ -21,7 +21,8 @@
     "format": "prettier --write .",
     "postinstall": "wxt prepare",
     "serve:landing": "npx serve docs",
-    "test:browser": "pnpm build && playwright test"
+    "test:browser": "pnpm build && playwright test",
+    "capture:promo": "node scripts/capture-promo.mjs"
   },
   "dependencies": {
     "fastest-levenshtein": "^1.0.16",
