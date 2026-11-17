@@ -505,11 +505,19 @@ pnpm dev</code></pre>
               <h3 class="command-purpose">Develop</h3>
               <div class="detail-list command-accordions">
                 <details id="preview-commands" open>
-                  <summary>Options page preview</summary>
-                  <p>Use sample profiles and simulated integrations at <code>127.0.0.1:4173</code>. Refresh to reset edits.</p>
+                  <summary>Develop for Chrome</summary>
+                  <p>Start the extension’s development build in Chrome, with the popup and options page available.</p>
                   <div class="code-block">
-                    <button class="copy-code" type="button" aria-label="Copy UI preview command">Copy</button>
-                    <pre><code>pnpm dev:preview</code></pre>
+                    <button class="copy-code" type="button" aria-label="Copy Chrome development command">Copy</button>
+                    <pre><code>pnpm dev</code></pre>
+                  </div>
+                </details>
+                <details id="firefox-development">
+                  <summary>Develop for Firefox</summary>
+                  <p>Start the extension’s development build in Firefox, with the popup and options page available.</p>
+                  <div class="code-block">
+                    <button class="copy-code" type="button" aria-label="Copy Firefox development command">Copy</button>
+                    <pre><code>pnpm dev:firefox</code></pre>
                   </div>
                 </details>
                 <details id="website-commands">
@@ -518,14 +526,6 @@ pnpm dev</code></pre>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy website preview command">Copy</button>
                     <pre><code>pnpm serve:landing</code></pre>
-                  </div>
-                </details>
-                <details id="firefox-development">
-                  <summary>Firefox development</summary>
-                  <p>Start WXT with Firefox as the target browser.</p>
-                  <div class="code-block">
-                    <button class="copy-code" type="button" aria-label="Copy Firefox development command">Copy</button>
-                    <pre><code>pnpm dev:firefox</code></pre>
                   </div>
                 </details>
               </div>

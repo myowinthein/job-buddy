@@ -295,8 +295,8 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   await expect(page.locator('#drive-oauth')).toHaveAttribute('open', '');
   await expect(page.locator('#dev-bar > p.prose')).toHaveCount(2);
   await expect(page.locator('#dev-bar details')).toHaveCount(2);
-  await page.getByRole('button', { name: 'Copy UI preview command', exact: true }).click();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('pnpm dev:preview');
+  await page.getByRole('button', { name: 'Copy Chrome development command', exact: true }).click();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('pnpm dev');
   expect(errors).toEqual([]);
 });
 
@@ -364,7 +364,7 @@ test('command tabs support keyboard navigation, copying and links to hidden inst
   // Reloading restores the instructions selected by the URL, including their tab.
   await page.reload();
   await expect(tabs.getByRole('tab', { name: 'Develop', exact: true })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('button', { name: 'Copy UI preview command' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Copy Chrome development command' })).toBeVisible();
   await page.goto(origin + prefix + 'developers/#browser-commands');
   await expect(tabs.getByRole('tab', { name: 'Check', exact: true })).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#browser-commands')).toHaveAttribute('open', '');
