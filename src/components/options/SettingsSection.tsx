@@ -12,7 +12,7 @@ import { SettingsDialog } from './shared/SettingsDialog';
 import { ImportWarnings } from '@/src/components/shared/ImportWarnings';
 import { SectionHeader } from './shared/SectionHeader';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ExternalLink, LoaderCircle } from 'lucide-react';
+import { Check, ExternalLink, LoaderCircle } from 'lucide-react';
 import type { Profile } from '@/src/types/profile';
 import type {
   LearnedMappings,
@@ -885,7 +885,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           Choose how Job Buddy looks on your device.
         </p>
-        <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+        <div role="group" aria-label="Appearance" className="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
           {(['system', 'light', 'dark'] as const).map((opt, i, arr) => (
             <button
               key={opt}
@@ -893,13 +893,14 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               onClick={() => void handleThemeChange(opt)}
               aria-pressed={themePreference === opt}
               className={[
-                'px-4 py-1.5 text-sm font-medium capitalize transition-colors first:rounded-l-md last:rounded-r-md focus-visible:relative focus-visible:z-10 focus-visible:-outline-offset-2 aria-pressed:focus-visible:outline-white',
+                'inline-flex items-center gap-1 px-2 py-1.5 text-sm font-medium capitalize transition-colors first:rounded-l-md last:rounded-r-md focus-visible:relative focus-visible:z-10 focus-visible:-outline-offset-2 aria-pressed:focus-visible:outline-white',
                 i < arr.length - 1 ? 'border-r border-gray-300 dark:border-gray-600' : '',
                 themePreference === opt
-                  ? 'bg-blue-600 text-white border-blue-600 dark:border-blue-600'
+                  ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:text-gray-950 dark:border-blue-500'
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700',
               ].join(' ')}
             >
+              <Check aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 ${themePreference === opt ? '' : 'invisible'}`} />
               {opt.charAt(0).toUpperCase() + opt.slice(1)}
             </button>
           ))}

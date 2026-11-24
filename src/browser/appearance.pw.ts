@@ -126,3 +126,53 @@ test('appearance follows the saved choice across open pages, native controls and
   await notification.getByRole('button', { name: 'Dismiss notification' }).click();
   await expect(notification).toHaveCount(0);
 });
+
+test('appearance choice stays distinct in dark and forced-colors modes', async ({ context, extension }, info) => {
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 320, height: 600 });
+  await page.goto(extensionUrl(extension, 'options.html'));
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const group = page.getByRole('group', { name: 'Appearance', exact: true });
+  await group.getByRole('button', { name: 'Dark', exact: true }).click();
+  const contrast = await group.evaluate(element => {
+    const selected = getComputedStyle(element.querySelector('[aria-pressed="true"]')!);
+    const other = getComputedStyle(element.querySelector('[aria-pressed="false"]')!);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 1;
+    const context = canvas.getContext('2d')!;
+    const luminance = (color: string) => {
+      context.clearRect(0, 0, 1, 1);
+      context.fillStyle = color;
+      context.fillRect(0, 0, 1, 1);
+      const rgb = [...context.getImageData(0, 0, 1, 1).data].slice(0, 3).map(value => {
+        const channel = value / 255;
+        return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+      });
+      return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+    };
+    const ratio = (a: string, b: string) => {
+      const values = [luminance(a), luminance(b)].sort((x, y) => x - y);
+      return (values[1] + 0.05) / (values[0] + 0.05);
+    };
+    return {
+      state: ratio(selected.backgroundColor, other.backgroundColor),
+      text: ratio(selected.color, selected.backgroundColor),
+    };
+  });
+  expect(contrast.state).toBeGreaterThanOrEqual(3);
+  expect(contrast.text).toBeGreaterThanOrEqual(4.5);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await group.screenshot({ path: info.outputPath('appearance-dark.png') });
+
+  await page.emulateMedia({ forcedColors: 'active', colorScheme: 'dark', reducedMotion: 'reduce' });
+  for (const name of ['System', 'Light', 'Dark']) {
+    const selected = group.getByRole('button', { name, exact: true });
+    await selected.click();
+    await expect(selected).toHaveAttribute('aria-pressed', 'true');
+    await expect(selected.locator('svg')).toBeVisible();
+    for (const other of await group.locator('button[aria-pressed="false"] svg').all())
+      await expect(other).toBeHidden();
+  }
+  await group.screenshot({ path: info.outputPath('appearance-forced-colors.png') });
+});
