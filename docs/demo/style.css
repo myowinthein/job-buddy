@@ -28,6 +28,9 @@
 * {
   box-sizing: border-box;
 }
+html {
+  scroll-padding-block: 8px;
+}
 body {
   margin: 0;
   background: var(--paper);

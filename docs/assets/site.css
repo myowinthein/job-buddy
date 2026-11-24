@@ -35,6 +35,7 @@
 }
 html {
   scroll-padding-top: max(100px, calc(var(--site-header-height, 72px) + 16px));
+  scroll-padding-bottom: 8px;
 }
 body {
   margin: 0;

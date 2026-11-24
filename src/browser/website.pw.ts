@@ -80,6 +80,45 @@ test('keyboard outlines stay visible inside documentation navigation, captures, 
   }
 });
 
+test('Tab keeps focus outlines inside the viewport on guides and demo', async ({ context, page }, info) => {
+  await serveSite(context);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 320, height: 600 });
+  for (const theme of ['light', 'dark']) {
+    await page.addInitScript(theme => localStorage.setItem('job-buddy-theme', theme), theme);
+    for (const path of ['', 'developers/', 'demo/?from=developers']) {
+      await page.goto(origin + prefix + path);
+      if (path.startsWith('demo/')) await expect(page.locator('#job-buddy-setup')).toBeVisible();
+      await page.locator('main details').evaluateAll((elements) => {
+        elements.forEach((element) => { (element as HTMLDetailsElement).open = true; });
+      });
+      const target = path.startsWith('demo/')
+        ? page.locator('input[type="radio"]').first()
+        : path === 'developers/'
+          ? page.getByRole('link', { name: 'Chrome Manifest V3', exact: true })
+          : page.getByRole('button', { name: 'Custom link label', exact: true });
+      await page.evaluate(() => {
+        document.body.tabIndex = -1;
+        document.body.focus();
+        document.body.removeAttribute('tabindex');
+      });
+      for (let step = 0; step < 160 && !(await target.evaluate(el => el === document.activeElement)); step++)
+        await page.keyboard.press('Tab');
+      await expect(target).toBeFocused();
+      await expect(target).toHaveCSS('outline-style', 'solid');
+      expect(await target.evaluate(element => element.matches(':focus-visible'))).toBe(true);
+      await expect.poll(() => target.evaluate(element => {
+        const style = getComputedStyle(element);
+        const box = element.getBoundingClientRect();
+        const expansion = Math.max(0, parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset));
+        return box.top - expansion >= 0 && box.bottom + expansion <= innerHeight &&
+          box.left - expansion >= 0 && box.right + expansion <= innerWidth;
+      }), { message: `${path || 'walkthrough'} focus outline must fit in the viewport` }).toBe(true);
+      await page.screenshot({ path: info.outputPath(`${path.split('/')[0] || 'user'}-${theme}.png`) });
+    }
+  }
+});
+
 test('external link text and arrow share the same focus boundary', async ({ context, page }) => {
   await serveSite(context);
   const links = [
