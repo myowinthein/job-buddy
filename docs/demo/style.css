@@ -56,6 +56,10 @@ textarea {
 button {
   cursor: pointer;
 }
+a {
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+}
 a:is(:hover, :focus-visible) {
   text-decoration-thickness: 2px;
 }

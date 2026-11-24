@@ -54,6 +54,7 @@ button {
 }
 a {
   color: var(--link);
+  text-decoration-skip-ink: none;
   text-underline-offset: 4px;
 }
 a:is(:hover, :focus-visible) {
@@ -504,6 +505,8 @@ pre code {
   border-radius: 5px;
   font-size: 12px;
   padding: 4px 8px;
+  max-width: calc(100% - 20px);
+  overflow-wrap: anywhere;
 }
 .site-footer {
   border-top: 1px solid var(--line);
@@ -874,12 +877,13 @@ pre code {
 }
 .command-tabs .code-block {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   background: var(--soft);
   border-radius: 7px;
 }
 .command-tabs pre {
-  flex: 1;
+  flex: 1 1 12rem;
   min-width: 0;
   margin: 0;
 }
@@ -970,7 +974,8 @@ pre code {
   width: calc(188px + var(--visual-width, 576px));
   max-width: 100%;
 }
-.visual-status {
+.visual-status,
+.copy-status {
   position: absolute;
   width: 1px;
   height: 1px;

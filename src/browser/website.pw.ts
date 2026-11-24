@@ -464,6 +464,161 @@ test('chapter navigation updates only when needed and resumes after mobile layou
   await expect(page.locator('.chapter-nav [aria-current="location"]')).toHaveAttribute('href', '#start');
 });
 
+test('copy feedback follows confirmed writes and rejects stale failures', async ({
+  context,
+  page,
+}, info) => {
+  await serveSite(context);
+  await page.clock.install();
+  await page.addInitScript(() => {
+    const writes: { resolve: () => void; reject: () => void }[] = [];
+    Reflect.set(window, 'copyWrites', writes);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: () =>
+          new Promise<void>((resolve, reject) =>
+            writes.push({
+              resolve,
+              reject: () => reject(new Error('Synthetic clipboard failure')),
+            }),
+          ),
+      },
+    });
+  });
+  await page.goto(origin + prefix + 'developers/#commands');
+  const a = page.getByRole('button', { name: 'Copy setup commands', exact: true });
+  const b = page.getByRole('button', { name: 'Copy Chrome development command', exact: true });
+  const success = page.getByRole('status', { name: 'Copy confirmation' });
+  const error = page.getByRole('status', { name: 'Copy error' });
+  const finish = (index: number, fail = false) =>
+    page.evaluate(
+      ({ index, fail }) => {
+        const write = Reflect.get(window, 'copyWrites')[index];
+        if (fail) write.reject();
+        else write.resolve();
+      },
+      { index, fail },
+    );
+  await a.click();
+  await expect(a).toHaveText('Copy');
+  await finish(0);
+  await expect(a).toHaveText('Copied');
+  await expect(success).toHaveText('Copied setup commands.');
+  await b.click();
+  await expect(a).toHaveText('Copied');
+  await finish(1);
+  await expect(a).toHaveText('Copy');
+  await expect(b).toHaveText('Copied');
+  await expect(success).toHaveText('Copied Chrome development command.');
+  await page.clock.fastForward(1000);
+  await b.click();
+  await finish(2);
+  await page.clock.fastForward(1100);
+  await expect(b).toHaveText('Copied');
+  await page.clock.fastForward(1000);
+  await expect(b).toHaveText('Copy');
+  await expect(success).toBeEmpty();
+  await a.click();
+  await finish(3);
+  await b.click();
+  await finish(4, true);
+  await expect(a).toHaveText('Copied');
+  await expect(b).toHaveText('Select and copy the code');
+  await expect(error).toHaveText(
+    'Could not copy Chrome development command; select and copy the code manually.',
+  );
+  await a.click();
+  await expect(b).toHaveText('Copy');
+  await expect(error).toBeEmpty();
+  await finish(5, true);
+  await expect(a).toHaveText('Select and copy the code');
+  await b.click();
+  await finish(6, true);
+  await expect(a).toHaveText('Copy');
+  await expect(page.getByText('Select and copy the code', { exact: true })).toHaveCount(1);
+  await a.click();
+  await b.click();
+  await finish(8);
+  await finish(7, true);
+  await expect(b).toHaveText('Copied');
+  await expect(error).toBeEmpty();
+  await expect(page.getByRole('link', { name: 'MIT license' })).toHaveCSS(
+    'text-decoration-skip-ink',
+    'none',
+  );
+  await b.click();
+  await finish(9, true);
+  await page.setViewportSize({ width: 320, height: 600 });
+  const spacing = await page.addStyleTag({
+    content:
+      '*:not(svg):not(svg *) { line-height:1.5!important; letter-spacing:.12em!important; word-spacing:.16em!important; }',
+  });
+  expect(await fitsViewportWidth(page)).toBe(true);
+  await spacing.evaluate((element) => element.parentNode?.removeChild(element));
+  await page.evaluate(() => {
+    const sizes = [
+      ...document.querySelectorAll<HTMLElement>('html,body,body *:not(svg):not(svg *)'),
+    ].map((e) => [e, parseFloat(getComputedStyle(e).fontSize)] as const);
+    sizes.forEach(([element, font]) => {
+      element.style.fontSize = `${font * 2}px`;
+    });
+  });
+  expect(await fitsViewportWidth(page)).toBe(true);
+  await b.scrollIntoViewIfNeeded();
+  await expect(b.locator('..').locator('pre')).toBeVisible();
+  await b.locator('..').screenshot({ path: info.outputPath('copy-error-enlarged.png') });
+});
+
+test('demo completion clears after edits and invalid resubmission', async ({ context, page }) => {
+  await serveSite(context);
+  await page.goto(origin + prefix + 'demo/?from=walkthrough');
+  const file = {
+    name: 'synthetic.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('%PDF-1.7 synthetic local demo'),
+  };
+  const upload = page.locator('input[type=file]');
+  const first = page.locator('#first-name');
+  const submit = page.getByRole('button', { name: 'Submit application' });
+  const completion = page.locator('#completion');
+  await first.fill('Sample');
+  await page.locator('#email').fill('sample@example.test');
+  await page.locator('#phone').fill('5551234567');
+  await page.locator('#authorized').selectOption('yes');
+  await page.getByRole('radio', { name: 'No', exact: true }).check();
+  await page.locator('input[name=consent]').check();
+  await upload.setInputFiles(file);
+  await submit.click();
+  await expect(completion).toBeVisible();
+  await first.fill('');
+  await expect(completion).toBeHidden();
+  await submit.click();
+  await expect(completion).toBeHidden();
+  await first.fill('Sample');
+  await submit.click();
+  await expect(completion).toBeVisible();
+  await page.locator('#authorized').selectOption('no');
+  await expect(completion).toBeHidden();
+  await submit.click();
+  await expect(completion).toBeVisible();
+  await upload.setInputFiles([]);
+  await expect(completion).toBeHidden();
+  await upload.setInputFiles(file);
+  await submit.click();
+  await expect(completion).toBeVisible();
+  // Programmatic edits may omit input/change events; submission must still clear old success.
+  await first.evaluate((element: HTMLInputElement) => {
+    element.value = '';
+  });
+  await submit.click();
+  await expect(completion).toBeHidden();
+  await expect(page.getByRole('link', { name: /Back to guide/ })).toHaveCSS(
+    'text-decoration-skip-ink',
+    'none',
+  );
+});
+
 test('command tabs support keyboard navigation, copying and links to hidden instructions', async ({
   context,
   page,

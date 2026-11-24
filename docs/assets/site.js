@@ -225,18 +225,56 @@ document.querySelectorAll('a[data-open-details]').forEach((link) => {
   link.addEventListener('click', openDetails);
   if (link.hash === location.hash) openDetails();
 });
-document.querySelectorAll('.copy-code').forEach((button) => {
+const copyButtons = [...document.querySelectorAll('.copy-code')];
+const copyStatus = (label) => {
+  const status = document.createElement('p');
+  status.className = 'copy-status';
+  status.setAttribute('role', 'status');
+  status.setAttribute('aria-live', 'polite');
+  status.setAttribute('aria-atomic', 'true');
+  status.setAttribute('aria-label', label);
+  if (copyButtons.length) document.body.append(status);
+  return status;
+};
+const copyConfirmation = copyStatus('Copy confirmation');
+const copyFailure = copyStatus('Copy error');
+let copiedButton;
+let copyErrorButton;
+let copyTimer;
+let copyAttempt = 0;
+const clearCopySuccess = () => {
+  clearTimeout(copyTimer);
+  if (copiedButton) copiedButton.textContent = 'Copy';
+  copiedButton = null;
+  copyConfirmation.textContent = '';
+};
+const clearCopyError = () => {
+  if (copyErrorButton) copyErrorButton.textContent = 'Copy';
+  copyErrorButton = null;
+  copyFailure.textContent = '';
+};
+copyButtons.forEach((button) => {
   button.addEventListener('click', async () => {
+    const attempt = ++copyAttempt;
+    const purpose = (button.getAttribute('aria-label') || 'Copy code').replace(/^Copy\s+/, '');
+    clearCopyError();
     try {
       await navigator.clipboard.writeText(
         button.parentElement.querySelector('code').textContent.trim(),
       );
+      clearCopySuccess();
+      if (copyErrorButton === button) clearCopyError();
+      copiedButton = button;
       button.textContent = 'Copied';
-      setTimeout(() => {
-        button.textContent = 'Copy';
-      }, 1500);
+      copyConfirmation.textContent = `Copied ${purpose}.`;
+      copyTimer = setTimeout(clearCopySuccess, 2000);
     } catch {
+      // A late failure must not replace feedback from a newer attempt.
+      if (attempt !== copyAttempt) return;
+      if (copiedButton === button) clearCopySuccess();
+      copyErrorButton = button;
       button.textContent = 'Select and copy the code';
+      copyFailure.textContent = `Could not copy ${purpose}; select and copy the code manually.`;
     }
   });
 });

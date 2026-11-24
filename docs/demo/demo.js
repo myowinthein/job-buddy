@@ -48,8 +48,12 @@ limitedFields.forEach((field) => {
   field.addEventListener('compositionstart', () => { composing.add(field); clearTimeout(countTimer); });
   field.addEventListener('compositionend', () => { composing.delete(field); updateLength(field); });
 });
+const clearCompletion = () => { completion.hidden = true; };
+form.addEventListener('input', clearCompletion);
+form.addEventListener('change', clearCompletion);
 form.addEventListener('submit', (event) => {
   event.preventDefault();
+  clearCompletion();
   limitedFields.forEach(updateLength);
   if (!form.reportValidity()) return;
   completion.hidden = false;
