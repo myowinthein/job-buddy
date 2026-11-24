@@ -134,6 +134,12 @@ select:not([multiple]):not([size]) {
   }
 }
 
+/* Native focus scrolling must leave space for the surrounding header outline. */
+[data-entry-toggle],
+[data-mapping-site-toggle] {
+  scroll-margin-block: 1rem;
+}
+
 [data-entry-header]:has([data-entry-toggle]:focus-visible),
 [data-mapping-site-header]:has([data-mapping-site-toggle]:focus-visible) {
   outline: 2px solid var(--color-blue-500);

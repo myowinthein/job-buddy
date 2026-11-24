@@ -159,6 +159,70 @@ test('focus spacing follows outlined, filled, icon and segmented control styles'
   }
 });
 
+test('Tab reveals whole entry headers and moves into inline delete confirmation', async ({ context, extension }, info) => {
+  await extension.worker.evaluate(profile => chrome.storage.local.set({ profile }), DEV_PROFILE);
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 320, height: 600 });
+  for (const theme of ['light', 'dark']) {
+    await extension.worker.evaluate(theme => chrome.storage.local.set({ themePreference: theme }), theme);
+    await page.goto(extensionUrl(extension, 'options.html'));
+    await page.getByRole('button', { name: 'Work History', exact: true }).click();
+    while (await page.locator('[data-entry-toggle][aria-expanded="false"]').count())
+      await page.locator('[data-entry-toggle][aria-expanded="false"]').first().click();
+    await page.evaluate(() => {
+      document.body.tabIndex = -1;
+      document.body.focus();
+      document.body.removeAttribute('tabindex');
+    });
+    const toggle = page.locator('[data-entry-toggle]').nth(1);
+    for (let step = 0; step < 80 && !(await toggle.evaluate(el => el === document.activeElement)); step++)
+      await page.keyboard.press('Tab');
+    await expect(toggle).toBeFocused();
+    await expectUnclippedOutline(toggle.locator('..'));
+    await page.screenshot({ path: info.outputPath(`entry-focus-${theme}.png`) });
+    await page.keyboard.press('Tab');
+    const remove = toggle.locator('..').getByRole('button', { name: 'Remove entry', exact: true });
+    await expect(remove).toBeFocused();
+    await page.keyboard.press('Enter');
+    const confirm = page.getByRole('button', { name: 'Delete', exact: true });
+    await expect(confirm).toBeFocused();
+    await expectUnclippedOutline(confirm);
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(confirm).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(remove).toBeFocused();
+    await expect(confirm).toHaveCount(0);
+  }
+});
+
+test('field and searchable-dropdown focus remains visible in forced colors', async ({ context, extension }, info) => {
+  await extension.worker.evaluate(profile => chrome.storage.local.set({ profile }), DEV_PROFILE);
+  const page = await context.newPage();
+  await page.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
+  await page.goto(extensionUrl(extension, 'options.html'));
+  for (const field of [
+    page.getByRole('textbox', { name: /^First Name/ }),
+    page.getByRole('textbox', { name: 'Phone number', exact: true }),
+    page.getByRole('combobox', { name: 'Month', exact: true }),
+  ]) {
+    await focusInKeyboardMode(field);
+    await expectUnclippedOutline(field);
+  }
+  const trigger = page.getByRole('button', { name: 'Select country calling code' });
+  await focusInKeyboardMode(trigger);
+  await expectUnclippedOutline(trigger);
+  await page.keyboard.press('Enter');
+  const search = page.getByRole('combobox', { name: 'Search country or code…' });
+  await expect(search).toBeFocused();
+  await expectUnclippedOutline(search);
+  await page.screenshot({ path: info.outputPath('forced-colors-search.png') });
+  await page.keyboard.press('Escape');
+  await expect(trigger).toBeFocused();
+});
+
 test('Fill Details outlines cover row headers and fit individual matching stages', async ({ context, extension }) => {
   await stubEmptyGemini(context);
   await extension.send('AUTOFILL_FILL', 'merge');

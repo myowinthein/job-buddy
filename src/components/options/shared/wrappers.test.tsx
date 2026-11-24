@@ -108,6 +108,7 @@ it('keeps compact confirmation inline and returns focus after cancellation', asy
   render(<ConfirmRemoveButton compact onConfirm={remove} />);
   const trigger = screen.getByRole('button', { name: 'Remove entry' });
   fireEvent.click(trigger);
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Delete' }));
   expect(trigger.parentElement?.parentElement?.contains(screen.getByRole('button', { name: 'Cancel' }))).toBe(true);
   fireEvent.keyDown(screen.getByRole('button', { name: 'Cancel' }), { key: 'Escape' });
   await waitFor(() => expect(document.activeElement).toBe(trigger));

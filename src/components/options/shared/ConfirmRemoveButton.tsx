@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { LoaderCircle, Trash2 } from 'lucide-react';
 import { RemoveButton } from './RemoveButton';
 
@@ -27,6 +27,7 @@ export function ConfirmRemoveButton({
 }: Props) {
   const [armed, setArmed] = useState(false);
   const container = useRef<HTMLSpanElement>(null);
+  const confirmButton = useRef<HTMLButtonElement>(null);
   const wasBusy = useRef(false);
   const confirming = armed || busy;
   const locked = disabled || busy;
@@ -38,6 +39,9 @@ export function ConfirmRemoveButton({
     setArmed(false);
     requestAnimationFrame(focusTrigger);
   };
+  useLayoutEffect(() => {
+    if (armed) confirmButton.current?.focus({ preventScroll: true });
+  }, [armed]);
   useEffect(() => {
     if (wasBusy.current && !busy) focusTrigger();
     wasBusy.current = busy;
@@ -72,6 +76,7 @@ export function ConfirmRemoveButton({
         className={`col-start-1 row-start-1 inline-flex items-center ${compact ? 'gap-1' : 'gap-2'} ${confirming ? '' : 'invisible pointer-events-none'}`}
       >
         <button
+          ref={confirmButton}
           type="button"
           onClick={remove}
           disabled={locked}

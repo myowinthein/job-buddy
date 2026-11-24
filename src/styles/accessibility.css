@@ -54,6 +54,14 @@ textarea::placeholder {
   color: var(--color-gray-400);
 }
 
+/* Forced colors suppress the box shadows used for field focus rings. */
+@media (forced-colors: active) {
+  :where(input, select, textarea, [aria-haspopup='listbox']):focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
