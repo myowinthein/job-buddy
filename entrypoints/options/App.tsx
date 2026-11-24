@@ -36,6 +36,7 @@ import { assertImportCurrent } from '@/src/utils/importPolicy';
 import { applyChanges } from '@/src/resume-ai/parser';
 import { getScrollBehavior } from '@/src/utils/scrollBehavior';
 import { RetryNotice } from '@/src/components/ui/RetryNotice';
+import { equalJsonValues } from '@/src/utils/equalJsonValues';
 
 type SectionId =
   | 'personal'
@@ -57,6 +58,18 @@ const SECTION_WIDTHS: Partial<Record<SectionId, string>> = {
   settings: 'max-w-5xl',
   learnedMappings: 'max-w-5xl',
   fillDetails: 'max-w-6xl',
+};
+
+const EDITOR_KEYS: Partial<Record<SectionId, (keyof Profile)[]>> = {
+  personal: ['personal'],
+  address: ['address'],
+  salary: ['salary'],
+  workAuthorization: ['workAuthorization'],
+  workHistory: ['workHistory', 'professional'],
+  education: ['education'],
+  languages: ['languages'],
+  links: ['links'],
+  documents: ['documents'],
 };
 
 // ── UI state persistence keys (sessionStorage) ───────────────────────────────
@@ -106,6 +119,8 @@ function focusFirstEmpty(container: Element | null) {
 function App() {
   const { showToast } = useToast();
   const [profile, setProfile] = useState<Partial<Profile>>({});
+  const [editorProfile, setEditorProfile] = useState<Partial<Profile>>({});
+  const [savingProfile, setSavingProfile] = useState(false);
   const [activeSection, setActiveSection] = useState<SectionId>(readSection);
   const [fillDetailsTabId, setFillDetailsTabId] = useState<number | null>(readDetailsSource);
   const detailsQuery = useRef(new URLSearchParams(location.search).has('tabId'));
@@ -143,9 +158,10 @@ function App() {
     setHasUnsavedChanges(false);
     setUnsavedStatusVisible(false);
     setFocusTarget(null);
+    setEditorProfile(profile);
     setActiveSection(section);
     return true;
-  }, [activeSection, hasUnsavedChanges]);
+  }, [activeSection, hasUnsavedChanges, profile]);
 
   const detailsNavigate = useRef(navigateSection);
   useEffect(() => { detailsNavigate.current = navigateSection; }, [navigateSection]);
@@ -226,22 +242,51 @@ function App() {
   // ── Load profile ────────────────────────────────────────────────────────────
   useEffect(() => {
     let active = true;
-    getProfile({ rejectOnError: true })
-      .then(async (p) => {
-        if (!active) return;
-        setProfile(p ?? {});
-        setProfileLoadError(false);
-        if (detailsQuery.current && initialDetailsSource.current !== null)
-          await selectFillLog(initialDetailsSource.current).catch(() => { /* A retained closed-form report can still be displayed. */ });
-      })
-      .catch((err) => {
-        if (!active) return;
-        console.error('[Job Buddy] Failed to initialize profile:', err);
-        setProfileLoadError(true);
-      })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [loadAttempt]);
+    let revision = 0;
+    let initialized = false;
+    let detailsSelected = false;
+    const refresh = () => {
+      const request = ++revision;
+      void getProfile({ rejectOnError: true })
+        .then(async (p) => {
+          if (!active || request !== revision) return;
+          const next = p ?? {};
+          if (!initialized) setEditorProfile(next);
+          setProfile((previous) => (equalJsonValues(previous, next) ? previous : next));
+          setProfileLoadError(false);
+          initialized = true;
+          if (!detailsSelected && detailsQuery.current && initialDetailsSource.current !== null) {
+            detailsSelected = true;
+            await selectFillLog(initialDetailsSource.current).catch(() => {
+              /* A retained closed-form report can still be displayed. */
+            });
+          }
+        })
+        .catch((err) => {
+          if (!active || request !== revision) return;
+          console.error('[Job Buddy] Failed to initialize profile:', err);
+          if (!initialized) setProfileLoadError(true);
+          else showToast('warning', feedback.profileViewRefreshFailed);
+        })
+        .finally(() => {
+          if (active && request === revision) setLoading(false);
+        });
+    };
+    const changed = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      if (area === 'local' && ('profile' in changes || 'devProfileDisabled' in changes)) refresh();
+    };
+    const visible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    chrome.storage.onChanged.addListener(changed);
+    document.addEventListener('visibilitychange', visible);
+    refresh();
+    return () => {
+      active = false;
+      chrome.storage.onChanged.removeListener(changed);
+      document.removeEventListener('visibilitychange', visible);
+    };
+  }, [loadAttempt, showToast]);
 
   // Skips the "autofocus first empty input" effect that would otherwise fire
   // on the section switch below, then focuses the specific target field once
@@ -409,6 +454,7 @@ function App() {
     getProfile()
       .then((p) => {
         setProfile(p ?? {});
+        setEditorProfile(p ?? {});
         if (p) void syncProfileToDrive(p);
         afterLoad?.();
       })
@@ -421,45 +467,72 @@ function App() {
       });
   };
 
-  const handleSave = (update: ProfileUpdate) => withProfileWriteLock(async () => {
-    // Keep changes saved by another Options tab in other profile sections.
-    const latest = await getProfile({ rejectOnError: true });
-    if (typeof update !== 'function' && latest?.id !== profile.id) {
-      setProfileRecovery({ original: profile, draft: { ...profile, ...update }, current: latest ?? {} });
-      throw new ReportedSaveError('Profile replaced in another tab');
-    }
-    const base = latest ?? (typeof update === 'function' ? {} : profile);
-    const updates = typeof update === 'function' ? update(base) : update;
-    const merged = { ...base, ...updates, id: base.id || crypto.randomUUID() } as Profile;
-    let synced: Profile = merged;
-    try {
-      const derived = calculateDerivedFields(merged);
-      synced = { ...merged, derived };
-    } catch (err) {
-      console.error('[Job Buddy] Failed to compute derived fields:', err);
-    }
-    try {
-      await saveProfile(synced);
-    } catch (err) {
-      console.error('[Job Buddy] Failed to save profile:', err);
-      showToast('error', feedback.profileStorageSaveFailed);
-      throw new ReportedSaveError(feedback.profileStorageSaveFailed);
-    }
-    setProfile(synced);
-    // Fire-and-forget Drive sync. Never blocks the local save flow.
-    void syncProfileToDrive(synced).then(async (res) => {
-      if (!res.success && res.errorCode && await claimDriveWarning(res.errorCode, synced.id)) {
-        showToast(
-          'warning',
-          res.errorCode === 'review_required'
-            ? feedback.profileSavedDriveReview
-            : res.errorCode === 'token_expired'
-              ? feedback.profileSavedDriveReconnect
-              : feedback.profileSavedDrivePending,
-        );
+  const handleSave = (update: ProfileUpdate) =>
+    withProfileWriteLock(async () => {
+      setSavingProfile(true);
+      try {
+        // Keep changes saved by another Options tab in other profile sections.
+        const latest = await getProfile({ rejectOnError: true });
+        if (
+          typeof update !== 'function' &&
+          (latest?.id !== editorProfile.id ||
+            (Object.keys(update) as (keyof Profile)[]).some(
+              (key) =>
+                !equalJsonValues(latest?.[key], editorProfile[key]) &&
+                !equalJsonValues(latest?.[key], update[key]),
+            ))
+        ) {
+          setProfileRecovery({
+            original: editorProfile,
+            draft: { ...editorProfile, ...update },
+            current: latest ?? {},
+          });
+          throw new ReportedSaveError('Profile changed in another tab');
+        }
+        const base = latest ?? (typeof update === 'function' ? {} : profile);
+        const updates = typeof update === 'function' ? update(base) : update;
+        const merged = { ...base, ...updates, id: base.id || crypto.randomUUID() } as Profile;
+        let synced: Profile = merged;
+        try {
+          const derived = calculateDerivedFields(merged);
+          synced = { ...merged, derived };
+        } catch (err) {
+          console.error('[Job Buddy] Failed to compute derived fields:', err);
+        }
+        try {
+          await saveProfile(synced);
+        } catch (err) {
+          console.error('[Job Buddy] Failed to save profile:', err);
+          showToast('error', feedback.profileStorageSaveFailed);
+          throw new ReportedSaveError(feedback.profileStorageSaveFailed);
+        }
+        setProfile(synced);
+        setEditorProfile(synced);
+        // Fire-and-forget Drive sync. Never blocks the local save flow.
+        void syncProfileToDrive(synced)
+          .then(async (res) => {
+            if (
+              !res.success &&
+              res.errorCode &&
+              (await claimDriveWarning(res.errorCode, synced.id))
+            ) {
+              showToast(
+                'warning',
+                res.errorCode === 'review_required'
+                  ? feedback.profileSavedDriveReview
+                  : res.errorCode === 'token_expired'
+                    ? feedback.profileSavedDriveReconnect
+                    : feedback.profileSavedDrivePending,
+              );
+            }
+          })
+          .catch(() => {
+            /* syncProfileToDrive never throws, but be defensive */
+          });
+      } finally {
+        setSavingProfile(false);
       }
-    }).catch(() => { /* syncProfileToDrive never throws, but be defensive */ });
-  });
+    });
 
   const handleFocusField = (sectionId: string, fieldLabel: string) => {
     navigateAndFocus(sectionId as SectionId, getCompletionTarget(profile, sectionId, fieldLabel));
@@ -481,7 +554,24 @@ function App() {
     const sectionCompletion = getSectionCompletion(profile, completion);
     return { completion, sectionCompletion };
   }, [profile]);
-  const sectionProps = { profile, onSave: handleSave };
+  // Update a clean editor before rendering its controls. Dirty editors retain their review base.
+  if (
+    !loading &&
+    !profileLoadError &&
+    !savingProfile &&
+    !hasUnsavedChanges &&
+    editorProfile !== profile
+  ) {
+    const keys = EDITOR_KEYS[activeSection];
+    if (
+      keys &&
+      (editorProfile.id !== profile.id ||
+        keys.some((key) => !equalJsonValues(editorProfile[key], profile[key])))
+    )
+      setSectionSeq((value) => value + 1);
+    setEditorProfile(profile);
+  }
+  const sectionProps = { profile: editorProfile, onSave: handleSave };
 
   const renderSection = () => {
     if (profileLoadError) {
@@ -569,6 +659,7 @@ function App() {
               const latest = await getProfile({ rejectOnError: true }) ?? {};
               assertImportCurrent(base, latest, changes);
               setProfile(latest);
+              setEditorProfile(latest);
             });
           }
           setProfileRecovery(null);

@@ -430,8 +430,11 @@ it('does not resurrect an old person’s editor data after another tab replaces 
     id: 'replacement-person',
     personal: { ...current.personal, firstName: 'Sam', email: 'sam@example.com' },
   };
-  await saveProfile(replacement);
   fireEvent.change(name, { target: { value: 'Old draft' } });
+  await act(async () => {
+    await saveProfile(replacement);
+  });
+  expect((name as HTMLInputElement).value).toBe('Old draft');
   fireEvent.blur(name);
   fireEvent.click(screen.getByText('Save'));
   await screen.findByRole('heading', { name: 'Review Unsaved Changes' });
@@ -439,4 +442,54 @@ it('does not resurrect an old person’s editor data after another tab replaces 
   expect((await getProfile())?.id).toBe('replacement-person');
   expect(screen.queryByText('Saved')).toBeNull();
   expect(screen.getByText('Unsaved changes')).toBeTruthy();
+});
+
+it('refreshes clean editors and completion after another tab changes the saved profile', async () => {
+  const original = (await getProfile())!;
+  await openPersonal();
+  await act(async () => {
+    await saveProfile({
+      ...original,
+      personal: { ...original.personal, firstName: 'Fresh name', email: '' },
+    });
+  });
+  await waitFor(() =>
+    expect((screen.getByRole('textbox', { name: /First Name/ }) as HTMLInputElement).value).toBe(
+      'Fresh name',
+    ),
+  );
+  expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('90');
+  fireEvent.click(screen.getByRole('button', { name: 'Address' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Personal' }));
+  expect((screen.getByRole('textbox', { name: /First Name/ }) as HTMLInputElement).value).toBe(
+    'Fresh name',
+  );
+});
+
+it('preserves a dirty draft and reviews a same-profile conflict without reverting untouched saved details', async () => {
+  const original = (await getProfile())!;
+  const name = await openPersonal();
+  fireEvent.change(name, { target: { value: 'My draft' } });
+  await act(async () => {
+    await saveProfile({
+      ...original,
+      personal: { ...original.personal, nickname: 'Saved elsewhere' },
+    });
+  });
+  expect((name as HTMLInputElement).value).toBe('My draft');
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await screen.findByRole('heading', { name: 'Review Unsaved Changes' });
+  expect((await getProfile())?.personal).toMatchObject({
+    firstName: original.personal.firstName,
+    nickname: 'Saved elsewhere',
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Select All' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save Selected (1)' }));
+  await waitFor(() =>
+    expect(screen.queryByRole('heading', { name: 'Review Unsaved Changes' })).toBeNull(),
+  );
+  expect((await getProfile())?.personal).toMatchObject({
+    firstName: 'My draft',
+    nickname: 'Saved elsewhere',
+  });
 });

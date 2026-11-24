@@ -76,7 +76,7 @@ describe('stored document actions', () => {
 
   it('opens a PDF in a separate tab with no opener and reuses its URL until page exit', () => {
     viewDocumentPdf(pdf);
-    viewDocumentPdf(pdf);
+    viewDocumentPdf({ ...pdf });
     expect(blobs).toHaveLength(1);
     expect(clicked).toEqual(
       Array(2).fill({
@@ -92,6 +92,19 @@ describe('stored document actions', () => {
     expect(revoke).not.toHaveBeenCalled();
     window.dispatchEvent(new PageTransitionEvent('pagehide'));
     expect(revoke).toHaveBeenCalledWith('blob:test-1');
+  });
+
+  it('opens changed bytes separately while keeping the earlier preview readable', () => {
+    const file = { ...pdf };
+    viewDocumentPdf(file);
+    file.base64 = 'JVBERi0xLjgK';
+    viewDocumentPdf(file);
+    viewDocumentPdf({ ...file });
+    expect(blobs).toHaveLength(2);
+    expect(clicked.map((link) => link.href)).toEqual(['blob:test-1', 'blob:test-2', 'blob:test-2']);
+    expect(revoke).not.toHaveBeenCalled();
+    window.dispatchEvent(new PageTransitionEvent('pagehide'));
+    expect(revoke.mock.calls).toEqual([['blob:test-1'], ['blob:test-2']]);
   });
 
   it('keeps a downloaded PDF separate from the PDF viewer resource', () => {

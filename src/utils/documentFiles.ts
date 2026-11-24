@@ -6,11 +6,7 @@ const MIME_TYPES: Record<string, string> = {
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 };
 
-/** Decode stored bytes locally; never navigate to an imported data URL or trust its MIME type. */
-export function documentFileBlob(file: DocumentFile): Blob {
-  const extension = /\.(pdf|docx?)$/i.exec(file.name)?.[1].toLowerCase();
-  const mime = extension ? MIME_TYPES[extension] : undefined;
-  if (!mime) throw new Error('Unsupported document type');
+function documentPayload(file: DocumentFile): string {
   let payload = file.base64;
   if (payload.startsWith('data:')) {
     const match = /^data:[^,]*;base64,([\s\S]*)$/i.exec(payload);
@@ -18,6 +14,15 @@ export function documentFileBlob(file: DocumentFile): Blob {
     payload = match[1];
   }
   if (!payload.trim()) throw new Error('Missing document data');
+  return payload;
+}
+
+/** Decode stored bytes locally; never navigate to an imported data URL or trust its MIME type. */
+export function documentFileBlob(file: DocumentFile): Blob {
+  const extension = /\.(pdf|docx?)$/i.exec(file.name)?.[1].toLowerCase();
+  const mime = extension ? MIME_TYPES[extension] : undefined;
+  if (!mime) throw new Error('Unsupported document type');
+  const payload = documentPayload(file);
   const binary = atob(payload);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -44,7 +49,8 @@ function clickFileLink(url: string, filename?: string) {
 // Open PDFs must stay readable when the user navigates to another editor section.
 // Reuse their URLs until the options document closes, rather than revoking on a
 // component unmount or an arbitrary timer while the viewer may still need them.
-const pdfUrls = new Map<DocumentFile, string>();
+// Key by payload because storage reads recreate DocumentFile objects.
+const pdfUrls = new Map<string, string>();
 function releasePdfUrls(event: PageTransitionEvent) {
   if (event.persisted) return;
   for (const url of pdfUrls.values()) URL.revokeObjectURL(url);
@@ -54,10 +60,11 @@ function releasePdfUrls(event: PageTransitionEvent) {
 
 export function viewDocumentPdf(file: DocumentFile) {
   if (!file.name.toLowerCase().endsWith('.pdf')) throw new Error('Only PDFs can be viewed');
-  let url = pdfUrls.get(file);
+  const payload = documentPayload(file);
+  let url = pdfUrls.get(payload);
   if (!url) {
     url = URL.createObjectURL(documentFileBlob(file));
-    pdfUrls.set(file, url);
+    pdfUrls.set(payload, url);
     window.addEventListener('pagehide', releasePdfUrls);
   }
   clickFileLink(url);

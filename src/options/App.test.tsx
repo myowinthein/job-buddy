@@ -361,3 +361,28 @@ for (const action of ['save', 'cancel', 'saved', 'changed again']) {
     }
   });
 }
+
+it('ignores an older profile read after a newer storage refresh has completed', async () => {
+  let release!: (profile: Profile) => void;
+  const old = { id: 'same', personal: { firstName: 'Old' } } as Profile;
+  const fresh = { ...old, personal: { firstName: 'Fresh' } } as Profile;
+  vi.mocked(getProfile)
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    )
+    .mockResolvedValue(fresh);
+  renderApp();
+  await act(async () => {
+    for (const [listener] of vi.mocked(chrome.storage.onChanged.addListener).mock.calls)
+      listener({ profile: { oldValue: old, newValue: fresh } }, 'local');
+  });
+  await screen.findByText('personal-section:Fresh');
+  await act(async () => {
+    release(old);
+  });
+  expect(screen.getByText('personal-section:Fresh')).toBeTruthy();
+  expect(screen.queryByText('personal-section:Old')).toBeNull();
+});
