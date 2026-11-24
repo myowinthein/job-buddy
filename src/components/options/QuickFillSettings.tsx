@@ -1,6 +1,6 @@
 import { feedback } from '@/src/ui/feedback';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/src/components/ui/useToast';
 import { RetryNotice } from '@/src/components/ui/RetryNotice';
 import { fieldCls } from './shared/fieldCls';
@@ -120,13 +120,14 @@ export function QuickFillSettings() {
               if (prefs?.enabled !== enabled) void save({ enabled });
             }}
             className={[
-              'px-4 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 first:rounded-l-md last:rounded-r-md focus-visible:relative focus-visible:z-10 focus-visible:-outline-offset-2 aria-pressed:focus-visible:outline-white',
+              'inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 first:rounded-l-md last:rounded-r-md focus-visible:relative focus-visible:z-10 focus-visible:-outline-offset-2 aria-pressed:focus-visible:outline-white',
               enabled ? 'border-r border-gray-300 dark:border-gray-600' : '',
               prefs?.enabled === enabled
-                ? 'bg-blue-600 text-white'
+                ? 'bg-blue-600 text-white dark:bg-blue-500 dark:text-gray-950'
                 : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
             ].join(' ')}
           >
+            <Check aria-hidden="true" className={`h-3.5 w-3.5 shrink-0 ${prefs?.enabled === enabled ? '' : 'invisible'}`} />
             {enabled ? 'On' : 'Off'}
           </button>
         ))}

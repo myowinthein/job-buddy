@@ -98,7 +98,7 @@ export function SearchableDropdown<T>({
                 aria-autocomplete="list"
                 aria-activedescendant={filtered[hlIdx] ? `${listId}-${hlIdx}` : undefined}
                 autoComplete="off"
-                className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-2.5 py-1.5 text-sm border border-gray-500 dark:border-gray-400 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder={searchPlaceholder}
                 value={search}
                 onChange={(e) => onSearchChange(e.target.value)}

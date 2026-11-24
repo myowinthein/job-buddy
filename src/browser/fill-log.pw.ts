@@ -1,8 +1,54 @@
-import { test, expect, geminiResponse, autofillRequest, openPinnedPopup, extensionUrl } from './fixtures';
+import { test, expect, geminiResponse, autofillRequest, openPinnedPopup, extensionUrl, stubEmptyGemini } from './fixtures';
+import { controlContrast } from './contrast';
 import { summarizeFillFields } from '../autofill/fillLog';
 import type { FrameFillLog } from '../autofill/fillLog';
 import { RULE_PROFILE } from '../autofill/ruleMatching.fixture';
 import { expectCollapsedSidebar, fitsViewportWidth } from './layout';
+
+test('outcome filters retain a distinct selection and readable labels', async ({ context, extension }, info) => {
+  await stubEmptyGemini(context);
+  await extension.send('AUTOFILL_FILL', 'merge');
+  const options = await context.newPage();
+  await options.emulateMedia({ reducedMotion: 'reduce' });
+  await options.goto(extensionUrl(extension, 'options.html?section=fillDetails'));
+  const group = options.getByRole('group', { name: 'Outcome filters', exact: true });
+  await expect(group).toBeVisible();
+  for (const theme of ['light', 'dark']) {
+    await extension.worker.evaluate(theme => chrome.storage.local.set({ themePreference: theme }), theme);
+    await expect(options.locator('html')).toHaveCSS('color-scheme', theme);
+    for (const width of [320, 1280]) {
+      await options.setViewportSize({ width, height: 800 });
+      const sizes = await group.locator('button').evaluateAll(buttons => buttons.map(button => {
+        const box = button.getBoundingClientRect();
+        return [box.width, box.height];
+      }));
+      for (const name of [/^Detected /, /^Filled /, /^Not filled /]) {
+        const selected = group.getByRole('button', { name });
+        await selected.click();
+        await expect(selected).toHaveAttribute('aria-pressed', 'true');
+        const contrast = await selected.evaluate(controlContrast);
+        expect(contrast.borderWidth).toBeGreaterThanOrEqual(2);
+        expect(contrast.borderInside).toBeGreaterThanOrEqual(3);
+        expect(contrast.borderOutside).toBeGreaterThanOrEqual(3);
+        const label = await selected.locator('span').last().evaluate(controlContrast);
+        expect(label.text).toBeGreaterThanOrEqual(4.5);
+        expect(await group.locator('button').evaluateAll(buttons => buttons.map(button => {
+          const box = button.getBoundingClientRect();
+          return [box.width, box.height];
+        }))).toEqual(sizes);
+      }
+      await group.screenshot({ path: info.outputPath(`outcomes-${theme}-${width}.png`) });
+    }
+  }
+  await options.emulateMedia({ forcedColors: 'active', colorScheme: 'dark', reducedMotion: 'reduce' });
+  const selected = group.locator('[aria-pressed="true"]');
+  const contrast = await selected.evaluate(controlContrast);
+  expect(contrast.borderWidth).toBeGreaterThanOrEqual(2);
+  expect(contrast.borderOutside).toBeGreaterThanOrEqual(3);
+  for (const other of await group.locator('[aria-pressed="false"]').all())
+    expect((await other.evaluate(controlContrast)).borderWidth).toBe(0);
+  await group.screenshot({ path: info.outputPath('outcomes-forced-colors.png') });
+});
 
 test('source navigation returns to an open form and reopens a fresh form after navigation or closure', async ({
   page,

@@ -403,14 +403,14 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
                     aria-pressed={outcome === id}
                     onClick={() => selectOutcome(id)}
                     className={[
-                      'rounded-lg px-3 py-2 text-left transition-colors',
+                      'rounded-lg text-left transition-colors',
                       outcome === id
-                        ? 'bg-blue-50 dark:bg-blue-950/40'
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-800',
+                        ? 'border-2 border-blue-700 bg-blue-50 px-2.5 py-1.5 dark:border-blue-400 dark:bg-blue-950/40'
+                        : 'border-0 px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800',
                     ].join(' ')}
                   >
                     <span className="block text-2xl font-semibold tabular-nums">{count}</span>
-                    <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
+                    <span className={`mt-1 block text-xs ${outcome === id ? 'text-gray-600 dark:text-gray-300' : 'text-gray-500 dark:text-gray-400'}`}>
                       {label}
                     </span>
                   </button>
@@ -471,7 +471,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search field or profile names"
-              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800"
+              className="w-full rounded-lg border border-gray-500 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-400 dark:bg-gray-800"
             />
             <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Field colors">
               {colorFilters.map(([id, label, tone, help]) => (

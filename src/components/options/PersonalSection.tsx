@@ -273,8 +273,8 @@ export function PersonalSection({ profile, onSave }: Props) {
               <div
                 className={`flex items-stretch rounded-lg border ${
                   errors.phoneNumber
-                    ? 'border-red-300 dark:border-red-500'
-                    : 'border-gray-300 dark:border-gray-600'
+                    ? 'border-red-600 dark:border-red-400'
+                    : 'border-gray-500 dark:border-gray-400'
                 }`}
               >
                 <SearchableCallingCodeSelect

@@ -31,8 +31,8 @@ export function SearchableLanguageSelect({ id, value, onChange, error, placehold
   });
 
   const borderCls = error
-    ? 'border-red-300 dark:border-red-500 focus:ring-red-500'
-    : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500';
+    ? 'border-red-600 dark:border-red-400 focus:ring-red-500'
+    : 'border-gray-500 dark:border-gray-400 focus:ring-blue-500';
 
   return (
     <SearchableDropdown

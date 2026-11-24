@@ -1,4 +1,6 @@
 import { test, expect, extensionUrl } from './fixtures';
+import { controlContrast } from './contrast';
+import { DEV_PROFILE } from '../utils/devProfile';
 
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   test(`profile navigation and shared animations follow ${reducedMotion}`, async ({ context, extension }) => {
@@ -135,33 +137,18 @@ test('appearance choice stays distinct in dark and forced-colors modes', async (
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const group = page.getByRole('group', { name: 'Appearance', exact: true });
   await group.getByRole('button', { name: 'Dark', exact: true }).click();
-  const contrast = await group.evaluate(element => {
-    const selected = getComputedStyle(element.querySelector('[aria-pressed="true"]')!);
-    const other = getComputedStyle(element.querySelector('[aria-pressed="false"]')!);
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 1;
-    const context = canvas.getContext('2d')!;
-    const luminance = (color: string) => {
-      context.clearRect(0, 0, 1, 1);
-      context.fillStyle = color;
-      context.fillRect(0, 0, 1, 1);
-      const rgb = [...context.getImageData(0, 0, 1, 1).data].slice(0, 3).map(value => {
-        const channel = value / 255;
-        return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
-      });
-      return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
-    };
-    const ratio = (a: string, b: string) => {
-      const values = [luminance(a), luminance(b)].sort((x, y) => x - y);
-      return (values[1] + 0.05) / (values[0] + 0.05);
-    };
-    return {
-      state: ratio(selected.backgroundColor, other.backgroundColor),
-      text: ratio(selected.color, selected.backgroundColor),
-    };
-  });
-  expect(contrast.state).toBeGreaterThanOrEqual(3);
+  const contrast = await group.locator('[aria-pressed="true"]').evaluate(controlContrast);
+  expect(contrast.fill).toBeGreaterThanOrEqual(3);
   expect(contrast.text).toBeGreaterThanOrEqual(4.5);
+  await page.addStyleTag({ content: `
+    *:not(svg):not(svg *) {
+      line-height: 1.5 !important;
+      letter-spacing: 0.12em !important;
+      word-spacing: 0.16em !important;
+    }
+    p { margin-bottom: 2em !important; }
+  ` });
+  expect(await page.locator('main').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await group.screenshot({ path: info.outputPath('appearance-dark.png') });
 
@@ -175,4 +162,66 @@ test('appearance choice stays distinct in dark and forced-colors modes', async (
       await expect(other).toBeHidden();
   }
   await group.screenshot({ path: info.outputPath('appearance-forced-colors.png') });
+});
+
+test('form boundaries and Quick Fill selection remain distinct in both themes', async ({ context, extension }, info) => {
+  await extension.worker.evaluate(profile => chrome.storage.local.set({ profile }), DEV_PROFILE);
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const theme of ['light', 'dark']) {
+    await extension.worker.evaluate(theme => chrome.storage.local.set({ themePreference: theme }), theme);
+    await page.goto(extensionUrl(extension, 'options.html'));
+    for (const section of ['Personal', 'Address', 'Salary', 'Languages']) {
+      await page.getByRole('button', { name: section, exact: true }).click();
+      while (await page.locator('[data-entry-toggle][aria-expanded="false"]').count())
+        await page.locator('[data-entry-toggle][aria-expanded="false"]').first().click();
+      await page.locator('main details').evaluateAll(items => {
+        items.forEach(item => { (item as HTMLDetailsElement).open = true; });
+      });
+      const controls = page.locator('main input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), main select, main textarea, main button[aria-haspopup="listbox"]');
+      for (const control of await controls.all()) {
+        if (!(await control.isVisible()) || !(await control.isEnabled())) continue;
+        const contrast = await control.evaluate(controlContrast);
+        if (!contrast.borderWidth) continue; // The phone number shares its surrounding border.
+        expect(contrast.borderInside, `${theme} ${section}`).toBeGreaterThanOrEqual(3);
+        expect(contrast.borderOutside, `${theme} ${section}`).toBeGreaterThanOrEqual(3);
+      }
+      if (section === 'Personal') {
+        const phone = await page.getByRole('textbox', { name: 'Phone number', exact: true })
+          .locator('..').evaluate(controlContrast);
+        expect(phone.borderInside).toBeGreaterThanOrEqual(3);
+        expect(phone.borderOutside).toBeGreaterThanOrEqual(3);
+        const trigger = page.getByRole('button', { name: 'Select country calling code' });
+        await trigger.click();
+        const search = await page.getByRole('combobox', { name: 'Search country or code…' }).evaluate(controlContrast);
+        expect(search.borderInside).toBeGreaterThanOrEqual(3);
+        expect(search.borderOutside).toBeGreaterThanOrEqual(3);
+        await page.keyboard.press('Escape');
+      }
+    }
+    await page.getByRole('button', { name: 'Personal', exact: true }).click();
+    const email = page.getByRole('textbox', { name: /^Email/ });
+    await email.fill('invalid');
+    const invalid = await email.evaluate(controlContrast);
+    expect(invalid.borderInside).toBeGreaterThanOrEqual(3);
+    expect(invalid.borderOutside).toBeGreaterThanOrEqual(3);
+    page.once('dialog', dialog => dialog.accept());
+    await page.reload();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    const quickFill = page.getByRole('group', { name: 'Floating button', exact: true });
+    const contrast = await quickFill.locator('[aria-pressed="true"]').evaluate(controlContrast);
+    expect(contrast.fill).toBeGreaterThanOrEqual(3);
+    expect(contrast.text).toBeGreaterThanOrEqual(4.5);
+    await quickFill.screenshot({ path: info.outputPath(`quick-fill-${theme}.png`) });
+  }
+  await page.emulateMedia({ forcedColors: 'active', colorScheme: 'dark', reducedMotion: 'reduce' });
+  const quickFill = page.getByRole('group', { name: 'Floating button', exact: true });
+  for (const name of ['Off', 'On']) {
+    const selected = quickFill.getByRole('button', { name, exact: true });
+    await selected.click();
+    await expect(selected).toHaveAttribute('aria-pressed', 'true');
+    await expect(selected.locator('svg')).toBeVisible();
+    await expect(quickFill.locator('[aria-pressed="false"] svg')).toBeHidden();
+  }
+  await quickFill.screenshot({ path: info.outputPath('quick-fill-forced-colors.png') });
 });

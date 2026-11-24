@@ -893,7 +893,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               onClick={() => void handleThemeChange(opt)}
               aria-pressed={themePreference === opt}
               className={[
-                'inline-flex items-center gap-1 px-2 py-1.5 text-sm font-medium capitalize transition-colors first:rounded-l-md last:rounded-r-md focus-visible:relative focus-visible:z-10 focus-visible:-outline-offset-2 aria-pressed:focus-visible:outline-white',
+                'inline-flex items-center gap-1 px-1 py-1.5 min-[360px]:px-2 text-sm font-medium capitalize transition-colors first:rounded-l-md last:rounded-r-md focus-visible:relative focus-visible:z-10 focus-visible:-outline-offset-2 aria-pressed:focus-visible:outline-white',
                 i < arr.length - 1 ? 'border-r border-gray-300 dark:border-gray-600' : '',
                 themePreference === opt
                   ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-500 dark:text-gray-950 dark:border-blue-500'
@@ -1269,7 +1269,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               onChange={(e) => setResetConfirmText(e.target.value)}
               placeholder="DELETE"
               autoComplete="off"
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full px-3 py-2 border border-gray-500 dark:border-gray-400 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
 

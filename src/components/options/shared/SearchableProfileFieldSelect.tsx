@@ -329,7 +329,7 @@ export function SearchableProfileFieldSelect({
         disabled={disabled}
         type="button"
         onClick={toggle}
-        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-left bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 min-h-[38px]"
+        className="w-full px-3 py-2 border border-gray-500 dark:border-gray-400 rounded-lg text-sm text-left bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 min-h-[38px]"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
@@ -367,7 +367,7 @@ export function SearchableProfileFieldSelect({
               <input
                 ref={searchRef}
                 type="text"
-                className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-2.5 py-1.5 text-sm border border-gray-500 dark:border-gray-400 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Search profile fields…"
                 value={search}
                 onChange={(e) => {

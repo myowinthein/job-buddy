@@ -4,14 +4,14 @@ import { fieldCls } from './fieldCls';
 describe('fieldCls', () => {
   it('returns a non-error class string when called with no argument', () => {
     const cls = fieldCls();
-    expect(cls).toContain('border-gray-300');
+    expect(cls).toContain('border-gray-500');
     expect(cls).not.toContain('border-red');
   });
 
   it('returns an error class string when called with a non-empty string', () => {
     const cls = fieldCls('Required field');
     expect(cls).toContain('border-red');
-    expect(cls).not.toContain('border-gray-300');
+    expect(cls).not.toContain('border-gray-500');
   });
 
   it('appends disabled styling when disabled is true', () => {
