@@ -6,6 +6,7 @@ const SERVER_CHECK_TIMEOUT = 1500;
 const SERVER_STATUS_MESSAGE = 'JB_DEV_SERVER_AVAILABLE';
 
 export function registerDevelopmentServerAvailability(): void {
+  if (typeof __DEV_SERVER_ORIGIN__ !== 'string') return;
   const url = new URL('/@vite/client', __DEV_SERVER_ORIGIN__.replace(/^ws/, 'http')).href;
   let pending: Promise<boolean> | undefined;
   chrome.runtime.onMessage.addListener((message, sender, respond) => {
