@@ -289,7 +289,7 @@ test('walkthrough, themes, screenshots and developer navigation work under the G
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(origin + prefix);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'One profile.Fill every application.',
+    'Fill job applications from one saved profile.',
   );
   const updates = page.locator('#extension-updates');
   await updates.locator('summary').click();
