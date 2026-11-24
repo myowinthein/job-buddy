@@ -23,7 +23,7 @@ import { ownWriteEvents, performWrite, setWriteConfidence } from './writeSession
 import type { WriteDependencies } from './writeSession';
 import type { DocumentFile } from '../types/profile';
 import { COUNTRIES, countryName } from '../data/countries';
-import { searchableSelect } from './reactSelect';
+import { searchableSelect, searchableSelectOptions } from './reactSelect';
 import { menuSelect, selectMenu, selectMenuSearch } from './menuSelect';
 import { normalize, similarity, isSkippableOption, PLACEHOLDER_OPTION_NORMS } from './normalizer';
 import { CONF_FUZZY_THRESHOLD, CONF_AI_YELLOW } from './constants';
@@ -348,7 +348,11 @@ function scopedOptions(trigger: HTMLElement, before: Set<HTMLElement>): HTMLElem
     // linked menu belongs to an enclosing component's shadow root.
     for (let scope: Document | ShadowRoot = root; ; ) {
       const menus = ids.map((id) => scope.getElementById(id)).filter((menu) => !!menu);
-      if (menus.length) return menus.flatMap((menu) => queryOpenElements(menu, '[role="option"]'));
+      if (menus.length)
+        return menus.flatMap(
+          (menu) =>
+            searchableSelectOptions(trigger, menu) ?? queryOpenElements(menu, '[role="option"]'),
+        );
       if (!(scope instanceof ShadowRoot)) return [];
       scope = scope.host.getRootNode() as Document | ShadowRoot;
     }
@@ -637,12 +641,30 @@ async function rawDropdown(
   const root = element.getRootNode() as Document | ShadowRoot;
   const before = new Set([...boxes(root), ...boxes(document)]);
   const wasOpen = element.getAttribute('aria-expanded') === 'true';
-  const trigger = searchableSelect(element)?.trigger ?? element;
+  const select = searchableSelect(element);
+  const trigger = select?.trigger ?? element;
   try {
     if (!active() || !isControlAvailable(element)) return false;
     focus(element);
+    // React Select's input is a query editor (or an invisible dummy). Its
+    // keyboard handler opens both variants without racing focused state in
+    // the control's mousedown handler.
+    if (!wasOpen && select && !select.trigger) {
+      ownWriteEvents(() =>
+        element.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 'ArrowDown',
+            code: 'ArrowDown',
+            bubbles: true,
+            composed: true,
+            cancelable: true,
+          }),
+        ),
+      );
+      await settleFramework();
+    }
     if (!active() || !isControlAvailable(element)) return false;
-    if (!wasOpen) safeClick(trigger, true);
+    if (!wasOpen && element.getAttribute('aria-expanded') !== 'true') safeClick(trigger, true);
     if (
       element instanceof HTMLInputElement &&
       !element.readOnly &&

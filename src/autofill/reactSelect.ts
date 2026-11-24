@@ -7,6 +7,15 @@ export interface SearchableSelect {
 const part = (element: Element, suffix: string) =>
   [...element.classList].some((name) => name.endsWith(`__${suffix}`));
 
+/** Older React Select versions link a menu by ID but omit ARIA option roles. */
+export function searchableSelectOptions(element: HTMLElement, menu: Element): HTMLElement[] | null {
+  const select = searchableSelect(element);
+  if (!select || select.trigger) return null;
+  return [...menu.querySelectorAll<HTMLElement>('[role="option"],[class*="__option"]')].filter(
+    (option) => option.getAttribute('role') === 'option' || part(option, 'option'),
+  );
+}
+
 export function searchableSelect(element: HTMLElement): SearchableSelect | null {
   if (!(element instanceof HTMLInputElement)) return null;
   // Some component libraries declare searchability without ARIA roles. Require

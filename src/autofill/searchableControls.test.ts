@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it } from 'vitest';
-import { searchableSelect } from './reactSelect';
+import { searchableSelect, searchableSelectOptions } from './reactSelect';
 import { readFieldValue } from './fieldValue';
 import { isControlAvailable } from './dom';
 import { applyHighlight, clearHighlights } from './highlighter';
@@ -30,6 +30,20 @@ it('does not mistake an uncommitted search for a selected answer', () => {
   const input = select();
   input.value = 'Bangkok';
   expect(readFieldValue(input)).toBe('');
+});
+it('reads legacy options only inside the linked menu of a recognized single select', () => {
+  const input = select();
+  const menu = document.createElement('div');
+  menu.innerHTML =
+    '<div class="select__option" id="legacy">Male</div><div role="option" id="modern">Female</div><div class="select__options-heading">Heading</div>';
+  document.body.append(menu);
+  document.body.insertAdjacentHTML('beforeend', '<div class="select__option">Unrelated</div>');
+  expect(searchableSelectOptions(input, menu)?.map((option) => option.id)).toEqual([
+    'legacy',
+    'modern',
+  ]);
+  input.removeAttribute('role');
+  expect(searchableSelectOptions(input, menu)).toBeNull();
 });
 it('rejects ambiguous editors, multi-selection and unrelated controls', () => {
   const input = select('Male');
