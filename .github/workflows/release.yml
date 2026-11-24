@@ -34,6 +34,9 @@ jobs:
       - name: Type-check
         run: pnpm compile
 
+      - name: Check shared website layout
+        run: pnpm check:site
+
       - name: Lint
         run: pnpm lint
 

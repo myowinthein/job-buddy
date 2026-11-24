@@ -30,6 +30,7 @@
   </head>
   <body class="developer-guide">
     <a class="skip-link" href="#main">Skip to content</a>
+    <!-- site:header:start -->
     <header class="site-header">
       <div class="header-inner">
         <a class="brand" href="../"
@@ -75,6 +76,7 @@
         </div>
       </div>
     </header>
+    <!-- site:header:end -->
     <div class="site-layout">
       <aside class="chapter-nav" aria-label="On this page">
         <p>On this page</p>
@@ -526,6 +528,7 @@ pnpm dev</code></pre>
                 <details id="website-commands">
                   <summary>Website preview</summary>
                   <p>Open the printed URL for the walkthrough, or add <code>/developers/</code> for the guide or <code>/demo/</code> for the form.</p>
+                  <p>The preview command first regenerates the shared header and footer. Edit <code>scripts/site-templates/header.html</code> or <code>footer.html</code>, then run <code>pnpm build:site</code> and commit the updated HTML in <code>docs/</code>. The version comes from <code>package.json</code>. Page content stays outside the marked generated sections; <code>pnpm check:site</code> checks that the published copies are current without writing files.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy website preview command">Copy</button>
                     <pre><code>pnpm serve:landing</code></pre>
@@ -821,6 +824,7 @@ pnpm lint:fix</code></pre>
         </section>
       </main>
     </div>
+    <!-- site:footer:start -->
     <footer class="site-footer">
       <div>
         <nav class="footer-links" aria-label="Project links">
@@ -835,6 +839,7 @@ pnpm lint:fix</code></pre>
         </nav>
       </div>
     </footer>
+    <!-- site:footer:end -->
     <dialog class="image-dialog" aria-label="Screenshot viewer">
       <header>
         <p></p>

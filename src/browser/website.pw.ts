@@ -109,6 +109,55 @@ test('external link text and arrow share the same focus boundary', async ({ cont
   }
 });
 
+test('shared headers and footers work on every Job Buddy page without JavaScript', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  await serveSite(context);
+  const page = await context.newPage();
+  const { version } = JSON.parse(await readFile(resolve('package.json'), 'utf8'));
+  try {
+    for (const path of ['', 'developers/', 'legal/privacy/', 'legal/disclaimer/', '404.html']) {
+      for (const width of [320, 800, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto(origin + prefix + path);
+        const header = page.locator('body > .site-header');
+        const footer = page.locator('body > .site-footer');
+        await expect(header).toHaveCount(1);
+        await expect(footer).toHaveCount(1);
+        await expect(header.getByRole('link', { name: `Version ${version} release notes` }))
+          .toHaveAttribute('href', `https://github.com/myowinthein/job-buddy/releases/tag/v${version}`);
+        await expect(header.getByRole('link', { name: 'For developers' })).toHaveJSProperty('href', origin + prefix + 'developers/');
+        await expect(footer.getByRole('link', { name: 'Privacy Policy' })).toHaveJSProperty('href', origin + prefix + 'legal/privacy/');
+        await expect(footer.getByRole('link', { name: 'Disclaimer', exact: true })).toHaveJSProperty('href', origin + prefix + 'legal/disclaimer/');
+        await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+        expect(await fitsViewportWidth(page)).toBe(true);
+        const current = header.locator('[aria-current="page"]');
+        await expect(current).toHaveCount(path === '' || path === 'developers/' ? 1 : 0);
+        if (path === 'developers/') await expect(current).toHaveText('For developers');
+      }
+    }
+  } finally {
+    await context.close();
+  }
+});
+
+test('the shared error-page layout resolves navigation from a nested missing URL', async ({ context, page }) => {
+  await serveSite(context);
+  const missing = origin + prefix + 'missing/nested/page';
+  await context.route(missing, async (route) => route.fulfill({
+    status: 404,
+    contentType: 'text/html',
+    body: await readFile(resolve(docs, '404.html')),
+  }));
+  await page.goto(missing);
+  await expect(page.locator('.site-header .brand')).toHaveJSProperty('href', origin + prefix);
+  await expect(page.locator('.site-header').getByRole('link', { name: 'For developers' }))
+    .toHaveJSProperty('href', origin + prefix + 'developers/');
+  await expect(page.locator('.site-footer').getByRole('link', { name: 'Privacy Policy' }))
+    .toHaveJSProperty('href', origin + prefix + 'legal/privacy/');
+  await page.getByRole('link', { name: 'Back to Job Buddy', exact: true }).click();
+  await expect(page).toHaveURL(origin + prefix);
+});
+
 test('public pages expose canonical search metadata and exclude demo and error pages', async ({ context, page }) => {
   await serveSite(context);
   const sitemap = await readFile(resolve(docs, 'sitemap.xml'), 'utf8');
