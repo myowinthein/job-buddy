@@ -22,6 +22,37 @@ beforeEach(() => {
 });
 
 describe('applyHighlight', () => {
+  it.each(['checkbox', 'radio'])(
+    'tints the dedicated label without overriding %s state colors',
+    (type) => {
+      document.body.innerHTML = `<label for="choice">Location</label><input id="choice" type="${type}" style="background-color:navy"><label><input type="${type}" id="other">Other</label>`;
+      const input = document.querySelector<HTMLInputElement>('#choice')!;
+      const label = document.querySelector<HTMLLabelElement>('label')!;
+      applyHighlight(input, CONF_GREEN);
+      expect(input.style.backgroundColor).toBe('navy');
+      expect(label.style.backgroundColor).toBe('rgba(34, 197, 94, 0.12)');
+      input.checked = true;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      expect(input.style.backgroundColor).toBe('navy');
+      clearHighlights();
+      expect(label.style.backgroundColor).toBe('');
+      expect(input.style.backgroundColor).toBe('navy');
+      expect(input.checked).toBe(true);
+    },
+  );
+
+  it('does not tint a shared choice label or an unlabelled state indicator', () => {
+    document.body.innerHTML =
+      '<label><input id="one" type="checkbox"><input id="two" type="checkbox">Group</label><div role="checkbox" aria-checked="false" style="background-color:navy"></div>';
+    applyHighlight(document.querySelector('#one')!, CONF_GREEN);
+    const custom = document.querySelector<HTMLElement>('[role=checkbox]')!;
+    applyHighlight(custom, CONF_GREEN);
+    expect(document.querySelector('label')!.style.backgroundColor).toBe('');
+    expect(document.querySelector<HTMLInputElement>('#one')!.style.backgroundColor).toBe('');
+    expect(custom.style.backgroundColor).toBe('navy');
+    clearHighlights();
+    expect(custom.style.backgroundColor).toBe('navy');
+  });
   it('marks element as highlighted', () => {
     const el = makeInput();
     applyHighlight(el, CONF_GREEN);

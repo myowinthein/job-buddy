@@ -6,11 +6,15 @@ import type { AIFieldPayload, AIOptionPayload } from '../resume-ai/types';
 import { autofillProfilePayload } from '../resume-ai/profilePayload';
 import { composedParent } from './dom';
 import { extractSignals } from './signals';
-import { sectionFamily, ruleQuestionBlocked } from './ruleContext';
+import { sectionFamily, ruleQuestionBlocked, narrativeQuestion } from './ruleContext';
 import { compatibleLinkPath } from './linkPlatforms';
 
 /** A response can only name data exposed for this particular question. */
 export function allowedAIPath(profile: Profile, field: AIFieldPayload, path: string): boolean {
+  if (
+    field.type === 'text' &&
+    narrativeQuestion(field.visibleLabel || field.label || field.placeholder || '')
+  ) return false;
   if (field.section === 'education' || field.section === 'workHistory') {
     const history = /^(education|workHistory)\.(\d+)\./.exec(path);
     if (field.profileEntryIndex === null) return false;

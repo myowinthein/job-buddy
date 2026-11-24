@@ -275,13 +275,13 @@ it('does not upload the CV when an unrelated learned path reaches a file field',
   expect(result.noReview).toBe(0);
 });
 
-it('does not fill an unrelated visible question from an internal name alone', async () => {
+it('does not fill or send a narrative question to AI from an internal name alone', async () => {
   const result = await fill(
     '<label>Describe your experience with design<input name="experience"></label>',
   );
   expect(document.querySelector('input')!.value).toBe('');
   expect(result.noReview).toBe(0);
-  expect(resolveFieldsWithAI).toHaveBeenCalled();
+  expect(resolveFieldsWithAI).not.toHaveBeenCalled();
 });
 it('honors an explicit request to omit the calling code without a sibling selector', async () => {
   await fill('<label>Local number<input></label>');

@@ -1,4 +1,4 @@
-import { composedParent, controlForm } from './dom';
+import { composedParent, controlForm, isChoice } from './dom';
 import { ariaName, ownText } from './labels';
 import { bestLabel } from './signals';
 import { isConsentGroup } from './consent';
@@ -16,6 +16,11 @@ export function visibleQuestion(signals: FieldSignals): string {
   return [signals.label, signals.ariaLabel, signals.placeholder].filter(Boolean).join(' ');
 }
 
+/** A related profile passage is not an answer to a request for a personal explanation. */
+export function narrativeQuestion(text: string): boolean {
+  return /\b(?:describe|explain|elaborate|walk\s+(?:us|me)\s+through)\b|\b(?:give|provide|share)\s+(?:us\s+)?(?:an?\s+)?(?:specific\s+)?example\b|\btell\s+us\s+about\b|\bhow\s+(?:would|did|do)\s+you\b|\bwhy\s+(?:do|did|would|are|have)\s+you\b|\bwhat\s+(?:attracts?|attracted|motivates?|motivated|interests?|interested)\s+you\b/i.test(text);
+}
+
 /** Questions about someone else or data the profile cannot represent stay manual. */
 export function ruleQuestionBlocked(signals: FieldSignals): boolean {
   const text = visibleQuestion(signals);
@@ -24,6 +29,10 @@ export function ruleQuestionBlocked(signals: FieldSignals): boolean {
     signals.element?.getAttribute('role') === 'combobox' ||
     signals.element?.getAttribute('aria-haspopup') === 'listbox' || !!(signals.element && menuSelect(signals.element));
   return (
+    (!selection &&
+      signals.type !== 'file' &&
+      !(signals.element && isChoice(signals.element)) &&
+      narrativeQuestion(signals.label || signals.ariaLabel || signals.placeholder || '')) ||
     (selection &&
       isConsentGroup({ groupLabel: `${text} ${signals.nearbyText ?? ''}`, options: [] })) ||
     /\b(emergency\s+contact|referee|referrer|spouse|next\s+of\s+kin|reference(?:'s)?\s+(?:name|email|phone)|manager(?:'s)?\s+(?:name|email|phone))\b/i.test(

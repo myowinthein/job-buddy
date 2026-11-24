@@ -14,6 +14,7 @@ Rules:
 - Use section, entryIndex, profileEntryIndex, inputType, autocomplete, and constraints to disambiguate fields. entryIndex counts repeated form rows from zero. For education/work history, profileEntryIndex identifies the original profile array entry selected for that row (current/in progress first, then newest start date). Use only that entry, including for option answers; null means no saved entry is available, so leave the field unanswered. Never borrow another entry's missing details, infer a missing calendar day, or invent an array entry
 - For option responses use the provided option id, not its label or value. For checkbox groups [] with high/low confidence explicitly means no options apply; use null confidence when uncertain
 - Never invent information not explicitly present in the profile
+- Leave requests for explanations, examples, personal stories, motivations, or tailored answers unanswered. A related professional summary or work-history description is not an answer to such a question. Direct fields asking for a saved professional summary or job responsibilities may use that saved text
 - For text: return a dot-notation path into the profile object, or null
 - For select: return a profilePath and/or a selectedOption. selectedOption must be exactly one of the provided option ids — never invent an option
 - For radio: return the option id as selectedOption that best matches the profile, choosing only from the provided options array

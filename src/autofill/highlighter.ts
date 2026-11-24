@@ -17,6 +17,21 @@ const surfaceOwners = new WeakMap<HTMLElement, HTMLElement>();
 function highlightSurface(element: HTMLElement): HTMLElement {
   const previous = surfaces.get(element);
   if (previous) return previous;
+  if (isChoice(element)) {
+    const labels =
+      element instanceof HTMLInputElement
+        ? [...(element.labels ?? [])]
+        : [element.closest('label')].filter((label): label is HTMLLabelElement => !!label);
+    // Tint only this choice's label, never a shared question or the checked-state glyph.
+    return (
+      labels.find(
+        (label) =>
+          !queryOpenElements(label, 'input,select,textarea,[role="checkbox"],[role="radio"]').some(
+            (control) => control !== element,
+          ),
+      ) ?? element
+    );
+  }
   const select = searchableSelect(element);
   if (select) return select.control;
   if (
@@ -61,6 +76,8 @@ function paint(element: HTMLElement, tint: FieldTint): void {
   rememberStyles(surface);
   highlightedElements.add(element);
   element.dataset.jbHighlighted = '1';
+  // Unlabelled choices retain their native state colors; accessible feedback still applies.
+  if (isChoice(surface)) return;
   // Keep the wrapper's focus/border transitions intact.
   if (surface === element) surface.style.transition = 'background-color 0.2s ease';
   surface.style.backgroundColor = backgroundTint(
