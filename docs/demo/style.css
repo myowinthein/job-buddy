@@ -85,6 +85,7 @@ a:is(:hover, :focus-visible) {
   margin: auto;
   padding: 22px 32px;
   display: flex;
+  flex-wrap: wrap;
   gap: 30px;
   align-items: center;
 }

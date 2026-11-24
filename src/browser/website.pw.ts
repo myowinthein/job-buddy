@@ -575,6 +575,15 @@ test('demo returns to its source guide and hides the return link for direct visi
       await expect(page).toHaveURL(origin + prefix + 'demo/?from=' + from);
       await page.setViewportSize({ width, height: 900 });
       const back = page.getByRole('link', { name: /Back to guide/ });
+      if (width === 320)
+        await page.addStyleTag({ content: `
+          *:not(svg):not(svg *) {
+            line-height: 1.5 !important;
+            letter-spacing: 0.12em !important;
+            word-spacing: 0.16em !important;
+          }
+          p { margin-bottom: 2em !important; }
+        ` });
       await expectVisibleFocus(back);
       expect(await fitsViewportWidth(page)).toBe(true);
       const backBox = (await back.boundingBox())!;
@@ -587,6 +596,50 @@ test('demo returns to its source guide and hides the return link for direct visi
   for (const query of ['', '?from=https://example.com/', '?from=unknown']) {
     await page.goto(origin + prefix + 'demo/' + query);
     await expect(page.locator('#return-to-guide')).toBeHidden();
+  }
+});
+
+test('guides and demo reflow doubled text and keep chapter targets below the sticky header', async ({
+  context,
+  page,
+}, info) => {
+  await serveSite(context);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 320, height: 600 });
+  for (const path of ['', 'developers/', 'demo/?from=developers']) {
+    await page.goto(origin + prefix + path);
+    if (path.startsWith('demo/')) await expect(page.locator('#job-buddy-setup')).toBeVisible();
+    await page.locator('main details').evaluateAll((elements) => {
+      elements.forEach((element) => { (element as HTMLDetailsElement).open = true; });
+    });
+    // LP uses pixel font sizes, so snapshot computed values before doubling them.
+    await page.evaluate(() => {
+      const sizes = [...document.querySelectorAll<HTMLElement>('html, body, body *:not(svg):not(svg *)')]
+        .map((element) => {
+          const css = getComputedStyle(element);
+          return { element, font: parseFloat(css.fontSize), line: parseFloat(css.lineHeight) };
+        });
+      for (const { element, font, line } of sizes) {
+        element.style.fontSize = `${font * 2}px`;
+        if (Number.isFinite(line)) element.style.lineHeight = `${line * 2}px`;
+      }
+    });
+    expect(await fitsViewportWidth(page), path).toBe(true);
+    if (!path.startsWith('demo/')) {
+      const link = page.locator('.mobile-contents nav a').nth(1);
+      const target = page.locator((await link.getAttribute('href'))!);
+      await link.click();
+      await expect.poll(async () => {
+        const header = (await page.locator('.site-header').boundingBox())!;
+        return (await target.boundingBox())!.y - header.y - header.height;
+      }, { message: `${path || 'walkthrough'} chapter heading must clear the sticky header` })
+        .toBeGreaterThanOrEqual(0);
+    } else {
+      await expectVisibleFocus(page.getByRole('link', { name: /Back to guide/ }));
+      await expect(page.getByRole('button', { name: /Switch to .* mode/ }))
+        .toBeInViewport({ ratio: 1 });
+    }
+    await page.screenshot({ path: info.outputPath(`${path.split('/')[0] || 'user'}-doubled-text.png`) });
   }
 });
 

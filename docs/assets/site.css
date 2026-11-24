@@ -34,7 +34,7 @@
   box-sizing: border-box;
 }
 html {
-  scroll-padding-top: 100px;
+  scroll-padding-top: max(100px, calc(var(--site-header-height, 72px) + 16px));
 }
 body {
   margin: 0;
@@ -157,9 +157,9 @@ button:disabled {
 }
 .chapter-nav {
   position: sticky;
-  top: 115px;
+  top: calc(var(--site-header-height, 72px) + 43px);
   align-self: start;
-  max-height: calc(100dvh - 140px);
+  max-height: calc(100dvh - var(--site-header-height, 72px) - 68px);
   overflow-y: auto;
   margin-top: 66px;
   font-size: 13px;
@@ -214,6 +214,7 @@ h4 {
   line-height: 1.2;
   letter-spacing: -0.035em;
   text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 h1 {
   font-size: clamp(40px, 5.3vw, 68px);

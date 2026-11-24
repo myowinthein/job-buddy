@@ -1,4 +1,13 @@
 const root = document.documentElement;
+const siteHeader = document.querySelector('.site-header');
+if (siteHeader) {
+  const updateHeaderHeight = () => {
+    root.style.setProperty('--site-header-height', `${siteHeader.getBoundingClientRect().height}px`);
+  };
+  updateHeaderHeight();
+  // Text resizing and wrapping can change the sticky header without a window resize.
+  new ResizeObserver(updateHeaderHeight).observe(siteHeader);
+}
 const themeButton = document.querySelector('.theme-toggle');
 const screenshots = [...document.querySelectorAll('img[data-light][data-dark]')];
 const nearbyImages = new Set();
