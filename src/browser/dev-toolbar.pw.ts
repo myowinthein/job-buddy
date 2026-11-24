@@ -7,7 +7,7 @@ import { fitsViewportWidth } from './layout';
 
 const buildRoot = resolve('.output/dev-toolbar-test');
 let server: ChildProcess;
-test.beforeAll(async () => {
+async function startServer() {
   // Keep WXT's development-server lifecycle outside Playwright's worker.
   server = spawn(
     process.execPath,
@@ -61,8 +61,9 @@ test.beforeAll(async () => {
       reject(new Error(`Development server exited (${code}): ${output}`));
     });
   });
-});
-test.afterAll(async () => {
+}
+test.beforeAll(startServer);
+async function stopServer() {
   if (!server || server.exitCode !== null) return;
   await new Promise<void>((done) => {
     const timeout = setTimeout(() => server.kill('SIGTERM'), 5000);
@@ -73,6 +74,63 @@ test.afterAll(async () => {
     if (server.connected) server.send('stop');
     else server.kill('SIGTERM');
   });
+}
+test.afterAll(stopServer);
+
+test('development floating control follows server shutdown and restart on open and new forms', async ({
+  playwright,
+}) => {
+  test.setTimeout(60_000);
+  const extensionPath = resolve(buildRoot, 'chrome-mv3-dev');
+  const context = await playwright.chromium.launchPersistentContext('', {
+    channel: 'chromium',
+    headless: true,
+    args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
+  });
+  try {
+    await context.route(/https?:\/\/(?!127\.0\.0\.1:4177)/, (route) => route.abort());
+    await context.route('http://127.0.0.1:4178/application', (route) =>
+      route.fulfill({
+        contentType: 'text/html',
+        body: '<form><label>First name<input name="firstName"></label><label>Email<input name="email" type="email"></label><label>Resume<input name="resume" type="file"></label></form>',
+      }),
+    );
+    const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+    await worker.evaluate(() =>
+      chrome.storage.local.set({
+        quickFillPreferences: { enabled: true, disabledSites: [] },
+      }),
+    );
+    const page = await context.newPage();
+    await page.goto('http://127.0.0.1:4178/application');
+    const widget = page.locator('[data-job-buddy-ui][data-dev]');
+    await expect(widget).toBeVisible();
+    await stopServer();
+    await expect(widget).toHaveCount(0);
+    const offline = await context.newPage();
+    await offline.goto('http://127.0.0.1:4178/application');
+    await expect
+      .poll(() =>
+        worker.evaluate(async () => {
+          const tabs = await chrome.tabs.query({ url: 'http://127.0.0.1:4178/application' });
+          return Promise.all(
+            tabs.map((tab) =>
+              chrome.tabs.sendMessage(tab.id!, { action: 'JB_FORM_CANDIDATE' }, { frameId: 0 }),
+            ),
+          );
+        }),
+      )
+      .toEqual([false, false]);
+    await expect(offline.locator('[data-job-buddy-ui]')).toHaveCount(0);
+    await page.bringToFront();
+    await startServer();
+    await expect(widget).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('[name="firstName"]')).toHaveValue('');
+    await expect(page.locator('[name="email"]')).toHaveValue('');
+    await expect(page.locator('[data-job-buddy-ui]')).toHaveCount(1);
+  } finally {
+    await context.close();
+  }
 });
 
 test('development branding stays visible in popup and compact options layouts', async ({

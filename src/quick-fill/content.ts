@@ -11,6 +11,7 @@ import { QuickFillWidget } from './widget';
 import { affectsApplicationDetection, DETECTION_ATTRIBUTES } from './detectionChanges';
 import { AUTOFILL_ERROR } from '@/src/autofill/errorCodes';
 import { pageActivity } from '@/src/autofill/pageActivity';
+import { watchDevelopmentServer } from '@/src/devtools/serverAvailability';
 
 export function installQuickFill(): void {
   const likelyApplicationForm = createApplicationFormDetector();
@@ -21,6 +22,8 @@ export function installQuickFill(): void {
     hidden = false,
     disposed = false;
   let widget: QuickFillWidget | undefined;
+  let serverAvailable = !import.meta.env.DEV;
+  let stopServerWatch: (() => void) | undefined;
   let run: AutofillRun | null = null;
   let revision = 0;
   let starting = false,
@@ -36,7 +39,8 @@ export function installQuickFill(): void {
     if (result?.quickFillError) throw new Error('Quick fill unavailable');
     return result;
   };
-  const allowed = () => ready && prefs.enabled && !prefs.disabledSites.includes(location.hostname);
+  const allowed = () =>
+    serverAvailable && ready && prefs.enabled && !prefs.disabledSites.includes(location.hostname);
   const paint = () => {
     if (!main || disposed) return;
     if (!allowed() || hidden || !candidate) {
@@ -242,6 +246,15 @@ export function installQuickFill(): void {
     }
   };
   chrome.storage.onChanged.addListener(storage);
+  if (import.meta.env.DEV)
+    stopServerWatch = watchDevelopmentServer((available) => {
+      serverAvailable = available;
+      paint();
+      if (available) {
+        schedule();
+        void readStatus();
+      }
+    });
   void (async () => {
     try {
       prefs = await getQuickFillPreferences();
@@ -258,6 +271,7 @@ export function installQuickFill(): void {
   window.addEventListener('pagehide', (event) => {
     if (event.persisted) return;
     disposed = true;
+    stopServerWatch?.();
     clearTimeout(timer);
     clearInterval(poll);
     observer.disconnect();

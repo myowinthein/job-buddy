@@ -17,11 +17,13 @@ import {
 import { registerQuickFill } from '@/src/quick-fill/background';
 import { createAutofillCoordinator, RUN_ALARM_PREFIX } from '@/src/autofill/runCoordinator';
 import { registerDevelopmentContentScript } from '@/src/devtools/registerContentScript';
+import { registerDevelopmentServerAvailability } from '@/src/devtools/serverAvailability';
 import { retainFrameFillLog } from '@/src/fill-log/retention';
 import { senderDomain, validLabelSignals } from '@/src/utils/senderValidation';
 
 export default defineBackground(async () => {
   if (import.meta.env.DEV) {
+    registerDevelopmentServerAvailability();
     const ready = import('@/src/devtools/sessionChrome').then(({ installDevelopmentSession }) =>
       installDevelopmentSession('background'),
     );
