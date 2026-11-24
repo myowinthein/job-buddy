@@ -645,6 +645,16 @@ async function rawDropdown(
     const pointer = target === option || !!menuSelect(element);
     safeClick(target, pointer, !!menuSelect(element));
     await settleFramework();
+    // Controlled menu buttons can commit their facade and backing select on
+    // the next frame. Checking immediately can reject and undo a valid choice.
+    if (menuSelect(element)) {
+      await waitNativeSelectCommit(() => {
+        const answer = readFieldValue(element);
+        return !!menuSelect(element)?.select.value && [value, label].some(
+          expected => normalize(answer) === normalize(expected),
+        );
+      }, active);
+    }
     let retained = readFieldValue(element);
     let selected = option.isConnected && option.getAttribute('aria-selected') === 'true';
     // Inner presentation nodes can be recreated on mousedown. Prefer their

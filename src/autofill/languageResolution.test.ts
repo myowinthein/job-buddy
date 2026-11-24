@@ -1,3 +1,4 @@
+import { proficiencyQuestion, questionLanguageCodes } from './languageChoices';
 import { describe, it, expect } from 'vitest';
 import { adjustLanguageMatches } from './languageResolution';
 import type { FieldMatch } from './mapper';
@@ -122,5 +123,16 @@ describe('adjustLanguageMatches — unrelated fields', () => {
     const matches: FieldMatch[] = [{ fieldPath: null, confidence: 0, value: null, matchLayer: 'none' }];
     expect(() => adjustLanguageMatches(matches, PROFILE)).not.toThrow();
     expect(matches[0].fieldPath).toBeNull();
+  });
+});
+
+describe('named language skill-level questions', () => {
+  it('recognizes the named English language rather than the first saved language', () => {
+    const question = proficiencyQuestion({
+      label: 'What is your English skill level (None, Basic, Intermediate, Good, Fluent, Native)?',
+      ariaLabel: '',
+      placeholder: '',
+    });
+    expect(questionLanguageCodes(question)).toEqual(['en']);
   });
 });

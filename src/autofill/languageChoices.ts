@@ -14,7 +14,7 @@ export function proficiencyQuestion(
   const question = [signals.label, signals.ariaLabel, signals.placeholder]
     .filter(Boolean)
     .join(' ');
-  return /\b(proficiency|fluency|language\s+level)\b/i.test(question) ? question : '';
+  return /\b(proficiency|fluency|language\s+level|skill\s+level)\b/i.test(question) ? question : '';
 }
 export function questionLanguageCodes(question: string): string[] {
   return names

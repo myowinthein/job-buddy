@@ -1,3 +1,5 @@
+import { composedParent, controlForm } from './dom';
+import { extractSignals, bestLabel } from './signals';
 import { mostRecentIdx } from './entryRecency';
 import { calendarInput } from './calendarInput';
 import type { Profile, CurrentSalary, ExpectedSalaryEntry } from '../types/profile';
@@ -164,8 +166,27 @@ export function resolveRuleValue(
     if (annual && entry.period === 'monthly') amount *= 12;
     if (monthly && entry.period === 'annual') amount /= 12;
     amount = Math.round(amount * 100) / 100;
-    if (signals.type === 'number' || path.endsWith('.amount')) return String(amount);
+    if (signals.type === 'number' || salaryCurrencySibling(signals)) return String(amount);
     return withCurrency(groupThousands(String(amount)), entry.currency);
+  }
+  const grade = /^education\.(\d+)\.grade$/.exec(path);
+  if (grade && /\b(?:gpa|grade|classification)\b/i.test(visibleQuestion(signals))) {
+    const entry = profile.education?.[Number(grade[1])];
+    if (!entry?.grade) return '';
+    if (['number', 'select', 'select-one'].includes(signals.type)) return entry.grade;
+    const element = signals.element;
+    const form = element && controlForm(element);
+    const root = (form ?? element?.getRootNode()) as ParentNode | undefined;
+    const institutionAsked = root && [...root.querySelectorAll<HTMLElement>(
+      'input,select,textarea,[role="combobox"],button[data-menu-id]',
+    )].some(other => {
+      if (other === element || controlForm(other) !== form) return false;
+      const label = bestLabel(extractSignals(other)).replace(/\brequired\b|[*:]/gi, '').trim();
+      return /^(?:(?:college\s*[/&]\s*university)|(?:(?:name\s+of\s+(?:your\s+)?|your\s+)?(?:college|university|school|institution)(?:\s+name)?))$/i.test(label);
+    });
+    return entry.institution && !institutionAsked
+      ? `${entry.grade} — ${entry.institution}`
+      : entry.grade;
   }
   // AI and explicit mappings may name the raw schema path. The input still
   // determines its date representation, just as for a rule's virtual path.
@@ -362,4 +383,25 @@ export function multiSelectValues(
     values.push(options[0].value);
   }
   return values.length ? values : null;
+}
+
+/** A separate currency editor must belong to this salary's local group. */
+function salaryCurrencySibling(signals: FieldSignals): boolean {
+  const element = signals.element;
+  if (!element) return false;
+  for (
+    let parent = composedParent(element), depth = 0;
+    parent && depth < 3;
+    parent = composedParent(parent), depth++
+  ) {
+    if (parent.matches('body,form,[role="form"]')) break;
+    const currencies = [...parent.querySelectorAll<HTMLElement>(
+      'input,select,button[data-menu-id],[role="combobox"]',
+    )].filter(other => {
+      if (other === element || controlForm(other) !== controlForm(element)) return false;
+      return /^(?:(?:current|expected|previous)\s+)?(?:salary\s+)?currency\s*[*:]?$/i.test(bestLabel(extractSignals(other)));
+    });
+    if (currencies.length) return currencies.length === 1;
+  }
+  return false;
 }

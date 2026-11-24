@@ -154,3 +154,50 @@ it.each(['education', 'workHistory'] as const)(
     expect(resolveRuleValue(profile, `${family}.0.endDate`, signals('Date', 'MM/YYYY'))).toBe('');
   },
 );
+
+it('adds currency to a free-text salary even when AI names the raw amount path', () => {
+  expect(
+    resolveRuleValue(
+      RULE_PROFILE,
+      'salary.current.amount',
+      signals('What was your salary in your previous job?'),
+    ),
+  ).toBe('5,000 USD');
+});
+it('keeps salary numeric when a separate local currency editor exists', () => {
+  document.body.innerHTML =
+    '<form><fieldset><label>Current salary<input id="amount"></label><label>Currency<select><option>USD</option></select></label></fieldset></form>';
+  expect(
+    resolveRuleValue(
+      RULE_PROFILE,
+      'salary.current.amount',
+      extractSignals(document.querySelector('input')!),
+    ),
+  ).toBe('5000');
+});
+it('adds university context to a grade only when no separate institution field exists', () => {
+  const profile = {
+    ...RULE_PROFILE,
+    education: [
+      {
+        institution: 'Example University',
+        degree: 'BSc',
+        fieldOfStudy: 'Computing',
+        startDate: '2010',
+        grade: 'First Class Honours',
+      },
+    ],
+  };
+  document.body.innerHTML =
+    '<form><label>What was your GPA at university?<textarea></textarea></label></form>';
+  const input = document.querySelector('textarea')!;
+  expect(resolveRuleValue(profile, 'education.0.grade', extractSignals(input))).toBe(
+    'First Class Honours — Example University',
+  );
+  document
+    .querySelector('form')!
+    .insertAdjacentHTML('beforeend', '<label>College/University<input></label>');
+  expect(resolveRuleValue(profile, 'education.0.grade', extractSignals(input))).toBe(
+    'First Class Honours',
+  );
+});

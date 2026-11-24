@@ -177,7 +177,7 @@ describe('AI response boundaries', () => {
     expect(document.querySelector<HTMLInputElement>('#reference')!.value).toBe('');
   });
   it.each([
-    ['Annual compensation USD', 'text', 'salary.expected.0.amount', '72000'],
+    ['Annual compensation USD', 'text', 'salary.expected.0.amount', '72,000 USD'],
     ['Desired compensation USD', 'number', 'salary.expected.0.formatted', '6000'],
     ['Employment start date', 'month', 'workHistory.1.startDate.formatted', '2020-01'],
     ['Authorized to work in Thailand', 'text', 'workAuthorization', 'Yes, authorized to work'],
