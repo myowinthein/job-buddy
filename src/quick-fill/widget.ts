@@ -6,6 +6,7 @@ import { QUICK_FILL_HOST } from './detect';
 import type { QuickFillPreferences } from './preferences';
 import { avoidQuickFillOverlap, QUICK_FILL_INSET } from './placement';
 import { pageActivity } from '@/src/autofill/pageActivity';
+import { mountInApplicationPanel } from './panelMount';
 
 interface Actions {
   fill: () => void;
@@ -86,6 +87,7 @@ export class QuickFillWidget {
   private position?: QuickFillPreferences['position'];
   private adjustedPosition?: QuickFillPreferences['position'];
   private stopAvoiding?: () => void;
+  private stopPanelMount: () => void;
   private peerPointer?: number;
   private fillMode: QuickFillPreferences['fillMode'] = 'overwrite';
   private drag?: {
@@ -214,6 +216,7 @@ export class QuickFillWidget {
     document.addEventListener('pointerdown', this.outside, true);
     document.documentElement.append(this.host);
     this.place();
+    this.stopPanelMount = mountInApplicationPanel(this.host, () => this.place());
     if (import.meta.env.DEV) this.stopAvoiding = this.watchOtherWidgets();
     const checkActivity = () => this.setBlocked(pageActivity('blocked', this.host.getAttribute('data-job-buddy-owner') ?? ''));
     this.activityTimer = window.setInterval(checkActivity, 500);
@@ -368,6 +371,13 @@ export class QuickFillWidget {
     this.host.style.setProperty('top', `${top}px`, 'important');
     this.host.style.setProperty('right', 'auto', 'important');
     this.host.style.setProperty('bottom', 'auto', 'important');
+    // A transformed application panel becomes the fixed-position containing block.
+    // Convert viewport coordinates back into that block without changing saved positions.
+    if (this.host.parentElement !== document.documentElement) {
+      const actual = this.host.getBoundingClientRect();
+      this.host.style.setProperty('left', `${left - (actual.left - left)}px`, 'important');
+      this.host.style.setProperty('top', `${top - (actual.top - top)}px`, 'important');
+    }
     this.placeMenu();
   }
   preferences(prefs: QuickFillPreferences, dark: boolean) {
@@ -477,6 +487,7 @@ export class QuickFillWidget {
   destroy() {
     window.clearInterval(this.activityTimer);
     this.stopAvoiding?.();
+    this.stopPanelMount();
     this.drag = undefined;
     window.removeEventListener('resize', this.resize);
     document.removeEventListener('pointerdown', this.outside, true);
