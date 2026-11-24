@@ -58,7 +58,7 @@ export const feedback = {
   mappingProfileChanged: 'Your profile changed. Choose a profile field again.',
   mappingSaved: 'Mapping updated.',
   mappingDeleted: 'Mapping deleted.',
-  mappingsSiteDeleted: 'Mappings deleted for this site.',
+  mappingsSiteDeleted: 'Site mappings deleted.',
   mappingReviewKeyRequired: 'Add a Gemini API key to review learned mappings.',
   mappingReviewFailed: 'Could not review mappings. Try again.',
   mappingReviewInvalid: 'AI returned an incomplete review. Retry the remaining mappings.',
