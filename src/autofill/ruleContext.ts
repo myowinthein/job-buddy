@@ -26,6 +26,7 @@ export function ruleQuestionBlocked(signals: FieldSignals): boolean {
   const text = visibleQuestion(signals);
   const selection =
     (typeof HTMLSelectElement !== 'undefined' && signals.element instanceof HTMLSelectElement) ||
+    signals.type === 'select' ||
     signals.element?.getAttribute('role') === 'combobox' ||
     signals.element?.getAttribute('aria-haspopup') === 'listbox' || !!(signals.element && menuSelect(signals.element));
   return (

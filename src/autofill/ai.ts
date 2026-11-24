@@ -1,3 +1,5 @@
+import { searchableSelect } from './reactSelect';
+import { telephoneCountry } from './phoneWidget';
 import { isChoiceChecked, isControlAvailable } from './dom';
 import { getWriteConfidence } from './writeSession';
 import { readFieldValue } from './fieldValue';
@@ -183,7 +185,7 @@ export async function runAIAutofill(
       // phase resolves the value and uses click-based option matching.
       const ariaRole = c.element.getAttribute('role');
       const ariaPopup = c.element.getAttribute('aria-haspopup');
-      if (ariaRole === 'combobox' || ariaPopup === 'listbox' || menuSelect(c.element)) {
+      if (ariaRole === 'combobox' || ariaPopup === 'listbox' || menuSelect(c.element) || searchableSelect(c.element) || (c.element instanceof HTMLButtonElement && telephoneCountry(c.element))) {
         return { ...base, type: 'select' as const };
       }
       return { ...base, type: 'text' as const };

@@ -57,6 +57,7 @@ export function resolveRuleValue(
     return `Available after ${notice.value} ${notice.unit}${notice.value === 1 ? "'s" : "s'"} notice.`;
   }
   const isSelect =
+    signals.type === 'select' ||
     element instanceof HTMLSelectElement ||
     element?.getAttribute('role') === 'combobox' ||
     element?.getAttribute('aria-haspopup') === 'listbox' || !!(element && menuSelect(element));
@@ -248,7 +249,8 @@ function availabilityPath(path: string, signals: FieldSignals): string {
   const dateMask = /d{1,2}/i.test(hint) && /m{1,2}/i.test(hint) && /y{2,4}/i.test(hint);
   const calendar =
     element &&
-    (element.hasAttribute('data-datepicker') ||
+    (calendarInput(element) ||
+      element.hasAttribute('data-datepicker') ||
       element.hasAttribute('data-flatpickr') ||
       /datepicker|date-picker|flatpickr/i.test(element.getAttribute('data-controller') ?? ''));
   if (signals.type === 'date' || /\bdate\b/i.test(visibleQuestion(signals)) || dateMask || calendar)

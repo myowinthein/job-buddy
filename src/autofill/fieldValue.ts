@@ -1,3 +1,4 @@
+import { telephoneCountry } from './phoneWidget';
 import { dropzonePreviews } from './dropzone';
 import { isTextEditor, isChoice, isChoiceChecked } from './dom';
 import { isSkippableOption, normalize, PLACEHOLDER_OPTION_NORMS } from './normalizer';
@@ -6,6 +7,10 @@ import { menuSelect } from './menuSelect';
 
 // Read answers rather than control labels or unchecked input submission values.
 export function readFieldValue(element: HTMLElement): string {
+  if (element instanceof HTMLButtonElement) {
+    const phone = telephoneCountry(element);
+    if (phone) return phone.code;
+  }
   const menu = menuSelect(element);
   if (menu) return menu.value;
   const select = searchableSelect(element);

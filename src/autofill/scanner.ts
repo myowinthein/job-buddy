@@ -1,3 +1,5 @@
+import { searchableSelect } from './reactSelect';
+import { telephoneCountry } from './phoneWidget';
 import { isConsentGroup } from './consent';
 import { menuSelect } from './menuSelect';
 import {
@@ -116,7 +118,7 @@ function insideWidget(element: HTMLElement): boolean {
 export function getAriaElementType(element: HTMLElement): 'text' | 'select' | null {
   if (isTextEditor(element)) return 'text';
   return element.getAttribute('role') === 'combobox' ||
-    element.getAttribute('aria-haspopup') === 'listbox' || !!menuSelect(element)
+    element.getAttribute('aria-haspopup') === 'listbox' || !!menuSelect(element) || !!searchableSelect(element) || (element instanceof HTMLButtonElement && !!telephoneCountry(element))
     ? 'select'
     : null;
 }

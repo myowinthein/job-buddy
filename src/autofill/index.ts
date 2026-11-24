@@ -78,11 +78,7 @@ function fillMappedField(
   path: string | null,
   context?: FillFieldContext,
 ): Promise<boolean> {
-  if (
-    path === 'personal.phone.callingCode' &&
-    (element.getAttribute('role') === 'combobox' ||
-      element.getAttribute('aria-haspopup') === 'listbox')
-  )
+  if (path === 'personal.phone.callingCode')
     return fillField(element, value, active, {
       ...context,
       callingCodeCountry: profile.personal?.phone?.countryCode,

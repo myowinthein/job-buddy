@@ -2,13 +2,29 @@
 export interface SearchableSelect {
   control: HTMLElement;
   value: string;
+  trigger?: HTMLElement;
 }
 const part = (element: Element, suffix: string) =>
   [...element.classList].some((name) => name.endsWith(`__${suffix}`));
 
 export function searchableSelect(element: HTMLElement): SearchableSelect | null {
-  if (!(element instanceof HTMLInputElement) || element.getAttribute('role') !== 'combobox')
-    return null;
+  if (!(element instanceof HTMLInputElement)) return null;
+  // Some component libraries declare searchability without ARIA roles. Require
+  // both a separate committed-value surface and exactly one query editor.
+  const widget = element.closest<HTMLElement>('[data-searchable="true"]');
+  if (widget && widget.querySelectorAll('input,select,textarea').length === 1) {
+    const trigger = widget.querySelector<HTMLElement>('.trigger');
+    const values = trigger?.querySelectorAll<HTMLElement>('.value');
+    if (trigger && values?.length === 1)
+      return {
+        control: widget,
+        trigger,
+        value: values[0].classList.contains('placeholder')
+          ? ''
+          : (values[0].textContent?.trim() ?? ''),
+      };
+  }
+  if (element.getAttribute('role') !== 'combobox') return null;
   let container = element.parentElement;
   for (let depth = 0; container && depth < 3; depth++, container = container.parentElement) {
     if (!part(container, 'value-container')) continue;

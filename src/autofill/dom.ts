@@ -132,7 +132,7 @@ export function isControlAvailable(element: HTMLElement): boolean {
       (parseFloat(style.opacity) === 0 &&
         (ancestor !== element ||
           !(element instanceof HTMLInputElement) ||
-          (!isChoice(element) && element.type !== 'file' && !selectProxy?.value)))
+          (!isChoice(element) && element.type !== 'file' && !selectProxy)))
     )
       return false;
   }

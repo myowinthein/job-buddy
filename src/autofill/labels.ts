@@ -41,7 +41,8 @@ export function ariaReference(element: Element, attribute: string): string {
     .map((id) => {
       const reference = root.getElementById?.(id);
       return reference?.hasAttribute('data-jb-field-description') ||
-        (attribute === 'aria-labelledby' && reference?.matches('.react-datepicker__aria-live,[role="status"],[role="log"]'))
+        (attribute === 'aria-labelledby' &&
+          reference?.matches('.react-datepicker__aria-live,[role="status"],[role="log"]'))
         ? ''
         : reference
           ? attribute === 'aria-labelledby'
@@ -73,6 +74,21 @@ export function labelText(element: HTMLElement, context?: LabelContext): string 
   ].sort((a, b) =>
     a === b ? 0 : a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
   );
+  if (!labels.length) {
+    // Builders can leave a visible label unbound above one component. Never
+    // borrow it from a shared row or from a label assigned to another input.
+    const field = element.closest('.field,.form-field,.form-group,.form-item');
+    if (field) {
+      const controls = field.querySelectorAll(
+        'input:not([type=hidden]),select,textarea,[role=combobox],[role=textbox],[contenteditable]',
+      );
+      const prompts = [...field.querySelectorAll('label')].filter(
+        (label) => !label.htmlFor && !label.control,
+      );
+      if (controls.length === 1 && controls[0] === element && prompts.length === 1)
+        labels.push(prompts[0]);
+    }
+  }
   return labels
     .map((label) => ownText(label, context))
     .filter(Boolean)

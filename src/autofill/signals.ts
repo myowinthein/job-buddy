@@ -1,3 +1,5 @@
+import { searchableSelect } from './reactSelect';
+import { telephoneCountry } from './phoneWidget';
 import { dropzoneLabel } from './dropzone';
 import {
   composedAncestors,
@@ -142,9 +144,11 @@ export function displayLabel(signals: FieldSignals): string | undefined {
 export function extractSignals(element: HTMLElement, context?: LabelContext): FieldSignals {
   const native = element.matches('input,textarea,select');
   const menu = menuSelect(element);
+  const phoneCountry = element instanceof HTMLButtonElement ? telephoneCountry(element) : null;
+  const select = menu || searchableSelect(element) || phoneCountry;
   return {
     element,
-    type: menu
+    type: select
       ? 'select'
       : native
         ? (element as HTMLInputElement).type || element.tagName.toLowerCase()
@@ -158,7 +162,7 @@ export function extractSignals(element: HTMLElement, context?: LabelContext): Fi
     ),
     autocomplete: withHostFallback(element, (el) => el.getAttribute('autocomplete') || ''),
     ariaLabel: menu?.label || withHostFallback(element, ariaName),
-    label: menu?.label || getLabelText(element, context),
+    label: (phoneCountry ? 'Calling code' : '') || menu?.label || getLabelText(element, context),
     nearbyText: getNearbyText(element, context),
   };
 }

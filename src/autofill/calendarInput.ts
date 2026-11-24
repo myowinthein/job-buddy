@@ -1,9 +1,13 @@
 import { composedAncestors, hasVisibleSurface } from './dom';
 import { ownWriteEvents } from './writeSession';
 
-/** Public DOM markers shared by react-datepicker forms, independent of the ATS. */
+/** Public DOM markers of supported calendar components, independent of the ATS. */
 export function calendarInput(element: HTMLElement): element is HTMLInputElement {
-  return element instanceof HTMLInputElement && !!element.closest('.react-datepicker-wrapper');
+  return (
+    element instanceof HTMLInputElement &&
+    (!!element.closest('.react-datepicker-wrapper') ||
+      element.matches('.mat-datepicker-input[data-mat-calendar]'))
+  );
 }
 
 function calendar(element: HTMLElement): HTMLElement | undefined {
@@ -56,4 +60,17 @@ export async function closeCalendar(
     ),
   );
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
+}
+
+/** Material reformats an unambiguous ISO write into its configured display locale. */
+export function sameCalendarDate(element: HTMLElement, actual: string, expected: string): boolean {
+  if (!element.matches('.mat-datepicker-input[data-mat-calendar]')) return false;
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(expected);
+  const display = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(actual);
+  if (!iso || !display || iso[1] !== display[3]) return false;
+  const a = Number(display[1]),
+    b = Number(display[2]);
+  return (
+    (a === Number(iso[3]) && b === Number(iso[2])) || (a === Number(iso[2]) && b === Number(iso[3]))
+  );
 }

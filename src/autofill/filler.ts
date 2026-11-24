@@ -1,8 +1,8 @@
 import { languageChoiceAliases } from './languageChoices';
 import { educationChoiceAliases } from './educationChoices';
-import { calendarInput, calendarValue, closeCalendar } from './calendarInput';
+import { calendarInput, calendarValue, closeCalendar, sameCalendarDate } from './calendarInput';
 import { waitNativeSelectCommit } from './nativeSelectCommit';
-import { sameTelephone } from './phoneWidget';
+import { sameTelephone, telephoneCountry } from './phoneWidget';
 import { dropzoneSurface, dropzonePreviews, waitDropzoneFile } from './dropzone';
 import {
   composedText,
@@ -20,7 +20,7 @@ import type { FieldState } from './fieldState';
 import { ownWriteEvents, performWrite, setWriteConfidence } from './writeSession';
 import type { WriteDependencies } from './writeSession';
 import type { DocumentFile } from '../types/profile';
-import { countryName } from '../data/countries';
+import { COUNTRIES, countryName } from '../data/countries';
 import { searchableSelect } from './reactSelect';
 import { menuSelect, selectMenu, selectMenuSearch } from './menuSelect';
 import { normalize, similarity, isSkippableOption, PLACEHOLDER_OPTION_NORMS } from './normalizer';
@@ -137,7 +137,11 @@ function setText(element: HTMLElement, value: string): void {
       );
   });
 }
-function safeClick(element: HTMLElement, pointer = false, menuMouse = !!menuSelect(element)): void {
+function safeClick(
+  element: HTMLElement,
+  pointer = false,
+  menuMouse = !!menuSelect(element) || !!telephoneCountry(element),
+): void {
   // Cancel native navigation/submission while allowing the widget's handlers.
   const blockDefault = (event: Event) => {
     if (
@@ -293,10 +297,21 @@ function equivalent(element: HTMLElement, expected: string): boolean {
   const actual = readFieldValue(element);
   if (actual === expected) return true;
   // Accept punctuation-only telephone masks, never missing digits or changed answers.
-  return sameTelephone(element, actual, expected);
+  return sameTelephone(element, actual, expected) || sameCalendarDate(element, actual, expected);
 }
 function valid(element: HTMLElement): boolean {
-  if (!isControlAvailable(element)) return false;
+  if (!isControlAvailable(element) || element.getAttribute('aria-invalid') === 'true') return false;
+  if (element instanceof HTMLButtonElement && telephoneCountry(element)) return true;
+  // Angular value accessors can reject a value while the inner native input
+  // still reports valid. Only inspect the local component, never a whole form.
+  for (
+    let parent = element.parentElement, depth = 0;
+    parent && depth < 3;
+    parent = parent.parentElement, depth++
+  ) {
+    if (parent.matches('body,form,.field,.form-field,.form-group')) break;
+    if (parent.tagName.includes('-') && parent.classList.contains('ng-invalid')) return false;
+  }
   if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement)
     return (
       element.validity.valid && (element.maxLength < 0 || element.value.length <= element.maxLength)
@@ -305,7 +320,9 @@ function valid(element: HTMLElement): boolean {
 }
 
 function boxes(root: Document | ShadowRoot): HTMLElement[] {
-  return queryOpenElements(root, '[role="listbox"]').filter(isControlAvailable);
+  return queryOpenElements(root, '[role="listbox"],.cdk-overlay-pane').filter(
+    node => isControlAvailable(node) && !node.querySelector('[role="listbox"]'),
+  );
 }
 function scopedOptions(trigger: HTMLElement, before: Set<HTMLElement>): HTMLElement[] {
   if (menuSelect(trigger)) {
@@ -352,7 +369,21 @@ function scopedOptions(trigger: HTMLElement, before: Set<HTMLElement>): HTMLElem
       !before.has(box) ||
       (!!trigger.id && box.getAttribute('aria-labelledby')?.split(/\s+/).includes(trigger.id)),
   );
-  return candidates.length === 1 ? queryOpenElements(candidates[0], '[role="option"]') : [];
+  if (candidates.length !== 1) return [];
+  const options = queryOpenElements(candidates[0], '[role="option"]');
+  if (options.length || !searchableSelect(trigger)?.trigger) return options;
+  return queryOpenElements(candidates[0], 'button[type="button"]').filter(
+    button => button.querySelector('.option-label'),
+  );
+}
+function dropdownSearch(trigger: HTMLElement, before: Set<HTMLElement>): HTMLInputElement | null {
+  const linked = selectMenuSearch(trigger);
+  if (linked) return linked;
+  const candidates = boxes(document).filter(box => !before.has(box));
+  if (candidates.length !== 1) return null;
+  const area = candidates[0].closest('.cdk-overlay-pane') ?? candidates[0];
+  const inputs = area.querySelectorAll<HTMLInputElement>('input[type="search"]');
+  return inputs.length === 1 ? inputs[0] : null;
 }
 /** Real pointer clicks land on the option's label and bubble through its
  * presentation wrappers. A click dispatched on the outer role node cannot
@@ -386,8 +417,13 @@ function ariaOption(
         )),
   );
   const country = context.cityCountry;
-  if (context.callingCodeCountry && /^\+\d+$/.test(value)) {
-    const names = [context.callingCodeCountry, countryName(context.callingCodeCountry)];
+  if (
+    /^\+\d+$/.test(value) &&
+    (context.callingCodeCountry || eligible.some(option => /\(\+\d+\)/.test(composedText(option))))
+  ) {
+    const names = context.callingCodeCountry
+      ? [context.callingCodeCountry, countryName(context.callingCodeCountry)]
+      : [];
     const qualified = eligible.filter((option) => {
       const label = normalize(option.getAttribute('aria-label') || composedText(option));
       return names.some(
@@ -396,6 +432,16 @@ function ariaOption(
       );
     });
     if (qualified.length) return qualified.length === 1 ? qualified[0] : null;
+    const countriesForCode = COUNTRIES.filter(country => country.callingCode === value);
+    if (
+      !context.callingCodeCountry ||
+      (countriesForCode.length === 1 && countriesForCode[0].code === context.callingCodeCountry)
+    ) {
+      const matchingCodes = eligible.filter(
+        option => /\(\+(\d+)\)/.exec(composedText(option))?.[1] === value.slice(1),
+      );
+      if (matchingCodes.length) return matchingCodes.length === 1 ? matchingCodes[0] : null;
+    }
     // Bare codes remain supported, but never choose another country sharing a code.
     const bare = eligible.filter(
       (option) =>
@@ -441,14 +487,18 @@ async function waitOption(
     trigger.hasAttribute('aria-controls') ||
     trigger.hasAttribute('aria-owns') ||
     trigger.getAttribute('aria-expanded') === 'true' ||
-    !!menuSelect(trigger);
+    !!menuSelect(trigger) || !!searchableSelect(trigger) || !!telephoneCountry(trigger);
   const limit = Math.min(dropdownBudget, linked ? DROPDOWN_WAIT_MS : UNBOUND_DROPDOWN_WAIT_MS);
   const start = Date.now();
+  const signals = extractSignals(trigger);
   const root = trigger.getRootNode();
   return new Promise((resolve) => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let finished = false;
-    let searched = false;
+    let searches = 0;
+    const countries = COUNTRIES.filter(country => country.callingCode === value);
+    const country = context.callingCodeCountry || (telephoneCountry(trigger) && countries.length === 1 ? countries[0].code : '');
+    const queries = [...new Set([value, ...(country ? [country, countryName(country)] : [])])];
     const observer = new MutationObserver(check);
     function finish(option: HTMLElement | null) {
       if (finished) return;
@@ -469,13 +519,18 @@ async function waitOption(
         if (visible && [composedText(visible), visible.getAttribute('aria-label') ?? ''].some((label) => exact.has(normalize(label))))
           return finish(visible);
       }
-      const search = selectMenuSearch(trigger);
-      if (!searched && search && isControlAvailable(search)) {
-        searched = true;
-        setText(search, value);
+      const search = dropdownSearch(trigger, before);
+      if (searches < queries.length && search && isControlAvailable(search)) {
+        setText(search, queries[searches++]);
       }
       const options = scopedOptions(trigger, before);
-      const option = ariaOption(options, value, placeholder, context);
+      const option = ariaOption(options, value, placeholder, {
+        ...context,
+        optionAliases: [
+          ...(context.optionAliases ?? []),
+          ...educationChoiceAliases(signals, value, options.map(composedText)),
+        ],
+      });
       if (option) return finish(option);
       if (
         Date.now() - start >= limit ||
@@ -503,10 +558,19 @@ function applicationPanel(element: HTMLElement): Element | null {
 async function closeDropdown(
   element: HTMLElement,
   active: () => boolean = () => true,
+  before?: Set<HTMLElement>,
 ): Promise<void> {
   // A completed selection may already have closed its menu. Escape at that
   // point can dismiss the enclosing application dialog instead.
   if (element.getAttribute('aria-expanded') === 'false') return;
+  const custom = searchableSelect(element);
+  if (custom?.trigger) {
+    const root = element.getRootNode() as Document | ShadowRoot;
+    const opened = before ? [...new Set([...boxes(root), ...boxes(document)])].filter(box => !before.has(box)) : [];
+    if (opened.length === 1) safeClick(custom.trigger, true);
+    await settleFramework();
+    return;
+  }
   // Dialog focus traps can handle Escape in the capture phase, before any
   // widget handler can stop it. Use the widget toggle and the caller's blur
   // cleanup instead, so a dropdown cannot dismiss the application itself.
@@ -551,14 +615,16 @@ async function rawDropdown(
   const root = element.getRootNode() as Document | ShadowRoot;
   const before = new Set([...boxes(root), ...boxes(document)]);
   const wasOpen = element.getAttribute('aria-expanded') === 'true';
+  const trigger = searchableSelect(element)?.trigger ?? element;
   try {
     if (!active() || !isControlAvailable(element)) return false;
     focus(element);
     if (!active() || !isControlAvailable(element)) return false;
-    if (!wasOpen) safeClick(element, true);
+    if (!wasOpen) safeClick(trigger, true);
     if (
       element instanceof HTMLInputElement &&
       !element.readOnly &&
+      !searchableSelect(element)?.trigger &&
       !['button', 'submit', 'hidden'].includes(element.type)
     )
       setText(element, value);
@@ -618,13 +684,13 @@ async function rawDropdown(
     }
     return (
       accepted &&
-      isControlAvailable(element) &&
+      valid(element) &&
       (priorBacking === undefined ||
         retained === priorValue ||
         menuSelect(element)?.select.value !== priorBacking)
     );
   } finally {
-    if (active() && !wasOpen) await closeDropdown(element, active);
+    if (active() && !wasOpen) await closeDropdown(element, active, before);
     if (active()) blur(element);
   }
 }
@@ -844,7 +910,7 @@ export async function fillField(
                 value,
                 (option) => option.value,
                 (option) => option.text.trim(),
-                [...languageChoiceAliases(extractSignals(element), value), ...educationChoiceAliases(extractSignals(element), value)],
+                [...languageChoiceAliases(extractSignals(element), value), ...educationChoiceAliases(extractSignals(element), value, eligible.map(option => option.text.trim()))],
               ),
             ];
         if (targets.some((option) => !option) || (!element.multiple && targets.length !== 1))
@@ -876,7 +942,7 @@ export async function fillField(
       if (
         element.getAttribute('role') === 'combobox' ||
         element.getAttribute('aria-haspopup') === 'listbox' ||
-        !!menuSelect(element)
+        !!menuSelect(element) || !!searchableSelect(element) || (element instanceof HTMLButtonElement && !!telephoneCountry(element))
       )
         return rawDropdown(element, value, current, false, context);
       if (
@@ -896,7 +962,7 @@ export async function fillField(
       )
         return false;
       const target = element instanceof HTMLInputElement
-        ? dateValue(calendarInput(element) ? calendarValue(element, value) : value, element)
+        ? (element.matches('.mat-datepicker-input[data-mat-calendar]') ? value : dateValue(calendarInput(element) ? calendarValue(element, value) : value, element))
         : value;
       setText(element, target);
       if (calendarInput(element)) {
