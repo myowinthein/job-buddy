@@ -1,3 +1,4 @@
+import { hasFileAttachment } from './fileAttachment';
 import { resolveRuleValue, ruleValuePath } from './ruleValue';
 import { observeFileImport } from './fileImportReadiness';
 import { resolveProfileDocumentFile } from './resolver';
@@ -766,10 +767,15 @@ async function fillMatch(
     matchConfidence: match.confidence,
     ...(match.fieldPath ? { profilePath: match.fieldPath } : {}),
   });
-  // Merge mode: skip pre-filled fields that would otherwise be overwritten.
+  const isFileInput = element instanceof HTMLInputElement && element.type === 'file';
+  const attachedName = isFileInput ? resolveProfileDocumentFile(profile, match.fieldPath)?.name : undefined;
+  // Re-selecting an attached file can append it to an upload queue, even in
+  // overwrite mode. Keep that attachment rather than firing another upload.
+  const retainedFile = isFileInput && !!attachedName && hasFileAttachment(element, attachedName);
   if (
-    mode === 'merge' &&
-    (record.outcome === 'kept' || hasExistingValue || getFieldValue(element).trim() !== '')
+    retainedFile ||
+    (mode === 'merge' &&
+      (record.outcome === 'kept' || hasExistingValue || getFieldValue(element).trim() !== ''))
   ) {
     record.outcome = 'kept';
     record.rule.outcome = 'kept';
@@ -777,7 +783,6 @@ async function fillMatch(
     return true;
   }
 
-  const isFileInput = element instanceof HTMLInputElement && element.type === 'file';
   const isCheckboxInput = isChoice(element);
   // File and checkbox inputs are never edit-watched or sent to the text AI pass.
   const textual = !isFileInput && !isCheckboxInput;

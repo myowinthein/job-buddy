@@ -44,3 +44,48 @@ test('uploads a CV through a hidden Add file widget, leaves Other empty, and sup
   await expect(page.locator('#uploaded')).toHaveText('');
   expect(await file.evaluate((element) => (element as HTMLInputElement).files?.length)).toBe(0);
 });
+
+test('does not upload a retained resume again after the widget clears its picker', async ({
+  context,
+  page,
+  extension,
+}) => {
+  await stubEmptyGemini(context);
+  await page.evaluate(() => {
+    document.body.innerHTML =
+      '<form><h1>Job application</h1><label>First name<input name="firstName"></label><label>Email<input name="email" type="email"></label><div class="field"><label>Resume</label><ui-upload><div id="upload"><span id="filename"></span><input id="cv" type="file" accept=".pdf"><button type="button" id="remove">Remove file</button></div></ui-upload></div></form>';
+    const input = document.querySelector<HTMLInputElement>('#cv')!;
+    const area = document.querySelector('#upload')!;
+    input.dataset.uploads = '0';
+    input.addEventListener('change', () => {
+      if (!input.files?.length) return;
+      input.dataset.uploads = String(Number(input.dataset.uploads) + 1);
+      document.querySelector('#filename')!.textContent = input.files[0].name;
+      area.classList.add('has-value');
+      // Many controlled uploaders clear the picker after accepting the file.
+      setTimeout(() => {
+        input.value = '';
+      }, 0);
+    });
+    document.querySelector('#remove')!.addEventListener('click', () => {
+      area.classList.remove('has-value');
+      document.querySelector('#filename')!.textContent = '';
+      input.value = '';
+    });
+  });
+  const input = page.locator('#cv');
+  for (let run = 0; run < 2; run++) {
+    await extension.send('AUTOFILL_SCAN');
+    await extension.send('AUTOFILL_FILL', 'overwrite');
+    await expect(page.locator('#filename')).toHaveText('synthetic.pdf');
+    await expect(input).toHaveAttribute('data-uploads', '1');
+    expect(await input.evaluate((element) => (element as HTMLInputElement).files!.length)).toBe(0);
+  }
+  // Undo of the second run must preserve the attachment it merely kept.
+  await extension.send('CLEAR');
+  await expect(page.locator('#filename')).toHaveText('synthetic.pdf');
+  await page.locator('#remove').click();
+  await extension.send('AUTOFILL_SCAN');
+  await extension.send('AUTOFILL_FILL', 'overwrite');
+  await expect(input).toHaveAttribute('data-uploads', '2');
+});

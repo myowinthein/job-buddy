@@ -1,3 +1,4 @@
+import { hasFileAttachment } from './fileAttachment';
 import { languageChoiceAliases } from './languageChoices';
 import { educationChoiceAliases } from './educationChoices';
 import { calendarInput, calendarValue, closeCalendar, sameCalendarDate } from './calendarInput';
@@ -1002,6 +1003,7 @@ export async function fillFileField(
     )
   )
     return false;
+  if (hasFileAttachment(element, data.name)) return true;
   const surface = dropzoneSurface(element);
   const previews = surface ? dropzonePreviews(element) : [];
   let added: HTMLElement | null = null;
