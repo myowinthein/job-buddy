@@ -129,6 +129,23 @@ button:disabled {
 .header-nav [aria-current='page'] {
   color: var(--ink);
 }
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.header-version {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+  text-decoration: none;
+  text-decoration-skip-ink: none;
+}
+.header-version:is(:hover, :focus-visible) {
+  color: var(--ink);
+  text-decoration-line: underline;
+}
 .site-layout {
   display: grid;
   grid-template-columns: 180px minmax(0, 1fr);
@@ -621,6 +638,14 @@ pre code {
   }
   .header-nav .demo-nav {
     display: none;
+  }
+  .walkthrough .header-tools {
+    margin-left: auto;
+  }
+  .walkthrough .header-nav {
+    order: 1;
+    flex-basis: 100%;
+    margin-left: 0;
   }
   .brand {
     font-size: 17px;
