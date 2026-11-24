@@ -18,13 +18,12 @@ export function profileFieldLabels(profile: Partial<Profile>): Map<string, strin
 export function mappingDestination(path: string, labels: Map<string, string>): string {
   return labels.get(path) ?? profileFieldName(path) ?? 'Unavailable profile field';
 }
-export function matchesMapping(
+export function mappingSearchText(
   group: MappingGroup,
   domain: string,
-  query: string,
   destination: string,
-): boolean {
-  const text = [
+): string {
+  return [
     domain,
     group.title,
     group.path,
@@ -36,9 +35,7 @@ export function matchesMapping(
   ]
     .join(' ')
     .toLocaleLowerCase();
-  return query
-    .trim()
-    .toLocaleLowerCase()
-    .split(/\s+/)
-    .every((word) => text.includes(word));
+}
+export function matchesMapping(text: string, words: readonly string[]): boolean {
+  return words.every((word) => text.includes(word));
 }

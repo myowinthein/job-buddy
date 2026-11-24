@@ -399,7 +399,7 @@ test('follows profile changes, preserves failed drafts and supports scoped keybo
     .getByRole('button', { name: 'Delete all mappings for jobs.example.test', exact: true })
     .click();
   await options.getByRole('button', { name: 'Delete', exact: true }).click();
-  await expect(options.getByText('Mappings deleted for this site.', { exact: true })).toBeVisible();
+  await expect(options.getByText('Site mappings deleted.', { exact: true })).toBeVisible();
   expect(
     await extension.worker.evaluate(async () =>
       Object.keys(

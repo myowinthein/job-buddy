@@ -166,6 +166,14 @@ describe('Learned Mappings pagination', () => {
     expect(screen.getAllByRole('group', { name: /^Question / })).toHaveLength(45);
     await waitFor(() => expect(document.activeElement).toBe(row('Question 41')));
     expect(screen.queryByRole('button', { name: /^Show .* more/ })).toBeNull();
+    const originalHeader = site();
+    const originalRow = row('Question 1');
+    const originalEdit = within(originalRow).getByRole('button', { name: /^Edit / });
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Question' } });
+    expect(site()).toBe(originalHeader);
+    expect(row('Question 1')).toBe(originalRow);
+    expect(within(row('Question 1')).getByRole('button', { name: /^Edit / })).toBe(originalEdit);
+    expect(screen.getAllByRole('group', { name: /^Question / })).toHaveLength(20);
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Question 45' } });
     expect(row('Question 45')).toBeTruthy();
     expect(screen.getAllByRole('group', { name: /^Question / })).toHaveLength(1);
@@ -173,6 +181,23 @@ describe('Learned Mappings pagination', () => {
     expect(screen.getAllByRole('group', { name: /^Question / })).toHaveLength(20);
     expect(saveLearnedMappings).not.toHaveBeenCalled();
   });
+});
+
+it('clears editor drafts and armed deletion when search changes without reviving them on return', async () => {
+  mount();
+  await open();
+  edit();
+  choose('Last Name');
+  const search = screen.getByRole('searchbox');
+  fireEvent.change(search, { target: { value: 'Applicant' } });
+  expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+  fireEvent.click(within(row()).getByRole('button', { name: /^Delete mapping/ }));
+  expect(within(row()).getByRole('button', { name: 'Delete' })).toBeTruthy();
+  fireEvent.change(search, { target: { value: 'Applicant name' } });
+  expect(within(row()).queryByRole('button', { name: 'Delete' })).toBeNull();
+  fireEvent.change(search, { target: { value: '' } });
+  expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+  expect(saveLearnedMappings).not.toHaveBeenCalled();
 });
 
 describe('Learned Mappings presentation and discovery', () => {

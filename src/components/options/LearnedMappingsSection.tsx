@@ -34,7 +34,12 @@ import {
   type MappingGroup,
   type MappingStatus,
 } from '@/src/learned-mappings/groups';
-import { mappingDestination, matchesMapping, profileFieldLabels } from './learnedMappingsView';
+import {
+  mappingDestination,
+  mappingSearchText,
+  matchesMapping,
+  profileFieldLabels,
+} from './learnedMappingsView';
 
 const secondary =
   'rounded-md border border-gray-300 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800';
@@ -51,8 +56,13 @@ const profileKey = (profile: Partial<Profile>) => JSON.stringify(profileData(pro
 const same = equalJsonValues;
 const SITES_PER_PAGE = 5;
 const MAPPINGS_PER_BATCH = 20;
+interface MappingView {
+  search: string;
+  filter: 'All' | MappingStatus;
+}
 
 interface MappingRowProps {
+  view: MappingView;
   group: MappingGroup;
   domain: string;
   profile: Partial<Profile>;
@@ -69,6 +79,7 @@ interface MappingRowProps {
   onAfterDelete: () => void;
 }
 function MappingRow({
+  view,
   group,
   domain,
   profile,
@@ -80,7 +91,8 @@ function MappingRow({
   onDelete,
   onAfterDelete,
 }: MappingRowProps) {
-  const [editing, setEditing] = useState(false);
+  const [editingView, setEditingView] = useState<MappingView | null>(null);
+  const editing = editingView === view;
   const [editValue, setEditValue] = useState(group.path);
   const [reviewedProfile, setReviewedProfile] = useState(profile);
   const [reviewedRevision, setReviewedRevision] = useState(revision);
@@ -98,7 +110,7 @@ function MappingRow({
   const unchanged = editValue === group.path && group.status === 'Trusted';
   const cancelEdit = () => {
     if (saving) return;
-    setEditing(false);
+    setEditingView(null);
     requestAnimationFrame(() => editRef.current?.focus());
   };
   return (
@@ -134,6 +146,7 @@ function MappingRow({
           </span>
           {!editing && (
             <ConfirmRemoveButton
+              resetKey={view}
               title={`Delete mapping ${group.title} on ${domain}`}
               compact
               disabled={!!busy}
@@ -156,7 +169,7 @@ function MappingRow({
                     setReviewedProfile(profile);
                     setReviewedRevision(revision);
                     setReviewedGroup(group);
-                    setEditing(true);
+                    setEditingView(view);
                   }}
                 >
                   <Pencil aria-hidden="true" className="h-4 w-4" />
@@ -198,7 +211,7 @@ function MappingRow({
               className={`inline-flex items-center justify-center gap-2 ${primary}`}
               onClick={async () => {
                 if (await onUpdate(reviewedGroup, editValue, reviewedProfile)) {
-                  setEditing(false);
+                  setEditingView(null);
                   requestAnimationFrame(() => editRef.current?.focus());
                 }
               }}
@@ -217,6 +230,7 @@ function MappingRow({
 }
 
 function MappingSite({
+  view,
   domain,
   groups,
   total,
@@ -231,6 +245,7 @@ function MappingSite({
   onDelete,
   onFallbackFocus,
 }: {
+  view: MappingView;
   domain: string;
   groups: MappingGroup[];
   total: number;
@@ -245,7 +260,9 @@ function MappingSite({
   onDelete: MappingRowProps['onDelete'];
   onFallbackFocus: () => void;
 }) {
-  const [visibleCount, setVisibleCount] = useState(MAPPINGS_PER_BATCH);
+  const [pagination, setPagination] = useState({ view, count: MAPPINGS_PER_BATCH });
+  const visibleCount = pagination.view === view ? pagination.count : MAPPINGS_PER_BATCH;
+  // A new view starts at one batch without remounting the site or its rows.
   const headerRef = useRef<HTMLButtonElement>(null);
   const panelId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -288,6 +305,7 @@ function MappingSite({
           </button>
         </h3>
         <ConfirmRemoveButton
+          resetKey={view}
           title={`Delete all mappings for ${domain}`}
           disabled={!!busy}
           busy={deleting}
@@ -310,6 +328,7 @@ function MappingSite({
             .map((group) => (
               <MappingRow
                 key={group.id}
+                view={view}
                 group={group}
                 domain={domain}
                 profile={profile}
@@ -334,7 +353,7 @@ function MappingSite({
                 className={secondary}
                 onClick={() => {
                   const firstNew = visibleCount;
-                  setVisibleCount((count) => count + MAPPINGS_PER_BATCH);
+                  setPagination({ view, count: visibleCount + MAPPINGS_PER_BATCH });
                   requestAnimationFrame(() => {
                     const row =
                       panelRef.current?.querySelectorAll<HTMLElement>('[role="group"]')[firstNew];
@@ -382,8 +401,8 @@ export function LearnedMappingsSection({
   const sequence = useRef(0);
   const searchRef = useRef<HTMLInputElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'All' | MappingStatus>('All');
+  const [view, setView] = useState<MappingView>({ search: '', filter: 'All' });
+  const { search, filter } = view;
   const [sitePage, setSitePage] = useState(0);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [filteredCollapsed, setFilteredCollapsed] = useState<Set<string>>(new Set());
@@ -440,18 +459,37 @@ export function LearnedMappingsSection({
       ),
     [groupsBySite],
   );
-  const { counts, shown, shownSites } = useMemo(() => {
-    const searched = sites
-      .flatMap((domain) => groupsBySite.get(domain)!.map((group) => ({ domain, group })))
-      .filter(({ domain, group }) =>
-        matchesMapping(group, domain, search, mappingDestination(group.path, labels)),
-      );
+  const searchIndex = useMemo(
+    () =>
+      sites.flatMap((domain) =>
+        groupsBySite.get(domain)!.map((group) => ({
+          domain,
+          group,
+          text: mappingSearchText(group, domain, mappingDestination(group.path, labels)),
+        })),
+      ),
+    [sites, groupsBySite, labels],
+  );
+  const { counts, shown, shownSites, shownBySite } = useMemo(() => {
+    const words = search.trim().toLocaleLowerCase().split(/\s+/);
+    const searched = searchIndex.filter(({ text }) => matchesMapping(text, words));
     const counts = { All: searched.length, Trusted: 0, Learning: 0, Inactive: 0 };
     for (const { group } of searched) counts[group.status]++;
     const shown = searched.filter(({ group }) => filter === 'All' || group.status === filter);
-    const shownDomains = new Set(shown.map((entry) => entry.domain));
-    return { counts, shown, shownSites: sites.filter((domain) => shownDomains.has(domain)) };
-  }, [sites, groupsBySite, labels, search, filter]);
+    const shownBySite = new Map<string, MappingGroup[]>();
+    for (const { domain, group } of shown) {
+      const groups = shownBySite.get(domain);
+      if (groups) groups.push(group);
+      else shownBySite.set(domain, [group]);
+    }
+    return {
+      counts,
+      shown,
+      shownBySite,
+      shownSites: sites.filter((domain) => shownBySite.has(domain)),
+    };
+  }, [sites, searchIndex, search, filter]);
+
   const lastPage = Math.max(0, Math.ceil(shownSites.length / SITES_PER_PAGE) - 1);
   const currentPage = Math.min(sitePage, lastPage);
   // Deleting the last site on a page must not leave an empty or stale page selected.
@@ -658,7 +696,8 @@ export function LearnedMappingsSection({
             aria-label="Search mappings"
             value={search}
             onChange={(event) => {
-              setSearch(event.target.value);
+              const search = event.target.value;
+              setView((previous) => previous.search === search ? previous : { ...previous, search });
               setSitePage(0);
               setFilteredCollapsed(new Set());
             }}
@@ -674,7 +713,7 @@ export function LearnedMappingsSection({
                   aria-pressed={filter === status}
                   disabled={status !== 'All' && counts[status] === 0 && filter !== status}
                   onClick={() => {
-                    setFilter(status);
+                    setView((previous) => previous.filter === status ? previous : { ...previous, filter: status });
                     setSitePage(0);
                     setFilteredCollapsed(new Set());
                   }}
@@ -740,9 +779,10 @@ export function LearnedMappingsSection({
           )}
           {pagedSites.map((domain) => (
             <MappingSite
-              key={JSON.stringify([profile.id, domain, search, filter])}
+              key={JSON.stringify([profile.id, domain])}
+              view={view}
               domain={domain}
-              groups={shown.filter((entry) => entry.domain === domain).map((entry) => entry.group)}
+              groups={shownBySite.get(domain)!}
               total={groupsBySite.get(domain)!.length}
               profile={profile}
               revision={revision}

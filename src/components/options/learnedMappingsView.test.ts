@@ -2,6 +2,7 @@ import { expect, it } from 'vitest';
 import { groupMappings } from '../../learned-mappings/groups';
 import {
   mappingDestination,
+  mappingSearchText,
   matchesMapping,
   profileFieldLabels,
 } from './learnedMappingsView';
@@ -58,22 +59,10 @@ it('uses the actual profile entry to distinguish destinations and search results
       school: { ...entry, path: 'education.0.institution', label: 'School', question: 'School' },
     },
   }).get('site')![0];
-  expect(
-    matchesMapping(
-      group,
-      'jobs.example.test',
-      'sample institution',
-      mappingDestination(group.path, labels),
-    ),
-  ).toBe(true);
-  expect(
-    matchesMapping(
-      group,
-      'jobs.example.test',
-      'sample salary',
-      mappingDestination(group.path, labels),
-    ),
-  ).toBe(false);
+  const text = mappingSearchText(group, 'jobs.example.test', mappingDestination(group.path, labels));
+  expect(matchesMapping(text, ['sample', 'institution'])).toBe(true);
+  expect(matchesMapping(text, ['sample', 'salary'])).toBe(false);
+  expect(matchesMapping(text, ['jobs.example.test', 'school'])).toBe(true);
   expect(mappingDestination('education.8.institution', labels)).toBe(
     'Education → Entry 9 → Institution',
   );

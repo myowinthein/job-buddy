@@ -3,6 +3,7 @@ import { LoaderCircle, Trash2 } from 'lucide-react';
 import { RemoveButton } from './RemoveButton';
 
 interface Props {
+  resetKey?: object;
   onConfirm: () => void;
   title?: string;
   action?: 'Delete' | 'Clear' | 'Remove';
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function ConfirmRemoveButton({
+  resetKey,
   onConfirm,
   title = 'Remove entry',
   action = 'Delete',
@@ -25,7 +27,8 @@ export function ConfirmRemoveButton({
   busy = false,
   leadingAction,
 }: Props) {
-  const [armed, setArmed] = useState(false);
+  const [armedFor, setArmedFor] = useState<{ key: object | undefined } | null>(null);
+  const armed = armedFor !== null && armedFor.key === resetKey;
   const container = useRef<HTMLSpanElement>(null);
   const confirmButton = useRef<HTMLButtonElement>(null);
   const wasBusy = useRef(false);
@@ -36,7 +39,7 @@ export function ConfirmRemoveButton({
     container.current?.querySelector<HTMLButtonElement>('[aria-hidden="false"] > button:last-child')?.focus({ preventScroll: true });
   };
   const cancel = () => {
-    setArmed(false);
+    setArmedFor(null);
     requestAnimationFrame(focusTrigger);
   };
   useLayoutEffect(() => {
@@ -49,17 +52,17 @@ export function ConfirmRemoveButton({
   useEffect(() => {
     if (!armed || busy) return;
     const dismiss = (event: MouseEvent) => {
-      if (!container.current?.contains(event.target as Node)) setArmed(false);
+      if (!container.current?.contains(event.target as Node)) setArmedFor(null);
     };
     document.addEventListener('mousedown', dismiss);
     return () => document.removeEventListener('mousedown', dismiss);
   }, [armed, busy]);
   const remove = () => {
     if (locked) return;
-    setArmed(false);
+    setArmedFor(null);
     onConfirm();
   };
-  const request = () => (confirm ? setArmed(true) : remove());
+  const request = () => (confirm ? setArmedFor({ key: resetKey }) : remove());
   return (
     <span
       ref={container}
