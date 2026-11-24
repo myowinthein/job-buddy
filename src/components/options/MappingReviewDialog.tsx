@@ -309,7 +309,7 @@ export function MappingReviewDialog({
               {phase !== 'analyzing' && (
                 <p className="mt-0.5 text-pretty text-xs text-gray-500 dark:text-gray-400">
                   {phase === 'setup'
-                    ? 'Use Gemini to check saved matches, then review any corrections.'
+                    ? 'Send saved questions, mappings, and profile field names to Gemini. Your profile values aren’t sent. Review suggestions before applying them.'
                     : 'Choose which corrections to apply.'}
                 </p>
               )}

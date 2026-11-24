@@ -1,4 +1,4 @@
-import { feedback } from '@/src/ui/feedback';
+import { feedback, fillModeLabels } from '@/src/ui/feedback';
 import { DevBadge } from '@/src/components/ui/DevBadge';
 import { VersionLink } from '@/src/components/ui/VersionLink';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -528,7 +528,7 @@ function App() {
                   className="mt-0.5 accent-blue-600"
                 />
                 <span>
-                  <span className="block text-sm font-medium">Fill empty fields</span>
+                  <span className="block text-sm font-medium">{fillModeLabels.merge}</span>
                   <span className="block text-xs text-gray-500 dark:text-gray-400">
                     Keep existing answers and fill empty fields.
                   </span>
@@ -544,7 +544,7 @@ function App() {
                   className="mt-0.5 accent-blue-600"
                 />
                 <span>
-                  <span className="block text-sm font-medium">Fill all matched fields</span>
+                  <span className="block text-sm font-medium">{fillModeLabels.overwrite}</span>
                   <span className="block text-xs text-gray-500 dark:text-gray-400">
                     Fill empty fields and update existing answers.
                   </span>

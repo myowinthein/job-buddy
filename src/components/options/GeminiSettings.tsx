@@ -401,7 +401,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
                 Google AI Studio
                 <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
               </a>
-              . No credit card required.
+              .
             </p>
           </>
         )}

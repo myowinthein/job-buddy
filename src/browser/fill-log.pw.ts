@@ -183,7 +183,7 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   const outcomeHelp = logPage.getByRole('button', { name: 'How Fill Details works' });
   await outcomeHelp.hover();
   await expect(logPage.getByRole('tooltip')).toContainText(
-    'For each field, autofill tries learned mappings → rules → AI and stops when it finds a reliable answer.',
+    'Autofill checks learned mappings, then rules. AI helps with uncertain matches and unfilled fields, and can revise answers filled by rules.',
   );
   await expect(logPage.getByRole('tooltip')).toContainText(
     'Fields such as consent questions are always skipped.',

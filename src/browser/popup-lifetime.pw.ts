@@ -107,12 +107,12 @@ test('existing-answer choices survive closing, and a confirmed fill continues wi
   });
   let popup = await openPinnedPopup(context, extension.worker.url(), extension.sourceTabId);
   await popup.getByRole('button', { name: 'Fill Form', exact: true }).click();
-  await expect(popup.getByRole('radio', { name: /^Fill empty fields/ })).toBeChecked();
+  await expect(popup.getByRole('radio', { name: /^Empty fields only/ })).toBeChecked();
   await popup.close();
   await expect(page.locator('#first')).toHaveValue('');
   await expect(page.locator('#email')).toHaveValue('existing@example.test');
   popup = await openPinnedPopup(context, extension.worker.url(), extension.sourceTabId);
-  await expect(popup.getByRole('radio', { name: /^Fill empty fields/ })).toBeChecked();
+  await expect(popup.getByRole('radio', { name: /^Empty fields only/ })).toBeChecked();
   await popup.getByRole('button', { name: 'Fill Form', exact: true }).click();
   await expect
     .poll(() => extension.worker.evaluate(() => (globalThis as { fillHeld?: boolean }).fillHeld))

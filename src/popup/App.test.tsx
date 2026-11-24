@@ -421,7 +421,7 @@ describe('popup App — handleAutofill scan orchestration', () => {
     renderApp();
     fireEvent.click(await readyFill());
     expect(await screen.findByText('This form already has some answers.')).toBeTruthy();
-    expect(screen.getByRole('radio', { name: /^Fill empty fields/ })).toHaveProperty(
+    expect(screen.getByRole('radio', { name: /^Empty fields only/ })).toHaveProperty(
       'checked',
       true,
     );
@@ -812,7 +812,7 @@ it('preserves the overwrite choice and fills without rescanning after confirmati
   });
   renderApp();
   fireEvent.click(await readyFill());
-  fireEvent.click(await screen.findByRole('radio', { name: /Fill all matched fields/ }));
+  fireEvent.click(await screen.findByRole('radio', { name: /Empty and existing fields/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Fill Form' }));
   await screen.findByRole('button', { name: 'Undo' });
   expect(sendMessageMock).toHaveBeenCalledWith(
@@ -934,7 +934,7 @@ it('rechecks the key when confirming existing values', async () => {
   );
   renderApp();
   fireEvent.click(await readyFill());
-  await screen.findByRole('radio', { name: /^Fill empty fields/ });
+  await screen.findByRole('radio', { name: /^Empty fields only/ });
   vi.mocked(getGeminiApiKey).mockResolvedValue(null);
   fireEvent.click(screen.getByRole('button', { name: 'Fill Form' }));
   await screen.findByRole('button', { name: 'Set Up AI Autofill' });
@@ -1013,7 +1013,7 @@ it('does not restore a cancelled choice from a delayed startup reply', async () 
   renderApp();
   fireEvent.click(await readyFill());
   // Polling discovers the choice while the original message is still pending.
-  await screen.findByRole('radio', { name: /^Fill empty fields/ });
+  await screen.findByRole('radio', { name: /^Empty fields only/ });
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
   await act(async () => {
     release();

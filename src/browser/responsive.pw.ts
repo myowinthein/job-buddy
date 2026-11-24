@@ -296,11 +296,11 @@ test('keeps the toolbar popup within its Chrome surface for setup and choices', 
 }) => {
   const popup = await openPinnedPopup(context, extension.worker.url(), extension.sourceTabId);
   await popup.getByRole('button', { name: 'Fill Form', exact: true }).click();
-  await expect(popup.getByRole('radio', { name: /^Fill empty fields/ })).toBeVisible();
+  await expect(popup.getByRole('radio', { name: /^Empty fields only/ })).toBeVisible();
   for (const height of [300, 450, 600]) {
     await popup.setViewportSize({ width: 380, height });
     // Both choices must remain selectable, not merely present below visible actions.
-    for (const name of [/^Fill all matched fields/, /^Fill empty fields/]) {
+    for (const name of [/^Empty and existing fields/, /^Empty fields only/]) {
       const choice = popup.getByRole('radio', { name });
       await choice.check();
       await expect(choice).toBeChecked();
@@ -366,7 +366,7 @@ test('keeps options controls and popup choices reachable with doubled text size'
   });
   await popup.addStyleTag({ content: 'html { font-size: 200%; }' });
   await popup.getByRole('button', { name: 'Fill Form', exact: true }).click();
-  for (const name of [/^Fill all matched fields/, /^Fill empty fields/]) {
+  for (const name of [/^Empty and existing fields/, /^Empty fields only/]) {
     const choice = popup.getByRole('radio', { name });
     await choice.check();
     await expect(choice).toBeChecked();
@@ -401,6 +401,6 @@ test('lets native popup choices grow into available screen space', async ({ cont
   await popup.setViewportSize({ width: 380, height: 200 });
   await popup.reload();
   await popup.getByRole('button', { name: 'Fill Form', exact: true }).click();
-  await expect(popup.getByRole('radio', { name: /^Fill empty fields/ })).toBeVisible();
+  await expect(popup.getByRole('radio', { name: /^Empty fields only/ })).toBeVisible();
   expect(await popup.locator('fieldset').evaluate((el) => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
 });

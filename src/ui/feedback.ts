@@ -1,3 +1,8 @@
+export const fillModeLabels = {
+  merge: 'Empty fields only',
+  overwrite: 'Empty and existing fields',
+} as const;
+
 export const driveStorageFullNotice = {
   beforeLink: 'Google Drive is full. ',
   linkText: 'Manage storage',

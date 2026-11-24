@@ -1,4 +1,4 @@
-import { feedback } from '@/src/ui/feedback';
+import { feedback, fillModeLabels } from '@/src/ui/feedback';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/src/components/ui/useToast';
@@ -148,8 +148,8 @@ export function QuickFillSettings() {
             void save({ fillMode: event.target.value === 'overwrite' ? 'overwrite' : 'merge' })
           }
         >
-          <option value="merge">Empty fields only</option>
-          <option value="overwrite">Empty and existing fields</option>
+          <option value="merge">{fillModeLabels.merge}</option>
+          <option value="overwrite">{fillModeLabels.overwrite}</option>
         </select>
       </div>
       {!!prefs && !!hiddenSites.length && (

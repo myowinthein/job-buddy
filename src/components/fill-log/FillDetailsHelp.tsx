@@ -1,11 +1,12 @@
 import { HelpPopover } from '@/src/components/ui/HelpPopover';
+import { fillModeLabels } from '@/src/ui/feedback';
 
 export function FillDetailsHelp() {
   return (
     <HelpPopover label="How Fill Details works">
       <p className="text-pretty">
-        For each field, autofill tries learned mappings → rules → AI and stops when it finds a
-        reliable answer.
+        Autofill checks learned mappings, then rules. AI helps with uncertain matches and unfilled
+        fields, and can revise answers filled by rules.
       </p>
       <p>Each fill attempt can have one of these results:</p>
       <dl className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-3 gap-y-2 [&_dd]:text-balance">
@@ -20,7 +21,7 @@ export function FillDetailsHelp() {
       </dl>
       <div className="space-y-1 text-pretty">
         <p>Fields such as consent questions are always skipped.</p>
-        <p>Existing answers are kept in “Empty fields only” mode.</p>
+        <p>Existing answers are kept in “{fillModeLabels.merge}” mode.</p>
       </div>
     </HelpPopover>
   );
