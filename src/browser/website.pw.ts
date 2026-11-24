@@ -8,10 +8,10 @@ import { controlContrast } from './contrast';
 const origin = 'http://127.0.0.1';
 const prefix = '/job-buddy/';
 const docs = resolve('docs');
-async function serveSite(context: BrowserContext) {
+async function serveSite(context: BrowserContext, siteOrigin = origin) {
   await context.route('**/*', async (route) => {
     const url = new URL(route.request().url());
-    if (url.origin !== origin || !url.pathname.startsWith(prefix)) return route.abort();
+    if (url.origin !== siteOrigin || !url.pathname.startsWith(prefix)) return route.abort();
     const relative = decodeURIComponent(url.pathname.slice(prefix.length));
     const path = resolve(docs, relative + (url.pathname.endsWith('/') ? 'index.html' : ''));
     if (!path.startsWith(docs + '/')) return route.abort();
@@ -60,6 +60,35 @@ async function expectVisibleFocus(control: Locator) {
     }),
   ).toBe(true);
 }
+
+test('local guides use development branding while hosted guides keep production branding', async ({
+  context,
+  page,
+}) => {
+  for (const [siteOrigin, icon] of [
+    ['http://localhost:4173', 'icon-dev.svg'],
+    ['http://127.0.0.1:4173', 'icon-dev.svg'],
+    ['https://myowinthein.github.io', 'icon.svg'],
+    ['https://localhost.example', 'icon.svg'],
+  ]) {
+    await serveSite(context, siteOrigin);
+    for (const path of ['', 'developers/']) {
+      await page.goto(siteOrigin + prefix + path);
+      const expected = siteOrigin + prefix + 'assets/icons/' + icon;
+      const logo = page.locator('.brand img');
+      expect(await logo.evaluate((e: HTMLImageElement) => e.src)).toBe(expected);
+      await logo.evaluate((e: HTMLImageElement) => e.decode());
+      const favicon = page.locator('link[rel="icon"]');
+      expect(await favicon.evaluate((e: HTMLLinkElement) => e.href)).toBe(expected);
+      // Verify the shipped asset matches EPO, rather than only checking its filename.
+      expect(await page.evaluate(async (url) => (await fetch(url)).text(), expected)).toBe(
+        await readFile(resolve('public', icon), 'utf8'),
+      );
+      await page.getByRole('button', { name: /Switch to .* mode/ }).click();
+      expect(await logo.evaluate((e: HTMLImageElement) => e.src)).toBe(expected);
+    }
+  }
+});
 
 test('keyboard outlines stay visible inside documentation navigation, captures, tables and command tabs', async ({ context, page }) => {
   await serveSite(context);

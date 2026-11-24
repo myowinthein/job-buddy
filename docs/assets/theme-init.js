@@ -5,6 +5,16 @@
   const validPreference = (value) => value === 'light' || value === 'dark' ? value : null;
   let preference = null;
   let systemTheme;
+  function applyLocalBranding() {
+    if (!['localhost', '127.0.0.1'].includes(location.hostname)) return;
+    document.querySelectorAll('.brand img, link[rel~="icon"]').forEach((element) => {
+      const attribute = element.tagName === 'IMG' ? 'src' : 'href';
+      const source = new URL(element.getAttribute(attribute), document.baseURI);
+      if (!source.pathname.endsWith('/assets/icons/icon.svg')) return;
+      source.pathname = source.pathname.replace(/icon\.svg$/, 'icon-dev.svg');
+      element.setAttribute(attribute, source.href);
+    });
+  }
   try {
     preference = validPreference(localStorage.getItem(storageKey));
   } catch {
@@ -28,6 +38,7 @@
     document.dispatchEvent(new Event('jb-theme-change'));
   }
 
+  applyLocalBranding();
   applyTheme();
   systemTheme?.addEventListener('change', () => {
     if (preference === null) applyTheme();
@@ -44,6 +55,7 @@
   });
 
   function bindControl() {
+    applyLocalBranding();
     document.querySelector('.theme-toggle, #theme')?.addEventListener('click', () => {
       preference = root.classList.contains('dark') ? 'light' : 'dark';
       applyTheme();
