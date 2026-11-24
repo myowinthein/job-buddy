@@ -292,6 +292,23 @@ a:has(.external-link-icon):not(.button):focus-visible {
 }
 .hero-figure {
   margin: 8px 0 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto;
+}
+.hero-figure > .capture {
+  grid-area: 1 / 1;
+  width: 100%;
+  aspect-ratio: 1440 / 1050;
+}
+.hero-figure > .demo-playback {
+  grid-area: 2 / 1;
+  justify-self: end;
+  align-self: start;
+}
+.hero-figure > .demo-playback[hidden] {
+  display: block !important;
+  visibility: hidden;
 }
 figure {
   margin: 28px 0 0;
@@ -1050,8 +1067,8 @@ pre code {
   }
 }
 @media print {
-  .demo-playback {
-    display: none;
+  .hero-figure > .demo-playback {
+    display: none !important;
   }
   :is(.walkthrough, .developer-guide) {
     --chapter-gap: 24px;

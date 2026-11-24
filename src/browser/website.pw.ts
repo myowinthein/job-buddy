@@ -748,6 +748,61 @@ test('guide selection markers remain distinct in forced colors', async ({ contex
   }
 });
 
+test('hero keeps its loading image and geometry until a video frame is ready', async ({
+  context,
+  page,
+}) => {
+  await serveSite(context);
+  let releasePlayer!: () => void;
+  let releaseVideo!: () => void;
+  const playerGate = new Promise<void>((resolve) => {
+    releasePlayer = resolve;
+  });
+  const videoGate = new Promise<void>((resolve) => {
+    releaseVideo = resolve;
+  });
+  await context.route('**/assets/demo-player.js', async (route) => {
+    await playerGate;
+    await route.fallback();
+  });
+  await context.route('**/assets/videos/**', async (route) => {
+    await videoGate;
+    await route.fallback();
+  });
+  const posters: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/application-before-')) posters.push(request.url());
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  try {
+    await page.goto(origin + prefix, { waitUntil: 'commit' });
+    const figure = page.locator('[data-demo-player]');
+    const still = figure.locator('[data-demo-still]');
+    await expect(still).toBeVisible();
+    await still.locator('img').evaluate((img: HTMLImageElement) => img.decode());
+    const contentTop = () =>
+      page
+        .locator('.hero-figure + .detail-list')
+        .evaluate((element) => element.getBoundingClientRect().top + scrollY);
+    const before = await contentTop();
+    releasePlayer();
+    await expect(figure.locator('video')).toHaveAttribute('src', /autofill-light\.mp4/);
+    await expect(still).toBeVisible();
+    expect(await contentTop()).toBeCloseTo(before, 0);
+    releaseVideo();
+    await expect(still).toBeHidden();
+    await expect(figure.locator('video')).toBeVisible();
+    expect(await contentTop()).toBeCloseTo(before, 0);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(still).toBeVisible();
+    expect(await contentTop()).toBeCloseTo(before, 0);
+    expect(posters).toEqual([]);
+  } finally {
+    releasePlayer();
+    releaseVideo();
+  }
+});
+
 test('autofill recording supports manual pause across theme, visibility and motion changes', async ({
   context,
   page,
@@ -832,6 +887,14 @@ test('demo opens from the walkthrough, offers installation guidance, and recheck
   page,
 }, info) => {
   await serveSite(context);
+  await page.addInitScript(() => {
+    window.addEventListener('DOMContentLoaded', () => {
+      const description = document.querySelector('.job-description');
+      if (description)
+        (window as Window & { detectionTop?: number }).detectionTop =
+          description.getBoundingClientRect().top + scrollY;
+    });
+  });
   await page.goto(origin + prefix);
   const links = page.getByRole('link', { name: 'Try the demo', exact: true });
   await expect(links).toHaveCount(1);
@@ -846,6 +909,13 @@ test('demo opens from the walkthrough, offers installation guidance, and recheck
   const notice = demo.locator('#job-buddy-setup');
   await expect(notice).toHaveAttribute('data-status', 'not-detected');
   await expect(notice).toBeVisible();
+  const stableTop = () => demo.locator('.job-description').evaluate(
+    (element) => element.getBoundingClientRect().top + scrollY,
+  );
+  const beforeDetection = await demo.evaluate(
+    () => (window as Window & { detectionTop?: number }).detectionTop!,
+  );
+  expect(await stableTop()).toBeCloseTo(beforeDetection, 0);
   await expect(notice.getByRole('link', { name: 'Add to Chrome' })).toHaveAttribute(
     'href',
     'https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk',
@@ -884,9 +954,11 @@ test('demo opens from the walkthrough, offers installation guidance, and recheck
   });
   await expect(notice).toHaveAttribute('data-status', 'detected');
   await expect(notice).toBeHidden();
+  expect(await stableTop()).toBeCloseTo(beforeDetection, 0);
   await demo.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await expect(notice).toHaveAttribute('data-status', 'not-detected');
   await expect(notice).toBeVisible();
+  expect(await stableTop()).toBeCloseTo(beforeDetection, 0);
   await demo.close();
 });
 

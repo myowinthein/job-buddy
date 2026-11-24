@@ -14,17 +14,20 @@
   function setSource() {
     const dark = document.documentElement.classList.contains('dark');
     const source = dark ? video.dataset.dark : video.dataset.light;
-    video.poster = dark ? video.dataset.posterDark : video.dataset.posterLight;
     if (video.getAttribute('src') !== source) {
       video.src = source;
       video.load();
     }
   }
+  function showReadyFrame() {
+    const ready = !motion.matches && !failed && video.readyState >= 2;
+    videoPanel.hidden = !ready;
+    still.hidden = ready;
+  }
   async function syncPlayback() {
     const revision = ++playbackRevision;
     const showVideo = !motion.matches && !failed;
-    videoPanel.hidden = !showVideo;
-    still.hidden = showVideo;
+    showReadyFrame();
     playback.hidden = !showVideo;
     playback.textContent = pausedByUser ? 'Play video' : 'Pause video';
     if (!showVideo || !visible || document.hidden) {
@@ -32,6 +35,7 @@
       return;
     }
     setSource();
+    showReadyFrame();
     if (pausedByUser) {
       video.pause();
       return;
@@ -46,6 +50,8 @@
       void syncPlayback();
     }
   }
+  video.addEventListener('loadeddata', showReadyFrame);
+  video.addEventListener('emptied', showReadyFrame);
   video.addEventListener('play', () => {
     if (!visible || document.hidden || motion.matches || failed || pausedByUser) video.pause();
   });

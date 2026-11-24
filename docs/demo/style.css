@@ -141,8 +141,22 @@ a:is(:hover, :focus-visible) {
 .job-description {
   padding-top: 4px;
 }
-.setup-notice {
+.setup-slot {
   grid-column: 1 / -1;
+  display: grid;
+}
+.setup-slot > .setup-notice {
+  grid-area: 1 / 1;
+}
+/* Keep installation guidance in layout while detection is pending or successful. */
+.setup-slot > .setup-notice[hidden] {
+  display: grid !important;
+  visibility: hidden;
+}
+.setup-slot:has(#job-buddy-setup:not([hidden])) > .demo-notice {
+  visibility: hidden;
+}
+.setup-notice {
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr) auto;
   align-items: center;
@@ -164,6 +178,9 @@ a:is(:hover, :focus-visible) {
 }
 .setup-notice p {
   margin: 3px 0 0;
+}
+.demo-notice .setup-copy {
+  grid-column: 1 / -1;
 }
 .setup-notice a {
   display: inline-flex;

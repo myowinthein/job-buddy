@@ -55,28 +55,36 @@
       </div>
     </header>
     <main class="application-layout">
-      <aside id="job-buddy-setup" class="setup-notice" role="status" hidden>
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          aria-hidden="true"
-        >
-          <circle cx="12" cy="12" r="9" />
-          <path d="M12 10v7m0-10v1" />
-        </svg>
-        <div class="setup-copy">
-          <strong>Job Buddy wasn’t detected</strong>
-          <p>Install it, add your Gemini key and profile, then refresh this page.</p>
-        </div>
-        <a
-          href="https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk"
-          target="_blank"
-          rel="noopener noreferrer"
-          >Add to Chrome <svg class="external-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg></a
-        >
-      </aside>
+      <div class="setup-slot">
+        <aside class="setup-notice demo-notice">
+          <div class="setup-copy">
+            <strong>Demo application</strong>
+            <p>Practice with sample details. No application is sent.</p>
+          </div>
+        </aside>
+        <aside id="job-buddy-setup" class="setup-notice" role="status" hidden>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 10v7m0-10v1" />
+          </svg>
+          <div class="setup-copy">
+            <strong>Job Buddy wasn’t detected</strong>
+            <p>Install it, add your Gemini key and profile, then refresh this page.</p>
+          </div>
+          <a
+            href="https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Add to Chrome <svg class="external-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg></a
+          >
+        </aside>
+      </div>
       <aside class="job-description" aria-labelledby="role-title">
         <p class="team">Product & Engineering</p>
         <h1 id="role-title">Frontend Engineer</h1>
