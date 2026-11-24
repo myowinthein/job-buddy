@@ -78,6 +78,14 @@ test('local guides use development branding while hosted guides keep production 
       const logo = page.locator('.brand img');
       expect(await logo.evaluate((e: HTMLImageElement) => e.src)).toBe(expected);
       await logo.evaluate((e: HTMLImageElement) => e.decode());
+      const badge = page.locator('.brand .dev-badge');
+      if (icon === 'icon-dev.svg') {
+        await expect(badge).toHaveCount(1);
+        await expect(badge).toHaveText('DEV');
+        expect((await badge.evaluate(controlContrast)).text).toBeGreaterThanOrEqual(4.5);
+      } else {
+        await expect(badge).toHaveCount(0);
+      }
       const favicon = page.locator('link[rel="icon"]');
       expect(await favicon.evaluate((e: HTMLLinkElement) => e.href)).toBe(expected);
       // Verify the shipped asset matches EPO, rather than only checking its filename.
@@ -86,6 +94,10 @@ test('local guides use development branding while hosted guides keep production 
       );
       await page.getByRole('button', { name: /Switch to .* mode/ }).click();
       expect(await logo.evaluate((e: HTMLImageElement) => e.src)).toBe(expected);
+      if (icon === 'icon-dev.svg') {
+        await expect(badge).toHaveCount(1);
+        expect((await badge.evaluate(controlContrast)).text).toBeGreaterThanOrEqual(4.5);
+      }
     }
   }
 });

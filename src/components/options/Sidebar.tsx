@@ -64,7 +64,10 @@ export function Sidebar({
       }`}
     >
       <div className="flex items-center justify-center @min-[40rem]/options:justify-start h-16 shrink-0 px-3 gap-2 border-b border-gray-200 dark:border-gray-800">
-        <img src={LOGO_ICON_SRC} alt="Job Buddy" className="w-7 h-7 @min-[40rem]/options:hidden" />
+        <div className="flex flex-col items-center gap-1 @min-[40rem]/options:hidden">
+          <img src={LOGO_ICON_SRC} alt="Job Buddy" className="w-7 h-7" />
+          <DevBadge />
+        </div>
         <button
           type="button"
           onClick={onToggle}
@@ -86,6 +89,12 @@ export function Sidebar({
           </div>
         )}
       </div>
+      {collapsed && (
+        <div className="hidden @min-[40rem]/options:flex shrink-0 flex-col items-center gap-1 border-b border-gray-200 py-2 dark:border-gray-800">
+          <img src={LOGO_ICON_SRC} alt="Job Buddy" className="w-7 h-7" />
+          <DevBadge />
+        </div>
+      )}
 
       <nav className="flex-1 overflow-y-auto py-2" aria-label="Profile sections">
         {!collapsed && (

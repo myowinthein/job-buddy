@@ -75,6 +75,70 @@ test.afterAll(async () => {
   });
 });
 
+test('development branding stays visible in popup and compact options layouts', async ({
+  playwright,
+}, info) => {
+  const extensionPath = resolve(buildRoot, 'chrome-mv3-dev');
+  const context = await playwright.chromium.launchPersistentContext('', {
+    channel: 'chromium',
+    headless: true,
+    args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
+  });
+  try {
+    await context.route(/https?:\/\/(?!127\.0\.0\.1:4177)/, (route) => route.abort());
+    const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+    await worker.evaluate(() =>
+      chrome.storage.local.set({ devProfileDisabled: true, geminiDevDisabled: true }),
+    );
+    const page = await context.newPage();
+    await page.goto(new URL('options.html?devEmbedded=1', worker.url()).href);
+    const sidebar = page.locator('#options-sidebar');
+    const toggle = sidebar.getByRole('button', { name: /^(Expand|Collapse) sidebar$/ });
+    for (const theme of ['light', 'dark']) {
+      await worker.evaluate((theme) => chrome.storage.local.set({ themePreference: theme }), theme);
+      await expect(page.locator('html')).toHaveClass(theme === 'dark' ? /dark/ : /^(?!.*\bdark\b)/);
+      for (const width of [320, 640, 1280]) {
+        await page.setViewportSize({ width, height: 800 });
+        for (const collapsed of [false, true]) {
+          // Narrow layouts have no toggle; carry the remembered state across resize.
+          await page.setViewportSize({ width: 1280, height: 800 });
+          if ((await toggle.getAttribute('aria-expanded')) !== String(!collapsed))
+            await toggle.click();
+          await page.setViewportSize({ width, height: 800 });
+          await expect
+            .poll(async () => (await sidebar.boundingBox())?.width)
+            .toBe(collapsed || width < 640 ? 64 : 224);
+          const logo = sidebar.locator('img:visible');
+          const badge = sidebar.locator('[title="Development build"]:visible');
+          await expect(logo).toHaveCount(1);
+          await expect(logo).toHaveAttribute('src', '/icon-dev.svg');
+          await expect(badge).toHaveCount(1);
+          await expect(badge).toHaveText('DEV');
+          const bounds = await sidebar.boundingBox();
+          for (const element of [logo, badge]) {
+            const box = (await element.boundingBox())!;
+            expect(box.x).toBeGreaterThanOrEqual(bounds!.x);
+            expect(box.x + box.width).toBeLessThanOrEqual(bounds!.x + bounds!.width);
+          }
+          const logoBox = (await logo.boundingBox())!;
+          const badgeBox = (await badge.boundingBox())!;
+          expect(
+            logoBox.y + logoBox.height <= badgeBox.y || logoBox.x + logoBox.width <= badgeBox.x,
+          ).toBe(true);
+          expect(await fitsViewportWidth(page)).toBe(true);
+        }
+      }
+      await sidebar.screenshot({ path: info.outputPath(theme + '-compact-branding.png') });
+    }
+    const popup = await context.newPage();
+    await popup.goto(new URL('popup.html', worker.url()).href);
+    await expect(popup.locator('header img')).toHaveAttribute('src', '/icon-dev.svg');
+    await expect(popup.locator('header [title="Development build"]')).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
 test('Complete profile mode displays sample entries, links and uploaded PDFs', async ({
   playwright,
 }) => {

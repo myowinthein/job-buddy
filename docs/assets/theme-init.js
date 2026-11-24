@@ -14,6 +14,14 @@
       source.pathname = source.pathname.replace(/icon\.svg$/, 'icon-dev.svg');
       element.setAttribute(attribute, source.href);
     });
+    const brand = document.querySelector('.brand');
+    if (brand && !brand.querySelector('.dev-badge')) {
+      const badge = document.createElement('span');
+      badge.className = 'dev-badge';
+      badge.title = 'Development build';
+      badge.textContent = 'DEV';
+      brand.append(badge);
+    }
   }
   try {
     preference = validPreference(localStorage.getItem(storageKey));

@@ -116,6 +116,21 @@ button:disabled {
   width: 32px;
   height: 32px;
 }
+.dev-badge {
+  flex-shrink: 0;
+  border-radius: 4px;
+  padding: 2px 4px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.05em;
+}
+.dark .dev-badge {
+  background: #451a03;
+  color: #fcd34d;
+}
 .header-nav {
   margin-left: auto;
   display: flex;
