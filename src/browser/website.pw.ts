@@ -102,6 +102,36 @@ test('local guides use development branding while hosted guides keep production 
   }
 });
 
+test('local logo renders amber before deferred scripts finish across repeated home navigation', async ({ context, page }, info) => {
+  const siteOrigin = 'http://localhost:4173';
+  await serveSite(context, siteOrigin);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (let visit = 0; visit < 3; visit++) {
+    let releaseScript!: () => void;
+    const gate = new Promise<void>((resolve) => { releaseScript = resolve; });
+    await context.route('**/assets/site.js*', async (route) => {
+      await gate;
+      await route.fallback();
+    });
+    try {
+      await page.goto(siteOrigin + prefix, { waitUntil: 'commit' });
+      const logo = page.locator('.brand img');
+      await expect(logo).toBeVisible();
+      expect(await page.evaluate(() => document.readyState)).not.toBe('complete');
+      await expect(logo).toHaveCSS('content', /icon-dev\.svg/);
+      if (visit === 0) await logo.screenshot({ path: info.outputPath('local-logo-before-ready.png') });
+      releaseScript();
+      await page.waitForLoadState('load');
+      await expect(logo).toHaveAttribute('src', /icon-dev\.svg$/);
+      await page.locator('.brand').click();
+      await expect(page).toHaveURL(siteOrigin + prefix);
+    } finally {
+      releaseScript();
+      await context.unroute('**/assets/site.js*');
+    }
+  }
+});
+
 test('keyboard outlines stay visible inside documentation navigation, captures, tables and command tabs', async ({ context, page }) => {
   await serveSite(context);
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -190,6 +220,44 @@ test('external link text and arrow share the same focus boundary', async ({ cont
   }
 });
 
+test('guide back-to-top controls return to the header and stay clear of footer links', async ({ context, page }, info) => {
+  await serveSite(context);
+  for (const path of ['', 'developers/']) {
+    for (const width of [320, 1280]) {
+      const reducedMotion = width === 320 ? 'reduce' : 'no-preference';
+      await page.setViewportSize({ width, height: 700 });
+      await page.emulateMedia({ reducedMotion, colorScheme: width === 320 ? 'light' : 'dark' });
+      await page.goto(origin + prefix + path);
+      const top = page.getByRole('button', { name: 'Back to top', exact: true });
+      await expect(top).toBeHidden();
+      await page.keyboard.press('Tab');
+      await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
+      await expect(top).toBeInViewport({ ratio: 1 });
+      expect(await fitsViewportWidth(page)).toBe(true);
+      const button = (await top.boundingBox())!;
+      for (const link of await page.locator('.site-footer a').all()) {
+        const box = (await link.boundingBox())!;
+        expect(box.x >= button.x + button.width || box.x + box.width <= button.x
+          || box.y >= button.y + button.height || box.y + box.height <= button.y).toBe(true);
+      }
+      await top.focus();
+      await expect(top).toBeFocused();
+      await expect(top).toHaveCSS('outline-style', 'solid');
+      await page.screenshot({ path: info.outputPath(`${path ? 'developers' : 'walkthrough'}-${width}-back-to-top.png`) });
+      expect(await page.locator('html').evaluate(element => getComputedStyle(element).scrollBehavior))
+        .toBe(reducedMotion === 'reduce' ? 'auto' : 'smooth');
+      await page.keyboard.press('Enter');
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+      await expect(top).toBeHidden();
+      await expect(page.locator('.site-header .brand')).toBeFocused();
+    }
+  }
+  for (const path of ['demo/', 'legal/privacy/', '404.html']) {
+    await page.goto(origin + prefix + path);
+    await expect(page.getByRole('button', { name: 'Back to top', exact: true })).toHaveCount(0);
+  }
+});
+
 test('shared headers and footers work on every Job Buddy page without JavaScript', async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false });
   await serveSite(context);
@@ -259,6 +327,84 @@ test('public pages expose canonical search metadata and exclude demo and error p
     await expect(page.locator('head meta[name="robots"]')).toHaveAttribute('content', 'noindex');
     expect(sitemap).not.toContain('https://myowinthein.github.io/job-buddy/' + path);
   }
+});
+
+test('both guides keep the demo reachable from narrow navigation', async ({ context, page }) => {
+  await serveSite(context);
+  for (const [guide, source] of [['', 'walkthrough'], ['developers/', 'developers']]) {
+    for (const width of [320, 560]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(origin + prefix + guide);
+      const demo = page.getByRole('navigation', { name: 'Main navigation' })
+        .getByRole('link', { name: 'Try the demo' });
+      await expect(demo).toBeVisible();
+      expect(await fitsViewportWidth(page)).toBe(true);
+      await demo.click();
+      await expect(page).toHaveURL(origin + prefix + 'demo/?from=' + source);
+      await expect(page.getByRole('link', { name: 'Back to guide' })).toHaveAttribute(
+        'href', source === 'developers' ? '../developers/' : '../',
+      );
+    }
+  }
+});
+
+test('screenshot switches reserve space without flashing alternative text while loading', async ({ context, page }, info) => {
+  await serveSite(context);
+  await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
+  let releaseImage!: () => void;
+  const gate = new Promise<void>((resolve) => { releaseImage = resolve; });
+  await context.route('**/assets/screenshots/ai-light.webp*', async (route) => {
+    await gate;
+    await route.fallback();
+  });
+  try {
+    await page.goto(origin + prefix);
+    const tour = page.locator('#ai [data-visual-tour]');
+    await tour.getByRole('button', { name: 'With a key', exact: true }).click();
+    const image = page.locator('#gemini-views-1 img');
+    await expect(page.locator('#gemini-views-1')).toBeVisible();
+    await expect(image).toHaveCSS('visibility', 'hidden');
+    const reserved = await image.boundingBox();
+    expect(reserved!.height).toBeGreaterThan(0);
+    await tour.screenshot({ path: info.outputPath('screenshot-loading.png') });
+    releaseImage();
+    await expect(image).toHaveCSS('visibility', 'visible');
+    expect(await image.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+    expect(await image.boundingBox()).toEqual(reserved);
+    await tour.screenshot({ path: info.outputPath('screenshot-ready.png') });
+  } finally {
+    releaseImage();
+  }
+});
+
+test('guide navigation, FAQ hover and footer links share consistent styling', async ({ context, page }, info) => {
+  await serveSite(context);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const theme of ['light', 'dark']) {
+    await page.addInitScript((theme) => localStorage.setItem('job-buddy-theme', theme), theme);
+    for (const guide of ['', 'developers/']) {
+      await page.goto(origin + prefix + guide);
+      const walkthrough = page.locator('.walkthrough-link');
+      await expect(walkthrough).toHaveAttribute('href', guide ? '../' : './');
+      const summary = page.locator('.detail-list summary').first();
+      const before = await summary.evaluate((element) => getComputedStyle(element).color);
+      await summary.hover();
+      expect(await summary.evaluate((element) => getComputedStyle(element).color)).not.toBe(before);
+      await summary.click();
+      await expect(summary.locator('..')).toHaveAttribute('open', '');
+      const project = page.getByRole('navigation', { name: 'Project links' }).locator('a').first();
+      const legal = page.getByRole('navigation', { name: 'Legal links' }).locator('a').first();
+      for (const property of ['font-size', 'color', 'text-decoration-line']) {
+        await expect(legal).toHaveCSS(property, await project.evaluate(
+          (element, property) => getComputedStyle(element).getPropertyValue(property), property,
+        ));
+      }
+      await page.locator('.site-footer').screenshot({ path: info.outputPath(`footer-${guide ? 'developers' : 'walkthrough'}-${theme}.png`) });
+    }
+  }
+  await page.getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Walkthrough', exact: true }).click();
+  await expect(page).toHaveURL(origin + prefix);
 });
 
 test('retries a failed screenshot when its current visual tab is selected again', async ({ context, page }) => {
@@ -549,6 +695,23 @@ test('copy feedback follows confirmed writes and rejects stale failures', async 
   );
   await b.click();
   await finish(9, true);
+  await a.click();
+  await b.click();
+  await finish(11);
+  await finish(10);
+  await expect(a).toHaveText('Copy');
+  await expect(b).toHaveText('Copied');
+  await expect(success).toHaveText('Copied Chrome development command.');
+  await a.click();
+  await b.click();
+  await finish(13, true);
+  await finish(12);
+  await expect(a).toHaveText('Copy');
+  await expect(b).toHaveText('Select and copy the code');
+  await expect(success).toBeEmpty();
+  await expect(error).toHaveText(
+    'Could not copy Chrome development command; select and copy the code manually.',
+  );
   await page.setViewportSize({ width: 320, height: 600 });
   const spacing = await page.addStyleTag({
     content:
@@ -568,6 +731,63 @@ test('copy feedback follows confirmed writes and rejects stale failures', async 
   await b.scrollIntoViewIfNeeded();
   await expect(b.locator('..').locator('pre')).toBeVisible();
   await b.locator('..').screenshot({ path: info.outputPath('copy-error-enlarged.png') });
+});
+
+test('demo and guide headers keep the same height across navigation', async ({ context, page }, info) => {
+  await serveSite(context);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const width of [320, 560, 561, 800, 801, 1280]) {
+    await page.setViewportSize({ width, height: 600 });
+    await page.goto(origin + prefix);
+    const guideHeight = (await page.locator('.site-header').boundingBox())!.height;
+    await page.getByRole('link', { name: 'Try the demo', exact: true }).click();
+    await expect(page.locator('#return-to-guide')).toBeVisible();
+    const demoHeight = (await page.locator('.masthead').boundingBox())!.height;
+    expect(Math.abs(demoHeight - guideHeight), `header height at ${width}px`).toBeLessThan(1);
+    expect(await fitsViewportWidth(page)).toBe(true);
+    if (width === 320 || width === 1280)
+      await page.locator('.masthead').screenshot({ path: info.outputPath(`demo-header-${width}.png`) });
+    await page.locator('#return-to-guide').click();
+    await expect(page.locator('.site-header')).toBeVisible();
+    expect((await page.locator('.site-header').boundingBox())!.height).toBe(guideHeight);
+  }
+});
+
+test('demo validation stays beside fields while scrolling and clears after corrections', async ({ context, page }, info) => {
+  await serveSite(context);
+  await page.setViewportSize({ width: 390, height: 600 });
+  await page.goto(origin + prefix + 'demo/?from=walkthrough');
+  await page.getByRole('button', { name: 'Submit application' }).click();
+  const first = page.locator('#first-name');
+  const error = page.locator('#first-name-error');
+  await expect(first).toBeFocused();
+  await expect(first).toHaveAttribute('aria-invalid', 'true');
+  await expect(first).toHaveAccessibleDescription(/Please fill out this field\./);
+  await expect(error).toBeInViewport({ ratio: 1 });
+  const gap = async () => (await error.boundingBox())!.y - (await first.boundingBox())!.y;
+  const initialGap = await gap();
+  await page.evaluate(() => window.scrollBy(0, window.innerHeight));
+  expect(await gap()).toBeCloseTo(initialGap, 1);
+  await expect(error).not.toBeInViewport();
+  await first.fill('Sample');
+  await expect(error).toHaveCount(0);
+  await expect(first).not.toHaveAttribute('aria-invalid');
+  await page.locator('#email').fill('invalid-email');
+  await expect(page.locator('#email-error')).toBeVisible();
+  await page.locator('#email').fill('sample@example.test');
+  await expect(page.locator('#email-error')).toHaveCount(0);
+  const radios = page.locator('input[name=sponsorship]');
+  await expect(page.locator('#sponsorship-error')).toHaveCount(1);
+  for (const radio of await radios.all())
+    await expect(radio).toHaveAccessibleDescription(await page.locator('#sponsorship-error').innerText());
+  await page.getByRole('radio', { name: 'No', exact: true }).check();
+  await expect(page.locator('#sponsorship-error')).toHaveCount(0);
+  for (const radio of await radios.all()) await expect(radio).not.toHaveAttribute('aria-invalid');
+  await page.locator('input[name=consent]').check();
+  await expect(page.locator('#consent-error')).toHaveCount(0);
+  await page.locator('#resume').scrollIntoViewIfNeeded();
+  await expect(page.locator('#resume-error')).toBeVisible();
+  await page.screenshot({ path: info.outputPath('demo-inline-validation.png') });
 });
 
 test('demo completion clears after edits and invalid resubmission', async ({ context, page }) => {
@@ -803,7 +1023,7 @@ test('hero keeps its loading image and geometry until a video frame is ready', a
   }
 });
 
-test('autofill recording supports manual pause across theme, visibility and motion changes', async ({
+test('autofill recording autoplays without playback buttons and follows visibility and motion changes', async ({
   context,
   page,
 }) => {
@@ -811,17 +1031,12 @@ test('autofill recording supports manual pause across theme, visibility and moti
   await page.goto(origin + prefix);
   const figure = page.locator('[data-demo-player]');
   const video = figure.locator('video');
-  const playback = figure.getByRole('button', { name: 'Pause video', exact: true });
+  await expect(figure.getByRole('button')).toHaveCount(0);
   expect(await video.evaluate((el) => (el as HTMLVideoElement).controls)).toBe(false);
   await figure.scrollIntoViewIfNeeded();
   await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).videoWidth)).toBe(2880);
   await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(false);
   await expect(figure.locator('[data-demo-still]')).toBeHidden();
-  await expectVisibleFocus(playback);
-  await page.keyboard.press('Enter');
-  const play = figure.getByRole('button', { name: 'Play video', exact: true });
-  await expect(play).toBeFocused();
-  await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
   await page.getByRole('button', { name: /Switch to .* mode/ }).click();
   const dark = await page.locator('html').evaluate((el) => el.classList.contains('dark'));
   await expect(video).toHaveAttribute(
@@ -832,17 +1047,6 @@ test('autofill recording supports manual pause across theme, visibility and moti
   await expect
     .poll(() => video.evaluate((el) => (el as HTMLVideoElement).readyState))
     .toBeGreaterThanOrEqual(2);
-  await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
-  await page.locator('#profile').scrollIntoViewIfNeeded();
-  await figure.scrollIntoViewIfNeeded();
-  expect(await video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(play).toBeHidden();
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await expect(play).toBeVisible();
-  expect(await video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
-  await play.click();
-  await expect(playback).toBeVisible();
   await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(false);
   await page.locator('#profile').scrollIntoViewIfNeeded();
   await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
@@ -852,7 +1056,6 @@ test('autofill recording supports manual pause across theme, visibility and moti
   await expect(video).toBeHidden();
   expect(await video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
   await expect(figure.locator('[data-demo-still]')).toBeVisible();
-  await expect(playback).toBeHidden();
 });
 
 test('reduced motion starts with a still and resumes autoplay when disabled', async ({

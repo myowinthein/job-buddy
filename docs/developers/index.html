@@ -23,10 +23,10 @@
     <meta property="og:image:alt" content="Job Buddy filling a sample job application form" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" href="../assets/icons/icon.svg" type="image/svg+xml" />
-    <script src="../assets/theme-init.js?v=50458cd103b5"></script>
-    <link rel="stylesheet" href="../assets/site.css?v=292b323d3ceb" />
+    <script src="../assets/theme-init.js?v=391bfb9c1044"></script>
+    <link rel="stylesheet" href="../assets/site.css?v=4b6d0de8796a" />
     <link rel="stylesheet" href="../assets/theme-toggle.css?v=60bee6a542f9" />
-    <script src="../assets/site.js?v=b431df5a26b2" defer></script>
+    <script src="../assets/site.js?v=af22bd0ddf05" defer></script>
   </head>
   <body class="developer-guide">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -37,7 +37,7 @@
           ><img src="../assets/icons/icon.svg" width="32" height="32" alt="" />Job Buddy</a
         >
         <nav class="header-nav" aria-label="Main navigation">
-          <a class="walkthrough-link" href="../#start">Walkthrough</a>
+          <a class="walkthrough-link" href="../">Walkthrough</a>
           <a href="../developers/" aria-current="page">For developers</a>
           <a
             class="demo-nav"
@@ -475,10 +475,6 @@ pnpm dev</code></pre>
                 learned mappings. Changes to this temporary data reset when you refresh the options page.
               </p>
               <p>
-                Downloaded files and answers already entered on forms remain after you switch modes or
-                refresh the options page.
-              </p>
-              <p>
                 Click <strong>Original</strong> to return to your saved profile, where changes persist.
               </p>
             </details>
@@ -532,8 +528,7 @@ pnpm dev</code></pre>
                 </details>
                 <details id="website-commands">
                   <summary>Website preview</summary>
-                  <p>Open the printed URL for the walkthrough, or add <code>/developers/</code> for the guide or <code>/demo/</code> for the form.</p>
-                  <p>The preview command first regenerates the shared header and footer. Edit <code>scripts/site-templates/header.html</code> or <code>footer.html</code>, then run <code>pnpm build:site</code> and commit the updated HTML in <code>docs/</code>. The version comes from <code>package.json</code>. Page content stays outside the marked generated sections; <code>pnpm check:site</code> checks that the published copies are current without writing files.</p>
+                  <p>Preview the user and developer guides and demo form locally.</p>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy website preview command">Copy</button>
                     <pre><code>pnpm serve:landing</code></pre>

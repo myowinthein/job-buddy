@@ -58,7 +58,7 @@ it('propagates shared template and package-version changes to every page without
     expect(read(page)).toContain('aria-label="Project links"');
     expect(read(page)).toContain('aria-label="Legal links"');
   }
-  expect(read('index.html')).toContain('href="./#start" aria-current="page"');
+  expect(read('index.html')).toContain('href="./" aria-current="page"');
   expect(read('developers/index.html')).toContain('href="../developers/" aria-current="page"');
   expect(read('legal/privacy/index.html')).toContain(
     'href="../../assets/icons/external-link.svg#external-link"',

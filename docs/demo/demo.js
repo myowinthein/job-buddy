@@ -51,11 +51,58 @@ limitedFields.forEach((field) => {
 const clearCompletion = () => { completion.hidden = true; };
 form.addEventListener('input', clearCompletion);
 form.addEventListener('change', clearCompletion);
+const validationFields = [...form.querySelectorAll('input, select, textarea')].filter(
+  (field, index, fields) => field.willValidate && (field.type !== 'radio'
+    || fields.findIndex((other) => other.type === 'radio' && other.name === field.name) === index),
+);
+let validationShown = false;
+function updateValidation(field) {
+  const group = field.type === 'radio'
+    ? [...form.querySelectorAll('input[type="radio"]')].filter((other) => other.name === field.name)
+    : [field];
+  const invalid = !field.validity.valid;
+  const id = `${field.id || field.name}-error`;
+  let error = document.getElementById(id);
+  // Overlength fields already have a specific, associated error from updateLength.
+  const showError = invalid && !(field.dataset.maxlength && field.value.length > Number(field.dataset.maxlength));
+  if (showError) {
+    if (!error) {
+      error = document.createElement('p');
+      error.id = id;
+      error.className = 'field-error';
+      const anchor = field.type === 'radio'
+        ? field.closest('fieldset').querySelector('.radio-options')
+        : field.closest('.consent') || field;
+      anchor.after(error);
+    }
+    error.textContent = field.validationMessage;
+  } else error?.remove();
+  group.forEach((control) => {
+    if (invalid) control.setAttribute('aria-invalid', 'true');
+    else control.removeAttribute('aria-invalid');
+    const descriptions = (control.getAttribute('aria-describedby') || '').split(/\s+/).filter((token) => token && token !== id);
+    if (showError) descriptions.push(id);
+    if (descriptions.length) control.setAttribute('aria-describedby', descriptions.join(' '));
+    else control.removeAttribute('aria-describedby');
+  });
+}
+function refreshValidation() {
+  if (validationShown) validationFields.forEach(updateValidation);
+}
+form.addEventListener('input', refreshValidation);
+form.addEventListener('change', refreshValidation);
 form.addEventListener('submit', (event) => {
   event.preventDefault();
   clearCompletion();
   limitedFields.forEach(updateLength);
-  if (!form.reportValidity()) return;
+  validationShown = true;
+  refreshValidation();
+  const invalid = validationFields.find((field) => !field.validity.valid);
+  if (invalid) {
+    invalid.focus({ preventScroll: true });
+    invalid.scrollIntoView({ block: 'center' });
+    return;
+  }
   completion.hidden = false;
   completion.focus();
 });

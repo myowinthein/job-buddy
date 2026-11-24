@@ -2,11 +2,14 @@
 (() => {
   const storageKey = 'job-buddy-theme';
   const root = document.documentElement;
+  const localPreview = ['localhost', '127.0.0.1'].includes(location.hostname);
+  // The header can paint before DOMContentLoaded updates its image source.
+  if (localPreview) root.setAttribute('data-local-preview', '');
   const validPreference = (value) => value === 'light' || value === 'dark' ? value : null;
   let preference = null;
   let systemTheme;
   function applyLocalBranding() {
-    if (!['localhost', '127.0.0.1'].includes(location.hostname)) return;
+    if (!localPreview) return;
     document.querySelectorAll('.brand img, link[rel~="icon"]').forEach((element) => {
       const attribute = element.tagName === 'IMG' ? 'src' : 'href';
       const source = new URL(element.getAttribute(attribute), document.baseURI);

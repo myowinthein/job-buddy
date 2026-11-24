@@ -1,4 +1,22 @@
 const root = document.documentElement;
+const backToTop = document.body.matches('.walkthrough, .developer-guide')
+  ? document.createElement('button') : null;
+if (backToTop) {
+  backToTop.type = 'button';
+  backToTop.className = 'back-to-top';
+  backToTop.hidden = true;
+  backToTop.setAttribute('aria-label', 'Back to top');
+  backToTop.title = 'Back to top';
+  backToTop.innerHTML = '<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 12 6-6 6 6M12 6v12"/></svg>';
+  backToTop.addEventListener('click', () => {
+    document.querySelector('.brand')?.focus({ preventScroll: true });
+    // The shared CSS enables smooth scrolling only without reduced motion.
+    window.scrollTo({ top: 0 });
+  });
+  backToTop.addEventListener('blur', () => scheduleChapter());
+  document.body.append(backToTop);
+  document.body.classList.add('has-back-to-top');
+}
 const siteHeader = document.querySelector('.site-header');
 if (siteHeader) {
   const updateHeaderHeight = () => {
@@ -29,15 +47,30 @@ function prepareImage(source) {
 }
 function showScreenshot(img) {
   const source = screenshotSource(img);
+  if (!img.complete) img.setAttribute('data-image-pending', '');
   if (img.getAttribute('src') === source && (!img.complete || img.naturalWidth > 0)) return;
   if (nearbyImages.has(img)) {
     void prepareImage(source).then(() => {
       // A rapid theme change must not restore an older screenshot.
-      if (screenshotSource(img) === source) img.src = source;
+      if (screenshotSource(img) === source) {
+        img.setAttribute('data-image-pending', '');
+        img.src = source;
+      }
     });
-  } else img.src = source;
+  } else {
+    img.setAttribute('data-image-pending', '');
+    img.src = source;
+  }
 }
-screenshots.forEach((img) => { img.decoding = 'async'; });
+screenshots.forEach((img) => {
+  img.decoding = 'async';
+  img.addEventListener('load', () => {
+    void img.decode().catch(() => {}).then(() => {
+      if (img.complete) img.removeAttribute('data-image-pending');
+    });
+  });
+  img.addEventListener('error', () => img.removeAttribute('data-image-pending'));
+});
 const screenshotObserver = new IntersectionObserver((entries) => {
   entries.forEach(({ target, isIntersecting }) => {
     if (!isIntersecting) {
@@ -143,6 +176,8 @@ let navigationFrame = 0;
 let activeChapterLink;
 function updateChapter() {
   navigationFrame = 0;
+  if (backToTop)
+    backToTop.hidden = scrollY <= innerHeight && document.activeElement !== backToTop;
   if (!chapterNavigation || getComputedStyle(chapterNavigation).display === 'none') return;
   const marker =
     (document.querySelector('.site-header')?.getBoundingClientRect().height || 0) + 100;
@@ -262,6 +297,7 @@ copyButtons.forEach((button) => {
       await navigator.clipboard.writeText(
         button.parentElement.querySelector('code').textContent.trim(),
       );
+      if (attempt !== copyAttempt) return;
       clearCopySuccess();
       if (copyErrorButton === button) clearCopyError();
       copiedButton = button;
