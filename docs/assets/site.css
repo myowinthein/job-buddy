@@ -132,7 +132,7 @@ button:disabled {
 .header-tools {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 20px;
   flex-shrink: 0;
 }
 .header-version {
@@ -639,10 +639,10 @@ pre code {
   .header-nav .demo-nav {
     display: none;
   }
-  .walkthrough .header-tools {
+  .header-tools {
     margin-left: auto;
   }
-  .walkthrough .header-nav {
+  .header-nav {
     order: 1;
     flex-basis: 100%;
     margin-left: 0;
