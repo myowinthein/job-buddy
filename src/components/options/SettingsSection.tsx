@@ -1,6 +1,7 @@
 import { profileReviewMetadata } from '@/src/profile/fieldMetadata';
 import { reviewCounts, selectChange } from '@/src/resume-ai/entrySelection';
 import { Notice } from '@/src/components/ui/Notice';
+import { RetryNotice } from '@/src/components/ui/RetryNotice';
 import { feedback, driveStorageFullNotice } from '@/src/ui/feedback';
 import { documentFileSizeError } from '@/src/utils/documentLimits';
 import { QuickFillSettings } from './QuickFillSettings';
@@ -216,15 +217,23 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
   // getCurrentTheme() is synchronous — initTheme() is awaited before React
   // renders, so the correct preference is already cached in theme.ts.
   const [themePreference, setThemePreference] = useState<ThemePreference>(getCurrentTheme);
+  const [appearanceSaveError, setAppearanceSaveError] = useState(false);
+  const [appearanceSaving, setAppearanceSaving] = useState(false);
+  const appearanceSaveRevision = useRef(0);
   useEffect(() => subscribeTheme(() => setThemePreference(getCurrentTheme())), []);
 
   const handleThemeChange = async (value: ThemePreference) => {
+    const revision = ++appearanceSaveRevision.current;
+    setAppearanceSaving(true);
     setThemePreference(value);
     applyTheme(value);
     try {
       await saveThemePreference(value);
+      if (revision === appearanceSaveRevision.current) setAppearanceSaveError(false);
     } catch {
-      showToast('error', feedback.appearanceSaveFailed);
+      if (revision === appearanceSaveRevision.current) setAppearanceSaveError(true);
+    } finally {
+      if (revision === appearanceSaveRevision.current) setAppearanceSaving(false);
     }
   };
 
@@ -905,6 +914,13 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             </button>
           ))}
         </div>
+        {appearanceSaveError && (
+          <div className="mt-3 max-w-md">
+            <RetryNotice busy={appearanceSaving} onRetry={() => void handleThemeChange(themePreference)}>
+              {feedback.appearanceSaveFailed}
+            </RetryNotice>
+          </div>
+        )}
       </section>
 
       <QuickFillSettings />
@@ -929,7 +945,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
           {exporting && (
             <LoaderCircle aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" />
           )}
-          {exporting ? 'Exporting…' : 'Download File'}
+          Download File
         </button>
       </section>
 
@@ -1287,7 +1303,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               {resetting && (
                 <LoaderCircle aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" />
               )}
-              {resetting ? 'Resetting…' : 'Reset All Data'}
+              Reset All Data
             </button>
           </div>
         </ModalShell>
@@ -1338,11 +1354,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               }`}
             >
               {driveDisconnectBusy && <LoaderCircle aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" />}
-              {driveDisconnectBusy
-                ? 'Disconnecting…'
-                : disconnectDeleteBackup
-                  ? 'Delete & Disconnect'
-                  : 'Disconnect'}
+              {disconnectDeleteBackup ? 'Delete & Disconnect' : 'Disconnect'}
             </button>
           </div>
         </SettingsDialog>
@@ -1374,7 +1386,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
               className={`inline-flex items-center justify-center gap-2 ${btnPrimaryCls}`}
             >
               {driveRestoreBusy && <LoaderCircle aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" />}
-              {driveRestoreBusy ? 'Restoring…' : 'Restore All'}
+              Restore All
             </button>
           </div>
         </SettingsDialog>

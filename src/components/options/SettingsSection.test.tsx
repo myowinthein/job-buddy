@@ -344,6 +344,14 @@ describe('SettingsSection — Appearance', () => {
     await screen.findByText(feedback.appearanceSaveFailed);
     expect(screen.getByRole('button', { name: 'Dark' }).getAttribute('aria-pressed')).toBe('true');
     expect(applyTheme).toHaveBeenLastCalledWith('dark');
+    let finish!: () => void;
+    vi.mocked(saveThemePreference).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(screen.getByRole('button', { name: 'Retry' })).toHaveProperty('disabled', true);
+    expect(screen.getByText(feedback.appearanceSaveFailed)).toBeTruthy();
+    await act(async () => { finish(); });
+    await waitFor(() => expect(screen.queryByText(feedback.appearanceSaveFailed)).toBeNull());
+    expect(saveThemePreference).toHaveBeenLastCalledWith('dark');
   });
 });
 
@@ -448,12 +456,12 @@ describe('SettingsSection — Reset All Data confirmation gate', () => {
     fireEvent.change(screen.getByPlaceholderText('DELETE'), { target: { value: 'DELETE' } });
     fireEvent.click(screen.getByRole('button', { name: 'Reset All Data' }));
 
-    await screen.findByText('Resetting…');
-    const resetButton = screen.getByRole('button', { name: 'Resetting…' });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Reset All Data' })).toHaveProperty('disabled', true));
+    const resetButton = screen.getByRole('button', { name: 'Reset All Data' });
     expect(resetButton.querySelector('.animate-spin')).not.toBeNull();
     expect((resetButton as HTMLButtonElement).disabled).toBe(true);
     fireEvent.keyDown(window, { key: 'Escape' });
-    expect(screen.getByText('Resetting…')).toBeTruthy(); // dialog is still up, mid-reset
+    expect(screen.getByRole('dialog', { name: 'Reset All Data' })).toBeTruthy(); // dialog is still up, mid-reset
 
     resolveClear();
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Reset All Data' })).toBeNull());
@@ -607,9 +615,9 @@ describe('SettingsSection — Google Drive connect/restore/conflict flow', () =>
     fireEvent.click(await screen.findByText('Connect Google Drive'));
     fireEvent.click(await screen.findByText('Restore All'));
 
-    await screen.findByText('Restoring…');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Restore All' })).toHaveProperty('disabled', true));
     fireEvent.keyDown(window, { key: 'Escape' });
-    expect(screen.getByText('Restoring…')).toBeTruthy(); // dialog is still up, mid-restore
+    expect(screen.getByRole('button', { name: 'Restore All' })).toHaveProperty('disabled', true); // dialog is still up, mid-restore
 
     resolveSave();
     await waitFor(() => expect(screen.queryByText('Restore your profile and learned mappings from Drive.')).toBeNull());
@@ -876,8 +884,8 @@ describe('Settings loading presentation', () => {
     vi.mocked(getProfile).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
     renderSection();
     fireEvent.click(screen.getByRole('button', { name: 'Download File' }));
-    expect((screen.getByRole('button', { name: 'Exporting…' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByRole('button', { name: 'Exporting…' }).querySelector('.animate-spin')).not.toBeNull();
+    expect((screen.getByRole('button', { name: 'Download File' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole('button', { name: 'Download File' }).querySelector('.animate-spin')).not.toBeNull();
     await act(async () => { finish(null); });
     expect((screen.getByRole('button', { name: 'Download File' }) as HTMLButtonElement).disabled).toBe(false);
   });

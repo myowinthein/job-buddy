@@ -63,12 +63,12 @@ describe('ImportSummaryDialog — counts and action buttons', () => {
 });
 
 describe('ImportSummaryDialog — isProcessing state', () => {
-  it('disables all buttons and relabels Import All to "Saving…" while processing', () => {
+  it('keeps the Import All label and disables actions while processing', () => {
     renderDialog([change('new')], { isProcessing: true });
     expect((screen.getByText('Keep Current') as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByText('Saving…') as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText('Saving…').querySelector('.animate-spin')).not.toBeNull();
-    expect(screen.queryByText('Import All')).toBeNull();
+    expect((screen.getByText('Import All') as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText('Import All').querySelector('.animate-spin')).not.toBeNull();
+    expect(screen.getByText('Import All').getAttribute('aria-busy')).toBe('true');
   });
 });
 
@@ -96,7 +96,7 @@ describe('ImportSummaryDialog — backdrop and Escape dismissal (parity with Imp
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onRejectAll).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByText('Saving…').closest('.fixed')!);
+    fireEvent.click(screen.getByText('Import All').closest('.fixed')!);
     expect(onRejectAll).not.toHaveBeenCalled();
     expect(onDismiss).not.toHaveBeenCalled();
   });

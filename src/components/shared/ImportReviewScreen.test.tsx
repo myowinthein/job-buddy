@@ -155,11 +155,11 @@ describe('ImportReviewScreen — backdrop and saving state', () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
-  it('disables Back/Save and shows "Saving…" while isSaving is true', () => {
-    renderScreen([newField('a', 'A')], { isSaving: true });
+  it('keeps the import label and disables actions while saving', () => {
+    renderScreen([newField('a', 'A', true)], { isSaving: true });
     expect((screen.getByText('Back') as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText('Saving…')).toBeTruthy();
-    expect((screen.getByText('Saving…').closest('button') as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole('button', { name: 'Import Selected (1)' })).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Import Selected (1)' }).closest('button') as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('calls onBack on Escape', () => {

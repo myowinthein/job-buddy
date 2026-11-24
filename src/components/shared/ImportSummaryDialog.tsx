@@ -139,7 +139,7 @@ export default function ImportSummaryDialog({
                     className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
                   />
                 )}
-                {isProcessing ? 'Saving…' : acceptLabel}
+                {acceptLabel}
               </button>
             </div>
           </>

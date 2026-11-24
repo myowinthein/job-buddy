@@ -33,6 +33,89 @@ async function overflow(page: Page) {
   });
 }
 
+test('keeps preference recovery persistent and notification stacks reachable', async ({
+  context,
+  extension,
+}, info) => {
+  const page = await context.newPage();
+  await sectionNavigation(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.clock.install();
+  await page.goto(extensionUrl(extension, 'options.html?section=settings'));
+  await page.getByRole('heading', { name: 'Appearance', exact: true }).waitFor();
+  await page.evaluate(() => {
+    const original = chrome.storage.local.set.bind(chrome.storage.local);
+    Reflect.set(window, 'restorePreferenceWrites', () => {
+      chrome.storage.local.set = original;
+    });
+    chrome.storage.local.set = (() => {
+      throw new Error('Synthetic storage failure');
+    }) as typeof chrome.storage.local.set;
+  });
+  await page.getByRole('button', { name: 'Dark', exact: true }).click();
+  const failure = page
+    .getByRole('alert')
+    .filter({ hasText: 'Appearance changed for this page but could not be saved.' });
+  await expect(failure).toBeVisible();
+  await page.clock.fastForward(9000);
+  await expect(failure).toBeVisible();
+  await page.evaluate(() => Reflect.get(window, 'restorePreferenceWrites')());
+  await failure.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(failure).toHaveCount(0);
+  expect(
+    await extension.worker.evaluate(
+      async () => (await chrome.storage.local.get('themePreference')).themePreference,
+    ),
+  ).toBe('dark');
+  for (let index = 0; index < 4; index++) {
+    await page
+      .locator('input[type=file][accept=".json"]')
+      .setInputFiles({
+        name: 'invalid.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from('invalid JSON'),
+      });
+    await expect(
+      page.getByRole('region', { name: 'Notifications' }).getByRole('alert'),
+    ).toHaveCount(index + 1);
+  }
+  const stack = page.getByRole('region', { name: 'Notifications' });
+  for (const [width, height] of [
+    [1280, 800],
+    [640, 300],
+    [320, 240],
+  ]) {
+    await page.setViewportSize({ width, height });
+    if (width === 320)
+      await page.addStyleTag({
+        content:
+          'html{font-size:200%}*:not(svg):not(svg *){line-height:1.5!important;letter-spacing:.12em!important;word-spacing:.16em!important}',
+      });
+    const box = (await stack.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+    expect(box.y + box.height).toBeLessThanOrEqual(height);
+    for (const dismiss of await stack.getByRole('button', { name: 'Dismiss notification' }).all()) {
+      await dismiss.focus();
+      const button = (await dismiss.boundingBox())!;
+      expect(button.y).toBeGreaterThanOrEqual(box.y);
+      expect(button.y + button.height).toBeLessThanOrEqual(box.y + box.height);
+    }
+  }
+  await stack.evaluate(element => { element.scrollTop = 0; });
+  await page.screenshot({ path: info.outputPath('notifications-short-enlarged.png') });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.getByRole('button', { name: 'Light', exact: true }).focus();
+  await page.mouse.move(0, 0);
+  await page.clock.fastForward(8500);
+  await page.clock.fastForward(300);
+  await expect(stack).toHaveCount(0);
+  const link = page.getByRole('link', { name: 'View usage and limits' });
+  await expect(link).toHaveCSS('text-decoration-skip-ink', 'none');
+  await page.close();
+});
+
 test('audits options layouts', async ({ context, extension }, info) => {
   test.setTimeout(120_000);
   await extension.worker.evaluate(async (profile) => {

@@ -46,14 +46,14 @@ export function SaveButton({ onClick, saving, label }: Props) {
             className="h-4 w-4 animate-spin motion-reduce:animate-none"
           />
         )}
-        {saving ? 'Saving…' : label}
+        {label}
       </button>
       <span
         role="status"
         aria-atomic="true"
         className="min-h-5 w-28 text-xs text-gray-500 dark:text-gray-400"
       >
-        {!saving && status === 'unsaved' ? 'Unsaved changes' : ''}
+        {saving ? 'Saving…' : status === 'unsaved' ? 'Unsaved changes' : ''}
       </span>
     </div>
   );

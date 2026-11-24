@@ -399,7 +399,7 @@ describe('explicit corrections and guarded writes', () => {
     choose('Last Name');
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(saveLearnedMappings).toHaveBeenCalled());
-    expect(screen.getByRole('button', { name: 'Saving…' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Save' })).toHaveProperty('disabled', true);
     expect(screen.getByRole('button', { name: 'Cancel' })).toHaveProperty('disabled', true);
     expect(
       screen.getByRole('button', { name: 'Profile field: Personal → Name → Last Name' }),

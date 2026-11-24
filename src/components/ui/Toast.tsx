@@ -20,21 +20,21 @@ const DEFAULT_DURATION: Record<ToastMessage['type'], number> = {
 
 const TYPE_STYLE = {
   success: {
-    bg:      'bg-green-50 dark:bg-green-950/60',
+    bg:      'bg-green-50 dark:bg-green-950',
     border:  'border-l-green-500',
     icon:    '✓',
     iconCls: 'text-green-600 dark:text-green-400',
     textCls: 'text-green-800 dark:text-green-200',
   },
   error: {
-    bg:      'bg-red-50 dark:bg-red-950/60',
+    bg:      'bg-red-50 dark:bg-red-950',
     border:  'border-l-red-500',
     icon:    '✕',
     iconCls: 'text-red-600 dark:text-red-400',
     textCls: 'text-red-800 dark:text-red-200',
   },
   warning: {
-    bg:      'bg-yellow-50 dark:bg-yellow-950/60',
+    bg:      'bg-yellow-50 dark:bg-yellow-950',
     border:  'border-l-yellow-500',
     icon:    '⚠',
     iconCls: 'text-yellow-600 dark:text-yellow-400',
@@ -101,10 +101,8 @@ function ToastItem({ toast, onRemove }: { toast: ToastMessage; onRemove: () => v
       }}
       style={{
         animation: exiting ? 'jb-toast-out 200ms ease-in forwards' : 'jb-toast-in 200ms ease-out',
-        minWidth: 'min(280px, calc(100vw - 32px))',
-        maxWidth: 'min(400px, calc(100vw - 32px))',
       }}
-      className={`${bg} rounded-lg shadow-lg dark:shadow-black/40 px-4 py-3 flex items-center gap-2 border-l-4 ${border}`}
+      className={`toast-card ${bg} rounded-lg shadow-lg dark:shadow-black/40 px-4 py-3 gap-2 border-l-4 ${border}`}
       role="alert"
       aria-live="polite"
     >
@@ -156,17 +154,21 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
       {children}
 
-      {/* Toast stack — top-right aligned with section content area (below banner + padding) */}
-      <div
-        style={{ position: 'fixed', top: 96, right: 16, zIndex: 9999 }}
-        className="flex flex-col gap-2 pointer-events-none"
-      >
-        {toasts.map((toast) => (
-          <div key={toast.id} className="pointer-events-auto">
-            <ToastItem toast={toast} onRemove={() => removeToast(toast.id)} />
-          </div>
-        ))}
-      </div>
+      {/* Keep the stack scrollable when notifications exceed the available height. */}
+      {!!toasts.length && (
+        <div
+          role="region"
+          aria-label="Notifications"
+          tabIndex={0}
+          className="toast-stack flex flex-col gap-2"
+        >
+          {toasts.map((toast) => (
+            <div key={toast.id} className="shrink-0">
+              <ToastItem toast={toast} onRemove={() => removeToast(toast.id)} />
+            </div>
+          ))}
+        </div>
+      )}
     </ToastContext.Provider>
   );
 }

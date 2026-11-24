@@ -56,7 +56,7 @@ test('closing during startup and AI preserves the run across popup and worker de
   await expect(page.locator('#ai')).toHaveValue('');
   popup = await openPinnedPopup(context, workerUrl, extension.sourceTabId);
   await expect(popup.getByRole('status')).toHaveText('Filling…');
-  await expect(popup.getByRole('button', { name: 'Filling…', exact: true })).toBeDisabled();
+  await expect(popup.getByRole('button', { name: 'Fill Form', exact: true })).toBeDisabled();
   await popup.close();
 
   const cdp = await context.newCDPSession(page);

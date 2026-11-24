@@ -61,11 +61,12 @@ describe('SaveButton', () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
-  it('shows "Saving…" and is disabled while saving', () => {
+  it('keeps its action label and reports progress while saving', () => {
     render(<SaveButton onClick={vi.fn()} saving={true} label="Save Profile" />);
-    const button = screen.getByText('Saving…') as HTMLButtonElement;
+    const button = screen.getByRole('button', { name: 'Save Profile' }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
-    expect(screen.queryByText('Save Profile')).toBeNull();
+    expect(screen.getByRole('status').textContent).toBe('Saving…');
+    expect(button.getAttribute('aria-busy')).toBe('true');
   });
 });
 

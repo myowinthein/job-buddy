@@ -257,7 +257,7 @@ export default function ImportReviewScreen({
           className={`inline-flex items-center justify-center gap-2 px-4 py-2 text-white text-sm font-medium rounded-lg disabled:opacity-50 active:scale-95 transition-colors ${replacement ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
         >
           {isSaving && <LoaderCircle aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" />}
-          {isSaving ? 'Saving…' : selectedCount === 0 && emptySelectionLabel ? emptySelectionLabel : `${saveLabel} (${selectedCount})`}
+          {selectedCount === 0 && emptySelectionLabel ? emptySelectionLabel : `${saveLabel} (${selectedCount})`}
         </button>
       </div>
     </ModalShell>

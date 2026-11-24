@@ -574,7 +574,7 @@ function App() {
               className="h-4 w-4 animate-spin motion-reduce:animate-none"
             />
           )}
-          <span>{primaryText}</span>
+          <span>{primaryLabel}</span>
           {!filling && primaryIsAI && <Sparkles aria-hidden="true" className="h-4 w-4" />}
         </button>
         {/* A status role inside a button leaves Chrome without a button name, so announce progress beside it. */}

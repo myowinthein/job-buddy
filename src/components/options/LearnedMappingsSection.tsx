@@ -204,7 +204,7 @@ function MappingRow({
               }}
             >
               {saving && <LoaderCircle aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" />}
-              {saving ? 'Saving…' : 'Save'}
+              Save
             </button>
             <button type="button" disabled={saving} onClick={cancelEdit} className={secondary}>
               Cancel

@@ -8,6 +8,10 @@ html.dark {
 }
 
 @layer base {
+  a {
+    text-decoration-skip-ink: none;
+    text-underline-offset: 2px;
+  }
   button:not(:disabled):not([aria-disabled="true"]),
   summary:not([aria-disabled="true"]) {
     cursor: pointer;
@@ -25,6 +29,41 @@ html.dark {
 
   :where(.overflow-y-auto, .overflow-auto) {
     scroll-padding-block: 4px;
+  }
+}
+
+.toast-stack {
+  position: fixed;
+  top: min(96px, 20dvh);
+  right: 12px;
+  z-index: 9999;
+  width: min(408px, calc(100vw - 24px));
+  max-height: calc(100dvh - min(96px, 20dvh) - 12px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
+  scroll-padding-block: 4px;
+}
+.toast-stack:focus-visible {
+  outline: 2px solid var(--color-blue-500);
+  outline-offset: -2px;
+}
+.toast-stack > div {
+  container-type: inline-size;
+}
+.toast-card {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr) 1.75rem;
+  align-items: center;
+}
+@container (max-width: 18rem) {
+  .toast-card > p {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .toast-card > button {
+    grid-column: 3;
+    grid-row: 1;
   }
 }
 
