@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
 import { WorkHistorySection } from './WorkHistorySection';
 import { ToastProvider } from '@/src/components/ui/Toast';
 import type { Profile, WorkHistoryEntry } from '@/src/types/profile';
@@ -83,9 +83,10 @@ describe('WorkHistorySection — date validation across the keystroke/blur/save-
   it('shows a year-range error live while typing, before a month is even chosen (keystroke path)', () => {
     renderSection({ workHistory: [] });
     fireEvent.click(screen.getByText('+ Add Entry'));
-    const yearInputs = screen.getAllByLabelText('Year'); // [0]=start, [1]=end
-    fireEvent.change(yearInputs[0], { target: { value: '1800' } });
-    expect(screen.getByText(/Year must be between/)).toBeTruthy();
+    const startDate = screen.getByRole('group', { name: /^Start Date/ });
+    fireEvent.change(within(startDate).getByLabelText('Year'), { target: { value: '1800' } });
+    expect(within(startDate).getByRole('alert').textContent).toMatch(/Year must be between/);
+    expect(within(screen.getByRole('group', { name: /^End Date/ })).getByLabelText('Year')).toBeTruthy();
   });
 
   it('the direct-update path (onChange with a complete date) independently agrees on an out-of-range year', () => {
@@ -235,13 +236,21 @@ describe('WorkHistorySection — Notice Period validation', () => {
   it("re-validates against the new unit's max when the unit changes", () => {
     renderSection({ workHistory: [] });
     fireEvent.click(screen.getByText('Available Later'));
-    fireEvent.change(screen.getByPlaceholderText('3'), { target: { value: '30' } });
+    const duration = screen.getByRole('spinbutton', { name: 'Notice period duration' });
+    fireEvent.change(duration, { target: { value: '30' } });
     expect(screen.queryByText(/Maximum is/)).toBeNull();
 
     // Switch to "months" (max 24) — 30 now exceeds it.
-    const unitSelect = screen.getByDisplayValue('weeks');
+    const unitSelect = screen.getByRole('combobox', { name: 'Notice period unit' });
     fireEvent.change(unitSelect, { target: { value: 'month' } });
-    expect(screen.getByText('Maximum is 24 months')).toBeTruthy();
+    const error = screen.getByRole('alert');
+    expect(error.textContent).toBe('Maximum is 24 months');
+    expect(duration.getAttribute('aria-invalid')).toBe('true');
+    expect(duration.getAttribute('aria-describedby')).toBe(error.id);
+    fireEvent.change(duration, { target: { value: '2' } });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(duration.getAttribute('aria-invalid')).toBe('false');
+    expect(duration.getAttribute('aria-describedby')).toBeNull();
   });
 
   it('accepts a valid duration with no error', () => {

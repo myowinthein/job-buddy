@@ -140,7 +140,16 @@ it('shows analysis separately and then opens results for explicit application', 
   expect(screen.getByText('Reviewed 2 of 2 mappings.')).toBeTruthy();
   expect(screen.getAllByText('Better match found')).toHaveLength(2);
   expect(applyMappingReview).not.toHaveBeenCalled();
+  let finishApply!: () => void;
+  vi.mocked(applyMappingReview).mockReturnValueOnce(new Promise<void>((resolve) => {
+    finishApply = resolve;
+  }));
   fireEvent.click(screen.getByRole('button', { name: 'Apply Changes (2)' }));
+  const applying = screen.getByRole('button', { name: 'Apply Changes (2)' });
+  expect(applying).toHaveProperty('disabled', true);
+  expect(applying.getAttribute('aria-busy')).toBe('true');
+  expect(view.onSaved).not.toHaveBeenCalled();
+  await act(async () => finishApply());
   await waitFor(() => expect(view.onSaved).toHaveBeenCalledTimes(1));
   expect(applyMappingReview).toHaveBeenCalledWith(
     RULE_PROFILE,

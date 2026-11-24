@@ -27,13 +27,16 @@ async function expectUnclippedOutline(control: Locator) {
   })).toBe(true);
 }
 
-test('keyboard outlines remain whole on sidebar rows and segmented settings', async ({ context, extension }) => {
+test('keyboard outlines remain whole on sidebar rows and segmented settings', async ({ context, extension }, info) => {
   const page = await context.newPage();
   await page.goto(extensionUrl(extension, 'options.html'));
   for (const theme of ['light', 'dark']) {
     await extension.worker.evaluate(theme => chrome.storage.local.set({ themePreference: theme }), theme);
-    for (const width of [390, 1280]) {
+    for (const width of [320, 390, 640, 1280]) {
       await page.setViewportSize({ width, height: 900 });
+      const textSize = width === 640
+        ? await page.addStyleTag({ content: 'html { font-size: 200%; }' })
+        : null;
       for (const button of await page.locator('#options-sidebar button:visible').all()) {
         await focusInKeyboardMode(button);
         await expectUnclippedOutline(button);
@@ -44,6 +47,38 @@ test('keyboard outlines remain whole on sidebar rows and segmented settings', as
         await focusInKeyboardMode(button);
         await expectUnclippedOutline(button);
       }
+      for (const name of ['Appearance', 'Floating button']) {
+        const group = page.getByRole('group', { name, exact: true });
+        const before = (await group.boundingBox())!;
+        const options = await group.getByRole('button').all();
+        const widths = await Promise.all(options.map(async (option) => (await option.boundingBox())!.width));
+        for (const button of options) {
+          await button.click();
+          await expect(button).toHaveAttribute('aria-pressed', 'true');
+          expect((await group.boundingBox())!.width).toBeCloseTo(before.width, 1);
+          for (const [index, option] of options.entries()) {
+            const box = (await option.boundingBox())!;
+            expect(box.width).toBeCloseTo(widths[index], 1);
+            const label = (await option.locator('span').boundingBox())!;
+            const check = (await option.locator('svg').boundingBox())!;
+            expect(Math.abs(label.x + label.width / 2 - box.x - box.width / 2)).toBeLessThan(1);
+            expect(check.x + check.width).toBeLessThanOrEqual(label.x);
+          }
+        }
+        const main = (await page.locator('main').boundingBox())!;
+        const bounds = (await group.boundingBox())!;
+        expect(bounds.x + bounds.width).toBeLessThanOrEqual(main.x + main.width);
+      }
+      await extension.worker.evaluate(theme => chrome.storage.local.set({ themePreference: theme }), theme);
+      await expect(page.getByRole('button', { name: theme === 'light' ? 'Light' : 'Dark', exact: true }))
+        .toHaveAttribute('aria-pressed', 'true');
+      if (width === 320 || width === 1280) {
+        for (const name of ['Appearance', 'Floating button'])
+          await page.getByRole('group', { name, exact: true }).screenshot({
+            path: info.outputPath(`${theme}-${width}-${name.replace(' ', '-')}.png`),
+          });
+      }
+      await textSize?.evaluate(element => element.parentNode?.removeChild(element));
     }
   }
 });

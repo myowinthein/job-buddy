@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { DEV_PROFILE } from '../utils/devProfile';
 import { DEFAULT_GEMINI_MODEL } from '../resume-ai/types';
 import { fitsViewportWidth } from './layout';
@@ -137,6 +138,12 @@ test('development branding stays visible in popup and compact options layouts', 
   playwright,
 }, info) => {
   const extensionPath = resolve(buildRoot, 'chrome-mv3-dev');
+  // A runtime favicon swap can hide an initial production-color flash.
+  // Both entrypoints must declare amber before JavaScript executes.
+  for (const entrypoint of ['options.html', 'fill-log.html']) {
+    const html = await readFile(resolve(extensionPath, entrypoint), 'utf8');
+    expect(html).toMatch(/<link\b[^>]*rel="icon"[^>]*href="\/icon-dev\.svg"/);
+  }
   const context = await playwright.chromium.launchPersistentContext('', {
     channel: 'chromium',
     headless: true,
@@ -244,6 +251,69 @@ test('Complete profile mode displays sample entries, links and uploaded PDFs', a
   }
 });
 
+test('options scrolling stays inside the app with no blank document tail in development', async ({ playwright }, info) => {
+  const extensionPath = resolve(buildRoot, 'chrome-mv3-dev');
+  const context = await playwright.chromium.launchPersistentContext('', {
+    channel: 'chromium',
+    headless: true,
+    args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
+  });
+  try {
+    await context.route(/https?:\/\/(?!127\.0\.0\.1:4177)/, (route) => route.abort());
+    const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker');
+    await worker.evaluate(async (profile) => {
+      await chrome.storage.local.set({ profile, devProfileDisabled: true });
+      await chrome.storage.session.set({
+        'jb:last-fill-details': {
+          tabId: 2147483647,
+          frames: [{ frameId: 0, log: {
+            version: 1,
+            runId: 'long-required-report',
+            startedAt: Date.now(),
+            origin: 'https://jobs.example.test',
+            status: 'completed',
+            fields: Array.from({ length: 34 }, (_, index) => ({
+              id: `field-${index}`, label: `Required question ${index + 1}`,
+              kind: 'text', required: true, outcome: 'not_matched', source: null,
+              rule: { outcome: 'not_matched' }, ai: { outcome: 'not_sent' },
+            })),
+          } }],
+        },
+      });
+    }, DEV_PROFILE);
+    const page = await context.newPage();
+    await page.goto(new URL('options.html?section=fillDetails', worker.url()).href);
+    const bar = page.getByRole('complementary', { name: 'Development controls' });
+    await expect(page.locator('main summary')).toHaveCount(34);
+    for (const mode of ['Original', 'Complete']) {
+      if (mode === 'Complete') await bar.getByRole('button', { name: mode, exact: true }).click();
+      const app = mode === 'Original' ? page : page.frameLocator('iframe[title="Job Buddy options"]');
+      const main = app.locator('main');
+      if (mode === 'Complete') {
+        await app.getByRole('button', { name: 'Personal', exact: true }).click();
+        await expect(main.getByRole('textbox', { name: /^First Name/ })).toBeVisible();
+      }
+      for (const width of [390, 1280]) {
+        await page.setViewportSize({ width, height: 600 });
+        await main.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+        await expect.poll(() => page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBeLessThanOrEqual(1);
+        const bounds = await main.evaluate((element) => ({
+          bottom: element.getBoundingClientRect().bottom,
+          viewport: innerHeight,
+          gap: element.getBoundingClientRect().bottom - element.firstElementChild!.getBoundingClientRect().bottom,
+          padding: parseFloat(getComputedStyle(element).paddingBottom),
+        }));
+        expect(bounds.bottom).toBeLessThanOrEqual(bounds.viewport + 1);
+        expect(bounds.gap).toBeCloseTo(bounds.padding, 0);
+        await expect(bar).toBeInViewport();
+        await page.screenshot({ path: info.outputPath(`options-bottom-${mode}-${width}.png`) });
+      }
+    }
+  } finally {
+    await context.close();
+  }
+});
+
 test('the dev bar previews profiles and missing keys without changing saved extension data', async ({
   playwright,
 }, info) => {
@@ -300,6 +370,12 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     await page.setViewportSize({ width: 1280, height: 900 });
     await expect(page.getByRole('button', { name: 'Dev Tools', exact: true })).toHaveCount(0);
     await expect(page.getByLabel('First Name', { exact: false })).toBeVisible();
+    const originalMode = bar.getByRole('button', { name: 'Original', exact: true });
+    await expect(originalMode).toBeDisabled();
+    await originalMode.focus();
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Space');
+    await expect(page.locator('iframe')).toHaveCount(0);
     const original = await worker.evaluate(() =>
       chrome.storage.local.get([
         'profile',
@@ -333,8 +409,9 @@ test('the dev bar previews profiles and missing keys without changing saved exte
     await expect(progress).toHaveAttribute('aria-valuenow', '0');
     const surface = page.locator('iframe[title="Job Buddy options"]');
     await surface.evaluate((frame) => frame.setAttribute('data-repeat-check', 'unchanged'));
+    await expect(bar.getByRole('button', { name: 'Empty', exact: true })).toBeDisabled();
     for (let click = 0; click < 5; click++) {
-      await bar.getByRole('button', { name: 'Empty', exact: true }).click();
+      await bar.getByRole('button', { name: 'Empty', exact: true }).dispatchEvent('click');
     }
     await expect(surface).toHaveAttribute('data-repeat-check', 'unchanged');
     await bar.getByRole('button', { name: 'Required only', exact: true }).click();

@@ -76,9 +76,9 @@ test('source navigation returns to an open form and reopens a fresh form after n
     )
     .toBe(true);
   await back.blur();
+  await back.hover();
+  await expect(options.getByRole('tooltip')).toHaveCount(0);
   await back.focus();
-  await expect(options.getByRole('tooltip')).toHaveText(url);
-  await options.keyboard.press('Escape');
   await expect(options.getByRole('tooltip')).toHaveCount(0);
   await back.click();
   await expect
@@ -110,16 +110,15 @@ test('source navigation returns to an open form and reopens a fresh form after n
   await page.close();
   await options.bringToFront();
   await expect(
-    options.getByText('This form is closed. Showing its last fill details.'),
+    options.getByText('This form is closed. Its last fill details are still available.'),
   ).toBeVisible();
   await expect(reopen).toBeVisible();
   await options.setViewportSize({ width: 390, height: 844 });
   await reopen.blur();
+  await reopen.hover();
+  await expect(options.getByRole('tooltip')).toHaveCount(0);
   await reopen.focus();
-  await expect(options.getByRole('tooltip')).toHaveText(url);
-  const tip = await options.getByRole('tooltip').boundingBox();
-  expect(tip!.x).toBeGreaterThanOrEqual(0);
-  expect(tip!.x + tip!.width).toBeLessThanOrEqual(390);
+  await expect(options.getByRole('tooltip')).toHaveCount(0);
   await options.screenshot({
     path: testInfo.outputPath('source-closed-narrow.png'),
     animations: 'disabled',
@@ -163,8 +162,7 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   await expect(logPage.getByRole('heading', { name: 'Fill Details', exact: true })).toBeVisible();
   const sourceButton = logPage.getByRole('button', { name: 'Return to Form', exact: true });
   await sourceButton.hover();
-  await expect(logPage.getByRole('tooltip')).toHaveText(page.url());
-  await logPage.keyboard.press('Escape');
+  await expect(logPage.getByRole('tooltip')).toHaveCount(0);
   await expect(logPage.getByText(/AI assistance was unavailable for part or all/)).toBeVisible();
   const detected = logPage.getByText('Detected', { exact: true }).locator('..');
   await expect(detected).toContainText(String(counts.detected));
@@ -183,7 +181,7 @@ test('the production Fill Details combines frames, reports real outcomes, tracks
   const outcomeHelp = logPage.getByRole('button', { name: 'How Fill Details works' });
   await outcomeHelp.hover();
   await expect(logPage.getByRole('tooltip')).toContainText(
-    'Autofill checks learned mappings, then rules. AI helps with uncertain matches and unfilled fields, and can revise answers filled by rules.',
+    'For each field, autofill tries learned mappings → rules → AI and stops when it finds a reliable answer.',
   );
   await expect(logPage.getByRole('tooltip')).toContainText(
     'Fields such as consent questions are always skipped.',
@@ -560,13 +558,13 @@ test('keeps one session report after the form closes and replaces it on a new fi
   await options.goto(optionsUrl);
   await options.getByRole('button', { name: 'Fill Details', exact: true }).click();
   await expect(
-    options.getByText('This form is closed. Showing its last fill details.'),
+    options.getByText('This form is closed. Its last fill details are still available.'),
   ).toBeVisible();
   await expect(options.getByRole('button', { name: 'Return to Form', exact: true })).toHaveCount(0);
   await expect(options.locator('summary').filter({ hasText: 'First name' }).first()).toBeVisible();
   await options.reload();
   await expect(
-    options.getByText('This form is closed. Showing its last fill details.'),
+    options.getByText('This form is closed. Its last fill details are still available.'),
   ).toBeVisible();
 
   const nextForm = await context.newPage();
@@ -592,7 +590,7 @@ test('keeps one session report after the form closes and replaces it on a new fi
   await send('AUTOFILL_FILL');
   await options.bringToFront();
   await expect(
-    options.getByText('This form is closed. Showing its last fill details.'),
+    options.getByText('This form is closed. Its last fill details are still available.'),
   ).toHaveCount(0);
   await options.getByRole('button', { name: 'Return to Form', exact: true }).click();
   await expect
@@ -816,7 +814,7 @@ test('records real LM, rule and AI decisions and browses them without another fi
   await page.close();
   await details.reload();
   await expect(
-    details.getByText('This form is closed. Showing its last fill details.'),
+    details.getByText('This form is closed. Its last fill details are still available.'),
   ).toBeVisible();
   const retained = await extension.worker.evaluate(
     async () => (await chrome.storage.session.get('jb:last-fill-details'))['jb:last-fill-details'],

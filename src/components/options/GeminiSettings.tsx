@@ -515,7 +515,7 @@ export function GeminiSettings({ resetInProgress = false }: { resetInProgress?: 
                   className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
                 />
               )}
-              {status === 'removing' ? 'Removing…' : 'Remove Key'}
+              Remove Key
             </button>
           </div>
         </SettingsDialog>

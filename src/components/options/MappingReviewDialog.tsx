@@ -646,9 +646,7 @@ export function MappingReviewDialog({
               onClick={() => void apply()}
             >
               {applying && <LoaderCircle aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none" />}
-              {applying
-                ? 'Applying…'
-                : `Apply Changes${changes.length ? ` (${changes.length})` : ''}`}
+              {`Apply Changes${changes.length ? ` (${changes.length})` : ''}`}
             </button>
           )}
         </footer>

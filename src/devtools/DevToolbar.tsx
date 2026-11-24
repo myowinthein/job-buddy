@@ -163,9 +163,12 @@ export default function DevToolbar({
                 <button
                   key={preset.id}
                   type="button"
-                  aria-disabled={busy || !state}
+                  aria-disabled={busy || !state || selected}
                   aria-pressed={selected}
-                  onClick={() => void (preset.id === 'original' ? exit() : startPreview(preset.id))}
+                  onClick={() => {
+                    if (selected) return;
+                    void (preset.id === 'original' ? exit() : startPreview(preset.id));
+                  }}
                   className={optionCls(selected)}
                 >
                   {preset.label}

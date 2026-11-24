@@ -126,7 +126,7 @@ describe('Gemini explicit key setup', () => {
     renderSettings();
     fireEvent.click(await screen.findByRole('button', { name: 'Remove Key' }));
     confirmRemoval();
-    const button = within(screen.getByRole('dialog')).getByRole('button', { name: 'Removing…' });
+    const button = within(screen.getByRole('dialog')).getByRole('button', { name: 'Remove Key' });
     expect(button.querySelector('.animate-spin')).not.toBeNull();
     expect((button as HTMLButtonElement).disabled).toBe(true);
   });

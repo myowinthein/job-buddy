@@ -638,6 +638,9 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                     <div className="w-20">
                       <input
                         id={storageInputId('professional.noticePeriod.value')}
+                        aria-label="Notice period duration"
+                        aria-invalid={!!errors.noticeValue}
+                        aria-describedby={errors.noticeValue ? 'notice-value-error' : undefined}
                         type="number"
                         step={1}
                         min={1}
@@ -659,6 +662,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                     </div>
                     <div className="w-28">
                       <select
+                        aria-label="Notice period unit"
                         className={cls()}
                         value={noticeUnit}
                         onChange={(e) => {
@@ -680,7 +684,7 @@ export function WorkHistorySection({ profile, onSave }: Props) {
                       </select>
                     </div>
                     {errors.noticeValue && (
-                      <span className="text-xs text-red-700 dark:text-red-400">
+                      <span id="notice-value-error" role="alert" className="text-xs text-red-700 dark:text-red-400">
                         {errors.noticeValue}
                       </span>
                     )}

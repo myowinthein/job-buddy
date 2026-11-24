@@ -239,8 +239,16 @@ test('audits dropdowns and short dialogs', async ({ context, extension }, info) 
       }
     }
   }
-  await page.setViewportSize({ width: 640, height: 300 });
+  await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(extensionUrl(extension, 'options.html?section=resume'));
+  const upload = page.getByRole('dialog', { name: 'Import Resume', exact: true });
+  await expect(upload).toBeVisible();
+  expect(await upload.evaluate((dialog) => {
+    const description = document.getElementById(dialog.getAttribute('aria-describedby')!)!;
+    return description.getBoundingClientRect().height <= parseFloat(getComputedStyle(description).lineHeight) + 1;
+  })).toBe(true);
+  await upload.screenshot({ path: info.outputPath('resume-description.png') });
+  await page.setViewportSize({ width: 640, height: 300 });
   await expect(page.getByRole('heading', { name: 'Import Resume' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Import Resume' })).toBeInViewport({ ratio: 1 });
   await page.getByRole('button', { name: 'Analyze Resume', exact: true }).scrollIntoViewIfNeeded();
@@ -342,6 +350,15 @@ test('keeps populated Fill Details, its help, and Quick Fill within the viewport
     expect(
       await options.locator('main').evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
     ).toBe(true);
+    await options.locator('main').evaluate((element) => { element.scrollTop = element.scrollHeight; });
+    const documentBounds = await options.evaluate(() => ({
+      viewport: innerHeight,
+      height: document.documentElement.scrollHeight,
+      main: document.querySelector('main')!.getBoundingClientRect().toJSON(),
+      app: document.querySelector('[class*="@container/options"]')!.getBoundingClientRect().toJSON(),
+    }));
+    expect(documentBounds.height, JSON.stringify({ width, ...documentBounds })).toBeLessThanOrEqual(documentBounds.viewport + 1);
+    await expect(options.locator('main summary').last()).toBeInViewport({ ratio: 1 });
     await options.getByRole('button', { name: 'How Fill Details works' }).hover();
     await reachable(options.getByRole('tooltip'));
     if (width === 320) {

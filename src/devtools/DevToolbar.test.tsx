@@ -7,6 +7,7 @@ import { DevSimulation } from './simulation';
 import { profilePreset } from './profilePresets';
 import { getSimulation } from './bootstrap';
 import { createDevSurface } from './surface';
+import type { SurfaceState, DevSurface } from './surface';
 import { getGeminiSettings, getProfile } from '@/src/utils/storage';
 import { createPreviewChrome } from '@/src/preview/chrome';
 
@@ -133,6 +134,43 @@ it('blocks rapid duplicate actions while a switch is pending', async () => {
   expect(onNavigate).toHaveBeenCalledOnce();
   await act(async () => finish());
   await waitFor(() => expect(empty.getAttribute('aria-disabled')).toBe('false'));
+});
+
+it.each([
+  ['Original', undefined],
+  ['Original', 'saved'],
+  ['Empty', 'empty'],
+  ['Required only', 'required'],
+  ['Complete', 'complete'],
+] as const)('ignores repeated activation of selected %s (%s)', async (label, preset) => {
+  const state: SurfaceState = {
+    shared: true,
+    context: preset ? { id: 'temporary-session', extensionId: 'extension', version: '1.0' } : undefined,
+    preset,
+    missingKey: false,
+    driveConnected: false,
+  };
+  const surface: DevSurface = {
+    state: vi.fn().mockResolvedValue(state),
+    canLeave: vi.fn().mockReturnValue(true),
+    prepare: vi.fn().mockResolvedValue('/preview'),
+    restoreOriginal: vi.fn().mockResolvedValue('/options.html'),
+    exitUrl: vi.fn().mockReturnValue('/options.html'),
+    setKeyEnabled: vi.fn(),
+    setDriveConnected: vi.fn(),
+    subscribe: () => () => {},
+  };
+  render(<DevToolbar surface={surface} onNavigate={onNavigate} />);
+  await waitFor(() => expect(screen.getByRole('switch', { name: 'API key' }).getAttribute('aria-disabled')).toBe('false'));
+  const selected = screen.getByRole('button', { name: label });
+  expect(selected.getAttribute('aria-pressed')).toBe('true');
+  expect(selected.getAttribute('aria-disabled')).toBe('true');
+  fireEvent.click(selected);
+  fireEvent.click(selected);
+  expect(surface.canLeave).not.toHaveBeenCalled();
+  expect(surface.prepare).not.toHaveBeenCalled();
+  expect(surface.restoreOriginal).not.toHaveBeenCalled();
+  expect(onNavigate).not.toHaveBeenCalled();
 });
 
 it('toggles the simulated key while keeping profile edits and the selected model', async () => {

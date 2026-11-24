@@ -266,7 +266,7 @@ function App() {
           if (!active || request !== revision) return;
           console.error('[Job Buddy] Failed to initialize profile:', err);
           if (!initialized) setProfileLoadError(true);
-          else showToast('warning', feedback.profileViewRefreshFailed);
+          else showToast('warning', feedback.profileRefreshFailed);
         })
         .finally(() => {
           if (active && request === revision) setLoading(false);
@@ -629,7 +629,8 @@ function App() {
           onNavigate={(sectionId) => { navigateAndFocus(sectionId as SectionId, getSectionStartTarget(sectionId)); }}
           onFocusField={handleFocusField}
         />}
-        <main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto p-4 @min-[40rem]/options:p-8">
+        {/* Contain absolutely positioned screen-reader labels within the scrolling area. */}
+        <main ref={mainRef} className="relative flex-1 min-w-0 overflow-y-auto p-4 @min-[40rem]/options:p-8">
           <div data-profile-section={activeSection} data-dev-ready={import.meta.env.DEV && !loading && !profileLoadError ? '' : undefined} className={SECTION_WIDTHS[activeSection] ?? 'max-w-2xl'}
             onBlurCapture={() => {
               if (dirtyInputsRef.current.size > 0) setUnsavedStatusVisible(true);

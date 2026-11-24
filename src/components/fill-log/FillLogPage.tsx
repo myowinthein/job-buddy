@@ -2,7 +2,6 @@ import { memo, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ExternalLink, ChevronDown, Info, ListChecks, LoaderCircle } from 'lucide-react';
 import { FillDetailsHelp } from './FillDetailsHelp';
 import { Notice } from '@/src/components/ui/Notice';
-import { useEscapeToClose } from '@/src/components/ui/useEscapeToClose';
 import { feedback } from '@/src/ui/feedback';
 import { loadFillLog, returnToForm } from '@/src/fill-log/client';
 import { RETAINED_FILL_DETAILS } from '@/src/fill-log/retention';
@@ -72,11 +71,8 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
   const [search, setSearch] = useState('');
   const [returnError, setReturnError] = useState(false);
   const [openingSource, setOpeningSource] = useState(false);
-  const [sourceTooltipOpen, setSourceTooltipOpen] = useState(false);
   const currentReport = useRef<string | null>(null);
   const prefix = useId();
-  const sourceTooltipId = useId();
-  useEscapeToClose(sourceTooltipOpen ? () => setSourceTooltipOpen(false) : undefined);
   useEffect(() => {
     let active = true;
     let reading = false;
@@ -104,7 +100,6 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
           setCheckedRules(false);
           setSearch('');
           setReturnError(false);
-          setSourceTooltipOpen(false);
         }
         // Storage/messages return fresh objects even when the report is unchanged.
         // Compare once here instead of rebuilding every row on each polling tick.
@@ -226,7 +221,6 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
   const openSource = async () => {
     if (openingSource) return;
     setOpeningSource(true);
-    setSourceTooltipOpen(false);
     setReturnError(false);
     try {
       await returnToForm(sourceTab ?? -1, sourceUrl);
@@ -259,46 +253,20 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
         {hasReport && (canReturn || sourceUrl || filledAt > 0) && (
           <div className="flex w-full min-w-0 flex-col items-start gap-2 sm:w-auto sm:items-end">
             {(canReturn || sourceUrl) && (
-              <div
-                className="relative w-full sm:w-fit"
-                onMouseEnter={() => setSourceTooltipOpen(true)}
-                onMouseLeave={(event) => {
-                  if (!event.currentTarget.contains(document.activeElement))
-                    setSourceTooltipOpen(false);
-                }}
-                onBlur={(event) => {
-                  if (!event.currentTarget.contains(event.relatedTarget))
-                    setSourceTooltipOpen(false);
-                }}
+              <button
+                type="button"
+                className={buttonCls}
+                disabled={openingSource}
+                onClick={() => void openSource()}
+                aria-description={sourceUrl}
               >
-                <button
-                  type="button"
-                  className={buttonCls}
-                  disabled={openingSource}
-                  onClick={() => void openSource()}
-                  onFocus={() => setSourceTooltipOpen(true)}
-                  aria-description={sourceUrl}
-                  aria-describedby={sourceUrl && sourceTooltipOpen ? sourceTooltipId : undefined}
-                >
-                  {canReturn ? (
-                    <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-                  ) : (
-                    <ExternalLink aria-hidden="true" className="h-4 w-4" />
-                  )}
-                  {openingSource ? 'Opening…' : canReturn ? 'Return to Form' : 'Open Form'}
-                </button>
-                {sourceUrl && sourceTooltipOpen && (
-                  <div className="absolute left-0 top-full z-30 w-full pt-2 sm:left-auto sm:right-0 sm:w-max sm:max-w-md">
-                    <div
-                      id={sourceTooltipId}
-                      role="tooltip"
-                      className="break-all rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-xs leading-relaxed text-gray-700 shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
-                    >
-                      {sourceUrl}
-                    </div>
-                  </div>
+                {canReturn ? (
+                  <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+                ) : (
+                  <ExternalLink aria-hidden="true" className="h-4 w-4" />
                 )}
-              </div>
+                {openingSource ? 'Opening…' : canReturn ? 'Return to Form' : 'Open Form'}
+              </button>
             )}
             {filledAt > 0 && (
               <p className="text-xs text-gray-500 sm:text-right dark:text-gray-400">
@@ -359,7 +327,7 @@ export function FillLogPage({ tabId }: { tabId: number | null }) {
               />
               <span>
                 {snapshot.sourceClosed
-                  ? 'This form is closed. Showing its last fill details.'
+                  ? feedback.fillDetailsSourceClosed
                   : feedback.fillDetailsSourceNavigated}
               </span>
             </div>

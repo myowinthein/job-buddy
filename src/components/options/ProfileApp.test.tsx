@@ -466,6 +466,32 @@ it('refreshes clean editors and completion after another tab changes the saved p
   );
 });
 
+it('reports a failed background refresh without claiming changes were applied or discarding the editor', async () => {
+  const preview = createPreviewChrome();
+  vi.stubGlobal('chrome', preview);
+  const name = await openPersonal();
+  fireEvent.change(name, { target: { value: 'My draft' } });
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  const originalGet = preview.storage.local.get;
+  vi.spyOn(preview.storage.local, 'get').mockImplementation((key, callback) => {
+    if (key !== 'profile') return originalGet(key, callback);
+    queueMicrotask(() => {
+      preview.runtime.lastError = { message: 'synthetic read failure' };
+      try {
+        callback({});
+      } finally {
+        preview.runtime.lastError = undefined;
+      }
+    });
+  });
+  fireEvent(document, new Event('visibilitychange'));
+  const warning = await screen.findByRole('alert');
+  expect(warning.textContent).toContain('Could not refresh your profile. Reload this page to try again.');
+  expect(warning.textContent).not.toContain('Changes applied');
+  expect(screen.getByRole('textbox', { name: /First Name/ })).toBe(name);
+  expect(name).toHaveProperty('value', 'My draft');
+});
+
 it('preserves a dirty draft and reviews a same-profile conflict without reverting untouched saved details', async () => {
   const original = (await getProfile())!;
   const name = await openPersonal();

@@ -87,7 +87,7 @@ export function ConfirmRemoveButton({
           className={`inline-flex items-center gap-1.5 text-xs ${buttonPadding} py-1 bg-red-600 dark:bg-red-700 text-white rounded-md hover:bg-red-700 dark:hover:bg-red-600 active:scale-95 transition-colors`}
         >
           {busy && <LoaderCircle aria-hidden="true" className="h-3 w-3 shrink-0 animate-spin motion-reduce:animate-none" />}
-          {busy ? 'Deleting…' : action}
+          {action}
         </button>
         <button
           type="button"

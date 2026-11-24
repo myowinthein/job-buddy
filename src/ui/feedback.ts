@@ -88,8 +88,9 @@ export const feedback = {
   geminiKeyFormatInvalid: 'Paste the API key only, without spaces or extra text.',
   fillDetailsOpenFailed: 'Could not open Fill Details. Try again.',
   fillDetailsFormOpenFailed: 'Could not open the form. Try again.',
+  fillDetailsSourceClosed: 'This form is closed. Its last fill details are still available.',
   fillDetailsSourceNavigated:
-    'The form’s tab is now on another page. Showing its last fill details.',
+    'The form’s tab is now on another page. Its last fill details are still available.',
   driveBackupSucceeded: 'Profile backed up to Google Drive.',
   profileExportSucceeded: 'Profile exported.',
   profileImportSucceeded: 'Profile imported.',
@@ -105,6 +106,7 @@ export const feedback = {
   resumeSaveFailed: 'Could not save the imported details. Try again.',
   importNoChanges: 'No changes to import.',
   profileViewRefreshFailed: 'Changes applied. Reload this page to see the latest data.',
+  profileRefreshFailed: 'Could not refresh your profile. Reload this page to try again.',
   profileImportInvalidFile: 'Select a valid Job Buddy export file.',
   resumeUnexpectedFailure: 'Could not import this resume. Try again.',
   driveBackupEmpty: 'The Drive backup contains no valid profile data. Your profile is unchanged.',

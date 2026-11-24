@@ -71,7 +71,7 @@ export function ResumeUploadDialog({
               Import Resume
             </h3>
             <p id={descriptionId} className="text-xs text-pretty text-gray-500 dark:text-gray-400 mt-0.5">
-              Send your selected file and its links to Gemini, then review the details before saving.
+              Use Gemini to extract your details, then review what to import.
             </p>
           </div>
           <button

@@ -62,7 +62,7 @@ export function FormField({ label, labelAccessory, required, error, hint, charac
       onCompositionStart={() => setComposing(true)}
       onCompositionEnd={() => setComposing(false)}
       role="group"
-      aria-labelledby={controlId ? undefined : labelId}
+      aria-labelledby={nativeControl ? undefined : labelId}
       aria-describedby={visibleError || hint ? messageId : undefined}
     >
       <div data-field-label className="mb-1 flex items-center gap-1">

@@ -10,8 +10,19 @@ export default defineConfig({
     reloadCommand: false,
     server: { host: '127.0.0.1', origin: 'http://127.0.0.1', port: 3000, strictPort: true },
   },
-  vite: () => ({
+  vite: ({ mode }) => ({
     plugins: [
+      {
+        name: 'job-buddy-dev-branding',
+        // Select the favicon in emitted HTML, before any page scripts load.
+        transformIndexHtml: {
+          order: 'pre',
+          handler: (html) =>
+            mode === 'development'
+              ? html.replaceAll('href="/icon.svg"', 'href="/icon-dev.svg"')
+              : html,
+        },
+      },
       {
         name: 'job-buddy-dev-background',
         enforce: 'pre',

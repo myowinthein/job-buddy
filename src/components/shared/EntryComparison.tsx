@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { EntryComparison as Comparison } from '@/src/resume-ai/entryComparison';
 import type { FieldChange } from '@/src/resume-ai/types';
 import { entryIsSelectable, entryIsSelected } from '@/src/resume-ai/entrySelection';
@@ -118,17 +119,19 @@ export function EntryComparison({
             type="button"
             disabled={safeIndex === 0 || selection?.isSaving}
             onClick={() => setIndex(safeIndex - 1)}
-            className="text-action disabled:opacity-40"
+            className="inline-flex items-center gap-1 text-action disabled:opacity-40"
           >
+            <ChevronLeft aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
             Previous entry
           </button>
           <button
             type="button"
             disabled={safeIndex === visibleEntries.length - 1 || selection?.isSaving}
             onClick={() => setIndex(safeIndex + 1)}
-            className="text-action disabled:opacity-40"
+            className="inline-flex items-center gap-1 text-action disabled:opacity-40"
           >
             Next entry
+            <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
           </button>
         </div>
       </div>

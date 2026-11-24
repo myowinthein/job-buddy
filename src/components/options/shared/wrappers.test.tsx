@@ -93,12 +93,12 @@ it('locks inline deletion while saving and restores its trigger after failure', 
   fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
   expect(remove).toHaveBeenCalledOnce();
   view.rerender(<ConfirmRemoveButton title="Delete mapping" onConfirm={remove} disabled busy />);
-  const pending = screen.getByRole('button', { name: 'Deleting…' });
+  const pending = screen.getByRole('button', { name: 'Delete' });
   expect(pending).toHaveProperty('disabled', true);
   expect(screen.getByRole('button', { name: 'Cancel' })).toHaveProperty('disabled', true);
   fireEvent.click(pending);
   fireEvent.mouseDown(document.body);
-  expect(screen.getByRole('button', { name: 'Deleting…' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Delete' })).toBeTruthy();
   expect(remove).toHaveBeenCalledOnce();
   view.rerender(<ConfirmRemoveButton title="Delete mapping" onConfirm={remove} />);
   expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Delete mapping' }));

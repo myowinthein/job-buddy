@@ -195,7 +195,7 @@ describe('Fill Details page', () => {
     expect(loadFillLog).toHaveBeenCalledTimes(3);
   });
 
-  it('keeps the source URL on the return button and shows only the filled timestamp', async () => {
+  it('keeps the source accessible without a URL popup and shows only the filled timestamp', async () => {
     const data = snapshot();
     data.pageUrl = 'https://example.test/careers/101?source=LinkedIn';
     const filled = new Date(2026, 10, 2, 21, 8, 5);
@@ -209,14 +209,12 @@ describe('Fill Details page', () => {
     expect(screen.queryByRole('link')).toBeNull();
     const button = screen.getByRole('button', { name: 'Return to Form' });
     expect(screen.queryByRole('tooltip')).toBeNull();
-    fireEvent.mouseEnter(button.parentElement!);
-    expect(screen.getByRole('tooltip').textContent).toBe(data.pageUrl);
-    fireEvent.mouseLeave(button.parentElement!);
+    fireEvent.mouseEnter(button);
     expect(screen.queryByRole('tooltip')).toBeNull();
     fireEvent.focus(button);
-    expect(screen.getByRole('tooltip').textContent).toBe(data.pageUrl);
-    fireEvent.keyDown(window, { key: 'Escape' });
     expect(screen.queryByRole('tooltip')).toBeNull();
+    expect(button.getAttribute('title')).toBeNull();
+    expect(button.getAttribute('aria-description')).toBe(data.pageUrl);
     const times = document.querySelectorAll('time');
     expect(times).toHaveLength(1);
     expect(times[0].getAttribute('datetime')).toBe(filled.toISOString());
@@ -308,6 +306,7 @@ describe('Fill Details page', () => {
     fireEvent.mouseEnter(help.parentElement!);
     const tooltip = screen.getByRole('tooltip');
     for (const explanation of [
+      'For each field, autofill tries learned mappings → rules → AI and stops when it finds a reliable answer.',
       'Each fill attempt can have one of these results:',
       'Filled, high confidence or confirmed by you.',
       'Filled, but needs your review.',
@@ -679,7 +678,7 @@ describe('Fill Details page', () => {
   it('keeps closed-form details and offers to open the saved URL', async () => {
     vi.mocked(loadFillLog).mockResolvedValue({ ...snapshot(), sourceClosed: true });
     await showFields();
-    expect(screen.getByText('This form is closed. Showing its last fill details.')).toBeTruthy();
+    expect(screen.getByText('This form is closed. Its last fill details are still available.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Return to Form' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Open Form' }));
     expect(returnToForm).toHaveBeenCalledWith(10, 'https://example.test/');
