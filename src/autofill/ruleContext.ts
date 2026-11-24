@@ -1,3 +1,4 @@
+import { directProfileQuestion, primaryQuestion, unsupportedQuestion } from './questionSemantics';
 import { composedParent, controlForm, isChoice } from './dom';
 import { ariaName, ownText } from './labels';
 import { bestLabel } from './signals';
@@ -30,10 +31,11 @@ export function ruleQuestionBlocked(signals: FieldSignals): boolean {
     signals.element?.getAttribute('role') === 'combobox' ||
     signals.element?.getAttribute('aria-haspopup') === 'listbox' || !!(signals.element && menuSelect(signals.element));
   return (
+    unsupportedQuestion(primaryQuestion(signals)) ||
     (!selection &&
       signals.type !== 'file' &&
       !(signals.element && isChoice(signals.element)) &&
-      narrativeQuestion(signals.label || signals.ariaLabel || signals.placeholder || '')) ||
+      (directProfileQuestion(primaryQuestion(signals)) !== 'professional.summary' && narrativeQuestion(primaryQuestion(signals)))) ||
     (selection &&
       isConsentGroup({ groupLabel: `${text} ${signals.nearbyText ?? ''}`, options: [] })) ||
     /\b(emergency\s+contact|referee|referrer|spouse|next\s+of\s+kin|reference(?:'s)?\s+(?:name|email|phone)|manager(?:'s)?\s+(?:name|email|phone))\b/i.test(

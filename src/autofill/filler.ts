@@ -14,6 +14,7 @@ import {
   isTextEditor,
   queryOpenElements,
 } from './dom';
+import { mentionedCountries } from './ruleValue';
 import { extractSignals } from './signals';
 import { readFieldValue } from './fieldValue';
 import { captureField, sameFieldState } from './fieldState';
@@ -50,6 +51,7 @@ export interface FillFieldContext {
   restoreAfter?: (active: () => boolean) => Promise<boolean>;
   dependencies?: WriteDependencies;
   optionAliases?: readonly string[];
+  authorizationQuestion?: string;
 }
 let dropdownBudget = DROPDOWN_RUN_BUDGET_MS;
 export function resetDropdownBudget(): void {
@@ -417,6 +419,25 @@ function ariaOption(
           normalize(option.getAttribute('aria-label') || composedText(option)),
         )),
   );
+  // A negative authorization answer may be phrased as a full statement.
+  // Only use this equivalence for an actual right-to-work question.
+  const question = context.authorizationQuestion;
+  if (question && /^no$/i.test(value) && /\bright\s+to\s+work\b/i.test(question) && !/\bsponsor/i.test(question)) {
+    const countries = mentionedCountries(question);
+    const denied = eligible.filter(option => {
+      const text = composedText(option);
+      const optionCountries = mentionedCountries(text);
+      const denial = /^(?:i\s+)?(?:do\s+not|don't)\s+have\s+(?:the\s+)?right\s+to\s+work\b(.*)$/i.exec(text);
+      if (!denial) return false;
+      const suffix = denial[1].trim().replace(/^in\s+(?:the\s+)?/i, '').replace(/[.!]+$/, '');
+      if (!suffix) return true;
+      if (countries.length !== 1 || optionCountries.length !== 1 || countries[0].code !== optionCountries[0].code) return false;
+      const country = optionCountries[0];
+      const names = [country.name, country.code, ...(country.code === 'GB' ? ['UK'] : country.code === 'US' ? ['USA', 'US'] : [])];
+      return names.some(name => normalize(name) === normalize(suffix));
+    });
+    if (denied.length) return denied.length === 1 ? denied[0] : null;
+  }
   const country = context.cityCountry;
   if (
     /^\+\d+$/.test(value) &&
@@ -612,7 +633,7 @@ async function rawDropdown(
   context: FillFieldContext = {},
 ): Promise<boolean> {
   const signals = extractSignals(element);
-  context = { ...context, optionAliases: [...(context.optionAliases ?? []), ...languageChoiceAliases(signals, value), ...educationChoiceAliases(signals, value)] };
+  context = { ...context, authorizationQuestion: signals.label || signals.ariaLabel || signals.placeholder, optionAliases: [...(context.optionAliases ?? []), ...languageChoiceAliases(signals, value), ...educationChoiceAliases(signals, value)] };
   const root = element.getRootNode() as Document | ShadowRoot;
   const before = new Set([...boxes(root), ...boxes(document)]);
   const wasOpen = element.getAttribute('aria-expanded') === 'true';
@@ -625,6 +646,7 @@ async function rawDropdown(
     if (
       element instanceof HTMLInputElement &&
       !element.readOnly &&
+      element.getAttribute('aria-readonly') !== 'true' &&
       !searchableSelect(element)?.trigger &&
       !['button', 'submit', 'hidden'].includes(element.type)
     )
@@ -647,10 +669,10 @@ async function rawDropdown(
     await settleFramework();
     // Controlled menu buttons can commit their facade and backing select on
     // the next frame. Checking immediately can reject and undo a valid choice.
-    if (menuSelect(element)) {
+    if (menuSelect(element) || searchableSelect(element)) {
       await waitNativeSelectCommit(() => {
         const answer = readFieldValue(element);
-        return !!menuSelect(element)?.select.value && [value, label].some(
+        return (!menuSelect(element) || !!menuSelect(element)?.select.value) && !!answer && [value, label].some(
           expected => normalize(answer) === normalize(expected),
         );
       }, active);
@@ -796,6 +818,7 @@ export async function restore(
     const clear = clearControl(element);
     if (clear && isControlAvailable(clear)) safeClick(clear);
     else {
+      if (element.getAttribute('aria-readonly') === 'true') return false;
       focus(element);
       setText(element, '');
       ownWriteEvents(() =>

@@ -1,3 +1,4 @@
+import { directProfileQuestion, primaryQuestion } from './questionSemantics';
 import type { Profile } from '../types/profile';
 import type { LearnedMappings, LearnedMappingValue } from '../types/storage';
 import type { FieldSignals } from './signals';
@@ -303,6 +304,12 @@ export function mapField(
       value: resolve(profile, path),
       matchLayer: 'autocomplete',
     };
+  }
+
+  const direct = directProfileQuestion(primaryQuestion(signals));
+  if (direct) {
+    const resolved = resolveDictionaryHit(profile, direct, signals);
+    return { ...resolved, confidence: CONF_DICT_EXACT, matchLayer: 'dictionary_exact' };
   }
 
   // ── Layer 2: Dictionary exact match ───────────────────────────────────────

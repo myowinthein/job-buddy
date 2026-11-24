@@ -1,3 +1,4 @@
+import { directProfileQuestion, unsupportedQuestion } from './questionSemantics';
 import { proficiencyQuestion, questionLanguageCodes } from './languageChoices';
 import { findLanguage } from '../data/languages';
 import type { Profile } from '../types/profile';
@@ -11,9 +12,11 @@ import { compatibleLinkPath } from './linkPlatforms';
 
 /** A response can only name data exposed for this particular question. */
 export function allowedAIPath(profile: Profile, field: AIFieldPayload, path: string): boolean {
+  const question = field.visibleLabel || field.label || field.placeholder || '';
+  if (unsupportedQuestion(question)) return false;
   if (
     field.type === 'text' &&
-    narrativeQuestion(field.visibleLabel || field.label || field.placeholder || '')
+    directProfileQuestion(question) !== 'professional.summary' && narrativeQuestion(question)
   ) return false;
   if (field.section === 'education' || field.section === 'workHistory') {
     const history = /^(education|workHistory)\.(\d+)\./.exec(path);

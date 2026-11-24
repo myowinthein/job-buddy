@@ -121,7 +121,9 @@ export function isControlAvailable(element: HTMLElement): boolean {
       ancestor.hasAttribute('inert') ||
       ancestor.getAttribute('aria-hidden') === 'true' ||
       ancestor.getAttribute('aria-disabled') === 'true' ||
-      ancestor.getAttribute('aria-readonly') === 'true'
+      (ancestor.getAttribute('aria-readonly') === 'true' &&
+        !(ancestor === element && selectProxy && element.getAttribute('role') === 'combobox' &&
+          element instanceof HTMLInputElement && element.inputMode === 'none'))
     )
       return false;
     const style = getComputedStyle(ancestor);
