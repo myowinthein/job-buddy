@@ -35,18 +35,26 @@ enter them manually.
 Follow the [walkthrough](https://myowinthein.github.io/job-buddy/#start) to set up
 Job Buddy, add your profile and start autofill.
 
-Your profile stays in your browser unless you turn on the optional Google Drive
-backup. Resume import, autofill and mapping reviews send relevant data to
-Gemini. See the [privacy policy](https://myowinthein.github.io/job-buddy/legal/privacy/).
+On an application page, open Job Buddy and click **Fill Form**. Review the filled
+answers before submitting; Job Buddy does not submit applications for you.
+You can try autofill on the [demo form](https://myowinthein.github.io/job-buddy/demo/).
+
+Your profile is stored in your browser, with optional Google Drive backup.
+Resume import, autofill and mapping reviews send relevant data to Gemini.
+Filling a form shares the filled details with that website. See the
+[privacy policy](https://myowinthein.github.io/job-buddy/legal/privacy/).
 
 <a name="help-me-improve-it"></a>
 
 ## Contributing
 
-If a feature behaves unexpectedly, a guide is unclear or you have an idea for Job Buddy, [open an issue](https://github.com/myowinthein/job-buddy/issues/new/choose).
+Bug reports, feedback, documentation fixes and pull requests are welcome.
+[Open an issue](https://github.com/myowinthein/job-buddy/issues/new/choose) to report
+a problem or share an idea. For local setup, development commands and tests,
+follow the [developer guide](https://myowinthein.github.io/job-buddy/developers/).
 
 ## License
 
 Job Buddy is licensed under the [MIT License](LICENSE). © 2026 Myo Win Thein.
 
-<!-- last-reviewed: e2142627e4efef37f8b30ca2a981bad40a595315 -->
+<!-- last-reviewed: 5c7262ac2d17dedbea3711e8d8ba5ea2cab05a0c -->
