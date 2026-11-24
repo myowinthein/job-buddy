@@ -4,7 +4,6 @@ import { Notice } from '@/src/components/ui/Notice';
 import { feedback, driveStorageFullNotice } from '@/src/ui/feedback';
 import { documentFileSizeError } from '@/src/utils/documentLimits';
 import { QuickFillSettings } from './QuickFillSettings';
-import { VersionLink } from '@/src/components/ui/VersionLink';
 import { updateQuickFillPreferences } from '@/src/quick-fill/preferences';
 import { GeminiSettings } from './GeminiSettings';
 import { developmentSession } from '@/src/devtools/session';
@@ -1107,7 +1106,7 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
         </button>
       </section>
 
-      <footer className="mt-8 grid grid-cols-1 items-center gap-x-6 gap-y-3 border-t border-gray-200 pt-8 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400 lg:grid-cols-[minmax(0,1fr)_auto]">
+      <footer className="mt-8 border-t border-gray-200 pt-8 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
         <nav
           aria-label="Settings links"
           className="flex flex-wrap items-center gap-x-3 gap-y-2 font-medium"
@@ -1158,7 +1157,6 @@ export function SettingsSection({ onImportComplete, onResetComplete }: Props) {
             <ExternalLink aria-hidden="true" className="h-3 w-3 shrink-0" />
           </a>
         </nav>
-        <VersionLink className="justify-self-end" />
       </footer>
 
       {/* ── Import Profile — summary / review dialogs ──────────────────────────── */}

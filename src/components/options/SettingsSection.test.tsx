@@ -90,16 +90,16 @@ it('keeps the latest Drive state when an earlier read finishes last', async () =
   expect(screen.getByRole('button', { name: 'Disconnect' })).toBeTruthy();
 });
 
-it('shows the installed version as a release link in the Settings footer', async () => {
+it('keeps Settings footer links without showing the installed version', async () => {
   vi.stubGlobal('chrome', { runtime: { getManifest: () => ({ version: '7.6.5' }) } });
   try {
     renderSection();
-    const link = await screen.findByRole('link', { name: 'v7.6.5 release notes' });
-    expect(link.getAttribute('href')).toBe('https://github.com/myowinthein/job-buddy/releases/tag/v7.6.5');
-    expect(link.getAttribute('target')).toBe('_blank');
-    expect(link.getAttribute('rel')).toContain('noopener');
-    expect(link.closest('footer')).not.toBeNull();
-    expect(link.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    const navigation = await screen.findByRole('navigation', { name: 'Settings links' });
+    expect(Array.from(navigation.querySelectorAll('a'), (link) => link.textContent?.trim())).toEqual([
+      'Documentation', 'Report an issue', 'Support on Ko-fi', 'Privacy Policy', 'Disclaimer',
+    ]);
+    expect(navigation.closest('footer')).not.toBeNull();
+    expect(screen.queryByRole('link', { name: /release notes/i })).toBeNull();
   } finally {
     cleanup();
     vi.unstubAllGlobals();
