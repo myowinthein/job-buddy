@@ -307,6 +307,18 @@ figure {
   max-width: 1440px;
   height: auto;
 }
+.demo-playback {
+  display: block;
+  margin: 10px 0 0 auto;
+  padding: 6px 10px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--link);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
 figcaption {
   margin-top: 11px;
   color: var(--muted);
@@ -997,7 +1009,30 @@ pre code {
     font-size: 13px;
   }
 }
+@media (forced-colors: active) {
+  .command-tabs .command-tab-list button,
+  .visual-tour .visual-controls button {
+    /* Preserve transparent unselected borders; supply system colors ourselves. */
+    forced-color-adjust: none;
+    color: ButtonText;
+    background: Canvas;
+    border-color: Canvas;
+  }
+  .command-tabs .command-tab-list [aria-selected='true'],
+  .visual-tour .visual-controls [aria-pressed='true'] {
+    color: LinkText;
+    background: Canvas;
+    border-color: Highlight;
+  }
+  .command-tab-list button:focus-visible,
+  .visual-controls button:focus-visible {
+    outline-color: Highlight;
+  }
+}
 @media print {
+  .demo-playback {
+    display: none;
+  }
   :is(.walkthrough, .developer-guide) {
     --chapter-gap: 24px;
   }

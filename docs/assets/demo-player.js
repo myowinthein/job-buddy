@@ -4,9 +4,11 @@
   const video = figure.querySelector('video');
   const videoPanel = figure.querySelector('[data-demo-video]');
   const still = figure.querySelector('[data-demo-still]');
+  const playback = figure.querySelector('[data-demo-playback]');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   let visible = false;
   let failed = false;
+  let pausedByUser = false;
   let playbackRevision = 0;
 
   function setSource() {
@@ -23,11 +25,17 @@
     const showVideo = !motion.matches && !failed;
     videoPanel.hidden = !showVideo;
     still.hidden = showVideo;
+    playback.hidden = !showVideo;
+    playback.textContent = pausedByUser ? 'Play video' : 'Pause video';
     if (!showVideo || !visible || document.hidden) {
       video.pause();
       return;
     }
     setSource();
+    if (pausedByUser) {
+      video.pause();
+      return;
+    }
     video.muted = true;
     try {
       await video.play();
@@ -39,7 +47,11 @@
     }
   }
   video.addEventListener('play', () => {
-    if (!visible || document.hidden || motion.matches || failed) video.pause();
+    if (!visible || document.hidden || motion.matches || failed || pausedByUser) video.pause();
+  });
+  playback.addEventListener('click', () => {
+    pausedByUser = !pausedByUser;
+    void syncPlayback();
   });
   video.addEventListener('error', () => {
     failed = true;

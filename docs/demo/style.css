@@ -5,6 +5,7 @@
   --ink: #262a35;
   --muted: #626b7c;
   --line: #d5dae3;
+  --field-border: #7b8495;
   --input: #fff;
   --accent: #394e9a;
   --notice-bg: #eaf2ff;
@@ -19,6 +20,7 @@
   --ink: #f0f2f7;
   --muted: #b0bacd;
   --line: #46516a;
+  --field-border: #8592ab;
   --input: #222c3e;
   --accent: #a8baff;
   --notice-bg: #162d4d;
@@ -274,7 +276,7 @@ textarea {
   display: block;
   width: 100%;
   min-height: 42px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--field-border);
   border-radius: 4px;
   padding: 9px 11px;
   background: var(--input);

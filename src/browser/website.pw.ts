@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import { fitsViewportWidth } from './layout';
 import { visibleDividerGaps } from './dividerGeometry';
+import { controlContrast } from './contrast';
 
 const origin = 'http://127.0.0.1';
 const prefix = '/job-buddy/';
@@ -483,7 +484,75 @@ test('command instructions remain available without JavaScript', async ({ browse
   }
 });
 
-test('autofill recording autoplays without controls, follows the theme, and stops offscreen', async ({
+test('demo field boundaries meet contrast requirements in both themes', async ({
+  context,
+  page,
+}) => {
+  await serveSite(context);
+  for (const theme of ['light', 'dark']) {
+    await page.addInitScript((theme) => localStorage.setItem('job-buddy-theme', theme), theme);
+    await page.goto(origin + prefix + 'demo/');
+    const fields = page.locator(
+      'main input:not([type=radio]):not([type=checkbox]):not([type=file]), main select, main textarea',
+    );
+    expect(await fields.count()).toBeGreaterThan(0);
+    for (const field of await fields.all()) {
+      if (!(await field.isVisible())) continue;
+      const contrast = await field.evaluate(controlContrast);
+      expect(contrast.borderWidth).toBeGreaterThanOrEqual(1);
+      expect(contrast.borderInside).toBeGreaterThanOrEqual(3);
+      expect(contrast.borderOutside).toBeGreaterThanOrEqual(3);
+    }
+  }
+});
+
+test('guide selection markers remain distinct in forced colors', async ({ context, page }) => {
+  await serveSite(context);
+  for (const colorScheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ forcedColors: 'active', colorScheme, reducedMotion: 'reduce' });
+    for (const width of [320, 1280]) {
+      await page.setViewportSize({ width, height: 800 });
+      for (const path of ['', 'developers/']) {
+        await page.goto(origin + prefix + path);
+        await page.locator('main details').evaluateAll((es) =>
+          es.forEach((e) => {
+            (e as HTMLDetailsElement).open = true;
+          }),
+        );
+        const groups = page.locator('.visual-controls, .command-tab-list');
+        expect(await groups.count()).toBeGreaterThan(0);
+        for (const group of await groups.all()) {
+          if (!(await group.isVisible())) continue;
+          // Change selection so a marker hard-coded to the initial item cannot pass.
+          await group.locator('button').nth(1).click();
+          const selected = group.locator('[aria-pressed="true"], [aria-selected="true"]');
+          const other = group.locator('[aria-pressed="false"], [aria-selected="false"]').first();
+          expect((await selected.evaluate(controlContrast)).borderOutside).toBeGreaterThanOrEqual(
+            3,
+          );
+          const edge = await selected.evaluate((e) =>
+            parseFloat(getComputedStyle(e).borderBottomWidth) > 0
+              ? 'border-bottom-color'
+              : 'border-left-color',
+          );
+          expect(
+            await selected.evaluate((e, edge) => getComputedStyle(e).getPropertyValue(edge), edge),
+          ).not.toBe(
+            await other.evaluate((e, edge) => getComputedStyle(e).getPropertyValue(edge), edge),
+          );
+          expect(
+            await selected.evaluate((e) => {
+              const s = getComputedStyle(e);
+              return Math.max(parseFloat(s.borderBottomWidth), parseFloat(s.borderLeftWidth));
+            }),
+          ).toBeGreaterThanOrEqual(2);
+        }
+      }
+    }
+  }
+});
+
+test('autofill recording supports manual pause across theme, visibility and motion changes', async ({
   context,
   page,
 }) => {
@@ -491,18 +560,38 @@ test('autofill recording autoplays without controls, follows the theme, and stop
   await page.goto(origin + prefix);
   const figure = page.locator('[data-demo-player]');
   const video = figure.locator('video');
-  await expect(figure.locator('button, figcaption, [data-compare]')).toHaveCount(0);
+  const playback = figure.getByRole('button', { name: 'Pause video', exact: true });
   expect(await video.evaluate((el) => (el as HTMLVideoElement).controls)).toBe(false);
   await figure.scrollIntoViewIfNeeded();
   await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).videoWidth)).toBe(2880);
   await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(false);
   await expect(figure.locator('[data-demo-still]')).toBeHidden();
+  await expectVisibleFocus(playback);
+  await page.keyboard.press('Enter');
+  const play = figure.getByRole('button', { name: 'Play video', exact: true });
+  await expect(play).toBeFocused();
+  await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
   await page.getByRole('button', { name: /Switch to .* mode/ }).click();
   const dark = await page.locator('html').evaluate((el) => el.classList.contains('dark'));
   await expect(video).toHaveAttribute(
     'src',
     new RegExp(`autofill-${dark ? 'dark' : 'light'}\\.mp4`),
   );
+  await figure.scrollIntoViewIfNeeded();
+  await expect
+    .poll(() => video.evaluate((el) => (el as HTMLVideoElement).readyState))
+    .toBeGreaterThanOrEqual(2);
+  await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
+  await page.locator('#profile').scrollIntoViewIfNeeded();
+  await figure.scrollIntoViewIfNeeded();
+  expect(await video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(play).toBeHidden();
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await expect(play).toBeVisible();
+  expect(await video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
+  await play.click();
+  await expect(playback).toBeVisible();
   await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(false);
   await page.locator('#profile').scrollIntoViewIfNeeded();
   await expect.poll(() => video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
@@ -512,6 +601,7 @@ test('autofill recording autoplays without controls, follows the theme, and stop
   await expect(video).toBeHidden();
   expect(await video.evaluate((el) => (el as HTMLVideoElement).paused)).toBe(true);
   await expect(figure.locator('[data-demo-still]')).toBeVisible();
+  await expect(playback).toBeHidden();
 });
 
 test('reduced motion starts with a still and resumes autoplay when disabled', async ({
