@@ -1027,8 +1027,12 @@ for (const path of ['', 'developers/', 'demo/']) {
 
     // A sibling site's saved theme must not override this site's system default.
     await expect(first.locator('html')).not.toHaveClass(/dark/);
+    await expect(toggle).toHaveAccessibleName('Switch to dark mode');
+    await expect(toggle).not.toHaveAttribute('aria-pressed');
     await first.emulateMedia({ colorScheme: 'dark' });
     await expect(first.locator('html')).toHaveClass(/dark/);
+    await expect(toggle).toHaveAccessibleName('Switch to light mode');
+    await expect(toggle).not.toHaveAttribute('aria-pressed');
     await toggle.click();
     await first.emulateMedia({ colorScheme: 'light' });
     await first.emulateMedia({ colorScheme: 'dark' });
@@ -1040,6 +1044,8 @@ for (const path of ['', 'developers/', 'demo/']) {
     await first.keyboard.press('Space');
     await expect(second.locator('html')).toHaveClass(/dark/);
     await expect(second.getByRole('button', { name: 'Switch to light mode' })).toBeVisible();
+    await expect(second.getByRole('button', { name: 'Switch to light mode' }))
+      .not.toHaveAttribute('aria-pressed');
     expect(await first.evaluate(() => localStorage.getItem('job-buddy-theme'))).toBe('dark');
     expect(await first.evaluate(() => localStorage.getItem('theme'))).toBe('dark');
     expect(await second.locator('html').evaluate((e) => getComputedStyle(e).colorScheme)).toBe('dark');

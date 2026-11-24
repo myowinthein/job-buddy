@@ -23,7 +23,8 @@
     const label = dark ? 'Switch to light mode' : 'Switch to dark mode';
     button?.setAttribute('aria-label', label);
     button?.setAttribute('title', label);
-    button?.setAttribute('aria-pressed', String(dark));
+    // The label describes the next action; clear toggle semantics from existing headers.
+    button?.removeAttribute('aria-pressed');
     document.dispatchEvent(new Event('jb-theme-change'));
   }
 
