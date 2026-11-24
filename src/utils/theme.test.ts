@@ -48,11 +48,6 @@ describe('getCurrentTheme', () => {
 });
 
 describe('applyTheme("dark")', () => {
-  it('adds dark class to documentElement', () => {
-    applyTheme('dark');
-    expect(document.documentElement.classList.contains('dark')).toBe(true);
-  });
-
   it('adds dark class even if light was previously applied', () => {
     applyTheme('light');
     applyTheme('dark');

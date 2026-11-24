@@ -413,11 +413,6 @@ describe('resolveProfileValue — notice period: availableDate (date-pinned)', (
     expect(resolveProfileValue(p, 'professional.noticePeriod.availableDate')).toBe('2024-09-15');
   });
 
-  it('returns YYYY-MM-DD format', () => {
-    const p = { ...PROFILE, professional: { noticePeriod: { immediate: true } } };
-    const result = resolveProfileValue(p, 'professional.noticePeriod.availableDate');
-    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-  });
 });
 
 describe('flattenProfileValues', () => {

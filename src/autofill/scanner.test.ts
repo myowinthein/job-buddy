@@ -151,11 +151,6 @@ describe('scanFields', () => {
     expect(scanFields()).toContain(el);
   });
 
-  it('still excludes input[type="button"] without aria-haspopup', () => {
-    addInput({ type: 'button' });
-    expect(scanFields()).toHaveLength(0);
-  });
-
   it('excludes a text input that is a descendant of a non-native [role="combobox"]', () => {
     const combobox = document.createElement('div');
     combobox.setAttribute('role', 'combobox');

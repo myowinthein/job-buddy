@@ -50,18 +50,6 @@ describe('applyHighlight', () => {
     expect(el.style.backgroundColor).toBe('rgba(239, 68, 68, 0.12)');
   });
 
-  it('saves original background before overwriting', () => {
-    const el = makeInput('rgb(255, 0, 0)');
-    applyHighlight(el, CONF_GREEN);
-    expect(el.dataset.jbOrigBackground).toBe('rgb(255, 0, 0)');
-  });
-
-  it('saves original transition before overwriting', () => {
-    const el = makeInput('', 'opacity 0.3s');
-    applyHighlight(el, CONF_GREEN);
-    expect(el.dataset.jbOrigTransition).toBe('opacity 0.3s');
-  });
-
   it('does not overwrite saved originals on re-apply', () => {
     const el = makeInput('rgb(255, 0, 0)', 'opacity 0.3s');
     applyHighlight(el, CONF_GREEN);

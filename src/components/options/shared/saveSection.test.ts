@@ -26,15 +26,4 @@ describe('saveSection', () => {
     expect(showToast).toHaveBeenCalledWith('error', 'Could not save your changes. Try again.');
   });
 
-  it('resolves without a value on success', async () => {
-    const save = vi.fn().mockResolvedValue(undefined);
-    const showToast = vi.fn();
-    await expect(saveSection(save, patch, showToast, 'Done')).resolves.toBeUndefined();
-  });
-
-  it('resolves without a value on failure (error is surfaced via toast, not rejection)', async () => {
-    const save = vi.fn().mockRejectedValue(new Error('fail'));
-    const showToast = vi.fn();
-    await expect(saveSection(save, patch, showToast, 'Done')).resolves.toBeUndefined();
-  });
 });

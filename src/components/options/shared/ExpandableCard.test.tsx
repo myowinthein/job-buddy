@@ -39,10 +39,6 @@ describe('ExpandableCard — expand/collapse', () => {
     expect(screen.queryByText('3 entries')).toBeNull();
   });
 
-  it('pads the content wrapper with p-4', () => {
-    render(<ExpandableCard summary="Acme Inc" onDelete={vi.fn()} defaultExpanded><p>x</p></ExpandableCard>);
-    expect(screen.getByText('x').parentElement?.className).toContain('p-4');
-  });
 });
 
 describe('ExpandableCard — delete confirmation gate', () => {

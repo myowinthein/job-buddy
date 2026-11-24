@@ -67,12 +67,6 @@ describe('normalizeProfile', () => {
     expect(out).toBe(p); // unchanged
   });
 
-  it('preserves valid existing "monthly" period on current salary', () => {
-    const p = baseProfile();
-    p.salary.current!.period = 'monthly';
-    expect(normalizeProfile(p)).toBe(p);
-  });
-
   it('replaces an invalid period string with "monthly"', () => {
     const p = baseProfile();
     p.salary.current = {

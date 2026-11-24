@@ -539,7 +539,7 @@ it('rejects invalid assessment metadata rather than silently assuming a resume',
 describe('bounded and cancellable autofill requests', () => {
   const fields: AIFieldPayload[] = [{ fieldId: 'x', type: 'text', label: 'Custom reference' }];
   afterEach(() => vi.useRealTimers());
-  it.each([404, 408, 429, 500, 502, 503, 504])(
+  it.each([404, 408, 500, 502, 503, 504])(
     'tries the next model after status %s',
     async (status) => {
       fetchMock

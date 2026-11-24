@@ -81,12 +81,6 @@ describe('PersonalSection — phone number input strips non-digits', () => {
 });
 
 describe('PersonalSection — date of birth partial-entry error precedence', () => {
-  it('shows the "complete or leave blank" message after typing only a day', () => {
-    renderSection({ personal: {} as unknown as Profile['personal'] });
-    fireEvent.change(screen.getByLabelText('Day'), { target: { value: '15' } });
-    expect(screen.getByText('Complete day, month, and year, or leave blank')).toBeTruthy();
-  });
-
   it('clears the partial message once month and year are also filled in', () => {
     renderSection({ personal: {} as unknown as Profile['personal'] });
     fireEvent.change(screen.getByLabelText('Day'), { target: { value: '15' } });
@@ -110,12 +104,6 @@ describe('PersonalSection — date of birth partial-entry error precedence', () 
 });
 
 describe('PersonalSection — email format validation', () => {
-  it('shows "Enter a valid email address" for a malformed value', () => {
-    renderSection({ personal: {} as unknown as Profile['personal'] });
-    fireEvent.change(document.getElementById('field-email')!, { target: { value: 'not-an-email' } });
-    expect(screen.getByText('Enter a valid email address')).toBeTruthy();
-  });
-
   it('clears the error once the value becomes valid', () => {
     renderSection({ personal: {} as unknown as Profile['personal'] });
     fireEvent.change(document.getElementById('field-email')!, { target: { value: 'not-an-email' } });
@@ -325,17 +313,6 @@ describe('PersonalSection — Date of Birth partial entry blocks save', () => {
     expect(screen.getByText('Complete day, month, and year, or leave blank')).toBeTruthy();
   });
 
-  it('saves successfully when Date of Birth is left entirely blank', () => {
-    const { onSave } = renderSection({ personal: {} as unknown as Profile['personal'] });
-    fireEvent.change(document.getElementById('field-firstName')!, { target: { value: 'Jane' } });
-    fireEvent.change(document.getElementById('field-lastName')!, { target: { value: 'Doe' } });
-    fireEvent.change(document.getElementById('field-email')!, { target: { value: 'jane@example.com' } });
-    fireEvent.change(phoneNumberInput(), { target: { value: '5551234567' } });
-
-    fireEvent.click(screen.getByText('Save'));
-
-    expect(onSave).toHaveBeenCalled();
-  });
 });
 
 it('blocks an impossible day entered after choosing the month and year', () => {

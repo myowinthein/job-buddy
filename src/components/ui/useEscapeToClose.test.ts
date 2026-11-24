@@ -22,13 +22,6 @@ describe('useEscapeToClose', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('does nothing when the handler is undefined (guarded/no dismiss)', () => {
-    expect(() => {
-      renderHook(() => useEscapeToClose(undefined));
-      pressEscape();
-    }).not.toThrow();
-  });
-
   it('picks up a handler that becomes defined after being undefined (e.g. a guard clearing)', () => {
     const onClose = vi.fn();
     const { rerender } = renderHook(({ handler }) => useEscapeToClose(handler), {

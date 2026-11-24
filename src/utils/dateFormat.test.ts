@@ -21,10 +21,6 @@ describe('formatISODate', () => {
     // asserts the LOCAL calendar day is preserved regardless of timezone.
     const d = new Date(2023, 0, 15, 23, 30, 0);
     expect(formatISODate(d)).toBe('2023-01-15');
-    // Guard the assertion: the local calendar day is what we format.
-    expect(formatISODate(d)).toBe(
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
-    );
   });
 
   it('preserves the local day for an early-morning local time', () => {

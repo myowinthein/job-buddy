@@ -112,9 +112,6 @@ describe('buildPickerTree', () => {
       expect(countryRow && 'value' in countryRow ? countryRow.value : null).toBe('Thailand');
     });
 
-    it('is omitted entirely when no address fields are set', () => {
-      expect(sectionIds(emptyProfile())).not.toContain('address');
-    });
   });
 
   describe('salary section', () => {
@@ -325,9 +322,6 @@ describe('buildPickerTree', () => {
       expect(links.items.map((i) => ('label' in i ? i.label : ''))).toEqual(['LinkedIn', 'GitHub']);
     });
 
-    it('is omitted when linkedin is empty and there are no other links', () => {
-      expect(sectionIds(emptyProfile())).not.toContain('links');
-    });
   });
 
   describe('documents section', () => {

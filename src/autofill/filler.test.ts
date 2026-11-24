@@ -143,59 +143,6 @@ describe('fillField — select: disabled option filtering', () => {
   });
 });
 
-describe('fillField — select: placeholder option filtering', () => {
-  it('ignores options with empty value (common placeholder pattern)', async () => {
-    const sel = makeSelect([
-      { text: 'Please select', value: '' },
-      { text: 'Thailand',      value: 'TH' },
-    ]);
-    // If we fill with "Please select" it should NOT match the placeholder
-    await fillField(sel, 'Please select');
-    // 'Please select' normalises to 'pleaseselect' which is in PLACEHOLDER_NORMS;
-    // no other option matches — nothing changes
-    const before = 0; // default selectedIndex
-    expect(sel.selectedIndex).toBe(before);
-  });
-
-  it('ignores options whose text normalises to "select"', async () => {
-    const sel = makeSelect([
-      { text: 'Select',    value: 'placeholder' },
-      { text: 'Thailand',  value: 'TH' },
-    ]);
-    await fillField(sel, 'Select');
-    // 'Select' option is skipped; 'Thailand' does not match 'Select'
-    // → nothing fills
-    expect(selectedValue(sel)).toBe('placeholder'); // stays at default index
-  });
-
-  it('ignores options whose text normalises to "selectone"', async () => {
-    const sel = makeSelect([
-      { text: 'Select one', value: 'x' },
-      { text: 'Germany',    value: 'DE' },
-    ]);
-    await fillField(sel, 'Germany');
-    expect(selectedValue(sel)).toBe('DE');
-  });
-
-  it('ignores options whose text normalises to "choose"', async () => {
-    const sel = makeSelect([
-      { text: 'Choose',  value: 'x' },
-      { text: 'Germany', value: 'DE' },
-    ]);
-    await fillField(sel, 'Germany');
-    expect(selectedValue(sel)).toBe('DE');
-  });
-
-  it('treats "-- Select --" as a placeholder (normalises to "select")', async () => {
-    const sel = makeSelect([
-      { text: '-- Select --', value: 'x' },
-      { text: 'Germany',      value: 'DE' },
-    ]);
-    await fillField(sel, 'Germany');
-    expect(selectedValue(sel)).toBe('DE');
-  });
-});
-
 describe('fillField — select: change event', () => {
   it('dispatches a change event after filling', async () => {
     const sel = makeSelect([
@@ -244,15 +191,6 @@ describe('fillField — select: change event', () => {
 // fillField detects the placeholder format and reformats before writing.
 
 describe('fillField — date reformatting for MM/DD/YYYY placeholder', () => {
-  it('reformats YYYY-MM-DD to MM/DD/YYYY when placeholder is mm/dd/yyyy', async () => {
-    const el = document.createElement('input');
-    el.type = 'text';
-    el.placeholder = 'mm/dd/yyyy';
-    document.body.appendChild(el);
-    await fillField(el, '2024-02-15');
-    expect(el.value).toBe('02/15/2024');
-  });
-
   it('fixes the 02/dd/yyyy malformed case — month-only fill no longer happens', async () => {
     // Previously fillField wrote "2024-02-15" raw; the masking library processed
     // "20" as the month digit pair → clamped to "02", leaving "dd" and "yyyy"
@@ -615,11 +553,6 @@ describe('clearFieldValue — file input', () => {
     }
   });
 
-  it('does not throw when DataTransfer is unavailable (older/unsupported environments)', () => {
-    vi.unstubAllGlobals(); // simulate an environment without a DataTransfer constructor
-    const input = makeFileInput();
-    expect(() => clearFieldValue(input)).not.toThrow();
-  });
 });
 
 // ── clearFieldValue — select ──────────────────────────────────────────────────

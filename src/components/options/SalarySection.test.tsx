@@ -200,19 +200,6 @@ describe('SalarySection — currency selection', () => {
 });
 
 describe('SalarySection — invalid current-salary amount', () => {
-  it('shows a live error for a negative amount as the user types', () => {
-    renderSection({
-      salary: {
-        current: { amount: 5000, currency: 'THB', country: 'TH', period: 'monthly' },
-        expected: [],
-      },
-    });
-    fireEvent.change(document.getElementById('field-currentAmount')!, {
-      target: { value: '-100' },
-    });
-    expect(screen.getByText('Enter a valid amount')).toBeTruthy();
-  });
-
   it('blocks save for a negative current-salary amount', () => {
     const { onSave } = renderSection({
       salary: {

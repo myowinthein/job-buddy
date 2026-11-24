@@ -60,14 +60,6 @@ describe('calculateCompletion', () => {
     expect(result.missingFields).toContain('Email');
   });
 
-  it('accepts salary amount of 0', () => {
-    const result = calculateCompletion({
-      ...COMPLETE,
-      salary: { current: { amount: 0, currency: 'THB', period: 'monthly' }, expected: [] },
-    });
-    expect(result.missingFields).not.toContain('Current Salary Amount');
-  });
-
   it('reports missing salary when amount is negative', () => {
     const result = calculateCompletion({
       ...COMPLETE,

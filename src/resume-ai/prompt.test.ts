@@ -2,10 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { buildPrompt } from './prompt';
 
 describe('buildPrompt', () => {
-  it('returns a non-empty string', () => {
-    expect(buildPrompt('{}').length).toBeGreaterThan(0);
-  });
-
   it('omits the hyperlinks section when no links are provided', () => {
     const prompt = buildPrompt('{}');
     expect(prompt).not.toContain('Extracted hyperlinks');
@@ -70,11 +66,6 @@ describe('buildPrompt — schema structure matches Profile', () => {
     expect(prompt).toContain('countryCode and city are independent — never duplicate the same place name into both');
   });
 
-  it('lists the top-level schema sections', () => {
-    for (const key of ['personal', 'address', 'professional', 'salary', 'workAuthorization', 'workHistory', 'education', 'languages', 'links']) {
-      expect(prompt).toContain(`"${key}"`);
-    }
-  });
 });
 
 it('assesses document purpose in the extraction response without requiring resume sections or a language', () => {

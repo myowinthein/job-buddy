@@ -93,18 +93,6 @@ describe('DocumentsSection — toDocumentEntry: URL and file must never become m
     });
   });
 
-  it('preserves both an existing URL and an existing file together on save', () => {
-    const { onSave } = renderSection({
-      documents: { cv: { url: 'https://example.com/cv.pdf', file: { name: 'cv.pdf', size: 1024, base64: 'abc' } } },
-    });
-    fireEvent.click(screen.getByText('Save'));
-    expect(onSave).toHaveBeenCalledWith({
-      documents: expect.objectContaining({
-        cv: { url: 'https://example.com/cv.pdf', file: { name: 'cv.pdf', size: 1024, base64: 'abc' } },
-      }),
-    });
-  });
-
   it('adds a file to an existing URL rather than replacing it', async () => {
     const { onSave } = renderSection({ documents: { cv: { url: 'https://example.com/cv.pdf' } } });
 

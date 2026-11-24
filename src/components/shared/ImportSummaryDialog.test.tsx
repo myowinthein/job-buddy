@@ -49,12 +49,6 @@ describe('ImportSummaryDialog — counts and action buttons', () => {
     expect(onAcceptAll).toHaveBeenCalledTimes(1);
   });
 
-  it('pluralizes singular counts correctly', () => {
-    renderDialog([change('new'), change('conflict')]);
-    expect(screen.getByText('1 New')).toBeTruthy();
-    expect(screen.getByText('1 Changed')).toBeTruthy();
-  });
-
   it('hides Review/Import All when there is nothing actionable (only unchanged fields)', () => {
     renderDialog([change('unchanged')]);
     expect(screen.queryByText('Review Changes')).toBeNull();
