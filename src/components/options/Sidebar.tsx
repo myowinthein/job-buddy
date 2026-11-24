@@ -60,15 +60,15 @@ export function Sidebar({
     <aside
       id="options-sidebar"
       className={`flex flex-col bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-[width] duration-200 motion-reduce:transition-none shrink-0 ${
-        collapsed ? 'w-16' : 'w-16 sm:w-56'
+        collapsed ? 'w-16' : 'w-16 @min-[40rem]/options:w-56'
       }`}
     >
-      <div className="flex items-center justify-center sm:justify-start h-16 shrink-0 px-3 gap-2 border-b border-gray-200 dark:border-gray-800">
-        <img src={LOGO_ICON_SRC} alt="Job Buddy" className="w-7 h-7 sm:hidden" />
+      <div className="flex items-center justify-center @min-[40rem]/options:justify-start h-16 shrink-0 px-3 gap-2 border-b border-gray-200 dark:border-gray-800">
+        <img src={LOGO_ICON_SRC} alt="Job Buddy" className="w-7 h-7 @min-[40rem]/options:hidden" />
         <button
           type="button"
           onClick={onToggle}
-          className="hidden sm:inline-flex h-10 w-10 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400 shrink-0"
+          className="hidden @min-[40rem]/options:inline-flex h-10 w-10 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400 shrink-0"
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-expanded={!collapsed}
@@ -77,7 +77,7 @@ export function Sidebar({
           <Menu aria-hidden="true" className="w-5 h-5" />
         </button>
         {!collapsed && (
-          <div className="hidden sm:flex items-center gap-2 min-w-0 flex-1">
+          <div className="hidden @min-[40rem]/options:flex items-center gap-2 min-w-0 flex-1">
             <img src={LOGO_ICON_SRC} alt="" className="w-7 h-7 shrink-0" />
             <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
               Job Buddy
@@ -89,7 +89,7 @@ export function Sidebar({
 
       <nav className="flex-1 overflow-y-auto py-2" aria-label="Profile sections">
         {!collapsed && (
-          <p className="hidden sm:block px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          <p className="hidden @min-[40rem]/options:block px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Profile
           </p>
         )}
@@ -115,7 +115,7 @@ export function Sidebar({
               aria-label={section.label}
               aria-describedby={`status-${section.id}`}
               aria-current={isActive ? 'page' : undefined}
-              className={`w-full focus-visible:-outline-offset-2 flex items-center px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center sm:justify-start sm:gap-3'} ${
+              className={`w-full focus-visible:-outline-offset-2 flex items-center px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center @min-[40rem]/options:justify-start @min-[40rem]/options:gap-3'} ${
                 isActive
                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -123,7 +123,7 @@ export function Sidebar({
             >
               <Icon aria-hidden="true" className="w-5 h-5 shrink-0" />
               {!collapsed && (
-                <span className="hidden sm:block text-sm font-medium flex-1 truncate">
+                <span className="hidden @min-[40rem]/options:block text-sm font-medium flex-1 truncate">
                   {section.label}
                 </span>
               )}
@@ -134,7 +134,7 @@ export function Sidebar({
                 <span
                   title={status}
                   aria-hidden="true"
-                  className={`hidden sm:flex ml-auto h-4 w-4 items-center justify-center shrink-0 ${isMandatoryComplete ? 'text-green-600 dark:text-green-400' : optionalSection ? 'text-gray-400 dark:text-gray-500' : 'text-amber-500 dark:text-amber-400'}`}
+                  className={`hidden @min-[40rem]/options:flex ml-auto h-4 w-4 items-center justify-center shrink-0 ${isMandatoryComplete ? 'text-green-600 dark:text-green-400' : optionalSection ? 'text-gray-400 dark:text-gray-500' : 'text-amber-500 dark:text-amber-400'}`}
                 >
                   {isMandatoryComplete ? (
                     <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
@@ -155,7 +155,7 @@ export function Sidebar({
         className={`border-t border-gray-200 dark:border-gray-800 pt-1 pb-0 ${collapsed ? 'flex flex-col items-center px-2 gap-0' : 'px-0'}`}
       >
         {!collapsed && (
-          <p className="hidden sm:block px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          <p className="hidden @min-[40rem]/options:block px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Tools
           </p>
         )}
@@ -166,7 +166,7 @@ export function Sidebar({
           aria-label="Import Resume"
           aria-describedby="resume-ai-description"
           aria-current={activeSection === 'resume' ? 'page' : undefined}
-          className={`w-full focus-visible:-outline-offset-2 flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center sm:justify-start'} ${
+          className={`w-full focus-visible:-outline-offset-2 flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center @min-[40rem]/options:justify-start'} ${
             activeSection === 'resume'
               ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -176,7 +176,7 @@ export function Sidebar({
             <FileUp aria-hidden="true" className="w-5 h-5" />
           </span>
           {!collapsed && (
-            <span className="hidden sm:flex min-w-0 flex-1 items-center gap-1.5 text-sm font-medium">
+            <span className="hidden @min-[40rem]/options:flex min-w-0 flex-1 items-center gap-1.5 text-sm font-medium">
               <span className="truncate">Import Resume</span>
               <Sparkles
                 aria-hidden="true"
@@ -194,12 +194,12 @@ export function Sidebar({
           title="Fill Details"
           aria-label="Fill Details"
           aria-current={activeSection === 'fillDetails' ? 'page' : undefined}
-          className={`w-full focus-visible:-outline-offset-2 flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center sm:justify-start'} ${activeSection === 'fillDetails'
+          className={`w-full focus-visible:-outline-offset-2 flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center @min-[40rem]/options:justify-start'} ${activeSection === 'fillDetails'
             ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
             : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
         >
           <span className="shrink-0"><ListChecks aria-hidden="true" className="w-5 h-5" /></span>
-          {!collapsed && <span className="hidden sm:block text-sm font-medium truncate">Fill Details</span>}
+          {!collapsed && <span className="hidden @min-[40rem]/options:block text-sm font-medium truncate">Fill Details</span>}
         </button>
         <button
           type="button"
@@ -207,7 +207,7 @@ export function Sidebar({
           title="Learned Mappings"
           aria-label="Learned Mappings"
           aria-current={activeSection === 'learnedMappings' ? 'page' : undefined}
-          className={`w-full focus-visible:-outline-offset-2 flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center sm:justify-start'} ${
+          className={`w-full focus-visible:-outline-offset-2 flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center @min-[40rem]/options:justify-start'} ${
             activeSection === 'learnedMappings'
               ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -217,7 +217,7 @@ export function Sidebar({
             <Brain aria-hidden="true" className="w-5 h-5" />
           </span>
           {!collapsed && (
-            <span className="hidden sm:block text-sm font-medium truncate">Learned Mappings</span>
+            <span className="hidden @min-[40rem]/options:block text-sm font-medium truncate">Learned Mappings</span>
           )}
         </button>
         <button
@@ -226,7 +226,7 @@ export function Sidebar({
           title="Settings"
           aria-label="Settings"
           aria-current={activeSection === 'settings' ? 'page' : undefined}
-          className={`w-full focus-visible:-outline-offset-2 flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center sm:justify-start'} ${
+          className={`w-full focus-visible:-outline-offset-2 flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${collapsed ? 'justify-center' : 'justify-center @min-[40rem]/options:justify-start'} ${
             activeSection === 'settings'
               ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
@@ -236,7 +236,7 @@ export function Sidebar({
             <Settings aria-hidden="true" className="w-5 h-5" />
           </span>
           {!collapsed && (
-            <span className="hidden sm:block text-sm font-medium truncate">Settings</span>
+            <span className="hidden @min-[40rem]/options:block text-sm font-medium truncate">Settings</span>
           )}
         </button>
       </div>

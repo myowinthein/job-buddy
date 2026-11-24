@@ -299,6 +299,12 @@ test('keeps the toolbar popup within its Chrome surface for setup and choices', 
   await expect(popup.getByRole('radio', { name: /^Fill empty fields/ })).toBeVisible();
   for (const height of [300, 450, 600]) {
     await popup.setViewportSize({ width: 380, height });
+    // Both choices must remain selectable, not merely present below visible actions.
+    for (const name of [/^Fill all matched fields/, /^Fill empty fields/]) {
+      const choice = popup.getByRole('radio', { name });
+      await choice.check();
+      await expect(choice).toBeChecked();
+    }
     await expect(popup.getByRole('button', { name: 'Fill Form', exact: true })).toBeInViewport({ ratio: 1 });
     await expect(popup.getByRole('button', { name: 'Cancel', exact: true })).toBeInViewport({ ratio: 1 });
   }
@@ -322,6 +328,56 @@ test('keeps the toolbar popup within its Chrome surface for setup and choices', 
         document.documentElement.scrollHeight <= innerHeight,
     ),
   ).toBe(true);
+});
+
+test('keeps options controls and popup choices reachable with doubled text size', async ({
+  context,
+  extension,
+}, info) => {
+  test.setTimeout(90_000);
+  await extension.worker.evaluate(async (profile) => chrome.storage.local.set({ profile }), DEV_PROFILE);
+  const options = await context.newPage();
+  await options.emulateMedia({ reducedMotion: 'reduce' });
+  await sectionNavigation(options);
+  await options.setViewportSize({ width: 640, height: 600 });
+  for (const section of [
+    'personal', 'address', 'workAuthorization', 'workHistory', 'education', 'languages',
+    'links', 'documents', 'salary', 'settings', 'learnedMappings', 'fillDetails',
+  ]) {
+    await options.goto(extensionUrl(extension, `options.html?section=${section}`));
+    await expect(options.locator('main h2')).toBeVisible();
+    while (await options.locator('[data-entry-toggle][aria-expanded="false"]').count())
+      await options.locator('[data-entry-toggle][aria-expanded="false"]').first().click();
+    await options.locator('main details').evaluateAll((elements) =>
+      elements.forEach((element) => ((element as HTMLDetailsElement).open = true)),
+    );
+    await options.addStyleTag({ content: 'html { font-size: 200%; }' });
+    expect(await overflow(options), section).toEqual([]);
+    expect(
+      await options.locator('main').evaluate((element) => element.scrollWidth <= element.clientWidth + 1),
+      section,
+    ).toBe(true);
+    if (section === 'settings')
+      await options.screenshot({ path: info.outputPath('settings-enlarged-text.png') });
+  }
+
+  const popup = await openPinnedPopup(context, extension.worker.url(), extension.sourceTabId, {
+    width: 380, height: 300,
+  });
+  await popup.addStyleTag({ content: 'html { font-size: 200%; }' });
+  await popup.getByRole('button', { name: 'Fill Form', exact: true }).click();
+  for (const name of [/^Fill all matched fields/, /^Fill empty fields/]) {
+    const choice = popup.getByRole('radio', { name });
+    await choice.check();
+    await expect(choice).toBeChecked();
+  }
+  for (const name of ['Fill Form', 'Cancel']) {
+    const button = popup.getByRole('button', { name, exact: true });
+    await button.click({ trial: true });
+    await expect(button).toBeInViewport({ ratio: 1 });
+  }
+  expect(await popup.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await popup.screenshot({ path: info.outputPath('popup-enlarged-text.png') });
 });
 
 test('lets native popup choices grow into available screen space', async ({ context, extension }) => {

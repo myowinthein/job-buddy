@@ -445,10 +445,10 @@ function App() {
   const noticeMessage = message ?? aiWarning;
 
   return (
-    <div className="flex max-h-[var(--popup-max-height,600px)] w-[380px] flex-col bg-white font-sans text-gray-900 dark:bg-gray-900 dark:text-gray-100">
-      <header className="flex shrink-0 items-center gap-2.5 px-5 pb-3 pt-5">
+    <div className="flex max-h-[var(--popup-max-height,600px)] w-[380px] flex-col overflow-y-auto bg-white font-sans text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+      <header className="flex shrink-0 flex-wrap items-center gap-2.5 px-5 pb-3 pt-5">
         <img src={LOGO_ICON_SRC} alt="Job Buddy" className="h-8 w-8 shrink-0" />
-        <div className="flex flex-1 items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <h1 className="text-base font-bold">Job Buddy</h1>
           <DevBadge />
         </div>
@@ -456,7 +456,7 @@ function App() {
       </header>
 
       <div className="shrink-0 px-5">
-        <div className="flex min-h-8 items-center justify-between gap-2 text-xs">
+        <div className="flex min-h-8 flex-wrap items-center justify-between gap-2 text-xs">
           {loading ? (
             <span className="h-3 w-28 animate-pulse rounded bg-gray-100 motion-reduce:animate-none dark:bg-gray-800" />
           ) : (
@@ -512,48 +512,50 @@ function App() {
       </div>
 
       {confirming && (
-        <fieldset className="min-h-0 overflow-y-auto px-5 pt-4">
-          <legend className="sr-only">Choose how to fill existing answers</legend>
-          <p className="text-sm font-semibold">This form already has some answers.</p>
-          <div className="mt-3 space-y-1">
-            <label className="flex cursor-pointer items-start gap-2.5 rounded-lg py-2">
-              <input
-                type="radio"
-                name="fillMode"
-                value="merge"
-                autoFocus
-                checked={fillMode === 'merge'}
-                onChange={() => setFillMode('merge')}
-                className="mt-0.5 accent-blue-600"
-              />
-              <span>
-                <span className="block text-sm font-medium">Fill empty fields</span>
-                <span className="block text-xs text-gray-500 dark:text-gray-400">
-                  Keep existing answers and fill empty fields.
+        <div className="min-h-24 overflow-y-auto px-5 pt-4">
+          <fieldset className="min-w-0">
+            <legend className="sr-only">Choose how to fill existing answers</legend>
+            <p className="text-sm font-semibold">This form already has some answers.</p>
+            <div className="mt-3 space-y-1">
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-lg py-2">
+                <input
+                  type="radio"
+                  name="fillMode"
+                  value="merge"
+                  autoFocus
+                  checked={fillMode === 'merge'}
+                  onChange={() => setFillMode('merge')}
+                  className="mt-0.5 accent-blue-600"
+                />
+                <span>
+                  <span className="block text-sm font-medium">Fill empty fields</span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">
+                    Keep existing answers and fill empty fields.
+                  </span>
                 </span>
-              </span>
-            </label>
-            <label className="flex cursor-pointer items-start gap-2.5 rounded-lg py-2">
-              <input
-                type="radio"
-                name="fillMode"
-                value="overwrite"
-                checked={fillMode === 'overwrite'}
-                onChange={() => setFillMode('overwrite')}
-                className="mt-0.5 accent-blue-600"
-              />
-              <span>
-                <span className="block text-sm font-medium">Fill all matched fields</span>
-                <span className="block text-xs text-gray-500 dark:text-gray-400">
-                  Fill empty fields and update existing answers.
+              </label>
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-lg py-2">
+                <input
+                  type="radio"
+                  name="fillMode"
+                  value="overwrite"
+                  checked={fillMode === 'overwrite'}
+                  onChange={() => setFillMode('overwrite')}
+                  className="mt-0.5 accent-blue-600"
+                />
+                <span>
+                  <span className="block text-sm font-medium">Fill all matched fields</span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">
+                    Fill empty fields and update existing answers.
+                  </span>
                 </span>
-              </span>
-            </label>
-          </div>
-        </fieldset>
+              </label>
+            </div>
+          </fieldset>
+        </div>
       )}
 
-      <div className="flex shrink-0 gap-2 px-5 pb-4 pt-4"
+      <div className="flex shrink-0 flex-wrap gap-2 px-5 pb-4 pt-4"
         title={otherVersionBusy ? feedback.autofillOtherVersionBusy : undefined}
         tabIndex={otherVersionBusy ? 0 : undefined}
         role={otherVersionBusy ? 'group' : undefined}
@@ -564,7 +566,7 @@ function App() {
           onClick={primaryAction}
           disabled={primaryDisabled}
           aria-busy={filling}
-          className={`${primaryButton} flex-1`}
+          className={`${primaryButton} min-w-0 flex-1 basis-40`}
         >
           {filling && (
             <LoaderCircle
@@ -595,7 +597,7 @@ function App() {
       </div>
 
       {showFeedback && (
-        <div className="flex min-h-0 flex-col px-5 pb-5">
+        <div className="flex min-h-16 flex-col px-5 pb-5">
           <div
             role="region"
             aria-label="Autofill details"
