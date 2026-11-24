@@ -39,11 +39,15 @@ export async function serveDemo(context: BrowserContext) {
     return route.fulfill(file ?? { status: 404, body: 'Not found' });
   });
   for (const name of ['theme-init.js', 'theme-toggle.css']) {
-    await context.route(`https://myowinthein.github.io/job-buddy/assets/${name}`, async (route) =>
-      route.fulfill({
-        contentType: name.endsWith('.css') ? 'text/css' : 'application/javascript',
-        body: await readFile(resolve('docs/assets', name), 'utf8'),
-      }),
+    await context.route(
+      (url) =>
+        url.origin === 'https://myowinthein.github.io' &&
+        url.pathname === `/job-buddy/assets/${name}`,
+      async (route) =>
+        route.fulfill({
+          contentType: name.endsWith('.css') ? 'text/css' : 'application/javascript',
+          body: await readFile(resolve('docs/assets', name), 'utf8'),
+        }),
     );
   }
   // Keep capture and integration tests reproducible without a real API key.

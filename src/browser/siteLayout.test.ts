@@ -29,6 +29,8 @@ beforeEach(() => {
       `<!doctype html><body>\n    <!-- site:header:start -->\n    <!-- site:header:end -->\n${body}\n    <!-- site:footer:start -->\n    <!-- site:footer:end -->\n</body>\n`,
     );
   }
+  mkdirSync(join(fixture, 'docs/demo'));
+  writeFileSync(join(fixture, 'docs/demo/index.html'), `<!doctype html><body>${body}</body>`);
 });
 afterEach(() => rmSync(fixture, { recursive: true, force: true }));
 function build(...args: string[]) {
@@ -115,4 +117,58 @@ it('rejects a footer region surrounding the header before it can overwrite page 
   expect(build.status).toBe(1);
   expect(build.stderr).toContain('Overlapping or misordered website regions');
   expect(pages.map(read)).toEqual(snapshot);
+});
+
+it('versions local styles and scripts by content and detects stale URLs without writing', () => {
+  mkdirSync(join(fixture, 'docs/assets'));
+  writeFileSync(join(fixture, 'docs/assets/site.css'), 'abc');
+  writeFileSync(join(fixture, 'docs/assets/site.js'), 'abc');
+  for (const page of ['index.html', 'developers/index.html', 'demo/index.html', '404.html']) {
+    const prefix = page.includes('/') ? '../' : './';
+    writeFileSync(
+      join(fixture, 'docs', page),
+      read(page) +
+        `<link rel="stylesheet" href="${prefix}assets/site.css?mode=preview&amp;v=old#theme">` +
+        `<script src="${prefix}assets/site.js"></script>` +
+        '<script src="https://example.test/remote.js"></script>',
+    );
+  }
+  build();
+  for (const page of ['index.html', 'developers/index.html', 'demo/index.html', '404.html']) {
+    expect(read(page)).toContain('site.css?mode=preview&amp;v=ba7816bf8f01#theme');
+    expect(read(page)).toContain('site.js?v=ba7816bf8f01');
+    expect(read(page)).toContain('src="https://example.test/remote.js"');
+    expect(read(page)).toContain(body);
+  }
+  const before = [...pages, 'demo/index.html'].map(read);
+  writeFileSync(join(fixture, 'docs/assets/site.css'), 'abcd');
+  const check = spawnSync(process.execPath, [join(fixture, 'scripts/build-site.mjs'), '--check'], {
+    encoding: 'utf8',
+  });
+  expect(check.status).toBe(1);
+  expect(check.stderr).toContain('demo/index.html');
+  expect([...pages, 'demo/index.html'].map(read)).toEqual(before);
+  build();
+  for (const page of ['index.html', 'developers/index.html', 'demo/index.html', '404.html']) {
+    expect(read(page)).toContain('site.css?mode=preview&amp;v=88d4266fd4e6#theme');
+    expect(read(page)).toContain('site.js?v=ba7816bf8f01');
+  }
+  expect(build('--check')).toContain('is current');
+  const after = [...pages, 'demo/index.html'].map(read);
+  build();
+  expect([...pages, 'demo/index.html'].map(read)).toEqual(after);
+});
+
+it('rejects a missing local asset before changing any page', () => {
+  writeFileSync(
+    join(fixture, 'docs/demo/index.html'),
+    read('demo/index.html') + '<script src="missing.js"></script>',
+  );
+  const snapshot = [...pages, 'demo/index.html'].map(read);
+  const result = spawnSync(process.execPath, [join(fixture, 'scripts/build-site.mjs')], {
+    encoding: 'utf8',
+  });
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain('missing.js');
+  expect([...pages, 'demo/index.html'].map(read)).toEqual(snapshot);
 });

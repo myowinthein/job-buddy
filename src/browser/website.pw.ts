@@ -761,7 +761,7 @@ test('hero keeps its loading image and geometry until a video frame is ready', a
   const videoGate = new Promise<void>((resolve) => {
     releaseVideo = resolve;
   });
-  await context.route('**/assets/demo-player.js', async (route) => {
+  await context.route(/\/assets\/demo-player\.js(?:\?.*)?$/, async (route) => {
     await playerGate;
     await route.fallback();
   });
