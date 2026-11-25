@@ -125,8 +125,7 @@ a:is(:hover, :focus-visible) {
   white-space: nowrap;
   text-underline-offset: 3px;
 }
-.application-layout,
-.page-footer {
+.application-layout {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr);
   gap: 64px;
@@ -437,18 +436,8 @@ button:disabled {
   font-size: 13px;
   margin: 0;
 }
-.page-footer {
-  padding-bottom: 30px;
-}
-.page-footer p {
-  grid-column: 2;
-  margin: 0;
-  color: var(--muted);
-  font-size: 11px;
-}
 @media (max-width: 1000px) {
-  .application-layout,
-  .page-footer {
+  .application-layout {
     grid-template-columns: 250px minmax(0, 1fr);
     gap: 32px;
     padding-inline: 26px;
@@ -473,17 +462,13 @@ button:disabled {
     grid-column: 2;
     justify-self: start;
   }
-  .application-layout,
-  .page-footer {
+  .application-layout {
     grid-template-columns: 1fr;
     padding-inline: 22px;
   }
   .application-layout {
     padding-top: 30px;
     gap: 28px;
-  }
-  .page-footer p {
-    grid-column: 1;
   }
   .job-description {
     max-width: 600px;
@@ -521,8 +506,7 @@ button:disabled {
   .wordmark > span {
     font-size: 10px;
   }
-  .application-layout,
-  .page-footer {
+  .application-layout {
     padding-inline: 16px;
   }
   .application-panel {

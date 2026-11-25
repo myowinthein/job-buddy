@@ -41,8 +41,7 @@ You can try autofill on the [demo form](https://myowinthein.github.io/job-buddy/
 
 Your profile is stored in your browser, with optional Google Drive backup.
 Resume import, autofill and mapping reviews send relevant data to Gemini.
-Filling a form shares the filled details with that website. See the
-[privacy policy](https://myowinthein.github.io/job-buddy/legal/privacy/).
+Filling a form shares the filled details with that website.
 
 <a name="help-me-improve-it"></a>
 
