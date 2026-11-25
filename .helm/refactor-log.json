@@ -3723,8 +3723,21 @@
         "evidence": ["quick-fill/background.ts:122-123 repeats jb:autofill-run: for startsWith and slicing; runCoordinator.ts:9 exports RUN_PREFIX for its persisted keys.", "The background entrypoint already loads both modules; the coordinator module defines its classes/factories without registering them at import time. The substitution adds no helper or new lifecycle."],
         "invariant": "Reuse RUN_PREFIX without changing key bytes, suffix parsing, integer checks, session-area filtering, authenticated metadata requests, notification contents or main-frame routing."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "7c0e7de9517f3714a0e9d2094895644672b9a1cd",
+        "date": "2026-11-25",
+        "method": "runtime",
+        "evidence": ["Quick Fill imports RUN_PREFIX from the existing coordinator module and uses it for both session-key filtering and suffix slicing. The exact prefix, Number conversion, integer check, session-only filter and main-frame notification remain unchanged.", "Only background.ts changed; no new abstraction, matching algorithm, test scenario or lifecycle registration was added."],
+        "checks": [
+          {"command": "pnpm compile", "scope": "Project, Node 22", "outcome": "Passed without diagnostics."},
+          {"command": "pnpm exec vitest run src/quick-fill/background.test.ts src/quick-fill/quickFill.test.ts src/autofill/runCoordinator.test.ts", "scope": "Three Quick Fill/coordinator suites, Vitest 4.1.9", "outcome": "53 tests passed, no skips."},
+          {"command": "pnpm exec eslint src/quick-fill/background.ts", "scope": "Changed Quick Fill background module", "outcome": "Passed without diagnostics."}
+        ]
+      }
     },
     {
       "id": "r-113ad030-3e08-412c-abe5-3ae5b7d6916a",
