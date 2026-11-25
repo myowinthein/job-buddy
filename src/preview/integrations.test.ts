@@ -54,11 +54,11 @@ it('never makes a network request or starts OAuth through preview integration fu
 
 it('excludes inherited integration variables and resolves both integration modules to preview stubs', async () => {
   vi.stubEnv('VITE_GEMINI_API_KEY', 'synthetic-inherited-secret');
-  vi.stubEnv('VITE_GOOGLE_CLIENT_ID', 'synthetic-inherited-client');
+  vi.stubEnv('VITE_GOOGLE_DRIVE_CLIENT_ID', 'synthetic-inherited-client');
   const config = await resolveConfig({ ...previewConfig, configFile: false }, 'serve');
   expect(config.envDir).toBe(false);
   expect(config.env).not.toHaveProperty('VITE_GEMINI_API_KEY');
-  expect(config.env).not.toHaveProperty('VITE_GOOGLE_CLIENT_ID');
+  expect(config.env).not.toHaveProperty('VITE_GOOGLE_DRIVE_CLIENT_ID');
   expect(config.resolve.alias).toEqual(
     expect.arrayContaining([
       expect.objectContaining({

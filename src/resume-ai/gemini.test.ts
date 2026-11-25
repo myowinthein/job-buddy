@@ -649,4 +649,70 @@ describe('bounded and cancellable autofill requests', () => {
     ).toHaveLength(1);
     expect(onUnavailable).toHaveBeenCalledOnce();
   });
+
+  function requestedFieldBatches(): AIFieldPayload[][] {
+    return fetchMock.mock.calls.map(([, init]) => {
+      expect(new TextEncoder().encode(init.body).length).toBeLessThanOrEqual(96_000);
+      const prompt = JSON.parse(init.body).contents[0].parts[0].text as string;
+      return JSON.parse(prompt.slice(prompt.lastIndexOf('\n\n{') + 2)).fields;
+    });
+  }
+
+  it('splits large UTF-8 autofill payloads before the per-request field limit', async () => {
+    fetchMock.mockResolvedValue(geminiTextResponse('[]'));
+    const many: AIFieldPayload[] = Array.from({ length: 4 }, (_, index) => ({
+      fieldId: `large-${index}`,
+      type: 'select',
+      label: 'Preferred work location',
+      options: Array.from({ length: 40 }, (_, option) => ({
+        id: `option-${option}`,
+        value: String(option),
+        label: `${option}: ${'😀'.repeat(200)}`,
+      })),
+    }));
+    const onUnavailable = vi.fn();
+    await resolveFieldsWithAI('synthetic', 'gemini-3.8-flash', many, {}, { onUnavailable });
+
+    const batches = requestedFieldBatches();
+    expect(batches.length).toBeGreaterThan(1);
+    for (const batch of batches) expect(batch.length).toBeLessThan(20);
+    expect(batches.flat()).toEqual(many);
+    expect(onUnavailable).not.toHaveBeenCalled();
+  });
+
+  it('skips an oversized field without dropping usable neighbors', async () => {
+    fetchMock.mockResolvedValue(geminiTextResponse('[]'));
+    const oversized: AIFieldPayload = {
+      fieldId: 'oversized',
+      type: 'select',
+      label: 'Preferred work location',
+      options: [{ id: 'large', value: 'large', label: '😀'.repeat(25_000) }],
+    };
+    expect(new TextEncoder().encode(JSON.stringify(oversized)).length).toBeGreaterThan(96_000);
+    const before = { ...fields[0], fieldId: 'before' };
+    const after = { ...fields[0], fieldId: 'after' };
+    const onUnavailable = vi.fn();
+    await resolveFieldsWithAI(
+      'synthetic', 'gemini-3.8-flash', [before, oversized, after], {}, { onUnavailable },
+    );
+
+    expect(requestedFieldBatches().flat()).toEqual([before, after]);
+    expect(onUnavailable).toHaveBeenCalledOnce();
+  });
+
+  it.each([200, 201])('bounds a %i-field autofill run to 200 fields', async (length) => {
+    fetchMock.mockResolvedValue(geminiTextResponse('[]'));
+    const many = Array.from({ length }, (_, index) => ({
+      ...fields[0],
+      fieldId: `field-${index}`,
+    }));
+    const onUnavailable = vi.fn();
+    await resolveFieldsWithAI('synthetic', 'gemini-3.8-flash', many, {}, { onUnavailable });
+
+    const batches = requestedFieldBatches();
+    expect(batches).toHaveLength(10);
+    for (const batch of batches) expect(batch.length).toBeLessThanOrEqual(20);
+    expect(batches.flat()).toEqual(many.slice(0, 200));
+    expect(onUnavailable).toHaveBeenCalledTimes(length === 201 ? 1 : 0);
+  });
 });

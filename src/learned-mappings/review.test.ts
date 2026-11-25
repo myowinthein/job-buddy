@@ -166,6 +166,21 @@ it('bounds requests without silently dropping mappings', () => {
   const batches = mappingReviewBatches(many, catalog);
   expect(batches.map((batch) => batch.length)).toEqual([20, 20, 5]);
   expect(batches.flat()).toEqual(many);
+  const longQuestions = Array.from({ length: 4 }, (_, index) => ({
+    ...salary,
+    id: `long-${index}`,
+    question: `${index}: ${'😀'.repeat(8_000)}`,
+  }));
+  const bytes = (entries: typeof longQuestions) =>
+    new TextEncoder().encode(mappingReviewBody(entries, catalog)).length;
+  for (const item of longQuestions) expect(bytes([item])).toBeLessThanOrEqual(96_000);
+  expect(bytes(longQuestions)).toBeGreaterThan(96_000);
+  const byteBatches = mappingReviewBatches(longQuestions, catalog);
+  expect(byteBatches.length).toBeGreaterThan(1);
+  for (const batch of byteBatches)
+    expect(new TextEncoder().encode(mappingReviewBody(batch, catalog)).length)
+      .toBeLessThanOrEqual(96_000);
+  expect(byteBatches.flat()).toEqual(longQuestions);
   expect(() => mappingReviewBatches([salary], [{ path: 'x', label: 'a'.repeat(100_000) }])).toThrow(
     feedback.mappingReviewTooLarge,
   );

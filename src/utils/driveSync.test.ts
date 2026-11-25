@@ -365,14 +365,39 @@ describe('disconnectDrive', () => {
     expect(store['driveBackupState']).toBeUndefined();
   });
 
-  it('calls Drive delete endpoint when deleteFile=true and fileId exists', async () => {
+  it('deletes every unique paginated and cached backup before clearing access', async () => {
     store['driveToken'] = 'tok-abc';
-    store['driveBackupState'] = { fileId: 'file-xyz', lastSynced: null, pendingSync: false, error: null };
-    fetchMock.mockResolvedValue({ ok: true, status: 200, json: vi.fn().mockResolvedValue({files: []}), text: vi.fn().mockResolvedValue('') });
+    store['driveBackupState'] = { fileId: 'file-cached', lastSynced: null, pendingSync: false, error: null };
+    const deleted: string[] = [];
+    const pages: Array<string | null> = [];
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      const address = new URL(url);
+      if (init?.method === 'DELETE') {
+        expect(store['driveToken']).toBe('tok-abc');
+        expect(store['driveBackupState']).toHaveProperty('fileId', 'file-cached');
+        deleted.push(address.pathname.split('/').at(-1)!);
+        return new Response(null, { status: 204 });
+      }
+      if (init?.method === 'POST') {
+        expect(address.pathname).toBe('/revoke');
+        expect(deleted).toEqual(['file-first', 'file-second', 'file-cached']);
+        expect(store['driveToken']).toBeUndefined();
+        expect(store['driveBackupState']).toBeUndefined();
+        return new Response(null, { status: 200 });
+      }
+      expect(address.pathname).toBe('/drive/v3/files');
+      const page = address.searchParams.get('pageToken');
+      pages.push(page);
+      return new Response(JSON.stringify(page === null
+        ? { files: [{ id: 'file-first' }], nextPageToken: 'page-2' }
+        : { files: [{ id: 'file-first' }, { id: 'file-second' }] }), { status: 200 });
+    });
     await disconnectDrive(true);
+    expect(pages).toEqual([null, 'page-2']);
+    expect(deleted).toEqual(['file-first', 'file-second', 'file-cached']);
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('file-xyz'),
-      expect.objectContaining({ method: 'DELETE' }),
+      expect.stringContaining('/revoke'),
+      expect.objectContaining({ method: 'POST' }),
     );
   });
 

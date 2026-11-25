@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   isLinkedInUrl,
   isValidProfileUrl,
@@ -10,7 +10,6 @@ import {
   noticeDurationError,
   profileDateRangeErrors,
   yearRangeError,
-  FUTURE_END_YEARS,
   isValidPersonalOption,
   isValidProfileOption,
   isValidProfileCurrency,
@@ -158,7 +157,19 @@ describe('yearRangeError', () => {
     },
   );
 
-  it('lets a current role end ten years ahead', () => {
-    expect(FUTURE_END_YEARS).toBe(10);
+  it('allows ongoing education to end ten years ahead but rejects eleven and completed future dates', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 10, 25));
+      const course = { startDate: '2025', isCurrent: true };
+      expect(profileDateRangeErrors({ ...course, endDate: '2036' }, true)).toEqual({});
+      expect(profileDateRangeErrors({ ...course, endDate: '2037' }, true)).toEqual({
+        endDate: 'Year must be between 1926 and 2036',
+      });
+      expect(profileDateRangeErrors({ ...course, endDate: '2027', isCurrent: false }, true))
+        .toEqual({ endDate: 'Year must be between 1926 and 2026' });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
