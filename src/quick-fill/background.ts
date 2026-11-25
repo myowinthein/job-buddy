@@ -1,4 +1,4 @@
-import type { AutofillCoordinator } from '@/src/autofill/runCoordinator';
+import { RUN_PREFIX, type AutofillCoordinator } from '@/src/autofill/runCoordinator';
 import { openFillLog } from '@/src/fill-log/client';
 import { getQuickFillPreferences, updateQuickFillPreferences } from './preferences';
 import { sessionSet } from '@/src/utils/sessionStorage';
@@ -119,8 +119,8 @@ export function registerQuickFill(autofill: AutofillCoordinator): void {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'session') return;
     for (const key of Object.keys(changes)) {
-      if (!key.startsWith('jb:autofill-run:')) continue;
-      const tabId = Number(key.slice('jb:autofill-run:'.length));
+      if (!key.startsWith(RUN_PREFIX)) continue;
+      const tabId = Number(key.slice(RUN_PREFIX.length));
       if (Number.isInteger(tabId))
         void chrome.tabs
           .sendMessage(tabId, { action: 'JB_QUICK_RUN_CHANGED' }, { frameId: 0 })
