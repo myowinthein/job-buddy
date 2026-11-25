@@ -8,7 +8,7 @@ Import your resume, review your details, and fill forms with one click.
 [![Add to Chrome](docs/assets/badges/add-to-chrome.svg)](https://chromewebstore.google.com/detail/job-buddy/oaadklbdofbaanfcijknaehfkbekdmbk)
 [![Documentation](docs/assets/badges/website-and-docs.svg)](https://myowinthein.github.io/job-buddy/)
 
-<img src="docs/assets/images/autofill-demo.png?v=209f43c0914c" alt="Job Buddy autofilling the original Morrow Studio demo application with sample profile details" width="1000">
+<img src="docs/assets/images/autofill-demo.png?v=4e0e76e4d8ed" alt="Job Buddy autofilling the original Morrow Studio demo application with sample profile details" width="1000">
 
 ## Why I built this
 
