@@ -3374,8 +3374,22 @@
         ],
         "invariant": "Preserve the exact sentinel string, sample/native routing, saved-key restoration, state/tooltips, isolation, scope checks, errors, timing, storage events and Drive restrictions; retain independent literal test expectations and the intentionally distinct model defaults."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "a750c48a26003d26248a4f7dcf69c850764ff48c",
+        "date": "2026-11-25",
+        "method": "runtime",
+        "evidence": ["DEV_SAMPLE_API_KEY in context.ts owns the unchanged simulated-key value. All nine production producer/discriminator occurrences in session, simulation, surface and sessionChrome now reuse it; independent literal test expectations and model defaults remain unchanged.", "The isolated Chromium case verified temporary profiles/autofill/learning, integration toggles, sample AI routing and preservation of Original storage/Drive; no external provider requests or test changes were introduced."],
+        "checks": [
+          {"command": "pnpm compile", "scope": "Project, Node 22; checked again after the browser's isolated WXT build", "outcome": "Passed without diagnostics."},
+          {"command": "pnpm exec vitest run src/devtools/session.test.ts src/devtools/simulation.test.ts src/devtools/DevToolbar.test.tsx src/devtools/bootstrap.test.ts", "scope": "Four development-session/provider/UI suites, Vitest 4.1.9", "outcome": "47 tests passed, no skips."},
+          {"command": "pnpm exec playwright test src/browser/development-session.pw.ts", "scope": "Isolated development extension and loopback server in local Chromium, one worker", "outcome": "1 test passed in 10.7 seconds overall, with no skips or retries."},
+          {"command": "pnpm exec eslint src/devtools/context.ts src/devtools/session.ts src/devtools/simulation.ts src/devtools/surface.ts src/devtools/sessionChrome.ts", "scope": "The five changed development modules", "outcome": "Passed without diagnostics."}
+        ]
+      }
     },
     {
       "id": "r-050640f0-c541-4dde-93c7-a062a61a12b9",
