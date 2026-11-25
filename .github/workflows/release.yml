@@ -76,4 +76,5 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: ${{ steps.zip.outputs.path }}
-          generate_release_notes: true
+          body_path: .github/release-notes/${{ github.ref_name }}.md
+          make_latest: true
