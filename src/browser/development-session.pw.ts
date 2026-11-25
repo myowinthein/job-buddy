@@ -96,8 +96,26 @@ test('development sessions share autofill and learning without changing saved da
     const options = await context.newPage();
     await options.addInitScript(() => {
       window.__testStorage = chrome.storage;
+      localStorage.setItem('jb:appearance', 'dark');
     });
-    await options.goto(url('options.html'));
+    // WXT must serve the startup CSS from the extension, before app modules load.
+    // Rewriting this public asset to a dev-server filesystem URL causes a white canvas.
+    let releaseEntry!: () => void;
+    const entryGate = new Promise<void>((done) => { releaseEntry = done; });
+    const entryUrl = `http://127.0.0.1:${port}/entrypoints/options/main.tsx*`;
+    await context.route(entryUrl, async (route) => {
+      await entryGate;
+      await route.continue();
+    });
+    try {
+      await options.goto(url('options.html'), { waitUntil: 'commit' });
+      await expect(options.locator('#root')).toBeEmpty();
+      await expect(options.locator('html')).toHaveCSS('background-color', 'rgb(15, 23, 42)');
+      await expect(options.locator('html')).toHaveCSS('color-scheme', 'dark');
+    } finally {
+      releaseEntry();
+      await context.unroute(entryUrl);
+    }
     await expect(options.locator('#field-firstName')).toHaveValue('Original');
     const native = (page: Page, area: 'local' | 'session') =>
       page.evaluate(async (area) => window.__testStorage[area].get(null), area);
