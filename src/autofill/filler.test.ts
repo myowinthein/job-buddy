@@ -66,10 +66,12 @@ describe('fillField — select: exact value match (pass 1)', () => {
 describe('fillField — select: exact text match (pass 2)', () => {
   it('selects by option text when value does not match', async () => {
     const sel = makeSelect([
+      { text: 'Please select', value: '' },
       { text: 'Thailand', value: 'TH' },
       { text: 'Germany',  value: 'DE' },
     ]);
-    await fillField(sel, 'Thailand');
+    expect(selectedValue(sel)).toBe('');
+    expect(await fillField(sel, 'Thailand')).toBe(true);
     expect(selectedValue(sel)).toBe('TH');
   });
 });
@@ -77,10 +79,12 @@ describe('fillField — select: exact text match (pass 2)', () => {
 describe('fillField — select: normalized value match (pass 3)', () => {
   it('matches when fill value case-differs from option value', async () => {
     const sel = makeSelect([
+      { text: 'Please select', value: '' },
       { text: 'Full-time', value: 'FULL_TIME' },
       { text: 'Part-time', value: 'PART_TIME' },
     ]);
-    await fillField(sel, 'full_time');
+    expect(selectedValue(sel)).toBe('');
+    expect(await fillField(sel, 'full_time')).toBe(true);
     expect(selectedValue(sel)).toBe('FULL_TIME');
   });
 });
@@ -88,22 +92,25 @@ describe('fillField — select: normalized value match (pass 3)', () => {
 describe('fillField — select: normalized text match (pass 4)', () => {
   it('matches when fill value matches normalized option text', async () => {
     const sel = makeSelect([
-      { text: 'Full-Time', value: 'full-time' },
-      { text: 'Part-Time', value: 'part-time' },
+      { text: 'Please select', value: '' },
+      { text: 'Full-Time', value: 'employment-1' },
+      { text: 'Part-Time', value: 'employment-2' },
     ]);
-    // 'fulltime' normalizes to same as 'Full-Time' (non-alnum stripped)
-    await fillField(sel, 'Full-Time');
-    expect(selectedValue(sel)).toBe('full-time');
+    expect(selectedValue(sel)).toBe('');
+    expect(await fillField(sel, 'full time')).toBe(true);
+    expect(selectedValue(sel)).toBe('employment-1');
   });
 });
 
 describe('fillField — select: fuzzy match (pass 5)', () => {
   it('selects a close-enough option when score meets threshold', async () => {
     const sel = makeSelect([
+      { text: 'Please select', value: '' },
       { text: 'United Kingdom', value: 'GB' },
       { text: 'United States',  value: 'US' },
     ]);
-    await fillField(sel, 'United Kingdon'); // typo — close to "United Kingdom"
+    expect(selectedValue(sel)).toBe('');
+    expect(await fillField(sel, 'United Kingdon')).toBe(true);
     expect(selectedValue(sel)).toBe('GB');
   });
 

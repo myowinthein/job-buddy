@@ -275,10 +275,10 @@ describe('extractSignals — shadow DOM host attribute fallback', () => {
 
   it('walks two shadow-root levels deep for the label fallback', () => {
     const outerHost = document.createElement('oc-input');
+    outerHost.setAttribute('label', 'Deeply nested label');
     document.body.appendChild(outerHost);
     const outerShadow = outerHost.attachShadow({ mode: 'open' });
     const innerHost = document.createElement('spl-input');
-    innerHost.setAttribute('label', 'Deeply nested label');
     outerShadow.appendChild(innerHost);
     const innerShadow = innerHost.attachShadow({ mode: 'open' });
     const el = document.createElement('input');

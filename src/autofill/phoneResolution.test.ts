@@ -91,12 +91,10 @@ describe('adjustPhoneMatches — explicit signals are never overridden', () => {
   });
 
   it('leaves a learned mapping alone regardless of sibling presence', () => {
-    const matches = [
-      phoneMatch('personal.phone.number', 'learned'),
-      phoneMatch('personal.phone.callingCode', 'dictionary_exact'),
-    ];
+    const matches = [phoneMatch('personal.phone.number', 'learned')];
     adjustPhoneMatches(matches, PROFILE);
     expect(matches[0].fieldPath).toBe('personal.phone.number');
+    expect(matches[0].value).toBe('812345678');
   });
 });
 
