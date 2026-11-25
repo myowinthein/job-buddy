@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { cleanup, renderHook } from '@testing-library/react';
 import { useEscapeToClose } from './useEscapeToClose';
+
+afterEach(cleanup);
 
 function pressEscape() {
   window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));

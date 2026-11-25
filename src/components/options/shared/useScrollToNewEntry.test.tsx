@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { cleanup, renderHook, act } from '@testing-library/react';
 import type { RefObject } from 'react';
 import { useScrollToNewEntry } from './useScrollToNewEntry';
 
@@ -13,6 +13,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
   container.remove();
   vi.unstubAllGlobals();
 });

@@ -262,27 +262,33 @@ it('keeps save feedback quiet during editing and clears the saved message after 
   act(() => name.focus());
   fireEvent.blur(name);
   expect(screen.queryByText('Unsaved changes')).toBeNull();
+  expect(screen.queryByText('Profile saved.')).toBeNull();
   vi.useFakeTimers();
   fireEvent.change(name, { target: { value: 'Saved Jane' } });
   fireEvent.click(screen.getByText('Save'));
   await act(async () => {
     await vi.advanceTimersByTimeAsync(0);
   });
-  expect(screen.queryByText('Saved')).toBeNull();
+  expect((await getProfile())?.personal.firstName).toBe('Saved Jane');
+  expect(screen.getByText('Profile saved.')).toBeTruthy();
+  expect(screen.queryByText('Unsaved changes')).toBeNull();
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(1999);
   });
-  expect(screen.queryByText('Saved')).toBeNull();
+  expect(screen.getByText('Profile saved.')).toBeTruthy();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(201);
+  });
+  expect(screen.queryByText('Profile saved.')).toBeNull();
 });
 
-it('hides saved feedback as soon as another edit begins and waits for blur again', async () => {
+it('keeps unsaved feedback quiet during typing after a save and reveals it on blur', async () => {
   const name = await openPersonal();
   fireEvent.change(name, { target: { value: 'First edit' } });
   fireEvent.click(screen.getByText('Save'));
   await screen.findByText('Profile saved.');
   act(() => name.focus());
   fireEvent.change(name, { target: { value: 'Second edit' } });
-  expect(screen.queryByText('Saved')).toBeNull();
   expect(screen.queryByText('Unsaved changes')).toBeNull();
   fireEvent.blur(name);
   expect(screen.getByText('Unsaved changes')).toBeTruthy();

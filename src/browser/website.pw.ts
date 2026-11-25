@@ -1077,10 +1077,19 @@ test('reduced motion starts with a still and resumes autoplay when disabled', as
 
 test('an unavailable recording falls back to the completed still', async ({ context, page }) => {
   await serveSite(context);
-  await context.route('**/assets/videos/**', (route) => route.abort());
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  let recordingAborted = false;
+  await context.route('**/assets/videos/**', (route) => {
+    recordingAborted = true;
+    return route.abort();
+  });
   await page.goto(origin + prefix);
   const figure = page.locator('[data-demo-player]');
   await figure.scrollIntoViewIfNeeded();
+  await expect.poll(() => recordingAborted).toBe(true);
+  await expect.poll(() => figure.locator('video').evaluate(
+    (video) => (video as HTMLVideoElement).error !== null,
+  )).toBe(true);
   await expect(figure.locator('[data-demo-still]')).toBeVisible();
   await expect(figure.locator('video')).toBeHidden();
 });

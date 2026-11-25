@@ -161,6 +161,43 @@ it('shows analysis separately and then opens results for explicit application', 
   );
 });
 
+it('retains mapping choices after a failed apply and retries without analyzing again', async () => {
+  vi.mocked(applyMappingReview).mockRejectedValueOnce(new Error('synthetic storage failure'));
+  const view = open();
+  await start();
+  await screen.findByRole('button', { name: 'Apply Changes (2)' });
+  fireEvent.change(screen.getByLabelText('Action for Expected salary 0'), {
+    target: { value: 'keep' },
+  });
+  const items = vi.mocked(reviewMappingsWithAI).mock.calls[0][2];
+  const decisions = Object.fromEntries(items.map((item) => [
+    item.id,
+    item.domain === 'first.example'
+      ? { action: 'keep' }
+      : { action: 'change', path: 'salary.expected.0.amount' },
+  ]));
+  fireEvent.click(screen.getByRole('button', { name: 'Apply Changes (1)' }));
+
+  expect(await screen.findByRole('alert')).toHaveProperty('textContent', feedback.sectionSaveFailed);
+  expect(view.onSaved).not.toHaveBeenCalled();
+  expect(view.onClose).not.toHaveBeenCalled();
+  expect(screen.getByLabelText('Action for Expected salary 0')).toHaveProperty('value', 'keep');
+  expect(screen.getByText('Reviewed 2 of 2 mappings.')).toBeTruthy();
+  const retry = screen.getByRole('button', { name: 'Apply Changes (1)' });
+  expect(retry).toHaveProperty('disabled', false);
+  expect(applyMappingReview).toHaveBeenCalledWith(RULE_PROFILE, expect.any(Object), items, decisions);
+
+  fireEvent.click(retry);
+  await waitFor(() => expect(view.onSaved).toHaveBeenCalledTimes(1));
+  expect(applyMappingReview).toHaveBeenCalledTimes(2);
+  expect(vi.mocked(applyMappingReview).mock.calls[1]).toEqual(
+    vi.mocked(applyMappingReview).mock.calls[0],
+  );
+  expect(reviewMappingsWithAI).toHaveBeenCalledTimes(1);
+  expect(screen.queryByRole('alert')).toBeNull();
+  expect(view.onClose).not.toHaveBeenCalled();
+});
+
 it('reviews only selected sites', async () => {
   const pending = pendingReview();
   vi.mocked(reviewMappingsWithAI).mockReturnValueOnce(pending.promise);
