@@ -1,8 +1,201 @@
 {
   "schema_version": 3,
-  "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
-  "full_scan_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+  "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471",
+  "full_scan_commit": "6e01a3e696303d06198e8116da358ee983218471",
   "cases": [
+    {
+      "id": "g-fe20806b-aaa8-4190-addd-3d0811051a6a",
+      "expected": "Positive select-matching cases require a successful change from a different initial selection, including actual normalization",
+      "basis": ["src/autofill/filler.test.ts: four positive text/normalized/fuzzy cases start on their asserted answer and ignore the fill result", "src/autofill/filler.ts: unique exact/normalized/fuzzy option matching", ".claude/rules/safety.md#test-quality"],
+      "paths": ["src/autofill/filler.test.ts", "src/autofill/filler.ts"],
+      "priority": "medium",
+      "reason": "A rejected or no-op fill satisfies the existing fixtures; normalized text is supplied exactly.",
+      "action": "improve",
+      "layer": "unit/jsdom",
+      "state": "open",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+    },
+    {
+      "id": "g-fd348239-2bbf-4d2a-ab42-e7ba4bacd1e7",
+      "expected": "Phone adjustment preserves a learned national-number path and value even without a calling-code sibling",
+      "basis": ["src/autofill/phoneResolution.ts: learned matches bypass automatic phone adjustment", "src/autofill/phoneResolution.test.ts: learned fixture has the sibling that also makes ordinary adjustment select the national number"],
+      "paths": ["src/autofill/phoneResolution.test.ts", "src/autofill/phoneResolution.ts"],
+      "priority": "medium",
+      "reason": "Removing the learned-layer guard would not change the current fixture's answer.",
+      "action": "improve",
+      "layer": "unit",
+      "state": "open",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+    },
+    {
+      "id": "g-093f8247-9997-462d-b940-a4d2e5a095ea",
+      "expected": "Nested shadow-label fallback reaches an outer host beyond an unnamed immediate host",
+      "basis": ["src/autofill/signals.test.ts: two-level fallback fixture labels the immediate host", "src/autofill/signals.ts: shadow host fallback traversal"],
+      "paths": ["src/autofill/signals.test.ts", "src/autofill/signals.ts"],
+      "priority": "medium",
+      "reason": "Stopping traversal after the immediate host still passes the existing two-level case.",
+      "action": "improve",
+      "layer": "unit/jsdom",
+      "state": "open",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+    },
+    {
+      "id": "g-85a85b64-187d-4229-bcab-6d8a55011e7d",
+      "expected": "Save-feedback tests observe persistence and the actual timed success toast while preserving typing/blur dirty-feedback checks",
+      "basis": ["src/components/options/ProfileApp.test.tsx: save timing checks nonexistent Saved text; following case has the same ineffective assertion", "src/components/options/shared/SaveButton.tsx: no inline Saved state", "src/components/ui/Toast.tsx: success lifetime and exit timer", "entrypoints/options/App.tsx: editing/blur dirty-feedback visibility"],
+      "paths": ["src/components/options/ProfileApp.test.tsx", "src/components/options/shared/SaveButton.tsx", "src/components/ui/Toast.tsx", "entrypoints/options/App.tsx"],
+      "priority": "medium",
+      "reason": "The timing test passes without successful persistence or visible success feedback; the next title describes retired inline feedback.",
+      "action": "improve",
+      "layer": "component/integration",
+      "state": "open",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+    },
+    {
+      "id": "g-2b7f87d4-4b20-49cf-a651-4b676cf42e4f",
+      "expected": "Hook tests unmount rendered roots and remove their effects between cases",
+      "basis": ["src/components/ui/useEscapeToClose.test.ts: most renderHook roots are never unmounted", "src/components/options/shared/useScrollToNewEntry.test.tsx: removing the fixture container does not unmount renderHook", "vitest.config.ts: no global afterEach or shared cleanup setup"],
+      "paths": ["src/components/ui/useEscapeToClose.test.ts", "src/components/options/shared/useScrollToNewEntry.test.tsx"],
+      "priority": "low",
+      "reason": "Mounted hook roots and listeners outlive individual cases, weakening isolation.",
+      "action": "improve",
+      "layer": "component/jsdom",
+      "state": "open",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+    },
+    {
+      "id": "g-5662dbb0-b60a-4fc7-8e18-4cc8ce46bb48",
+      "expected": "A failed mapping-review apply retains choices, reports failure and permits retry without reanalysis or false success",
+      "basis": ["src/components/options/MappingReviewDialog.tsx: apply catch/finally retains results and clears busy state", "src/components/options/MappingReviewDialog.test.tsx: successful pending apply is covered but failed apply recovery is not", "src/browser/mapping-review.pw.ts: success and stale review coverage do not simulate apply rejection"],
+      "paths": ["src/components/options/MappingReviewDialog.test.tsx", "src/components/options/MappingReviewDialog.tsx"],
+      "priority": "medium",
+      "reason": "A storage failure could discard reviewed decisions, leave Apply disabled or report success without regression protection.",
+      "action": "add",
+      "layer": "component",
+      "state": "open",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+    },
+    {
+      "id": "g-f8507b37-18b6-471c-a88b-a38b0b996b34",
+      "expected": "Ongoing education accepts an end year ten years ahead, rejects eleven, and completed education does not inherit that allowance",
+      "basis": ["src/utils/profileInputValidation.test.ts: current-role future case only asserts FUTURE_END_YEARS equals ten", "src/utils/profileInputValidation.ts: profileDateRangeErrors applies the allowance to ongoing education", "src/components/options/EducationSection.tsx: shared validation consumer"],
+      "paths": ["src/utils/profileInputValidation.test.ts", "src/utils/profileInputValidation.ts"],
+      "priority": "medium",
+      "reason": "The constant assertion does not detect missing or excessive future-date permission in validation.",
+      "action": "improve",
+      "layer": "unit",
+      "state": "open",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+    },
+    {
+      "id": "g-281058ba-fd05-4422-b40f-48f96ead541f",
+      "expected": "Disconnect with deletion follows Drive listing pages, deletes every unique listed/cached backup and clears access only afterward",
+      "basis": ["src/utils/driveSync.ts: findBackupFileIds pagination and disconnectDrive deduplicated deletion", "src/utils/driveSync.test.ts: deletion fixture lists no files and only checks the cached ID", "src/utils/driveSync.integration.test.tsx: existing deletion failure/retry cases remain useful"],
+      "paths": ["src/utils/driveSync.test.ts", "src/utils/driveSync.ts"],
+      "priority": "medium",
+      "reason": "A lost page token or cached-only deletion could leave cloud backups behind undetected.",
+      "action": "improve",
+      "layer": "unit/provider boundary",
+      "state": "open",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+    },
+    {
+      "id": "g-716a0234-4c98-4451-b331-18a33f5a49be",
+      "expected": "Autofill requests honor UTF-8 body budgets and the 200-field run limit, preserving eligible neighbors and reporting omitted work",
+      "basis": ["src/resume-ai/gemini.ts: byte-driven batching, oversized-field rejection and per-run cap", "src/resume-ai/gemini.test.ts: 45 short fields exercise count splitting but not byte splitting, oversized fields or 200/201 boundary"],
+      "paths": ["src/resume-ai/gemini.test.ts", "src/resume-ai/gemini.ts"],
+      "priority": "medium",
+      "reason": "Removed byte or run bounds could create oversized requests or silent omissions despite the current batching test passing.",
+      "action": "improve",
+      "layer": "unit/provider boundary",
+      "state": "open",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+    },
+    {
+      "id": "g-6ef1a8a3-e873-40f0-a977-2e45b2ff72d0",
+      "expected": "Mapping-review batching splits individually valid multibyte items before their combined request exceeds the byte budget without dropping items",
+      "basis": ["src/learned-mappings/review.ts: serialized UTF-8 request budget", "src/learned-mappings/review.test.ts: existing count split and oversized single item do not force byte-driven splitting"],
+      "paths": ["src/learned-mappings/review.test.ts", "src/learned-mappings/review.ts"],
+      "priority": "medium",
+      "reason": "A broken combined-byte split is not distinguished by existing short-question fixtures.",
+      "action": "improve",
+      "layer": "unit",
+      "state": "open",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+    },
+    {
+      "id": "g-77d57706-0535-443f-8b31-9bc315e11a40",
+      "expected": "Concurrent Quick Fill position and Settings/site changes merge from fresh storage under the shared preference lock",
+      "basis": ["src/quick-fill/preferences.ts: updateQuickFillPreferences promises moving the widget cannot undo a Settings change", "src/quick-fill/quickFill.test.ts and browser Quick Fill cases cover normalization/persistence rather than a controlled concurrent merge", "Settings/background tests mock the preference updater"],
+      "paths": ["src/quick-fill/preferences.ts"],
+      "priority": "medium",
+      "reason": "Removing the lock or reading before acquiring it can silently overwrite another extension context's preferences.",
+      "action": "add",
+      "layer": "unit/storage boundary",
+      "state": "open",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+    },
+    {
+      "id": "g-d75747e6-ad3d-40d7-b79d-858bf78e916c",
+      "expected": "Preview integration isolation is tested against the actual Google Drive client environment variable",
+      "basis": ["src/preview/integrations.test.ts: synthetic inherited variable uses VITE_GOOGLE_CLIENT_ID", "src/utils/driveSync.ts: actual consumer uses VITE_GOOGLE_DRIVE_CLIENT_ID", "vite.preview.config.ts: inherited integration variables must remain excluded"],
+      "paths": ["src/preview/integrations.test.ts", "vite.preview.config.ts", "src/utils/driveSync.ts"],
+      "priority": "low",
+      "reason": "The Drive-specific fixture does not challenge exposure of the real integration key name.",
+      "action": "improve",
+      "layer": "configuration/integration",
+      "state": "open",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+    },
+    {
+      "id": "g-0765e311-9806-4406-9d8b-d281404434d4",
+      "expected": "The unavailable-recording website case establishes actual media failure before asserting its still-image fallback",
+      "basis": ["src/browser/website.pw.ts: unavailable recording assertions can observe the initial still before loading", "docs/assets/demo-player.js: intersection-triggered loading and error fallback"],
+      "paths": ["src/browser/website.pw.ts", "docs/assets/demo-player.js"],
+      "priority": "medium",
+      "reason": "The failure-recovery test passes if playback never starts and no failed request occurs.",
+      "action": "improve",
+      "layer": "browser/Chromium",
+      "state": "open",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+    },
+    {
+      "id": "g-7c86ae18-1c8f-4716-9055-be152afb86af",
+      "expected": "One provider-failure case preserves unavailable status, legacy return, no writes and unchanged result counters",
+      "basis": ["src/autofill/ai.test.ts: returns true and mutates nothing when resolveFieldsWithAI throws overlaps reports provider failures separately from the legacy availability flag", "Both use one low-confidence text field and a rejecting mocked provider at the same jsdom boundary; the survivor needs the noReview assertion before retirement"],
+      "paths": ["src/autofill/ai.test.ts"],
+      "priority": "low",
+      "reason": "Optional consolidation removes repeated setup only after the survivor preserves every guarantee; no unique integration layer is replaced.",
+      "action": "consolidate",
+      "layer": "unit/jsdom",
+      "state": "open",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+    },
+    {
+      "id": "g-75dbc6bb-6a24-44b1-976a-3fdfe6023f0f",
+      "expected": "Lock mechanics are centralized in factory tests while each wrapper retains exact lock-name and returned-result protection",
+      "basis": ["src/utils/writeLocks.test.ts: four expanded fallback cases repeat namedLock.test.ts queue/rejection cases at the same Node layer", "src/utils/learnedMappingsLock.ts and profileWriteLock.ts: single createNamedLock declarations", "src/utils/namedLock.test.ts: queue, rejection, independent locks and development namespace protections", "The earlier resolved functional lock finding remains historical; this is a separate duplication-maintenance need"],
+      "paths": ["src/utils/writeLocks.test.ts", "src/utils/namedLock.test.ts", "src/utils/learnedMappingsLock.ts", "src/utils/profileWriteLock.ts"],
+      "priority": "low",
+      "reason": "Optional consolidation removes duplicated factory mechanics and combines wrapper name/result checks without changing their contract.",
+      "action": "consolidate",
+      "layer": "unit",
+      "state": "open",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+    },
+    {
+      "id": "g-c819ac1d-36d0-4c6a-9f30-874e3994a5e2",
+      "expected": "Unresolved: whether an option's exact value should beat another option's matching label, or this collision should be refused",
+      "basis": ["src/autofill/filler.test.ts: prefers exact value match over a text that happens to equal the fill target starts on its asserted answer", "src/autofill/writeSession.test.ts: rejects ambiguous option labels/values and numeric or negative qualifiers", "src/autofill/filler.ts: findBestMatch rejects ambiguous exact matches"],
+      "paths": ["src/autofill/filler.test.ts", "src/autofill/writeSession.test.ts", "src/autofill/filler.ts"],
+      "priority": "unknown",
+      "reason": "Existing tests express contradictory intended behavior; changing either expectation from current implementation alone would invent the contract.",
+      "action": "improve",
+      "layer": "unit/jsdom",
+      "state": "open",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471",
+      "blocker": {"kind": "clarification", "note": "Keep the existing case unchanged until the owner clarifies precedence versus refusal or explicitly chooses characterization; no deferral decision has been given."}
+    },
     {
       "id": "g-02307fb8-61e9-4474-959b-2723984499cf",
       "expected": "Latest document selection wins and read failures preserve the existing attachment",
@@ -350,7 +543,8 @@
       "basis": [
         "src/autofill/ai.ts: behavior and callers reviewed at b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
         "src/autofill/ai.test.ts: existing protecting assertions reviewed",
-        "AGENTS.md: Domain Rules and Behavior Rules"
+        "AGENTS.md: Domain Rules and Behavior Rules",
+        "afc10d3b9ad58eea694fb264adddcbe5bb3d7979: explicitly retired the unused debug-session API and its API-only tests"
       ],
       "paths": [
         "src/autofill/ai.test.ts",
@@ -360,21 +554,21 @@
       "reason": "Subset-relative IDs misassociate diagnostic records.",
       "action": "add",
       "layer": "unit/component/integration",
-      "state": "resolved",
-      "assessed_commit": "b73b08fc4ee0f90c4cee6e6880c5ee3207e7a80e",
+      "state": "obsolete",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471",
       "tests": [
         "src/autofill/ai.test.ts"
       ],
       "closure": {
-        "reason": "tested",
+        "reason": "obsolete",
         "refs": [
+          "afc10d3b9ad58eea694fb264adddcbe5bb3d7979",
+          "src/autofill/ai.ts",
           "src/autofill/ai.test.ts"
         ],
-        "method": "runtime",
-        "commit": "761123a4af6a6b90e0a79187db9127f3d0fe75a7",
-        "command": "pnpm test:run",
-        "scope": "src/autofill/ai.test.ts",
-        "outcome": "Behavior-specific regression assertions passed in the full 1472-case Vitest run; no skipped cases."
+        "method": "static",
+        "commit": "afc10d3b9ad58eea694fb264adddcbe5bb3d7979",
+        "outcome": "The ancestor commit explicitly removed the unused debug arrays, debugFieldId and their API-only identity test. Current Fill Log association is a different retained contract; no runtime result is claimed."
       }
     },
     {
