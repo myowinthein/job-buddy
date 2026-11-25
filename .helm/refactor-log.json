@@ -3418,8 +3418,22 @@
         ],
         "invariant": "Move cases unchanged to fileChooser and availability suites with exact import/setup companions; preserve all nine names, fixtures/assertions, jsdom discovery, 200x40 geometry, local dates and fake-clock cleanup."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "c73773688ee16485514cf181d564e9a06e660c75",
+        "date": "2026-11-25",
+        "method": "runtime",
+        "evidence": ["Moved four expanded upload scenarios to fileChooser.test.ts and five expanded date scenarios to availability.test.ts. Their test titles, fixtures, assertions, input values and local dates are preserved; the date group retains the original 200x40 geometry through scoped setup and uses the owning suite's DOM and fake-clock cleanup.", "The new copies passed alongside the originals before removal from menuSelect.test.ts. Final verbose discovery confirms all nine scenarios in their owning suites and the same total of 39 tests across the three files; no production code or test assertions changed."],
+        "checks": [
+          {"command": "pnpm exec vitest run src/autofill/menuSelect.test.ts src/autofill/fileChooser.test.ts src/autofill/availability.test.ts", "scope": "Original and relocated cases together before removing old copies, Node 22, Vitest 4.1.9", "outcome": "Three suites and 48 tests passed, no skips."},
+          {"command": "pnpm exec vitest run src/autofill/menuSelect.test.ts src/autofill/fileChooser.test.ts src/autofill/availability.test.ts --reporter=verbose", "scope": "Final owning-suite discovery and assertions", "outcome": "Three suites and 39 tests passed, no skips; all nine relocated scenarios discovered."},
+          {"command": "pnpm compile", "scope": "Project, Node 22", "outcome": "Passed without diagnostics."},
+          {"command": "pnpm exec eslint src/autofill/menuSelect.test.ts src/autofill/fileChooser.test.ts src/autofill/availability.test.ts", "scope": "Three changed test suites", "outcome": "Passed without diagnostics."}
+        ]
+      }
     },
     {
       "id": "r-36114d7d-5222-4195-96cc-481926bdbc27",
