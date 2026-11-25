@@ -63,7 +63,12 @@ it('propagates shared template and package-version changes to every page without
   expect(read('legal/privacy/index.html')).toContain(
     'href="../../assets/icons/external-link.svg#external-link"',
   );
-  expect(read('legal/privacy/index.html')).not.toContain('aria-current="page"');
+  expect(read('legal/privacy/index.html')).toContain(
+    'href="../../legal/privacy/" aria-current="page"',
+  );
+  expect(read('legal/disclaimer/index.html')).toContain(
+    'href="../../legal/disclaimer/" aria-current="page"',
+  );
   expect(build('--check')).toContain('is current');
   const snapshot = pages.map(read);
   build();

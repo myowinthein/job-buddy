@@ -570,7 +570,8 @@ pre code {
   text-decoration-line: none;
   white-space: nowrap;
 }
-.footer-links a:is(:hover, :focus-visible) {
+.footer-links a:is(:hover, :focus-visible),
+.footer-links a[aria-current='page'] {
   color: var(--link);
   text-decoration-line: underline;
 }

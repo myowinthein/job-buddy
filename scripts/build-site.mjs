@@ -14,8 +14,8 @@ if (!/^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(version)) throw new Error('Invalid webs
 const pages = [
   { path: 'index.html', root: './', current: 'walkthrough', versionAssets: true },
   { path: 'developers/index.html', root: '../', current: 'developers', versionAssets: true },
-  { path: 'legal/privacy/index.html', root: '../../' },
-  { path: 'legal/disclaimer/index.html', root: '../../' },
+  { path: 'legal/privacy/index.html', root: '../../', current: 'privacy' },
+  { path: 'legal/disclaimer/index.html', root: '../../', current: 'disclaimer' },
   // The error page's base element resolves these URLs from any missing path.
   { path: '404.html', root: './', versionAssets: true },
   { path: 'demo/index.html', versionAssets: true, standalone: true },
@@ -95,6 +95,8 @@ const output = await Promise.all(
       version,
       walkthroughCurrent: page.current === 'walkthrough' ? ' aria-current="page"' : '',
       developersCurrent: page.current === 'developers' ? ' aria-current="page"' : '',
+      privacyCurrent: page.current === 'privacy' ? ' aria-current="page"' : '',
+      disclaimerCurrent: page.current === 'disclaimer' ? ' aria-current="page"' : '',
       demoFrom: page.current === 'developers' ? 'developers' : 'walkthrough',
     };
     for (const [name, template] of Object.entries(templates)) {
