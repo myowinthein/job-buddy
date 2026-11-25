@@ -23,7 +23,6 @@
     "build:site": "node scripts/build-site.mjs",
     "check:site": "node scripts/build-site.mjs --check",
     "serve:landing": "pnpm build:site && npx serve docs",
-    "test:browser": "pnpm build && playwright test",
     "capture:promo": "node scripts/capture-promo.mjs"
   },
   "dependencies": {

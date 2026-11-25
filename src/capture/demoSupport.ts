@@ -8,7 +8,7 @@ import type { AIFieldPayload } from '../resume-ai/types';
 
 export const publicURL = 'https://myowinthein.github.io/job-buddy/demo/';
 export const sample = JSON.parse(
-  await readFile(resolve('src/browser/fixtures/demo-profile.json'), 'utf8'),
+  await readFile(resolve('src/capture/fixtures/demo-profile.json'), 'utf8'),
 ) as { profile: Profile };
 // Match a saved editor profile, including values computed from raw entries.
 sample.profile.derived = calculateDerivedFields(sample.profile);
@@ -50,7 +50,7 @@ export async function serveDemo(context: BrowserContext) {
         }),
     );
   }
-  // Keep capture and integration tests reproducible without a real API key.
+  // Keep media captures reproducible without a real API key.
   // The production matching, writing, feedback, and Undo code still runs.
   await context.route('https://generativelanguage.googleapis.com/**', (route) => {
     const prompt = route.request().postDataJSON().contents[0].parts[0].text as string;

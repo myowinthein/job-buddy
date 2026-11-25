@@ -62,7 +62,7 @@ export async function snapshot(inputs) {
     }
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
       if (entry.name.startsWith('.') || entry.isSymbolicLink()) continue;
-      if (/\.(?:test|pw)\.[cm]?[jt]sx?$/.test(entry.name)) continue;
+      if (/\.(?:test|capture)\.[cm]?[jt]sx?$/.test(entry.name)) continue;
       await visit(`${path}/${entry.name}`);
     }
   };

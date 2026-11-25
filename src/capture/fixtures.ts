@@ -1,7 +1,6 @@
 import { test as base, expect, chromium, type BrowserContext, type Page, type Route, type Worker } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import type { AIFieldPayload } from '../resume-ai/types';
 
 export const test = base.extend<{
   extension: {
@@ -22,7 +21,7 @@ export const test = base.extend<{
       args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
     });
     try {
-      const html = await readFile(resolve('src/browser/fixtures/application.html'), 'utf8');
+      const html = await readFile(resolve('src/capture/fixtures/application.html'), 'utf8');
       await context.route('http://127.0.0.1/**', (route) =>
         route.fulfill({ contentType: 'text/html', body: html }),
       );
@@ -108,21 +107,9 @@ export const geminiResponse = (text: string) => ({
   candidates: [{ content: { parts: [{ text }] } }],
 });
 
-/** Answers every Gemini request with no field answers. */
-export const stubEmptyGemini = (context: BrowserContext) =>
-  context.route('https://generativelanguage.googleapis.com/**', (route) =>
-    route.fulfill({ json: geminiResponse('[]') }),
-  );
-
 /** The prompt text of a Gemini generateContent request. */
-export const geminiPrompt = (route: Route) =>
+const geminiPrompt = (route: Route) =>
   route.request().postDataJSON().contents[0].parts[0].text as string;
-
-/** Autofill prompts end with one JSON object, after a blank line. */
-export const autofillRequest = (route: Route) => {
-  const prompt = geminiPrompt(route);
-  return JSON.parse(prompt.slice(prompt.lastIndexOf('\n\n{') + 2)) as { fields: AIFieldPayload[] };
-};
 
 /** Mapping review prompts end with one JSON line. */
 export const mappingReviewRequest = (route: Route) => {

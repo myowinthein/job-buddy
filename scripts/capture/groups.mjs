@@ -48,7 +48,7 @@ function pngSize(data) {
 
 async function screenshotWrites(kind, directory, pages, expected, signal) {
   const captures = new Map();
-  for (const folder of await resultDirectories(directory, `${definitions[kind].spec}.pw.ts-`)) {
+  for (const folder of await resultDirectories(directory, `${definitions[kind].spec}.capture.ts-`)) {
     for (const file of await readdir(folder)) {
       if (!file.endsWith('.png')) continue;
       const name = kind === 'demo' ? file : file.replace(/\.png$/, '.webp');
@@ -132,7 +132,7 @@ async function motionWrites(directory, signal) {
   const writes = [];
   const versions = new Map();
   for (const theme of ['light', 'dark']) {
-    const folders = (await resultDirectories(directory, 'demo-motion.pw.ts-')).filter((path) =>
+    const folders = (await resultDirectories(directory, 'demo-motion.capture.ts-')).filter((path) =>
       path.endsWith(`-${theme}-mode`),
     );
     if (folders.length !== 1) throw new Error(`Expected one ${theme} recording.`);
@@ -222,9 +222,10 @@ async function captureInputs(kind, expected) {
     ...runtimeInputs,
     'scripts/capture',
     `scripts/capture-${kind === 'motion' ? 'demo-motion' : kind}.mjs`,
-    'src/browser/fixtures.ts',
-    'src/browser/demoSupport.ts',
-    `src/browser/${definitions[kind].spec}.pw.ts`,
+    'src/capture/fixtures.ts',
+    'src/capture/fixtures',
+    'src/capture/demoSupport.ts',
+    `src/capture/${definitions[kind].spec}.capture.ts`,
     'docs/demo',
     'docs/assets/theme-init.js',
     'docs/assets/theme-toggle.css',
@@ -305,13 +306,18 @@ export function captureCommand(kind) {
             'exec',
             'playwright',
             'test',
-            `src/browser/${group.spec}.pw.ts`,
+            '--config=scripts/capture/playwright.config.ts',
+            `src/capture/${group.spec}.capture.ts`,
             `--output=${relative(root, directory)}`,
           ];
-          if (kind === 'demo') args.push('--grep', 'public screenshot');
           await run('pnpm', args, {
             signal,
-            env: { ...process.env, JB_CAPTURE_SITE: '1', JB_CAPTURE_MOTION: '1' },
+            env: {
+              ...process.env,
+              JB_CAPTURE_DEMO: '1',
+              JB_CAPTURE_SITE: '1',
+              JB_CAPTURE_MOTION: '1',
+            },
           });
           await saveJson(resolve(directory, '.capture-source.json'), {
             inputs,

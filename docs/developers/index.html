@@ -168,7 +168,7 @@
                     <a href="https://playwright.dev/" rel="noopener noreferrer">
                       <span class="external-link-tail">Playwright&nbsp;<svg class="external-link-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="../assets/icons/external-link.svg#external-link" /></svg></span></a>
                   </td>
-                  <td>Automates browser interaction tests and website captures.</td>
+                  <td>Produces opt-in screenshots and demo recordings.</td>
                 </tr>
               </tbody>
             </table>
@@ -563,24 +563,6 @@ pnpm dev</code></pre>
                   <div class="code-block">
                     <button class="copy-code" type="button" aria-label="Copy focused test command">Copy</button>
                     <pre><code>pnpm test:run src/autofill/mapper.test.ts</code></pre>
-                  </div>
-                </details>
-                <details id="browser-commands">
-                  <summary>Browser tests</summary>
-                  <p>Install Chromium once so Playwright can run tests in a browser.</p>
-                  <div class="code-block">
-                    <button class="copy-code" type="button" aria-label="Copy browser Chromium install command">Copy</button>
-                    <pre><code>pnpm playwright install chromium</code></pre>
-                  </div>
-                  <p>Build the extension and test autofill, Undo and the interface with fictional data.</p>
-                  <div class="code-block">
-                    <button class="copy-code" type="button" aria-label="Copy browser test commands">Copy</button>
-                    <pre><code>pnpm test:browser</code></pre>
-                  </div>
-                  <p>Watch autofill and Undo tests on the demo job application form in a visible browser.</p>
-                  <div class="code-block">
-                    <button class="copy-code" type="button" aria-label="Copy visible demo test commands">Copy</button>
-                    <pre><code>pnpm test:browser src/browser/demo.pw.ts --headed</code></pre>
                   </div>
                 </details>
                 <details id="cleanup-commands">

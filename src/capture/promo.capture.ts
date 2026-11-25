@@ -36,7 +36,7 @@ for (const chapterId of chapterIds) {
       scenes: { id: string; text: string; audioDuration: number; external?: string }[];
     };
     if (request.id !== chapterId)
-      throw new Error('Promo chapter request does not match the selected browser test.');
+      throw new Error('Promo chapter request does not match the selected capture job.');
     await serveDemo(context);
     const profile = structuredClone(sample.profile);
     const incoming = structuredClone(profile);
