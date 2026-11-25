@@ -155,21 +155,24 @@ for (const { name, Component, field, focus, value, collapsible } of reuseCases) 
       </ToastProvider>,
     );
     const add = screen.getByRole('button', { name: /^\+ Add/ });
+    // Custom dropdowns and their surrounding groups share the field label.
+    const focusTargets = () =>
+      screen.getAllByLabelText(focus, { selector: 'input, select, button' });
     if (collapsible) fireEvent.click(document.querySelector<HTMLButtonElement>('[data-entry-toggle][aria-expanded="true"]')!);
     fireEvent.click(add);
     fireEvent.click(add);
     expect(screen.getAllByRole('button', { name: 'Remove entry' })).toHaveLength(1);
-    await waitFor(() => expect(document.activeElement).toBe(screen.getAllByLabelText(focus)[0]));
+    await waitFor(() => expect(document.activeElement).toBe(focusTargets()[0]));
 
     fireEvent.change(screen.getAllByLabelText(field)[0], { target: { value } });
     fireEvent.click(add);
     expect(screen.getAllByRole('button', { name: 'Remove entry' })).toHaveLength(2);
-    await waitFor(() => expect(document.activeElement).toBe(screen.getAllByLabelText(focus)[1]));
+    await waitFor(() => expect(document.activeElement).toBe(focusTargets()[1]));
     fireEvent.change(screen.getAllByLabelText(field)[1], { target: { value } });
     fireEvent.change(screen.getAllByLabelText(field)[0], { target: { value: '' } });
     fireEvent.click(add);
     expect(screen.getAllByRole('button', { name: 'Remove entry' })).toHaveLength(2);
-    await waitFor(() => expect(document.activeElement).toBe(screen.getAllByLabelText(focus)[0]));
+    await waitFor(() => expect(document.activeElement).toBe(focusTargets()[0]));
   });
 }
 
