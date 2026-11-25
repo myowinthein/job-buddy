@@ -10,7 +10,6 @@ export const storageMock = () => ({
   saveProfile: vi.fn().mockResolvedValue(undefined),
   getLearnedMappings: vi.fn().mockResolvedValue({}),
   saveLearnedMappings: vi.fn().mockResolvedValue(undefined),
-  mergeLearnedMappings: vi.fn((local: object, remote: object) => ({ ...local, ...remote })),
   clearAllStorage: vi.fn().mockResolvedValue(undefined),
   getGeminiSettings: vi.fn().mockResolvedValue({
     apiKey: null,

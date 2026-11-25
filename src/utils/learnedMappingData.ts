@@ -112,3 +112,48 @@ export function readableMappings(raw: unknown, retainStalePaths = false): Learne
     }),
   );
 }
+
+/** Conflicting historical counts cannot establish which answer is current.
+ * Update keeps the local decision; Replace remains the explicit adoption path. */
+export function mergeLearnedMappings(
+  local: LearnedMappings,
+  remote: LearnedMappings,
+): LearnedMappings {
+  const left = readableMappings(local, true),
+    right = readableMappings(remote);
+  return Object.fromEntries(
+    [...new Set([...Object.keys(left), ...Object.keys(right)])].map((domain) => {
+      const a = left[domain] ?? {},
+        b = right[domain] ?? {};
+      return [
+        domain,
+        Object.fromEntries(
+          [...new Set([...Object.keys(a), ...Object.keys(b)])].map((key) => {
+            const l = a[key],
+              r = b[key];
+            if (!l) return [key, r];
+            if (!r) return [key, l];
+            const lp = mappingPath(l),
+              rp = mappingPath(r);
+            if (lp !== rp) return [key, l];
+            // An inactive snapshot cannot promote, disable, or reactivate a local choice.
+            if ((typeof l !== 'string' && l.inactive) || (typeof r !== 'string' && r.inactive))
+              return [key, l];
+            if (typeof l === 'string') return [key, l];
+            if (typeof r === 'string') return [key, { ...l, count: Math.max(l.count, 2) }];
+            // Same-path backups are snapshots, not independent confirmations.
+            return [
+              key,
+              {
+                ...r,
+                ...l,
+                count: Math.max(l.count, r.count),
+                ...(l.label || r.label ? { label: l.label || r.label } : {}),
+              },
+            ];
+          }),
+        ),
+      ];
+    }),
+  );
+}

@@ -2,9 +2,13 @@ import { selectChange } from '@/src/resume-ai/entrySelection';
 import type { LearnedMappings, LearnedMappingValue } from '@/src/types/storage';
 import type { FieldChange } from '@/src/resume-ai/types';
 import type { InvalidField } from './profileValidator';
-import { mergeLearnedMappings } from './storage';
 import { equalJsonValues } from './equalJsonValues';
-import { safeMappingKey as safeKey, validMapping, inactiveMapping } from './learnedMappingData';
+import {
+  safeMappingKey as safeKey,
+  validMapping,
+  inactiveMapping,
+  mergeLearnedMappings,
+} from './learnedMappingData';
 import { validatedMappingIndices } from './learnedMappingProfile';
 import type { EntryIndexMap } from './profileValidator';
 
