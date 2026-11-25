@@ -79,3 +79,27 @@ it('does not infer CV for an Other upload alongside the CV question', () => {
     'documents.cv.file',
   );
 });
+it('discovers an overlay file input through its unique local chooser and explicit Resume prompt', () => {
+  document.body.innerHTML =
+    '<form><div><p>Resume*</p><div><button type="button">Choose File*</button><span>No file selected</span><input type="file" aria-label="file-input" tabindex="-1" style="opacity:0"></div><input type="hidden" name="resumeFileId"></div></form>';
+  const input = document.querySelector('input')!;
+  expect(fileInputProxy(input)).toBe(input.parentElement);
+  expect(scanFields({ allowFileInputs: true })).toEqual([input]);
+  expect(mapField(extractSignals(input), RULE_PROFILE, {}, 'example.test')).toMatchObject({
+    fieldPath: 'documents.cv.file',
+    value: 'sample.pdf',
+  });
+});
+it.each(['another input', 'two files', 'unrelated action'])(
+  'does not expose an ambiguous hidden file widget: %s',
+  (scenario) => {
+    document.body.innerHTML =
+      '<form><div><button type="button">Choose File</button><input type="file" tabindex="-1" style="opacity:0"></div></form>';
+    const input = document.querySelector('input')!;
+    if (scenario === 'another input') input.parentElement!.append(document.createElement('input'));
+    if (scenario === 'two files') input.parentElement!.append(input.cloneNode());
+    if (scenario === 'unrelated action') document.querySelector('button')!.textContent = 'Purchase';
+    expect(fileInputProxy(input)).toBeUndefined();
+    expect(scanFields({ allowFileInputs: true })).not.toContain(input);
+  },
+);
