@@ -3237,8 +3237,21 @@
         ],
         "invariant": "Move the algorithm unchanged into learnedMappingData, retain the storage compatibility export and import the pure owner in backupImport; remove only the now-unused mock imitation. Preserve mapping normalization, insertion order, local conflicts/inactive state, legacy trust, max counts, metadata precedence, locking and atomic writes."
       },
-      "state": "open",
-      "depends_on": []
+      "state": "resolved",
+      "depends_on": [],
+      "closure": {
+        "origin": "native",
+        "kind": "fixed",
+        "commit": "798e8912925db3cf9c699e069fe9e348d0fe4978",
+        "date": "2026-11-25",
+        "method": "runtime",
+        "evidence": ["Moved the merge body/comment unchanged into learnedMappingData; storage imports it and retains its compatibility export. backupImport now consumes the pure owner directly, and only the obsolete shallow merge mock was removed.", "Existing local-conflict, same-path/max-count, legacy/inactive and backup/import assertions remain unchanged; the six affected suites retain their original scenarios and mocks at the persistence boundary."],
+        "checks": [
+          {"command": "pnpm compile", "scope": "Project, Node 22", "outcome": "Passed without diagnostics."},
+          {"command": "pnpm exec vitest run src/utils/storage.test.ts src/utils/learnedMappings.test.ts src/utils/learnedMappingProfile.test.ts src/utils/backupImport.test.ts src/components/options/SettingsSection.test.tsx src/components/options/SettingsSection.integration.test.tsx", "scope": "Six mapping/storage/Settings suites, Vitest 4.1.9", "outcome": "174 tests passed, no skips. The jsdom navigation notice was also present in the passing 313-test pre-change baseline."},
+          {"command": "pnpm exec eslint src/utils/storage.ts src/utils/learnedMappingData.ts src/utils/backupImport.ts src/testing/settingsSectionMocks.ts", "scope": "The four changed source/mock files", "outcome": "Passed without diagnostics."}
+        ]
+      }
     },
     {
       "id": "r-16fcbf2b-8bbc-4496-b660-e4efb6ab1760",
