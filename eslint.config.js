@@ -13,10 +13,10 @@ export default [
 
   js.configs.recommended,
 
-  // The static docs site has no TypeScript config. Its plain .js files
+  // Static docs and public browser assets have no TypeScript config. Their .js files
   // get recommended-JS checks and browser globals.
   {
-    files: ['docs/**/*.js'],
+    files: ['docs/**/*.js', 'public/**/*.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'script',

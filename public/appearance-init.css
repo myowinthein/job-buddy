@@ -1,0 +1,12 @@
+/* Loaded before app modules so an empty document has the same canvas as the UI. */
+html {
+  color-scheme: light;
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+html.dark {
+  color-scheme: dark;
+  background-color: #0f172a;
+  color: #f1f5f9;
+}

@@ -51,6 +51,7 @@ function removeMediaListener(): void {
 function setDarkClass(dark: boolean): void {
   try {
     document.documentElement.classList.toggle('dark', dark);
+    document.dispatchEvent(new CustomEvent('jb:theme-applied', { detail: currentPreference }));
   } catch { /* no-op if document unavailable (service worker context) */ }
 }
 

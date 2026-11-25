@@ -2,6 +2,56 @@ import { test, expect, extensionUrl } from './fixtures';
 import { controlContrast } from './contrast';
 import { DEV_PROFILE } from '../utils/devProfile';
 
+test('popup and options keep their saved canvas while the initial theme read is pending on refresh', async ({
+  context,
+  extension,
+}) => {
+  const warm = await context.newPage();
+  await warm.goto(extensionUrl(extension, 'options.html'));
+  await expect(warm.getByRole('heading', { name: 'Personal', exact: true })).toBeVisible();
+  for (const theme of ['dark', 'light'] as const) {
+    await extension.worker.evaluate(theme => chrome.storage.local.set({ themePreference: theme }), theme);
+    await expect(warm.locator('html')).toHaveClass(theme === 'dark' ? /dark/ : /^(?!.*\bdark\b)/);
+    const background = theme === 'dark' ? 'rgb(15, 23, 42)' : 'rgb(255, 255, 255)';
+    for (const surface of ['popup', 'options']) {
+      const page = await context.newPage();
+      await page.emulateMedia({ colorScheme: theme === 'dark' ? 'light' : 'dark' });
+      await page.addInitScript(() => {
+        const get = chrome.storage.local.get.bind(chrome.storage.local);
+        chrome.storage.local.get = ((keys: string | string[] | null, callback?: (data: Record<string, unknown>) => void) => {
+          if (keys === 'themePreference' && callback) {
+            get(keys, data => Reflect.set(window, 'releaseInitialTheme', () => callback(data)));
+            return;
+          }
+          return callback ? get(keys, callback) : get<Record<string, unknown>>(keys);
+        }) as typeof chrome.storage.local.get;
+      });
+      try {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          if (attempt === 0) await page.goto(extensionUrl(extension, `${surface}.html`));
+          else await page.reload();
+          await expect.poll(() => page.evaluate(() => typeof Reflect.get(window, 'releaseInitialTheme')))
+            .toBe('function');
+          // Nothing has mounted yet: the parser-blocking bootstrap owns this paint.
+          await expect(page.locator('#root')).toBeEmpty();
+          await expect(page.locator('html')).toHaveCSS('background-color', background);
+          await expect(page.locator('html')).toHaveCSS('color-scheme', theme);
+          await expect(page.locator('body')).toHaveCSS('background-color', background);
+          await page.evaluate(() => Reflect.get(window, 'releaseInitialTheme')());
+          await expect(page.getByRole('heading', {
+            name: surface === 'popup' ? 'Job Buddy' : 'Personal', exact: true,
+          })).toBeVisible();
+          await expect(page.locator('body')).toHaveCSS('background-color', background);
+        }
+      } finally {
+        await page.evaluate(() => Reflect.get(window, 'releaseInitialTheme')?.()).catch(() => {});
+        await page.close();
+      }
+    }
+  }
+  await warm.close();
+});
+
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   test(`profile navigation and shared animations follow ${reducedMotion}`, async ({ context, extension }) => {
     const page = await context.newPage();
