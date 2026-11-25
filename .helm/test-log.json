@@ -12,8 +12,18 @@
       "reason": "A rejected or no-op fill satisfies the existing fixtures; normalized text is supplied exactly.",
       "action": "improve",
       "layer": "unit/jsdom",
-      "state": "open",
-      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+      "state": "resolved",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471",
+      "tests": ["src/autofill/filler.test.ts: positive text, normalized-value, normalized-text and fuzzy select cases"],
+      "closure": {
+        "reason": "tested",
+        "refs": ["src/autofill/filler.test.ts"],
+        "method": "runtime",
+        "commit": "a6020fe2b9693f3e827d2778a52b1bf6a4a695cd",
+        "command": "pnpm exec vitest run src/autofill/filler.test.ts src/autofill/phoneResolution.test.ts src/autofill/signals.test.ts",
+        "scope": "Node 22, Vitest 4.1.9; the three listed test files",
+        "outcome": "109 tests passed with no skips. Four positive select cases now start on a placeholder, require a true fill result and assert the changed value; normalized text uses opaque values and differently cased/punctuated input."
+      }
     },
     {
       "id": "g-fd348239-2bbf-4d2a-ab42-e7ba4bacd1e7",
@@ -24,8 +34,18 @@
       "reason": "Removing the learned-layer guard would not change the current fixture's answer.",
       "action": "improve",
       "layer": "unit",
-      "state": "open",
-      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+      "state": "resolved",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471",
+      "tests": ["src/autofill/phoneResolution.test.ts: leaves a learned mapping alone regardless of sibling presence"],
+      "closure": {
+        "reason": "tested",
+        "refs": ["src/autofill/phoneResolution.test.ts"],
+        "method": "runtime",
+        "commit": "a6020fe2b9693f3e827d2778a52b1bf6a4a695cd",
+        "command": "pnpm exec vitest run src/autofill/filler.test.ts src/autofill/phoneResolution.test.ts src/autofill/signals.test.ts",
+        "scope": "Node 22, Vitest 4.1.9; the three listed test files",
+        "outcome": "109 tests passed with no skips. Without a calling-code sibling, the learned national path and raw national number remain unchanged, opposing the ordinary full-number adjustment."
+      }
     },
     {
       "id": "g-093f8247-9997-462d-b940-a4d2e5a095ea",
@@ -36,8 +56,18 @@
       "reason": "Stopping traversal after the immediate host still passes the existing two-level case.",
       "action": "improve",
       "layer": "unit/jsdom",
-      "state": "open",
-      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+      "state": "resolved",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471",
+      "tests": ["src/autofill/signals.test.ts: walks two shadow-root levels deep for the label fallback"],
+      "closure": {
+        "reason": "tested",
+        "refs": ["src/autofill/signals.test.ts"],
+        "method": "runtime",
+        "commit": "a6020fe2b9693f3e827d2778a52b1bf6a4a695cd",
+        "command": "pnpm exec vitest run src/autofill/filler.test.ts src/autofill/phoneResolution.test.ts src/autofill/signals.test.ts",
+        "scope": "Node 22, Vitest 4.1.9; the three listed test files",
+        "outcome": "109 tests passed with no skips. The nested fixture now has an unnamed inner host and obtains its asserted label only from the outer host."
+      }
     },
     {
       "id": "g-85a85b64-187d-4229-bcab-6d8a55011e7d",
@@ -48,8 +78,18 @@
       "reason": "The timing test passes without successful persistence or visible success feedback; the next title describes retired inline feedback.",
       "action": "improve",
       "layer": "component/integration",
-      "state": "open",
-      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+      "state": "resolved",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471",
+      "tests": ["src/components/options/ProfileApp.test.tsx: keeps save feedback quiet during editing and clears the saved message after a short time", "src/components/options/ProfileApp.test.tsx: keeps unsaved feedback quiet during typing after a save and reveals it on blur"],
+      "closure": {
+        "reason": "tested",
+        "refs": ["src/components/options/ProfileApp.test.tsx", "src/components/ui/Toast.test.tsx"],
+        "method": "runtime",
+        "commit": "482d5eac7eac41020a0e566cdfe3e3f074f551c0",
+        "command": "pnpm exec vitest run src/components/options/ProfileApp.test.tsx src/components/ui/Toast.test.tsx src/components/ui/useEscapeToClose.test.ts src/components/options/shared/useScrollToNewEntry.test.tsx src/components/options/MappingReviewDialog.test.tsx",
+        "scope": "Node 22, Vitest 4.1.9/jsdom; the five listed UI files",
+        "outcome": "70 tests passed with no skips. The timing case observes persisted Saved Jane, the actual success toast before expiry and its eventual removal; the renamed typing/blur case preserves its successful-save and dirty-feedback assertions. Three nonexistent Saved checks were removed."
+      }
     },
     {
       "id": "g-2b7f87d4-4b20-49cf-a651-4b676cf42e4f",
@@ -60,8 +100,18 @@
       "reason": "Mounted hook roots and listeners outlive individual cases, weakening isolation.",
       "action": "improve",
       "layer": "component/jsdom",
-      "state": "open",
-      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+      "state": "resolved",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471",
+      "tests": ["src/components/ui/useEscapeToClose.test.ts", "src/components/options/shared/useScrollToNewEntry.test.tsx"],
+      "closure": {
+        "reason": "tested",
+        "refs": ["src/components/ui/useEscapeToClose.test.ts: afterEach(cleanup)", "src/components/options/shared/useScrollToNewEntry.test.tsx: cleanup before fixture removal"],
+        "method": "runtime",
+        "commit": "482d5eac7eac41020a0e566cdfe3e3f074f551c0",
+        "command": "pnpm exec vitest run src/components/options/ProfileApp.test.tsx src/components/ui/Toast.test.tsx src/components/ui/useEscapeToClose.test.ts src/components/options/shared/useScrollToNewEntry.test.tsx src/components/options/MappingReviewDialog.test.tsx",
+        "scope": "Node 22, Vitest 4.1.9/jsdom; the five listed UI files",
+        "outcome": "70 tests passed with no skips. Both hook suites now unmount roots through explicit RTL cleanup while retaining every existing Escape, focus, scrolling and unmount case."
+      }
     },
     {
       "id": "g-5662dbb0-b60a-4fc7-8e18-4cc8ce46bb48",
@@ -72,8 +122,18 @@
       "reason": "A storage failure could discard reviewed decisions, leave Apply disabled or report success without regression protection.",
       "action": "add",
       "layer": "component",
-      "state": "open",
-      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+      "state": "resolved",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471",
+      "tests": ["src/components/options/MappingReviewDialog.test.tsx: retains mapping choices after a failed apply and retries without analyzing again"],
+      "closure": {
+        "reason": "tested",
+        "refs": ["src/components/options/MappingReviewDialog.test.tsx"],
+        "method": "runtime",
+        "commit": "482d5eac7eac41020a0e566cdfe3e3f074f551c0",
+        "command": "pnpm exec vitest run src/components/options/ProfileApp.test.tsx src/components/ui/Toast.test.tsx src/components/ui/useEscapeToClose.test.ts src/components/options/shared/useScrollToNewEntry.test.tsx src/components/options/MappingReviewDialog.test.tsx",
+        "scope": "Node 22, Vitest 4.1.9/jsdom; the five listed UI files; mocked AI and persistence boundaries",
+        "outcome": "70 tests passed with no skips. The new case rejects first apply, observes the error and retained Keep choice/results, requires enabled retry and no false success/close, then verifies identical decisions save successfully with only one analysis request."
+      }
     },
     {
       "id": "g-f8507b37-18b6-471c-a88b-a38b0b996b34",
@@ -84,8 +144,18 @@
       "reason": "The constant assertion does not detect missing or excessive future-date permission in validation.",
       "action": "improve",
       "layer": "unit",
-      "state": "open",
-      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+      "state": "resolved",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471",
+      "tests": ["src/utils/profileInputValidation.test.ts: allows ongoing education to end ten years ahead but rejects eleven and completed future dates"],
+      "closure": {
+        "reason": "tested",
+        "refs": ["src/utils/profileInputValidation.test.ts"],
+        "method": "runtime",
+        "commit": "02f2c88f7ad887ba448cc6f3dffdfc8fa64f2ca3",
+        "command": "pnpm exec vitest run src/utils/profileInputValidation.test.ts src/utils/driveSync.test.ts src/resume-ai/gemini.test.ts src/learned-mappings/review.test.ts src/quick-fill/preferences.test.ts src/preview/integrations.test.ts",
+        "scope": "Node 22, Vitest 4.1.9; the six listed integration/storage files",
+        "outcome": "174 tests passed with no skips. Replaced the constant-only assertion with actual validation at frozen 2026: ongoing education accepts 2036, rejects 2037 and rejects 2027 when completed. Real timers are restored in finally."
+      }
     },
     {
       "id": "g-281058ba-fd05-4422-b40f-48f96ead541f",
@@ -96,8 +166,18 @@
       "reason": "A lost page token or cached-only deletion could leave cloud backups behind undetected.",
       "action": "improve",
       "layer": "unit/provider boundary",
-      "state": "open",
-      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+      "state": "resolved",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471",
+      "tests": ["src/utils/driveSync.test.ts: deletes every unique paginated and cached backup before clearing access"],
+      "closure": {
+        "reason": "tested",
+        "refs": ["src/utils/driveSync.test.ts"],
+        "method": "runtime",
+        "commit": "02f2c88f7ad887ba448cc6f3dffdfc8fa64f2ca3",
+        "command": "pnpm exec vitest run src/utils/profileInputValidation.test.ts src/utils/driveSync.test.ts src/resume-ai/gemini.test.ts src/learned-mappings/review.test.ts src/quick-fill/preferences.test.ts src/preview/integrations.test.ts",
+        "scope": "Node 22, Vitest 4.1.9; the six listed integration/storage files; simulated Drive fetch/storage",
+        "outcome": "174 tests passed with no skips. The extended deletion case observes both listing pages, one deletion per unique listed ID plus an unlisted cached ID, credentials retained during deletion and cleared before the required revocation request."
+      }
     },
     {
       "id": "g-716a0234-4c98-4451-b331-18a33f5a49be",
@@ -108,8 +188,18 @@
       "reason": "Removed byte or run bounds could create oversized requests or silent omissions despite the current batching test passing.",
       "action": "improve",
       "layer": "unit/provider boundary",
-      "state": "open",
-      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+      "state": "resolved",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471",
+      "tests": ["src/resume-ai/gemini.test.ts: splits large UTF-8 autofill payloads before the per-request field limit", "src/resume-ai/gemini.test.ts: skips an oversized field without dropping usable neighbors", "src/resume-ai/gemini.test.ts: bounds a 200/201-field autofill run to 200 fields"],
+      "closure": {
+        "reason": "tested",
+        "refs": ["src/resume-ai/gemini.test.ts"],
+        "method": "runtime",
+        "commit": "02f2c88f7ad887ba448cc6f3dffdfc8fa64f2ca3",
+        "command": "pnpm exec vitest run src/utils/profileInputValidation.test.ts src/utils/driveSync.test.ts src/resume-ai/gemini.test.ts src/learned-mappings/review.test.ts src/quick-fill/preferences.test.ts src/preview/integrations.test.ts",
+        "scope": "Node 22, Vitest 4.1.9; the six listed integration/storage files; synthetic fields and mocked Gemini fetch",
+        "outcome": "174 tests passed with no skips. Four added executed cases establish byte-driven splitting below 20 fields, bounded serialized bodies, oversized-field omission with usable neighbors retained, and exact 200/201 run limits with unavailable notification only for omissions. Existing count/prose checks remain."
+      }
     },
     {
       "id": "g-6ef1a8a3-e873-40f0-a977-2e45b2ff72d0",
@@ -120,20 +210,40 @@
       "reason": "A broken combined-byte split is not distinguished by existing short-question fixtures.",
       "action": "improve",
       "layer": "unit",
-      "state": "open",
-      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+      "state": "resolved",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471",
+      "tests": ["src/learned-mappings/review.test.ts: bounds requests without silently dropping mappings"],
+      "closure": {
+        "reason": "tested",
+        "refs": ["src/learned-mappings/review.test.ts"],
+        "method": "runtime",
+        "commit": "02f2c88f7ad887ba448cc6f3dffdfc8fa64f2ca3",
+        "command": "pnpm exec vitest run src/utils/profileInputValidation.test.ts src/utils/driveSync.test.ts src/resume-ai/gemini.test.ts src/learned-mappings/review.test.ts src/quick-fill/preferences.test.ts src/preview/integrations.test.ts",
+        "scope": "Node 22, Vitest 4.1.9; the six listed integration/storage files",
+        "outcome": "174 tests passed with no skips. The existing case now proves each multibyte item fits alone, their combined request exceeds 96000 bytes, all emitted batches fit and every item is preserved in order; count-limit and oversized-catalog checks remain."
+      }
     },
     {
       "id": "g-77d57706-0535-443f-8b31-9bc315e11a40",
       "expected": "Concurrent Quick Fill position and Settings/site changes merge from fresh storage under the shared preference lock",
       "basis": ["src/quick-fill/preferences.ts: updateQuickFillPreferences promises moving the widget cannot undo a Settings change", "src/quick-fill/quickFill.test.ts and browser Quick Fill cases cover normalization/persistence rather than a controlled concurrent merge", "Settings/background tests mock the preference updater"],
-      "paths": ["src/quick-fill/preferences.ts"],
+      "paths": ["src/quick-fill/preferences.ts", "src/quick-fill/preferences.test.ts"],
       "priority": "medium",
       "reason": "Removing the lock or reading before acquiring it can silently overwrite another extension context's preferences.",
       "action": "add",
       "layer": "unit/storage boundary",
-      "state": "open",
-      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+      "state": "resolved",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471",
+      "tests": ["src/quick-fill/preferences.test.ts: preserves concurrent Quick Fill position and Settings changes"],
+      "closure": {
+        "reason": "tested",
+        "refs": ["src/quick-fill/preferences.test.ts"],
+        "method": "runtime",
+        "commit": "02f2c88f7ad887ba448cc6f3dffdfc8fa64f2ca3",
+        "command": "pnpm exec vitest run src/utils/profileInputValidation.test.ts src/utils/driveSync.test.ts src/resume-ai/gemini.test.ts src/learned-mappings/review.test.ts src/quick-fill/preferences.test.ts src/preview/integrations.test.ts",
+        "scope": "Node 22, Vitest 4.1.9; the six listed integration/storage files; isolated Chrome storage and serializing Web Locks stub",
+        "outcome": "174 tests passed with no skips. The new case holds a position write, queues a Settings/site update on the same exact lock, requires no premature second read, then verifies both updates and preexisting preferences survive. No fallback serialization is asserted."
+      }
     },
     {
       "id": "g-d75747e6-ad3d-40d7-b79d-858bf78e916c",
@@ -144,8 +254,18 @@
       "reason": "The Drive-specific fixture does not challenge exposure of the real integration key name.",
       "action": "improve",
       "layer": "configuration/integration",
-      "state": "open",
-      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+      "state": "resolved",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471",
+      "tests": ["src/preview/integrations.test.ts: excludes inherited integration variables and resolves both integration modules to preview stubs"],
+      "closure": {
+        "reason": "tested",
+        "refs": ["src/preview/integrations.test.ts"],
+        "method": "runtime",
+        "commit": "02f2c88f7ad887ba448cc6f3dffdfc8fa64f2ca3",
+        "command": "pnpm exec vitest run src/utils/profileInputValidation.test.ts src/utils/driveSync.test.ts src/resume-ai/gemini.test.ts src/learned-mappings/review.test.ts src/quick-fill/preferences.test.ts src/preview/integrations.test.ts",
+        "scope": "Node 22, Vitest 4.1.9; the six listed integration/storage files; Vite config resolution with synthetic inherited values",
+        "outcome": "174 tests passed with no skips. The existing isolation case now seeds and excludes the actual VITE_GOOGLE_DRIVE_CLIENT_ID name while retaining Gemini isolation and both preview aliases."
+      }
     },
     {
       "id": "g-0765e311-9806-4406-9d8b-d281404434d4",
@@ -156,8 +276,18 @@
       "reason": "The failure-recovery test passes if playback never starts and no failed request occurs.",
       "action": "improve",
       "layer": "browser/Chromium",
-      "state": "open",
-      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471"
+      "state": "resolved",
+      "assessed_commit": "6e01a3e696303d06198e8116da358ee983218471",
+      "tests": ["src/browser/website.pw.ts: an unavailable recording falls back to the completed still"],
+      "closure": {
+        "reason": "tested",
+        "refs": ["src/browser/website.pw.ts"],
+        "method": "runtime",
+        "commit": "482d5eac7eac41020a0e566cdfe3e3f074f551c0",
+        "command": "pnpm exec playwright test src/browser/website.pw.ts --grep 'an unavailable recording'",
+        "scope": "Local Chromium, one worker, mocked local website routes; one selected case",
+        "outcome": "1 test passed with no skips or retries. The case explicitly enables motion, observes a routed recording abort and HTML media error, then requires the still visible and video hidden."
+      }
     },
     {
       "id": "g-7c86ae18-1c8f-4716-9055-be152afb86af",
