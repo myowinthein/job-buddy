@@ -92,6 +92,8 @@ const prepareTheme = () => nearbyImages.forEach((img) => {
 themeButton?.addEventListener('pointerenter', prepareTheme);
 themeButton?.addEventListener('focus', prepareTheme);
 screenshots.forEach(showScreenshot);
+// The HTML sources are light; reveal dark screenshots only after selecting their sources.
+root.setAttribute('data-screenshots-ready', '');
 
 const dialog = document.querySelector('.image-dialog');
 const dialogImage = dialog?.querySelector('img');

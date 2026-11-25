@@ -333,6 +333,7 @@ figure {
   max-width: 1440px;
   height: auto;
 }
+:root.dark:not([data-screenshots-ready]) img[data-light][data-dark],
 img[data-image-pending] {
   visibility: hidden;
 }

@@ -348,6 +348,37 @@ test('both guides keep the demo reachable from narrow navigation', async ({ cont
   }
 });
 
+test('dark screenshots stay hidden until the delayed page script selects their theme', async ({ context, page }) => {
+  await serveSite(context);
+  // A saved dark preference must win even when the system prefers light.
+  await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
+  await context.addInitScript(() => localStorage.setItem('job-buddy-theme', 'dark'));
+  let releaseScript!: () => void;
+  const gate = new Promise<void>((resolve) => { releaseScript = resolve; });
+  await context.route(/\/assets\/site\.js(?:\?.*)?$/, async (route) => {
+    await gate;
+    await route.fallback();
+  });
+  try {
+    await page.goto(origin + prefix + '#ai', { waitUntil: 'commit' });
+    await expect(page.locator('html')).toHaveClass('dark');
+    const image = page.locator('#gemini-views-0 img');
+    await image.scrollIntoViewIfNeeded();
+    // Reproduce a light image arriving before the deferred script.
+    await image.evaluate((img: HTMLImageElement) => img.decode());
+    await expect(image).toHaveAttribute('src', /-light\.webp/);
+    await expect(image).toHaveCSS('visibility', 'hidden');
+    const reserved = await image.boundingBox();
+    expect(reserved!.height).toBeGreaterThan(0);
+    releaseScript();
+    await expect(image).toHaveAttribute('src', /-dark\.webp/);
+    await expect(image).toHaveCSS('visibility', 'visible');
+    expect(await image.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+  } finally {
+    releaseScript();
+  }
+});
+
 test('screenshot switches reserve space without flashing alternative text while loading', async ({ context, page }, info) => {
   await serveSite(context);
   await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' });
