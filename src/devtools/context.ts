@@ -5,6 +5,8 @@ export interface DevContext {
   quickPreview?: import('./quickPreview').PreviewPreset;
 }
 
+export const DEV_SAMPLE_API_KEY = 'simulated-key';
+
 declare global {
   var __JB_DEV_CONTEXT__: DevContext | undefined;
 }

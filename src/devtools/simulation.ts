@@ -3,6 +3,7 @@ import type { DriveBackupFile } from '@/src/types/storage';
 import { createPreviewChrome } from '@/src/preview/chrome';
 import { DEV_PROFILE } from '@/src/utils/devProfile';
 import { DEFAULT_GEMINI_MODEL } from '@/src/resume-ai/types';
+import { DEV_SAMPLE_API_KEY } from './context';
 
 const json = (data: unknown, status = 200, headers?: HeadersInit) =>
   new Response(JSON.stringify(data), {
@@ -67,7 +68,7 @@ export class DevSimulation {
         geminiDevDisabled: true,
         ...(!options.noKey
           ? {
-              geminiApiKey: 'simulated-key',
+              geminiApiKey: DEV_SAMPLE_API_KEY,
               geminiModel: DEFAULT_GEMINI_MODEL,
               geminiSettingsMeta: {
                 revision: 'simulation',

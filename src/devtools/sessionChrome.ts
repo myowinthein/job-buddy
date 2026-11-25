@@ -8,6 +8,7 @@ import {
   type StorageKeys,
 } from './session';
 import { DevSimulation } from './simulation';
+import { DEV_SAMPLE_API_KEY } from './context';
 
 type StorageListener = Parameters<typeof chrome.storage.onChanged.addListener>[0];
 type MessageListener = Parameters<typeof chrome.runtime.onMessage.addListener>[0];
@@ -290,7 +291,7 @@ export async function installDevelopmentSession(
       try {
         const request = { ...init, signal: controller.signal };
         const response =
-          new Headers(init.headers ?? source?.headers).get('x-goog-api-key') === 'simulated-key'
+          new Headers(init.headers ?? source?.headers).get('x-goog-api-key') === DEV_SAMPLE_API_KEY
             ? await samples.fetch(input, request)
             : await nativeFetch(input, request);
         const body = await response.arrayBuffer();

@@ -1,6 +1,7 @@
 import type { Profile } from '@/src/types/profile';
 import { profilePreset } from './profilePresets';
 import type { PreviewPreset } from './quickPreview';
+import { DEV_SAMPLE_API_KEY } from './context';
 
 export const DEV_SESSION_KEY = 'jb:dev:active-session';
 export const DEV_DATA_PREFIX = 'jb:dev:data:';
@@ -133,7 +134,7 @@ export class DevelopmentSessionStore {
         delete result.geminiModel;
         if (names === null || names.includes('geminiDevDisabled')) result.geminiDevDisabled = true;
       } else if (this.active?.sampleAI && !scope) {
-        if (names === null || names.includes('geminiApiKey')) result.geminiApiKey = 'simulated-key';
+        if (names === null || names.includes('geminiApiKey')) result.geminiApiKey = DEV_SAMPLE_API_KEY;
         if (names === null || names.includes('geminiModel'))
           result.geminiModel = 'gemini-3.8-flash';
       }
@@ -155,7 +156,7 @@ export class DevelopmentSessionStore {
         ...this.active,
         ...('geminiApiKey' in values && {
           keyDisabled: false,
-          sampleAI: values.geminiApiKey === 'simulated-key',
+          sampleAI: values.geminiApiKey === DEV_SAMPLE_API_KEY,
         }),
         ...('driveToken' in values && { driveDisabled: false }),
       };
@@ -204,7 +205,7 @@ export class DevelopmentSessionStore {
         devProfileDisabled: true,
         geminiDevDisabled: true,
         ...(!original.geminiApiKey
-          ? { geminiApiKey: 'simulated-key', geminiModel: 'gemini-3.8-flash' }
+          ? { geminiApiKey: DEV_SAMPLE_API_KEY, geminiModel: 'gemini-3.8-flash' }
           : {}),
       };
       for (const [key, value] of Object.entries(initial))
@@ -257,15 +258,15 @@ export class DevelopmentSessionStore {
         const prefix = this.prefix(meta.id, 'local');
         const saved = await this.native.storage.session.get(prefix + 'geminiApiKey');
         meta.sampleAI =
-          (saved[prefix + 'geminiApiKey'] ?? original.geminiApiKey ?? 'simulated-key') ===
-          'simulated-key';
+          (saved[prefix + 'geminiApiKey'] ?? original.geminiApiKey ?? DEV_SAMPLE_API_KEY) ===
+          DEV_SAMPLE_API_KEY;
         if (!saved[prefix + 'geminiApiKey'])
           await this.native.storage.session.set(
             Object.fromEntries(
               Object.entries(
                 original.geminiApiKey
                   ? original
-                  : { geminiApiKey: 'simulated-key', geminiModel: 'gemini-3.8-flash' },
+                  : { geminiApiKey: DEV_SAMPLE_API_KEY, geminiModel: 'gemini-3.8-flash' },
               ).map(([key, value]) => [prefix + key, value]),
             ),
           );

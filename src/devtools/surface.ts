@@ -1,4 +1,4 @@
-import { devContext, devLockName, type DevContext } from './context';
+import { DEV_SAMPLE_API_KEY, devContext, devLockName, type DevContext } from './context';
 import { getSimulation } from './bootstrap';
 import {
   exitPreviewUrl,
@@ -111,7 +111,7 @@ export function createDevSurface(): DevSurface {
         await clearGeminiSettings();
       } else {
         const result = await saveGeminiSettings(
-          previousKey?.apiKey ?? 'simulated-key',
+          previousKey?.apiKey ?? DEV_SAMPLE_API_KEY,
           previousKey?.model ?? DEFAULT_GEMINI_MODEL,
           previousKey?.preference ?? 'auto',
           settings.revision,
