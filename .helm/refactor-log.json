@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
-  "assessed_commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
-  "full_scan_commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
+  "assessed_commit": "bc09feb379553875e567a19bc2ab2d2ab5317d84",
+  "full_scan_commit": "bc09feb379553875e567a19bc2ab2d2ab5317d84",
   "findings": [
     {
       "id": "r-5bd45a4c-b50a-4438-85c3-28d2faa8d1a3",
@@ -3226,13 +3226,14 @@
       },
       "assessment": {
         "origin": "native",
-        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
-        "date": "2026-11-15",
+        "commit": "bc09feb379553875e567a19bc2ab2d2ab5317d84",
+        "date": "2026-11-25",
         "priority": "low",
         "risk": "needs-review",
         "reason": "Pure backup-review construction depends on the storage service for one algorithm, forcing Settings mocks to maintain an inaccurate shallow-merge imitation.",
         "evidence": [
-          "storage.ts:216-264 defines pure mergeLearnedMappings; backupImport.ts imports it only to build review changes; settingsSectionMocks.ts supplies a top-level spread imitation. Production direct callers are saveProfile and backupDataChanges."
+          "storage.ts:214-257 defines the pure algorithm used by saveProfile and backupDataChanges; backupImport.ts depends on storage solely for this merge, and Settings mocks replace it with a top-level spread.",
+          "Its dependencies already belong to learnedMappingData; the dependency paths introduce no storage cycle. Existing storage, learnedMappings, learnedMappingProfile, backupImport and Settings tests protect distinct merge/import contracts."
         ],
         "invariant": "Move the algorithm unchanged into learnedMappingData, retain the storage compatibility export and import the pure owner in backupImport; remove only the now-unused mock imitation. Preserve mapping normalization, insertion order, local conflicts/inactive state, legacy trust, max counts, metadata precedence, locking and atomic writes."
       },
@@ -3317,15 +3318,16 @@
       },
       "assessment": {
         "origin": "native",
-        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
-        "date": "2026-11-15",
+        "commit": "bc09feb379553875e567a19bc2ab2d2ab5317d84",
+        "date": "2026-11-25",
         "priority": "low",
         "risk": "needs-review",
-        "reason": "The same current adapter union is maintained independently for consent exclusion, country/authorization formatting and report kind.",
+        "reason": "The custom-widget tail repeats, but current callers intentionally differ in native guards, signal-only handling and report policy. This review recommends leaving the code unchanged; a tiny shared tail does not presently justify another abstraction.",
         "evidence": [
-          "ruleContext.ts:22, ruleValue.ts:59 and index.ts:576 enumerate native select, role=combobox, aria-haspopup=listbox and menuSelect. Other adapter checks deliberately have different contracts."
+          "ruleContext.ts:28-32 guards absent constructors before signal type; ruleValue.ts:61-65 short-circuits signal type first; index.ts:570-579 gives files precedence and classifies actual controls rather than signal type.",
+          "Region rebinding has a narrower native/menu-backed classification. A universal predicate would hide these differences; extracting only the three-check custom tail offers insufficient current maintenance benefit."
         ],
-        "invariant": "Extract only the equivalent union with absent-DOM and undefined-element guards; preserve short-circuit/adapter lookup order, form/root scope, consent, formatted values and report kinds. Do not change calling-code, region-replacement, readonly eligibility, AI/filler dispatch or discovery predicates. Add bounded characterization of existing categories."
+        "invariant": "Retain caller-specific native guards, signals.type short-circuiting, undefined-element behavior, file/report precedence, consent, formatting and region policies. Any future extraction must prove a shared contract without normalizing these differences."
       },
       "state": "open",
       "depends_on": []
@@ -3348,13 +3350,14 @@
       },
       "assessment": {
         "origin": "native",
-        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
-        "date": "2026-11-15",
+        "commit": "bc09feb379553875e567a19bc2ab2d2ab5317d84",
+        "date": "2026-11-25",
         "priority": "low",
         "risk": "needs-review",
         "reason": "Four modules independently produce or discriminate the same sentinel that controls sample-state display and simulated versus native provider routing.",
         "evidence": [
-          "The literal simulated-key occurs in session read/write/activate/restore logic, simulation seed, surface restoration and sessionChrome fetch routing. Existing lightweight context.ts can own the constant without provider initialization."
+          "Nine production occurrences of simulated-key span session read/write/activate/restore, simulation seeding, surface restoration and sessionChrome provider routing.",
+          "Existing context.ts has no runtime provider initialization and can own DEV_SAMPLE_API_KEY; literal test expectations remain independent. Session, simulation, toolbar and bootstrap tests plus the isolated development-session browser case cover the affected flows."
         ],
         "invariant": "Preserve the exact sentinel string, sample/native routing, saved-key restoration, state/tooltips, isolation, scope checks, errors, timing, storage events and Drive restrictions; retain independent literal test expectations and the intentionally distinct model defaults."
       },
@@ -3377,13 +3380,14 @@
       },
       "assessment": {
         "origin": "native",
-        "commit": "8497cf0cbe2b83c0bb4268cb920488680e7f0d49",
-        "date": "2026-11-15",
+        "commit": "bc09feb379553875e567a19bc2ab2d2ab5317d84",
+        "date": "2026-11-25",
         "priority": "low",
         "risk": "safe",
         "reason": "Upload and date behavior is hidden in the menu-select suite, adding navigation and failure-discovery cost when those features change.",
         "evidence": [
-          "menuSelect.test.ts:62-85 contains four hidden-file upload scenarios; :86-115 contains five available-date refresh/month-rollover scenarios unrelated to menuSelect."
+          "menuSelect.test.ts:62-85 contains four hidden-file upload scenarios; :86-116 contains five available-date refresh/month-rollover scenarios unrelated to menuSelect.",
+          "fileChooser already owns the same geometry/setup; availability owns date formatting and clock cleanup. Native selector/reference search found no case-name or file-specific external consumer requiring these scenarios to remain in menuSelect."
         ],
         "invariant": "Move cases unchanged to fileChooser and availability suites with exact import/setup companions; preserve all nine names, fixtures/assertions, jsdom discovery, 200x40 geometry, local dates and fake-clock cleanup."
       },
@@ -3675,6 +3679,44 @@
           }
         ]
       }
+    },
+    {
+      "id": "r-27bb68a5-c4c2-4ea5-a7cc-81f0f3fd350c",
+      "category": "Consistency",
+      "summary": "Reuse the coordinator's run-storage prefix in Quick Fill notifications",
+      "paths": ["src/quick-fill/background.ts", "src/autofill/runCoordinator.ts", "entrypoints/background.ts"],
+      "found": {"origin": "native", "commit": "bc09feb379553875e567a19bc2ab2d2ab5317d84", "date": "2026-11-25"},
+      "assessment": {
+        "origin": "native",
+        "commit": "bc09feb379553875e567a19bc2ab2d2ab5317d84",
+        "date": "2026-11-25",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "Quick Fill independently maintains the session-key prefix used by coordinator persistence, duplicating a cross-module notification contract despite an existing exported constant.",
+        "evidence": ["quick-fill/background.ts:122-123 repeats jb:autofill-run: for startsWith and slicing; runCoordinator.ts:9 exports RUN_PREFIX for its persisted keys.", "The background entrypoint already loads both modules; the coordinator module defines its classes/factories without registering them at import time. The substitution adds no helper or new lifecycle."],
+        "invariant": "Reuse RUN_PREFIX without changing key bytes, suffix parsing, integer checks, session-area filtering, authenticated metadata requests, notification contents or main-frame routing."
+      },
+      "state": "open",
+      "depends_on": []
+    },
+    {
+      "id": "r-113ad030-3e08-412c-abe5-3ae5b7d6916a",
+      "category": "Code Quality",
+      "summary": "Remove the unused current-profile argument from resume extraction",
+      "paths": ["src/resume-ai/gemini.ts", "src/components/options/ResumeImportSection.tsx", "src/resume-ai/gemini.test.ts", "src/resume-ai/profilePayload.test.ts", "src/devtools/simulation.test.ts", "src/preview/integrations.test.ts", "src/components/options/ResumeImportSection.test.tsx"],
+      "found": {"origin": "native", "commit": "bc09feb379553875e567a19bc2ab2d2ab5317d84", "date": "2026-11-25"},
+      "assessment": {
+        "origin": "native",
+        "commit": "bc09feb379553875e567a19bc2ab2d2ab5317d84",
+        "date": "2026-11-25",
+        "priority": "low",
+        "risk": "needs-review",
+        "reason": "An unused positional profile argument obscures the extraction boundary and shifts cancellation, links and callbacks across the sole production caller and many test adapters. The benefit is modest relative to mechanical caller updates.",
+        "evidence": ["gemini.ts:207-219 accepts _currentProfile but builds the prompt from literal '{}'; ResumeImportSection.tsx:237-244 is the sole production caller and compares the extracted profile locally.", "Twenty-one direct calls, four positional mock implementations and three args[8] callback accesses need coordinated adaptation in seven files. Preview's typeof/rest forwarding adjusts automatically.", "The existing profilePayload privacy case passes the profile through the unused argument; any signature adaptation must preserve meaningful saved-profile setup and its serialized-request assertions."],
+        "invariant": "Preserve prompt/request bytes, selected file and hyperlink handling, local comparison/review base, cancellation, fallback and document assessment. Preserve all test scenarios/assertions while shifting only affected argument positions and removing truly unused fixture/type declarations."
+      },
+      "state": "open",
+      "depends_on": []
     }
   ]
 }
