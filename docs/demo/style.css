@@ -6,6 +6,7 @@
   --muted: #626b7c;
   --line: #d5dae3;
   --field-border: #7b8495;
+  --field-error: #b91c1c;
   --input: #fff;
   --accent: #394e9a;
   --notice-bg: #eaf2ff;
@@ -21,6 +22,7 @@
   --muted: #b0bacd;
   --line: #46516a;
   --field-border: #8592ab;
+  --field-error: #fca5a5;
   --input: #222c3e;
   --accent: #a8baff;
   --notice-bg: #162d4d;
@@ -45,8 +47,7 @@ body {
 }
 .field-limit { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
 .field-error { margin: 6px 0 0; font-size: 13px; }
-.field-error, .field-limit[data-over="true"] { color: #b91c1c; }
-:root.dark .field-error, :root.dark .field-limit[data-over="true"] { color: #fca5a5; }
+.field-error, .field-limit[data-over="true"] { color: var(--field-error); }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 button,
 input,
@@ -322,6 +323,10 @@ textarea:focus {
   border-color: var(--accent);
   outline: 2px solid var(--accent);
   outline-offset: 0;
+}
+:is(input:not([type='radio'], [type='checkbox']), select, textarea)[aria-invalid='true'] {
+  border-color: var(--field-error);
+  outline-color: var(--field-error);
 }
 textarea {
   resize: vertical;
