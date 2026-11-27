@@ -14,7 +14,7 @@
     />
     <title>Frontend Engineer · Morrow Studio</title>
     <script src="../assets/theme-init.js?v=391bfb9c1044"></script>
-    <link rel="stylesheet" href="style.css?v=330a5b5b821c" />
+    <link rel="stylesheet" href="style.css?v=ed75b767a55b" />
     <link rel="stylesheet" href="../assets/theme-toggle.css?v=60bee6a542f9" />
     <script src="demo.js?v=80748c4e85d8" defer></script>
     <script src="presence.js?v=16f79b90d827" defer></script>
@@ -118,14 +118,14 @@
         <header class="form-heading">
           <p>Apply for this role</p>
           <h2 id="application-title">Tell us about yourself</h2>
-          <p>Required fields are marked with an asterisk (*).</p>
+          <p>Required fields are marked with an asterisk (<span class="required-marker">*</span>).</p>
         </header>
         <form id="application">
           <section aria-labelledby="contact-title">
             <h3 id="contact-title">Contact details</h3>
             <div class="fields">
               <div>
-                <label for="first-name">First name <span>*</span></label
+                <label for="first-name">First name <span class="required-marker">*</span></label
                 ><input
                   id="first-name"
                   name="firstName"
@@ -139,7 +139,7 @@
                 ><input id="last-name" name="lastName" autocomplete="family-name" data-maxlength="100" />
               </div>
               <div>
-                <label for="email">Email address <span>*</span></label
+                <label for="email">Email address <span class="required-marker">*</span></label
                 ><input
                   id="email"
                   name="email"
@@ -150,7 +150,7 @@
                 />
               </div>
               <div>
-                <label for="phone">Phone number <span>*</span></label
+                <label for="phone">Phone number <span class="required-marker">*</span></label
                 ><input
                   id="phone"
                   name="phone"
@@ -213,7 +213,7 @@
                 />
               </div>
               <div class="full">
-                <label for="resume">Resume <span>*</span></label
+                <label for="resume">Resume <span class="required-marker">*</span></label
                 ><input id="resume" name="resume" type="file" accept=".pdf,.doc,.docx" required />
                 <p class="help">PDF or Word document.</p>
               </div>
@@ -224,7 +224,7 @@
             <div class="fields">
               <div>
                 <label for="authorized"
-                  >Are you authorized to work in the United States? <span>*</span></label
+                  >Are you authorized to work in the United States? <span class="required-marker">*</span></label
                 ><select id="authorized" name="workAuthorization" required>
                   <option value="">Choose an answer</option>
                   <option value="yes">Yes</option>
@@ -232,7 +232,7 @@
                 </select>
               </div>
               <fieldset>
-                <legend>Will you need visa sponsorship? <span>*</span></legend>
+                <legend>Will you need visa sponsorship? <span class="required-marker">*</span></legend>
                 <div class="radio-options">
                   <label><input type="radio" name="sponsorship" value="yes" required />Yes</label
                   ><label><input type="radio" name="sponsorship" value="no" />No</label>
@@ -257,7 +257,7 @@
           <footer class="form-actions">
             <label class="consent"
               ><input type="checkbox" name="consent" required /><span
-                >I confirm that the information provided is accurate. *</span
+                >I confirm that the information provided is accurate. <span class="required-marker">*</span></span
               ></label
             >
             <div class="completion" id="completion" role="status" tabindex="-1" hidden>

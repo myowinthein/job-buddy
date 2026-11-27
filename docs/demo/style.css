@@ -292,6 +292,9 @@ legend {
   line-height: 1.6;
   margin-bottom: 7px;
 }
+.required-marker {
+  color: var(--field-error);
+}
 input:not([type='radio'], [type='checkbox']),
 select,
 textarea {
