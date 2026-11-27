@@ -47,10 +47,9 @@ Filling a form shares the filled details with that website.
 
 ## Contributing
 
-Bug reports, feedback, documentation fixes and pull requests are welcome.
-[Open an issue](https://github.com/myowinthein/job-buddy/issues/new/choose) to report
-a problem or share an idea. For local setup, development commands and tests,
-follow the [developer guide](https://myowinthein.github.io/job-buddy/developers/).
+If a feature behaves unexpectedly, a guide is unclear or you have an idea for Job
+Buddy, [open an issue](https://github.com/myowinthein/job-buddy/issues/new/choose).
+Documentation fixes and pull requests are also welcome.
 
 ## License
 
